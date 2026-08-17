@@ -1,0 +1,158 @@
+{
+  "entries": {
+    "AG_SHORT": {
+      "overrides": {
+        "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME": "15m",
+        "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR": 0.5,
+        "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT": 1.0,
+        "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED": true,
+        "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK": 80,
+        "BOTTOM_A_PROTECTIVE_TRAIL_MODE": "DC",
+        "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME": "5m",
+        "FULL_RECIPE_ONLY_ENABLED": true,
+        "LONG_ENABLED": false,
+        "LR_BAND_E02_EXIT_ENABLED": false,
+        "LR_BAND_LADDER_BASE_UNIT_USD": 2000.0,
+        "LR_BAND_LADDER_CAPACITY_USD": 16000.0,
+        "LR_BAND_LADDER_ENABLED": true,
+        "LR_BAND_LADDER_MODE": "linear",
+        "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": true,
+        "LR_BAND_LADDER_STOCH_EXTREME": 30.0,
+        "LR_BAND_LADDER_TF_BOTTOM": {
+          "1h": 1.0,
+          "4h": 2.0,
+          "D": 3.0
+        },
+        "LR_BAND_LADDER_TF_TOP": {
+          "1h": 0.5,
+          "4h": 1.0,
+          "D": 1.0
+        },
+        "LR_BAND_LADDER_TRIGGER": "union",
+        "SHORT_ENABLED": true
+      },
+      "promotion": {
+        "alpha_vs_bh_pp": 6.986713800694909,
+        "applied_at": "2026-08-02T23:49:50.116035+00:00",
+        "backtest_v8_engine_sha256": "f1e7b3c3aedb64a21b439fdd5d3631ac2d343341e08b08b6842c70b664e6058b",
+        "full_recipe_only_enabled": true,
+        "key": "AG_SHORT",
+        "overrides_sha256": "b8ee23922ecb98218ba6ffd9864258a2ea1ff35328792231ab492119ffa58558",
+        "protective_trail_contract_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+        "real_closes": 56,
+        "run_id": "full_recipe_20260802T233902Z_AG_SHORT",
+        "schema": "hotlist-v8-live-promotion-v1",
+        "side_aware_bh_return_pct": 2.93328619930509,
+        "source_receipt_sha256": "13755307b220e258f4b9518801acc8af1738c3f3f9c4179a7a867e826e74dfaf",
+        "status": "LIVE_PROMOTION_PASS",
+        "strategy_return_pct": 9.92,
+        "summary_sha256": "4e3b0bae6c44bf05ca4b904bc2a98330caf26bb8a6834dfe9f572cccbb3f8f9e",
+        "time_in_market_pct": 73.4277,
+        "tradier_manage_sha256": "3958598169f811089a0d6ba8261985f35d594275f585fc68cd690effc316dc97"
+      }
+    },
+    "FIVN_LONG": {
+      "overrides": {
+        "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME": "15m",
+        "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR": 0.25,
+        "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT": 1.0,
+        "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED": true,
+        "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK": 6,
+        "BOTTOM_A_PROTECTIVE_TRAIL_MODE": "STDEV",
+        "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME": "5m",
+        "FULL_RECIPE_ONLY_ENABLED": true,
+        "LONG_ENABLED": true,
+        "LR_BAND_E02_EXIT_ENABLED": false,
+        "LR_BAND_LADDER_BASE_UNIT_USD": 2000.0,
+        "LR_BAND_LADDER_CAPACITY_USD": 16000.0,
+        "LR_BAND_LADDER_ENABLED": true,
+        "LR_BAND_LADDER_MODE": "linear",
+        "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": true,
+        "LR_BAND_LADDER_STOCH_EXTREME": 30.0,
+        "LR_BAND_LADDER_TF_BOTTOM": {
+          "1h": 2.0,
+          "4h": 3.0,
+          "D": 4.0
+        },
+        "LR_BAND_LADDER_TF_TOP": {
+          "1h": 0.5,
+          "4h": 1.5,
+          "D": 2.0
+        },
+        "LR_BAND_LADDER_TRIGGER": "green",
+        "SHORT_ENABLED": false
+      },
+      "promotion": {
+        "alpha_vs_bh_pp": 32.943417490647896,
+        "applied_at": "2026-08-02T23:43:19.103923+00:00",
+        "backtest_v8_engine_sha256": "f1e7b3c3aedb64a21b439fdd5d3631ac2d343341e08b08b6842c70b664e6058b",
+        "full_recipe_only_enabled": true,
+        "key": "FIVN_LONG",
+        "overrides_sha256": "2328b2f56cdbb8b470c19e1ad557076e793aa3f03c954f88b783de0cf3e1dd92",
+        "protective_trail_contract_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+        "real_closes": 110,
+        "run_id": "full_recipe_20260802T233802Z_FIVN_LONG",
+        "schema": "hotlist-v8-live-promotion-v1",
+        "side_aware_bh_return_pct": -24.023417490647898,
+        "source_receipt_sha256": "652cebeb5f866e2462a2d11def81eb1e21fc7c9a88209010045ce400c9c43806",
+        "status": "LIVE_PROMOTION_PASS",
+        "strategy_return_pct": 8.92,
+        "summary_sha256": "8fdfe00a2ea1a74ba62f3b79a5257d4ca7168b77412e7f7bc7e864da8a4a30f8",
+        "time_in_market_pct": 34.1646,
+        "tradier_manage_sha256": "3958598169f811089a0d6ba8261985f35d594275f585fc68cd690effc316dc97"
+      }
+    },
+    "OKE_LONG": {
+      "overrides": {
+        "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME": "15m",
+        "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR": 0.0,
+        "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT": 1.0,
+        "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED": true,
+        "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK": 40,
+        "BOTTOM_A_PROTECTIVE_TRAIL_MODE": "DC",
+        "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME": "5m",
+        "FULL_RECIPE_ONLY_ENABLED": true,
+        "LONG_ENABLED": true,
+        "LR_BAND_E02_EXIT_ENABLED": false,
+        "LR_BAND_LADDER_BASE_UNIT_USD": 2000.0,
+        "LR_BAND_LADDER_CAPACITY_USD": 16000.0,
+        "LR_BAND_LADDER_ENABLED": true,
+        "LR_BAND_LADDER_MODE": "center_plateau",
+        "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": true,
+        "LR_BAND_LADDER_STOCH_EXTREME": 30.0,
+        "LR_BAND_LADDER_TF_BOTTOM": {
+          "1h": 3.0,
+          "4h": 6.0,
+          "D": 8.0
+        },
+        "LR_BAND_LADDER_TF_TOP": {
+          "1h": 1.0,
+          "4h": 3.0,
+          "D": 5.0
+        },
+        "LR_BAND_LADDER_TRIGGER": "green",
+        "SHORT_ENABLED": false
+      },
+      "promotion": {
+        "alpha_vs_bh_pp": 9.343586055217283,
+        "applied_at": "2026-08-02T23:49:38.717808+00:00",
+        "backtest_v8_engine_sha256": "f1e7b3c3aedb64a21b439fdd5d3631ac2d343341e08b08b6842c70b664e6058b",
+        "full_recipe_only_enabled": true,
+        "key": "OKE_LONG",
+        "overrides_sha256": "7cb8c7b11534c70d4661b71acdcab7b3279a6bb254a087f334e76cd116fc987e",
+        "protective_trail_contract_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+        "real_closes": 71,
+        "run_id": "full_recipe_20260802T234301Z_OKE_LONG",
+        "schema": "hotlist-v8-live-promotion-v1",
+        "side_aware_bh_return_pct": -9.703586055217283,
+        "source_receipt_sha256": "652cebeb5f866e2462a2d11def81eb1e21fc7c9a88209010045ce400c9c43806",
+        "status": "LIVE_PROMOTION_PASS",
+        "strategy_return_pct": -0.36,
+        "summary_sha256": "cbb139ff8a8c29f52e54d23243986be1842dd00698da1f7369622163728d5b8d",
+        "time_in_market_pct": 56.3499,
+        "tradier_manage_sha256": "3958598169f811089a0d6ba8261985f35d594275f585fc68cd690effc316dc97"
+      }
+    }
+  },
+  "schema": "full-recipe-live-config-v1"
+}

@@ -28,11 +28,27 @@ def semantic_domain(name: str, default: Any) -> dict[str, Any]:
     upper = name.upper()
     if isinstance(default, bool):
         return {"kind": "boolean", "minimum": None, "maximum": None}
-    if _OSCILLATOR.search(upper):
+    if (
+        _OSCILLATOR.search(upper)
+        and isinstance(default, (int, float))
+        and not isinstance(default, bool)
+    ):
         # A few explicitly normalized indicator implementations use 0..1.
-        maximum = 1.0 if isinstance(default, (int, float)) and 0 <= default <= 1 else 100.0
+        # Some active gates use >100 as an explicit "disabled" sentinel (for
+        # example SATOSHIT_LONG_MFI_MAX_TRADIER=120).  The active typed control
+        # must remain executable even though ordinary oscillator readings stop
+        # at 100.
+        maximum = (
+            1.0
+            if 0 <= default <= 1
+            else max(100.0, float(default))
+        )
         return {"kind": "bounded_oscillator", "minimum": 0.0, "maximum": maximum}
-    if _NORMALIZED_PCTB.search(upper):
+    if (
+        _NORMALIZED_PCTB.search(upper)
+        and isinstance(default, (int, float))
+        and not isinstance(default, bool)
+    ):
         if isinstance(default, (int, float)) and 0 <= default <= 1:
             return {"kind": "normalized_pctb", "minimum": 0.0, "maximum": 1.0}
         return {

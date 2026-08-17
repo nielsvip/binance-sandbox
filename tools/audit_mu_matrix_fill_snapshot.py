@@ -12,6 +12,7 @@ import csv
 import gzip
 import hashlib
 import json
+import sqlite3
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,8 +23,12 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MATRIX = ROOT / "data/reports/SWITCH_MATRIX_TRB.csv.gz"
 DEFAULT_DIGEST = ROOT / "data/reports/SWITCH_MATRIX_TRB_DIGEST.md"
 DEFAULT_OUTPUT = ROOT / "data/reports/MU_MATRIX_FILL_AUDIT_20260729.json"
+DEFAULT_DB = ROOT / "data/param_results_stocks.db"
 SYMBOL_KEY = "MU_LONG"
 ACCOUNT = "trb"
+CURRENT_CAMPAIGN = "stocks_repaired_20260725_c2"
+CURRENT_CUTOFF = "2026-07-26T04:15:00Z"
+CURRENT_CONTRACT_PREFIX = "tradier-matrix-exec-c3-20260729:"
 OTHER_ACCOUNT_PREFIXES = ("TRA_", "TRC_")
 
 # These indicators have a natural [0, 100] domain.  Budget/size fields that
@@ -76,7 +81,68 @@ def _out_of_domain(key: str, raw_value: str) -> bool:
     return not 0.0 <= value <= 100.0
 
 
-def audit(matrix_path: Path, digest_path: Path, as_of: datetime) -> dict[str, Any]:
+def _current_engine_summary(db_path: Path) -> dict[str, Any]:
+    """Separate fresh c3 exact evidence from legacy rows in the wide export."""
+    empty = {
+        "available": False,
+        "campaign": CURRENT_CAMPAIGN,
+        "cutoff_utc": CURRENT_CUTOFF,
+        "contract_prefix": CURRENT_CONTRACT_PREFIX,
+        "rows": 0,
+        "non_inert_rows": 0,
+        "distinct_params": 0,
+        "positive_delta_rows": 0,
+        "latest_utc": None,
+        "best_delta_gain_per_month_vs_bh": None,
+        "best_param": None,
+        "best_value": None,
+    }
+    if not db_path.is_file():
+        return empty
+    try:
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=30)
+        con.row_factory = sqlite3.Row
+        rows = con.execute(
+            """
+            SELECT param,value_json,delta_gain_mo_vs_bh,inert,ts
+            FROM param_cells
+            WHERE mode='tradier' AND symbol='MU' AND side='LONG'
+              AND campaign=? AND COALESCE(tier,'ENGINE')='ENGINE'
+              AND ts>=? AND contract_fingerprint LIKE ?
+            ORDER BY delta_gain_mo_vs_bh DESC
+            """,
+            (CURRENT_CAMPAIGN, CURRENT_CUTOFF, CURRENT_CONTRACT_PREFIX + "%"),
+        ).fetchall()
+        con.close()
+    except sqlite3.Error as exc:
+        return {**empty, "error": str(exc)}
+    if not rows:
+        return {**empty, "available": True}
+    best = rows[0]
+    return {
+        **empty,
+        "available": True,
+        "rows": len(rows),
+        "non_inert_rows": sum(not bool(row["inert"]) for row in rows),
+        "distinct_params": len({row["param"] for row in rows}),
+        "positive_delta_rows": sum(
+            float(row["delta_gain_mo_vs_bh"] or 0.0) > 0.0 for row in rows
+        ),
+        "latest_utc": max(row["ts"] for row in rows),
+        "best_delta_gain_per_month_vs_bh": float(
+            best["delta_gain_mo_vs_bh"] or 0.0
+        ),
+        "best_param": best["param"],
+        "best_value": best["value_json"],
+    }
+
+
+def audit(
+    matrix_path: Path,
+    digest_path: Path,
+    as_of: datetime,
+    db_path: Path = DEFAULT_DB,
+) -> dict[str, Any]:
     rows = _read_wide_matrix(matrix_path)
     filled = [row for row in rows if (row.get(SYMBOL_KEY) or "").strip()]
     values = [float(row[SYMBOL_KEY]) for row in filled]
@@ -112,9 +178,21 @@ def audit(matrix_path: Path, digest_path: Path, as_of: datetime) -> dict[str, An
     )
     dominant_value, dominant_count = value_counts.most_common(1)[0] if value_counts else (None, 0)
     positive = [row for row in filled if float(row[SYMBOL_KEY]) > 0.0]
+    current_engine = _current_engine_summary(db_path)
+    current_positive = int(current_engine["positive_delta_rows"])
+    current_rows = int(current_engine["rows"])
+    blockers = [
+        "ordinary live decision-path parity is not established",
+        "no fresh c3 MU_LONG exact cell beats the same-key B&H floor",
+    ]
+    if current_rows == 0:
+        blockers.insert(
+            0,
+            "no fresh c3 exact row proves the explicit-cell override contract",
+        )
 
     return {
-        "audit": "MU_SWITCH_MATRIX_FILL_SNAPSHOT_V1",
+        "audit": "MU_SWITCH_MATRIX_FILL_SNAPSHOT_V2",
         "as_of_utc": as_of.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
         "scope": {"account": ACCOUNT, "symbol_side": SYMBOL_KEY},
         "sources": {
@@ -122,8 +200,10 @@ def audit(matrix_path: Path, digest_path: Path, as_of: datetime) -> dict[str, An
             "matrix_sha256": sha256(matrix_path),
             "digest": _display_path(digest_path),
             "digest_sha256": sha256(digest_path),
+            "engine_db": _display_path(db_path),
             "matrix_age_hours": matrix_age_hours,
         },
+        "current_contract_engine": current_engine,
         "counts": {
             "manifest_rows": len(rows),
             "mu_filled_rows": len(filled),
@@ -163,20 +243,21 @@ def audit(matrix_path: Path, digest_path: Path, as_of: datetime) -> dict[str, An
                 row.get("status") in {"RECONNECT", "INERT_AT_VALUE", "OK"}
                 for row in filled
             ),
-            "beats_bh_anywhere": bool(positive),
+            "beats_bh_anywhere_in_wide_export": bool(positive),
+            "beats_bh_in_fresh_c3_exact_rows": current_positive > 0,
+            "override_precedence_repair_observed": current_rows > 0,
             "suitable_as_live_promotion_evidence": False,
-            "blockers": [
-                "ordinary live decision-path parity is not established",
-                "per-symbol/account overlays have higher _cfg precedence than V8_OVERRIDE_FILE globals, so tested cells can be shadowed",
-                "TRB matrix contains TRA_/TRC_ account-private rows",
-                "generic scaled ranges emitted values outside natural oscillator domains",
-                "no current MU_LONG cell beats the same-key B&H floor",
+            "blockers": blockers,
+            "historical_wide_export_caveats": [
+                "TRA_/TRC_ account-private rows are retained only as quarantined historical evidence",
+                "legacy generic out-of-domain values are retained only as quarantined historical evidence",
+                "legacy c2 rows must not be mistaken for the fresh c3 exact contract",
             ],
         },
         "required_fix": {
             "override_precedence": (
-                "add a backtest-only explicit-cell layer above per-account and "
-                "global per-symbol overlays while retaining every untargeted baseline field"
+                "implemented by the guarded c3 exact-cell layer; keep requiring "
+                "fresh c3 resolved-value and action-fingerprint evidence"
             ),
             "range_generation": "use account-aware semantic domains, then regenerate affected cells",
             "promotion_rule": "require changed decision/trade fingerprints and ordinary-live parity",
@@ -188,6 +269,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--matrix", type=Path, default=DEFAULT_MATRIX)
     parser.add_argument("--digest", type=Path, default=DEFAULT_DIGEST)
+    parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--as-of", help="ISO-8601 UTC audit time (default: now)")
     args = parser.parse_args()
@@ -196,7 +278,12 @@ def main() -> int:
         if args.as_of
         else datetime.now(timezone.utc)
     )
-    result = audit(args.matrix.resolve(), args.digest.resolve(), as_of)
+    result = audit(
+        args.matrix.resolve(),
+        args.digest.resolve(),
+        as_of,
+        args.db.resolve(),
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps(result["counts"], sort_keys=True))

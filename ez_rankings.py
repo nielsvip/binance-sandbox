@@ -291,7 +291,7 @@ async def _init_redis_direct():
         # LONG timeout - Redis can take time to appear
         redis = redis.Redis(host=host, port=config.REDIS_PORT, db=config.REDIS_DB, decode_responses=True, 
                           socket_connect_timeout=30, socket_timeout=60, health_check_interval=30, 
-                          max_connections=3000, retry_on_timeout=True,
+                          max_connections=3000,
                           retry_on_error=[redis_exceptions.TimeoutError, redis_exceptions.ConnectionError])
         # NON-BLOCKING: No ping wait, connects in background
         logger.info(f"⏳ Direct Redis client created ({host}:{config.REDIS_PORT}) - connecting in background")

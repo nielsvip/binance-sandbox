@@ -1,0 +1,237 @@
+{
+  "schema": "s1-pilot-v8-evidence-recovery-audit-v1",
+  "status": "PASS_READ_ONLY_AUDIT",
+  "generated_at": "2026-08-02T21:34:35Z",
+  "scope": {
+    "host": "s1",
+    "keys": [
+      "MU_LONG",
+      "NVDA_LONG",
+      "VT_LONG",
+      "TTD_SHORT",
+      "ACN_SHORT"
+    ],
+    "nonempty_sqlite_files_opened_read_only": 55,
+    "tables_and_views_enumerated": 134,
+    "sqlite_open_errors": 0,
+    "db_npz_or_raw_ledger_copied": false,
+    "remote_data_modified": false
+  },
+  "headline": {
+    "recovery_script_reported_raw_logical_rows": 3781,
+    "recovery_script_reported_numeric_singleton_rows": 269,
+    "canonical_logical_cells_after_value_normalization": 3759,
+    "canonical_numeric_singleton_rows": 263,
+    "canonical_metric_vector_singleton_rows": 267,
+    "canonical_metric_plus_action_singleton_rows": 274,
+    "current_pass_family_rows": 3170,
+    "current_pass_family_rows_with_real_closes": 3168,
+    "preserved_only_canonical_logical_cells": 331,
+    "preserved_only_pass_cells": 83,
+    "safe_additional_unique_physical_values": 2,
+    "safe_physical_total_after_preserved_merge": 265,
+    "conclusion": "Thousands of rows are PASS-validated, but validation and within-key numeric uniqueness are separate gates. Most validated rows execute the same action schedule and produce the same result number. Full metric/action identity distinguishes 11 more current rows than the canonical numeric singleton test, but the controlling physical matrix rule still prohibits displaying duplicate primary result numbers."
+  },
+  "current_param_cells_engine": {
+    "source": "/home/niels/binance-sandbox/data/param_results_stocks.db:param_cells",
+    "raw_rows": 5121,
+    "raw_value_string_logical_cells": 3781,
+    "canonical_logical_cells": 3759,
+    "value_serialization_aliases": 22,
+    "selected_validation_totals": {
+      "PASS": 2375,
+      "PASS_WITH_CAPACITY_CLAMPS": 795,
+      "INCOMPLETE_NO_REAL_CLOSE": 67,
+      "NULL": 544
+    },
+    "by_key": {
+      "MU_LONG": {
+        "raw_rows": 2159,
+        "raw_logical_cells": 1260,
+        "canonical_logical_cells": 1250,
+        "selected_validation": {"PASS": 7, "PASS_WITH_CAPACITY_CLAMPS": 758, "INCOMPLETE_NO_REAL_CLOSE": 13, "NULL": 482},
+        "pass_family_with_real_closes": 764,
+        "distinct_exact_primary_values": 126,
+        "numeric_singletons": 98,
+        "metric_vector_singletons": 99,
+        "metric_plus_action_singletons": 100
+      },
+      "NVDA_LONG": {
+        "raw_rows": 151,
+        "raw_logical_cells": 116,
+        "canonical_logical_cells": 116,
+        "selected_validation": {"PASS": 46, "PASS_WITH_CAPACITY_CLAMPS": 2, "INCOMPLETE_NO_REAL_CLOSE": 7, "NULL": 61},
+        "pass_family_with_real_closes": 48,
+        "distinct_exact_primary_values": 43,
+        "numeric_singletons": 22,
+        "metric_vector_singletons": 22,
+        "metric_plus_action_singletons": 24
+      },
+      "VT_LONG": {
+        "raw_rows": 2392,
+        "raw_logical_cells": 2014,
+        "canonical_logical_cells": 2004,
+        "selected_validation": {"PASS": 1984, "PASS_WITH_CAPACITY_CLAMPS": 23, "INCOMPLETE_NO_REAL_CLOSE": 6, "NULL": 1},
+        "pass_family_with_real_closes": 2007,
+        "distinct_exact_primary_values": 143,
+        "numeric_singletons": 112,
+        "metric_vector_singletons": 114,
+        "metric_plus_action_singletons": 118
+      },
+      "TTD_SHORT": {
+        "raw_rows": 195,
+        "raw_logical_cells": 179,
+        "canonical_logical_cells": 178,
+        "selected_validation": {"PASS": 158, "PASS_WITH_CAPACITY_CLAMPS": 5, "INCOMPLETE_NO_REAL_CLOSE": 16, "NULL": 0},
+        "pass_family_with_real_closes": 163,
+        "distinct_exact_primary_values": 24,
+        "numeric_singletons": 19,
+        "metric_vector_singletons": 19,
+        "metric_plus_action_singletons": 19
+      },
+      "ACN_SHORT": {
+        "raw_rows": 224,
+        "raw_logical_cells": 212,
+        "canonical_logical_cells": 211,
+        "selected_validation": {"PASS": 180, "PASS_WITH_CAPACITY_CLAMPS": 7, "INCOMPLETE_NO_REAL_CLOSE": 25, "NULL": 0},
+        "pass_family_with_real_closes": 186,
+        "distinct_exact_primary_values": 18,
+        "numeric_singletons": 12,
+        "metric_vector_singletons": 13,
+        "metric_plus_action_singletons": 13
+      }
+    }
+  },
+  "approved_rows_beyond_param_cells": {
+    "param_cell_history": {
+      "location": "/home/niels/binance-sandbox/data/param_results_stocks.db:param_cell_history",
+      "rows": 4607,
+      "validation": {"PASS": 3670, "PASS_WITH_CAPACITY_CLAMPS": 910, "INCOMPLETE_NO_REAL_CLOSE": 27},
+      "new_canonical_logical_cells_beyond_current_param_cells": 0,
+      "by_key": {
+        "MU_LONG": {"rows": 886, "PASS": 3, "PASS_WITH_CAPACITY_CLAMPS": 876, "INCOMPLETE_NO_REAL_CLOSE": 7},
+        "NVDA_LONG": {"rows": 53, "PASS": 49, "PASS_WITH_CAPACITY_CLAMPS": 1, "INCOMPLETE_NO_REAL_CLOSE": 3},
+        "VT_LONG": {"rows": 3183, "PASS": 3148, "PASS_WITH_CAPACITY_CLAMPS": 32, "INCOMPLETE_NO_REAL_CLOSE": 3},
+        "TTD_SHORT": {"rows": 216, "PASS": 208, "PASS_WITH_CAPACITY_CLAMPS": 1, "INCOMPLETE_NO_REAL_CLOSE": 7},
+        "ACN_SHORT": {"rows": 269, "PASS": 262, "PASS_WITH_CAPACITY_CLAMPS": 0, "INCOMPLETE_NO_REAL_CLOSE": 7}
+      },
+      "physical_values_restorable": 0,
+      "reason": "Every history logical cell already exists in current ENGINE param_cells. History adds observations and validation provenance, not a new matrix coordinate."
+    },
+    "immutable_preserved_workbook_v8": {
+      "location": "/home/niels/binance-sandbox/data/reports/PRESERVED_V8_CELLS.jsonl",
+      "sha256": "e51b04b0b93c815c145aa8a1afa0424e699c962c7fc8b8e27a881d6e974c81c0",
+      "pilot_rows": 3513,
+      "display_pass_rows": 231,
+      "original_action_fingerprints_available": 0,
+      "by_key": {
+        "MU_LONG": {"rows": 1039, "PASS": 77, "QUARANTINED": 962, "canonical_only_beyond_current": 48, "pass_only_beyond_current": 28, "safe_unique_additions": 0},
+        "NVDA_LONG": {"rows": 95, "PASS": 17, "QUARANTINED": 78, "canonical_only_beyond_current": 43, "pass_only_beyond_current": 12, "safe_unique_additions": 0},
+        "VT_LONG": {"rows": 1996, "PASS": 110, "QUARANTINED": 1886, "canonical_only_beyond_current": 125, "pass_only_beyond_current": 33, "safe_unique_additions": 2},
+        "TTD_SHORT": {"rows": 175, "PASS": 17, "QUARANTINED": 158, "canonical_only_beyond_current": 57, "pass_only_beyond_current": 5, "safe_unique_additions": 0},
+        "ACN_SHORT": {"rows": 208, "PASS": 10, "QUARANTINED": 198, "canonical_only_beyond_current": 58, "pass_only_beyond_current": 5, "safe_unique_additions": 0}
+      },
+      "safe_unique_additions": [
+        {
+          "key": "VT_LONG",
+          "param": "STRUCTURAL_RANGE_SHIFT_K_HIGH",
+          "value_json": "75",
+          "delta_gain_mo_vs_bh": 0.9471,
+          "gain_per_mo": 2.3306,
+          "campaign": "stocks_repaired_20260730_c5",
+          "source_file": "param_matrix_daemon/stocks_repaired_20260730_c5/STRUCTURAL_RANGE_SHIFT_K_HIGH__75.0"
+        },
+        {
+          "key": "VT_LONG",
+          "param": "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS",
+          "value_json": "50",
+          "delta_gain_mo_vs_bh": 1.2939,
+          "gain_per_mo": 2.6774,
+          "campaign": "stocks_repaired_20260730_c5",
+          "source_file": "param_matrix_daemon/stocks_repaired_20260730_c5/STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS__50.0"
+        }
+      ]
+    },
+    "exact_v8_result_receipts": {
+      "location_glob": "/home/niels/binance-sandbox/data/reports/vec_research/**/{run_summary.json,exact_engine_audit*.json}",
+      "unique_run_directories": 18,
+      "PASS": 15,
+      "FAIL": 3,
+      "by_key": {
+        "MU_LONG": {"PASS": 8, "FAIL": 2},
+        "NVDA_LONG": {"PASS": 1, "FAIL": 0},
+        "VT_LONG": {"PASS": 3, "FAIL": 0, "zero_real_close_smokes": 2},
+        "TTD_SHORT": {"PASS": 1, "FAIL": 1},
+        "ACN_SHORT": {"PASS": 2, "FAIL": 0}
+      },
+      "promotion_eligible_pass_runs": 0,
+      "physical_values_restorable": 0,
+      "reason": "The fully audited PASS receipts are component/ladder parity runs with matrix_written=false and promotion_allowed=false. They identify recipe/event schedules, not scalar (param,value) matrix owners. The two additional VT PASS smokes have zero real closes and promotion_eligible=false."
+    }
+  },
+  "other_db_table_evidence": {
+    "stage_results": {
+      "location": "/home/niels/binance-sandbox/data/param_results_stocks.db:stage_results",
+      "rows": 5794,
+      "new_canonical_logical_cells_beyond_current_engine": 2249,
+      "new_nonzero_rows": 218,
+      "validation_status_column": false,
+      "action_fingerprint_column": false,
+      "physical_values_restorable": 0,
+      "by_key": {
+        "MU_LONG": {"rows": 1744, "new_canonical_logical": 500, "new_nonzero": 41},
+        "NVDA_LONG": {"rows": 653, "new_canonical_logical": 562, "new_nonzero": 63},
+        "VT_LONG": {"rows": 2184, "new_canonical_logical": 282, "new_nonzero": 0},
+        "TTD_SHORT": {"rows": 694, "new_canonical_logical": 556, "new_nonzero": 82},
+        "ACN_SHORT": {"rows": 519, "new_canonical_logical": 349, "new_nonzero": 32}
+      },
+      "reason": "These are legacy aggregate/cache rows sourced mainly from param_cells. They lack receipt validation, contract fingerprints, real-close telemetry and action fingerprints."
+    },
+    "test_results_central_symbol_results": {
+      "location": "/home/niels/binance-sandbox/data/test_results_central.db:symbol_results+runs",
+      "by_key": {
+        "MU_LONG": {"rows": 2128, "v8_marker_rows": 742, "legacy_publishable_rows": 13},
+        "NVDA_LONG": {"rows": 3527, "v8_marker_rows": 739, "legacy_publishable_rows": 13},
+        "VT_LONG": {"rows": 481, "v8_marker_rows": 9, "legacy_publishable_rows": 0},
+        "TTD_SHORT": {"rows": 1192, "v8_marker_rows": 427, "legacy_publishable_rows": 11},
+        "ACN_SHORT": {"rows": 1352, "v8_marker_rows": 436, "legacy_publishable_rows": 15}
+      },
+      "physical_values_restorable": 0,
+      "reason": "Legacy PUBLISHABLE/DIAGNOSTIC records have no current contract validation, no scalar knob ownership and no matrix receipt linkage."
+    },
+    "path_fleet_results": {
+      "location": "/home/niels/binance-sandbox/data/reports/path_fleet/queue.db:results",
+      "exact_replay_rows": {"MU_LONG": 0, "NVDA_LONG": 0, "VT_LONG": 0, "TTD_SHORT": 1, "ACN_SHORT": 1},
+      "exact_replay_status": "RESEARCH_ONLY",
+      "physical_values_restorable": 0
+    },
+    "empty_or_non_authoritative_surfaces": {
+      "lab_matrix_pilot_rows": 0,
+      "backtest_v8_backtest_db_pilot_trade_rows": 0,
+      "recent_tradier_queue_completed_attempts": 0,
+      "condensed_db_key_or_v8_path_records": 0,
+      "older_param_db_snapshot_only_logical_cells": 0
+    }
+  },
+  "precision_and_action_recovery": {
+    "current_canonical_primary_numeric_singletons": 263,
+    "using_full_metric_vector_singletons": 267,
+    "using_full_metric_plus_action_singletons": 274,
+    "behavior_identity_increment_over_primary_number": 11,
+    "allowed_as_additional_physical_numeric_cells_under_current_rule": 0,
+    "explanation": "Full precision is already present in SQLite REAL fields. An eight-field metric vector separates four additional rows, and adding trades_fingerprint separates seven more. Those rows still repeat the primary delta_gain_mo_vs_bh displayed in the matrix, so action identity alone cannot make the physical number unique. Full configuration/context signatures would make 3,745 raw-selected rows singleton, but that is not behavior uniqueness and would be fake completion."
+  },
+  "recovery_script_defects": [
+    "It scans only param_cells and ignores param_cell_history, preserved V8 evidence, exact-engine receipts and other DB result tables.",
+    "Its logical key uses raw value_json text. True/true and equivalent numeric serializations create 22 aliases; canonical logical coverage is 3,759, not 3,781.",
+    "The value 269 is singleton-row count, not the count of distinct result numbers. Before canonicalization there are 360 distinct per-key primary values; after canonicalization there are 263 singleton physical candidates.",
+    "It labels every non-singleton primary number rejected without reporting whether a full metric vector or action fingerprint differs.",
+    "It does not merge the preserved PASS tier; after canonical logical reconciliation, only two preserved VT values are genuinely new and noncolliding."
+  ],
+  "source_hashes": {
+    "PRESERVED_V8_CELLS.jsonl": "e51b04b0b93c815c145aa8a1afa0424e699c962c7fc8b8e27a881d6e974c81c0",
+    "PRESERVED_V8_CELLS_RECEIPT.json": "99a628163c578e32acbc7f960a8eb138b09484309455ec1f577d82ea3c276202",
+    "PILOT_V8_CELLS_IMMUTABLE.jsonl": "f15f0c47f6d1e887ebf43984d3869f761085ea07d8a157c3418f4365497324c0",
+    "PILOT_V8_CELLS_IMMUTABLE_RECEIPT.json": "de902009c32a6aff57d898e8a09b6223b17a131680c68da5ca340eaa3ddb17d8"
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-07-25",
+  "scope": "Tradier stock exit and mandatory-reentry paths prioritized for profitable/top exits",
+  "rules": {
+    "no_live_config_changes": true,
+    "no_result_promotion": true,
+    "engine_truth": "backtest_v8_engine.py plus the real Tradier call path",
+    "side_convention": "LONG adverse structure is LH+LL/downturn; SHORT is HH+HL/upturn"
+  },
+  "candidates": [
+    {
+      "id": "delta_two_phase_delayed_retest",
+      "category": "delayed_retest",
+      "configs": ["RZ_TWO_PHASE_EXIT_ENABLED", "STRUCTURAL_EXIT_GATE_ENABLED"],
+      "live_refs": ["tradier_manage.py:9364-9393", "tradier_manage.py:7468-7494", "wt_dc_delta.py:448-720"],
+      "engine_refs": ["backtest_v8_engine.py:6089-6119"],
+      "status": "patched_veto_pending_ack_gap",
+      "finding": "The 2026-07-25 local patch now waits for a failed retest and preserves the arm across the structural veto. A confirmed signal still clears stored pending state before downstream zero-score, cooldown, NOLOSS and order-execution gates acknowledge a full close.",
+      "desired_semantics": "Arm on adverse break, observe the favorable retest, execute only after that retest fails; preserve state across vetoes and blocked orders."
+    },
+    {
+      "id": "lhll_structural_exit_gate",
+      "category": "price_structure",
+      "configs": ["STRUCTURAL_EXIT_GATE_ENABLED"],
+      "live_refs": ["wt_dc_delta.py:56-98", "wt_dc_delta.py:705-723"],
+      "engine_refs": ["backtest_v8_engine.py:6105"],
+      "status": "patched_delta_other_immediate_paths_remain",
+      "finding": "The DeltaTracker two-phase path now treats LH+LL/HH+HL as failed-retest confirmation. The generic structural gate can still authorize other already-emitted exits immediately, and independent hybrid/scalper paths retain immediate structure exits.",
+      "desired_semantics": "HTF LH+LL for LONG or HH+HL for SHORT arms the delayed-retest state; it should not itself claim the unconfirmed top."
+    },
+    {
+      "id": "wt_crossunder_final_mandatory_reentry",
+      "category": "wt_cross",
+      "configs": ["WT_CROSSUNDER_FINAL_ENABLED", "WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS_ENABLED"],
+      "live_refs": ["tradier_manage.py:7494-7600"],
+      "engine_refs": ["backtest_v8_engine.py:7160-7164", "backtest_v8_engine.py:7496-7525"],
+      "status": "wired_parity_review",
+      "finding": "LONG/SHORT logic is mirrored and uses stocks 5m plus 15m/HTF confirmation. Both delta-gated and standalone live branches exist, while the engine also has inline copies. Confirm one close per bar and identical parabolic bypass."
+    },
+    {
+      "id": "wt_variance_exit",
+      "category": "wt_reversal",
+      "configs": ["WT_EXIT_VETO_ENABLED_TRADIER", "WT_EXIT_TFS_TRADIER", "WT_EXIT_MIN_TFS_TRADIER"],
+      "live_refs": ["tradier_manage.py:7648-7665"],
+      "engine_refs": ["backtest_v8_engine.py:5888-5891"],
+      "status": "wired",
+      "finding": "Per-symbol TF list and minimum count are read in live. Engine contains alias injection for prefixed and non-prefixed sweep names."
+    },
+    {
+      "id": "stoch_cross_1h_profit_exit",
+      "category": "stochastic",
+      "configs": ["STOCH_CROSS_1H_EXIT_ENABLED"],
+      "live_refs": ["config_tradier.py:931", "tradier_manage.py:13780-13786", "tradier_manage.py:13864-13870"],
+      "engine_refs": [],
+      "status": "disconnected",
+      "finding": "Config defaults True, but both LONG and SHORT implementations are inside a dead commented-out function and the engine has no read."
+    },
+    {
+      "id": "golden_rule_direct_exit",
+      "category": "golden_rule",
+      "configs": ["GR_HTF_DIRECT_EXIT_ENABLED", "GR_HTF_DIRECT_EXIT_SCORE"],
+      "live_refs": ["tradier_manage.py:7196-7220"],
+      "engine_refs": ["backtest_v8_engine.py:4008-4045"],
+      "status": "wired_parity_review",
+      "finding": "Opposite-direction HTF scoring is present in both. Config default is 12, while fallback literals differ (live 18, engine 15.5); harmless only while the attribute is always present."
+    },
+    {
+      "id": "golden_rule_exit_hold_gate",
+      "category": "golden_rule",
+      "configs": ["GOLDEN_RULE_EXIT_MIN_TFS", "GOLDEN_RULE_EXIT_MIN_IND"],
+      "live_refs": ["tradier_manage.py:6996-7005"],
+      "engine_refs": ["backtest_v8_engine.py via real evaluate_stop path"],
+      "status": "wired_high_coupling",
+      "finding": "This is an early HOLD return, not just a filter on GR exits; when enabled it blocks every later profitable/top exit in evaluate_stop. Treat as a global exit-authority gate."
+    },
+    {
+      "id": "structural_range_shift",
+      "category": "structural_range",
+      "configs": ["STRUCTURAL_RANGE_SHIFT_EXIT", "STRUCTURAL_RANGE_SHIFT_TF", "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", "STRUCTURAL_RANGE_SHIFT_K_HIGH", "STRUCTURAL_RANGE_SHIFT_K_LOW"],
+      "live_refs": ["tradier_manage.py:7271-7307"],
+      "engine_refs": ["backtest_v8_engine.py:4927-4984", "backtest_v8_engine.py:7422-7494"],
+      "status": "parity_risk_duplicate_engine_paths",
+      "finding": "Live and engine are wired but global-only. The engine has multiple explicit SRS passes in addition to real exit evaluation; verify deduplication, identical indicator names and identical strict cascade."
+    },
+    {
+      "id": "hybrid_structural_tf_exit",
+      "category": "price_structure",
+      "configs": ["EXIT_STRUCT_TF", "LONG_STRUCT_EXIT_TF", "SHORT_STRUCT_EXIT_TF"],
+      "live_refs": ["tradier_manage.py:2479-2510"],
+      "engine_refs": ["backtest_v8_engine.py:4856-4890", "backtest_v8_engine.py:7883-7915"],
+      "status": "wired_parity_review",
+      "finding": "String TF controls the path; None disables. LONG closes on lower high plus lower low, SHORT on higher high plus higher low. Engine contains more than one implementation."
+    },
+    {
+      "id": "lr_band_harvest_and_slope_flip",
+      "category": "regression_band",
+      "configs": ["LR_BAND_HARVEST_ENABLED", "LR_BAND_ENTRY_TF", "LR_BAND_HARVEST_HI", "LR_BAND_HARVEST_FRAC", "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY", "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN"],
+      "live_refs": ["tradier_manage.py:7089-7123"],
+      "engine_refs": ["backtest_v8_engine.py via real evaluate_stop path"],
+      "status": "wired_global_only",
+      "finding": "Profit-only partial harvest and full slope-flip close are live-wired. All knobs use bare global config reads, so per-symbol matrix overrides are not reproducible live."
+    },
+    {
+      "id": "mtf_dc_reject",
+      "category": "dc_rejection",
+      "configs": ["MTF_EXIT_USE_COMPOUND", "MTF_DC_REJECT_EXIT_ENABLED", "MTF_DC_REJECT_EXIT_TF", "MTF_DC_REJECT_EXIT_LOOKBACK"],
+      "live_refs": ["tradier_manage.py:2701-2750"],
+      "engine_refs": ["backtest_v8_engine.py via real process_position path"],
+      "status": "partially_disconnected",
+      "finding": "Enabled and TF are wired per symbol, but only inside MTF_EXIT_USE_COMPOUND. MTF_EXIT_MIN_OPEN_TS is an absolute 2026-05-20 cutoff, excluding most historical engine positions; a nonpositive value is replaced with real wall-clock startup time and is also unsuitable for simulation. MTF_DC_REJECT_EXIT_LOOKBACK is never read."
+    },
+    {
+      "id": "mtf_bb_reject",
+      "category": "bb_rejection",
+      "configs": ["MTF_EXIT_USE_COMPOUND", "MTF_BB_REJECT_EXIT_ENABLED", "MTF_BB_REJECT_EXIT_TF", "MTF_BB_REJECT_EXIT_LOOKBACK"],
+      "live_refs": ["tradier_manage.py:2751-2776"],
+      "engine_refs": ["backtest_v8_engine.py via real process_position path"],
+      "status": "backtest_clock_bug",
+      "finding": "The absolute MTF_EXIT_MIN_OPEN_TS cutoff excludes most historical positions. Tag memory then uses wall-clock time.time() and a hard-coded 300 seconds per lookback bar. In fast simulation, timestamps do not advance with simulated bars, making the lookback effectively unbounded and wrong for non-5m bases."
+    },
+    {
+      "id": "wt_htf_divergence_and_zscore_pending",
+      "category": "divergence",
+      "configs": ["RZ_DIV_EXIT_ENABLED", "RZ_ZSCORE_EXIT_ENABLED", "RZ_TWO_PHASE_EXIT_ENABLED"],
+      "live_refs": ["tradier_manage.py:9389-9393", "wt_dc_delta.py:610-654"],
+      "engine_refs": ["backtest_v8_engine.py:6089-6119"],
+      "status": "wired_but_affected_by_p0",
+      "finding": "Two-of-three 1h/4h/D divergence and WT z-score extremes correctly mirror LONG/SHORT and arm pending state, but the shared pending-veto collision can discard the intent."
+    },
+    {
+      "id": "peak_giveback",
+      "category": "peak_giveback",
+      "configs": ["PEAK_GIVEBACK_PROTECTION_ENABLED", "PEAK_GIVEBACK_MIN_PEAK_PCT", "PEAK_GIVEBACK_DROP_PCT", "PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN", "PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT"],
+      "live_refs": ["tradier_manage.py:7124-7164"],
+      "engine_refs": ["backtest_v8_engine.py via real evaluate_stop path"],
+      "status": "wired_global_only",
+      "finding": "Uses cycle_peak_gain and is side-neutral. It is deliberately capable of closing after profit erodes into the configured negative floor. Bare global reads prevent per-symbol tuning."
+    },
+    {
+      "id": "frozen_activation_stop",
+      "category": "frozen_level",
+      "configs": ["FROZEN_ACTIVATION_STOP_ENABLED", "FROZEN_ACTIVATION_TF", "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER"],
+      "live_refs": ["tradier_manage.py:2512-2555"],
+      "engine_refs": ["backtest_v8_engine.py via real process_position path"],
+      "status": "wired_default_off",
+      "finding": "Live freezes the adverse DC level on first observation rather than guaranteed entry-bar capture. Default is OFF after near-breakeven commission churn."
+    },
+    {
+      "id": "generalized_dc_bb_frozen_stops",
+      "category": "frozen_level",
+      "configs": ["DC_LOW_FROZEN_STOP_ENABLED", "DC_LOW_FROZEN_STOP_TF", "DC_LOW_FROZEN_STOP_USE_4BAR", "DC_LOW_FROZEN_STOP_FLOOR_PCT", "BB_FROZEN_STOP_ENABLED", "BB_FROZEN_STOP_TF", "BB_FROZEN_STOP_FIELD"],
+      "live_refs": [],
+      "engine_refs": ["backtest_v8_engine.py:8072-8182"],
+      "status": "engine_only_not_promotable",
+      "finding": "Tradier configs exist and the engine implements them, but tradier_manage.py has no live reads. Results cannot be promoted until live parity is implemented."
+    },
+    {
+      "id": "mandatory_reentry_monitor",
+      "category": "mandatory_reentry",
+      "configs": ["MANDATORY_REENTRY_DC4_WINDOW_MIN", "WT_DC_EXIT_THRESHOLD", "REENTRY_SYMGATE_ENABLED"],
+      "live_refs": ["tradier_manage.py:12937-12976"],
+      "engine_refs": ["backtest_v8_engine.py:6473-6512"],
+      "status": "wired_but_not_guaranteed",
+      "finding": "MANDATORY_REENTRY is a reason tag, not an unconditional reopen. The monitor first requires the exit score to clear, applies SYMGATE, and for 30 minutes requires a dc_high4_5m break for LONG or dc_low4_5m break for SHORT. After the window it falls back to normal tiers."
+    },
+    {
+      "id": "stock_breakout_scalper_structure_exit",
+      "category": "auxiliary_price_structure",
+      "configs": [],
+      "live_refs": ["tradier_manage.py:16760-16767", "tradier_manage.py:17612-17745"],
+      "engine_refs": [],
+      "status": "trc_paper_immediate_unacknowledged",
+      "finding": "The always-launched trc paper scalper closes LONG on one 5m lower high and SHORT on one higher low, with no delayed retest. It directly calls place_order and deletes its local position state even when the order raises. It is not represented in backtests or the switch matrix."
+    }
+  ]
+}

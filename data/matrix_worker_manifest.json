@@ -1,0 +1,126 @@
+{
+  "_comment": "c5 dependency-pack allocation 2026-07-30. Helper STOP_PACK and broad OFAT workers are intentionally absent. This manifest schedules research evidence only and cannot promote or change live configuration.",
+  "schema_version": 2,
+  "campaign": "stocks_repaired_20260730_c5",
+  "matrix_contract_version": "tradier-matrix-exec-c5-20260730",
+  "launch_scope": "EXACT_ENGINE_PARITY_AND_FINALIST_CONFIRMATION",
+  "discovery_system": "VECTOR_LIFECYCLE_PATH_PRODUCTIVITY_BEAM",
+  "exact_role": "WIRING_PARITY_AND_TOP_COMPLETE_RECIPE_CONFIRMATION_ONLY",
+  "npz_dir": "data/matrix_npz/stocks_repaired_20260725_c2",
+  "end_date": "2026-07-21",
+  "min_avail": 5000,
+  "no_live_promotion": true,
+  "workers": [
+    {
+      "tag": "wm_exit",
+      "symbol": "MU",
+      "side": "LONG",
+      "all_tiers": true,
+      "selection_mode": "DEPENDENCY_PACKS_ONLY",
+      "expected_contract_fingerprint": "tradier-matrix-exec-c5-20260730:05fbb0ef1098e3ad16d8fced0ab6a5e1a760c520f2911abf0626ed4e8982a0ba",
+      "priority_roots": [
+        "LR_BAND_HARVEST_ENABLED",
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+        "STDEV_REJECT_EXIT_ENABLED",
+        "STRUCTURAL_RANGE_SHIFT_EXIT",
+        "GR_HTF_DIRECT_EXIT_ENABLED",
+        "PEAK_GIVEBACK_PROTECTION_ENABLED",
+        "EXIT_TREND_REVERSAL_ENABLED",
+        "EXIT_BOUNCE_TOP_ENABLED"
+      ]
+    },
+    {
+      "tag": "wn_exit",
+      "symbol": "NVDA",
+      "side": "LONG",
+      "all_tiers": true,
+      "selection_mode": "DEPENDENCY_PACKS_ONLY",
+      "expected_contract_fingerprint": "tradier-matrix-exec-c5-20260730:32d96e015f3bd4d2f02f9424ba8dc6689e2cd8377b0c50057124f3e1fcb3c59f",
+      "priority_roots": [
+        "LR_BAND_HARVEST_ENABLED",
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+        "STDEV_REJECT_EXIT_ENABLED",
+        "STRUCTURAL_RANGE_SHIFT_EXIT",
+        "GR_HTF_DIRECT_EXIT_ENABLED",
+        "PEAK_GIVEBACK_PROTECTION_ENABLED",
+        "EXIT_TREND_REVERSAL_ENABLED",
+        "EXIT_BOUNCE_TOP_ENABLED"
+      ]
+    },
+    {
+      "tag": "wv_exit",
+      "symbol": "VT",
+      "side": "LONG",
+      "all_tiers": true,
+      "selection_mode": "DEPENDENCY_PACKS_ONLY",
+      "expected_contract_fingerprint": "tradier-matrix-exec-c5-20260730:53c6a44f6e37b4806b3811f7f0f91e279811d0acee421581b2baf8f0c6ec1d11",
+      "priority_roots": [
+        "LR_BAND_HARVEST_ENABLED",
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+        "STDEV_REJECT_EXIT_ENABLED",
+        "STRUCTURAL_RANGE_SHIFT_EXIT",
+        "GR_HTF_DIRECT_EXIT_ENABLED",
+        "PEAK_GIVEBACK_PROTECTION_ENABLED",
+        "EXIT_TREND_REVERSAL_ENABLED",
+        "EXIT_BOUNCE_TOP_ENABLED"
+      ]
+    },
+    {
+      "tag": "wt_exit",
+      "symbol": "TTD",
+      "side": "SHORT",
+      "all_tiers": true,
+      "selection_mode": "DEPENDENCY_PACKS_ONLY",
+      "expected_contract_fingerprint": "tradier-matrix-exec-c5-20260730:a0fb4d2f4e44823c81a2eead3a1e4acbc97726b7152606fec4c2dbb39fa8f85f",
+      "priority_roots": [
+        "MTF_DC_REJECT_EXIT_ENABLED",
+        "MTF_BB_REJECT_EXIT_ENABLED",
+        "MTF_WT_CROSS_EXIT_ENABLED",
+        "WT_DC_EXIT_ENABLED",
+        "DELTA_EXIT_ENABLED",
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+        "STDEV_REJECT_EXIT_ENABLED",
+        "EXIT_TREND_REVERSAL_ENABLED",
+        "EXIT_GAIN_EROSION_ENABLED"
+      ]
+    },
+    {
+      "tag": "wa_exit",
+      "symbol": "ACN",
+      "side": "SHORT",
+      "all_tiers": true,
+      "selection_mode": "DEPENDENCY_PACKS_ONLY",
+      "expected_contract_fingerprint": "tradier-matrix-exec-c5-20260730:41f3475d2ff4aa7ae25fec7bac7c70bd27c96ff070c0325f81cbda05a776d2c3",
+      "priority_roots": [
+        "MTF_DC_REJECT_EXIT_ENABLED",
+        "MTF_BB_REJECT_EXIT_ENABLED",
+        "MTF_WT_CROSS_EXIT_ENABLED",
+        "WT_DC_EXIT_ENABLED",
+        "DELTA_EXIT_ENABLED",
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+        "STDEV_REJECT_EXIT_ENABLED",
+        "EXIT_TREND_REVERSAL_ENABLED",
+        "EXIT_GAIN_EROSION_ENABLED"
+      ]
+    },
+    {
+      "tag": "wl_exit",
+      "symbol": "LAC",
+      "side": "SHORT",
+      "all_tiers": true,
+      "selection_mode": "DEPENDENCY_PACKS_ONLY",
+      "expected_contract_fingerprint": "tradier-matrix-exec-c5-20260730:06ee6ce519bebede3a861b9f6f4201e58c6b90efba7c53ddf4458cd69bbe46dd",
+      "priority_roots": [
+        "MTF_DC_REJECT_EXIT_ENABLED",
+        "MTF_BB_REJECT_EXIT_ENABLED",
+        "MTF_WT_CROSS_EXIT_ENABLED",
+        "WT_DC_EXIT_ENABLED",
+        "DELTA_EXIT_ENABLED",
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+        "STDEV_REJECT_EXIT_ENABLED",
+        "EXIT_TREND_REVERSAL_ENABLED",
+        "EXIT_GAIN_EROSION_ENABLED"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,202 @@
+{
+  "ag_short": {
+    "artifact_hash_proven": true,
+    "caps": [
+      {
+        "cap": 1000,
+        "events_sha256": "ef7d1fd063da14d5717adeac1e33d2dacd44821885e8c35449f38370dc6eafec",
+        "gate_blocks_observed": 0,
+        "raw_events": 8,
+        "selected_claims": 4,
+        "selected_closes": 3,
+        "selected_fills": 4,
+        "stdout_sha256": "3b6826a4a2ab4b015736a775a21918613376d86588bdde96b4755a6488219793",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 2000,
+        "events_sha256": "073865645cd7a3e02432c18024bd3d45f33a56226486369528ac18f8d6dc6180",
+        "gate_blocks_observed": 0,
+        "raw_events": 16,
+        "selected_claims": 8,
+        "selected_closes": 5,
+        "selected_fills": 8,
+        "stdout_sha256": "ef758b53d61fb94d3f6f341bd80133ea84a4670fa6746268674cae390e3c1c4d",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 4000,
+        "events_sha256": "8e6cf74ff055f299952d1e7dafbe80a44118a42133c177daa88b22f86bdf028a",
+        "gate_blocks_observed": 0,
+        "raw_events": 28,
+        "selected_claims": 13,
+        "selected_closes": 10,
+        "selected_fills": 13,
+        "stdout_sha256": "f59201d0f3486b169c2d6c62d6cac9564824e4da2bb649d97c2611c514ac45bf",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 8000,
+        "events_sha256": "1ee96206f3862061619c6a9bc7411c6039b18532d227d4fe655019d40e89e390",
+        "gate_blocks_observed": 0,
+        "raw_events": 52,
+        "selected_claims": 25,
+        "selected_closes": 20,
+        "selected_fills": 25,
+        "stdout_sha256": "b8b2c53287c5a4d4dafc4a3e7fc377dbbb00966a910c54401984317b2f052965",
+        "undeclared_close_paths": 0
+      }
+    ],
+    "contract": "CURRENT_CODE_BOUNDED_1K_2K_4K_8K_NO_FULL_REPLAY_NO_MATRIX_NO_WORKBOOK_NO_DB_NO_LIVE",
+    "database_written": false,
+    "exact_v8_queued": false,
+    "key": "AG_SHORT",
+    "live_written": false,
+    "matrix_written": false,
+    "pass": true,
+    "promotion_allowed": false,
+    "schema": "immutable-current-shared-route-canary-v1",
+    "terminal_blocker": null,
+    "workbook_written": false
+  },
+  "contract": "CURRENT_CODE_BOUNDED_1K_2K_4K_8K_NO_FULL_REPLAY_NO_MATRIX_NO_WORKBOOK_NO_DB_NO_LIVE",
+  "database_written": false,
+  "exact_v8_queued": false,
+  "fivn_long": {
+    "caps": [
+      {
+        "cap": 1000,
+        "events_sha256": "b59e6e3a06f302657df10aecf9709b563b53e67a997fac88461f2a8c4b4fef36",
+        "gate_blocks_observed": 0,
+        "raw_events": 24,
+        "selected_claims": 9,
+        "selected_closes": 10,
+        "selected_fills": 9,
+        "stdout_sha256": "63e44e0533bc4a4c0338618f5e4206814103eddc3ca42438352f095f7716dc21",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 2000,
+        "events_sha256": "1d083adbf41313d6548d75216650fdf765e40f50c0562515baba83e90228d02a",
+        "gate_blocks_observed": 0,
+        "raw_events": 44,
+        "selected_claims": 16,
+        "selected_closes": 21,
+        "selected_fills": 16,
+        "stdout_sha256": "cac0d887979e2d8c4315b002b722940b066db599082a85ce438ef495fa763560",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 4000,
+        "events_sha256": "1c348b9a9d026f677d9a0c8be0ed1881742e301b76c769429a50e0d7830a4bb6",
+        "gate_blocks_observed": 0,
+        "raw_events": 70,
+        "selected_claims": 25,
+        "selected_closes": 34,
+        "selected_fills": 25,
+        "stdout_sha256": "7f311216a73eed11c38b22d413f6c0c559c45e9abfdc5c3d52863c7c69d28a0e",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 8000,
+        "events_sha256": "dfa8f652139ad4a1b48cbe145daf67159d435c998ddfcefa05b2da483efd3fd4",
+        "gate_blocks_observed": 0,
+        "raw_events": 130,
+        "selected_claims": 47,
+        "selected_closes": 60,
+        "selected_fills": 47,
+        "stdout_sha256": "cab0ebaafd8aaec656e210bfa22d1371da592901ecfc1af22b5407fd88a821ac",
+        "undeclared_close_paths": 0
+      }
+    ],
+    "contract": "CURRENT_CODE_BOUNDED_1K_2K_4K_8K_NO_FULL_REPLAY_NO_MATRIX_NO_WORKBOOK_NO_DB_NO_LIVE",
+    "database_written": false,
+    "exact_v8_queued": false,
+    "key": "FIVN_LONG",
+    "live_written": false,
+    "matrix_written": false,
+    "pass": true,
+    "promotion_allowed": false,
+    "schema": "immutable-current-shared-route-canary-v1",
+    "source_summary": "data/reports/vec_research/hotlist_v8_full_recipe/full_recipe_20260803T074604Z_FIVN_LONG/run_summary.json",
+    "terminal_blocker": null,
+    "workbook_written": false
+  },
+  "live_written": false,
+  "matrix_written": false,
+  "nxe_short": {
+    "caps": [
+      {
+        "cap": 1000,
+        "events_sha256": "bc4a3a27f8d82c44070cbbc67b6bf5b8225c86bc07c8352b460a6f2b0667fdbe",
+        "gate_blocks_observed": 1,
+        "queue_gate_block_reasons": {
+          "COUNTER_TREND_ADD_BLOCK": 8
+        },
+        "raw_events": 8,
+        "selected_claims": 4,
+        "selected_closes": 2,
+        "selected_fills": 4,
+        "stdout_sha256": "726e0807b0d4e8a5d9a484c8171e705ae6356d5733e294d781912e167431ba16",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 2000,
+        "events_sha256": "de1c1c98f796b537304518e291e7a84ebba14c4ee6cc9f194ec7e47601ce26bf",
+        "gate_blocks_observed": 1,
+        "raw_events": 16,
+        "selected_claims": 7,
+        "selected_closes": 6,
+        "selected_fills": 7,
+        "stdout_sha256": "0d100faa641bf8d96b6fe38db43a693999c2f56a4bc8f4e44676576383c49903",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 4000,
+        "events_sha256": "edb19c53446f1f04d51195bfcd292753aa9b9d828b99ffa0ab6c8d9a425f3959",
+        "gate_blocks_observed": 1,
+        "raw_events": 20,
+        "selected_claims": 9,
+        "selected_closes": 6,
+        "selected_fills": 9,
+        "stdout_sha256": "a187db8768f59ba7ee87176a3fb6a335134904c35b7408316c6eab0fb2303a21",
+        "undeclared_close_paths": 0
+      },
+      {
+        "cap": 8000,
+        "events_sha256": "1e3171588a40b88daf3fe9aef242bf2acb0831573fb4dd60628217d04fb803d0",
+        "gate_blocks_observed": 1,
+        "raw_events": 34,
+        "selected_claims": 15,
+        "selected_closes": 9,
+        "selected_fills": 15,
+        "stdout_sha256": "a0c694f86e1a0c2e57aa6df8416766780550feaf8c5143a43d1d3b514bce4c7a",
+        "undeclared_close_paths": 0
+      }
+    ],
+    "contract": "CURRENT_CODE_BOUNDED_1K_2K_4K_8K_NO_FULL_REPLAY_NO_MATRIX_NO_WORKBOOK_NO_DB_NO_LIVE",
+    "database_written": false,
+    "evidentiary_caps": [
+      1000
+    ],
+    "exact_v8_queued": false,
+    "key": "NXE_SHORT",
+    "live_written": false,
+    "matrix_written": false,
+    "pass": false,
+    "post_terminal_caps_non_evidentiary": [
+      2000,
+      4000,
+      8000
+    ],
+    "priority_isolation_proof": "data/reports/vec_research/immutable_route_canary_20260803T112000Z_NXE_SHORT_priority_proof.json",
+    "promotion_allowed": false,
+    "schema": "immutable-current-shared-route-canary-v1",
+    "terminal_blocker": "CANARY_QUEUE_GATE_BLOCK:COUNTER_TREND_ADD_BLOCK",
+    "workbook_written": false
+  },
+  "promotion_allowed": false,
+  "schema": "immutable-current-shared-route-canary-aggregate-v1",
+  "truth": "FIVN and AG pass only the bounded route-canary contract; NXE is terminally blocked at 1k by counter-trend queue gating. None is an all-fold qualification, promotion, or exact authorization.",
+  "workbook_written": false
+}

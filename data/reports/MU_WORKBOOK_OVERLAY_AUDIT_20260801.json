@@ -1,0 +1,207 @@
+{
+  "audit": "MU_WORKBOOK_OVERLAY_AUDIT_V1",
+  "canonical_matrix": "/Users/niels/Documents/binance/data/reports/SWITCH_MATRIX_TRB.csv.gz",
+  "canonical_matrix_sha256": "45b2d5d602959fcde573bbd2f262423ff04d03333eee43f915702bb27d5afc67",
+  "canonical_mu_nonempty": 1,
+  "interpretation": {
+    "amber_values_are_not_canonical": true,
+    "canonical_vs_workbook_mismatch": true,
+    "requires_capital_receipt_before_refresh": true,
+    "safe_to_edit_locally": false
+  },
+  "mu_provenance_rows": 1,
+  "mu_provenance_sample": [
+    {
+      "average_deployed_usd": 6997.3849,
+      "benchmark_deployed_usd": 2000,
+      "campaign": "stocks_repaired_20260725_c2",
+      "capital_accounting_version": "avg-trade-deployed-2000-v1",
+      "contract_fingerprint": "tradier-matrix-exec-c4-20260729:a2519f796e73284d35986b7dee6de0221b861c13ee629e9c0f8857d9764cfd08",
+      "delta_gain_mo_vs_bh": 31.2792,
+      "key": "MU_LONG",
+      "max_dd_pct": 7.1005,
+      "pool_sharpe": 0.9908598077733997,
+      "source_file": "param_matrix_daemon/stocks_repaired_20260725_c2/STRUCTURAL_RANGE_SHIFT_TF___dc_4h_",
+      "switch": "STRUCTURAL_RANGE_SHIFT_TF",
+      "value": "dc_4h",
+      "window": "full"
+    }
+  ],
+  "workbook": "/Users/niels/Documents/binance/data/reports/SWITCH_MATRIX_TRB.xlsx",
+  "workbook_mu_amber_italic": 2850,
+  "workbook_mu_amber_value_counts": {
+    "-45.64206473784973": 2850
+  },
+  "workbook_mu_nonempty": 2851,
+  "workbook_sha256": "40e486988705ce2e36cef6df8b2fe6d9780031f03e2eb0ac294956503f29f01f",
+  "workbook_sheets": {
+    "Entry": {
+      "amber_italic": 916,
+      "column": 21,
+      "nonempty": 916,
+      "values_sample": [
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 31,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 32,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 44,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 45,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 46,
+          "value": -45.64206473784973
+        }
+      ]
+    },
+    "Exit": {
+      "amber_italic": 595,
+      "column": 21,
+      "nonempty": 596,
+      "values_sample": [
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 2,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 3,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00E2EFDA",
+          "italic": false,
+          "row": 15,
+          "value": 31.2792
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 20,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 21,
+          "value": -45.64206473784973
+        }
+      ]
+    },
+    "Other": {
+      "amber_italic": 932,
+      "column": 21,
+      "nonempty": 932,
+      "values_sample": [
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 2,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 3,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 4,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 5,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 6,
+          "value": -45.64206473784973
+        }
+      ]
+    },
+    "Sizing": {
+      "amber_italic": 407,
+      "column": 21,
+      "nonempty": 407,
+      "values_sample": [
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 2,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 3,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 4,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 5,
+          "value": -45.64206473784973
+        },
+        {
+          "comment": true,
+          "fill": "00FFF2CC",
+          "italic": true,
+          "row": 6,
+          "value": -45.64206473784973
+        }
+      ]
+    }
+  }
+}

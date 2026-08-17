@@ -35,13 +35,75 @@ SYMBOLS = ["VT", "AAPL", "ABBV", "ABT", "ACN", "ADBE", "ADP", "AMD", "AMZN", "AP
 
 
 def load_progress():
-    if PROGRESS_FILE.exists():
-        return json.loads(PROGRESS_FILE.read_text())
-    return {"completed": [], "failed": {}}
+    try:
+        progress = json.loads(PROGRESS_FILE.read_text())
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        progress = {}
+    if not isinstance(progress, dict):
+        progress = {}
+    if not isinstance(progress.get("completed"), list):
+        progress["completed"] = []
+    if not isinstance(progress.get("failed"), dict):
+        progress["failed"] = {}
+    if not isinstance(progress.get("completed_ranges"), dict):
+        progress["completed_ranges"] = {}
+    return progress
 
 
 def save_progress(progress):
-    PROGRESS_FILE.write_text(json.dumps(progress, indent=2))
+    PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp = PROGRESS_FILE.with_suffix(PROGRESS_FILE.suffix + ".tmp")
+    temp.write_text(json.dumps(progress, indent=2, sort_keys=True) + "\n")
+    os.replace(temp, PROGRESS_FILE)
+
+
+def load_retention_rows(path):
+    """Load durable per-symbol receipts left by this or an interrupted run."""
+    try:
+        payload = json.loads(Path(path).read_text())
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    rows = payload.get("symbols", {})
+    return rows if isinstance(rows, dict) else {}
+
+
+def repair_range_completed(progress, retention_rows, symbol, from_date, to_date):
+    """Return true only for an exact, previously successful repair range."""
+    checkpoint = progress.get("completed_ranges", {}).get(symbol, {})
+    if (
+        checkpoint.get("fetch_from") == from_date
+        and checkpoint.get("fetch_to") == to_date
+        and checkpoint.get("valid") is True
+    ):
+        return True
+    receipt = retention_rows.get(symbol, {})
+    return bool(
+        receipt.get("fetch_from") == from_date
+        and receipt.get("fetch_to") == to_date
+        and receipt.get("valid") is True
+    )
+
+
+def save_retention_report(path, retention_rows):
+    report_path = Path(path)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_report = report_path.with_suffix(report_path.suffix + ".tmp")
+    tmp_report.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "updated_utc": datetime.now(timezone.utc).isoformat(),
+                "contract": "native 5m timestamps are append/merge-only; no truncation",
+                "symbols": retention_rows,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    os.replace(tmp_report, report_path)
 
 
 def load_existing(symbol):
@@ -191,16 +253,28 @@ def main(argv=None):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     progress = load_progress()
     completed = set(progress["completed"])
+    retention_rows = load_retention_rows(args.retention_report)
     selected = [
         value.strip().upper()
         for value in args.symbols.split(",")
         if value.strip()
     ] or SYMBOLS
-    remaining = (
-        selected
-        if args.incremental or args.repair_range
-        else [s for s in selected if s not in completed]
-    )
+    if args.repair_range:
+        remaining = [
+            symbol
+            for symbol in selected
+            if not repair_range_completed(
+                progress,
+                retention_rows,
+                symbol,
+                args.from_date,
+                args.to_date,
+            )
+        ]
+    elif args.incremental:
+        remaining = selected
+    else:
+        remaining = [s for s in selected if s not in completed]
     print(f"=== Massive.com REAL 5m Stock Klines Downloader ===")
     print(f"Symbols: {len(selected)} selected, {len(completed)} done, {len(remaining)} scheduled")
     print(f"Mode: {'incremental append/merge' if args.incremental else 'initial backfill'}")
@@ -209,7 +283,6 @@ def main(argv=None):
     print(f"Rate limit: 1 request per {MIN_REQUEST_INTERVAL}s")
     print(f"=" * 50)
     last_req_time = [0.0]
-    retention_rows = {}
     for i, symbol in enumerate(remaining):
         print(f"\n[{len(completed)+1}/{len(SYMBOLS)}] {symbol}...")
         existing = load_existing(symbol)
@@ -258,25 +331,15 @@ def main(argv=None):
         completed.add(symbol)
         if symbol not in progress["completed"]:
             progress["completed"].append(symbol)
+        progress["completed_ranges"][symbol] = {
+            "fetch_from": from_date,
+            "fetch_to": args.to_date,
+            "valid": True,
+            "updated_utc": datetime.now(timezone.utc).isoformat(),
+        }
         progress["failed"].pop(symbol, None)
         save_progress(progress)
-        report_path = Path(args.retention_report)
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_report = report_path.with_suffix(report_path.suffix + ".tmp")
-        tmp_report.write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "updated_utc": datetime.now(timezone.utc).isoformat(),
-                    "contract": "native 5m timestamps are append/merge-only; no truncation",
-                    "symbols": retention_rows,
-                },
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n"
-        )
-        os.replace(tmp_report, report_path)
+        save_retention_report(args.retention_report, retention_rows)
     print(f"\n{'=' * 50}")
     print(f"DONE. {len(completed)}/{len(SYMBOLS)} symbols downloaded.")
     if progress["failed"]:

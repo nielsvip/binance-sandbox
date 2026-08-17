@@ -22,6 +22,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -57,6 +58,7 @@ TERMINAL = {
     "EXACT_FAIL",
     "DATA_QUARANTINED",
     "BUDGET_EXHAUSTED",
+    "CODE_CONTRACT_INVALID",
 }
 
 
@@ -227,6 +229,26 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+CODE_CONTRACT_FILES = (
+    "v8_vec_sweep.py",
+    "wt_dc_entry_scorer.py",
+    "wt_dc_entry_scorer_vec.py",
+    "vec_paths/live_entry_engine.py",
+    "tools/recent_tradier_bundle_scheduler.py",
+)
+
+
+def current_code_contract() -> dict[str, Any]:
+    files = {
+        name: sha256(ROOT / name)
+        for name in CODE_CONTRACT_FILES
+    }
+    digest = hashlib.sha256(
+        json.dumps(files, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    return {"sha256": digest, "files": files}
 
 
 def atomic_json(path: Path, payload: Any) -> None:
@@ -401,6 +423,11 @@ def init_campaign(
     con = connect(root)
     meta_set(con, "campaign_id", campaign_id)
     meta_set(con, "campaign_contract_json", json.dumps(campaign_seed, sort_keys=True))
+    meta_set(
+        con,
+        "code_contract_json",
+        json.dumps(current_code_contract(), sort_keys=True),
+    )
     meta_set(con, "claim_sequence", meta_get(con, "claim_sequence", "0"))
     meta_set(con, "cohort_path", str(cohort_path.resolve()))
     meta_set(con, "cohort_sha256", sha256(cohort_path))
@@ -583,8 +610,11 @@ def _value_text(value: Any) -> str:
 
 
 def _artifact_paths(output: str) -> tuple[Path, Path]:
-    summary = re.search(r"summary=(\S+)", output)
-    trades = re.search(r"trades\s*=(\S+)", output)
+    # The progress line also contains ``trades=<count>``.  These expressions
+    # must therefore match the dedicated artifact lines, not the first
+    # key/value pair with the same name.
+    summary = re.search(r"(?m)^\s*summary\s*=\s*(\S+)\s*$", output)
+    trades = re.search(r"(?m)^\s*trades\s*=\s*(\S+)\s*$", output)
     if not summary or not trades:
         raise RuntimeError("vec runner did not print artifact paths")
     return Path(summary.group(1)), Path(trades.group(1))
@@ -932,6 +962,7 @@ def run_handle(
     npz_dir: Path,
     tim_min: float,
     tim_max: float,
+    code_contract: dict[str, Any],
 ) -> dict[str, Any]:
     bundle = next(row for row in BUNDLES if row.bundle_id == handle["bundle_id"])
     symbol, side = handle["symbol"], handle["side"]
@@ -955,6 +986,7 @@ def run_handle(
         "live_config_written": False,
         "matrix_cell_written": False,
         "exact_invoked": False,
+        "code_contract": code_contract,
     }
     if not npz_path.exists():
         receipt.update(
@@ -1145,6 +1177,378 @@ def finish_attempt(
     return receipt_path
 
 
+_ARTIFACT_PARSER_FAILURE = re.compile(
+    r"^RUNNER:FileNotFoundError:\[Errno 2\] No such file or directory: "
+    r"'[0-9]+'$"
+)
+
+
+def recover_artifact_parser_failures(
+    con: sqlite3.Connection,
+    root: Path,
+    *,
+    expected_count: int,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Requeue a campaign wholly poisoned by the old artifact parser.
+
+    The old parser mistook ``V8_VEC_PROGRESS ... trades=<count>`` for the
+    trades artifact path.  Recovery is intentionally fail-closed: every
+    campaign attempt must have this exact infrastructure failure, no handle
+    may still be running, and the caller must provide the expected count.
+    Receipt evidence is copied to an immutable-style archive before the
+    attempt rows are removed and the deterministic claim sequence is rewound.
+    """
+    con.execute("BEGIN IMMEDIATE")
+    campaign = meta_get(con, "campaign_id")
+    rows = con.execute(
+        """SELECT a.*,h.campaign_id,h.status AS handle_status,
+                  h.attempts AS handle_attempts,h.fail_streak,
+                  h.symbol,h.side,h.bundle_id
+           FROM attempts a JOIN handles h ON h.id=a.handle_id
+           WHERE h.campaign_id=? ORDER BY a.id""",
+        (campaign,),
+    ).fetchall()
+    running = [row["id"] for row in rows if row["status"] == "RUNNING"]
+    if running:
+        con.rollback()
+        raise RuntimeError(f"campaign has RUNNING attempts: {running}")
+
+    candidates: list[tuple[sqlite3.Row, Path, dict[str, Any]]] = []
+    for row in rows:
+        try:
+            payload = json.loads(row["payload_json"])
+        except (TypeError, json.JSONDecodeError):
+            continue
+        failures = payload.get("failures")
+        if (
+            row["status"] != "VECTOR_REJECTED"
+            or payload.get("fold_count") != 0
+            or not isinstance(failures, list)
+            or len(failures) != 1
+            or not _ARTIFACT_PARSER_FAILURE.fullmatch(str(failures[0]))
+        ):
+            continue
+        receipt_path = Path(str(row["receipt_path"]))
+        if not receipt_path.is_absolute():
+            receipt_path = ROOT / receipt_path
+        try:
+            receipt = json.loads(receipt_path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            con.rollback()
+            raise RuntimeError(
+                f"cannot verify parser-failure receipt {receipt_path}: {exc}"
+            ) from exc
+        if (
+            receipt.get("status") != "VECTOR_REJECTED"
+            or receipt.get("exact_invoked") is not False
+            or receipt.get("folds") != []
+            or receipt.get("failures") != failures
+        ):
+            con.rollback()
+            raise RuntimeError(
+                f"receipt is not an exact parser-only failure: {receipt_path}"
+            )
+        candidates.append((row, receipt_path, receipt))
+
+    if len(candidates) != expected_count:
+        con.rollback()
+        raise RuntimeError(
+            f"expected {expected_count} parser failures, found {len(candidates)}"
+        )
+    if len(candidates) != len(rows):
+        con.rollback()
+        raise RuntimeError(
+            "refusing partial rewind: campaign contains non-parser attempts"
+        )
+    sequence = int(meta_get(con, "claim_sequence", "0"))
+    if sequence != len(candidates):
+        con.rollback()
+        raise RuntimeError(
+            f"claim sequence {sequence} != recoverable attempts "
+            f"{len(candidates)}"
+        )
+
+    by_handle: dict[int, int] = {}
+    evidence = []
+    for row, receipt_path, receipt in candidates:
+        handle_id = int(row["handle_id"])
+        by_handle[handle_id] = by_handle.get(handle_id, 0) + 1
+        evidence.append(
+            {
+                "attempt_id": int(row["id"]),
+                "handle_id": handle_id,
+                "attempt_number": int(row["attempt_number"]),
+                "lane": row["lane"],
+                "position_key": f"{row['symbol']}_{row['side']}",
+                "bundle_id": row["bundle_id"],
+                "failure": receipt["failures"][0],
+                "receipt_path": str(receipt_path),
+                "receipt_sha256": sha256(receipt_path),
+            }
+        )
+    for handle_id, count in by_handle.items():
+        row = con.execute(
+            "SELECT * FROM handles WHERE id=?", (handle_id,)
+        ).fetchone()
+        if (
+            row["status"] != "VECTOR_REJECTED"
+            or int(row["attempts"]) != count
+            or int(row["fail_streak"]) != count
+        ):
+            con.rollback()
+            raise RuntimeError(
+                f"handle {handle_id} advanced beyond parser-only failures"
+            )
+
+    result = {
+        "schema_version": 1,
+        "campaign_id": campaign,
+        "expected_count": expected_count,
+        "recoverable_count": len(candidates),
+        "handles": len(by_handle),
+        "claim_sequence_before": sequence,
+        "claim_sequence_after": 0,
+        "applied": False,
+        "evidence": evidence,
+    }
+    if not apply:
+        con.rollback()
+        return result
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    archive = root / "infra_failures" / f"artifact_parser_{stamp}"
+    archive.mkdir(parents=True, exist_ok=False)
+    for row, receipt_path, _receipt in candidates:
+        target = archive / (
+            f"h{int(row['handle_id']):04d}_"
+            f"a{int(row['attempt_number']):02d}.json"
+        )
+        shutil.copy2(receipt_path, target)
+    result["archive"] = str(archive)
+    manifest_path = archive / "recovery_manifest.json"
+    atomic_json(manifest_path, result)
+
+    ids = [int(row["id"]) for row, _path, _receipt in candidates]
+    con.executemany("DELETE FROM attempts WHERE id=?", [(value,) for value in ids])
+    for handle_id, count in by_handle.items():
+        con.execute(
+            """UPDATE handles
+               SET status='PENDING',attempts=attempts-?,
+                   fail_streak=MAX(0,fail_streak-?),
+                   lease_owner=NULL,lease_at=NULL,receipt_path=NULL,updated_at=?
+               WHERE id=?""",
+            (count, count, now_iso(), handle_id),
+        )
+    meta_set(con, "claim_sequence", 0)
+    con.commit()
+    result["applied"] = True
+    atomic_json(manifest_path, result)
+    return result
+
+
+def invalidate_legacy_code_contract(
+    con: sqlite3.Connection,
+    root: Path,
+    *,
+    evidence_path: Path,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Withdraw one fully enumerated pre-contract attempt block.
+
+    Legacy receipts did not stamp executable hashes. The evidence file must
+    therefore bind every attempt by database id, receipt SHA, finish time and
+    the contemporaneously observed old hashes. Partial or mixed invalidation is
+    refused. Cached controls are invalidated with the attempts because their
+    executable contract is equally stale.
+    """
+    evidence = json.loads(evidence_path.read_text())
+    current = current_code_contract()
+    if evidence.get("replacement_contract") != current:
+        raise RuntimeError("replacement code contract does not match runtime")
+    old_files = (evidence.get("old_contract") or {}).get("files")
+    required_old = {
+        "v8_vec_sweep.py",
+        "wt_dc_entry_scorer.py",
+        "tools/recent_tradier_bundle_scheduler.py",
+    }
+    if not isinstance(old_files, dict) or not required_old.issubset(old_files):
+        raise RuntimeError("old code contract does not enumerate required hashes")
+    if not all(
+        isinstance(old_files[name], str) and len(old_files[name]) == 64
+        for name in required_old
+    ):
+        raise RuntimeError("old code contract contains malformed hashes")
+    if evidence.get("binding_basis") != (
+        "legacy receipts lacked code_contract; exact attempt/receipt SHA "
+        "allowlist completed before the observed replacement deployment"
+    ):
+        raise RuntimeError("unsupported legacy temporal binding")
+
+    con.execute("BEGIN IMMEDIATE")
+    campaign = meta_get(con, "campaign_id")
+    if evidence.get("campaign_id") != campaign:
+        con.rollback()
+        raise RuntimeError("evidence campaign does not match queue")
+    rows = con.execute(
+        """SELECT a.*,h.status AS handle_status,h.attempts AS handle_attempts,
+                  h.fail_streak,h.symbol,h.side,h.bundle_id
+           FROM attempts a JOIN handles h ON h.id=a.handle_id
+           WHERE h.campaign_id=? ORDER BY a.id""",
+        (campaign,),
+    ).fetchall()
+    expected = {
+        int(row["attempt_id"]): row
+        for row in evidence.get("attempts", [])
+    }
+    if len(rows) != len(expected) or set(expected) != {
+        int(row["id"]) for row in rows
+    }:
+        con.rollback()
+        raise RuntimeError("attempt set differs from enumerated stale block")
+    cutoff = datetime.fromisoformat(evidence["finished_before"])
+    by_handle: dict[int, int] = {}
+    verified = []
+    for row in rows:
+        item = expected[int(row["id"])]
+        if row["status"] == "RUNNING":
+            con.rollback()
+            raise RuntimeError("stale block still has a RUNNING attempt")
+        receipt_path = Path(str(row["receipt_path"]))
+        if not receipt_path.is_absolute():
+            candidates = (receipt_path, ROOT / receipt_path, root / receipt_path)
+            receipt_path = next(
+                (candidate for candidate in candidates if candidate.exists()),
+                candidates[1],
+            )
+        receipt_sha = sha256(receipt_path)
+        receipt = json.loads(receipt_path.read_text())
+        finished = datetime.fromisoformat(str(receipt["finished_at"]))
+        if (
+            receipt_sha != item["receipt_sha256"]
+            or int(row["handle_id"]) != int(item["handle_id"])
+            or int(row["attempt_number"]) != int(item["attempt_number"])
+            or row["lane"] != item["lane"]
+            or row["status"] != item["status"]
+            or receipt.get("code_contract") is not None
+            or finished > cutoff
+        ):
+            con.rollback()
+            raise RuntimeError(f"legacy binding mismatch at attempt {row['id']}")
+        by_handle[int(row["handle_id"])] = (
+            by_handle.get(int(row["handle_id"]), 0) + 1
+        )
+        verified.append(
+            {
+                **item,
+                "receipt_path": str(receipt_path),
+                "finished_at": receipt["finished_at"],
+            }
+        )
+    if int(meta_get(con, "claim_sequence", "0")) != len(rows):
+        con.rollback()
+        raise RuntimeError("claim sequence is not the enumerated stale block")
+    for handle_id, count in by_handle.items():
+        row = con.execute(
+            "SELECT * FROM handles WHERE id=?", (handle_id,)
+        ).fetchone()
+        if (
+            int(row["attempts"]) != count
+            or int(row["fail_streak"]) != count
+            or row["status"] not in {"VECTOR_REJECTED", "DATA_QUARANTINED"}
+        ):
+            con.rollback()
+            raise RuntimeError(f"handle {handle_id} advanced after stale block")
+
+    controls = con.execute(
+        "SELECT * FROM controls WHERE campaign_id=? ORDER BY symbol,side,fold",
+        (campaign,),
+    ).fetchall()
+    result = {
+        "schema_version": 1,
+        "campaign_id": campaign,
+        "old_contract": evidence["old_contract"],
+        "replacement_contract": current,
+        "attempt_count": len(rows),
+        "handle_count": len(by_handle),
+        "control_count": len(controls),
+        "attempts": verified,
+        "applied": False,
+    }
+    if not apply:
+        con.rollback()
+        return result
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    archive = root / "infra_failures" / f"code_contract_{stamp}"
+    archive.mkdir(parents=True, exist_ok=False)
+    for row in verified:
+        source = Path(row["receipt_path"])
+        target = archive / (
+            f"attempt_{int(row['attempt_id']):04d}_"
+            f"{row['receipt_sha256'][:12]}.json"
+        )
+        shutil.copy2(source, target)
+    control_evidence = []
+    for row in controls:
+        source = Path(str(row["receipt_path"]))
+        if not source.is_absolute():
+            candidates = (source, ROOT / source, root / source)
+            source = next(
+                (candidate for candidate in candidates if candidate.exists()),
+                candidates[1],
+            )
+        entry = {
+            "symbol": row["symbol"],
+            "side": row["side"],
+            "fold": row["fold"],
+            "npz_sha256": row["npz_sha256"],
+            "receipt_path": str(source),
+        }
+        if source.exists():
+            entry["receipt_sha256"] = sha256(source)
+            target = archive / (
+                f"control_{row['symbol']}_{row['side']}_{row['fold']}.json"
+            )
+            shutil.copy2(source, target)
+        log_path = source.with_suffix(".log")
+        if log_path.exists():
+            entry["log_sha256"] = sha256(log_path)
+            shutil.copy2(
+                log_path,
+                archive
+                / f"control_{row['symbol']}_{row['side']}_{row['fold']}.log",
+            )
+        control_evidence.append(entry)
+    result["controls"] = control_evidence
+    result["archive"] = str(archive)
+    manifest_path = archive / "invalidation_manifest.json"
+    atomic_json(manifest_path, result)
+
+    con.execute(
+        "DELETE FROM attempts WHERE id IN ("
+        + ",".join("?" for _ in rows)
+        + ")",
+        [int(row["id"]) for row in rows],
+    )
+    con.execute("DELETE FROM controls WHERE campaign_id=?", (campaign,))
+    for handle_id, count in by_handle.items():
+        con.execute(
+            """UPDATE handles
+               SET status='PENDING',attempts=attempts-?,
+                   fail_streak=MAX(0,fail_streak-?),
+                   lease_owner=NULL,lease_at=NULL,receipt_path=NULL,updated_at=?
+               WHERE id=?""",
+            (count, count, now_iso(), handle_id),
+        )
+    meta_set(con, "claim_sequence", 0)
+    meta_set(con, "code_contract_json", json.dumps(current, sort_keys=True))
+    con.commit()
+    result["applied"] = True
+    atomic_json(manifest_path, result)
+    return result
+
+
 def status_payload(con: sqlite3.Connection) -> dict[str, Any]:
     campaign = meta_get(con, "campaign_id")
     handles = con.execute(
@@ -1215,6 +1619,11 @@ def status_payload(con: sqlite3.Connection) -> dict[str, Any]:
         "schema_version": 1,
         "campaign_id": campaign,
         "generated_at": now_iso(),
+        "code_contract": (
+            json.loads(meta_get(con, "code_contract_json"))
+            if meta_get(con, "code_contract_json")
+            else None
+        ),
         "handles": len(handles),
         "distinct_keys": len(
             {(row["symbol"], row["side"]) for row in handles}
@@ -1448,6 +1857,22 @@ def ingest_fleet(root: Path, fleet_db: Path) -> dict[str, int]:
 
 def run_loop(args: argparse.Namespace) -> int:
     con = connect(args.root)
+    current_contract = current_code_contract()
+    expected_raw = meta_get(con, "code_contract_json")
+    if not expected_raw:
+        con.close()
+        raise RuntimeError(
+            "campaign has no bound code contract; initialize it or run the "
+            "fail-closed contract invalidation/rebind workflow"
+        )
+    expected_contract = json.loads(expected_raw)
+    if expected_contract != current_contract:
+        con.close()
+        raise RuntimeError(
+            "CODE_CONTRACT_MISMATCH: campaign="
+            f"{expected_contract.get('sha256')} runtime="
+            f"{current_contract.get('sha256')}"
+        )
     owner = f"{args.tag}:{os.getpid()}"
     only_keys = {
         key.strip().upper()
@@ -1468,7 +1893,18 @@ def run_loop(args: argparse.Namespace) -> int:
             npz_dir=args.npz_dir,
             tim_min=args.tim_min,
             tim_max=args.tim_max,
+            code_contract=current_contract,
         )
+        after_contract = current_code_contract()
+        if after_contract != current_contract:
+            receipt.update(
+                status="CODE_CONTRACT_INVALID",
+                failures=[
+                    "CODE_CHANGED_DURING_ATTEMPT:"
+                    f"{current_contract['sha256']}->{after_contract['sha256']}"
+                ],
+                code_contract_after=after_contract,
+            )
         path = finish_attempt(con, args.root, handle, receipt)
         completed += 1
         print(
@@ -1514,6 +1950,12 @@ def main() -> int:
     run.add_argument("--tim-min", type=float, default=65.0)
     run.add_argument("--tim-max", type=float, default=80.0)
     sub.add_parser("status")
+    recover = sub.add_parser("recover-artifact-parser-failures")
+    recover.add_argument("--expected-count", type=int, required=True)
+    recover.add_argument("--apply", action="store_true")
+    invalidate = sub.add_parser("invalidate-legacy-code-contract")
+    invalidate.add_argument("--evidence", type=Path, required=True)
+    invalidate.add_argument("--apply", action="store_true")
     ingest = sub.add_parser("ingest-fleet")
     ingest.add_argument("--fleet-db", type=Path, default=DEFAULT_FLEET)
     args = parser.parse_args()
@@ -1539,6 +1981,32 @@ def main() -> int:
         payload = status_payload(con)
         con.close()
         write_progress(args.root, payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if args.action == "recover-artifact-parser-failures":
+        con = connect(args.root)
+        try:
+            payload = recover_artifact_parser_failures(
+                con,
+                args.root,
+                expected_count=args.expected_count,
+                apply=args.apply,
+            )
+        finally:
+            con.close()
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if args.action == "invalidate-legacy-code-contract":
+        con = connect(args.root)
+        try:
+            payload = invalidate_legacy_code_contract(
+                con,
+                args.root,
+                evidence_path=args.evidence,
+                apply=args.apply,
+            )
+        finally:
+            con.close()
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
     if args.action == "ingest-fleet":

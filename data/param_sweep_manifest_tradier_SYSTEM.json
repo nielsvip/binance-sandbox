@@ -1,0 +1,8567 @@
+{
+ "mode": "tradier",
+ "generated_at": "2026-06-30T10:18:51.490027+00:00",
+ "n_params": 393,
+ "tier_counts": {
+  "VEC_SCREEN": 190,
+  "ENGINE_SCREEN": 107,
+  "LIVE_ONLY": 598,
+  "DEAD": 864
+ },
+ "screen_note": "USER 2026-07-20: SYSTEM param families only \u2014 wt_dc entry/exit, GR, reentry, sentiment, wt divergence/momentum, MFI, ATR, stdev/bands. Generic invented TA gates (RSI/ADX/EMA thresholds) are OBSOLETE and excluded.",
+ "params": {
+  "ATR_ADAPTIVE_SIZING_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_ADAPTIVE_SIZING_TARGET_PCT": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_ADAPTIVE_STOP_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_ADAPTIVE_STOP_MULT": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_ADAPTIVE_STOP_TF": {
+   "default": "1h",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_PARITY_EQUITY_BASE_USD": {
+   "default": 35000,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    17500,
+    26250,
+    35000,
+    43750,
+    52500
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_PARITY_QTY_CAP_MULT": {
+   "default": 5,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_PARITY_TARGET_RISK_PCT": {
+   "default": 0.2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_PARITY_USE_DAILY": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ATR_TRAIL_2X_EXIT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "ATR_TRAIL_ENABLED_TRADIER": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_BREAKOUT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_BREAKOUT_SCORE": {
+   "default": 20,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    10,
+    15,
+    20,
+    25,
+    30
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BB_BREAKOUT_TF": {
+   "default": "15m",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_ENTRY_LONG_THRESHOLD": {
+   "default": 0.3,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.15,
+    0.225,
+    0.3,
+    0.375,
+    0.45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_ENTRY_SHORT_THRESHOLD": {
+   "default": 0.7,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.35,
+    0.525,
+    0.7,
+    0.875,
+    1.05
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_FROZEN_STOP_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_FROZEN_STOP_FIELD": {
+   "default": "lower",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_FROZEN_STOP_TF": {
+   "default": "1h",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    "1h",
+    "4h",
+    "D",
+    "W"
+   ],
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_PULLBACK_GATE_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_PULLBACK_GATE_LONG_MAX": {
+   "default": 0.3,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.15,
+    0.225,
+    0.3,
+    0.375,
+    0.45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_PULLBACK_GATE_SHORT_MIN": {
+   "default": 0.7,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.35,
+    0.525,
+    0.7,
+    0.875,
+    1.05
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_PULLBACK_GATE_TF": {
+   "default": "15m",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_RECOVERY_EXIT_ENABLED_TRADIER": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0,
+    0.5,
+    1
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER": {
+   "default": 0.3,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.15,
+    0.225,
+    0.3,
+    0.375,
+    0.45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BB_RSI_STOCH_BB_MAX": {
+   "default": 0.3,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.15,
+    0.225,
+    0.3,
+    0.375,
+    0.45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_RSI_STOCH_K_MAX": {
+   "default": 30,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_RSI_STOCH_RSI_MAX": {
+   "default": 40,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    20,
+    30,
+    40,
+    50,
+    60
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_RSI_STOCH_SCALP_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_RSI_STOCH_SCALP_SCORE": {
+   "default": 12,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    6,
+    9,
+    12,
+    15,
+    18
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BB_RSI_STOCH_SCALP_TF": {
+   "default": "15m",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_SQUEEZE_COOLDOWN": {
+   "default": 300,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    150,
+    225,
+    300,
+    375,
+    450
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_SQUEEZE_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_SQUEEZE_ENTRY_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_SQUEEZE_MIN_ALIGNMENT": {
+   "default": 10,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    5,
+    7.5,
+    10,
+    12.5,
+    15
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_SQUEEZE_THRESHOLD_15M": {
+   "default": 0.025,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.0125,
+    0.01875,
+    0.025,
+    0.03125,
+    0.0375
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_SQUEEZE_THRESHOLD_1H": {
+   "default": 0.03,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.015,
+    0.0225,
+    0.03,
+    0.0375,
+    0.045
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BB_SQUEEZE_WIDTH_PERCENTILE": {
+   "default": 0.2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE": {
+   "default": 0.02,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.01,
+    0.015,
+    0.02,
+    0.025,
+    0.03
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BOUNCE_REENTRY_ENABLED_TRADIER": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BOUNCE_REENTRY_K_RESET_LONG_TRADIER": {
+   "default": 35,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    17.5,
+    26.25,
+    35,
+    43.75,
+    52.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER": {
+   "default": 65,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    32.5,
+    48.75,
+    65,
+    81.25,
+    97.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BOUNCE_TOP_REENTRY_MULT": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BREAKEVEN_DC_LOW4_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BREAKOUT_LEASH_REENTRY_MULT": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT": {
+   "default": 0.3,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.15,
+    0.225,
+    0.3,
+    0.375,
+    0.45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CRYPTO_FH_MOMENTUM_DC_CONFIRM": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CRYPTO_FH_MOMENTUM_DC_MAX_LONG": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CRYPTO_FH_MOMENTUM_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CRYPTO_FH_MOMENTUM_MAX_POSITIONS": {
+   "default": 4,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CT_15M_MOMENTUM_GATE_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CT_MFI_15M_LONG_MIN": {
+   "default": 45,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    22.5,
+    33.75,
+    45,
+    56.25,
+    67.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CT_MFI_15M_SHORT_MAX": {
+   "default": 55,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    27.5,
+    41.25,
+    55,
+    68.75,
+    82.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "CT_WT_VELOCITY_1H_MIN": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0,
+    0.5,
+    1,
+    2,
+    3,
+    4,
+    6,
+    10
+   ],
+   "range_method": "data_band",
+   "swept_in_history": true,
+   "best_value_seen": 10,
+   "best_mean_pool_sharpe": 5.8182,
+   "support_obs": 1018,
+   "parity_via_tier2_livecall": true
+  },
+  "CT_WT_VELOCITY_GATE_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": true,
+   "best_value_seen": false,
+   "best_mean_pool_sharpe": 2.2644,
+   "support_obs": 1673,
+   "parity_via_tier2_livecall": true
+  },
+  "DC_LOW4_STOP_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_LOW_FROZEN_STOP_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_LOW_FROZEN_STOP_FLOOR_PCT": {
+   "default": -999,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    -1498.5,
+    -1248.75,
+    -999,
+    -749.25,
+    -499.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_LOW_FROZEN_STOP_TF": {
+   "default": "4h",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+   ],
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_LOW_FROZEN_STOP_USE_4BAR": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_LOW_STOP_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_MOMENT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_MOMENT_OPPOSITE_PENALTY": {
+   "default": -15,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    -22.5,
+    -18.75,
+    -15,
+    -11.25,
+    -7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_MOMENT_STRONG_BONUS": {
+   "default": 10,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    5,
+    7.5,
+    10,
+    12.5,
+    15
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_MOMENT_STRONG_THRESHOLD": {
+   "default": 40,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    20,
+    30,
+    40,
+    50,
+    60
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0,
+    0.5,
+    1
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_ATR_ENTRY_FILTER": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "DELTA_EXIT_REENTRY_COOLDOWN_MIN": {
+   "default": 45,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    22.5,
+    33.75,
+    45,
+    56.25,
+    67.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_GATE_BB_SQUEEZE": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_GATE_GUARANTEED_REENTRY": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_GATE_REENTRY": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_GATE_STDEV_BREAKOUT": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_REENTRY_HTF_GATE": {
+   "default": "4h",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_REENTRY_MIN_TF": {
+   "default": 2,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_REENTRY_REQUIRE_NOT_EXITING": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DELTA_REENTRY_Z_THRESHOLD": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "DG_HIGH_VOLATILITY_ATR_PCT": {
+   "default": 4,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG": {
+   "default": 35,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    17.5,
+    26.25,
+    35,
+    43.75,
+    52.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT": {
+   "default": 65,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    32.5,
+    48.75,
+    65,
+    81.25,
+    97.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG": {
+   "default": 35,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    17.5,
+    26.25,
+    35,
+    43.75,
+    52.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT": {
+   "default": 65,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    32.5,
+    48.75,
+    65,
+    81.25,
+    97.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "DT_TARGET_ATR_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "ENTRY_ATR_PCT_MIN": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EXIT_SENTIMENT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "EXIT_STDEV_BREAKOUT_FAIL_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "EXTREME_OB_BB_PCT_B_4H_MIN": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "EXTREME_OS_BB_PCT_B_4H_MAX": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0,
+    0.5,
+    1
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "EZ_REENTRY_DAEMON_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PRICE_CROSS_INTERVAL_S": {
+   "default": 5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS": {
+   "default": 48,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    24,
+    36,
+    48,
+    60,
+    72
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK": {
+   "default": 20,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    10,
+    15,
+    20,
+    25,
+    30
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S": {
+   "default": 60,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    30,
+    45,
+    60,
+    75,
+    90
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "EZ_REENTRY_PRICE_CROSS_PCT": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0,
+    0.5,
+    1
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "FH_MOMENTUM_DC_CONFIRM": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "FH_MOMENTUM_DC_MAX_LONG": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "FH_MOMENTUM_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "FH_MOMENTUM_EVAL_MINUTES": {
+   "default": 30,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "FH_MOMENTUM_MAX_POSITIONS": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "FH_MOMENTUM_MFI_CONFIRM": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "FH_MOMENTUM_MIN_MOVE_PCT": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "FH_MOMENTUM_POSITION_SIZE": {
+   "default": 600,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    300,
+    450,
+    600,
+    750,
+    900
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "GOLDEN_RULE_ACTIVATION_TF_LIST": {
+   "default": null,
+   "type": "List",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GOLDEN_RULE_ENTRY_TF_LIST": {
+   "default": null,
+   "type": "List",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GOLDEN_RULE_EXIT_MIN_IND": {
+   "default": 2,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "GOLDEN_RULE_EXIT_MIN_TFS": {
+   "default": 0,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0,
+    1,
+    2
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "GOLDEN_RULE_HTF_MIN_TFS": {
+   "default": 3,
+   "type": "int",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GOLDEN_RULE_HTF_VETO_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GOLDEN_RULE_MIN_IND": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GOLDEN_RULE_REQUIRE_ACTIVATION": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GOLDEN_RULE_REQUIRE_HEDGE_OPEN": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_BB_EXTENDED_LONG": {
+   "default": 0.75,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.375,
+    0.5625,
+    0.75,
+    0.9375,
+    1.125
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_DC_EXTENDED_LONG": {
+   "default": 0.8,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.4,
+    0.6,
+    0.8,
+    1,
+    1.2
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE": {
+   "default": 27,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    13.5,
+    20.25,
+    27,
+    33.75,
+    40.5
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "GR_HTF_DIRECT_ENTRY_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "GR_HTF_DIRECT_ENTRY_SCORE_MIN": {
+   "default": 12,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    6,
+    9,
+    12,
+    15,
+    18
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "GR_HTF_DIRECT_EXIT_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_HTF_DIRECT_EXIT_SCORE": {
+   "default": 12,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    6,
+    9,
+    12,
+    15,
+    18
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_HTF_GATE_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_HTF_REQUIRE_BEAR": {
+   "default": 1,
+   "type": "int",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_HTF_REQUIRE_BULL": {
+   "default": 1,
+   "type": "int",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_ARM_WINDOW_BARS": {
+   "default": 168,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    84,
+    126,
+    168,
+    210,
+    252
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_BOUNCE_STOCH_LONG": {
+   "default": 25,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    12.5,
+    18.75,
+    25,
+    31.25,
+    37.5
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_BOUNCE_STOCH_SHORT": {
+   "default": 75,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    37.5,
+    56.25,
+    75,
+    93.75,
+    112.5
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_BOUNCE_WT_CROSS_REQUIRED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_BREAKOUT_REQUIRE_VOLUME": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_BREAKOUT_VOL_MULT": {
+   "default": 1.25,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.625,
+    0.9375,
+    1.25,
+    1.5625,
+    1.875
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_HTF_MIN_ALIGN": {
+   "default": 2,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_HTF_TFS": {
+   "default": "('4h', 'D', 'W')",
+   "type": "tuple",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_INVALIDATE_PCT": {
+   "default": 0.02,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.01,
+    0.015,
+    0.02,
+    0.025,
+    0.03
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_LTF_MIN_ALIGN": {
+   "default": 2,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_LTF_TFS": {
+   "default": "('5m', '15m', '1h')",
+   "type": "tuple",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GR_V5_RETEST_BAND_PCT": {
+   "default": 0.03,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.015,
+    0.0225,
+    0.03,
+    0.0375,
+    0.045
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GUARANTEED_REENTRY_AUGMENT_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "GUARANTEED_REENTRY_HTF_VETO_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "HEDGE_MOMENTUM_GATE": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_DC_BREAKOUT_REENTRY": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_GUARANTEED_REENTRY": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_PROC_SINGLE_REENTRY": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_REENTRY_GUARANTEED_2WT": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_REENTRY_GUARANTEED_BOTTOM": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_REENTRY_GUARANTEED_CROSS": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_REENTRY_PSR_DC_BOUNCE": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_REENTRY_PSR_FULL_DC": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_REENTRY_PSR_K_DC_CROSSOVER": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LEGACY_REENTRY_PSR_QUICK_RECOVERY": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "LR_PCTB_D_LONG_ENTRY_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "LR_PCTB_D_LONG_ENTRY_THRESHOLD": {
+   "default": 0.2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "LR_PCTB_D_SHORT_THRESHOLD": {
+   "default": 0.1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.05,
+    0.075,
+    0.1,
+    0.125,
+    0.15
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MANDATORY_REENTRY_DC4_WINDOW_MIN": {
+   "default": 30,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MFI_ENTRY_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MFI_FLIP_EXIT_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MFI_FLIP_EXIT_LONG_THRESHOLD": {
+   "default": 70,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    35,
+    52.5,
+    70,
+    87.5,
+    105
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MFI_FLIP_EXIT_SHORT_THRESHOLD": {
+   "default": 30,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MFI_LONG_THRESHOLD_D": {
+   "default": 80,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    40,
+    60,
+    80,
+    100,
+    120
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MITIGATOR_REENTRY_COOLDOWN": {
+   "default": 180,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    90,
+    135,
+    180,
+    225,
+    270
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MITIGATOR_REENTRY_PRICE_PCT": {
+   "default": 0.15,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.075,
+    0.1125,
+    0.15,
+    0.1875,
+    0.225
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MOMENTUM_FADE_ENABLED_TRADIER": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MOMENTUM_FADE_K_ZONE_TRADIER": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MOMENTUM_FADE_SCORE_BONUS_TRADIER": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MOMENTUM_FADE_VOL_MIN_TRADIER": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "MOMENTUM_RIDER_ACCOUNT": {
+   "default": "men",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_BASE_SIZE_USD": {
+   "default": 50,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    25,
+    37.5,
+    50,
+    62.5,
+    75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_COOLDOWN": {
+   "default": 300,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    150,
+    225,
+    300,
+    375,
+    450
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_DC_WIDTH_MIN": {
+   "default": 8,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    4,
+    6,
+    8,
+    10,
+    12
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_HEDGE_RATIO": {
+   "default": 1.2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.6,
+    0.9,
+    1.2,
+    1.5,
+    1.8
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_MAX_SIZE_USD": {
+   "default": 400,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    200,
+    300,
+    400,
+    500,
+    600
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_MAX_SYMBOLS": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_REL_VOL_MIN": {
+   "default": 3,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1.5,
+    2.25,
+    3,
+    3.75,
+    4.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_RIDER_SCAN_INTERVAL": {
+   "default": 10,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    5,
+    7.5,
+    10,
+    12.5,
+    15
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S": {
+   "default": 300,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    150,
+    225,
+    300,
+    375,
+    450
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_SMA_WATCHDOG_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_SMA_WATCHDOG_INTERVAL_S": {
+   "default": 60,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    30,
+    45,
+    60,
+    75,
+    90
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_SMA_WATCHDOG_PCT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MOMENTUM_SMA_WATCHDOG_WT_CAP": {
+   "default": 80,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    40,
+    60,
+    80,
+    100,
+    120
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_ARMED_BANDTYPES": {
+   "default": "dc,bb,wt",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_ATR_TRAIL_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_ATR_TRAIL_MULT": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_ATR_TRAIL_TF": {
+   "default": "5m",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_ATR_TRAIL_TF_TRADIER": {
+   "default": "5m",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_BB_REJECT_EXIT_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_BB_REJECT_EXIT_LOOKBACK": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "MTF_BB_REJECT_EXIT_TF": {
+   "default": "1h",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "NEWS_SENTIMENT_DECAY_HOURS": {
+   "default": 4,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "NEWS_SENTIMENT_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "NEWS_SENTIMENT_MIN_ARTICLES": {
+   "default": 2,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "NEWS_SENTIMENT_WEIGHT": {
+   "default": 0.1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": [
+    0.05,
+    0.075,
+    0.1,
+    0.125,
+    0.15
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "OI_DIVERGENCE_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "OI_DIVERGENCE_PENALTY": {
+   "default": 10,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    5,
+    7.5,
+    10,
+    12.5,
+    15
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "OUTLIER_RUNAWAY_ATR_FACTOR": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "OUTLIER_STUCK_ATR_FACTOR": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD": {
+   "default": 20,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    10,
+    15,
+    20,
+    25,
+    30
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "PARABOLIC_BB_PCT_B_4H_MAX": {
+   "default": 0.1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.05,
+    0.075,
+    0.1,
+    0.125,
+    0.15
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "PARABOLIC_BB_PCT_B_4H_MIN": {
+   "default": 0.9,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.45,
+    0.675,
+    0.9,
+    1.125,
+    1.35
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "PRICE_CROSS_BACK_BAND_PCT": {
+   "default": 0.3,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": [
+    0.15,
+    0.225,
+    0.3,
+    0.375,
+    0.45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "PRICE_CROSS_BACK_MAX_AGE_MIN": {
+   "default": 525600000,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    262800000,
+    394200000,
+    525600000,
+    657000000,
+    788400000
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "PRICE_CROSS_BACK_REENTRY_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "PYRAMID_MIN_WT_VEL_1H": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "R1_DC_LOW4_3M_EMERGENCY_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "RECOVERY_AUGMENT_BAND_PCT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY2_DC_BREAK_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY2_QUICK_RECOVERY_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY2_STOCH_CROSS_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_2_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_60MIN_MIN_PCT": {
+   "default": 0.05,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.025,
+    0.0375,
+    0.05,
+    0.0625,
+    0.075
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_60MIN_UNCONDITIONAL_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_60MIN_WINDOW_MIN": {
+   "default": 1440,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    720,
+    1080,
+    1440,
+    1800,
+    2160
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_AGGRESSIVE_WINDOW_MIN": {
+   "default": 5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_B02_BC156_BOTTOM_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_B04_DC_RETEST_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_B09_SNAPBACK_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_B10_STOCH_REV_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_B11_DC_BREAK_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_B12_WT_MOM_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_B14_HA_TREND_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_B15_STRONG_TREND_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_BREAKOUT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_CONFIRMATION_GATES_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_COOLDOWN_S": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0,
+    0.5,
+    1
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_DISPATCH_BACKOFF_S": {
+   "default": 0.4,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_DISPATCH_MAX_ATTEMPTS": {
+   "default": 3,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1.5,
+    2.25,
+    3,
+    3.75,
+    4.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_ESCALATION_CRIT_MIN": {
+   "default": 60,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    30,
+    45,
+    60,
+    75,
+    90
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_ESCALATION_WARN_MIN": {
+   "default": 30,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_FAVORABLE_HTF_MIN": {
+   "default": 1,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_FAVORABLE_MOVE_PCT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_FAVORABLE_QTY_MULT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_K15M_PARTIAL_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_K15M_PARTIAL_MULT": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_K15M_PARTIAL_THRESHOLD": {
+   "default": 90,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    45,
+    67.5,
+    90,
+    112.5,
+    135
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_LIVE_MONITOR_DC_BREAK_TF": {
+   "default": "5m",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_MANDATORY": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_MAX_PRICE_DIVERGENCE_PCT": {
+   "default": 20,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    10,
+    15,
+    20,
+    25,
+    30
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_MIN_GAP_MINUTES": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_NEVER_SKIP_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_RALLY_HTF_MIN": {
+   "default": 3,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": true,
+   "best_value_seen": 3,
+   "best_mean_pool_sharpe": 2.1246,
+   "support_obs": 568,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_RALLY_K15M_MAX": {
+   "default": 100,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    60,
+    75
+   ],
+   "range_method": "data_band",
+   "swept_in_history": true,
+   "best_value_seen": 75,
+   "best_mean_pool_sharpe": 2.123,
+   "support_obs": 568,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_SIZE_BREAKOUT_MULT": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_SIZE_DIP_MULT": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_SIZE_EXTENDED_K1H": {
+   "default": 90,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    45,
+    67.5,
+    90,
+    112.5,
+    135
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_SIZE_EXTENDED_MULT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REENTRY_STOCH_K_MAX_LONG": {
+   "default": 80,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    40,
+    60,
+    80,
+    100,
+    120
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_STOCH_K_MIN_SHORT": {
+   "default": 60,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    30,
+    45,
+    60,
+    75,
+    90
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_SYMGATE_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_SYMGATE_SPEED_MIN": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_TIER1_SIZE_MULT_TRADIER": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_TIER2_MAX_MINUTES_TRADIER": {
+   "default": 120,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    60,
+    90,
+    120,
+    150,
+    180
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_TIER2_MIN_MINUTES_TRADIER": {
+   "default": 10,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    5,
+    7.5,
+    10,
+    12.5,
+    15
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_TIER2_PRICE_PCT_TRADIER": {
+   "default": 0.003,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.0015,
+    0.00225,
+    0.003,
+    0.00375,
+    0.0045
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_TIER2_SIZE_MULT_TRADIER": {
+   "default": 0.8,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.4,
+    0.6,
+    0.8,
+    1,
+    1.2
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "REENTRY_WAVETREND_CONFIRM_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REGIME_ATR_RATIO_MIN": {
+   "default": 0.125,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.0625,
+    0.09375,
+    0.125,
+    0.15625,
+    0.1875
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REGIME_BB_WIDTH_PCT_MIN": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REGIME_DC_ATR_RATIO_MIN": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REGIME_RANGING_REENTRY_SIZE_MULT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "REGIME_TRENDING_REENTRY_SIZE_MULT": {
+   "default": 2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "RSI_MOMENTUM_MODE": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "RVOL_MOMENTUM_MIN": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "RZ_BOT_BB_THRESHOLD": {
+   "default": 0.375,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.1,
+    0.15,
+    0.2
+   ],
+   "range_method": "data_band",
+   "swept_in_history": true,
+   "best_value_seen": 0.2,
+   "best_mean_pool_sharpe": 0.2921,
+   "support_obs": 104
+  },
+  "RZ_MFI_ENTRY_BOTTOM": {
+   "default": 15,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    7.5,
+    11.25,
+    15,
+    18.75,
+    22.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "RZ_MFI_EXIT": {
+   "default": 85,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    42.5,
+    63.75,
+    85,
+    106.25,
+    127.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "RZ_TOP_BB_THRESHOLD": {
+   "default": 0.85,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.8,
+    0.85,
+    0.9
+   ],
+   "range_method": "data_band",
+   "swept_in_history": true,
+   "best_value_seen": 0.8,
+   "best_mean_pool_sharpe": 0.3003,
+   "support_obs": 104
+  },
+  "SATOSHIT_HTF_MFI_D_MIN_TRADIER": {
+   "default": 30,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SATOSHIT_LONG_BB_PCTB_MAX": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SATOSHIT_LONG_MFI_MAX_TRADIER": {
+   "default": 120,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    60,
+    90,
+    120,
+    150,
+    180
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SATOSHIT_SHORT_BB_PCTB_MIN": {
+   "default": 0.55,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.275,
+    0.4125,
+    0.55,
+    0.6875,
+    0.825
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SATOSHIT_SHORT_MFI_MIN_TRADIER": {
+   "default": 62.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    31.25,
+    46.875,
+    62.5,
+    78.125,
+    93.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SCALP_V2_REENTRY_COOLDOWN_S": {
+   "default": 300,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    150,
+    225,
+    300,
+    375,
+    450
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SENTIMENT_FADE_MODE": {
+   "default": "DISABLED",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SENTIMENT_REBALANCER_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SENTIMENT_REBAL_AUGMENT_DEVIATION_THR": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "SENTIMENT_REBAL_COOLDOWN_MIN": {
+   "default": 240,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": [
+    120,
+    180,
+    240,
+    300,
+    360
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "SENTIMENT_REBAL_REDUCE_DEVIATION_THR": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "SMFI_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "SMFI_LONG_BUDGET": {
+   "default": 3000,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1500,
+    2250,
+    3000,
+    3750,
+    4500
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "SMFI_MAX_HOLD_DAYS": {
+   "default": 10,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    5,
+    7.5,
+    10,
+    12.5,
+    15
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "SMFI_MAX_PER_SIDE": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "SMFI_POSITION_SIZE": {
+   "default": 600,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    300,
+    450,
+    600,
+    750,
+    900
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "SMFI_SHORT_BUDGET": {
+   "default": 3000,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1500,
+    2250,
+    3000,
+    3750,
+    4500
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BB_RZ_EXIT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BB_RZ_EXIT_TF": {
+   "default": "D",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BB_RZ_SUPPRESS_PCTB": {
+   "default": 0.85,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.425,
+    0.6375,
+    0.85,
+    1.0625,
+    1.275
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BOUNCE_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BOUNCE_HTF_LIST": {
+   "default": null,
+   "type": "List",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BOUNCE_PCTB_LONG": {
+   "default": 0.05,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.025,
+    0.0375,
+    0.05,
+    0.0625,
+    0.075
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BOUNCE_PCTB_SHORT": {
+   "default": 0.95,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.475,
+    0.7125,
+    0.95,
+    1.1875,
+    1.425
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BOUNCE_RVOL_MIN": {
+   "default": 1.2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.6,
+    0.9,
+    1.2,
+    1.5,
+    1.8
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_COOLDOWN": {
+   "default": 600,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    300,
+    450,
+    600,
+    750,
+    900
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_EXIT_PCTB_FAIL": {
+   "default": 0.75,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.375,
+    0.5625,
+    0.75,
+    0.9375,
+    1.125
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_EXIT_WT_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_HTF_LIST": {
+   "default": null,
+   "type": "List",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_MAX_AGE_BARS": {
+   "default": 50,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    25,
+    37.5,
+    50,
+    62.5,
+    75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BREAKOUT_MAX_RETESTS": {
+   "default": 3,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    1.5,
+    2.25,
+    3,
+    3.75,
+    4.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BREAKOUT_PCTB_LONG": {
+   "default": 1.125,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.5625,
+    0.84375,
+    1.125,
+    1.40625,
+    1.6875
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_PCTB_SHORT": {
+   "default": -0.125,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    -0.1875,
+    -0.15625,
+    -0.125,
+    -0.09375,
+    -0.0625
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_RETEST_COOLDOWN": {
+   "default": 300,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    150,
+    225,
+    300,
+    375,
+    450
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_RETEST_PCTB_MAX": {
+   "default": 1.05,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.525,
+    0.7875,
+    1.05,
+    1.3125,
+    1.575
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BREAKOUT_RETEST_PCTB_MIN": {
+   "default": 0.85,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.425,
+    0.6375,
+    0.85,
+    1.0625,
+    1.275
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BREAKOUT_RETEST_SCORE": {
+   "default": 22,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    11,
+    16.5,
+    22,
+    27.5,
+    33
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BREAKOUT_RETEST_SIZE_MULT": {
+   "default": 1.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.75,
+    1.125,
+    1.5,
+    1.875,
+    2.25
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_BREAKOUT_RETEST_TF_LIST": {
+   "default": null,
+   "type": "List",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_RVOL_MIN": {
+   "default": 1.2,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.6,
+    0.9,
+    1.2,
+    1.5,
+    1.8
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_BREAKOUT_SCORE": {
+   "default": 25,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    12.5,
+    18.75,
+    25,
+    31.25,
+    37.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_MACRO_AUGMENT_VETO_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_MACRO_ENTRY_BOOST_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_MACRO_ENTRY_BOOST_MULT": {
+   "default": 1.3,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    0.65,
+    0.975,
+    1.3,
+    1.625,
+    1.95
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_MACRO_ENTRY_VETO_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_MACRO_HEDGE_BOOST_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_MACRO_R4_EXIT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_MACRO_R4_REQUIRE_LTF_FLIP": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_REJECT_EXIT_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_REJECT_EXIT_RETURN": {
+   "default": 0.65,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.325,
+    0.4875,
+    0.65,
+    0.8125,
+    0.975
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_REJECT_EXIT_TF": {
+   "default": "D",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "STDEV_REJECT_EXIT_ZONE": {
+   "default": 0.8,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.4,
+    0.6,
+    0.8,
+    1,
+    1.2
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "STDEV_SUPPRESS_EARLY_EXIT": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "TRADIER_FH_MOMENTUM_DC_CONFIRM": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_FH_MOMENTUM_DC_MAX_LONG": {
+   "default": 0.33,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.165,
+    0.2475,
+    0.33,
+    0.4125,
+    0.495
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_FH_MOMENTUM_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "TRADIER_FH_MOMENTUM_MFI_CONFIRM": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_FH_MOMENTUM_MFI_MIN": {
+   "default": 55,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    27.5,
+    41.25,
+    55,
+    68.75,
+    82.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_FH_MOMENTUM_WINDOW_MINUTES": {
+   "default": 60,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    30,
+    45,
+    60,
+    75,
+    90
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_MFI_ENTRY_LONG_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_MFI_ENTRY_LONG_TRADIER": {
+   "default": 60,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    30,
+    45,
+    60,
+    75,
+    90
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "TRADIER_REENTRY_ANTI_CHURN_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_REENTRY_HARDCOOL_MIN": {
+   "default": 30,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_REENTRY_RZ_BLOCK_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRADIER_REOPEN_WAIT_S": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "LIVE_ONLY",
+   "sweepable": false,
+   "test_values": [
+    0,
+    0.5,
+    1
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": true,
+   "best_value_seen": false,
+   "best_mean_pool_sharpe": 0.0,
+   "support_obs": 29985
+  },
+  "TRADIER_WT_EXIT_MIN_TFS_TRADIER": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    4,
+    5
+   ],
+   "range_method": "data_band",
+   "swept_in_history": true,
+   "best_value_seen": 4,
+   "best_mean_pool_sharpe": 0.0,
+   "support_obs": 29985
+  },
+  "TRADIER_WT_EXIT_TFS_TRADIER": {
+   "default": "5m+15m+1h+4h+D",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    "5m+15m+1h+4h+D",
+    "1h+4h+D"
+   ],
+   "range_method": "categorical_ranked",
+   "swept_in_history": true,
+   "best_value_seen": "5m+15m+1h+4h+D",
+   "best_mean_pool_sharpe": 0.0,
+   "support_obs": 29985
+  },
+  "TRA_WT_DC_ENTRY_THRESHOLD": {
+   "default": 85,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    42.5,
+    63.75,
+    85,
+    106.25,
+    127.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "TRC_MOMENTUM_FADE_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRC_SMFI_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRC_SMFI_LONG_BUDGET": {
+   "default": 9900,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    4950,
+    7425,
+    9900,
+    12375,
+    14850
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRC_SMFI_POSITION_SIZE": {
+   "default": 1980,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    990,
+    1485,
+    1980,
+    2475,
+    2970
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TRC_SMFI_SHORT_BUDGET": {
+   "default": 9900,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    4950,
+    7425,
+    9900,
+    12375,
+    14850
+   ],
+   "range_method": "default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "TR_MFI4H_LONG_BOYCOTT_SCORE": {
+   "default": -25,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    -37.5,
+    -31.25,
+    -25,
+    -18.75,
+    -12.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "TR_MFI4H_LONG_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "TR_MFI4H_LONG_MIN": {
+   "default": 40,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    20,
+    30,
+    40,
+    50,
+    60
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_15M_VEL_SLOW_GAIN_BAND_PCT": {
+   "default": 0.1,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.05,
+    0.075,
+    0.1,
+    0.125,
+    0.15
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_3M_FORCE_OPEN_BUILD_TO_TARGET": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_3M_FORCE_OPEN_BYPASS_GATES": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_3M_FORCE_OPEN_DIST_PCT": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0,
+    0.5,
+    1
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_3M_FORCE_OPEN_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_3M_FORCE_OPEN_SIZE_USD": {
+   "default": 2500,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    1250,
+    1875,
+    2500,
+    3125,
+    3750
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_3M_FORCE_OPEN_TARGET_USD": {
+   "default": 2000,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    25000,
+    37500,
+    50000,
+    62500,
+    75000
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_3M_FORCE_OPEN_TF_LADDER": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_3M_FORCE_OPEN_TF_LADDER_MULT": {
+   "default": 1,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_3M_FORCE_OPEN_USE_SMA200": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_COMPOSITE_SCORING_ENABLED_TRADIER": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_COMPOSITE_VETO_ENABLED_TRADIER": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_CROSSUNDER_15M_SHORT": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_CROSSUNDER_FINAL_ENABLED": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": false
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "bool_toggle",
+   "swept_in_history": true,
+   "best_value_seen": true,
+   "best_mean_pool_sharpe": 0.1169,
+   "support_obs": 8414
+  },
+  "WT_DC_ENTRY_BAR_MATURITY_BLOCK": {
+   "default": 0.7,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.35,
+    0.525,
+    0.7,
+    0.875,
+    1.05
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_DC_ENTRY_K5M_MAX_LONG": {
+   "default": 100,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    50,
+    75,
+    100,
+    125,
+    150
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_DC_ENTRY_K5M_MIN_SHORT": {
+   "default": 0,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    0,
+    1,
+    2
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_DC_ENTRY_THRESHOLD": {
+   "default": 45,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    35,
+    43,
+    55,
+    75
+   ],
+   "range_method": "data_band",
+   "swept_in_history": true,
+   "best_value_seen": 55,
+   "best_mean_pool_sharpe": 0.1607,
+   "support_obs": 8414
+  },
+  "WT_DC_EXIT_STALE_MAX_S": {
+   "default": 600,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    300,
+    450,
+    600,
+    750,
+    900
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_DC_EXIT_THRESHOLD": {
+   "default": 30,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN_LIVECALL",
+   "sweepable": true,
+   "test_values": [
+    15,
+    22.5,
+    30,
+    37.5,
+    45
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0,
+   "parity_via_tier2_livecall": true
+  },
+  "WT_DC_HTF_GATE": {
+   "default": "1h",
+   "type": "str",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_EXIT_MIN_TFS_TRADIER": {
+   "default": 5,
+   "type": "int",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    2.5,
+    3.75,
+    5,
+    6.25,
+    7.5
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_EXIT_TFS_TRADIER": {
+   "default": "5m+15m+1h+4h+D",
+   "type": "str",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": false,
+   "test_values": null,
+   "range_method": "non_numeric_no_range",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_EXIT_VELOCITY_TRADIER": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_EXIT_VEL_THRESHOLD": {
+   "default": -6,
+   "type": "float",
+   "consumed_by": {
+    "vec": false,
+    "tier2": false,
+    "live": false
+   },
+   "sweep_tier": "DEAD",
+   "sweepable": false,
+   "test_values": [
+    -9,
+    -7.5,
+    -6,
+    -4.5,
+    -3
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_EXIT_VETO_ENABLED_TRADIER": {
+   "default": false,
+   "type": "bool",
+   "consumed_by": {
+    "vec": false,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "ENGINE_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_VEL_DECEL_RATIO": {
+   "default": 0.5,
+   "type": "float",
+   "consumed_by": {
+    "vec": true,
+    "tier2": true,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75
+   ],
+   "range_method": "untested_default_band",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  },
+  "WT_VEL_USE_DECEL_RATIO_ONLY": {
+   "default": true,
+   "type": "bool",
+   "consumed_by": {
+    "vec": true,
+    "tier2": false,
+    "live": true
+   },
+   "sweep_tier": "VEC_SCREEN",
+   "sweepable": true,
+   "test_values": [
+    true,
+    false
+   ],
+   "range_method": "untested_toggle",
+   "swept_in_history": false,
+   "best_value_seen": null,
+   "best_mean_pool_sharpe": null,
+   "support_obs": 0
+  }
+ },
+ "tier2_livecall_added": 447,
+ "sweepable_after_expand": 712
+}

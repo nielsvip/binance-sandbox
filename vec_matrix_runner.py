@@ -236,7 +236,11 @@ def main() -> None:
     ap.add_argument("--account", default="ang")
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--reset-seen", action="store_true", help="Clear seen-hash cache before starting")
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="vec_matrix_runner.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
     run_matrix(
         mode=args.mode,
         account=args.account,

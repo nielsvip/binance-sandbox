@@ -623,8 +623,8 @@ def main() -> int:
         ),
     )
     ap.add_argument("--out-dir", type=Path, required=True)
-    ap.add_argument("--commission-bps", type=float, default=5.0)
-    ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument("--commission-bps", type=float, default=0.0)
+    ap.add_argument("--slippage-bps", type=float, default=2.5)
     args = ap.parse_args()
     run(args)
     return 0

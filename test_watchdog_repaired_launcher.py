@@ -39,6 +39,56 @@ class RepairedLauncherIntegrationTest(unittest.TestCase):
             fake_bin.mkdir()
             (sbx / "data").mkdir()
             (sbx / "data" / "MATRIX_REPAIRED_ENABLE").touch()
+            (sbx / "data" / "matrix_worker_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "campaign": "stocks_repaired_20260730_c5",
+                        "matrix_contract_version": (
+                            "tradier-matrix-exec-c5-20260730"
+                        ),
+                        "no_live_promotion": True,
+                        "workers": [
+                            {
+                                "tag": tag,
+                                "symbol": symbol,
+                                "side": side,
+                                "expected_contract_fingerprint": f"c5:{tag}",
+                                "priority_roots": ["EXIT_ROOT_ENABLED"],
+                            }
+                            for tag, symbol, side in (
+                                ("wm_exit", "MU", "LONG"),
+                                ("wv_exit", "VT", "LONG"),
+                                ("wt_exit", "TTD", "SHORT"),
+                                ("wa_exit", "ACN", "SHORT"),
+                            )
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            reports = sbx / "data" / "reports"
+            reports.mkdir()
+            (reports / "VECTOR_OVERLAY_UNIQUENESS_AUDIT.json").write_text(
+                json.dumps(
+                    {
+                        "contract": (
+                            "STRICT_PER_KEY_UNIQUE_METRIC_AND_ACTION_NO_DUPLICATES"
+                        ),
+                        "current_engine_campaign": (
+                            "stocks_repaired_20260730_c5"
+                        ),
+                        "matrix_numeric_fill_requires_pass": True,
+                        "input_rows": 4,
+                        "passed_numeric_overlays": 4,
+                        "data_unavailable_rows": 0,
+                        "quarantined_numeric_overlays": 0,
+                        "metric_collision_groups": 0,
+                        "fingerprint_collision_groups": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            shutil.copy2(ROOT / "tools" / "matrix_resume_gate.py", tools)
             events = tmp / "worker-events.jsonl"
 
             worker = tools / "param_matrix_daemon.py"
@@ -115,8 +165,11 @@ raise SystemExit(1)
                 "watchdog waited for a repaired worker instead of independently detaching it",
             )
 
-            first_events = self._wait_for_events(events, 6)
-            self.assertEqual(self._tags(first_events), {"rm1", "rm2", "rm3", "rv1", "rv2", "rv3"})
+            first_events = self._wait_for_events(events, 4)
+            self.assertEqual(
+                self._tags(first_events),
+                {"wm_exit", "wv_exit", "wt_exit", "wa_exit"},
+            )
             for event in first_events:
                 self.assertEqual(event["ppid"], 1, event)
                 self.assertEqual(event["sid"], event["pid"], event)
@@ -132,15 +185,18 @@ raise SystemExit(1)
                 check=False,
             )
             self.assertEqual(second.returncode, 0, second.stderr)
-            all_events = self._wait_for_events(events, 12)
-            self.assertEqual(len(all_events), 12)
-            self.assertEqual(self._tags(all_events[6:]), {"rm1", "rm2", "rm3", "rv1", "rv2", "rv3"})
+            all_events = self._wait_for_events(events, 8)
+            self.assertEqual(len(all_events), 8)
+            self.assertEqual(
+                self._tags(all_events[4:]),
+                {"wm_exit", "wv_exit", "wt_exit", "wa_exit"},
+            )
             self.assertTrue(
                 set(event["pid"] for event in first_events).isdisjoint(
-                    event["pid"] for event in all_events[6:]
+                    event["pid"] for event in all_events[4:]
                 )
             )
-            self._wait_until_dead(all_events[6:])
+            self._wait_until_dead(all_events[4:])
 
     @staticmethod
     def _read_events(path: Path) -> list[dict]:

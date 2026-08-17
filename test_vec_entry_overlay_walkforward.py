@@ -38,6 +38,96 @@ def test_filter_and_direct_are_distinct_and_keep_sizing():
     ]
 
 
+def test_real_direct_gate_mask_applies_zone_alignment_and_dc_boundaries():
+    from datetime import datetime, timezone
+
+    n = 4
+    view = {"close": np.full(n, 100.0)}
+    for tf in ("15m", "1h", "4h", "D"):
+        view[f"stoch_k_{tf}"] = np.full(n, 60.0)
+        view[f"stoch_d_{tf}"] = np.full(n, 40.0)
+    for tf in ("5m", "15m", "1h", "4h"):
+        view[f"ha_{tf}"] = np.ones(n)
+    for tf in ("15m", "1h", "4h"):
+        view[f"dc_basis_{tf}"] = np.full(n, 90.0)
+    for tf in ("5m", "15m", "1h"):
+        view[f"wt1_{tf}"] = np.full(n, 2.0)
+        view[f"wt2_{tf}"] = np.full(n, 1.0)
+    view["rsi_1h"] = np.full(n, 60.0)
+    view["rsi_4h"] = np.full(n, 60.0)
+    view["sma_200_1h"] = np.full(n, 90.0)
+    view["dc_low4_5m"] = np.full(n, 90.0)
+    view["dc_low_4h"] = np.full(n, 90.0)
+    # Row 1: outside the fast window, so the real 1h zone gate rejects it.
+    view["stoch_k_1h"][1] = 90.0
+    # Row 2: keep the zone valid but reverse every alignment component.
+    for tf in ("15m", "1h", "4h", "D"):
+        view[f"stoch_k_{tf}"][2] = 30.0
+        view[f"stoch_d_{tf}"][2] = 40.0
+    for tf in ("5m", "15m", "1h", "4h"):
+        view[f"ha_{tf}"][2] = -1.0
+    for tf in ("15m", "1h", "4h"):
+        view[f"dc_basis_{tf}"][2] = 110.0
+    for tf in ("5m", "15m", "1h"):
+        view[f"wt1_{tf}"][2] = 0.0
+        view[f"wt2_{tf}"][2] = 1.0
+    view["rsi_1h"][2] = view["rsi_4h"][2] = 40.0
+    view["sma_200_1h"][2] = 110.0
+    # Row 3: otherwise valid but below the live 5m four-bar boundary.
+    view["dc_low4_5m"][3] = 101.0
+    timestamps = np.array([
+        datetime(2026, 1, 5, 14, 35, tzinfo=timezone.utc).timestamp(),
+        datetime(2026, 1, 5, 15, 5, tzinfo=timezone.utc).timestamp(),
+        datetime(2026, 1, 5, 15, 10, tzinfo=timezone.utc).timestamp(),
+        datetime(2026, 1, 5, 15, 15, tzinfo=timezone.utc).timestamp(),
+    ])
+    mask, audit = overlay._real_entry_gate_mask(view, timestamps, "LONG")
+    assert mask.tolist() == [True, False, False, False]
+    assert audit["schema"] == "tradier-direct-entry-gate-mask-v1"
+    assert audit["accepted_rows"] == 1
+
+
+def test_counter_trend_gate_rejects_xle_and_dino_style_direct_claims():
+    # Regression fixtures from the first scalar canaries: both are LONG direct
+    # claims with 1h WT against the side and price below the 15m SMA200, so the
+    # unchanged live queue must reject them before any full V8 replay.
+    view = {
+        "close": np.array([45.23, 47.10]),  # XLE, DINO representative claims
+        "wt1_1h": np.array([-74.06, -35.0]),
+        "wt2_1h": np.array([-72.09, -30.0]),
+        "sma_200_15m": np.array([46.29, 48.0]),
+        "high_1h": np.array([46.0, 48.0]),
+        "high_1h_prev": np.array([46.1, 48.1]),
+    }
+    allowed, audit = overlay._counter_trend_entry_allowed(view, "LONG")
+    assert allowed.tolist() == [False, False]
+    assert audit == {
+        "counter_trend_nonzero_rows": 2,
+        "counter_trend_against_rows": 2,
+        "counter_trend_sma200_bypass_rows": 0,
+        "counter_trend_rejected_rows": 2,
+    }
+
+
+def test_counter_trend_sma200_structure_bypass_matches_live_predicate():
+    view = {
+        "close": np.array([101.0, 99.0]),
+        "wt1_1h": np.array([-2.0, 2.0]),
+        "wt2_1h": np.array([-1.0, 1.0]),
+        "sma_200_15m": np.array([100.0, 100.0]),
+        "high_1h": np.array([102.0, 0.0]),
+        "high_1h_prev": np.array([101.0, 0.0]),
+        "low_1h": np.array([0.0, 98.0]),
+        "low_1h_prev": np.array([0.0, 99.0]),
+    }
+    long_allowed, long_audit = overlay._counter_trend_entry_allowed(view, "LONG")
+    short_allowed, short_audit = overlay._counter_trend_entry_allowed(view, "SHORT")
+    assert long_allowed.tolist() == [True, True]
+    assert short_allowed.tolist() == [True, True]
+    assert long_audit["counter_trend_sma200_bypass_rows"] == 1
+    assert short_audit["counter_trend_sma200_bypass_rows"] == 1
+
+
 def test_gr_and_wt_grids_keep_roles_and_side_independent_params():
     gr = overlay._gr_candidates()
     wt = overlay._wt_candidates()
@@ -45,6 +135,40 @@ def test_gr_and_wt_grids_keep_roles_and_side_independent_params():
     assert {row.role for row in wt} == {"filter", "direct"}
     assert len({row.label for row in gr}) == len(gr)
     assert len({row.label for row in wt}) == len(wt)
+
+
+def test_requested_candidate_preserves_exact_non_grid_numeric_value():
+    rows = overlay._bounce_candidates("ENTRY_BOUNCE_15M_LOW", "15m")
+    request = '{"role":"direct","params":{"timeframe":"15m","distance":0.01875,"recovery_only":false,"confirmation":"none"}}'
+    selected = overlay._requested_candidate("ENTRY_BOUNCE_15M_LOW", rows, request)
+    assert len(selected) == 1
+    assert selected[0].params["distance"] == 0.01875
+
+
+def test_bounce_mask_materializes_exact_non_grid_distance():
+    view = {
+        "close": np.array([100.0, 101.5]),
+        "dc_low_15m_prev": np.array([100.0, 100.0]),
+        "stoch_k_5m": np.array([2.0, 2.0]), "stoch_d_5m": np.array([1.0, 1.0]),
+        "stoch_k_15m": np.array([2.0, 2.0]), "stoch_d_15m": np.array([1.0, 1.0]),
+    }
+    assert overlay._bounce_mask(view, "LONG", "15m", 0.01875, False, "none").tolist() == [True, True]
+    assert overlay._bounce_mask(view, "LONG", "15m", 0.01125, False, "none").tolist() == [True, False]
+
+
+def test_requested_candidate_rejects_unknown_parameter_shape():
+    rows = overlay._bounce_candidates("ENTRY_BOUNCE_15M_LOW", "15m")
+    request = '{"role":"direct","params":{"timeframe":"15m","bogus":1}}'
+    try:
+        overlay._requested_candidate("ENTRY_BOUNCE_15M_LOW", rows, request)
+    except ValueError as exc:
+        assert str(exc) == "FROZEN_ENTRY_PARAMS_NOT_IMPLEMENTED_BY_FAMILY"
+    else:
+        raise AssertionError("expected fail-closed schema rejection")
+
+
+def test_overlay_artifact_hash_accepts_inherited_control_name():
+    assert overlay._manifest_npz_sha256({"control_npz_sha256": "sealed"}, "ABC") == "sealed"
 
 
 def test_stoch_grid_covers_thresholds_tfs_confirmations_and_roles():

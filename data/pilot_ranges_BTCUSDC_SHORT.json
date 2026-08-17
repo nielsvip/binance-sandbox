@@ -1,0 +1,6248 @@
+{
+ "_meta": {
+  "pilot_key": "BTCUSDC_SHORT",
+  "mode": "crypto",
+  "start": "2026-04-01",
+  "bh_pct": -9.015228484737037,
+  "baseline_sharpe": -0.0058,
+  "baseline_pnl": 1244.22,
+  "n_params": 629,
+  "DIAGNOSTIC": "single-symbol range-finder \u2014 NOT for promotion"
+ },
+ "switches": {
+  "MAX_POSITION_SIZE": {
+   "values": [
+    {
+     "value": "150",
+     "sharpe": -0.0134,
+     "pnl": 3049.62,
+     "trades": 664,
+     "gain_vs_bh": 338.274,
+     "err": null
+    },
+    {
+     "value": "600",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "600",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "150",
+    "600"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "START_POSITION_SIZE": {
+   "values": [
+    {
+     "value": "12",
+     "sharpe": -0.0134,
+     "pnl": 3050.78,
+     "trades": 664,
+     "gain_vs_bh": 338.403,
+     "err": null
+    },
+    {
+     "value": "48",
+     "sharpe": -0.0058,
+     "pnl": 1221.26,
+     "trades": 1915,
+     "gain_vs_bh": 135.466,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "48",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 135.466,
+   "useful_range": [
+    "12",
+    "48"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick|ez_reentry|ez_reentry_daemon"
+  },
+  "MIN_GAIN": {
+   "values": [
+    {
+     "value": "1.5",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "6",
+     "sharpe": -0.0134,
+     "pnl": 3049.62,
+     "trades": 664,
+     "gain_vs_bh": 338.274,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "1.5",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "1.5",
+    "6"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick|ez_reentry"
+  },
+  "MIN_POSITION_SIZE": {
+   "values": [
+    {
+     "value": "0.5",
+     "sharpe": -0.0134,
+     "pnl": 3049.62,
+     "trades": 664,
+     "gain_vs_bh": 338.274,
+     "err": null
+    },
+    {
+     "value": "2",
+     "sharpe": -0.0079,
+     "pnl": 1245.68,
+     "trades": 1917,
+     "gain_vs_bh": 138.175,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "2",
+   "best_sharpe": -0.0079,
+   "best_gain_vs_bh": 138.175,
+   "useful_range": [
+    "0.5",
+    "2"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick|ez_reentry"
+  },
+  "HEDGE_MODE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "VEC_GATES_LOG_ONLY": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "FAST_CUT_LOSS_THRESHOLD": {
+   "values": [
+    {
+     "value": "-499.5",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "-1998",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "-499.5",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "-499.5",
+    "-1998"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_positions_quick"
+  },
+  "COMMISSION_BUFFER_PCT": {
+   "values": [
+    {
+     "value": "0.04",
+     "sharpe": -0.0059,
+     "pnl": 1244.36,
+     "trades": 1923,
+     "gain_vs_bh": 138.029,
+     "err": null
+    },
+    {
+     "value": "0.16",
+     "sharpe": -0.0058,
+     "pnl": 1244.26,
+     "trades": 1914,
+     "gain_vs_bh": 138.018,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.16",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.018,
+   "useful_range": [
+    "0.04",
+    "0.16"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "OBLIGATORY_HEDGE_MIN_LOSS_PCT": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "1"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "HEDGE_DUAL_IF_HEDGE_MODE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_positions_quick"
+  },
+  "BREAKOUT_GUARD_LOSS_THRESHOLD": {
+   "values": [
+    {
+     "value": "-499.5",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "-1998",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "-499.5",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "-499.5",
+    "-1998"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "OBLIGATORY_HEDGE_WT_TFS": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "4",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "1",
+    "4"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "UNDERWATER_HEDGE_OR_CLOSE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1059.26,
+     "trades": 1915,
+     "gain_vs_bh": 117.497,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 117.497,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S": {
+   "values": [
+    {
+     "value": "150",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "600",
+     "sharpe": -0.0058,
+     "pnl": 1311.37,
+     "trades": 1914,
+     "gain_vs_bh": 145.462,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "150",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "150",
+    "600"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_reentry|ez_reentry_daemon"
+  },
+  "RIDICULOUS_HOLD_GUARD_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "4",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "1",
+    "4"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "RIDICULOUS_LOSS_PCT": {
+   "values": [
+    {
+     "value": "-7.5",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "-30",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "-7.5",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "-7.5",
+    "-30"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "RIDICULOUS_HOLD_HOURS": {
+   "values": [
+    {
+     "value": "360",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "1440",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "360",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "360",
+    "1440"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "WT_VEL_DECEL_RATIO": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "1",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.25",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "0.25",
+    "1"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GOLDEN_RULE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.012,
+     "pnl": -16.9,
+     "trades": 773,
+     "gain_vs_bh": -1.875,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.012,
+   "best_gain_vs_bh": -1.875,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GOLDEN_RULE_DC_15M_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1243.98,
+     "trades": 1913,
+     "gain_vs_bh": 137.987,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 137.987,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BB_15M_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0074,
+     "pnl": 391.12,
+     "trades": 1010,
+     "gain_vs_bh": 43.384,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0074,
+   "best_gain_vs_bh": 43.384,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BASE_USD": {
+   "values": [
+    {
+     "value": "2.5",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2.5",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "2.5",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "GOLDEN_RULE_DC_1H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BB_1H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_DC_4H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BB_4H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_DC_D_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BB_D_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_MULT_15M": {
+   "values": [
+    {
+     "value": "0.5",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.5",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "0.5",
+    "2"
+   ],
+   "n_tested": 2,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_MULT_1H": {
+   "values": [
+    {
+     "value": "0.75",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "3",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.75",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "0.75",
+    "3"
+   ],
+   "n_tested": 2,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_MULT_4H": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "4",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "1",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "1",
+    "4"
+   ],
+   "n_tested": 2,
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_MULT_D": {
+   "values": [
+    {
+     "value": "1.5",
+     "sharpe": -0.0058,
+     "pnl": 1244.22,
+     "trades": 1915,
+     "gain_vs_bh": 138.013,
+     "err": null
+    },
+    {
+     "value": "6",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "1.5",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 138.013,
+   "useful_range": [
+    "1.5",
+    "6"
+   ],
+   "n_tested": 2,
+   "live_refs": ""
+  },
+  "TOP_OF_RANGE_BLOCK_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "GOLDEN_RULE_HTF_VETO_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0086,
+     "pnl": -213.98,
+     "trades": 1300,
+     "gain_vs_bh": -23.735,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0086,
+   "best_gain_vs_bh": -23.735,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "TOP_OF_RANGE_BLOCK_REQUIRE_ALL": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "DC_LOW4_STOP_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0058,
+     "pnl": 1243.08,
+     "trades": 1926,
+     "gain_vs_bh": 137.887,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 137.887,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "BB_FROZEN_STOP_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "TOP_OF_RANGE_BLOCK_THRESHOLD": {
+   "values": [
+    {
+     "value": "0.475",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "1.9",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.475",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "0.475",
+    "1.9"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "DC_LOW_STOP_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0058,
+     "pnl": 1243.08,
+     "trades": 1926,
+     "gain_vs_bh": 137.887,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 137.887,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "DC4_STOP_GR_SCORE_MIN_TFS": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "6",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "2",
+    "6"
+   ],
+   "n_tested": 2,
+   "live_refs": ""
+  },
+  "DUP_GUARD_USE_GAIN_GATE": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "DC4_STOP_GR_SCORE_MIN_IND": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "2",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": ""
+  },
+  "DUP_GUARD_GAIN_MULTIPLIER": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "1",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.25",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "0.25",
+    "1"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "HEDGE_TRIGGER_USE_WT_3M_ALONE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "STALL_SUB_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "MI_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "MI_ENTRY_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "UNIVERSAL_NOLOSS_GATE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0088,
+     "pnl": 1851.17,
+     "trades": 2151,
+     "gain_vs_bh": 205.338,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0088,
+   "best_gain_vs_bh": 205.338,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "RATIO_MULTIPLIER": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "8",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "2",
+    "8"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_GR_GATE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_SMA_PCT": {
+   "values": [
+    {
+     "value": "0.5",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.5",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "0.5",
+    "2"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_SIZE_USD": {
+   "values": [
+    {
+     "value": "12.5",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "50",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "12.5",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "12.5",
+    "50"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_GR_VOTE_MIN": {
+   "values": [
+    {
+     "value": "40",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "40",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "40",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_GR_MIN_TFS": {
+   "values": [
+    {
+     "value": "8",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "8",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "8",
+    "2"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MTF_ARMED_ENTRY_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0026,
+     "pnl": -9974.55,
+     "trades": 2723,
+     "gain_vs_bh": -1106.411,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0026,
+   "best_gain_vs_bh": -1106.411,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "MTF_ARMED_ENTRY_SKIP_SHORT": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0139,
+     "pnl": -23.71,
+     "trades": 766,
+     "gain_vs_bh": -2.63,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0139,
+   "best_gain_vs_bh": -2.63,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "2",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MTF_REQUIRE_ARMED_ANY": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0031,
+     "pnl": -9160.16,
+     "trades": 2604,
+     "gain_vs_bh": -1016.076,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0031,
+   "best_gain_vs_bh": -1016.076,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "MTF_FILTER_STRONG_BUY_QUICK_BYPASS": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0074,
+     "pnl": 1267.36,
+     "trades": 1294,
+     "gain_vs_bh": 140.58,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0074,
+   "best_gain_vs_bh": 140.58,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "MTF_ENTRY_REQUIRE_GR_FILTER": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GR_FILTER_ALL_ENTRIES": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "STDEV_MACRO_ENTRY_VETO_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0061,
+     "pnl": 1245.55,
+     "trades": 1857,
+     "gain_vs_bh": 138.161,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0061,
+   "best_gain_vs_bh": 138.161,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "MTF_GR_MIN_TFS": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "6",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "2",
+    "6"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MTF_GR_MIN_IND": {
+   "values": [
+    {
+     "value": "4",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "14",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "4",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "4",
+    "14"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "STDEV_MACRO_R4_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0058,
+     "pnl": 962.24,
+     "trades": 1927,
+     "gain_vs_bh": 106.735,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 106.735,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "STDEV_MACRO_HEDGE_BOOST_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "REENTRY_2_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0182,
+     "pnl": 1502.3,
+     "trades": 2123,
+     "gain_vs_bh": 166.64,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0182,
+   "best_gain_vs_bh": 166.64,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "MTF_EXIT_USE_COMPOUND": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": 0.014,
+     "pnl": 20402.47,
+     "trades": 1341,
+     "gain_vs_bh": 2263.112,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": 0.014,
+   "best_gain_vs_bh": 2263.112,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "MTF_ATR_TRAIL_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": 0.014,
+     "pnl": 20402.47,
+     "trades": 1341,
+     "gain_vs_bh": 2263.112,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": 0.014,
+   "best_gain_vs_bh": 2263.112,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "DELTA_ENGINE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0074,
+     "pnl": 1281.02,
+     "trades": 1263,
+     "gain_vs_bh": 142.095,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0074,
+   "best_gain_vs_bh": 142.095,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "DELTA_ENTRY_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0074,
+     "pnl": 1281.07,
+     "trades": 1259,
+     "gain_vs_bh": 142.101,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0074,
+   "best_gain_vs_bh": 142.101,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "DELTA_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "MTF_ATR_TRAIL_MULT": {
+   "values": [
+    {
+     "value": "1.15",
+     "sharpe": -0.0058,
+     "pnl": 775.14,
+     "trades": 1945,
+     "gain_vs_bh": 85.981,
+     "err": null
+    },
+    {
+     "value": "4.6",
+     "sharpe": -0.0058,
+     "pnl": 1841.72,
+     "trades": 1866,
+     "gain_vs_bh": 204.29,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "1.15",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 85.981,
+   "useful_range": [
+    "1.15",
+    "4.6"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_COMPOSITE_SCORING_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1324.28,
+     "trades": 1915,
+     "gain_vs_bh": 146.894,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 146.894,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "DELTA_EXIT_MIN_TF_LOST": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "2"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "STRUCTURAL_RANGE_SHIFT_EXIT": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "DELTA_EXIT_DECAY_RATIO": {
+   "values": [
+    {
+     "value": "0.45",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "1.8",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.45",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "0.45",
+    "1.8"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "STRUCTURAL_RANGE_SHIFT_K_HIGH": {
+   "values": [
+    {
+     "value": "37.5",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "150",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "37.5",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "37.5",
+    "150"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "RZ_ZSCORE_ZONE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage"
+  },
+  "STRUCTURAL_RANGE_SHIFT_K_LOW": {
+   "values": [
+    {
+     "value": "12.5",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "50",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "12.5",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "12.5",
+    "50"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS": {
+   "values": [
+    {
+     "value": "50",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "200",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "50",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "50",
+    "200"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "RZ_TWO_PHASE_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage"
+  },
+  "RZ_DIV_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage"
+  },
+  "OBLIGATORY_HEDGE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "OBLIGATORY_HEDGE_WT_USE_1M": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "OBLIGATORY_HEDGE_WT_USE_3M": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "OBLIGATORY_HEDGE_WT_USE_15M": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "OBLIGATORY_HEDGE_WT_USE_1H": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "OBLIGATORY_HEDGE_WT_TFS_REQUIRED": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "1"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "HTF_AGAINST_FORCE_CLOSE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "RZ_ENTRY_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0074,
+     "pnl": 1281.07,
+     "trades": 1259,
+     "gain_vs_bh": 142.101,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0074,
+   "best_gain_vs_bh": 142.101,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "RZ_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1733.12,
+     "trades": 1935,
+     "gain_vs_bh": 192.244,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 192.244,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "RZ_REQUIRE_STRUCT": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "MANDATORY_HEDGE_GAIN_THRESHOLD_PCT": {
+   "values": [
+    {
+     "value": "-0.25",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "-1",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "-0.25",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "-0.25",
+    "-1"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "LS_RATIO_ENFORCE": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "HTF_DIRECTION_GATE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0059,
+     "pnl": 1244.79,
+     "trades": 1907,
+     "gain_vs_bh": 138.076,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.076,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_positions_quick"
+  },
+  "HTF_GATE_APPLY_TO_OPEN": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_positions_quick"
+  },
+  "LS_RATIO_MAX": {
+   "values": [
+    {
+     "value": "4.5",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "18",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "4.5",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "4.5",
+    "18"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LS_RATIO_MIN": {
+   "values": [
+    {
+     "value": "0.055",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "0.22",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.055",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "0.055",
+    "0.22"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "HTF_GATE_APPLY_TO_AUGMENT": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_positions_quick"
+  },
+  "HTF_GATE_BYPASS_RZ": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0059,
+   "best_gain_vs_bh": 138.016,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_positions_quick"
+  },
+  "STDEV_BREAKOUT_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1161.53,
+     "trades": 1998,
+     "gain_vs_bh": 128.841,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 128.841,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STDEV_BREAKOUT_PCTB_SHORT": {
+   "values": [
+    {
+     "value": "-0.0625",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "-0.25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "-0.25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "-0.0625",
+    "-0.25"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STDEV_BOUNCE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1455.29,
+     "trades": 2095,
+     "gain_vs_bh": 161.426,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.426,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STDEV_BREAKOUT_PCTB_LONG": {
+   "values": [
+    {
+     "value": "0.5625",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "2.25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "2.25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.5625",
+    "2.25"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STDEV_BREAKOUT_RVOL_MIN": {
+   "values": [
+    {
+     "value": "0.6",
+     "sharpe": -0.0059,
+     "pnl": 1244.25,
+     "trades": 1916,
+     "gain_vs_bh": 138.016,
+     "err": null
+    },
+    {
+     "value": "2.4",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "2.4",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.6",
+    "2.4"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STDEV_BOUNCE_PCTB_LONG": {
+   "values": [
+    {
+     "value": "0.025",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.025",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.025",
+    "0.1"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STDEV_BOUNCE_PCTB_SHORT": {
+   "values": [
+    {
+     "value": "0.475",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1.9",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.475",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.475",
+    "1.9"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "STDEV_BOUNCE_RVOL_MIN": {
+   "values": [
+    {
+     "value": "0.6",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "2.4",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.6",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.6",
+    "2.4"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "K_ZONE_LONG_THRESHOLD": {
+   "values": [
+    {
+     "value": "18",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "70",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "18",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "18",
+    "70"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "SATOSHIT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "PARTIAL_PROFIT_LOCK_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0108,
+     "pnl": 1456.56,
+     "trades": 2055,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0108,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "K_ZONE_ENTRY_BONUS": {
+   "values": [
+    {
+     "value": "50",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "12",
+     "sharpe": -0.0056,
+     "pnl": 1535.44,
+     "trades": 2056,
+     "gain_vs_bh": 170.316,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "50",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "50",
+    "12"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "K_ZONE_SHORT_THRESHOLD": {
+   "values": [
+    {
+     "value": "20",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "20",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "20",
+    "5"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_positions_quick"
+  },
+  "PARTIAL_PROFIT_LOCK_GAIN_PCT": {
+   "values": [
+    {
+     "value": "0.75",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "3",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.75",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.75",
+    "3"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT": {
+   "values": [
+    {
+     "value": "0.875",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "3.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.875",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.875",
+    "3.5"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "NOLOSS_BYPASS_WT_5OF5_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage"
+  },
+  "PARTIAL_PROFIT_LOCK_FRAC": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1",
+     "sharpe": -0.0108,
+     "pnl": 1456.56,
+     "trades": 2055,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.25",
+    "1"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick|ez_reentry"
+  },
+  "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT": {
+   "values": [
+    {
+     "value": "0.05",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.2",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.05",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.05",
+    "0.2"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "GR_TOTAL_VOTE_SCORE_MIN": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": 0.0298,
+     "pnl": 2499.27,
+     "trades": 3244,
+     "gain_vs_bh": 277.228,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": 0.0298,
+   "best_gain_vs_bh": 277.228,
+   "useful_range": [
+    "1"
+   ],
+   "n_tested": 1,
+   "live_refs": ""
+  },
+  "GR_HTF_DIRECT_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.42,
+     "trades": 2055,
+     "gain_vs_bh": 161.551,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.551,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GOLDEN_RULE_HTF_MIN_TFS": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0041,
+     "pnl": 1445.58,
+     "trades": 2699,
+     "gain_vs_bh": 160.349,
+     "err": null
+    },
+    {
+     "value": "6",
+     "sharpe": -0.0079,
+     "pnl": 2167.58,
+     "trades": 1348,
+     "gain_vs_bh": 240.435,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "2",
+   "best_sharpe": -0.0041,
+   "best_gain_vs_bh": 160.349,
+   "useful_range": [
+    "2",
+    "6"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "GOLDEN_RULE_MIN_IND": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": -0.0028,
+     "pnl": 1438.98,
+     "trades": 3247,
+     "gain_vs_bh": 159.617,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0076,
+     "pnl": 2167.78,
+     "trades": 1354,
+     "gain_vs_bh": 240.458,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "2",
+   "best_sharpe": -0.0028,
+   "best_gain_vs_bh": 159.617,
+   "useful_range": [
+    "2",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "DEBUG": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "STOP_LOSS_THRESHOLD": {
+   "values": [
+    {
+     "value": "499.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1998",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "499.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "499.5",
+    "1998"
+   ],
+   "n_tested": 2,
+   "live_refs": ""
+  },
+  "GR_HTF_DIRECT_EXIT_SCORE": {
+   "values": [
+    {
+     "value": "7.5",
+     "sharpe": 0.0379,
+     "pnl": 1285.03,
+     "trades": 2045,
+     "gain_vs_bh": 142.54,
+     "err": null
+    },
+    {
+     "value": "30",
+     "sharpe": -0.0056,
+     "pnl": 1456.42,
+     "trades": 2055,
+     "gain_vs_bh": 161.551,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "7.5",
+   "best_sharpe": 0.0379,
+   "best_gain_vs_bh": 142.54,
+   "useful_range": [
+    "7.5",
+    "30"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "BREAKEVEN_GAIN_EROSION_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_positions_quick"
+  },
+  "MIN_GAIN_TO_BUY_AGGRESSIVELY": {
+   "values": [
+    {
+     "value": "1.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "6",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1.5",
+    "6"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "MAX_POSITION_SIZE_MEN": {
+   "values": [
+    {
+     "value": "100",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "400",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "100",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "100",
+    "400"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MAX_POSITION_SIZE_BTC": {
+   "values": [
+    {
+     "value": "1000",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "4000",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1000",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1000",
+    "4000"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MAX_POSITION_SIZE_FIN": {
+   "values": [
+    {
+     "value": "100",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "400",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "100",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "100",
+    "400"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "HIGH_GAIN_AUGMENTATION_MIN_SIZE": {
+   "values": [
+    {
+     "value": "25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "100",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "25",
+    "100"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MAX_ORDER_VALUE_MEN": {
+   "values": [
+    {
+     "value": "60",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "240",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "60",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "60",
+    "240"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MAX_ORDER_VALUE": {
+   "values": [
+    {
+     "value": "75",
+     "sharpe": -0.0056,
+     "pnl": 1458.06,
+     "trades": 2056,
+     "gain_vs_bh": 161.733,
+     "err": null
+    },
+    {
+     "value": "300",
+     "sharpe": -0.0056,
+     "pnl": 1456.26,
+     "trades": 2056,
+     "gain_vs_bh": 161.533,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "75",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.733,
+   "useful_range": [
+    "75",
+    "300"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "MAX_ORDER_VALUE_FIN": {
+   "values": [
+    {
+     "value": "60",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "240",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "60",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "60",
+    "240"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "EXTREME_MODE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIGHT_MODE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "REENTRY_PRICE_IMPROVE_PCT": {
+   "values": [
+    {
+     "value": "0.04",
+     "sharpe": -0.0056,
+     "pnl": 1456.68,
+     "trades": 2056,
+     "gain_vs_bh": 161.58,
+     "err": null
+    },
+    {
+     "value": "0.16",
+     "sharpe": -0.0056,
+     "pnl": 1456.3,
+     "trades": 2057,
+     "gain_vs_bh": 161.538,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.04",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.58,
+   "useful_range": [
+    "0.04",
+    "0.16"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "MAX_AUGMENTS_PER_POSITION": {
+   "values": [
+    {
+     "value": "500000",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1999998",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "500000",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "500000",
+    "1999998"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "REV_MODE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "MANAGE_REDUCE": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0055,
+     "pnl": 2070.72,
+     "trades": 1965,
+     "gain_vs_bh": 229.691,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0055,
+   "best_gain_vs_bh": 229.691,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "SCALP_MODE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "SCALP_V2_ISOLATE": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "SCALP_REDUCE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "SCALP_V3_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1460.33,
+     "trades": 2056,
+     "gain_vs_bh": 161.985,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.985,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_WT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1457.62,
+     "trades": 2056,
+     "gain_vs_bh": 161.684,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.684,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_STOCH_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_DC_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.57,
+     "trades": 2056,
+     "gain_vs_bh": 161.568,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.568,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_HTF_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.74,
+     "trades": 2056,
+     "gain_vs_bh": 161.587,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.587,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "OB_PRICE_DEFER_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "LIVE_ENTRY_ENGINE_MIN_SCORE": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1459.6,
+     "trades": 2056,
+     "gain_vs_bh": 161.904,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.25",
+    "1"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_BOOST_SCORE": {
+   "values": [
+    {
+     "value": "4",
+     "sharpe": -0.0056,
+     "pnl": 1460.33,
+     "trades": 2056,
+     "gain_vs_bh": 161.985,
+     "err": null
+    },
+    {
+     "value": "16",
+     "sharpe": -0.0056,
+     "pnl": 1456.54,
+     "trades": 2056,
+     "gain_vs_bh": 161.564,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "4",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.985,
+   "useful_range": [
+    "4",
+    "16"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT": {
+   "values": [
+    {
+     "value": "0.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.34,
+     "trades": 2056,
+     "gain_vs_bh": 161.542,
+     "err": null
+    },
+    {
+     "value": "2",
+     "sharpe": -0.0056,
+     "pnl": 1457.0,
+     "trades": 2056,
+     "gain_vs_bh": 161.615,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.542,
+   "useful_range": [
+    "0.5",
+    "2"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "ENABLE_LOSS_PROTECTION": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "OB_PRICE_DEFER_MAX_DISTANCE_PCT": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.25",
+    "1"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "OB_PRICE_DEFER_TTL_SEC": {
+   "values": [
+    {
+     "value": "150",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "600",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "150",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "150",
+    "600"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "OB_PRICE_DEFER_AT_LEVEL_TOL_PCT": {
+   "values": [
+    {
+     "value": "0.025",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.025",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.025",
+    "0.1"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EXIT_ON_ALL_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "WT_15M_SAME_HEDGE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "REDUCE_HUGE_LOSS_THRESHOLD": {
+   "values": [
+    {
+     "value": "-499.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "-1998",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "-499.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "-499.5",
+    "-1998"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "REENTRY_MANDATORY": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "WT_15M_SAME_HEDGE_DAILY_CAP": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "4",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1",
+    "4"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "WT_15M_SAME_HEDGE_COOLDOWN_SEC": {
+   "values": [
+    {
+     "value": "3600",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "900",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "3600",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "3600",
+    "900"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "REENTRY_SIZE_DIP_MULT": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "4",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1",
+    "4"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "REENTRY_SIZE_BREAKOUT_MULT": {
+   "values": [
+    {
+     "value": "0.75",
+     "sharpe": -0.0056,
+     "pnl": 1456.41,
+     "trades": 2056,
+     "gain_vs_bh": 161.55,
+     "err": null
+    },
+    {
+     "value": "3",
+     "sharpe": -0.0056,
+     "pnl": 1457.03,
+     "trades": 2056,
+     "gain_vs_bh": 161.619,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.75",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.55,
+   "useful_range": [
+    "0.75",
+    "3"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "REENTRY_SIZE_EXTENDED_MULT": {
+   "values": [
+    {
+     "value": "0.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "2",
+     "sharpe": -0.0056,
+     "pnl": 1456.59,
+     "trades": 2056,
+     "gain_vs_bh": 161.57,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "0.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.5",
+    "2"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "REENTRY_MIN_GAP_MINUTES": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "REENTRY_SIZE_EXTENDED_K1H": {
+   "values": [
+    {
+     "value": "45",
+     "sharpe": -0.0056,
+     "pnl": 1456.43,
+     "trades": 2056,
+     "gain_vs_bh": 161.552,
+     "err": null
+    },
+    {
+     "value": "180",
+     "sharpe": -0.0056,
+     "pnl": 1456.57,
+     "trades": 2056,
+     "gain_vs_bh": 161.568,
+     "err": null
+    }
+   ],
+   "moved": true,
+   "zero_delta_reason": null,
+   "best_value": "45",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.552,
+   "useful_range": [
+    "45",
+    "180"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "LOSS_EXIT_REQUIRES_HEDGE": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "HEDGE_CLOSE_REMOVE_FROM_TRADEABLE": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "HEDGE_EXIT_BYPASS_NOLOSS": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "HEDGE_OVERSIZE_RATIO": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "4",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1",
+    "4"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "MICRO_SCALP_USDC_MAKER_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1323.54,
+     "trades": 2065,
+     "gain_vs_bh": 146.812,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 146.812,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EVAL_REENTRY_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "MICRO_SCALP_GAIN_THRESHOLD_PCT": {
+   "values": [
+    {
+     "value": "0.01",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.04",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.01",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.01",
+    "0.04"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_DAEMON_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_reentry|ez_reentry_daemon"
+  },
+  "LIVE_POSITION_FRESHNESS_MAX_SEC": {
+   "values": [
+    {
+     "value": "1.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "6",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1.5",
+    "6"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "EZ_REENTRY_INLINE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick|ez_reentry|ez_reentry_daemon"
+  },
+  "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_reentry"
+  },
+  "EZ_REENTRY_PRICE_CROSS_PCT": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_reentry|ez_reentry_daemon"
+  },
+  "RECENT_REDUCTION_GUARD_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_PRICE_CROSS_INTERVAL_S": {
+   "values": [
+    {
+     "value": "2.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "2.5",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_reentry"
+  },
+  "RECENT_REDUCTION_GUARD_USE_4BAR": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "SERVER_HEARTBEAT_BLOCK_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "RECENT_REDUCTION_GUARD_WINDOW_S": {
+   "values": [
+    {
+     "value": "1800",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "7200",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1800",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1800",
+    "7200"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "CLOSE_FOOTHOLD_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.25",
+    "1"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_reentry"
+  },
+  "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS": {
+   "values": [
+    {
+     "value": "24",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "96",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "24",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "24",
+    "96"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_reentry"
+  },
+  "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK": {
+   "values": [
+    {
+     "value": "40",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "40",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "40",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_reentry|ez_reentry_daemon"
+  },
+  "BREAKOUT_LEASH_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0058,
+     "pnl": 1906.62,
+     "trades": 2043,
+     "gain_vs_bh": 211.489,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0058,
+   "best_gain_vs_bh": 211.489,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "REENTRY_MAX_PRICE_DIVERGENCE_PCT": {
+   "values": [
+    {
+     "value": "10",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "40",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "10",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "10",
+    "40"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage|ez_reentry"
+  },
+  "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_reentry"
+  },
+  "EZ_REENTRY_QUEUE_CONSUMER_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "BREAKOUT_LEASH_REENTRY_MULT": {
+   "values": [
+    {
+     "value": "0.75",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "3",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.75",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.75",
+    "3"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_reentry"
+  },
+  "EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S": {
+   "values": [
+    {
+     "value": "2.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "10",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "2.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "2.5",
+    "10"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "HEDGE_BANDAID_OFF_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "UNDERWATER_HOC_USDC_MAKER_BYPASS": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "PARABOLIC_PROTECTION_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "DC_BB_D_BREAK_REVERSE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "PARABOLIC_RSI_4H_MIN": {
+   "values": [
+    {
+     "value": "35",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "140",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "35",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "35",
+    "140"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "PARABOLIC_RSI_1H_MIN": {
+   "values": [
+    {
+     "value": "32.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "130",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "32.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "32.5",
+    "130"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "PARABOLIC_RSI_4H_MAX": {
+   "values": [
+    {
+     "value": "15",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "60",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "15",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "15",
+    "60"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "PARABOLIC_BB_PCT_B_4H_MIN": {
+   "values": [
+    {
+     "value": "0.35",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1.4",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.35",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.35",
+    "1.4"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "BB_BREAKOUT_CONT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "PARABOLIC_RSI_1H_MAX": {
+   "values": [
+    {
+     "value": "17.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "70",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "17.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "17.5",
+    "70"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "PARABOLIC_BB_PCT_B_4H_MAX": {
+   "values": [
+    {
+     "value": "0.05",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.2",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.05",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.05",
+    "0.2"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "DC_BB_CROSSBACK_HYSTERESIS_PCT": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "4",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "1",
+    "4"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "EXTREME_OB_OS_OVERRIDE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "BB_BREAKOUT_CONT_HOURS": {
+   "values": [
+    {
+     "value": "36",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "144",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "36",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "36",
+    "144"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "EXTREME_OB_RSI_4H_MIN": {
+   "values": [
+    {
+     "value": "40",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "160",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "40",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "40",
+    "160"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "EXTREME_OB_BB_PCT_B_4H_MIN": {
+   "values": [
+    {
+     "value": "0.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "2",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.5",
+    "2"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "EXTREME_OB_RSI_D_MIN": {
+   "values": [
+    {
+     "value": "37.5",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "150",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "37.5",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "37.5",
+    "150"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT15M_AGAINST_FORCE_HEDGE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": -0.0056,
+     "pnl": 1455.65,
+     "trades": 2052,
+     "gain_vs_bh": 161.466,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "True",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.466,
+   "useful_range": [
+    "True"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "ALL_TF_AGAINST_CLOSE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.22,
+     "trades": 2056,
+     "gain_vs_bh": 161.529,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.529,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC": {
+   "values": [
+    {
+     "value": "15",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "60",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "15",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "15",
+    "60"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC": {
+   "values": [
+    {
+     "value": "15",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "60",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "15",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "15",
+    "60"
+   ],
+   "n_tested": 2,
+   "live_refs": "ez_manage"
+  },
+  "R2_PEAK_MIN_PCT": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.25",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.25",
+    "1"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_15M_VEL_SLOW_GAIN_BAND_PCT": {
+   "values": [
+    {
+     "value": "0.05",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.2",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.05",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.05",
+    "0.2"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT": {
+   "values": [
+    {
+     "value": "0.005",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.02",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.005",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.005",
+    "0.02"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "WT_15M_VEL_NEAR_ZERO_THRESHOLD": {
+   "values": [
+    {
+     "value": "0.05",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    },
+    {
+     "value": "0.2",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "0.05",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "0.05",
+    "0.2"
+   ],
+   "n_tested": 2,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "R3_HEDGE_INVARIANT_DUMP_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "WT_VEL_USE_DECEL_RATIO_ONLY": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "R3_GAIN_MAX_PCT": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": -0.0056,
+     "pnl": 1456.37,
+     "trades": 2060,
+     "gain_vs_bh": 161.546,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "1",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.546,
+   "useful_range": [
+    "1"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage"
+  },
+  "LEGACY_GUARANTEED_REENTRY": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": -0.0056,
+     "pnl": 1456.56,
+     "trades": 2056,
+     "gain_vs_bh": 161.567,
+     "err": null
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "NOT_A_CONFIG_ATTR: override never applied (add to config or it is dead)",
+   "best_value": "False",
+   "best_sharpe": -0.0056,
+   "best_gain_vs_bh": 161.567,
+   "useful_range": [
+    "False"
+   ],
+   "n_tested": 1,
+   "live_refs": "ez_manage|ez_positions_quick"
+  }
+ }
+}

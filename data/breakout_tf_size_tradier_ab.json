@@ -1,0 +1,12 @@
+{
+  "configs": [
+    {
+      "mode": "tradier",
+      "overrides_json": "{\"BREAKOUT_TF_SIZE_ENABLED\": false}"
+    },
+    {
+      "mode": "tradier",
+      "overrides_json": "{\"BREAKOUT_TF_SIZE_ENABLED\": true}"
+    }
+  ]
+}

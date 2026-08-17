@@ -29,6 +29,7 @@ from dateutil.parser import isoparse
 
 
 from config_tradier import TradierConfig
+from position_time_contract import parse_position_timestamp
 from tradier_api import TradierAPIClient
 from utils import (
     clean_position_key,
@@ -342,8 +343,14 @@ class TradierPosition:
         # if not self.opened_at: self.opened_at = datetime.now(timezone.utc)
 
     def _convert_dates(self):
+        # ``opened_at`` is persisted as its own ISO string.  Older reload logic
+        # only parsed ``entry_time`` and therefore left ``opened_at`` as a raw
+        # string whenever entry_time was blank.  Age-gated exits then treated
+        # the position as newborn forever.  Parse the authoritative persisted
+        # field first and use entry_time only as a legacy fallback.
+        if self.opened_at is not None and not isinstance(self.opened_at, datetime):
+            self.opened_at = parse_position_timestamp(self.opened_at)
         date_fields = [
-            ('entry_time', 'opened_at'),
             ('last_update', 'last_updated'),
             ('last_augmentation_time', 'last_augmentation_time'),
             ('last_reduction_time', 'last_reduction_time'),
@@ -358,6 +365,8 @@ class TradierPosition:
                     setattr(self, dt_field, parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc))
                 except Exception:
                     setattr(self, dt_field, None)
+        if self.opened_at is None and self.entry_time:
+            self.opened_at = parse_position_timestamp(self.entry_time)
             # elif value is None:
             #     if dt_field in ['opened_at', 'last_updated']:
             #         setattr(self, dt_field, datetime.now(timezone.utc))
@@ -1499,7 +1508,27 @@ class TradierPositionManager:
                     if abs(diff) < 0.0001:
                         await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
                     elif diff > 0:
-                        await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
+                        if prev_amt <= 0:
+                        # A broker position appearing while local state is flat is
+                        # always a fresh broker-adopted OPEN. Calling
+                        # handle_augmentation here mislabeled broker sync as an
+                        # AUGMENT and hid the true source/size of the exposure.
+                            existing_position.positionAmt = amt_abs
+                            existing_position.entry_price = entry_price
+                            existing_position.opened_at = now
+                            existing_position.entry_time = now.isoformat()
+                            existing_position.last_signal = "OPEN"
+                            existing_position.augment_reason = "BROKER_SYNC_OPEN_FROM_FLAT_STUB"
+                            existing_position.gain = 0.0
+                            existing_position.prev_gain = 0.0
+                            existing_position.max_gain = 0.0
+                            logger.warning(f"[FLAT_STUB_ADOPT_OPEN] {position_key}: broker qty={amt_abs:.6f} entry={entry_price:.4f}; treating as OPEN, not AUGMENT")
+                            await self.append_to_position_history_file(
+                                position_key, "OPEN", amt_abs, current_price or entry_price,
+                                {"reason": "BROKER_SYNC_OPEN_FROM_FLAT_STUB"},
+                            )
+                        else:
+                            await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
                     elif diff < 0:
                         await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, abs(diff), current_price, entry_price, reduction_source="api_sync")
                 except Exception as _upd_err:
@@ -1708,8 +1737,11 @@ class TradierPositionManager:
             filename = hist_dir / f"{symbol_side}.jsonl"
             MAX_SIZE_BYTES = 200 * 1024
             if filename.exists() and filename.stat().st_size > MAX_SIZE_BYTES:
-                backup = filename.with_name(f"{filename.name}.bak")
-                if backup.exists(): backup.unlink()
+                # Keep every generation.  Deleting the previous .bak made the
+                # canonical TRC ledger lose older fills whenever it rotated.
+                backup = filename.with_name(
+                    f"{filename.name}.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}.bak"
+                )
                 filename.rename(backup)
             reason = (rich_context or {}).get('reason') or (rich_context or {}).get('reason_text') or "Manual/System Detection"
             snapshot = (rich_context or {}).get('snapshot') or (rich_context or {}).get('indicators', {})
@@ -1930,7 +1962,16 @@ class TradierPositionManager:
                 'amount': augment_qty,
                 'price': current_price,
                 'context': rich_context   })
-            await self.append_to_position_history_file(position_key, "AUGMENT", augment_qty, current_price, rich_context)
+        # A broker-confirmed fill is a trade even when Redis has no decision
+        # context (manual order, restart, Redis outage, or a delayed sync).
+        # Always append the event; context is enrichment, never the write gate.
+        await self.append_to_position_history_file(
+            position_key,
+            "AUGMENT",
+            augment_qty,
+            current_price,
+            rich_context or {"reason": position.augment_reason or "Broker sync"},
+        )
             
         try: indicators_log = indicators_now if indicators_now else None
         except NameError: indicators_log = None
@@ -2123,8 +2164,15 @@ class TradierPositionManager:
                 'price': current_price,
                 'reason': reduction_reason,
                 'context': rich_context  })
-            
-            await self.append_to_position_history_file(position_key, "REDUCE", reduce_qty, current_price, rich_context)
+
+        # Do not make history completeness depend on a Redis decision record.
+        await self.append_to_position_history_file(
+            position_key,
+            "REDUCE",
+            reduce_qty,
+            current_price,
+            rich_context or {"reason": reduction_reason or "Broker sync"},
+        )
 
         log_reduce_action( position_key=position_key,  position_value_str=position_value_str,  reduction_value_str=reduction_value_str,   gain=position.gain, reason=reduction_reason, conviction=conviction,  origin=reduction_reason )
         account_positions = self.positions_by_account.setdefault(account_key, {})

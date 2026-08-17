@@ -1,0 +1,107 @@
+[
+  {
+    "symbol": "ASTS",
+    "side": "LONG",
+    "original_entry": 91.91,
+    "original_qty": 20,
+    "sold_at": 85.32,
+    "remaining_qty": 0,
+    "recover_qty": 20,
+    "status": "SIGNAL_READY",
+    "signal_price": 88.15,
+    "signal_time": "2026-03-25T05:21:45.988830+00:00",
+    "signal_score": 9,
+    "signal_reasons": [
+      "WT_IMPULSE_UP",
+      "WT_DIV_HIDDEN_BULL",
+      "WT1>WT2",
+      "K5m_OS(12)",
+      "HA_GREEN"
+    ]
+  },
+  {
+    "symbol": "SNDK",
+    "side": "LONG",
+    "original_entry": 744.6,
+    "original_qty": 7,
+    "sold_at": 697.56,
+    "remaining_qty": 4,
+    "recover_qty": 3,
+    "status": "WAITING"
+  },
+  {
+    "symbol": "STZ",
+    "side": "SHORT",
+    "original_entry": 151.28,
+    "original_qty": 11,
+    "sold_at": 155.26,
+    "remaining_qty": 0,
+    "recover_qty": 11,
+    "status": "WAITING"
+  },
+  {
+    "symbol": "USO",
+    "side": "LONG",
+    "original_entry": 114.89,
+    "original_qty": 60,
+    "sold_at": 114.91,
+    "remaining_qty": 40,
+    "recover_qty": 20,
+    "status": "RECOVERED",
+    "signal_price": 115.21,
+    "signal_time": "2026-03-24T16:56:14.314816+00:00",
+    "signal_score": 8,
+    "signal_reasons": [
+      "WT_EXHAUST_DOWN",
+      "WT_DIV_HIDDEN_BULL",
+      "HA_GREEN"
+    ]
+  },
+  {
+    "symbol": "MU",
+    "side": "LONG",
+    "original_entry": 392.42,
+    "original_qty": 4,
+    "sold_at": 392.42,
+    "remaining_qty": 0,
+    "recover_qty": 4,
+    "status": "RECOVERED"
+  },
+  {
+    "symbol": "FIVN",
+    "side": "SHORT",
+    "original_entry": 15.41,
+    "original_qty": 280,
+    "sold_at": 15.41,
+    "remaining_qty": 0,
+    "recover_qty": 280,
+    "status": "RECOVERED",
+    "signal_price": 15.165,
+    "signal_time": "2026-03-24T23:17:51.470181+00:00",
+    "signal_score": 8,
+    "signal_reasons": [
+      "WT_BEAR_CROSS",
+      "WT_EXHAUST_UP",
+      "WT1<WT2"
+    ]
+  },
+  {
+    "symbol": "GLD",
+    "side": "LONG",
+    "original_entry": 406.92,
+    "original_qty": 6,
+    "sold_at": 406.92,
+    "remaining_qty": 0,
+    "recover_qty": 6,
+    "status": "RECOVERED",
+    "signal_price": 406.48,
+    "signal_time": "2026-03-24T16:56:14.790339+00:00",
+    "signal_score": 9,
+    "signal_reasons": [
+      "WT_OS(16pct)",
+      "WT_EXHAUST_DOWN",
+      "WT_TROUGH_HL",
+      "HA_GREEN"
+    ]
+  }
+]

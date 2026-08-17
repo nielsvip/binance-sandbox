@@ -1,0 +1,5164 @@
+{
+    "1000BONKUSDC": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.002815,
+                    "timestamp": "2026-08-04T18:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.002787,
+                    "timestamp": "2026-08-04T17:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.002812,
+                    "timestamp": "2026-08-04T17:42:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.002789,
+                    "timestamp": "2026-08-04T16:03:00.000000Z"
+                }
+            },
+            "stoch_k": 97.02976734397983,
+            "stoch_d": 93.78815076117137,
+            "stoch_k_prev": 95.3841367042894,
+            "stoch_d_prev": 88.95054823524488,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.002801,
+                    "timestamp": "2026-08-04T10:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.002813,
+                    "timestamp": "2026-08-04T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.002827,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00285,
+                    "timestamp": "2026-08-03T21:30:00.000000Z"
+                }
+            },
+            "stoch_k": 14.299413906125674,
+            "stoch_d": 26.72182066442049,
+            "stoch_k_prev": 27.27756701694534,
+            "stoch_d_prev": 38.20165347008016,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.002766,
+                    "timestamp": "2026-08-01T21:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00279,
+                    "timestamp": "2026-08-01T13:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.002827,
+                    "timestamp": "2026-08-01T05:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.002765,
+                    "timestamp": "2026-07-31T21:00:00.000000Z"
+                }
+            },
+            "stoch_k": 98.59938864640726,
+            "stoch_d": 95.74646020536295,
+            "stoch_k_prev": 94.31999598484079,
+            "stoch_d_prev": 91.45365996133744,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.002755,
+                    "timestamp": "2026-07-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.003634,
+                    "timestamp": "2026-07-16T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.002795,
+                    "timestamp": "2026-07-20T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.003793,
+                    "timestamp": "2026-07-14T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 94.18325907899926,
+            "stoch_d": 95.46198471554668,
+            "stoch_k_prev": 98.15367098216598,
+            "stoch_d_prev": 92.62067065160619,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004147,
+                    "timestamp": "2026-06-27T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004351,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00443254,
+                    "timestamp": "2026-07-07T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004519,
+                    "timestamp": "2026-06-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 76.1839804910591,
+            "stoch_d": 87.38501088223082,
+            "stoch_k_prev": 91.502484114158,
+            "stoch_d_prev": 95.11728591633056,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000CHEEMSUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0004982,
+                    "timestamp": "2026-08-04T18:18:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0004987,
+                    "timestamp": "2026-08-04T17:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0004985,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0004987,
+                    "timestamp": "2026-08-04T17:39:00.000000Z"
+                }
+            },
+            "stoch_k": 49.897437575185826,
+            "stoch_d": 29.85203376796514,
+            "stoch_k_prev": 26.439109152473023,
+            "stoch_d_prev": 13.219554576236527,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00049741,
+                    "timestamp": "2026-08-04T12:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0004974,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0004965,
+                    "timestamp": "2026-08-04T11:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0005017,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                }
+            },
+            "stoch_k": 33.30124691839236,
+            "stoch_d": 30.09358720673195,
+            "stoch_k_prev": 25.691674279324587,
+            "stoch_d_prev": 27.28750060397299,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0004752,
+                    "timestamp": "2026-08-01T23:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0004806,
+                    "timestamp": "2026-08-01T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0004872,
+                    "timestamp": "2026-07-30T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0004787,
+                    "timestamp": "2026-07-30T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 58.542785482504826,
+            "stoch_d": 47.83943803066196,
+            "stoch_k_prev": 47.374844865729024,
+            "stoch_d_prev": 37.14015028946714,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0004622,
+                    "timestamp": "2026-07-19T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0004486,
+                    "timestamp": "2026-07-14T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0004691,
+                    "timestamp": "2026-07-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.000474,
+                    "timestamp": "2026-07-15T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 81.38587545848846,
+            "stoch_d": 82.55129461319764,
+            "stoch_k_prev": 87.73387859975257,
+            "stoch_d_prev": 77.7698928141066,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.000476,
+                    "timestamp": "2026-06-27T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0005531,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0005633,
+                    "timestamp": "2026-06-15T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0006939,
+                    "timestamp": "2026-05-24T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 97.8251895720624,
+            "stoch_d": 97.8251895720624,
+            "stoch_k_prev": 97.8251895720624,
+            "stoch_d_prev": 97.00315179864418,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000FLOKIUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.02056,
+                    "timestamp": "2026-08-04T18:06:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.02049,
+                    "timestamp": "2026-08-04T17:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.02054,
+                    "timestamp": "2026-08-04T17:48:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.02052,
+                    "timestamp": "2026-08-04T17:15:00.000000Z"
+                }
+            },
+            "stoch_k": 62.59383770028237,
+            "stoch_d": 53.084042443272864,
+            "stoch_k_prev": 60.13595904564176,
+            "stoch_d_prev": 42.3787383693919,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.02047,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.02046624,
+                    "timestamp": "2026-08-04T09:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.02042,
+                    "timestamp": "2026-08-04T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.02054,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                }
+            },
+            "stoch_k": 45.897920218889176,
+            "stoch_d": 62.217605005875384,
+            "stoch_k_prev": 65.86683434233075,
+            "stoch_d_prev": 74.8880604564062,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.02016,
+                    "timestamp": "2026-08-01T23:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0206,
+                    "timestamp": "2026-08-01T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.02061,
+                    "timestamp": "2026-08-01T07:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.02053,
+                    "timestamp": "2026-07-31T02:00:00.000000Z"
+                }
+            },
+            "stoch_k": 40.053269811696914,
+            "stoch_d": 34.04847618381168,
+            "stoch_k_prev": 32.99237673624025,
+            "stoch_d_prev": 27.5503490453673,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.02107,
+                    "timestamp": "2026-07-19T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.02153,
+                    "timestamp": "2026-07-18T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.02213,
+                    "timestamp": "2026-07-15T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0232,
+                    "timestamp": "2026-07-11T04:00:00.000000Z"
+                }
+            },
+            "stoch_k": 98.07484040264376,
+            "stoch_d": 91.10963522120387,
+            "stoch_k_prev": 87.62703263048392,
+            "stoch_d_prev": 87.47499492355672,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.02214,
+                    "timestamp": "2026-07-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.02429,
+                    "timestamp": "2026-06-08T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.02579,
+                    "timestamp": "2026-06-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.03525,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 88.09254228984634,
+            "stoch_d": 92.56499439415215,
+            "stoch_k_prev": 93.65134991351408,
+            "stoch_d_prev": 90.70987107505032,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000LUNCUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.04997,
+                    "timestamp": "2026-08-04T17:42:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04985,
+                    "timestamp": "2026-08-04T16:33:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.04991,
+                    "timestamp": "2026-08-04T17:09:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04982,
+                    "timestamp": "2026-08-04T16:06:00.000000Z"
+                }
+            },
+            "stoch_k": 88.0131685788632,
+            "stoch_d": 94.67808730660845,
+            "stoch_k_prev": 99.99999999999996,
+            "stoch_d_prev": 97.34739556064146,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.05053291,
+                    "timestamp": "2026-08-04T07:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05007,
+                    "timestamp": "2026-08-04T06:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.05029,
+                    "timestamp": "2026-08-04T08:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05008,
+                    "timestamp": "2026-08-04T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 9.249091969883906,
+            "stoch_d": 13.114549179949426,
+            "stoch_k_prev": 19.67182376992409,
+            "stoch_d_prev": 16.39794248540844,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.04883,
+                    "timestamp": "2026-08-02T01:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04927,
+                    "timestamp": "2026-07-31T18:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.04964,
+                    "timestamp": "2026-08-01T05:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04973,
+                    "timestamp": "2026-07-30T15:00:00.000000Z"
+                }
+            },
+            "stoch_k": 31.75139646076094,
+            "stoch_d": 23.331962017916116,
+            "stoch_k_prev": 22.50504249643768,
+            "stoch_d_prev": 15.515614680092867,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.05635,
+                    "timestamp": "2026-07-20T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05786,
+                    "timestamp": "2026-07-17T20:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.05998,
+                    "timestamp": "2026-07-15T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0611,
+                    "timestamp": "2026-07-10T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 46.44362400023598,
+            "stoch_d": 26.433268233431324,
+            "stoch_k_prev": 23.75135150006299,
+            "stoch_d_prev": 10.952060233352668,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.06174,
+                    "timestamp": "2026-07-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06098,
+                    "timestamp": "2026-06-27T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.06234,
+                    "timestamp": "2026-07-07T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06788,
+                    "timestamp": "2026-06-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 72.43907779631064,
+            "stoch_d": 83.37618088569918,
+            "stoch_k_prev": 82.57171245342435,
+            "stoch_d_prev": 88.27896554259657,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000PEPEUSDC": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0029079,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0029098,
+                    "timestamp": "2026-08-04T17:33:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0029078,
+                    "timestamp": "2026-08-04T17:09:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0028997,
+                    "timestamp": "2026-08-04T15:57:00.000000Z"
+                }
+            },
+            "stoch_k": 96.23993735513989,
+            "stoch_d": 97.10128323275914,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 94.20406640701255,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0029135,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0029225,
+                    "timestamp": "2026-08-04T07:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0029005,
+                    "timestamp": "2026-08-04T11:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0029273,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                }
+            },
+            "stoch_k": 26.897073588522147,
+            "stoch_d": 46.539661562522305,
+            "stoch_k_prev": 44.8189348528226,
+            "stoch_d_prev": 61.55377122072488,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0027618,
+                    "timestamp": "2026-08-01T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0027639,
+                    "timestamp": "2026-07-31T13:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0027771,
+                    "timestamp": "2026-08-01T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0027496,
+                    "timestamp": "2026-07-31T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 77.15007439106232,
+            "stoch_d": 61.19392712043711,
+            "stoch_k_prev": 58.47199622862123,
+            "stoch_d_prev": 48.44141451794502,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0027409,
+                    "timestamp": "2026-07-17T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0027401,
+                    "timestamp": "2026-07-14T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0028201,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0028006,
+                    "timestamp": "2026-07-15T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 75.49432941690345,
+            "stoch_d": 73.99206285581697,
+            "stoch_k_prev": 71.15443929171113,
+            "stoch_d_prev": 73.18971341952941,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0024432,
+                    "timestamp": "2026-07-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0028129,
+                    "timestamp": "2026-06-08T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0028362,
+                    "timestamp": "2026-06-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0041413,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.82453929260173,
+            "stoch_d": 95.81295758262273,
+            "stoch_k_prev": 96.21810990955396,
+            "stoch_d_prev": 96.05934549021693,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000SATSUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 9.71e-06,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.66e-06,
+                    "timestamp": "2026-08-04T15:42:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 9.7e-06,
+                    "timestamp": "2026-08-04T17:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.67e-06,
+                    "timestamp": "2026-08-04T16:48:00.000000Z"
+                }
+            },
+            "stoch_k": 91.8342262969707,
+            "stoch_d": 86.96426238754661,
+            "stoch_k_prev": 90.36080022967758,
+            "stoch_d_prev": 82.84063442346115,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 9.73e-06,
+                    "timestamp": "2026-08-04T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.87e-06,
+                    "timestamp": "2026-08-04T06:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 9.71e-06,
+                    "timestamp": "2026-08-04T13:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.81e-06,
+                    "timestamp": "2026-08-04T09:15:00.000000Z"
+                }
+            },
+            "stoch_k": 73.85970399087984,
+            "stoch_d": 85.53040449084027,
+            "stoch_k_prev": 88.78237146280793,
+            "stoch_d_prev": 85.34117372754656,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.103e-05,
+                    "timestamp": "2026-08-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.215e-05,
+                    "timestamp": "2026-08-01T11:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.024e-05,
+                    "timestamp": "2026-08-01T03:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.002e-05,
+                    "timestamp": "2026-07-31T19:00:00.000000Z"
+                }
+            },
+            "stoch_k": 63.525021255160176,
+            "stoch_d": 50.19718245668792,
+            "stoch_k_prev": 55.645253415192094,
+            "stoch_d_prev": 35.63940588217992,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 9.52e-06,
+                    "timestamp": "2026-07-19T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.5e-06,
+                    "timestamp": "2026-07-17T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 9.53e-06,
+                    "timestamp": "2026-07-19T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.7e-06,
+                    "timestamp": "2026-07-16T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 84.20738316247373,
+            "stoch_d": 70.93797064018808,
+            "stoch_k_prev": 71.91603988401641,
+            "stoch_d_prev": 59.73496840676935,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 9.37e-06,
+                    "timestamp": "2026-06-28T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.31e-06,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 9.71e-06,
+                    "timestamp": "2026-07-07T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.49e-06,
+                    "timestamp": "2026-06-22T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 78.63024689491299,
+            "stoch_d": 85.06827725542297,
+            "stoch_k_prev": 84.609169045053,
+            "stoch_d_prev": 87.4192269537959,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000SHIBUSDC": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004995,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004993,
+                    "timestamp": "2026-08-04T17:33:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.005011,
+                    "timestamp": "2026-08-04T17:12:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005011,
+                    "timestamp": "2026-08-04T16:03:00.000000Z"
+                }
+            },
+            "stoch_k": 97.02082286774593,
+            "stoch_d": 93.97503600829657,
+            "stoch_k_prev": 97.88160628404898,
+            "stoch_d_prev": 85.52915937558664,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004939,
+                    "timestamp": "2026-08-04T07:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004991,
+                    "timestamp": "2026-08-04T03:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00501033,
+                    "timestamp": "2026-08-04T12:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004979,
+                    "timestamp": "2026-08-04T11:30:00.000000Z"
+                }
+            },
+            "stoch_k": 54.21663760671429,
+            "stoch_d": 65.05072391356592,
+            "stoch_k_prev": 68.16322509445811,
+            "stoch_d_prev": 74.4950602115389,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004658,
+                    "timestamp": "2026-07-31T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004631,
+                    "timestamp": "2026-07-30T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004872,
+                    "timestamp": "2026-08-01T05:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004708,
+                    "timestamp": "2026-07-31T21:00:00.000000Z"
+                }
+            },
+            "stoch_k": 4.545124003737437,
+            "stoch_d": 2.1046930627499507,
+            "stoch_k_prev": 0.2415757895624209,
+            "stoch_d_prev": 1.0182529299666219,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004138,
+                    "timestamp": "2026-07-17T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004131,
+                    "timestamp": "2026-07-17T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004147,
+                    "timestamp": "2026-07-18T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004223,
+                    "timestamp": "2026-07-16T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 95.39285586134186,
+            "stoch_k_prev": 93.08928379201272,
+            "stoch_d_prev": 86.54011027142137,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004199,
+                    "timestamp": "2026-06-30T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004718,
+                    "timestamp": "2026-06-08T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004751,
+                    "timestamp": "2026-06-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006416,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.6024687000952,
+            "stoch_d": 96.2972347648798,
+            "stoch_k_prev": 96.72528071942524,
+            "stoch_d_prev": 95.86475510582501,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000XECUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.006492,
+                    "timestamp": "2026-08-04T17:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006599,
+                    "timestamp": "2026-08-04T16:18:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.006533,
+                    "timestamp": "2026-08-04T18:18:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006577,
+                    "timestamp": "2026-08-04T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 88.69228121868493,
+            "stoch_d": 81.76699436918075,
+            "stoch_k_prev": 76.55707693729317,
+            "stoch_d_prev": 81.49116586915518,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.006309,
+                    "timestamp": "2026-08-04T06:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006504,
+                    "timestamp": "2026-08-03T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00631,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00629415,
+                    "timestamp": "2026-08-04T08:45:00.000000Z"
+                }
+            },
+            "stoch_k": 98.01201776313466,
+            "stoch_d": 97.36748874464642,
+            "stoch_k_prev": 98.01201776313464,
+            "stoch_d_prev": 88.46030730928966,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.006691,
+                    "timestamp": "2026-08-02T02:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006604,
+                    "timestamp": "2026-08-01T13:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.006853,
+                    "timestamp": "2026-08-01T19:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006746,
+                    "timestamp": "2026-07-31T14:00:00.000000Z"
+                }
+            },
+            "stoch_k": 21.838768475799387,
+            "stoch_d": 18.139653592626566,
+            "stoch_k_prev": 16.688551935433527,
+            "stoch_d_prev": 22.400641783301676,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00672,
+                    "timestamp": "2026-07-17T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00569,
+                    "timestamp": "2026-07-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.008721,
+                    "timestamp": "2026-07-18T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.007789,
+                    "timestamp": "2026-07-18T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 0.11338771366656729,
+            "stoch_d": 1.2036857942549801,
+            "stoch_k_prev": 0.047764664708999115,
+            "stoch_d_prev": 2.315858224495859,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.005089,
+                    "timestamp": "2026-06-27T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005403,
+                    "timestamp": "2026-06-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00536,
+                    "timestamp": "2026-06-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00789,
+                    "timestamp": "2026-05-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 95.57511740377383,
+            "stoch_d": 97.93118695960682,
+            "stoch_k_prev": 98.2571147807874,
+            "stoch_d_prev": 98.92731500407444,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1000000MOGUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1015,
+                    "timestamp": "2026-08-04T18:06:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1008,
+                    "timestamp": "2026-08-04T16:48:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1014,
+                    "timestamp": "2026-08-04T17:18:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1013,
+                    "timestamp": "2026-08-04T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 70.48114372669534,
+            "stoch_d": 66.2029167685471,
+            "stoch_k_prev": 70.49584819924759,
+            "stoch_d_prev": 60.35574708308641,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1009,
+                    "timestamp": "2026-08-04T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1014,
+                    "timestamp": "2026-08-04T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1006,
+                    "timestamp": "2026-08-04T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.102,
+                    "timestamp": "2026-08-04T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 40.29067547792304,
+            "stoch_d": 59.96349654977022,
+            "stoch_k_prev": 61.1870508477953,
+            "stoch_d_prev": 77.41949612774569,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0967,
+                    "timestamp": "2026-08-01T21:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0984,
+                    "timestamp": "2026-08-01T02:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0978,
+                    "timestamp": "2026-08-01T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1004,
+                    "timestamp": "2026-07-30T13:00:00.000000Z"
+                }
+            },
+            "stoch_k": 85.21848405016736,
+            "stoch_d": 84.6405743199825,
+            "stoch_k_prev": 83.05592658363099,
+            "stoch_d_prev": 83.0151393562972,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1014,
+                    "timestamp": "2026-07-17T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1018,
+                    "timestamp": "2026-07-13T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1057,
+                    "timestamp": "2026-07-15T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1036,
+                    "timestamp": "2026-07-11T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 79.33057170957142,
+            "stoch_k_prev": 77.98548811361667,
+            "stoch_d_prev": 62.7348340436559,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1064,
+                    "timestamp": "2026-06-29T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.11,
+                    "timestamp": "2026-06-08T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1141,
+                    "timestamp": "2026-06-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.16,
+                    "timestamp": "2026-05-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 82.81543204238979,
+            "stoch_d": 91.61090300722054,
+            "stoch_k_prev": 94.25810199354596,
+            "stoch_d_prev": 97.33909232642395,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1INCHUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08161,
+                    "timestamp": "2026-08-04T18:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08151,
+                    "timestamp": "2026-08-04T17:21:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0819,
+                    "timestamp": "2026-08-04T18:21:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08154,
+                    "timestamp": "2026-08-04T17:36:00.000000Z"
+                }
+            },
+            "stoch_k": 69.61303968365701,
+            "stoch_d": 84.46763536776201,
+            "stoch_k_prev": 86.93805331341785,
+            "stoch_d_prev": 94.59662213987637,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08094,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08088,
+                    "timestamp": "2026-08-04T10:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.08106,
+                    "timestamp": "2026-08-04T08:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08103,
+                    "timestamp": "2026-08-04T05:15:00.000000Z"
+                }
+            },
+            "stoch_k": 91.77022086490744,
+            "stoch_d": 96.24991197403845,
+            "stoch_k_prev": 98.489757528604,
+            "stoch_d_prev": 98.27034922017992,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08038,
+                    "timestamp": "2026-08-01T21:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08085,
+                    "timestamp": "2026-08-01T14:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.08158,
+                    "timestamp": "2026-08-01T07:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08587,
+                    "timestamp": "2026-07-30T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 94.52027695659642,
+            "stoch_d": 94.52027695659642,
+            "stoch_k_prev": 94.52027695659642,
+            "stoch_d_prev": 94.40089230067584,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.07219,
+                    "timestamp": "2026-07-17T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0722,
+                    "timestamp": "2026-07-14T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.07239,
+                    "timestamp": "2026-07-19T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.07507,
+                    "timestamp": "2026-07-15T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 98.49775375516185,
+            "stoch_d": 91.95595522308928,
+            "stoch_k_prev": 93.2491624807215,
+            "stoch_d_prev": 87.35694246742908,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0683,
+                    "timestamp": "2026-07-01T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0679,
+                    "timestamp": "2026-06-28T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.073,
+                    "timestamp": "2026-06-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0995,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 99.7469288425089,
+            "stoch_d": 99.91564294750295,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 100,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "1MBABYDOGEUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0003095,
+                    "timestamp": "2026-08-04T16:33:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003094,
+                    "timestamp": "2026-08-04T15:36:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0003121,
+                    "timestamp": "2026-08-04T17:48:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003096,
+                    "timestamp": "2026-08-04T16:03:00.000000Z"
+                }
+            },
+            "stoch_k": 62.15077625579003,
+            "stoch_d": 56.11487447599227,
+            "stoch_k_prev": 56.93754061487851,
+            "stoch_d_prev": 49.06555478783499,
+            "stoch_timestamp": "2026-08-04T18:21:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0003072,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.000308,
+                    "timestamp": "2026-08-03T23:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0003093,
+                    "timestamp": "2026-08-04T09:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003085,
+                    "timestamp": "2026-08-04T02:45:00.000000Z"
+                }
+            },
+            "stoch_k": 3.3309598587866915,
+            "stoch_d": 5.251551572439781,
+            "stoch_k_prev": 6.2118474292663395,
+            "stoch_d_prev": 6.980554503247514,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0003026,
+                    "timestamp": "2026-08-02T01:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003033,
+                    "timestamp": "2026-07-31T15:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0003106,
+                    "timestamp": "2026-07-31T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003032,
+                    "timestamp": "2026-07-31T10:00:00.000000Z"
+                }
+            },
+            "stoch_k": 45.266366114311104,
+            "stoch_d": 30.590646078103862,
+            "stoch_k_prev": 31.550360334026312,
+            "stoch_d_prev": 18.78782507954318,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0003018,
+                    "timestamp": "2026-07-18T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003132,
+                    "timestamp": "2026-07-14T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0003004,
+                    "timestamp": "2026-07-19T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003274,
+                    "timestamp": "2026-07-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.13186812670035,
+            "stoch_d": 86.04585564745804,
+            "stoch_k_prev": 80.86005821402875,
+            "stoch_d_prev": 81.2534513982376,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0002908,
+                    "timestamp": "2026-07-01T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003371,
+                    "timestamp": "2026-06-11T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0003285,
+                    "timestamp": "2026-06-18T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0003698,
+                    "timestamp": "2026-06-02T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 94.95877996089236,
+            "stoch_d": 96.30317681969505,
+            "stoch_k_prev": 96.97537524909633,
+            "stoch_d_prev": 96.40672980311092,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "AAVEUSDC": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 89.92,
+                    "timestamp": "2026-08-04T15:36:00.000000Z"
+                },
+                "previous": {
+                    "price": 91.16,
+                    "timestamp": "2026-08-04T14:24:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 90.29,
+                    "timestamp": "2026-08-04T17:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 89.99,
+                    "timestamp": "2026-08-04T17:15:00.000000Z"
+                }
+            },
+            "stoch_k": 16.248761377001276,
+            "stoch_d": 47.42513712990958,
+            "stoch_k_prev": 49.582094710334616,
+            "stoch_d_prev": 72.05667698201428,
+            "stoch_timestamp": "2026-08-04T17:51:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 91.94,
+                    "timestamp": "2026-08-04T10:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 92.52,
+                    "timestamp": "2026-08-04T07:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 92.6,
+                    "timestamp": "2026-08-04T02:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 93.11,
+                    "timestamp": "2026-08-03T16:30:00.000000Z"
+                }
+            },
+            "stoch_k": 18.088985353415268,
+            "stoch_d": 15.180132566630876,
+            "stoch_k_prev": 7.883965505195692,
+            "stoch_d_prev": 21.68832893284026,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 90.03,
+                    "timestamp": "2026-08-01T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 93.17,
+                    "timestamp": "2026-08-01T02:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 90.93,
+                    "timestamp": "2026-08-01T18:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 98.79,
+                    "timestamp": "2026-07-30T21:00:00.000000Z"
+                }
+            },
+            "stoch_k": 94.78403373202553,
+            "stoch_d": 86.1001390329447,
+            "stoch_k_prev": 90.2086847822515,
+            "stoch_d_prev": 69.56890496200225,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 89.51,
+                    "timestamp": "2026-07-18T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 95.21,
+                    "timestamp": "2026-07-14T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 89.61,
+                    "timestamp": "2026-07-20T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 89.07,
+                    "timestamp": "2026-07-19T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 76.79342671271006,
+            "stoch_d": 87.80399445328023,
+            "stoch_k_prev": 90.15972152382626,
+            "stoch_d_prev": 92.24437938313226,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 63.42,
+                    "timestamp": "2026-06-08T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 82.74,
+                    "timestamp": "2026-05-30T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 85.09,
+                    "timestamp": "2026-06-30T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 96.62,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 55.73352239897963,
+            "stoch_d": 50.65510428592696,
+            "stoch_k_prev": 49.19739927592125,
+            "stoch_d_prev": 46.70688558043643,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ACEUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0701,
+                    "timestamp": "2026-08-04T17:39:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0686,
+                    "timestamp": "2026-08-04T16:12:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.06917,
+                    "timestamp": "2026-08-04T17:06:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06873,
+                    "timestamp": "2026-08-04T16:27:00.000000Z"
+                }
+            },
+            "stoch_k": 86.87780394961408,
+            "stoch_d": 87.70177538666185,
+            "stoch_k_prev": 92.28791649350036,
+            "stoch_d_prev": 83.74020361864122,
+            "stoch_timestamp": "2026-08-04T17:54:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.06569,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0654,
+                    "timestamp": "2026-08-04T03:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.06706,
+                    "timestamp": "2026-08-04T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06668,
+                    "timestamp": "2026-08-04T10:00:00.000000Z"
+                }
+            },
+            "stoch_k": 4.89949255605316,
+            "stoch_d": 23.268374791545114,
+            "stoch_k_prev": 21.928557642117145,
+            "stoch_d_prev": 39.73054517712292,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.06518,
+                    "timestamp": "2026-08-01T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06428,
+                    "timestamp": "2026-07-30T23:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.06683,
+                    "timestamp": "2026-08-01T23:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06697,
+                    "timestamp": "2026-07-31T23:00:00.000000Z"
+                }
+            },
+            "stoch_k": 35.30539832390043,
+            "stoch_d": 35.33947910230609,
+            "stoch_k_prev": 31.540836196576084,
+            "stoch_d_prev": 44.98274779942409,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.06704,
+                    "timestamp": "2026-07-19T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06809,
+                    "timestamp": "2026-07-18T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.11883,
+                    "timestamp": "2026-07-20T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0729,
+                    "timestamp": "2026-07-11T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 75.52653573303924,
+            "stoch_d": 87.71002421634762,
+            "stoch_k_prev": 87.60353691600345,
+            "stoch_d_prev": 95.86784563866786,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08504,
+                    "timestamp": "2026-06-13T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1133,
+                    "timestamp": "2026-05-30T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1091,
+                    "timestamp": "2026-06-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1376,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 85.80918445448386,
+            "stoch_d": 92.32847655100113,
+            "stoch_k_prev": 94.05468018189292,
+            "stoch_d_prev": 94.37707727919712,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ACHUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004342,
+                    "timestamp": "2026-08-04T17:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004391,
+                    "timestamp": "2026-08-04T16:21:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004435,
+                    "timestamp": "2026-08-04T15:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004423,
+                    "timestamp": "2026-08-04T14:54:00.000000Z"
+                }
+            },
+            "stoch_k": 74.1761662467605,
+            "stoch_d": 52.37426086132706,
+            "stoch_k_prev": 58.139974835277,
+            "stoch_d_prev": 37.8893780371185,
+            "stoch_timestamp": "2026-08-04T17:51:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004355,
+                    "timestamp": "2026-08-04T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004303,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004484,
+                    "timestamp": "2026-08-04T13:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004372,
+                    "timestamp": "2026-08-04T09:15:00.000000Z"
+                }
+            },
+            "stoch_k": 78.38769876986566,
+            "stoch_d": 82.7401058107131,
+            "stoch_k_prev": 82.17755607187699,
+            "stoch_d_prev": 84.17702277519383,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004435,
+                    "timestamp": "2026-08-01T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004578,
+                    "timestamp": "2026-08-01T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004698,
+                    "timestamp": "2026-07-31T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004581,
+                    "timestamp": "2026-07-31T17:00:00.000000Z"
+                }
+            },
+            "stoch_k": 72.28713276578189,
+            "stoch_d": 64.05133149813857,
+            "stoch_k_prev": 66.46505268689447,
+            "stoch_d_prev": 52.71795775156994,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004284,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00447,
+                    "timestamp": "2026-07-17T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004525,
+                    "timestamp": "2026-07-16T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00436,
+                    "timestamp": "2026-07-11T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 94.87181687946814,
+            "stoch_d": 65.35194561845356,
+            "stoch_k_prev": 63.08464763156433,
+            "stoch_d_prev": 39.17605409624448,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004375,
+                    "timestamp": "2026-07-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005449,
+                    "timestamp": "2026-06-11T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.005103,
+                    "timestamp": "2026-06-18T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.007338,
+                    "timestamp": "2026-04-30T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 97.50739105545613,
+            "stoch_d": 97.82744059554487,
+            "stoch_k_prev": 97.45030407780814,
+            "stoch_d_prev": 92.60948205497321,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ACTUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00881,
+                    "timestamp": "2026-08-04T17:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008747,
+                    "timestamp": "2026-08-04T15:39:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00882,
+                    "timestamp": "2026-08-04T16:39:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00883,
+                    "timestamp": "2026-08-04T14:48:00.000000Z"
+                }
+            },
+            "stoch_k": 15.572420154387467,
+            "stoch_d": 17.89323620117447,
+            "stoch_k_prev": 13.943205104353202,
+            "stoch_d_prev": 27.24994340127476,
+            "stoch_timestamp": "2026-08-04T17:51:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.008763,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008855,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.008968,
+                    "timestamp": "2026-08-04T09:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008827,
+                    "timestamp": "2026-08-04T04:00:00.000000Z"
+                }
+            },
+            "stoch_k": 99.89044694576408,
+            "stoch_d": 93.17774982037388,
+            "stoch_k_prev": 95.20202961828517,
+            "stoch_d_prev": 83.55218938869477,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.008837,
+                    "timestamp": "2026-08-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008915,
+                    "timestamp": "2026-08-01T14:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00881,
+                    "timestamp": "2026-07-31T18:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008743,
+                    "timestamp": "2026-07-31T12:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.93951447415246,
+            "stoch_d": 65.38722655396019,
+            "stoch_k_prev": 67.53638964905643,
+            "stoch_d_prev": 37.068841378049676,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00832,
+                    "timestamp": "2026-07-20T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0083,
+                    "timestamp": "2026-07-19T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00874,
+                    "timestamp": "2026-07-16T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00919,
+                    "timestamp": "2026-07-11T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 97.17973795333842,
+            "stoch_d": 89.27897580635887,
+            "stoch_k_prev": 95.73240121920175,
+            "stoch_d_prev": 70.74954812631383,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.011,
+                    "timestamp": "2026-06-28T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00995,
+                    "timestamp": "2026-06-08T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00981,
+                    "timestamp": "2026-07-01T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00909,
+                    "timestamp": "2026-06-18T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 47.76648498878211,
+            "stoch_d": 50.317467517120576,
+            "stoch_k_prev": 50.19196801692727,
+            "stoch_d_prev": 52.1266908803179,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ADAUSDC": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1923,
+                    "timestamp": "2026-08-04T17:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1929,
+                    "timestamp": "2026-08-04T16:24:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1929,
+                    "timestamp": "2026-08-04T15:51:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1923,
+                    "timestamp": "2026-08-04T14:51:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 3.0770936324017786,
+            "stoch_k_prev": 4.615640448602668,
+            "stoch_d_prev": 4.615640448602668,
+            "stoch_timestamp": "2026-08-04T18:00:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.19475088,
+                    "timestamp": "2026-08-04T12:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1951,
+                    "timestamp": "2026-08-04T09:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1936,
+                    "timestamp": "2026-08-04T10:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1956,
+                    "timestamp": "2026-08-04T04:45:00.000000Z"
+                }
+            },
+            "stoch_k": 37.45046939939062,
+            "stoch_d": 40.45169010733782,
+            "stoch_k_prev": 47.34466025682138,
+            "stoch_d_prev": 36.59860858812948,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.174,
+                    "timestamp": "2026-08-01T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1696,
+                    "timestamp": "2026-08-01T02:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1728,
+                    "timestamp": "2026-08-01T15:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1683,
+                    "timestamp": "2026-07-31T21:00:00.000000Z"
+                }
+            },
+            "stoch_k": 39.47659564361208,
+            "stoch_d": 30.430275314373798,
+            "stoch_k_prev": 22.993777938378802,
+            "stoch_d_prev": 26.60235040550464,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1655,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1641,
+                    "timestamp": "2026-07-17T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1644,
+                    "timestamp": "2026-07-18T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1628,
+                    "timestamp": "2026-07-16T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 84.36797078377298,
+            "stoch_d": 54.7935301849618,
+            "stoch_k_prev": 53.449574944100426,
+            "stoch_d_prev": 31.492748579295892,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1437,
+                    "timestamp": "2026-06-28T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1702,
+                    "timestamp": "2026-06-08T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1636,
+                    "timestamp": "2026-06-18T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2646,
+                    "timestamp": "2026-05-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.577950398771,
+            "stoch_d": 97.1710580112777,
+            "stoch_k_prev": 98.24218175871029,
+            "stoch_d_prev": 99.2094218371379,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "AGLDUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1474,
+                    "timestamp": "2026-08-04T16:48:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.147,
+                    "timestamp": "2026-08-04T15:42:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1475,
+                    "timestamp": "2026-08-04T17:09:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1475,
+                    "timestamp": "2026-08-04T16:33:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 0,
+            "stoch_k_prev": 0,
+            "stoch_d_prev": 6.768773043287652,
+            "stoch_timestamp": "2026-08-04T18:00:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1473,
+                    "timestamp": "2026-08-04T12:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1482,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1471,
+                    "timestamp": "2026-08-04T09:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1486,
+                    "timestamp": "2026-08-04T02:30:00.000000Z"
+                }
+            },
+            "stoch_k": 18.157332894704265,
+            "stoch_d": 22.38647068695937,
+            "stoch_k_prev": 24.89121839800924,
+            "stoch_d_prev": 23.857182508312544,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1482,
+                    "timestamp": "2026-08-02T02:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1464,
+                    "timestamp": "2026-08-01T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1516,
+                    "timestamp": "2026-08-01T17:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.147,
+                    "timestamp": "2026-08-01T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 23.063002158874202,
+            "stoch_d": 12.288279357838647,
+            "stoch_k_prev": 13.801835914641723,
+            "stoch_d_prev": 4.600611971547246,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.151,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1618,
+                    "timestamp": "2026-07-18T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1614,
+                    "timestamp": "2026-07-16T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.168,
+                    "timestamp": "2026-07-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 68.76450962915791,
+            "stoch_d": 48.798368839320176,
+            "stoch_k_prev": 42.23298969597351,
+            "stoch_d_prev": 31.54802588044843,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.2157,
+                    "timestamp": "2026-06-26T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1615,
+                    "timestamp": "2026-06-20T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.185,
+                    "timestamp": "2026-06-30T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2605,
+                    "timestamp": "2026-05-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 56.26904888560998,
+            "stoch_d": 58.62812405656599,
+            "stoch_k_prev": 58.87050319928682,
+            "stoch_d_prev": 60.82499333103882,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "AIUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-29T04:48:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-29T00:06:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-29T08:48:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-29T08:09:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 0,
+            "stoch_k_prev": 0,
+            "stoch_d_prev": 0,
+            "stoch_timestamp": "2026-07-01T11:45:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-25T02:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-24T10:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-25T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-25T09:00:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 0,
+            "stoch_k_prev": 0,
+            "stoch_d_prev": 0,
+            "stoch_timestamp": "2026-07-01T11:45:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-28T10:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-26T06:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-28T21:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-26T09:00:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 0,
+            "stoch_k_prev": 0,
+            "stoch_d_prev": 0,
+            "stoch_timestamp": "2026-06-30T23:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-26T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-22T20:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-06-28T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01716,
+                    "timestamp": "2026-05-22T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 100,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 100,
+            "stoch_timestamp": "2026-06-30T04:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01716,
+                    "timestamp": "2026-05-13T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01834,
+                    "timestamp": "2026-04-01T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.02106,
+                    "timestamp": "2026-04-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01929,
+                    "timestamp": "2026-04-14T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 100,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 100,
+            "stoch_timestamp": "2026-05-25T00:00:00.000000Z"
+        }
+    },
+    "ALGOUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08934,
+                    "timestamp": "2026-08-04T17:39:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0893,
+                    "timestamp": "2026-08-04T17:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.08969,
+                    "timestamp": "2026-08-04T17:09:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.09048,
+                    "timestamp": "2026-08-04T15:57:00.000000Z"
+                }
+            },
+            "stoch_k": 54.377716926430914,
+            "stoch_d": 57.831898179084185,
+            "stoch_k_prev": 63.522961971509666,
+            "stoch_d_prev": 55.31541692641028,
+            "stoch_timestamp": "2026-08-04T17:57:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.09089,
+                    "timestamp": "2026-08-04T13:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.09076,
+                    "timestamp": "2026-08-04T10:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.09058,
+                    "timestamp": "2026-08-04T11:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.09025,
+                    "timestamp": "2026-08-04T08:15:00.000000Z"
+                }
+            },
+            "stoch_k": 54.6173316288768,
+            "stoch_d": 36.291180269495385,
+            "stoch_k_prev": 36.48476046890633,
+            "stoch_d_prev": 27.79378409151629,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.079,
+                    "timestamp": "2026-08-01T21:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.07847,
+                    "timestamp": "2026-07-31T14:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0801,
+                    "timestamp": "2026-08-01T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.07992,
+                    "timestamp": "2026-08-01T12:00:00.000000Z"
+                }
+            },
+            "stoch_k": 25.223036959632026,
+            "stoch_d": 25.853343277740336,
+            "stoch_k_prev": 21.8381169895389,
+            "stoch_d_prev": 27.323891057537505,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0827,
+                    "timestamp": "2026-07-18T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0833,
+                    "timestamp": "2026-07-17T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0824,
+                    "timestamp": "2026-07-19T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.084,
+                    "timestamp": "2026-07-15T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 96.20928613706671,
+            "stoch_d": 78.77567512672492,
+            "stoch_k_prev": 75.9631886355843,
+            "stoch_d_prev": 68.80499621703673,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0875,
+                    "timestamp": "2026-06-28T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0926,
+                    "timestamp": "2026-06-14T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0936,
+                    "timestamp": "2026-06-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1122,
+                    "timestamp": "2026-06-02T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 91.58674125525107,
+            "stoch_d": 96.95484416445584,
+            "stoch_k_prev": 99.63889561905823,
+            "stoch_d_prev": 96.53578590962938,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ALTUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.005667,
+                    "timestamp": "2026-08-04T17:57:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005699,
+                    "timestamp": "2026-08-04T17:03:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.005695,
+                    "timestamp": "2026-08-04T16:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005668,
+                    "timestamp": "2026-08-04T15:06:00.000000Z"
+                }
+            },
+            "stoch_k": 18.114260824010934,
+            "stoch_d": 18.2469952335215,
+            "stoch_k_prev": 14.740297957424188,
+            "stoch_d_prev": 18.59030254413663,
+            "stoch_timestamp": "2026-08-04T18:03:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.005692,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005724,
+                    "timestamp": "2026-08-04T01:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00566049,
+                    "timestamp": "2026-08-04T11:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005706,
+                    "timestamp": "2026-08-04T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 60.17792791776364,
+            "stoch_d": 53.43290361324892,
+            "stoch_k_prev": 53.54160784281448,
+            "stoch_d_prev": 48.13319050160629,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00578,
+                    "timestamp": "2026-08-01T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005757,
+                    "timestamp": "2026-07-31T01:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.005863,
+                    "timestamp": "2026-08-01T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005803,
+                    "timestamp": "2026-07-31T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 65.28482775900541,
+            "stoch_d": 55.78479331288415,
+            "stoch_k_prev": 61.03438833179134,
+            "stoch_d_prev": 44.56175200162131,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.006382,
+                    "timestamp": "2026-07-20T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006442,
+                    "timestamp": "2026-07-17T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.006591,
+                    "timestamp": "2026-07-16T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006596,
+                    "timestamp": "2026-07-10T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 81.29091234963518,
+            "stoch_d": 48.96224822130639,
+            "stoch_k_prev": 49.46458282380865,
+            "stoch_d_prev": 21.865277438094655,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.005913,
+                    "timestamp": "2026-07-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006297,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.006289,
+                    "timestamp": "2026-06-21T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008003,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.16572777089648,
+            "stoch_d": 97.67093450599582,
+            "stoch_k_prev": 99.84707574709101,
+            "stoch_d_prev": 93.91241685322571,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ANKRUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.005158,
+                    "timestamp": "2026-03-27T22:39:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005183,
+                    "timestamp": "2026-03-27T22:06:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.005127,
+                    "timestamp": "2026-03-27T23:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005151,
+                    "timestamp": "2026-03-27T22:30:00.000000Z"
+                }
+            },
+            "stoch_k": 52.46306147130881,
+            "stoch_d": 59.679590542014324,
+            "stoch_k_prev": 58.7969011249842,
+            "stoch_d_prev": 69.96816602259993,
+            "stoch_timestamp": "2026-03-27T23:09:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004997,
+                    "timestamp": "2026-03-27T12:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004872,
+                    "timestamp": "2026-03-27T07:15:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004974,
+                    "timestamp": "2026-03-27T09:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00486,
+                    "timestamp": "2026-03-27T08:15:00.000000Z"
+                }
+            },
+            "stoch_k": 91.97229666628522,
+            "stoch_d": 90.19462114099322,
+            "stoch_k_prev": 92.48678699265872,
+            "stoch_d_prev": 87.7727887295567,
+            "stoch_timestamp": "2026-03-27T14:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.004708,
+                    "timestamp": "2026-03-26T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005009,
+                    "timestamp": "2026-03-25T07:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004929,
+                    "timestamp": "2026-03-27T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004808,
+                    "timestamp": "2026-03-27T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 62.88662390756142,
+            "stoch_d": 70.14180840700597,
+            "stoch_k_prev": 67.22430883045831,
+            "stoch_d_prev": 78.30040557195412,
+            "stoch_timestamp": "2026-03-27T12:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.005287,
+                    "timestamp": "2026-03-23T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004999,
+                    "timestamp": "2026-03-20T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.005462,
+                    "timestamp": "2026-03-21T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.005355,
+                    "timestamp": "2026-03-18T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 0.7122252383781316,
+            "stoch_d": 0.7122252383781316,
+            "stoch_k_prev": 0.7122252383781316,
+            "stoch_d_prev": 0.47481682558542104,
+            "stoch_timestamp": "2026-03-25T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.005806,
+                    "timestamp": "2026-02-03T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.006345,
+                    "timestamp": "2026-01-23T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.004329,
+                    "timestamp": "2026-03-09T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.004403,
+                    "timestamp": "2026-02-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 98.7454577749292,
+            "stoch_d": 97.22637103957008,
+            "stoch_k_prev": 98.7454577749292,
+            "stoch_d_prev": 94.19275582454928,
+            "stoch_timestamp": "2026-03-19T00:00:00.000000Z"
+        }
+    },
+    "APEUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1317,
+                    "timestamp": "2026-08-04T17:54:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1319,
+                    "timestamp": "2026-08-04T17:42:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1319,
+                    "timestamp": "2026-08-04T17:09:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1323,
+                    "timestamp": "2026-08-04T16:06:00.000000Z"
+                }
+            },
+            "stoch_k": 26.56850118247891,
+            "stoch_d": 23.46755575709825,
+            "stoch_k_prev": 15.098563991015668,
+            "stoch_d_prev": 25.455856581669654,
+            "stoch_timestamp": "2026-08-04T17:54:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1335,
+                    "timestamp": "2026-08-04T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1333,
+                    "timestamp": "2026-08-04T09:15:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.134,
+                    "timestamp": "2026-08-04T11:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1331,
+                    "timestamp": "2026-08-04T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 4.827695732239535,
+            "stoch_d": 14.417650108066406,
+            "stoch_k_prev": 15.263182353201733,
+            "stoch_d_prev": 18.919877032826015,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1308,
+                    "timestamp": "2026-07-31T05:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.14,
+                    "timestamp": "2026-07-29T23:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1346,
+                    "timestamp": "2026-08-01T03:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1334,
+                    "timestamp": "2026-07-31T18:00:00.000000Z"
+                }
+            },
+            "stoch_k": 4.1416095392280186,
+            "stoch_d": 3.3774535615148387,
+            "stoch_k_prev": 2.995375572658291,
+            "stoch_d_prev": 2.995375572658291,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1433,
+                    "timestamp": "2026-07-20T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1456,
+                    "timestamp": "2026-07-19T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.143,
+                    "timestamp": "2026-07-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1529,
+                    "timestamp": "2026-07-16T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 75.74165604090322,
+            "stoch_d": 51.36148046611189,
+            "stoch_k_prev": 51.80052955296085,
+            "stoch_d_prev": 30.09572507189129,
+            "stoch_timestamp": "2026-07-20T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1312,
+                    "timestamp": "2026-06-11T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.141,
+                    "timestamp": "2026-05-29T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1355,
+                    "timestamp": "2026-06-28T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.13,
+                    "timestamp": "2026-06-24T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 42.845909875685805,
+            "stoch_d": 58.546682543822556,
+            "stoch_k_prev": 61.90914877287917,
+            "stoch_d_prev": 64.81852806752677,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "API3USDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1883,
+                    "timestamp": "2026-08-04T17:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1884,
+                    "timestamp": "2026-08-04T17:21:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1886,
+                    "timestamp": "2026-08-04T16:54:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1885,
+                    "timestamp": "2026-08-04T16:42:00.000000Z"
+                }
+            },
+            "stoch_k": 28.179907562009365,
+            "stoch_d": 32.9889916037732,
+            "stoch_k_prev": 37.601855857547584,
+            "stoch_d_prev": 33.603469503839186,
+            "stoch_timestamp": "2026-08-04T17:54:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1897,
+                    "timestamp": "2026-08-04T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1914,
+                    "timestamp": "2026-08-04T01:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1923,
+                    "timestamp": "2026-08-04T06:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.191,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                }
+            },
+            "stoch_k": 12.58324355486173,
+            "stoch_d": 11.981580904273628,
+            "stoch_k_prev": 13.188608393472594,
+            "stoch_d_prev": 11.178129974148556,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1913,
+                    "timestamp": "2026-08-01T21:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1907,
+                    "timestamp": "2026-08-01T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1923,
+                    "timestamp": "2026-08-01T07:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1907,
+                    "timestamp": "2026-08-01T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.86119599199561,
+            "stoch_d": 93.27827419713257,
+            "stoch_k_prev": 92.60866994802468,
+            "stoch_d_prev": 93.11286108359316,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.2127,
+                    "timestamp": "2026-07-19T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2149,
+                    "timestamp": "2026-07-19T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.2233,
+                    "timestamp": "2026-07-16T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2207,
+                    "timestamp": "2026-07-15T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 99.37457833973417,
+            "stoch_d": 83.18802579891457,
+            "stoch_k_prev": 81.95020276947228,
+            "stoch_d_prev": 63.2850148366115,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.2347,
+                    "timestamp": "2026-07-03T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2528,
+                    "timestamp": "2026-06-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.2542,
+                    "timestamp": "2026-06-22T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.3223,
+                    "timestamp": "2026-04-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 97.75583090253896,
+            "stoch_d": 96.59012655116834,
+            "stoch_k_prev": 97.24081722716555,
+            "stoch_d_prev": 89.96172358483511,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "APTUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.9506,
+                    "timestamp": "2026-03-28T16:39:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.952,
+                    "timestamp": "2026-03-28T16:03:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.9519,
+                    "timestamp": "2026-03-28T17:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.9543,
+                    "timestamp": "2026-03-28T15:24:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 100,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 100,
+            "stoch_timestamp": "2026-03-28T17:54:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.9502,
+                    "timestamp": "2026-03-28T17:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.948,
+                    "timestamp": "2026-03-28T04:15:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.9529,
+                    "timestamp": "2026-03-28T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.9509,
+                    "timestamp": "2026-03-28T12:15:00.000000Z"
+                }
+            },
+            "stoch_k": 12.35734724014371,
+            "stoch_d": 16.811387462653176,
+            "stoch_k_prev": 21.640190381499405,
+            "stoch_d_prev": 15.786552763057173,
+            "stoch_timestamp": "2026-03-28T17:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.0236,
+                    "timestamp": "2026-03-27T07:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.0337,
+                    "timestamp": "2026-03-26T13:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.0285,
+                    "timestamp": "2026-03-27T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.0769,
+                    "timestamp": "2026-03-25T01:00:00.000000Z"
+                }
+            },
+            "stoch_k": 5.0911659995215635,
+            "stoch_d": 2.117484008659519,
+            "stoch_k_prev": 1.26128602645705,
+            "stoch_d_prev": 4.060967733774405,
+            "stoch_timestamp": "2026-03-27T13:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.9488,
+                    "timestamp": "2026-03-23T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.9871,
+                    "timestamp": "2026-03-20T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.0639,
+                    "timestamp": "2026-03-25T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.9717,
+                    "timestamp": "2026-03-21T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 32.78837583854621,
+            "stoch_d": 49.93419964943826,
+            "stoch_k_prev": 52.95389092017617,
+            "stoch_d_prev": 61.576301901777434,
+            "stoch_timestamp": "2026-03-25T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.917,
+                    "timestamp": "2026-03-15T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.0041,
+                    "timestamp": "2026-02-25T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.9278,
+                    "timestamp": "2026-03-08T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.8169,
+                    "timestamp": "2026-01-08T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 89.00135030944652,
+            "stoch_d": 72.9409877955339,
+            "stoch_k_prev": 79.14648846272648,
+            "stoch_d_prev": 51.903038154224156,
+            "stoch_timestamp": "2026-03-19T00:00:00.000000Z"
+        }
+    },
+    "ARBUSDC": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08163,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08128,
+                    "timestamp": "2026-08-04T17:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0816,
+                    "timestamp": "2026-08-04T17:42:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08157,
+                    "timestamp": "2026-08-04T15:57:00.000000Z"
+                }
+            },
+            "stoch_k": 68.88983620943304,
+            "stoch_d": 51.35062052339097,
+            "stoch_k_prev": 53.36458565110528,
+            "stoch_d_prev": 31.797439709634485,
+            "stoch_timestamp": "2026-08-04T18:09:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08234,
+                    "timestamp": "2026-08-04T09:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08259,
+                    "timestamp": "2026-08-04T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.08361,
+                    "timestamp": "2026-08-04T03:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08221,
+                    "timestamp": "2026-08-03T21:00:00.000000Z"
+                }
+            },
+            "stoch_k": 32.855651858072484,
+            "stoch_d": 33.74048423017988,
+            "stoch_k_prev": 29.009997823569762,
+            "stoch_d_prev": 37.469787669829984,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.07635,
+                    "timestamp": "2026-07-31T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.07756,
+                    "timestamp": "2026-07-31T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0783,
+                    "timestamp": "2026-08-01T05:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0769,
+                    "timestamp": "2026-07-31T21:00:00.000000Z"
+                }
+            },
+            "stoch_k": 94.53439943194506,
+            "stoch_d": 88.5823555496449,
+            "stoch_k_prev": 85.60633360849486,
+            "stoch_d_prev": 85.36633138329061,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.08841,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.08902,
+                    "timestamp": "2026-07-19T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0885,
+                    "timestamp": "2026-07-18T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.09287,
+                    "timestamp": "2026-07-10T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 88.88273898912759,
+            "stoch_d": 55.65881828678968,
+            "stoch_k_prev": 55.54940565579426,
+            "stoch_d_prev": 32.41625909485353,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.07386,
+                    "timestamp": "2026-06-28T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0803,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.07904,
+                    "timestamp": "2026-06-23T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1319,
+                    "timestamp": "2026-05-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 93.86346546033008,
+            "stoch_d": 95.42667685320181,
+            "stoch_k_prev": 95.6724364031445,
+            "stoch_d_prev": 97.3251082706898,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ARKMUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0938,
+                    "timestamp": "2026-08-04T17:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0937,
+                    "timestamp": "2026-08-04T16:48:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.094,
+                    "timestamp": "2026-08-04T17:33:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0938,
+                    "timestamp": "2026-08-04T16:03:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 13.93095352025405,
+            "stoch_k_prev": 13.930953520254036,
+            "stoch_d_prev": 27.8619070405081,
+            "stoch_timestamp": "2026-08-04T17:57:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.094,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0939,
+                    "timestamp": "2026-08-04T10:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0939,
+                    "timestamp": "2026-08-04T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.095,
+                    "timestamp": "2026-08-04T03:30:00.000000Z"
+                }
+            },
+            "stoch_k": 57.418126248191605,
+            "stoch_d": 68.91009119034705,
+            "stoch_k_prev": 70.0109718870751,
+            "stoch_d_prev": 79.30117543577451,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0932,
+                    "timestamp": "2026-08-02T01:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0952,
+                    "timestamp": "2026-08-01T11:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0957,
+                    "timestamp": "2026-07-31T17:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0937,
+                    "timestamp": "2026-07-31T10:00:00.000000Z"
+                }
+            },
+            "stoch_k": 41.76078398310809,
+            "stoch_d": 24.199742397134685,
+            "stoch_k_prev": 21.71942495547314,
+            "stoch_d_prev": 14.27679216794374,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1068,
+                    "timestamp": "2026-07-19T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1076,
+                    "timestamp": "2026-07-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1113,
+                    "timestamp": "2026-07-16T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1108,
+                    "timestamp": "2026-07-15T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 42.660975206884295,
+            "stoch_d": 35.35730263634638,
+            "stoch_k_prev": 29.296073449796015,
+            "stoch_d_prev": 34.93086562313936,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1203,
+                    "timestamp": "2026-07-03T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1209,
+                    "timestamp": "2026-06-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1275,
+                    "timestamp": "2026-06-21T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1377,
+                    "timestamp": "2026-05-28T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 86.67513001850209,
+            "stoch_d": 89.59125725153736,
+            "stoch_k_prev": 92.65372074336385,
+            "stoch_d_prev": 85.16779322021135,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ARPAUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.008326,
+                    "timestamp": "2026-08-04T15:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0083,
+                    "timestamp": "2026-08-04T14:27:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.008348,
+                    "timestamp": "2026-08-04T16:21:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008323,
+                    "timestamp": "2026-08-04T16:06:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 0,
+            "stoch_k_prev": 0,
+            "stoch_d_prev": 0.7161559612418605,
+            "stoch_timestamp": "2026-08-04T17:57:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.008297,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008317,
+                    "timestamp": "2026-08-04T07:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.008342,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008335,
+                    "timestamp": "2026-08-04T02:30:00.000000Z"
+                }
+            },
+            "stoch_k": 73.21874426905092,
+            "stoch_d": 72.5308580087845,
+            "stoch_k_prev": 67.77246432462161,
+            "stoch_d_prev": 72.06765093384102,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00805,
+                    "timestamp": "2026-07-31T15:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00805,
+                    "timestamp": "2026-07-30T22:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.008247,
+                    "timestamp": "2026-08-01T19:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.008077,
+                    "timestamp": "2026-07-31T09:00:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 100,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 99.82417903251843,
+            "stoch_timestamp": "2026-08-02T02:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00841,
+                    "timestamp": "2026-07-18T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00852,
+                    "timestamp": "2026-07-17T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00865,
+                    "timestamp": "2026-07-15T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01048,
+                    "timestamp": "2026-07-03T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 55.67091835396079,
+            "stoch_d": 52.144171919105496,
+            "stoch_k_prev": 50.82919945696985,
+            "stoch_d_prev": 49.932397946385834,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.00831,
+                    "timestamp": "2026-06-12T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0091,
+                    "timestamp": "2026-03-31T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.00920358,
+                    "timestamp": "2026-07-07T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.00843,
+                    "timestamp": "2026-06-23T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 68.11539687073616,
+            "stoch_d": 83.49900632557163,
+            "stoch_k_prev": 83.28026761555567,
+            "stoch_d_prev": 88.00679209794662,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ARUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.839,
+                    "timestamp": "2026-08-04T18:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.838,
+                    "timestamp": "2026-08-04T17:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.838,
+                    "timestamp": "2026-08-04T17:24:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.836,
+                    "timestamp": "2026-08-04T16:21:00.000000Z"
+                }
+            },
+            "stoch_k": 85.5196705813152,
+            "stoch_d": 55.36436233394596,
+            "stoch_k_prev": 56.79034176046889,
+            "stoch_d_prev": 29.80577189610958,
+            "stoch_timestamp": "2026-08-04T18:06:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.815,
+                    "timestamp": "2026-08-04T13:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.819,
+                    "timestamp": "2026-08-04T01:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.836,
+                    "timestamp": "2026-08-04T07:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.822,
+                    "timestamp": "2026-08-04T05:15:00.000000Z"
+                }
+            },
+            "stoch_k": 62.43479041997718,
+            "stoch_d": 38.73726205464023,
+            "stoch_k_prev": 42.90822527794585,
+            "stoch_d_prev": 20.421818873038376,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.868,
+                    "timestamp": "2026-07-20T09:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.886,
+                    "timestamp": "2026-07-19T19:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.88,
+                    "timestamp": "2026-07-20T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.918,
+                    "timestamp": "2026-07-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 99.33989701697631,
+            "stoch_d": 99.33989701697631,
+            "stoch_k_prev": 99.33989701697631,
+            "stoch_d_prev": 93.46732934402947,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.933,
+                    "timestamp": "2026-07-18T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.932,
+                    "timestamp": "2026-07-14T04:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.993,
+                    "timestamp": "2026-07-15T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.977,
+                    "timestamp": "2026-07-10T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 76.42281528690003,
+            "stoch_d": 52.81465889624538,
+            "stoch_k_prev": 46.305811836121364,
+            "stoch_d_prev": 36.24024044498984,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 2.01,
+                    "timestamp": "2026-06-29T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 2.047,
+                    "timestamp": "2026-06-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 2.01902698,
+                    "timestamp": "2026-07-07T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.952,
+                    "timestamp": "2026-06-21T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 79.92236474514858,
+            "stoch_d": 90.24667920068079,
+            "stoch_k_prev": 90.81767285689375,
+            "stoch_d_prev": 96.59857988317599,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "ATOMUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.368,
+                    "timestamp": "2026-08-04T17:48:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.365,
+                    "timestamp": "2026-08-04T16:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.369,
+                    "timestamp": "2026-08-04T17:18:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.364,
+                    "timestamp": "2026-08-04T16:54:00.000000Z"
+                }
+            },
+            "stoch_k": 33.99062757794475,
+            "stoch_d": 33.92758808417283,
+            "stoch_k_prev": 39.56117293361104,
+            "stoch_d_prev": 28.230963740962768,
+            "stoch_timestamp": "2026-08-04T17:54:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.37814138,
+                    "timestamp": "2026-08-04T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.374,
+                    "timestamp": "2026-08-04T06:15:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.383,
+                    "timestamp": "2026-08-04T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.379,
+                    "timestamp": "2026-08-04T09:30:00.000000Z"
+                }
+            },
+            "stoch_k": 0.3673449887753602,
+            "stoch_d": 1.4573105493389609,
+            "stoch_k_prev": 2.0022933296207754,
+            "stoch_d_prev": 1.8798450000289793,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.472,
+                    "timestamp": "2026-07-20T03:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.488,
+                    "timestamp": "2026-07-19T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.493,
+                    "timestamp": "2026-07-19T03:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.511,
+                    "timestamp": "2026-07-17T21:00:00.000000Z"
+                }
+            },
+            "stoch_k": 95.47976821888066,
+            "stoch_d": 93.84760734475192,
+            "stoch_k_prev": 93.03152690768754,
+            "stoch_d_prev": 92.37475243672485,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.483,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.497,
+                    "timestamp": "2026-07-18T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.555,
+                    "timestamp": "2026-07-15T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.58,
+                    "timestamp": "2026-07-11T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 98.3559132300652,
+            "stoch_d": 66.11863774335508,
+            "stoch_k_prev": 66.66666666666664,
+            "stoch_d_prev": 33.33333333333335,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 1.594,
+                    "timestamp": "2026-07-03T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.778,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.899,
+                    "timestamp": "2026-06-17T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 2.043,
+                    "timestamp": "2026-05-14T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 85.8861313495172,
+            "stoch_d": 74.42329037610865,
+            "stoch_k_prev": 73.94019526159887,
+            "stoch_d_prev": 64.18883955743809,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "AVAUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1923,
+                    "timestamp": "2026-03-27T18:21:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1935,
+                    "timestamp": "2026-03-27T16:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1919,
+                    "timestamp": "2026-03-27T19:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1936,
+                    "timestamp": "2026-03-27T17:39:00.000000Z"
+                }
+            },
+            "stoch_k": 78.24594287565178,
+            "stoch_d": 86.26710574973198,
+            "stoch_k_prev": 87.63821363002857,
+            "stoch_d_prev": 93.51845812451472,
+            "stoch_timestamp": "2026-03-27T19:45:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1898,
+                    "timestamp": "2026-03-27T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1912,
+                    "timestamp": "2026-03-27T11:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1952,
+                    "timestamp": "2026-03-27T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1968,
+                    "timestamp": "2026-03-27T03:15:00.000000Z"
+                }
+            },
+            "stoch_k": 88.45682536870902,
+            "stoch_d": 86.56008648357789,
+            "stoch_k_prev": 88.45682536870902,
+            "stoch_d_prev": 86.82552079438263,
+            "stoch_timestamp": "2026-03-27T14:45:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1991,
+                    "timestamp": "2026-03-26T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2064,
+                    "timestamp": "2026-03-25T19:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1948,
+                    "timestamp": "2026-03-27T05:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2055,
+                    "timestamp": "2026-03-26T02:00:00.000000Z"
+                }
+            },
+            "stoch_k": 6.876422315917459,
+            "stoch_d": 10.354349533536702,
+            "stoch_k_prev": 1.6316780804564945,
+            "stoch_d_prev": 24.74204486639579,
+            "stoch_timestamp": "2026-03-27T12:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.2075,
+                    "timestamp": "2026-03-23T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2183,
+                    "timestamp": "2026-03-19T16:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.2061,
+                    "timestamp": "2026-03-25T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2152,
+                    "timestamp": "2026-03-20T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 41.243556591904074,
+            "stoch_d": 50.689755233975546,
+            "stoch_k_prev": 50.88964929540765,
+            "stoch_d_prev": 63.66751524261449,
+            "stoch_timestamp": "2026-03-25T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.232,
+                    "timestamp": "2026-02-07T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2791,
+                    "timestamp": "2025-12-20T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1875,
+                    "timestamp": "2026-03-06T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1991,
+                    "timestamp": "2026-02-22T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 96.55662335128845,
+            "stoch_d": 95.2703186489274,
+            "stoch_k_prev": 98.41568521340808,
+            "stoch_d_prev": 91.08847500701302,
+            "stoch_timestamp": "2026-03-19T00:00:00.000000Z"
+        }
+    },
+    "AVAXUSDC": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 6.715,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.713,
+                    "timestamp": "2026-08-04T17:48:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 6.717,
+                    "timestamp": "2026-08-04T17:09:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.727,
+                    "timestamp": "2026-08-04T16:03:00.000000Z"
+                }
+            },
+            "stoch_k": 83.14820140578108,
+            "stoch_d": 49.81486807244769,
+            "stoch_k_prev": 49.81486807244775,
+            "stoch_d_prev": 22.098800937187324,
+            "stoch_timestamp": "2026-08-04T18:06:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 6.79,
+                    "timestamp": "2026-08-04T10:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.82,
+                    "timestamp": "2026-08-04T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 6.797,
+                    "timestamp": "2026-08-04T02:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.574,
+                    "timestamp": "2026-08-03T20:15:00.000000Z"
+                }
+            },
+            "stoch_k": 31.62126989919282,
+            "stoch_d": 38.100885133251666,
+            "stoch_k_prev": 38.91443276759762,
+            "stoch_d_prev": 42.20868010530845,
+            "stoch_timestamp": "2026-08-04T13:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 6.439,
+                    "timestamp": "2026-07-19T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.561,
+                    "timestamp": "2026-07-18T17:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 6.47,
+                    "timestamp": "2026-07-20T05:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.571,
+                    "timestamp": "2026-07-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 46.682917990403475,
+            "stoch_d": 51.38913345480873,
+            "stoch_k_prev": 52.09569471199444,
+            "stoch_d_prev": 50.80614367880468,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 6.596,
+                    "timestamp": "2026-07-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.585,
+                    "timestamp": "2026-07-17T20:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 6.623,
+                    "timestamp": "2026-07-16T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 6.664,
+                    "timestamp": "2026-07-15T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 94.11302565706815,
+            "stoch_d": 89.37639421529947,
+            "stoch_k_prev": 86.22890607548736,
+            "stoch_d_prev": 78.4292475349677,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 6.567,
+                    "timestamp": "2026-06-12T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 8.98,
+                    "timestamp": "2026-05-31T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 5.89,
+                    "timestamp": "2026-06-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 9.83,
+                    "timestamp": "2026-05-12T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 98.64378150952466,
+            "stoch_d": 98.81314573887887,
+            "stoch_k_prev": 98.2197186083183,
+            "stoch_d_prev": 99.12386426863522,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "AWEUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.05676,
+                    "timestamp": "2026-08-04T16:33:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05682914,
+                    "timestamp": "2026-08-04T15:33:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.05696,
+                    "timestamp": "2026-08-04T17:39:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05691,
+                    "timestamp": "2026-08-04T17:24:00.000000Z"
+                }
+            },
+            "stoch_k": 6.750464710537489,
+            "stoch_d": 4.500309807024972,
+            "stoch_k_prev": 4.500309807024983,
+            "stoch_d_prev": 6.496670759508867,
+            "stoch_timestamp": "2026-08-04T17:57:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.05576,
+                    "timestamp": "2026-08-04T05:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05649,
+                    "timestamp": "2026-08-04T01:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.05648,
+                    "timestamp": "2026-08-04T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05626,
+                    "timestamp": "2026-08-04T04:30:00.000000Z"
+                }
+            },
+            "stoch_k": 72.73245398467749,
+            "stoch_d": 74.36124313250185,
+            "stoch_k_prev": 75.13447388032955,
+            "stoch_d_prev": 72.67650662947541,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.05751,
+                    "timestamp": "2026-07-20T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05896,
+                    "timestamp": "2026-07-20T03:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.05876,
+                    "timestamp": "2026-07-18T22:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05531,
+                    "timestamp": "2026-07-18T09:00:00.000000Z"
+                }
+            },
+            "stoch_k": 82.73555401208502,
+            "stoch_d": 74.96950854570767,
+            "stoch_k_prev": 74.95499548281443,
+            "stoch_d_prev": 69.67994143735031,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.05545,
+                    "timestamp": "2026-07-18T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06377,
+                    "timestamp": "2026-07-13T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.05751,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06316,
+                    "timestamp": "2026-07-14T12:00:00.000000Z"
+                }
+            },
+            "stoch_k": 47.065796869425675,
+            "stoch_d": 59.50252573171696,
+            "stoch_k_prev": 60.15748132036986,
+            "stoch_d_prev": 71.52282629285997,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.05622,
+                    "timestamp": "2026-07-04T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05544,
+                    "timestamp": "2026-06-21T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.06121,
+                    "timestamp": "2026-06-27T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.05389,
+                    "timestamp": "2026-06-18T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 31.523805285184636,
+            "stoch_d": 31.46994372567598,
+            "stoch_k_prev": 30.799670814628996,
+            "stoch_d_prev": 28.501506284320442,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "AXLUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.03674,
+                    "timestamp": "2026-08-04T17:42:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.03671,
+                    "timestamp": "2026-08-04T17:27:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0368,
+                    "timestamp": "2026-08-04T16:39:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0362,
+                    "timestamp": "2026-08-04T15:06:00.000000Z"
+                }
+            },
+            "stoch_k": 13.5922948876942,
+            "stoch_d": 6.806110390518722,
+            "stoch_k_prev": 2.275345427953978,
+            "stoch_d_prev": 3.7922423799233145,
+            "stoch_timestamp": "2026-08-04T18:03:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.03637,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.03624,
+                    "timestamp": "2026-08-04T07:15:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.03632,
+                    "timestamp": "2026-08-04T11:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.03635,
+                    "timestamp": "2026-08-04T08:15:00.000000Z"
+                }
+            },
+            "stoch_k": 42.63901341257411,
+            "stoch_d": 42.96455344399478,
+            "stoch_k_prev": 49.80467605249094,
+            "stoch_d_prev": 39.931791298240405,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.04001,
+                    "timestamp": "2026-07-19T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04051,
+                    "timestamp": "2026-07-18T07:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.04021,
+                    "timestamp": "2026-07-20T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.03955,
+                    "timestamp": "2026-07-20T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 97.30365444082508,
+            "stoch_d": 98.56216378621423,
+            "stoch_k_prev": 98.38283691781754,
+            "stoch_d_prev": 97.1839832601914,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.04034,
+                    "timestamp": "2026-07-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04288,
+                    "timestamp": "2026-07-13T12:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0421,
+                    "timestamp": "2026-07-11T20:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04235,
+                    "timestamp": "2026-07-07T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 99.39018018542582,
+            "stoch_d": 78.60251946286911,
+            "stoch_k_prev": 75.93931903042798,
+            "stoch_d_prev": 58.868355835206636,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.04186,
+                    "timestamp": "2026-06-27T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.04244,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.04397,
+                    "timestamp": "2026-06-21T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.07273,
+                    "timestamp": "2026-05-06T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 91.71949365741439,
+            "stoch_d": 95.16333795285806,
+            "stoch_k_prev": 94.75892279364577,
+            "stoch_d_prev": 97.90127924920834,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "AXSUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.825,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.826,
+                    "timestamp": "2026-08-04T17:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.825,
+                    "timestamp": "2026-08-04T17:09:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.825,
+                    "timestamp": "2026-08-04T16:36:00.000000Z"
+                }
+            },
+            "stoch_k": 21.53725374986298,
+            "stoch_d": 19.33484224664519,
+            "stoch_k_prev": 19.30784265337248,
+            "stoch_d_prev": 17.159430336700108,
+            "stoch_timestamp": "2026-08-04T18:03:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.827,
+                    "timestamp": "2026-08-04T10:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.828,
+                    "timestamp": "2026-08-04T09:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.826,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.831,
+                    "timestamp": "2026-08-03T15:15:00.000000Z"
+                }
+            },
+            "stoch_k": 39.72570758169724,
+            "stoch_d": 48.96400737842645,
+            "stoch_k_prev": 59.58856137254589,
+            "stoch_d_prev": 50.74653749275765,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.927,
+                    "timestamp": "2026-07-20T07:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.926,
+                    "timestamp": "2026-07-19T20:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.912,
+                    "timestamp": "2026-07-20T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.921,
+                    "timestamp": "2026-07-20T01:00:00.000000Z"
+                }
+            },
+            "stoch_k": 80.26915985957613,
+            "stoch_d": 76.72497903318735,
+            "stoch_k_prev": 75.32855892150782,
+            "stoch_d_prev": 71.12601828085793,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.934,
+                    "timestamp": "2026-07-19T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.982,
+                    "timestamp": "2026-07-13T08:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.922,
+                    "timestamp": "2026-07-20T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.991,
+                    "timestamp": "2026-07-16T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 79.96257729753016,
+            "stoch_d": 84.28672097909481,
+            "stoch_k_prev": 89.072828339671,
+            "stoch_d_prev": 86.17975451934184,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.948,
+                    "timestamp": "2026-06-12T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.201,
+                    "timestamp": "2026-05-20T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 1.014,
+                    "timestamp": "2026-06-23T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.95,
+                    "timestamp": "2026-06-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 62.60484154231046,
+            "stoch_d": 73.46898770288371,
+            "stoch_k_prev": 79.320018266621,
+            "stoch_d_prev": 75.3723883338124,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "BANANAUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 3.458,
+                    "timestamp": "2026-03-29T19:33:00.000000Z"
+                },
+                "previous": {
+                    "price": 3.458,
+                    "timestamp": "2026-03-29T19:33:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 3.361,
+                    "timestamp": "2026-03-29T19:18:00.000000Z"
+                },
+                "previous": {
+                    "price": 3.361,
+                    "timestamp": "2026-03-29T19:18:00.000000Z"
+                }
+            },
+            "stoch_k": 3.771856082778561,
+            "stoch_d": 9.564537113522247,
+            "stoch_k_prev": 9.345272437141512,
+            "stoch_d_prev": 15.961924555860442,
+            "stoch_timestamp": "2026-03-29T19:51:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 3.27436656,
+                    "timestamp": "2026-03-29T18:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 3.27436656,
+                    "timestamp": "2026-03-29T18:15:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 3.285,
+                    "timestamp": "2026-03-29T15:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 3.285,
+                    "timestamp": "2026-03-29T15:15:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 92.95377518784052,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 76.57790314165304,
+            "stoch_timestamp": "2026-03-29T19:15:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 3.27970056,
+                    "timestamp": "2026-03-29T10:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 3.247,
+                    "timestamp": "2026-03-29T02:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 3.251,
+                    "timestamp": "2026-03-29T06:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 3.251,
+                    "timestamp": "2026-03-28T18:00:00.000000Z"
+                }
+            },
+            "stoch_k": 43.03903061756106,
+            "stoch_d": 57.19170176235334,
+            "stoch_k_prev": 62.13071444090557,
+            "stoch_d_prev": 65.77804437116131,
+            "stoch_timestamp": "2026-03-29T18:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 3.707,
+                    "timestamp": "2026-03-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 4.189,
+                    "timestamp": "2026-03-16T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 3.568,
+                    "timestamp": "2026-03-24T12:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 3.471,
+                    "timestamp": "2026-03-22T16:00:00.000000Z"
+                }
+            },
+            "stoch_k": 40.88230000837698,
+            "stoch_d": 52.39087283645342,
+            "stoch_k_prev": 54.71719192389358,
+            "stoch_d_prev": 60.9671903259387,
+            "stoch_timestamp": "2026-03-25T20:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 4.402,
+                    "timestamp": "2026-02-25T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 5.099,
+                    "timestamp": "2026-02-03T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 4.386,
+                    "timestamp": "2026-03-10T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 4.405,
+                    "timestamp": "2026-02-19T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 0,
+            "stoch_d": 0.7614332169782959,
+            "stoch_k_prev": 0,
+            "stoch_d_prev": 6.5244864345281535,
+            "stoch_timestamp": "2026-03-19T00:00:00.000000Z"
+        }
+    },
+    "BANDUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1535,
+                    "timestamp": "2026-08-04T18:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1538,
+                    "timestamp": "2026-08-04T17:33:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1544,
+                    "timestamp": "2026-08-04T16:54:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1542,
+                    "timestamp": "2026-08-04T15:48:00.000000Z"
+                }
+            },
+            "stoch_k": 51.842291015161344,
+            "stoch_d": 30.22032351738555,
+            "stoch_k_prev": 25.87911969133019,
+            "stoch_d_prev": 14.313398480880211,
+            "stoch_timestamp": "2026-08-04T18:03:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.153,
+                    "timestamp": "2026-08-04T07:30:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1536,
+                    "timestamp": "2026-08-04T01:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1526,
+                    "timestamp": "2026-08-04T11:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1546,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                }
+            },
+            "stoch_k": 3.309155073425986,
+            "stoch_d": 20.27030429517698,
+            "stoch_k_prev": 14.448295511358962,
+            "stoch_d_prev": 43.52646612425276,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1627,
+                    "timestamp": "2026-07-19T23:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1637,
+                    "timestamp": "2026-07-18T15:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1627,
+                    "timestamp": "2026-07-20T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.165,
+                    "timestamp": "2026-07-19T07:00:00.000000Z"
+                }
+            },
+            "stoch_k": 81.5707880472957,
+            "stoch_d": 91.26304495743794,
+            "stoch_k_prev": 93.85292369546016,
+            "stoch_d_prev": 90.51195837995688,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1636,
+                    "timestamp": "2026-07-20T04:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1645,
+                    "timestamp": "2026-07-18T20:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1661,
+                    "timestamp": "2026-07-18T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1693,
+                    "timestamp": "2026-07-12T08:00:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 80.10341345613324,
+            "stoch_k_prev": 86.8217868508665,
+            "stoch_d_prev": 53.48845351753318,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.1438,
+                    "timestamp": "2026-06-30T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1673,
+                    "timestamp": "2026-06-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.1979,
+                    "timestamp": "2026-06-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.2274,
+                    "timestamp": "2026-05-13T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 100,
+            "stoch_d": 100,
+            "stoch_k_prev": 100,
+            "stoch_d_prev": 100,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "BATUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.06552,
+                    "timestamp": "2026-08-04T17:33:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06564,
+                    "timestamp": "2026-08-04T16:24:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0656,
+                    "timestamp": "2026-08-04T17:48:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06555,
+                    "timestamp": "2026-08-04T16:36:00.000000Z"
+                }
+            },
+            "stoch_k": 56.85567217453669,
+            "stoch_d": 51.845973295439364,
+            "stoch_k_prev": 51.03439417963193,
+            "stoch_d_prev": 50.140090839934714,
+            "stoch_timestamp": "2026-08-04T18:03:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.06556,
+                    "timestamp": "2026-08-04T11:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06607,
+                    "timestamp": "2026-08-04T08:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.06625,
+                    "timestamp": "2026-08-04T03:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.06664,
+                    "timestamp": "2026-08-04T02:30:00.000000Z"
+                }
+            },
+            "stoch_k": 40.42121685961485,
+            "stoch_d": 34.78346475063798,
+            "stoch_k_prev": 31.587152253635235,
+            "stoch_d_prev": 31.542160372797287,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0754,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0775,
+                    "timestamp": "2026-07-19T23:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0763,
+                    "timestamp": "2026-07-20T14:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.078,
+                    "timestamp": "2026-07-19T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 86.83046138348725,
+            "stoch_d": 93.55296663146652,
+            "stoch_k_prev": 93.8284385109124,
+            "stoch_d_prev": 96.23785107482666,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0769,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0782,
+                    "timestamp": "2026-07-18T20:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0798,
+                    "timestamp": "2026-07-16T16:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0847,
+                    "timestamp": "2026-07-11T20:00:00.000000Z"
+                }
+            },
+            "stoch_k": 98.43933850927739,
+            "stoch_d": 66.60274631587089,
+            "stoch_k_prev": 65.10600517594408,
+            "stoch_d_prev": 37.87960960749981,
+            "stoch_timestamp": "2026-07-20T16:00:00.000000Z"
+        },
+        "D": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0806,
+                    "timestamp": "2026-07-02T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.0935,
+                    "timestamp": "2026-06-09T00:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0896,
+                    "timestamp": "2026-06-20T00:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1041,
+                    "timestamp": "2026-06-02T00:00:00.000000Z"
+                }
+            },
+            "stoch_k": 96.69240216404124,
+            "stoch_d": 98.65783453281644,
+            "stoch_k_prev": 99.64055071720405,
+            "stoch_d_prev": 93.7143931338855,
+            "stoch_timestamp": "2026-07-07T00:00:00.000000Z"
+        }
+    },
+    "BBUSDT": {
+        "3m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01384,
+                    "timestamp": "2026-08-04T18:03:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01389,
+                    "timestamp": "2026-08-04T16:30:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.01406,
+                    "timestamp": "2026-08-04T17:06:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01388,
+                    "timestamp": "2026-08-04T16:03:00.000000Z"
+                }
+            },
+            "stoch_k": 35.65415544722399,
+            "stoch_d": 14.527479521304175,
+            "stoch_k_prev": 7.928283116688505,
+            "stoch_d_prev": 2.6427610388961775,
+            "stoch_timestamp": "2026-08-04T18:03:00.000000Z"
+        },
+        "15m": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01386,
+                    "timestamp": "2026-08-04T11:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01389,
+                    "timestamp": "2026-08-04T07:45:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.0139,
+                    "timestamp": "2026-08-04T06:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01386,
+                    "timestamp": "2026-08-04T05:00:00.000000Z"
+                }
+            },
+            "stoch_k": 10.018288046599436,
+            "stoch_d": 16.790357900858112,
+            "stoch_k_prev": 15.18100870386557,
+            "stoch_d_prev": 22.852506769153436,
+            "stoch_timestamp": "2026-08-04T13:30:00.000000Z"
+        },
+        "1h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.0176,
+                    "timestamp": "2026-07-20T07:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01767,
+                    "timestamp": "2026-07-19T23:00:00.000000Z"
+                }
+            },
+            "stoch_crossunder": {
+                "latest": {
+                    "price": 0.01755,
+                    "timestamp": "2026-07-20T13:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01793,
+                    "timestamp": "2026-07-19T03:00:00.000000Z"
+                }
+            },
+            "stoch_k": 86.89181586302034,
+            "stoch_d": 94.48852883836032,
+            "stoch_k_prev": 96.57377065206042,
+            "stoch_d_prev": 94.53626765763799,
+            "stoch_timestamp": "2026-07-20T19:00:00.000000Z"
+        },
+        "4h": {
+            "stoch_crossover": {
+                "latest": {
+                    "price": 0.01781,
+                    "timestamp": "2026-07-20T08:00:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.01791,
+                    "timestamp": "2026-07-18T16:00:00.000000Z"
+                }
+            },
+            

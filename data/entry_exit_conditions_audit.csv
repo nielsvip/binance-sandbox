@@ -1,0 +1,198 @@
+condition_name,type,applies_to,enabled,config_knob,config_value,description,applies_to_signals,bypass_reasons,vec_engine_wired
+WT_DC_ENTRY,ENTRY_SIGNAL,both,True,WT_DC_ENTRY_THRESHOLD,45 (tradier),WT composite + DC breakout entry signal; primary entry path for both crypto and stocks,all entries,none,True
+GR_HTF_DIRECT_ENTRY,ENTRY_SIGNAL,both,True,GR_HTF_DIRECT_SCORE_MIN,6 (tradier) / varies (crypto),Golden Rule HTF direct entry — multi-TF indicator alignment triggers entry when score exceeds threshold,all entries,none,True
+GOLDEN_RULE_ENTRY,ENTRY_SIGNAL,both,True,GOLDEN_RULE_ENABLED,True,"Golden Rule DC/BB breakout entry with multi-TF multipliers (15m=1x, 1h=1.5x, 4h=2x, D=3x)",all entries,none,True
+STRONG_BUY,ENTRY_SIGNAL,crypto,True,N/A,N/A,High-conviction entry signal from live entry engine — bypasses some filters,OPEN/AUGMENT,bypasses DELTA_GATE and MTF_FILTER when configured,False
+QUICK_OPEN,ENTRY_SIGNAL,crypto,True,N/A,N/A,Quick entry signal — bypasses some filters,OPEN,bypasses DELTA_GATE and MTF_FILTER when configured,False
+DELTA_ENTRY,ENTRY_SIGNAL,both,True,DELTA_ENTRY_ENABLED,True,Delta engine entry — velocity/acceleration based momentum entry,all entries,none,True
+SCALP_V3_ENTRY,ENTRY_SIGNAL,crypto,True,SCALP_V3_ENABLED,True,"Scalp V3 entries: bar_break, dc_break, pullback, stoch_bounce, wt_cross, trend, stdev",SCALP entries,none,True
+FH_MOMENTUM,ENTRY_SIGNAL,both,True,FH_MOMENTUM_ENABLED (tradier) / CRYPTO_FH_MOMENTUM_ENABLED (crypto),True / True,First-hour momentum — big move in first N minutes of session triggers entry,OPEN,none,True
+RSI2_ENTRY,ENTRY_SIGNAL,tradier,True,RSI2_ENABLED,True,Connors RSI2 mean-reversion entry,OPEN,none,True
+K_ZONE_ENTRY,ENTRY_SIGNAL,tradier,True,K_ZONE_ENTRY_ENABLED_TRADIER,True,K-zone stochastic entry — K in zone + turning + candle confirms,OPEN,none,True
+GAP_FILL_ENTRY,ENTRY_SIGNAL,tradier,True,GAP_FILL_ENABLED,True,Gap fill entry — enter when gap direction reverses,OPEN,none,False
+ROTATION_ENTRY,ENTRY_SIGNAL,tradier,True,ROTATION_ENABLED,True,Sector rotation entry — momentum-based sector allocation,OPEN,none,False
+BB_BREAKOUT_CONT,ENTRY_SIGNAL,both,True,BB_BREAKOUT_CONT_ENABLED,True,Bollinger Band breakout continuation — re-entry after BB breakout,REENTRY/AUGMENT,none,True
+BB_SQUEEZE_ENTRY,ENTRY_SIGNAL,crypto,True,BB_SQUEEZE_ENTRY_ENABLED,True,Bollinger Band squeeze breakout entry,OPEN,none,True
+DC_BREAK_ENTRY,ENTRY_SIGNAL,both,True,LIVE_ENTRY_ENGINE_DC_ENABLED,True,Donchian channel breakout entry within live entry engine,OPEN,none,True
+STOCH_ENTRY,ENTRY_SIGNAL,both,True,LIVE_ENTRY_ENGINE_STOCH_ENABLED,True,Stochastic extreme oversold entry within live entry engine,OPEN,none,True
+WT_3M_FORCE_OPEN,ENTRY_SIGNAL,crypto,False,WT_3M_FORCE_OPEN_ENABLED,False,Force-open when WT 3m crosses — fires regardless of other signals (currently DISABLED),OPEN,bypasses HARD_AUGMENT_LOCK / DUP_GUARD / NOLOSS,True
+BREAKOUT_RETEST_ARMED,ENTRY_SIGNAL,crypto,False,BREAKOUT_RETEST_ARMED_ENABLED,False,Rule A: breakout retest re-entry after initial DC breakout pullback,REENTRY,none,True
+SATOSHIT_ENTRY,ENTRY_SIGNAL,both,True (crypto),SATOSHIT_ENABLED,True (crypto),Multi-indicator oversold/overbought entry (RSI+MFI+Stoch+HA+BB),OPEN,none,True
+MOM3_ENTRY,ENTRY_SIGNAL,both,N/A,MOM3_ENTRY_ENABLED,varies,3-bar momentum entry,OPEN,none,True
+MOM5_ENTRY,ENTRY_SIGNAL,both,N/A,MOM5_ENTRY_ENABLED,varies,5-bar momentum entry,OPEN,none,True
+MTF_ARMED_ENTRY,ENTRY_SIGNAL,crypto,True,MTF_ARMED_ENTRY_ENABLED,True (implied by MTF_REQUIRE_ARMED_ANY=True),Multi-TF armed band entry — requires DC/BB/WT band touch on HTF list,OPEN,none,True
+QUALITY_BOTTOM_ENTRY,ENTRY_SIGNAL,both,N/A,N/A,N/A,Quality bottom detection entry (vec_paths/quality_bottom_entry.py),OPEN,none,True
+TRADEABLE_KEYS_MANDATORY,ENTRY_SIGNAL,crypto,True,N/A,N/A,Mandatory position opening for tradeable_keys with WT alignment,OPEN,none,False
+REENTRY,ENTRY_SIGNAL,both,True,REENTRY_ENABLED / EZ_REENTRY_DAEMON_ENABLED,True / True,"Re-entry after exit — pullback, WT15m cross, breakout, probe, trend, post-consolidation",REENTRY,none,True
+PRICE_CROSS_BACK_REENTRY,ENTRY_SIGNAL,both,True,PRICE_CROSS_BACK_REENTRY_ENABLED,True,Re-entry when price crosses back to prior exit level,REENTRY,none,True
+DAEMON_PRICE_CROSS_REENTRY,ENTRY_SIGNAL,crypto,True,EZ_REENTRY_DAEMON_ENABLED,True,Daemon-based price cross reentry monitoring,REENTRY,none,False
+RECOVERY_AUGMENT,ENTRY_SIGNAL,both,False (crypto) / True (tradier-implied),RECOVERY_AUGMENT_ENABLED,False (crypto),Augment after partial close to recover position,AUGMENT,none,False
+WINNER_AUGMENT,ENTRY_SIGNAL,both,N/A,WINNER_AUGMENT_ENABLED,varies,Augment winning positions above gain threshold,AUGMENT,none,True
+DD_BOUNCE_AUGMENT,ENTRY_SIGNAL,tradier,False,WT_D_BOUNCE_AUG_ENABLED,False,Augment on daily WT bounce (DISABLED — was augmenting losers),AUGMENT,none,False
+AUGMENT_BLOWPAST,ENTRY_SIGNAL,crypto,True,AUGMENT_BLOWPAST_ENABLED,True,Augment when price blows past entry by large margin,AUGMENT,none,False
+AUGMENT_WT_CROSS,ENTRY_SIGNAL,crypto,True,AUGMENT_WT_CROSS_ENABLED,True,Augment on WT cross in position direction,AUGMENT,none,False
+AUGMENT_WT_3TF,ENTRY_SIGNAL,crypto,True,AUGMENT_WT_3TF_ENABLED,True,Augment when 3+ TFs align in position direction,AUGMENT,none,False
+AUGMENT_HTF_TREND,ENTRY_SIGNAL,crypto,True,AUGMENT_HTF_TREND_ENABLED,True,Augment when HTF trend confirms position direction,AUGMENT,none,False
+AUGMENT_PYRAMID,ENTRY_SIGNAL,crypto,True,AUGMENT_PYRAMID_ENABLED,True,Pyramid augment into trending position,AUGMENT,none,False
+CLENOW_ENTRY,ENTRY_SIGNAL,tradier,True,N/A,N/A,Clenow-style trend-following entry (tradier only),OPEN,none,False
+DC_DAYTRADE_ENTRY,ENTRY_SIGNAL,tradier,True,TRADIER_DC_DAYTRADE_ENABLED,True,Donchian channel intraday breakout entry for stocks,OPEN,none,True
+STDEV_MACRO_ENTRY,ENTRY_SIGNAL,both,False (crypto) / True (tradier),LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED,False (crypto) / True (tradier),STDEV macro D200/W52/M24 z-score entry signal,OPEN,none,True
+TR_TREND_V1_ENTRY,ENTRY_SIGNAL,both,N/A,TR_TREND_V1_ENABLED,varies,Trend-following V1 entry (DC breakout + SMA200 slope + volume),OPEN,none,True
+HAIKU_WINNER_ENTRY,ENTRY_SIGNAL,both,N/A,HAIKU_WINNER_ENABLED,varies,Haiku winner entry/augment/reduce based on short-term K momentum,all,none,True
+TTM_SQUEEZE_ENTRY,ENTRY_SIGNAL,both,N/A,N/A,N/A,TTM squeeze breakout entry (vec_paths/ttm_squeeze.py),OPEN,none,True
+LIVE_ENTRY_ENGINE,ENTRY_GATE,both,True,LIVE_ENTRY_ENGINE_ENABLED,True,Master entry engine — aggregates WT/Stoch/DC/HTF/STDEV_MACRO sub-engines into composite score,all entries,none,True
+DELTA_GATE,ENTRY_GATE,both,True,DELTA_HTF_GATE,none (crypto) / 4h (tradier),Require HTF (4h/D) delta confirmation for entries,all entries,STRONG_BUY + QUICK_OPEN bypass when DELTA_GATE_STRONG_BUY_QUICK_BYPASS=True,True
+MTF_FILTER,ENTRY_GATE,crypto,True,MTF_GR_FILTER_ENABLED / MTF_ENTRY_REQUIRE_GR_FILTER,True / True,Multi-TF GR filter requires armed band + GR alignment for entry,all entries,STRONG_BUY + QUICK_OPEN bypass when MTF_FILTER_STRONG_BUY_QUICK_BYPASS=True,True
+TOP_OF_RANGE_BLOCK,ENTRY_GATE,both,True,TOP_OF_RANGE_BLOCK_ENABLED,True,"Block OPEN/AUGMENT when DC position >= 0.95 on ALL of {1h,4h,D} for LONG (<=0.05 for SHORT)",OPEN/AUGMENT,none,True
+HTF_TREND_VETO,ENTRY_GATE,both,False (crypto) / True (tradier),HTF_TREND_VETO_ENABLED,False (crypto) / True (tradier),Block entry when Daily WT direction opposes trade side,all entries,REENTRY/HEDGE/STRONG_BUY reasons in bypass list,True
+OVERTRADE_GUARD,ENTRY_GATE,both,True,TRADES_PER_SYM_PER_DAY_MAX,50,Block if already N opens today per symbol (prevents runaway loops),all entries,none,True
+DUPLICATE_OPEN_GUARD_GAIN,ENTRY_GATE,both,True (tradier) / False (crypto),DUP_GUARD_USE_GAIN_GATE / DUP_GUARD_GAIN_MULTIPLIER,True (tradier) / False (crypto) / 0.5,Block duplicate open if gain < MIN_GAIN * MULT (1.5%),OPEN/AUGMENT/REENTRY,none,True
+DUPLICATE_OPEN_GUARD_TIME,ENTRY_GATE,crypto,True,DUPLICATE_OPEN_COOLDOWN,900s,Block duplicate open within 900s cooldown (crypto fallback),OPEN/AUGMENT/REENTRY,none,True
+ABSOLUTE_OPEN_LOCK,ENTRY_GATE,crypto,True,N/A,5s TTL,Hard 5s lock between any two opens on same symbol to prevent race conditions,all entries,none,False
+PREFLIGHT_INTENT_LOCK,ENTRY_GATE,crypto,True,N/A,N/A,Race condition guard — blocks if prior open/augment intent within race window,all entries,none,False
+NON_TRADEABLE_HARD_BLOCK,ENTRY_GATE,both,True,N/A,N/A,Block entry if symbol not in tradeable_keys,all entries,none,False
+POSITION_EXISTS_BLOCK,ENTRY_GATE,both,True,MIN_GAIN,3.0%,Block further opens/augments on existing position with gain < MIN_GAIN,OPEN/AUGMENT/REENTRY,none,False
+LOSING_POSITION_HARD_BLOCK,ENTRY_GATE,crypto,True,MIN_GAIN,3.0%,Never augment/reopen/hedge/reenter a losing position (gain < MIN_GAIN),AUGMENT/REOPEN/HEDGE/REENTRY,none,False
+HARD_SIZE_GATE,ENTRY_GATE,crypto,True,MIN_GAIN,3.0%,Block action when position >= START_SIZE but gain < MIN_GAIN,AUGMENT,none,False
+BALANCE_FLOOR_HALT,ENTRY_GATE,both,True,N/A,BALANCE_FLOOR_HALT file,Block all opens when balance floor halt file exists,all entries,none,True
+STALE_MARK_PRICE_BLOCK,ENTRY_GATE,both,True,EXECUTE_NOW_MAX_MARK_AGE_S,varies,Block action if mark price is stale (age > max threshold). CLOSE bypasses.,all entries,CLOSE actions bypass,True
+HEDGE_FIRE_ONCE,ENTRY_GATE,crypto,True,N/A,N/A,Block hedge if active hedge record already exists for target,HEDGE,none,False
+HEDGE_SYMBOL_COOLDOWN,ENTRY_GATE,crypto,True,HEDGE_COMPLETED_LOCKOUT_SECONDS,varies,Block hedge if last hedge was within cooldown period,HEDGE,none,False
+AUG_COOLDOWN_BLOCK,ENTRY_GATE,crypto,True,AUGMENTATION_COOLDOWN_SECONDS,varies,Block augment if augmented within cooldown period. NO BYPASS.,AUGMENT,none,True
+HARD_REDUCE_LOCK,ENTRY_GATE,crypto,True,REDUCTION_COOLDOWN_SECONDS,varies,Block reduce if last reduce was within cooldown period,REDUCE,none,True
+MTS_GATE,ENTRY_GATE,crypto,True,MTS_GATE_ENABLED,True,Multi-TF score gate — filters entries by aggregate MTS score (+8.5% Sharpe),all entries,none,False
+MTS_GATE_TRADIER,ENTRY_GATE,tradier,False,MTS_GATE_ENABLED_TRADIER,False,MTS gate for stocks (DISABLED — stocks use WT entry not MTS filtering),all entries,none,False
+FUNDING_GATE,ENTRY_GATE,crypto,True,FUNDING_GATE_ENABLED,True,"Block entry when funding rate against position (LONG at high rate, SHORT at negative)",all entries,none,False
+FUNDING_HEDGE_GATE,ENTRY_GATE,crypto,True,FUNDING_HEDGE_GATE_ENABLED,True,Apply funding gate to hedge entries too,HEDGE,none,False
+FUNDING_GATE_TRADIER,ENTRY_GATE,tradier,False,FUNDING_GATE_ENABLED_TRADIER,False,Put/call ratio gate for stock entries (DISABLED),all entries,none,False
+OI_CONFIRM,ENTRY_GATE,crypto,True,OI_CONFIRM_ENABLED,True,Open Interest 4-quadrant confirmation gate (Schabacker classic),all entries,none,False
+OI_CONFIRM_TRADIER,ENTRY_GATE,tradier,False,OI_CONFIRM_ENABLED_TRADIER,False,OI confirmation for stocks (DISABLED),all entries,none,False
+RED_ZONE_GATE,ENTRY_GATE,crypto,False,RED_ZONE_GATE_ENABLED,False,Block entry near heatmap resistance zones (DISABLED),all entries,none,False
+RED_ZONE_TRADIER_GATE,ENTRY_GATE,tradier,True,RED_ZONE_TRADIER_GATE_ENABLED,True,Block entry near heatmap resistance zones for stocks,all entries,none,False
+VP_GATE,ENTRY_GATE,crypto,False,VP_GATE_ENABLED,False,Volume profile HVN shelf proximity gate (DISABLED),all entries,none,False
+LH_HL_FILTER,FILTER,both,False,LH_HL_FILTER_ENABLED,False,Lower-high / higher-low trend filter (DISABLED both configs),all entries,none,False
+HEDGE_DC_RESISTANCE_GATE,ENTRY_GATE,crypto,False,HEDGE_DC_RESISTANCE_GATE_ENABLED,False,Block hedges near DC resistance (DISABLED — blocked hedges when needed),HEDGE,none,False
+HEDGE_WT_VEL_GATE,ENTRY_GATE,crypto,False,HEDGE_WT_VEL_GATE_ENABLED,False,Block hedges by WT velocity (DISABLED),HEDGE,none,False
+HEDGE_OPEN_OB_CHECK,ENTRY_GATE,crypto,True,HEDGE_OPEN_OB_CHECK_ENABLED,True,Check orderbook imbalance before hedge open,HEDGE,none,False
+HEDGE_HTF_VETO,ENTRY_GATE,crypto,True,HEDGE_HTF_VETO_ENABLED,True,Block OBLIGATORY_HEDGE if Daily WT has not flipped to support hedge direction,HEDGE,none,False
+CIRCUIT_BREAKER,ENTRY_GATE,both,False,CIRCUIT_BREAKER_ENABLED,False,Halt entries after consecutive losses (DISABLED),all entries,none,True
+REGIME_GATE,ENTRY_GATE,crypto,False,REGIME_GATE_ENABLED,False,Block entries in unfavorable market regime (DISABLED),all entries,none,True
+HOUR_OF_DAY_GATE,ENTRY_GATE,crypto,False,HOUR_OF_DAY_GATE_ENABLED,False,Block entries during specified UTC hours (DISABLED),all entries,none,False
+VOLUME_CONFIRMATION,ENTRY_GATE,crypto,False,VOLUME_CONFIRMATION_ENABLED,False,Require volume confirmation for entries (DISABLED),all entries,none,False
+CATALYST_VOLUME_GATE,ENTRY_GATE,both,True,CATALYST_VOLUME_GATE_ENABLED,True,Require relative volume above threshold for entry,all entries,none,True
+PENNY_STOCK_LONG_BLOCK,ENTRY_GATE,tradier,False (tradier) / N/A (crypto),PENNY_STOCK_LONG_BLOCK_ENABLED,False (tradier),Block LONG on penny stocks below price threshold,LONG entries,none,True
+SMA200_DIST_ENTRY,ENTRY_GATE,tradier,True,SMA200_DIST_ENTRY_ENABLED,True,SMA200 distance gate — require price near SMA200 for entry,all entries,none,False
+MFI_ENTRY,ENTRY_GATE,tradier,True,MFI_ENTRY_ENABLED,True,MFI overbought block — blocks entries when MFI indicates overbought,all entries,none,False
+COMBINED_STOCH_GATE,ENTRY_GATE,tradier,True,COMBINED_STOCH_GATE_TRADIER,40.0,Block LONG if k5m >= threshold; SHORT if k5m <= 100-threshold,all entries,none,True
+ALIGNMENT_GATE,ENTRY_GATE,tradier,True,ALIGNMENT_GATE_MIN / ALIGNMENT_GATE_TOTAL,4 / 36,Require minimum indicator alignment count and total score,all entries,none,False
+DISASTER_GUARD,ENTRY_GATE,tradier,True,N/A,N/A,"Multi-check guard: DG_0 (no indicators SHORT block), DG_1 (daily gain SHORT), DG_2 (daily loss LONG), DG_9 (high vol), DG_11 (WT_D bull SHORT)",all entries,none,False
+TRADIER_TRADEABLE_GATE,ENTRY_GATE,tradier,True,N/A,N/A,Block entry if not in symbols_<acct>_long/short.json or tradeable_keys,all entries,none,False
+TRADIER_OPPOSITE_SIDE_BLOCK,ENTRY_GATE,tradier,True,N/A,N/A,Block entry when opposite-side position exists (Tradier single-side only),all entries,none,False
+QUEUE_OPPOSITE_SIDE_BLOCK,ENTRY_GATE,tradier,True,N/A,N/A,Block queuing when opposite-side position exists,all entries,none,False
+TRA_DAILY_BUY_LIMIT,ENTRY_GATE,tradier,True,N/A,varies,Block buys after daily limit reached (prevents Good Faith Violations),BUY entries,none,False
+WT_DC_HTF_GATE,ENTRY_GATE,tradier,True,WT_DC_HTF_GATE,1h,Require WT HTF (1h/4h/4h_D) alignment for WT_DC entries,WT_DC entries,none,False
+ENTRY_SCORE_THRESHOLD,ENTRY_GATE,tradier,True,TRADIER_ENTRY_SCORE_THRESHOLD / WT_DC_ENTRY_THRESHOLD,varies / 45,Minimum composite score to allow entry,all entries,none,True
+STDEV_MACRO_ENTRY_VETO,ENTRY_GATE,crypto,False,STDEV_MACRO_ENTRY_VETO_ENABLED,False,"Block entries at STDEV macro extremes (STRONG_TOP for LONG, STRONG_BOT for SHORT)",OPEN/AUGMENT,none,True
+REENTRY_CONFIRMATION_GATES,ENTRY_GATE,crypto,True,REENTRY_CONFIRMATION_GATES_ENABLED,True,Additional confirmation gates for reentry signals,REENTRY,none,False
+BACKTEST_VALIDATED_GATES,ENTRY_GATE,tradier,True,BACKTEST_VALIDATED_GATES_TRADIER,True,Block entries on signals confirmed -EV in both train+test,all entries,none,False
+EMA_9_21_FILTER,FILTER,tradier,True,EMA_9_21_FILTER_ENABLED,True,EMA 9/21 crossover filter for stock entries,all entries,none,False
+VIX_REGIME_FILTER,FILTER,tradier,True,VIX_REGIME_FILTER_ENABLED,True,Block entries when SPY < SMA200 (bear regime),all entries,none,False
+VWAP_FILTER,FILTER,tradier,False,VWAP_FILTER_ENABLED,False,VWAP filter for stock entries (DISABLED — top configs all False),all entries,none,False
+ROTATION_SMA200_FILTER,FILTER,tradier,True,ROTATION_SMA200_FILTER,True,Filter rotation candidates by SMA200,ROTATION entries,none,False
+TREND_GATES,FILTER,tradier,True,TREND_GATES,True,Trend confirmation gates for stock entries,all entries,none,False
+HEDGE_PROTECT_OPPOSITE_LOSER,ENTRY_GATE,crypto,True,N/A,N/A,Block action if opposite-side losing position exists that this hedges,OPEN/AUGMENT,none,False
+LIVE_VEC_QUARANTINE_BLOCK,ENTRY_GATE,both,False,LIVE_VEC_QUARANTINE_STRATEGY_ENABLED,False,Block entries on quarantined vec strategy reasons,all entries,none,False
+HEDGE_MISIDENT_BLOCK,ENTRY_GATE,crypto,True,N/A,N/A,Block close-at-loss on hedge that is actually the original position,CLOSE at loss,none,False
+HTF_TREND_VETO_ON_REDUCE,EXIT_GATE,tradier,True,HTF_TREND_VETO_ON_REDUCE_ENABLED,True,Block reduce when Daily WT still supports position side (hold),REDUCE/CLOSE,R1/R2/HEDGE/PPL/EOD/EMERGENCY/LIQUIDATION/PARABOLIC/GAIN_EROSION/R3/R4/SRS/DD_BOUNCE/OVERNIGHT_GAP/TP/HEDGE_FAILED,False
+AUGMENT_GATE_QUEUE,ENTRY_GATE,crypto,True,MIN_GAIN,3.0%,Block augment queuing when gain < MIN_GAIN,AUGMENT,none,False
+SCALP_V3_HTF_DIRECTION_GATE,ENTRY_GATE,crypto,True,SCALP_V3_BYPASS_HTF_DIRECTION_GATE,True (bypass),HTF direction must confirm for scalp entry (bypassed when configured),SCALP entries,bypass when BYPASS=True,True
+OB_ENTRY_GATE,ENTRY_GATE,crypto,False,OB_ENTRY_GATE_ACCOUNTS,[] (empty),Orderbook entry gate for specified accounts (DISABLED),all entries,none,False
+WT_DC_ENTRY_BAR_MATURITY_BLOCK,ENTRY_GATE,tradier,False,WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED,False,Block WT_DC entry if bar not mature enough,WT_DC entries,none,False
+DC_TIER4_BAR_MATURITY_BLOCK,ENTRY_GATE,tradier,False,DC_TIER4_BAR_MATURITY_BLOCK_ENABLED,False,Block DC Tier4 entry if bar not mature enough,DC Tier4 entries,none,False
+SPY_REGIME_GATE,ENTRY_GATE,both,N/A,SPY_REGIME_GATE_ENABLED,varies,"Block longs below SPY regime threshold, shorts above",LONG/SHORT entries,none,True
+HAIKU_ENTRY_GATE,ENTRY_GATE,both,N/A,HAIKU_ENTRY_GATE_ENABLED,varies,Block entry based on haiku K threshold gate,all entries,none,True
+GR_HTF_GATE,ENTRY_GATE,tradier,False,GR_HTF_GATE_ENABLED,False,GR HTF alignment gate using wt_bull/bear_alignment (DISABLED),all entries,none,False
+K_ZONE_VETO,ENTRY_GATE,tradier,False,K_ZONE_VETO_ENABLED_TRADIER,False,K-zone veto on WT_DC path entries (DISABLED),WT_DC entries,none,False
+WT_COMPOSITE_VETO,ENTRY_GATE,tradier,False,WT_COMPOSITE_VETO_ENABLED_TRADIER,False,WT composite scoring veto on WT_DC entries (DISABLED),WT_DC entries,none,False
+DC_ENTRY_VETO,ENTRY_GATE,tradier,False,DC_ENTRY_VETO_ENABLED_TRADIER,False,DC position entry threshold veto (DISABLED),all entries,none,False
+TRADIER_REENTRY_RZ_BLOCK,ENTRY_GATE,tradier,False,TRADIER_REENTRY_RZ_BLOCK_ENABLED,False,Block reentry in red zone (DISABLED per user mandate),REENTRY,none,False
+RED_ZONE_TRADIER,ENTRY_GATE,tradier,True,RED_ZONE_TRADIER_GATE_ENABLED,True,Block entry near heatmap red zone (deep OI + distance < threshold),all entries,none,False
+CLENOW_REGIME_FILTER,FILTER,tradier,True,CLENOW_REGIME_FILTER,True,Only hold when SPY > SMA200 (Clenow),CLENOW entries,none,False
+DELTA_ATR_ENTRY_FILTER,FILTER,tradier,True,DELTA_ATR_ENTRY_FILTER,True,ATR filter on delta entries for stocks,DELTA entries,none,True
+R1_DC_LOW4_3M_EMERGENCY,EXIT_SIGNAL,both,False (tradier) / True (crypto implicit),R1_DC_LOW4_3M_EMERGENCY_ENABLED,False (tradier),Newborn-window DC channel breach emergency close (R1). Fires within first N minutes.,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+R2_WT_VEL_SLOW,EXIT_SIGNAL,both,True,WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED,True,WT velocity slowdown near breakeven — dynamic deceleration ratio (R2),CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+R3_HTF_FLIP_EXIT,EXIT_SIGNAL,crypto,False,R3_HTF_FLIP_EXIT_ENABLED,False,Daily close + parallel 4h structural flip exit (R3) — DISABLED,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+R4_STDEV_MACRO_EXIT,EXIT_SIGNAL,both,False (crypto) / N/A,STDEV_MACRO_R4_EXIT_ENABLED,False,Long-window z-score macro top/bottom exit,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+WT_CROSSUNDER_FINAL,EXIT_SIGNAL,both,True,WT_CROSSUNDER_FINAL_ENABLED,True,WT cross-under exit on 5m/15m with hold bar minimum,CLOSE,PARABOLIC bypass when enabled,True
+DELTA_EXIT,EXIT_SIGNAL,both,True,DELTA_EXIT_ENABLED (tradier),True,Delta engine exit — TOP/BOTTOM/BASELINE/SMART_RZ exit variants,CLOSE,none,True
+SCALP_V3_CLOSE,EXIT_SIGNAL,crypto,True,SCALP_V3_ENABLED,True,"Scalp V3 exits: bar_reversal, k_cross, wt_flip, stdev_reject, profit-only mode",CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+SCALP_V3_PROTECTIVE_EXIT,EXIT_SIGNAL,crypto,True,SCALP_V3_PROTECTIVE_EXIT_ENABLED,True,Scalp V3 protective exit — max-loss stop for scalp positions,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+PARTIAL_PROFIT_LOCK,EXIT_SIGNAL,both,True (crypto) / False (tradier),PARTIAL_PROFIT_LOCK_ENABLED,True (crypto) / False (tradier),"3-step take-profit: 50% at +0.5%, stop to BE, then remainder on stop hit",REDUCE/CLOSE,none,True
+NOLOSS_BYPASS_WT_5OF5,EXIT_SIGNAL,tradier,True,NOLOSS_BYPASS_WT_5OF5_ENABLED,True,Allow loss exit when ALL 5 WT TFs flip against position,CLOSE,bypasses NOLOSS,True
+PEAK_GIVEBACK,EXIT_SIGNAL,both,True,PEAK_GIVEBACK_PROTECTION_ENABLED / PEAK_GIVEBACK_DROP_TRIGGER_ENABLED,True / True,Exit when gain drops from peak by threshold pct,CLOSE,none,True
+BREAKEVEN_GAIN_EROSION,EXIT_SIGNAL,both,False,BREAKEVEN_GAIN_EROSION_ENABLED,False,Exit when gain erodes from positive peak to near zero,CLOSE,none,True
+SENTIMENT_FADE,EXIT_SIGNAL,tradier,True,SENTIMENT_FADE_PROXY_ENABLED,True,Exit on WT-based sentiment fade with LTF contradiction guard,REDUCE/CLOSE,LTF guard blocks if >=2/5 LTF signals WITH position,True
+BB_RECOVERY_EXIT,EXIT_SIGNAL,tradier,True,BB_RECOVERY_EXIT_ENABLED_TRADIER,True,Unlock stranded positions stuck above BB_1h,CLOSE,none,True
+STOCH_CROSS_1H_EXIT,EXIT_SIGNAL,tradier,True,STOCH_CROSS_1H_EXIT_ENABLED,True,Stochastic cross on 1h triggers exit,CLOSE,none,False
+ALL_TF_AGAINST_CLOSE,EXIT_SIGNAL,crypto,True,ALL_TF_AGAINST_CLOSE_ENABLED,True,Close primary when ALL TFs against — hedge becomes main position,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,False
+WT15M_AGAINST_FORCE_CLOSE,EXIT_SIGNAL,crypto,True,N/A,N/A,WT 15m against position — hedge or close regardless,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,False
+DC_BB_D_BREAK_REVERSE,EXIT_SIGNAL,crypto,True,DC_BB_D_BREAK_REVERSE_ENABLED,True,D-band break/cross-back wrong-side close,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,False
+RIDICULOUS_HOLD,EXIT_SIGNAL,crypto,False,RIDICULOUS_HOLD_GUARD_ENABLED,False,Close position held too long (>48h default). DISABLED.,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE when enabled,False
+WRONG_SIDE_ABS_KILL,EXIT_SIGNAL,tradier,True,WRONG_SIDE_ABS_KILL_ENABLED,True,Catastrophe close when 4/5 WT against + divergence confirmed,CLOSE,none,False
+GR_HTF_DIRECT_EXIT,EXIT_SIGNAL,crypto,True,GR_EXIT_ENABLED,True,GR HTF direct exit — close when 18+ indicator score against trade,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+FROZEN_ACTIVATION_STOP,EXIT_SIGNAL,both,True,FROZEN_ACTIVATION_STOP_ENABLED,True,Close when price breaches frozen DC level at entry AND gain<0,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE (FROZEN_ACT_STOP_FROZEN_BREACH),True
+DC_LOW4_STOP,EXIT_SIGNAL,tradier,False,DC_LOW4_STOP_ENABLED,False,Stop at DC low-4 bar 5m level recorded at entry (DISABLED),CLOSE,none,True
+DC_LOW_FROZEN_STOP,EXIT_SIGNAL,both,False,DC_LOW_FROZEN_STOP_ENABLED,False,Generalized frozen stop at DC level (DISABLED),CLOSE,none,True
+BB_FROZEN_STOP,EXIT_SIGNAL,both,True (crypto) / False (tradier),BB_FROZEN_STOP_ENABLED,True (crypto) / False (tradier),Freeze BB lower/upper/basis at entry as stop level,CLOSE,none,True
+NEWBORN_LOSS_KILL,EXIT_SIGNAL,crypto,N/A,N/A,N/A,Close newborn position with gain below threshold (ORDI protection),CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+DC_HOPELESS_EXIT,EXIT_SIGNAL,both,N/A,DC_HOPELESS_EXIT_ENABLED,varies,Exit when position is hopeless after min age,CLOSE,none,True
+WT_EXHAUST_EXIT,EXIT_SIGNAL,both,N/A,WT_EXHAUST_EXIT_ENABLED,varies,Exit on WT exhaustion signal,CLOSE,none,True
+EXHAUSTION_EXIT,EXIT_SIGNAL,both,N/A,EXH_EXIT_ENABLED,varies,Multi-criteria exhaustion exit (K threshold + HTF + basis cross),CLOSE,none,True
+FAST_RISER_REDUCE,EXIT_SIGNAL,both,True,ENABLE_FAST_RISER_REDUCE / FAST_RISER_REDUCE_ENABLED,True,Reduce on fast price move (riser) with K3m reversal check,REDUCE,none,True
+K1M_EXTREME_REVERSE,EXIT_SIGNAL,crypto,N/A,K1M_EXTREME_REVERSE_ENABLED,varies,Reduce on K 1m extreme reversal,REDUCE,none,False
+STRUCTURAL_RANGE_SHIFT,EXIT_SIGNAL,both,N/A,STRUCTURAL_RANGE_SHIFT_EXIT,varies,Exit on structural range shift (K extremes + proximity),CLOSE,none,True
+IN_GAIN_TREND_EXIT,EXIT_SIGNAL,both,N/A,IN_GAIN_TREND_EXIT_ENABLED,varies,Exit when in-gain trend reverses at medium/big winner thresholds,CLOSE,none,True
+STALL_SUB,EXIT_SIGNAL,both,N/A,STALL_SUB_ENABLED,varies,Exit on stall (velocity below threshold after min age),CLOSE,none,True
+NEVER_GO_RED_STOP,EXIT_SIGNAL,both,N/A,NEVER_GO_RED_STOP_ENABLED,varies,Stop that prevents giving back all gains after peak,CLOSE,none,True
+PROFIT_TAKE_REDUCE,EXIT_SIGNAL,both,N/A,PROFIT_TAKE_REDUCE_ENABLED,varies,Take partial profit at gain threshold,REDUCE,none,True
+DC_BREACH_REDUCE,EXIT_SIGNAL,both,N/A,DC_BREACH_REDUCE_ENABLED,varies,Reduce on DC channel breach,REDUCE,none,True
+ATR_TRAIL_EXIT,EXIT_SIGNAL,tradier,False,ATR_TRAIL_2X_EXIT_ENABLED,False,ATR trailing stop exit (DISABLED — #1 stock PnL destroyer),CLOSE,none,True
+MTF_ATR_TRAIL,EXIT_SIGNAL,crypto,N/A,MTF_ATR_TRAIL_ENABLED,varies,MTF compound ATR trail exit,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+MTF_DC_REJECT_EXIT,EXIT_SIGNAL,crypto,N/A,MTF_DC_REJECT_EXIT_ENABLED,varies,MTF compound DC reject exit,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+MTF_BB_REJECT_EXIT,EXIT_SIGNAL,crypto,N/A,MTF_BB_REJECT_EXIT_ENABLED,varies,MTF compound BB reject exit,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+MTF_GR_WT_EXIT,EXIT_SIGNAL,crypto,True,MTF_GR_EXIT_GATE_ENABLED,True,MTF compound GR+WT exit,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+MTF_WT_CROSS_EXIT,EXIT_SIGNAL,both,N/A,MTF_WT_CROSS_EXIT_ENABLED,varies,MTF WT cross exit,CLOSE,none,True
+RATIO_REDUCE,EXIT_SIGNAL,crypto,True,RATIO_REBALANCE_ENABLED,True,L/S ratio rebalance reduce — close to maintain ratio,REDUCE,none,True
+SENTIMENT_BOOST,EXIT_SIGNAL,both,N/A,SENTIMENT_BOOST_ENABLED,varies,Boost (augment) on strong sentiment confirmation,AUGMENT,none,True
+HEDGE_BANDAID_OFF,EXIT_SIGNAL,crypto,True,HEDGE_BANDAID_OFF_ENABLED,True,Close hedge when WT 3m flips back to primary direction,CLOSE (hedge),none,False
+HEDGE_CLOSE_WT_DC,EXIT_SIGNAL,crypto,True,HEDGE_CLOSE_WT_DC_THRESHOLD,25.0,Close hedge on WT/DC score threshold reached,CLOSE (hedge),none,False
+HEDGE_DECAY_NUKE,EXIT_SIGNAL,crypto,True,HEDGE_DECAY_NUKE_ENABLED,True,Force close hedge positions that have decayed,CLOSE (hedge),none,False
+PARABOLIC_PROTECTION,EXIT_SIGNAL,tradier,True,PARABOLIC_PROTECTION_ENABLED,True,Parabolic move protection exit for stocks,CLOSE,none,False
+EXTREME_OB_OS_OVERRIDE,EXIT_SIGNAL,tradier,True,EXTREME_OB_OS_OVERRIDE_ENABLED,True,Override exit when extreme overbought/oversold,CLOSE,none,False
+EOD_FORCE_FLAT,EXIT_SIGNAL,tradier,True (implicit),N/A,N/A,End-of-day force flat — close positions before market close,CLOSE,bypasses HTF_TREND_VETO_ON_REDUCE,False
+EOD_SLIM_RATIO,EXIT_SIGNAL,tradier,True,N/A,N/A,End-of-day slim ratio — reduce large positions before close,REDUCE,none,False
+DAEMON_REENTRY_STALE_EXIT,EXIT_SIGNAL,crypto,True,DAEMON_REENTRY_STALE_EXIT_ENABLED,True,Close daemon reentry when price crosses back past exit level (premise failed),CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,False
+CANDLE_PATTERN_STOPS,EXIT_SIGNAL,both,N/A,IB_STOP_ENABLED / LH_STOP_ENABLED / LL_STOP_ENABLED / PULLBACK_STOP_ENABLED,varies,"Candle pattern stops: inside bar, lower high, lower low, pullback",CLOSE,none,True
+TIGHT_BREAKOUT_STOPS,EXIT_SIGNAL,both,N/A,CHANNEL_REENTRY_STOP_ENABLED,varies,Tight breakout stops on reentry channel,CLOSE,none,True
+WINNER_PROTECT,EXIT_SIGNAL,both,N/A,WINNER_PROTECT_ENABLED,varies,Protect winning position by tightening stop,CLOSE,none,True
+MICRO_SCALP_EXIT,EXIT_SIGNAL,both,True (crypto) / True (tradier),MICRO_SCALP_USDC_MAKER_ENABLED / MICRO_SCALP_STOCKS_MAKER_ENABLED,False (crypto) / True (tradier),Micro scalp exit at small gain threshold,REDUCE,none,True
+GR_V5_EXIT,EXIT_SIGNAL,crypto,False,GR_V5_ENABLED,False,Golden Rule V5 exit (breakout+bounce+exit combo),CLOSE,none,True
+HEDGE_FAILED_FALLBACK_CLOSE,EXIT_SIGNAL,crypto,True,HEDGE_FAILED_FALLBACK_CLOSE_ENABLED,True,Fallback close when hedge cant be taken,CLOSE,bypasses UNIVERSAL_NOLOSS_GATE,True
+OBLIGATORY_HEDGE,EXIT_SIGNAL,crypto,True,OBLIGATORY_HEDGE_ENABLED,True,Obligatory hedge when WT TFs required flip against position,HEDGE,none,False
+NEWBORN_PROTECT,EXIT_SIGNAL,both,N/A,NEWBORN_PROTECT_GRACE_SECONDS,varies,Protect newborn positions from premature exits,blocks CLOSE,none,True
+EMERGENCY_BRAKE,EXIT_SIGNAL,both,False,LIVE_VEC_EMERGENCY_BRAKE_ENABLED,False,Emergency brake on vec-detected danger signals,CLOSE,none,True
+PRICE_CROSS_BACK_EXIT,EXIT_SIGNAL,both,True,PRICE_CROSS_BACK_DIRECTIONAL_ENABLED,True,Exit on price crossing back directionally past exit level,CLOSE,bypasses MTF FILTER,True
+WT_4H_VEL_EXIT,EXIT_SIGNAL,crypto,True,N/A,N/A,Exit on WT 4h velocity against position,CLOSE,none,False
+UNIVERSAL_NOLOSS_GATE,EXIT_GATE,both,False,UNIVERSAL_NOLOSS_GATE,False,Master gate blocking loss exits. Bypass list allows R1/R2/HEDGE_FAILED/SCALP_V3/RIDICULOUS/ALL_TF_AGAINST/WT15M/DC_BB_D/MTF compound/GR_HTF_DIRECT/FROZEN_ACT_STOP etc.,all exits at loss,See UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS (25+ entries),True
+NOLOSS_DC4H_GATE,EXIT_GATE,crypto,True,NOLOSS_DC4H_GATE_ENABLED,True,Never close at loss inside DC_4h channel — hedge instead,CLOSE at loss,none,False
+STRICT_NO_LOSS,EXIT_GATE,both,ELIMINATED,STRICT_NO_LOSS_ACCOUNTS,[] (empty),"Former strict no-loss gate — ELIMINATED, replaced by technical exits + hedge",all exits,none,False
+STOCK_MIN_HOLD,EXIT_GATE,tradier,True,MIN_HOLD_MINUTES_TRADIER / TRADIER_MIN_HOLD_MINUTES,varies,Minimum hold time before exit allowed for stocks,all exits,none,True
+CRYPTO_MIN_HOLD,EXIT_GATE,crypto,True,MIN_HOLD_MINUTES_CRYPTO,varies,Minimum hold time for crypto positions,all exits,none,True
+ATR_PARITY_SIZING,SIZING,both,True,ATR_PARITY_USE_DAILY / ATR_PARITY_EQUITY_BASE_USD / ATR_PARITY_QTY_CAP_MULT,varies,ATR-parity position sizing — equalizes risk per trade via daily ATR,all entries,none,True
+GOLDEN_RULE_SIZING,SIZING,both,True,GOLDEN_RULE_BASE_USD / GOLDEN_RULE_MULT_*,5.0 / 1.0-3.0,"Golden Rule multi-TF multiplier sizing (15m=1x, 1h=1.5x, 4h=2x, D=3x)",GR entries,none,True
+DD_KELLY_SIZING,SIZING,both,N/A,DD_KELLY_ENABLED / DD_KELLY_TIER*_PCT,varies,Drawdown-aware Kelly criterion sizing,all entries,none,True
+VOL_TARGET_SIZING,SIZING,both,N/A,VOL_TARGET_ENABLED / VOL_TARGET_PCT,varies,Volatility targeting position size cap,all entries,none,True
+RATIO_SIZE,SIZING,crypto,True,RATIO_MULTIPLIER,3.0,L/S ratio sizing — adjusts position size based on long/short ratio,all entries,none,True
+LONG_SHORT_SIZE_MULT,SIZING,both,True,LONG_SIZE_MULT / SHORT_SIZE_MULT,varies,Separate size multipliers for long vs short positions,all entries,none,True
+TIME_ZONE_SIZING,SIZING,tradier,True,TIME_ZONE_ENABLED,True,Time-of-day zone sizing adjustment,all entries,none,False
+BREAKOUT_TF_SIZE,SIZING,crypto,True,BREAKOUT_TF_SIZE_ENABLED,True,Scale position size by breakout timeframe,breakout entries,none,False

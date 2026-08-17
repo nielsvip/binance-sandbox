@@ -23,6 +23,14 @@ WORKING_DIR = "/Users/niels/Documents/binance"
 REOPEN_DELAY = 3
 MAX_INTERNAL_GAP = 1800  # 30 min — if gap between consecutive files > this, cluster ends
 
+# === VIRUS FIX 2026-08-09: HARD DISABLE - prevents hundreds of Terminal windows at startup ===
+# This script previously opened 132 Terminal windows at boot via LaunchAgent RunAtLoad.
+# It is now PERMANENTLY DISABLED for auto/reopen. See backups/before_claude_virus_fix_20260809.py
+# To manually reopen, use: CLAUDE_ALLOW_AUTO_REOPEN=1 python3 claude_session_tracker.py reopen --force --limit 3
+AUTO_REOPEN_PERMANENTLY_DISABLED = True
+MAX_REOPEN_HARD_CAP = 3  # absolute max even with --force
+REQUIRE_FORCE_FLAG = True
+
 
 def get_first_user_message(jsonl_path):
     """Extract first real user message from a JSONL conversation file."""
@@ -110,36 +118,45 @@ def get_running_session_ids():
 
 
 def close_all_terminal_windows():
-    """Close ALL Terminal windows to prevent duplicates."""
-    print("Closing all Terminal windows...")
-    subprocess.run(["osascript", "-e", '''
-tell application "Terminal"
-    if (count of windows) > 0 then
-        close every window
-    end if
-end tell
-'''], capture_output=True)
-    time.sleep(2)
+    """DISABLED 2026-08-09: Never close all Terminal windows - destructive virus behavior."""
+    print("[DISABLED] close_all_terminal_windows() blocked - would have closed ALL Terminal windows. Refusing.")
+    return
 
 
-def reopen_sessions(startup_delay=0):
-    """Detect crash cluster, close stale windows, reopen active sessions."""
+def reopen_sessions(startup_delay=0, force=False, limit=None):
+    """DISABLED 2026-08-09: Hard-capped reopen - refuses mass Terminal spam."""
+    # HARD DISABLE: block all auto mass-reopen unless explicitly forced
+    if AUTO_REOPEN_PERMANENTLY_DISABLED and not force:
+        print("[BLOCKED] reopen_sessions() permanently disabled to prevent virus spam.")
+        print(f"  Detected cluster would have opened {len(detect_crash_cluster())} Terminal windows.")
+        print("  To allow manual reopen: CLAUDE_ALLOW_AUTO_REOPEN=1 python3 claude_session_tracker.py reopen --force --limit 3")
+        print("  LaunchAgent com.niels.claude-session-reopen is disabled (launchctl disable).")
+        return
+    if os.environ.get("CLAUDE_ALLOW_AUTO_REOPEN") != "1" and not force:
+        print("[BLOCKED] Set CLAUDE_ALLOW_AUTO_REOPEN=1 to allow reopen, or use --force")
+        return
+    # Enforce hard cap
+    cap = MAX_REOPEN_HARD_CAP if limit is None else min(limit, MAX_REOPEN_HARD_CAP)
     if startup_delay:
         print(f"Waiting {startup_delay}s for system to settle...")
         time.sleep(startup_delay)
-    # Skip sessions that are already running
     already_running = get_running_session_ids()
     sessions = detect_crash_cluster()
     if not sessions:
         print("No crash cluster detected — nothing to reopen.")
         return
-    # Filter out already-running sessions
     to_open = [s for s in sessions if s["session_id"] not in already_running]
     if not to_open:
         print(f"All {len(sessions)} sessions already running — nothing to do.")
         return
-    close_all_terminal_windows()
-    print(f"Reopening {len(to_open)} sessions (from crash cluster of {len(sessions)})...")
+    # HARD CAP: never open more than cap windows
+    if len(to_open) > cap:
+        print(f"[CAPPED] Would have opened {len(to_open)} windows, hard-capped to {cap}.")
+        print(f"  Use --limit {cap} or inspect with: python3 claude_session_tracker.py list")
+        to_open = to_open[:cap]
+    # Never close all windows
+    # close_all_terminal_windows()  # DISABLED
+    print(f"Reopening {len(to_open)} sessions (from crash cluster of {len(sessions)}, capped at {cap})...")
     for i, s in enumerate(to_open):
         sid = s["session_id"]
         label = s.get("first_message", "")[:70].replace('"', '\\"').replace("'", "\\'").replace("\n", " ")
@@ -173,12 +190,25 @@ def list_sessions():
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
+    force = "--force" in sys.argv
+    limit = None
+    for a in sys.argv:
+        if a.startswith("--limit="):
+            try:
+                limit = int(a.split("=", 1)[1])
+            except: pass
     if cmd == "reopen":
-        reopen_sessions()
+        reopen_sessions(force=force, limit=limit)
     elif cmd == "list":
         list_sessions()
     elif cmd == "auto":
-        reopen_sessions(startup_delay=5)
+        # AUTO PERMANENTLY DISABLED 2026-08-09: LaunchAgent disabled via launchctl disable
+        print("[BLOCKED] 'auto' mode permanently disabled (virus fix 2026-08-09).")
+        print("  LaunchAgent com.niels.claude-session-reopen was disabled with: launchctl disable gui/501/com.niels.claude-session-reopen")
+        print("  It previously opened 118-132 Terminal windows at boot. Now it does nothing.")
+        print("  To manually list: python3 claude_session_tracker.py list")
+        print("  To force limited reopen: CLAUDE_ALLOW_AUTO_REOPEN=1 python3 claude_session_tracker.py reopen --force --limit 3")
+        sys.exit(0)
     else:
         print(__doc__)
         sys.exit(1)

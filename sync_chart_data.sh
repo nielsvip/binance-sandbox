@@ -1,75 +1,67 @@
-#!/bin/bash
-# sync_chart_data.sh — pull latest hourly_reconfig + canonical_trades from S1 to MB.
-# SIMPLE rsync (no fancy include/exclude — just mirror, MB has disk).
-# 2026-05-21: S2 (204.168.181.211) DEAD since 2026-05-08 — all tradier sweeps moved to S1.
-# All rsync targets now point at S1 only. Per CLAUDE.md: "Never SSH s2-int".
+#!/usr/bin/env bash
+# launchd entry point for Bible §16.22 always-connected synchronization.
+# Mac source only moves Mac->S1; S1 evidence only moves S1->Mac. Live config
+# is deliberately outside this job and remains receipt/promotion controlled.
+set -euo pipefail
 
-set -u
-LOG="${HOME}/Documents/binance/logs/sync_chart_data.log"
-LOCK="${HOME}/Documents/binance/logs/.sync_chart_data.lock"
-mkdir -p "$(dirname "$LOG")"
+BASE=/Users/niels/Documents/binance
+PY=/opt/anaconda3/envs/binance_env/bin/python
+LOG="$BASE/logs/sync_chart_data.log"
+LOCK="$BASE/logs/.sync_chart_data.lock"
+mkdir -p "$BASE/logs" "$BASE/data/sync"
 exec >>"$LOG" 2>&1
-# Lockfile: skip if previous run still active.
-if [ -f "$LOCK" ]; then
-  pid=$(cat "$LOCK" 2>/dev/null)
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] previous sync (pid=$pid) still running, skip"
-    exit 0
-  fi
+
+if ! mkdir "$LOCK" 2>/dev/null; then
+  echo "$(date -u +%FT%TZ) SKIP prior sync transaction still active"
+  exit 0
 fi
-echo $$ > "$LOCK"
-trap 'rm -f "$LOCK"' EXIT
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] start"
+trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
 
-MB_BASE="/Users/niels/Documents/binance"
-RSYNC="rsync -a --no-perms --no-times --inplace --partial"
+# Ensure 24/7 lab daemons survive reboot without new LaunchAgents (sandbox cannot write ~/Library/LaunchAgents)
+# This runs every 300s via com.niels.chart-data-sync — KeepAlive for vector + gateway
+if ! pgrep -f "vector_lab_streamer.py" >/dev/null 2>&1; then
+  echo "$(date -u +%FT%TZ) watchdog: vector_lab_streamer not running — restarting via run_vector_streamer.sh"
+  bash "$BASE/tools/run_vector_streamer.sh" >>"$BASE/logs/vector_streamer_launchd.log" 2>&1 || true
+fi
+if ! pgrep -f "switch_lab_gateway.py" >/dev/null 2>&1; then
+  echo "$(date -u +%FT%TZ) watchdog: switch_lab_gateway not running — restarting on 5082"
+  nohup /opt/anaconda3/envs/binance_env/bin/python -u "$BASE/tools/switch_lab_gateway.py" >>"$BASE/logs/switch_lab_gateway.log" 2>&1 &
+fi
+# Chart server is KeepAlive via launchd, but also guard here if launchd stalls
+if ! curl -s --max-time 3 http://127.0.0.1:5077/api/switch_lab/status >/dev/null 2>&1; then
+  echo "$(date -u +%FT%TZ) watchdog: chart_server not responding"
+fi
+echo "$(date -u +%FT%TZ) always-connected sync start"
+run_started=$(date +%s)
+matrix_surface_rc=0
+"$BASE/tools/pull_current_matrix_surface_s1.sh" || matrix_surface_rc=$?
+if (( matrix_surface_rc == 0 )); then
+  echo "$(date -u +%FT%TZ) current matrix surface PASS"
+else
+  echo "$(date -u +%FT%TZ) current matrix surface SYNC_PENDING rc=$matrix_surface_rc"
+fi
+helper_rc=0
+"$BASE/tools/always_connected_sync.sh" || helper_rc=$?
+if "$PY" - "$BASE/data/sync/ALWAYS_CONNECTED_SYNC_STATUS.json" "$run_started" <<'PY'
+import json
+import sys
 
-mkdir -p "$MB_BASE/data/hourly_reconfig" "$MB_BASE/data/canonical_trades" "$MB_BASE/data/sweep_results"
-
-# S1 crypto: flz, fin, inf — hourly_reconfig dir mirror (--exclude=runs/ 2026-05-21: runs/ is 22GB audit trail Mac live trading never reads; chart_server/build_symbol_configs/parity_diff are on-demand tools, run on S1 instead)
-for acct in flz fin inf; do
-  echo "[sync] s1:hourly_reconfig/$acct"
-  $RSYNC --timeout=180 --exclude='runs/' \
-    "niels@157.180.125.52:/home/niels/binance-sandbox/data/hourly_reconfig/${acct}/" \
-    "$MB_BASE/data/hourly_reconfig/${acct}/" 2>&1 || echo "  [warn] rsync exit $?"
-done
-
-# S1 tradier: trc, trb (was S2 pre-2026-05-08 shutdown — S1 confirmed has trb/trc dirs 2026-05-21)
-for acct in trc trb; do
-  echo "[sync] s1:hourly_reconfig/$acct"
-  $RSYNC --timeout=180 --exclude='runs/' \
-    "niels@157.180.125.52:/home/niels/binance-sandbox/data/hourly_reconfig/${acct}/" \
-    "$MB_BASE/data/hourly_reconfig/${acct}/" 2>&1 || echo "  [warn] rsync exit $?"
-done
-
-# btc_settings_search candidates
-echo "[sync] s1:_candidates"
-$RSYNC --timeout=180 \
-  "niels@157.180.125.52:/home/niels/binance-sandbox/data/hourly_reconfig/_candidates/" \
-  "$MB_BASE/data/hourly_reconfig/_candidates/" 2>&1 || echo "  [warn] rsync exit $?"
-
-# Big-sweep canonical trade dirs
-echo "[sync] s1:canonical_trades"
-$RSYNC --timeout=300 \
-  "niels@157.180.125.52:/home/niels/binance-sandbox/data/canonical_trades/" \
-  "$MB_BASE/data/canonical_trades/" 2>&1 || echo "  [warn] rsync exit $?"
-
-# Canonical CSVs
-echo "[sync] csvs"
-$RSYNC --timeout=60 --include='canonical_*.csv' --exclude='*' \
-  "niels@157.180.125.52:/home/niels/binance-sandbox/data/sweep_results/" \
-  "$MB_BASE/data/sweep_results/" 2>&1 || echo "  [warn] rsync exit $?"
-# S2 sweep_results rsync removed — S2 dead 2026-05-08 (host key change warnings 3677/day).
-# Historical S2 sweep CSVs already archived at /Volumes/TOSHIBA_EXT/binance_archive/data/sweep_results/.
-
-# Prune older cycles to last 5 per account (keeps MB disk reasonable)
-for acct in flz fin inf trc trb; do
-  d="$MB_BASE/data/hourly_reconfig/${acct}/runs"
-  if [ -d "$d" ]; then
-    ls -1t "$d" 2>/dev/null | tail -n +6 | while read old; do
-      rm -rf "${d}/${old}" 2>/dev/null
-    done
-  fi
-done
-
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] done"
+path, started = sys.argv[1], float(sys.argv[2])
+try:
+    payload = json.load(open(path, encoding="utf-8"))
+    completed = float(
+        payload.get("completed_at_epoch", payload.get("verified_at_epoch", 0))
+    )
+except (OSError, ValueError, TypeError, json.JSONDecodeError):
+    raise SystemExit(1)
+raise SystemExit(
+    0
+    if payload.get("status") == "PASS" and completed >= started
+    else 1
+)
+PY
+then
+  echo "$(date -u +%FT%TZ) always-connected sync PASS"
+else
+  echo "$(date -u +%FT%TZ) always-connected sync SYNC_PENDING helper_rc=$helper_rc"
+fi

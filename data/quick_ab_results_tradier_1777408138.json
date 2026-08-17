@@ -1,0 +1,24 @@
+[
+  {
+    "switch": "CLENOW_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0613,
+    "trades_a": 3998,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": -0.006299999999999993,
+    "winner": false
+  },
+  {
+    "switch": "CONNORS_RSI_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0044,
+    "trades_a": 10161,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": -0.06319999999999999,
+    "winner": false
+  }
+]

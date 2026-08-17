@@ -1,0 +1,709 @@
+{
+  "exact_full_v8_promotions": 0,
+  "generated_utc": "2026-08-03T16:02:36.682984+00:00",
+  "historical_receipts_examined": 11,
+  "qualification_tim_band_pct": [
+    50.0,
+    80.0
+  ],
+  "rows": [
+    {
+      "entry": {
+        "family": "ENTRY_4H_DEEP_VALUE",
+        "params": {
+          "stoch_k_threshold": 50.0
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "1h",
+          "break_buffer_atr": 0.5,
+          "distance_mult": 2.5,
+          "lookback": 20,
+          "mode": "ATR",
+          "trail_timeframe": "5m"
+        }
+      },
+      "failure_count": 0,
+      "failure_union_50_80": [],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 329.1475741785477,
+          "alpha_vs_same_entry_e02_pp": 84.63422757514309,
+          "bh_return_pct": 15.735930404827291,
+          "emergency_exit_share": 0.0851063829787234,
+          "failures_50_80": [],
+          "fold": 1,
+          "real_close_trades": 47,
+          "strategy_return_pct": 344.883504583375,
+          "weighted_tim_pct": 72.1343915313654
+        },
+        {
+          "alpha_vs_bh_pp": 345.13974814672815,
+          "alpha_vs_same_entry_e02_pp": 35.96180006645898,
+          "bh_return_pct": 54.630312953963,
+          "emergency_exit_share": 0.16326530612244897,
+          "failures_50_80": [],
+          "fold": 2,
+          "real_close_trades": 49,
+          "strategy_return_pct": 399.7700611006912,
+          "weighted_tim_pct": 53.10505260164036
+        }
+      ],
+      "historical_candidate_id": "3a6ca018d8ec8aef",
+      "key": "AMD_LONG",
+      "minimum_visible_alpha_vs_bh_pp": 329.1475741785477,
+      "minimum_visible_real_closes": 47,
+      "not_a_qualification": true,
+      "priority_class": "VISIBLE_TRAIN_METRICS_PASS_RECOMPUTE_REQUIRED",
+      "priority_rank": 1,
+      "recommended_next_actions": [
+        "RECOMPUTE_EXACT_RECIPE_UNDER_CURRENT_SOURCE"
+      ],
+      "visible_train_metrics_all_pass_50_80": true
+    },
+    {
+      "entry": {
+        "family": "ENTRY_LONG_WAIT_ENABLED",
+        "params": {
+          "bounce_distance": 0.015,
+          "bounce_timeframe": "5m",
+          "confirmation": "two-of-three",
+          "deep_k4h": 50.0,
+          "turn_k1h": 40.0
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "15m",
+          "break_buffer_atr": 0.0,
+          "distance_mult": 1.0,
+          "lookback": 80,
+          "mode": "DC",
+          "trail_timeframe": "5m"
+        }
+      },
+      "failure_count": 0,
+      "failure_union_50_80": [],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 268.4705770042574,
+          "alpha_vs_same_entry_e02_pp": 193.862547489734,
+          "bh_return_pct": 12.895554462570004,
+          "emergency_exit_share": 0.16666666666666666,
+          "failures_50_80": [],
+          "fold": 1,
+          "real_close_trades": 48,
+          "strategy_return_pct": 281.3661314668274,
+          "weighted_tim_pct": 76.40569021609603
+        },
+        {
+          "alpha_vs_bh_pp": 111.43633302817247,
+          "alpha_vs_same_entry_e02_pp": 112.13571374591749,
+          "bh_return_pct": -12.30647433670759,
+          "emergency_exit_share": 0.1206896551724138,
+          "failures_50_80": [],
+          "fold": 2,
+          "real_close_trades": 58,
+          "strategy_return_pct": 99.12985869146488,
+          "weighted_tim_pct": 65.20486152321773
+        }
+      ],
+      "historical_candidate_id": "74ad5173dd4c9e1a",
+      "key": "AR_LONG",
+      "minimum_visible_alpha_vs_bh_pp": 111.43633302817247,
+      "minimum_visible_real_closes": 48,
+      "not_a_qualification": true,
+      "priority_class": "VISIBLE_TRAIN_METRICS_PASS_RECOMPUTE_REQUIRED",
+      "priority_rank": 2,
+      "recommended_next_actions": [
+        "RECOMPUTE_EXACT_RECIPE_UNDER_CURRENT_SOURCE"
+      ],
+      "visible_train_metrics_all_pass_50_80": true
+    },
+    {
+      "entry": {
+        "family": "ENTRY_LADDER_GREEN",
+        "params": {}
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "4h",
+          "break_buffer_atr": 0.25,
+          "distance_mult": 2.0,
+          "lookback": 20,
+          "mode": "IMMEDIATE",
+          "trail_timeframe": "5m"
+        }
+      },
+      "failure_count": 1,
+      "failure_union_50_80": [
+        "NOT_ABOVE_SAME_ENTRY_E02"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 162.61053292934784,
+          "alpha_vs_same_entry_e02_pp": 140.68025251018273,
+          "bh_return_pct": 16.295374192009255,
+          "emergency_exit_share": 0.17142857142857143,
+          "failures_50_80": [],
+          "fold": 1,
+          "real_close_trades": 35,
+          "strategy_return_pct": 178.9059071213571,
+          "weighted_tim_pct": 72.02497772471044
+        },
+        {
+          "alpha_vs_bh_pp": 16.816798370377924,
+          "alpha_vs_same_entry_e02_pp": -37.58955199169541,
+          "bh_return_pct": 19.357932932945353,
+          "emergency_exit_share": 0.21052631578947367,
+          "failures_50_80": [
+            "NOT_ABOVE_SAME_ENTRY_E02"
+          ],
+          "fold": 2,
+          "real_close_trades": 38,
+          "strategy_return_pct": 36.17473130332328,
+          "weighted_tim_pct": 55.79343579867862
+        }
+      ],
+      "historical_candidate_id": "702255d71168d55c",
+      "key": "NVDA_LONG",
+      "minimum_visible_alpha_vs_bh_pp": 16.816798370377924,
+      "minimum_visible_real_closes": 35,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 3,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_THAT_BEAT_IDENTICAL_ENTRY_E02"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_STOCH_HHHL",
+        "params": {
+          "enabled_tfs": [
+            "1h",
+            "4h",
+            "D"
+          ],
+          "min_confirming_tfs": 1,
+          "stoch_threshold": 20.0
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "15m",
+          "break_buffer_atr": 0.0,
+          "distance_mult": 1.0,
+          "lookback": 40,
+          "mode": "DC",
+          "trail_timeframe": "4h"
+        }
+      },
+      "failure_count": 2,
+      "failure_union_50_80": [
+        "EMERGENCY_EXIT_SHARE_GT_25PCT",
+        "NOT_ABOVE_SAME_ENTRY_E02"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 595.1937072152485,
+          "alpha_vs_same_entry_e02_pp": 0.0,
+          "bh_return_pct": 13.041007183368254,
+          "emergency_exit_share": 1.0,
+          "failures_50_80": [
+            "NOT_ABOVE_SAME_ENTRY_E02",
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 2,
+          "real_close_trades": 18,
+          "strategy_return_pct": 608.2347143986168,
+          "weighted_tim_pct": 68.99929729720532
+        }
+      ],
+      "historical_candidate_id": "8cfbef5fa78390e5",
+      "key": "USAR_LONG",
+      "minimum_visible_alpha_vs_bh_pp": 595.1937072152485,
+      "minimum_visible_real_closes": 18,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 4,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_REDUCING_SHARED_DC4H_EMERGENCY_SHARE",
+        "SEARCH_EXIT_VARIANTS_THAT_BEAT_IDENTICAL_ENTRY_E02"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_1H_TURN_UP",
+        "params": {
+          "stoch_k_threshold": 40.0,
+          "turn_definition": "cross-d"
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "15m",
+          "break_buffer_atr": 0.0,
+          "distance_mult": 1.0,
+          "lookback": 40,
+          "mode": "DC",
+          "trail_timeframe": "1h"
+        }
+      },
+      "failure_count": 2,
+      "failure_union_50_80": [
+        "EMERGENCY_EXIT_SHARE_GT_25PCT",
+        "INSOLVENT"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 371.6032525470064,
+          "alpha_vs_same_entry_e02_pp": 66.7344362172197,
+          "bh_return_pct": -13.267315449423945,
+          "emergency_exit_share": 0.625,
+          "failures_50_80": [
+            "INSOLVENT",
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 2,
+          "real_close_trades": 16,
+          "strategy_return_pct": 358.3359370975824,
+          "weighted_tim_pct": 70.39066469675785
+        }
+      ],
+      "historical_candidate_id": "6aba7b570d085c73",
+      "key": "USAR_SHORT",
+      "minimum_visible_alpha_vs_bh_pp": 371.6032525470064,
+      "minimum_visible_real_closes": 16,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 5,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_REDUCING_SHARED_DC4H_EMERGENCY_SHARE",
+        "REDUCE_SIZE_OR_OVERLAP_BEFORE_ECONOMIC_RANKING"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_DELTA_MTF",
+        "params": {
+          "directional_retention_ratio": 0.5,
+          "min_favorable_tfs": 4,
+          "structural_gate": false
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+        "params": {
+          "arm_break_mode": "PREV_BAR",
+          "arm_break_threshold": 0.0,
+          "arm_tf": "1h",
+          "confirm_tf": "5m",
+          "confirmation_bars": 3,
+          "confirmation_mode": "AND",
+          "emergency_adverse_atr": 0.0,
+          "emergency_adverse_stdev": 0.0,
+          "emergency_continued_bars": 0,
+          "emergency_modes": [],
+          "max_wait_1h": 72,
+          "max_wait_hours": 6,
+          "prebreak_lookback": 3,
+          "rebound_atr": 0.125
+        }
+      },
+      "failure_count": 2,
+      "failure_union_50_80": [
+        "NOT_ABOVE_SAME_ENTRY_E02",
+        "TIM_OUTSIDE_50_80"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 143.917694425667,
+          "alpha_vs_same_entry_e02_pp": 4.305147683221804,
+          "bh_return_pct": 10.298493443378176,
+          "emergency_exit_share": 0.25,
+          "failures_50_80": [],
+          "fold": 1,
+          "real_close_trades": 44,
+          "strategy_return_pct": 154.21618786904517,
+          "weighted_tim_pct": 72.18832456127896
+        },
+        {
+          "alpha_vs_bh_pp": 156.7918848630656,
+          "alpha_vs_same_entry_e02_pp": -242.94390308138844,
+          "bh_return_pct": 64.53645886672201,
+          "emergency_exit_share": 0.20634920634920634,
+          "failures_50_80": [
+            "NOT_ABOVE_SAME_ENTRY_E02",
+            "TIM_OUTSIDE_50_80"
+          ],
+          "fold": 2,
+          "real_close_trades": 63,
+          "strategy_return_pct": 221.3283437297876,
+          "weighted_tim_pct": 32.671909554643086
+        }
+      ],
+      "historical_candidate_id": "7602d070c50f9704",
+      "key": "INTC_LONG",
+      "minimum_visible_alpha_vs_bh_pp": 143.917694425667,
+      "minimum_visible_real_closes": 44,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 6,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_THAT_BEAT_IDENTICAL_ENTRY_E02",
+        "ADJUST_ENTRY_RECLAIM_EXPOSURE_WITHIN_50_80"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_BOUNCE_5M_LOW",
+        "params": {
+          "confirmation": "none",
+          "distance": 0.025,
+          "recovery_only": false,
+          "timeframe": "5m"
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "1h",
+          "break_buffer_atr": 0.5,
+          "distance_mult": 1.0,
+          "lookback": 40,
+          "mode": "DC",
+          "trail_timeframe": "1h"
+        }
+      },
+      "failure_count": 2,
+      "failure_union_50_80": [
+        "EMERGENCY_EXIT_SHARE_GT_25PCT"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 118.2598769032727,
+          "alpha_vs_same_entry_e02_pp": 19.19623573540302,
+          "bh_return_pct": 6.81833591075924,
+          "emergency_exit_share": 0.8666666666666667,
+          "failures_50_80": [
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 1,
+          "real_close_trades": 15,
+          "strategy_return_pct": 125.07821281403194,
+          "weighted_tim_pct": 71.94635275524654
+        },
+        {
+          "alpha_vs_bh_pp": 55.53447420785847,
+          "alpha_vs_same_entry_e02_pp": 18.037688538727522,
+          "bh_return_pct": 11.2879107551745,
+          "emergency_exit_share": 0.8181818181818182,
+          "failures_50_80": [
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 2,
+          "real_close_trades": 22,
+          "strategy_return_pct": 66.82238496303297,
+          "weighted_tim_pct": 71.69784481373212
+        }
+      ],
+      "historical_candidate_id": "21916ebe7a673909",
+      "key": "NKE_SHORT",
+      "minimum_visible_alpha_vs_bh_pp": 55.53447420785847,
+      "minimum_visible_real_closes": 15,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 7,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_REDUCING_SHARED_DC4H_EMERGENCY_SHARE"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_4H_DEEP_VALUE",
+        "params": {
+          "stoch_k_threshold": 65.0
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "15m",
+          "break_buffer_atr": 0.0,
+          "distance_mult": 2.5,
+          "lookback": 20,
+          "mode": "ATR",
+          "trail_timeframe": "5m"
+        }
+      },
+      "failure_count": 2,
+      "failure_union_50_80": [
+        "TIM_OUTSIDE_50_80"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 56.573883183646885,
+          "alpha_vs_same_entry_e02_pp": 91.90575256324719,
+          "bh_return_pct": -10.744540451823246,
+          "emergency_exit_share": 0.07317073170731707,
+          "failures_50_80": [
+            "TIM_OUTSIDE_50_80"
+          ],
+          "fold": 1,
+          "real_close_trades": 82,
+          "strategy_return_pct": 45.82934273182364,
+          "weighted_tim_pct": 20.92007226543771
+        },
+        {
+          "alpha_vs_bh_pp": 47.93604540396167,
+          "alpha_vs_same_entry_e02_pp": 56.80757143266692,
+          "bh_return_pct": -44.272574104316426,
+          "emergency_exit_share": 0.1111111111111111,
+          "failures_50_80": [
+            "TIM_OUTSIDE_50_80"
+          ],
+          "fold": 2,
+          "real_close_trades": 45,
+          "strategy_return_pct": 3.6634712996452437,
+          "weighted_tim_pct": 6.611363951548166
+        }
+      ],
+      "historical_candidate_id": "5c5d25a3ff0bc90d",
+      "key": "SCCO_SHORT",
+      "minimum_visible_alpha_vs_bh_pp": 47.93604540396167,
+      "minimum_visible_real_closes": 45,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 8,
+      "recommended_next_actions": [
+        "ADJUST_ENTRY_RECLAIM_EXPOSURE_WITHIN_50_80"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_BOUNCE_5M_LOW",
+        "params": {
+          "confirmation": "stoch15",
+          "distance": 0.004,
+          "recovery_only": false,
+          "timeframe": "5m"
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+        "params": {
+          "arm_break_mode": "PREV_BAR",
+          "arm_break_threshold": 0.0,
+          "arm_tf": "4h",
+          "confirm_tf": "5m",
+          "confirmation_bars": 3,
+          "confirmation_mode": "WT_ONLY",
+          "emergency_adverse_atr": 0.0,
+          "emergency_adverse_stdev": 0.0,
+          "emergency_continued_bars": 0,
+          "emergency_modes": [],
+          "max_wait_1h": 72,
+          "max_wait_hours": 6,
+          "prebreak_lookback": 3,
+          "rebound_atr": 0.125
+        }
+      },
+      "failure_count": 2,
+      "failure_union_50_80": [
+        "EMERGENCY_EXIT_SHARE_GT_25PCT",
+        "TIM_OUTSIDE_50_80"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 168.63206388698163,
+          "alpha_vs_same_entry_e02_pp": 47.14967513733461,
+          "bh_return_pct": -11.277946859296044,
+          "emergency_exit_share": 0.3333333333333333,
+          "failures_50_80": [
+            "TIM_OUTSIDE_50_80",
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 1,
+          "real_close_trades": 15,
+          "strategy_return_pct": 157.3541170276856,
+          "weighted_tim_pct": 42.05810648521084
+        },
+        {
+          "alpha_vs_bh_pp": 18.157912942837324,
+          "alpha_vs_same_entry_e02_pp": 47.12069743760649,
+          "bh_return_pct": 7.897867746907321,
+          "emergency_exit_share": 0.16666666666666666,
+          "failures_50_80": [],
+          "fold": 2,
+          "real_close_trades": 18,
+          "strategy_return_pct": 26.055780689744644,
+          "weighted_tim_pct": 62.900907154637125
+        }
+      ],
+      "historical_candidate_id": "2831ec59a89bcd72",
+      "key": "DIS_SHORT",
+      "minimum_visible_alpha_vs_bh_pp": 18.157912942837324,
+      "minimum_visible_real_closes": 15,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 9,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_REDUCING_SHARED_DC4H_EMERGENCY_SHARE",
+        "ADJUST_ENTRY_RECLAIM_EXPOSURE_WITHIN_50_80"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_BOUNCE_15M_LOW",
+        "params": {
+          "confirmation": "none",
+          "distance": 0.015,
+          "recovery_only": false,
+          "timeframe": "15m"
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "4h",
+          "break_buffer_atr": 0.5,
+          "distance_mult": 2.5,
+          "lookback": 20,
+          "mode": "ATR",
+          "trail_timeframe": "5m"
+        }
+      },
+      "failure_count": 2,
+      "failure_union_50_80": [
+        "EMERGENCY_EXIT_SHARE_GT_25PCT",
+        "STRATEGY_RETURN_NOT_POSITIVE"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 7.049094909174579,
+          "alpha_vs_same_entry_e02_pp": 30.52549268129333,
+          "bh_return_pct": -16.960310321418962,
+          "emergency_exit_share": 0.5384615384615384,
+          "failures_50_80": [
+            "STRATEGY_RETURN_NOT_POSITIVE",
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 1,
+          "real_close_trades": 26,
+          "strategy_return_pct": -9.911215412244383,
+          "weighted_tim_pct": 67.21714299303866
+        },
+        {
+          "alpha_vs_bh_pp": 158.49391218562823,
+          "alpha_vs_same_entry_e02_pp": 42.6685370660698,
+          "bh_return_pct": 31.19475998735698,
+          "emergency_exit_share": 0.14285714285714285,
+          "failures_50_80": [],
+          "fold": 2,
+          "real_close_trades": 14,
+          "strategy_return_pct": 189.6886721729852,
+          "weighted_tim_pct": 71.20388276268942
+        }
+      ],
+      "historical_candidate_id": "542d441b1c41abfb",
+      "key": "AAPL_LONG",
+      "minimum_visible_alpha_vs_bh_pp": 7.049094909174579,
+      "minimum_visible_real_closes": 14,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 10,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_REDUCING_SHARED_DC4H_EMERGENCY_SHARE",
+        "CHANGE_COUPLED_ENTRY_EXIT_RECIPE_NOT_SINGLE_SCALAR"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    },
+    {
+      "entry": {
+        "family": "ENTRY_BB_RECOVERY",
+        "params": {
+          "min_excursion_atr": 1.0,
+          "recovery_bars": 1,
+          "timeframe": "1h"
+        }
+      },
+      "exit": {
+        "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "params": {
+          "arm_timeframe": "15m",
+          "break_buffer_atr": 0.0,
+          "distance_mult": 1.0,
+          "lookback": 40,
+          "mode": "DC",
+          "trail_timeframe": "1h"
+        }
+      },
+      "failure_count": 3,
+      "failure_union_50_80": [
+        "EMERGENCY_EXIT_SHARE_GT_25PCT",
+        "NOT_ABOVE_SAME_ENTRY_E02"
+      ],
+      "folds": [
+        {
+          "alpha_vs_bh_pp": 22.256403906864577,
+          "alpha_vs_same_entry_e02_pp": 0.0,
+          "bh_return_pct": 15.381329519984869,
+          "emergency_exit_share": 1.0,
+          "failures_50_80": [
+            "NOT_ABOVE_SAME_ENTRY_E02",
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 1,
+          "real_close_trades": 20,
+          "strategy_return_pct": 37.637733426849444,
+          "weighted_tim_pct": 65.68099112208807
+        },
+        {
+          "alpha_vs_bh_pp": 50.868610007639546,
+          "alpha_vs_same_entry_e02_pp": 12.698845624697064,
+          "bh_return_pct": 10.05444747253134,
+          "emergency_exit_share": 0.875,
+          "failures_50_80": [
+            "EMERGENCY_EXIT_SHARE_GT_25PCT"
+          ],
+          "fold": 2,
+          "real_close_trades": 16,
+          "strategy_return_pct": 60.92305748017089,
+          "weighted_tim_pct": 74.49239450448596
+        }
+      ],
+      "historical_candidate_id": "3f981934282a18fe",
+      "key": "ACN_SHORT",
+      "minimum_visible_alpha_vs_bh_pp": 22.256403906864577,
+      "minimum_visible_real_closes": 16,
+      "not_a_qualification": true,
+      "priority_class": "CURRENT_GATE_NEARMISS_RECOMPUTE_AND_REFINE",
+      "priority_rank": 11,
+      "recommended_next_actions": [
+        "SEARCH_EXIT_VARIANTS_REDUCING_SHARED_DC4H_EMERGENCY_SHARE",
+        "SEARCH_EXIT_VARIANTS_THAT_BEAT_IDENTICAL_ENTRY_E02"
+      ],
+      "visible_train_metrics_all_pass_50_80": false
+    }
+  ],
+  "schema": "r6-tim50-requalification-priority-v1",
+  "source_campaign": "/home/niels/binance-sandbox/data/reports/vec_research/coupled_qualification_r5_dc4h_parity_20260803T1420Z",
+  "source_generated_utc": "2026-08-03T15:13:02.501427+00:00",
+  "strict_survivors": 0,
+  "untouched_final_survivors": 0,
+  "visible_train_metrics_pass_recompute_required_count": 2
+}

@@ -1,0 +1,303 @@
+{
+  "generated_at_utc": "2026-06-05T21:00:54.765439+00:00",
+  "causality_report_path": "/Users/niels/Documents/binance/data/opinion_causality_report.json",
+  "n_trades_input": 1418,
+  "n_trades_used": 903,
+  "n_traders_with_weight": 16,
+  "n_traders_zero_weight": 8,
+  "per_symbol": {
+    "BTCUSDC": {
+      "raw_symbol": "BTCUSDT",
+      "long_score": 3.6692,
+      "short_score": -0.396,
+      "net_score": 4.0652,
+      "n_trades": 355,
+      "contributing_traders": [
+        "b0b147708bb13952a394",
+        "b0b24f738eb23a5ea592",
+        "b1b6467286b63851ac9d",
+        "b9b44c7087b43c50ac93",
+        "b9bc4c728cb63950a19c",
+        "bbb349758eb43157a491",
+        "bcb54b748bb73a5ea391",
+        "bcb74e728fb5305fa694",
+        "bcbd4b748bb43856a09c",
+        "bdb74c7f89b63c5fa69c",
+        "bfb14d758fbb305ea591"
+      ],
+      "weighted_trade_count": 246.7344,
+      "n_contributing_traders": 11
+    },
+    "BGBUSDT": {
+      "raw_symbol": "BGBUSDT",
+      "long_score": 0.3509,
+      "short_score": -0.3596,
+      "net_score": 0.7106,
+      "n_trades": 9,
+      "contributing_traders": [
+        "bcb74e728fb5305fa694",
+        "bdb74c7f89b63c5fa69c"
+      ],
+      "weighted_trade_count": 0.9419,
+      "n_contributing_traders": 2
+    },
+    "BNBUSDC": {
+      "raw_symbol": "BNBUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 12,
+      "contributing_traders": [
+        "bcb74e728fb5305fa694",
+        "bdb74c7f89b63c5fa69c"
+      ],
+      "weighted_trade_count": 1.0701,
+      "n_contributing_traders": 2
+    },
+    "XAUUSDT": {
+      "raw_symbol": "XAUUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 16,
+      "contributing_traders": [
+        "b1b6467286b63851ac9d",
+        "bdb74c7f89b63c5fa69c"
+      ],
+      "weighted_trade_count": 1.6294,
+      "n_contributing_traders": 2
+    },
+    "XAGUSDT": {
+      "raw_symbol": "XAGUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 57,
+      "contributing_traders": [
+        "b1b6467286b63851ac9d",
+        "bcb34d7389ba3051a090",
+        "bdb74c7f89b63c5fa69c"
+      ],
+      "weighted_trade_count": 14.0547,
+      "n_contributing_traders": 3
+    },
+    "PAXGUSDT": {
+      "raw_symbol": "PAXGUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 9,
+      "contributing_traders": [
+        "bcb34d7389ba3051a090",
+        "bdb74c7f89b63c5fa69c"
+      ],
+      "weighted_trade_count": 8.5353,
+      "n_contributing_traders": 2
+    },
+    "SOLUSDC": {
+      "raw_symbol": "SOLUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 3,
+      "contributing_traders": [
+        "b9b44c7087b43c50ac93"
+      ],
+      "weighted_trade_count": 3.0,
+      "n_contributing_traders": 1
+    },
+    "ETHUSDC": {
+      "raw_symbol": "ETHUSDT",
+      "long_score": 0.5928,
+      "short_score": 0.0663,
+      "net_score": 0.5265,
+      "n_trades": 309,
+      "contributing_traders": [
+        "b0b24f738eb23a5ea592",
+        "b1b6467286b63851ac9d",
+        "b9bc4c728cb63950a19c",
+        "bbb04e7287b13d54a29d",
+        "bcb74e728fb5305fa694"
+      ],
+      "weighted_trade_count": 56.8479,
+      "n_contributing_traders": 5
+    },
+    "POWERUSDT": {
+      "raw_symbol": "POWERUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 4,
+      "contributing_traders": [
+        "bbb04e7287b13d54a29d"
+      ],
+      "weighted_trade_count": 1.4528,
+      "n_contributing_traders": 1
+    },
+    "RIVERUSDT": {
+      "raw_symbol": "RIVERUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 6,
+      "contributing_traders": [
+        "bbb04e7287b13d54a29d"
+      ],
+      "weighted_trade_count": 2.1793,
+      "n_contributing_traders": 1
+    },
+    "DOGEUSDC": {
+      "raw_symbol": "DOGEUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 39,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.5012,
+      "n_contributing_traders": 1
+    },
+    "DYDXUSDT": {
+      "raw_symbol": "DYDXUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 25,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.3213,
+      "n_contributing_traders": 1
+    },
+    "ARUSDT": {
+      "raw_symbol": "ARUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 5,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.0643,
+      "n_contributing_traders": 1
+    },
+    "SUIUSDC": {
+      "raw_symbol": "SUIUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 2,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.0257,
+      "n_contributing_traders": 1
+    },
+    "ICPUSDT": {
+      "raw_symbol": "ICPUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 12,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.1542,
+      "n_contributing_traders": 1
+    },
+    "PYTHUSDT": {
+      "raw_symbol": "PYTHUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 3,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.0386,
+      "n_contributing_traders": 1
+    },
+    "RENDERUSDT": {
+      "raw_symbol": "RENDERUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 1,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.0129,
+      "n_contributing_traders": 1
+    },
+    "AAVEUSDC": {
+      "raw_symbol": "AAVEUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 13,
+      "contributing_traders": [
+        "bcbc487f8ab63153a194"
+      ],
+      "weighted_trade_count": 0.1671,
+      "n_contributing_traders": 1
+    },
+    "TRIAUSDT": {
+      "raw_symbol": "TRIAUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 22,
+      "contributing_traders": [
+        "b1b6467286b63851ac9d"
+      ],
+      "weighted_trade_count": 2.7745,
+      "n_contributing_traders": 1
+    },
+    "TSLAUSDT": {
+      "raw_symbol": "TSLAUSDT",
+      "long_score": 0.0,
+      "short_score": 0.0,
+      "net_score": 0.0,
+      "n_trades": 1,
+      "contributing_traders": [
+        "bfb14d758fbb305ea591"
+      ],
+      "weighted_trade_count": 1.0,
+      "n_contributing_traders": 1
+    }
+  },
+  "top_long": [
+    {
+      "symbol": "BTCUSDC",
+      "raw_symbol": "BTCUSDT",
+      "long_score": 3.6692,
+      "short_score": -0.396,
+      "net_score": 4.0652,
+      "n_trades": 355,
+      "weighted_trade_count": 246.7344,
+      "n_contributing_traders": 11
+    },
+    {
+      "symbol": "BGBUSDT",
+      "raw_symbol": "BGBUSDT",
+      "long_score": 0.3509,
+      "short_score": -0.3596,
+      "net_score": 0.7106,
+      "n_trades": 9,
+      "weighted_trade_count": 0.9419,
+      "n_contributing_traders": 2
+    },
+    {
+      "symbol": "ETHUSDC",
+      "raw_symbol": "ETHUSDT",
+      "long_score": 0.5928,
+      "short_score": 0.0663,
+      "net_score": 0.5265,
+      "n_trades": 309,
+      "weighted_trade_count": 56.8479,
+      "n_contributing_traders": 5
+    }
+  ],
+  "top_short": []
+}

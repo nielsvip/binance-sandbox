@@ -1,0 +1,13 @@
+{
+  "added_bh_fallback_keys": [],
+  "current_universe_count": 128,
+  "enabled_after": 60,
+  "enabled_before": 60,
+  "floor": 60,
+  "live_gate_semantics": "membership in persym_final_book.tradeable returns side enabled",
+  "observed_at": "2026-08-17T14:04:50.172515Z",
+  "repair_enabled": true,
+  "rollback_path": null,
+  "schema": "trb-live-symbol-side-floor-v1",
+  "status": "PASS"
+}

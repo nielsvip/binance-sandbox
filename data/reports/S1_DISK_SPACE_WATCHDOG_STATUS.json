@@ -1,0 +1,19 @@
+{
+  "actions": [],
+  "available_bytes_after": 20598865920,
+  "available_bytes_before": 20598865920,
+  "host": "niels",
+  "mount": "/",
+  "protected_classes": [
+    "databases",
+    "NPZ/NPY and kline caches",
+    "raw trades/research/results",
+    "reports/workbooks/conclusions",
+    "source/configuration/position files"
+  ],
+  "schema": "s1_disk_space_watchdog/v1",
+  "status": "PASS_NO_ACTION",
+  "target_bytes": 8589934592,
+  "threshold_bytes": 6442450944,
+  "timestamp": "2026-08-09T03:17:01.450355Z"
+}

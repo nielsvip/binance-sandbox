@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""prune_useless_knobs.py — take the provably-dead switches OFF the work-list.
+"""prune_useless_knobs.py — identify retirement candidates; never skip them.
 
 USER 2026-07-22: "disable useless knobs and grey them out at once".
 
@@ -18,8 +18,11 @@ not "useless" — the MU_LONG campaign baseline trades 19 times in 2.3 years, an
 cannot bind on 19 trades may well bind on the 821 the wt_5m-cross baseline produces. Only
 bit-identical (inert) evidence is baseline-robust enough to prune on.
 
-Writes data/useless_knobs.json — param_matrix_daemon skips these, export_switch_matrix_xls
-greys them. Nothing is deleted from the DB; re-run after a rebaseline to re-open knobs.
+Writes data/useless_knobs.json — results are *retirement candidates*, not a
+skip list.  The matrix daemon only honors a separately attached current-contract
+cohort receipt meeting Bible §16.24 (1/5, or justified 1/10, symbol/sides;
+ENTRY/EXIT/REENTER coverage; unique actions; $2k accounting). Nothing is
+deleted from the DB; candidates remain queued at reduced priority.
 
 Usage (S1):  python tools/prune_useless_knobs.py --syms MU
              python tools/prune_useless_knobs.py --syms MU --dry-run
@@ -118,11 +121,12 @@ def main():
     reconnect, degenerate, keep = classify(syms, a.campaign)
     payload = {"generated_from": syms, "campaign": a.campaign,
                "reconnect": reconnect, "degenerate": degenerate,
+               "approved_retirements": [],
                "note": "RECONNECT = every value bit-identical to baseline (knob unwired). "
                        "DEGENERATE = values differ from baseline but not from each other. "
-                       "Both are skipped by param_matrix_daemon and greyed by the exporter. "
-                       "Regenerate after any rebaseline — a knob inert on a 19-trade baseline "
-                       "may bind on a trading one."}
+                       "Both are retirement candidates only; they remain in the matrix queue "
+                       "until a Bible §16.24 cohort receipt is attached. Regenerate after any "
+                       "rebaseline — a knob inert on a 19-trade baseline may bind on a trading one."}
     print(f"pilot={syms}  RECONNECT={len(reconnect)}  DEGENERATE={len(degenerate)}  still-useful={len(keep)}")
     if reconnect:
         print("  reconnect e.g.:", ", ".join(reconnect[:8]))
@@ -132,7 +136,7 @@ def main():
         print("(dry-run — not written)")
         return
     OUT.write_text(json.dumps(payload, indent=1))
-    print(f"wrote {OUT} — {len(reconnect) + len(degenerate)} switches now off the work-list")
+    print(f"wrote {OUT} — {len(reconnect) + len(degenerate)} retirement candidates remain queued pending cohort proof")
 
 
 if __name__ == "__main__":

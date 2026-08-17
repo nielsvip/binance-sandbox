@@ -18,13 +18,13 @@ import aiohttp
 import numpy as np
 import orjson
 import pandas as pd
-import pandas_ta as ta
 import psutil
 from ta.momentum import RSIIndicator, StochasticOscillator
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="pandas_ta")
+import pandas_ta as ta
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from cachetools import LRUCache
@@ -69,7 +69,8 @@ SIGNAL_PUBLISH_SLEEP = 0.4  # Delay between Redis publishes
 last_events = {}
 symbols_active=[]
 required_columns_global = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
-last_timeframe_process = {}  # Track last processed time for each timeframe boundary 
+last_timeframe_process = {}  # Track last processed time for each timeframe boundary
+_shutdown_requested = False
 
 # Redis clients for dual-source reading
 # redis_client = None  # Local Redis for writing signals
@@ -207,7 +208,7 @@ async def recalc_crosses(symbol: str, timeframe: str):
         logger.error(f"Error in recalc_crosses for {symbol}_{timeframe}: {e}")
         
 async def schedule_cross_recalcs(symbols, timeframes):
-    while True:
+    while not _shutdown_requested:
         now = datetime.now(timezone.utc)
         second = now.second
         minute = now.minute
@@ -1170,8 +1171,9 @@ def graceful_shutdown(signum, frame):
     """
     logger.info("Gracefully shutting down...")
     print("Gracefully shutting down...")
+    global _shutdown_requested
+    _shutdown_requested = True
     save_last_events(last_events)
-    sys.exit(0)
 
 # Register signal handlers for graceful shutdown
 signal.signal(signal.SIGINT, graceful_shutdown)
@@ -1262,6 +1264,12 @@ def update_last_events(symbol, tf, event, last_events):
         event_ts_str = event.get('timestamp')
         if event_type not in ['stoch_crossover', 'stoch_crossunder']:
             return
+        # Bad timestamps must not take down the background recalculation task.
+        # Cross events are persisted and can survive across process restarts.
+        new_ts = pd.to_datetime(event_ts_str, utc=True, errors='coerce')
+        if pd.isna(new_ts):
+            logger.warning(f"Ignoring {symbol}_{tf} cross event with invalid timestamp: {event_ts_str!r}")
+            return
         if symbol not in last_events: last_events[symbol] = {}
         if tf not in last_events[symbol]: last_events[symbol][tf] = {}
         if event_type not in last_events[symbol][tf]: last_events[symbol][tf][event_type] = {}
@@ -1269,7 +1277,6 @@ def update_last_events(symbol, tf, event, last_events):
         if current_latest and current_latest.get('timestamp'):
             try:
                 curr_ts = pd.to_datetime(current_latest['timestamp'], utc=True)
-                new_ts = pd.to_datetime(event_ts_str, utc=True)
                 if new_ts < curr_ts:
                     return
             except Exception: pass
@@ -1294,7 +1301,7 @@ def load_symbols_active():
 
 def start_symbols_loader():
     """Periodically refreshes all symbol files every 8 minutes."""
-    while True:
+    while not _shutdown_requested:
         load_symbols_active()  # Refresh symbols_active
         #print(f"Updated symbols_active: {symbols_active}")  # Debugging print
         time.sleep(120)  # 8 minutes
@@ -1447,7 +1454,7 @@ async def main():
     asyncio.create_task(schedule_cross_recalcs(symbols, TIMEFRAMES))
     logger.info("✅ Started background task for cross recalculations.")
 
-    while True:
+    while not _shutdown_requested:
         all_signals = {}
         all_signals_for_json_save = {} 
         current_iteration = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')

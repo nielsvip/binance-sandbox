@@ -1,0 +1,35 @@
+hedge_same_vs_dual — 12sym × ~6mo crypto inf — 20260427_1730
+======================================================================
+
+[same_only]
+  log:   /Users/niels/Documents/binance/scripts_oneshot/logs/run_same_only_20260427_1730.log
+  jsonl: /Users/niels/Documents/binance/backtest_v8/logs/v8_crypto_inf_20260427_173521.jsonl
+  v8_result: {'sharpe_w': 1.016, 'sharpe_pt': 0.125, 'sharpe_ann': 41.49, 'gain_pct': 1.01, 'closes': 1265.0, 'wins': 657.0, 'losses': 608.0, 'sharpe': -3.229, 'pnl': -0.98, 'trades': 1265.0, 'total_pnl_dollars': -9.76, 'avg_pnl': -0.01, 'avg_pos_value': 16.66}
+  analysis: {
+  "pool_sharpe": -0.003887803236969835,
+  "sym_sharpe": 0.027244571686036625,
+  "avg_gain_trade": -0.004273736500074192,
+  "gain_per_yr": -474.3886017212985,
+  "gain_sym_yr": -79.06476695354975,
+  "acc_gain_pct": -5.406276672593854,
+  "max_dd_pct": 1.750094991615023,
+  "trades": 1265,
+  "n_syms": 6,
+  "n_years": 0.011396303901437371,
+  "hedge_open_count": 0,
+  "hedge_close_count": 0,
+  "hedge_loss_count": 0,
+  "hedge_win_count": 0,
+  "hedge_loss_total_pct": 0.0,
+  "hedge_avg_pnl_pct": 0.0
+}
+
+[dual_only]
+  log:   /Users/niels/Documents/binance/scripts_oneshot/logs/run_dual_only_20260427_1730.log
+  jsonl: 
+  v8_result: {'sharpe_w': 1.115, 'sharpe_pt': 0.28, 'sharpe_ann': 71.84, 'gain_pct': 0.7, 'closes': 741.0, 'wins': 361.0, 'losses': 380.0}
+  analysis: {
+  "error": "no v8 jsonl"
+}
+
+======================================================================

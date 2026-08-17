@@ -1,0 +1,306 @@
+{
+  "allowed_isolated_fingerprint_plateau_groups": 7,
+  "allowed_isolated_metric_plateau_groups": 7,
+  "allowed_plateau_rule": "ONE_TWO_VALUE_PAIR_PER_5PLUS_VALUE_PARAMETER_AXIS; ALL_OTHER_VALUES_UNIQUE; NO_CROSS_PARAMETER_COLLISION",
+  "allowed_plateaus": [
+    {
+      "behavior_fingerprint": "5b5914034da0fcf563bd17a82b098136f0e7141fa8098521125ae249974bd373",
+      "key": "AAPL_LONG",
+      "measured_axis_values": 5,
+      "metric": -2.2283132884,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "1.875",
+        "2.25"
+      ]
+    },
+    {
+      "behavior_fingerprint": "148a39d7b67526f4f5205536a4f26aa759c3d141272fbe77e6c60bea16a621c4",
+      "key": "AAPL_LONG",
+      "measured_axis_values": 5,
+      "metric": -2.1827698122,
+      "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+      "values": [
+        "3.125",
+        "3.75"
+      ]
+    },
+    {
+      "behavior_fingerprint": "076c742608defdf0ff71d9f59ff37f4a915990bd24a48ac877cc5615fce4827e",
+      "key": "GOOGL_LONG",
+      "measured_axis_values": 5,
+      "metric": -6.5145034468,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "0.75",
+        "1.125"
+      ]
+    },
+    {
+      "behavior_fingerprint": "4eedd87f9bf3c01af081ae6d7056194679d2c02ff01d74e938e663c44aee23c1",
+      "key": "INTC_LONG",
+      "measured_axis_values": 5,
+      "metric": -4.35064509,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "0.75",
+        "1.125"
+      ]
+    },
+    {
+      "behavior_fingerprint": "0156f36b76de03b730750149bd59756db2b9a833739ede7ebac752786fc9107f",
+      "key": "NXE_SHORT",
+      "measured_axis_values": 5,
+      "metric": 7.459859882,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "0.75",
+        "1.125"
+      ]
+    },
+    {
+      "behavior_fingerprint": "b447815748d7ea39e203b5bb369541bb35a08723a492e156dd8c2921791b30d3",
+      "key": "RBLX_SHORT",
+      "measured_axis_values": 5,
+      "metric": -2.9980186547,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "0.75",
+        "1.125"
+      ]
+    },
+    {
+      "behavior_fingerprint": "32e39cc0dccee3cfaf6303c7f94be98c8b08f47f2df2a5431d73c3b98bc1d05e",
+      "key": "TRGP_LONG",
+      "measured_axis_values": 5,
+      "metric": -1.8117062098,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "0.75",
+        "1.125"
+      ]
+    }
+  ],
+  "behavior_distinct_frontier": {
+    "accepted_keys": [],
+    "accepted_rows": 0,
+    "available": false,
+    "contract": "HASH_BOUND_BEHAVIOR_DISTINCT_VECTOR_DIAGNOSTIC_ONLY",
+    "engine_cells_modified": false,
+    "exact_completion_credit": false,
+    "rejected_keys": [
+      {
+        "key": "AAPL_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/AAPL_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "AAPL_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/AAPL_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "ACN_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/ACN_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "CLX_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/CLX_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "CMC_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/CMC_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "DINO_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/DINO_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "DVN_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/DVN_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "EOG_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/EOG_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "FANG_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/FANG_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "GM_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/GM_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "MU_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/MU_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "NVDA_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/NVDA_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "OKE_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/OKE_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "TTD_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/TTD_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "VT_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/VT_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "AAPL_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/AAPL_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "AAPL_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/AAPL_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "ACN_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/ACN_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "CLX_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/CLX_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "CMC_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/CMC_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "DINO_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/DINO_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "DVN_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/DVN_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "EOG_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/EOG_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "FANG_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/FANG_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "GM_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/GM_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "MU_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/MU_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "NVDA_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/NVDA_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "OKE_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/OKE_LONG/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "TTD_SHORT",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/TTD_SHORT/FRONTIER_RECEIPT.json"
+      },
+      {
+        "key": "VT_LONG",
+        "reason": "ValueError: raw shard missing",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/VT_LONG/FRONTIER_RECEIPT.json"
+      }
+    ]
+  },
+  "contract": "STRICT_PER_KEY_UNIQUE_METRIC_AND_ACTION_NO_DUPLICATES",
+  "current_engine_campaign": "stocks_repaired_20260730_c5",
+  "data_unavailable_rows": 0,
+  "engine_cells_modified": false,
+  "fingerprint_collision_groups": 135,
+  "generated_at": "2026-08-04T16:54:34Z",
+  "input_rows": 2189,
+  "matrix_numeric_fill_requires_pass": true,
+  "metric_collision_groups": 131,
+  "old_full_blank_broadcast_display_excluded": true,
+  "passed_numeric_overlays": 278,
+  "post_precedence_display_audit": {
+    "allowed_isolated_fingerprint_plateau_groups": 0,
+    "allowed_isolated_metric_plateau_groups": 0,
+    "allowed_plateau_rule": "ONE_TWO_VALUE_PAIR_PER_5PLUS_VALUE_PARAMETER_AXIS; ALL_OTHER_VALUES_UNIQUE; NO_CROSS_PARAMETER_COLLISION",
+    "allowed_plateaus": [],
+    "contract": "STRICT_PER_KEY_UNIQUE_METRIC_AND_ACTION_NO_DUPLICATES",
+    "data_unavailable_rows": 0,
+    "engine_cells_modified": false,
+    "fingerprint_collision_groups": 7,
+    "input_rows": 252,
+    "matrix_numeric_fill_requires_pass": true,
+    "metric_collision_groups": 7,
+    "passed_numeric_overlays": 238,
+    "quarantined_numeric_overlays": 14,
+    "reason_counts": {
+      "DUPLICATE_ACTION_FINGERPRINT": 14,
+      "DUPLICATE_RESULT_NUMBER": 14
+    },
+    "schema_version": 1,
+    "scope": "POST_EXACT_RECOVERED_AND_PRESERVED_V8_DISPLAY_PRECEDENCE"
+  },
+  "quarantined_numeric_overlays": 1911,
+  "reason_counts": {
+    "DUPLICATE_ACTION_FINGERPRINT": 1909,
+    "DUPLICATE_RESULT_NUMBER": 1910,
+    "STATUS_INERT": 1382,
+    "STATUS_ZERO_TRADE": 23,
+    "ZERO_REAL_CLOSES": 23
+  },
+  "schema_version": 1,
+  "source_rule": "reviewed scalar-gap plus strict active-audit VEC_APPROX overlays; old physical-blank broadcast is audit-only and excluded from canonical display; current exact ENGINE cells always take precedence",
+  "strict_active_vector_audit": {
+    "available": true,
+    "passed": 278,
+    "quarantined": 1911,
+    "raw_rows": 2189,
+    "rejected_candidates": [
+      {
+        "reason": "ValueError: source hash mismatch: data/reports/vector_approx_scalar_20260801/MU_LONG.jsonl",
+        "report": "data/reports/TRB_ACTIVE_VECTOR_CELL_AUDIT_20260801.json"
+      },
+      {
+        "reason": "ValueError: source hash mismatch: data/reports/vector_approx_scalar_20260801/MU_LONG.jsonl",
+        "report": "data/reports/TRB_ACTIVE_VECTOR_CELL_AUDIT_20260801_V2.json"
+      }
+    ],
+    "report": "data/reports/TRB_ACTIVE_VECTOR_CELL_AUDIT_20260802_COHORT5_LONG_UNION.json",
+    "selection_rule": "LARGEST_HASH_VERIFIED_SOURCE_UNION",
+    "source_ledgers": 34,
+    "valid_candidates": 4
+  }
+}

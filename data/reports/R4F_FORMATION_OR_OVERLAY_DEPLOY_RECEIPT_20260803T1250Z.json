@@ -1,0 +1,15 @@
+{
+  "schema": "r4f-formation-or-overlay-deploy-receipt-v1",
+  "runner_sha256": "38cce31612ab5d418ed2835711b9300032098bf62e156c9f4af07921cac05e29",
+  "backtest_bible_sha256": "bda82b8c5a6ff455ebac16ae209ee4f3c87ba050179058691f640f99dea47431",
+  "watchdog_sha256": "49103b77b23ad606a03f9e18768cf6a1c44a07a6aaf6b117fea2bd82ed1d6d35",
+  "plan_sha256": "e879aa96ffb98a66ec4e2206dd95a75d106ad491645a84201f7d95264f99087b",
+  "plan_key_count": 35,
+  "plan_candidate_count": 495,
+  "remote_tests": {
+    "test_r4f_formation_overlay_two_stage.py": "6 passed"
+  },
+  "contract": "VECTOR_RESEARCH_RECEIPTS_ONLY_NO_MATRIX_NO_V8_NO_LIVE_NO_DB",
+  "remote_status": "DEPLOYED_AND_LAUNCHED_AGCO_SHORT; VECTOR_ONLY; CRON_EVERY_MINUTE",
+  "remote_launched_at": "2026-08-03T13:31:14Z"
+}

@@ -89,7 +89,11 @@ def main():
     p.add_argument("--start", default="2024-01-01")
     p.add_argument("--capital", type=float, default=2000.0)
     p.add_argument("--npz-dir", default="")
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(p)
     args = p.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="vec_ab_sweep.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}")
 
     if not QUEUE.exists():
         print(f"queue file not found: {QUEUE}")

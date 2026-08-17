@@ -639,8 +639,8 @@ def main() -> int:
     ap.add_argument("--outer-train-months", type=int, default=12)
     ap.add_argument("--validation-months", type=int, default=3)
     ap.add_argument("--inner-folds", type=int, default=3)
-    ap.add_argument("--cost-bps", type=float, default=5.0)
-    ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument("--cost-bps", type=float, default=0.0)
+    ap.add_argument("--slippage-bps", type=float, default=2.5)
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
 

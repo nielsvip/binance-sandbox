@@ -1,0 +1,244 @@
+{
+  "append_only_added_cells": 0,
+  "append_only_never_overwrite": true,
+  "append_only_retained_cells": 7595,
+  "archive_sha256": "e51b04b0b93c815c145aa8a1afa0424e699c962c7fc8b8e27a881d6e974c81c0",
+  "available": true,
+  "by_key": {
+    "ACN_SHORT": {
+      "display_pass": 10,
+      "quarantined": 198,
+      "rows": 208
+    },
+    "ARM_LONG": {
+      "display_pass": 12,
+      "quarantined": 51,
+      "rows": 63
+    },
+    "ARM_SHORT": {
+      "display_pass": 1,
+      "quarantined": 62,
+      "rows": 63
+    },
+    "A_LONG": {
+      "display_pass": 0,
+      "quarantined": 2,
+      "rows": 2
+    },
+    "BNO_LONG": {
+      "display_pass": 1,
+      "quarantined": 0,
+      "rows": 1
+    },
+    "CIBR_LONG": {
+      "display_pass": 1,
+      "quarantined": 0,
+      "rows": 1
+    },
+    "CLX_SHORT": {
+      "display_pass": 1,
+      "quarantined": 8,
+      "rows": 9
+    },
+    "EXEL_LONG": {
+      "display_pass": 0,
+      "quarantined": 3,
+      "rows": 3
+    },
+    "FCN_SHORT": {
+      "display_pass": 0,
+      "quarantined": 3,
+      "rows": 3
+    },
+    "FIVN_LONG": {
+      "display_pass": 5,
+      "quarantined": 7,
+      "rows": 12
+    },
+    "GM_LONG": {
+      "display_pass": 3,
+      "quarantined": 7,
+      "rows": 10
+    },
+    "HAO_LONG": {
+      "display_pass": 16,
+      "quarantined": 538,
+      "rows": 554
+    },
+    "HAO_SHORT": {
+      "display_pass": 3,
+      "quarantined": 550,
+      "rows": 553
+    },
+    "IBIT_LONG": {
+      "display_pass": 1,
+      "quarantined": 0,
+      "rows": 1
+    },
+    "LAC_SHORT": {
+      "display_pass": 11,
+      "quarantined": 34,
+      "rows": 45
+    },
+    "LEXX_LONG": {
+      "display_pass": 0,
+      "quarantined": 2,
+      "rows": 2
+    },
+    "LSCC_LONG": {
+      "display_pass": 0,
+      "quarantined": 3,
+      "rows": 3
+    },
+    "MNTS_LONG": {
+      "display_pass": 12,
+      "quarantined": 830,
+      "rows": 842
+    },
+    "MNTS_SHORT": {
+      "display_pass": 0,
+      "quarantined": 843,
+      "rows": 843
+    },
+    "MSTR_SHORT": {
+      "display_pass": 1,
+      "quarantined": 0,
+      "rows": 1
+    },
+    "MU_LONG": {
+      "display_pass": 77,
+      "quarantined": 962,
+      "rows": 1039
+    },
+    "MU_SHORT": {
+      "display_pass": 20,
+      "quarantined": 981,
+      "rows": 1001
+    },
+    "NVDA_LONG": {
+      "display_pass": 17,
+      "quarantined": 78,
+      "rows": 95
+    },
+    "NVDA_SHORT": {
+      "display_pass": 2,
+      "quarantined": 45,
+      "rows": 47
+    },
+    "OKE_LONG": {
+      "display_pass": 5,
+      "quarantined": 7,
+      "rows": 12
+    },
+    "PLTR_SHORT": {
+      "display_pass": 2,
+      "quarantined": 7,
+      "rows": 9
+    },
+    "ROBO_LONG": {
+      "display_pass": 0,
+      "quarantined": 2,
+      "rows": 2
+    },
+    "TTD_SHORT": {
+      "display_pass": 17,
+      "quarantined": 158,
+      "rows": 175
+    },
+    "VT_LONG": {
+      "display_pass": 110,
+      "quarantined": 1886,
+      "rows": 1996
+    }
+  },
+  "current_engine_cells_with_precedence": 2,
+  "display_pass_cells": 328,
+  "generated_at": "2026-08-01T21:30:31.312327Z",
+  "generated_at_for_matrix": "2026-08-04T16:54:34Z",
+  "never_overwrite_current_exact": true,
+  "numeric_collision_groups": 11,
+  "precedence": "current receipt-valid ENGINE > preserved V8 > vector",
+  "precedence_enforced": "current receipt-valid ENGINE > immutable recovered S1 V8 > immutable preserved workbook V8 > unique active vector > blank",
+  "preserved_cells_protected_from_vector": 112,
+  "preserved_rows_written_to_engine_csv": 0,
+  "promotion_allowed": false,
+  "quarantined_cells": 7267,
+  "raw_archive_modified": false,
+  "raw_param_matrix_daemon_rows": 68,
+  "reaudited_status_counts": {
+    "PASS": 328,
+    "QUARANTINED": 7267
+  },
+  "reaudited_uniqueness_scope": "WITHIN_SYMBOL_SIDE_ACROSS_FOUR_PATH_SHEETS",
+  "recovered_pilot_v8_receipt": {
+    "append_only_evidence_semantics": true,
+    "archive": "data/reports/PILOT_V8_CELLS_IMMUTABLE.jsonl",
+    "archive_sha256": "775727650cb84bd54948351f6d673f32c12928d921bb43185703f1e28750804e",
+    "available": true,
+    "by_key": {
+      "ACN_SHORT": {
+        "PASS_UNIQUE_NONZERO": 12,
+        "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 196
+      },
+      "MU_LONG": {
+        "PASS_UNIQUE_NONZERO": 98,
+        "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 1150
+      },
+      "NVDA_LONG": {
+        "PASS_UNIQUE_NONZERO": 22,
+        "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 94
+      },
+      "TTD_SHORT": {
+        "PASS_UNIQUE_NONZERO": 20,
+        "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 155
+      },
+      "VT_LONG": {
+        "PASS_UNIQUE_NONZERO": 110,
+        "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 1887
+      }
+    },
+    "combined_display_reaudit": {
+      "PASS_UNIQUE_NONZERO": 262,
+      "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 3482
+    },
+    "generated_at_epoch": 1785714031.541646,
+    "historical_metric_precision": "AS_STORED_IN_SOURCE_DB; legacy rows may be four-decimal persisted",
+    "latest_logical_rows": 3744,
+    "native_precision_reruns": {
+      "accepted_pass_rows": 0,
+      "available": true,
+      "deployment_sha256": "93ad8cfcd0e14f5fda1862e3611a4eee2ce713215ced48bbc3714763e45dd9c9",
+      "duplicate_authoritative_logical_pass_rows": 0,
+      "ledger_rows_preserved": 0,
+      "non_authoritative_deployment_rows": 0,
+      "out_of_selection_pass_rows": 0,
+      "pass_ledger_rows": 0,
+      "results_sha256": "85276431d6fa899e2b4a9a8c967d005d94e353d1dbb19eed54cc5ac0f3a881f6",
+      "status": "RUNNING",
+      "verified_cross_deployment_pass_rows": 0
+    },
+    "physical_display_pass_rows": 262,
+    "physical_duplicate_within_symbol_side_allowed": false,
+    "physical_zero_allowed": false,
+    "pilots": [
+      "MU_LONG",
+      "NVDA_LONG",
+      "VT_LONG",
+      "TTD_SHORT",
+      "ACN_SHORT"
+    ],
+    "precedence": "CURRENT_C5_ENGINE>RECOVERED_HISTORICAL_V8_DB>PRESERVED_WORKBOOK>VECTOR",
+    "promotion_allowed": false,
+    "raw_engine_rows_read": 5121,
+    "schema": "pilot-v8-cell-immutable-receipt-v1",
+    "source": "S1:param_results_stocks.db:param_cells",
+    "source_db_path": "/home/niels/binance-sandbox/data/param_results_stocks.db",
+    "status": "PASS",
+    "verified_archive_sha256": "775727650cb84bd54948351f6d673f32c12928d921bb43185703f1e28750804e"
+  },
+  "schema_version": 1,
+  "source_workbook": "/Users/niels/Documents/binance/data/reports/PARAM_BASELINE_STOCKS.xlsx",
+  "source_workbook_sha256": "cbde68c76968835823e68529a349615778ddc73f2c4de70eae020799bd7fd37c",
+  "unique_logical_cells": 7595,
+  "verified_archive_sha256": "e51b04b0b93c815c145aa8a1afa0424e699c962c7fc8b8e27a881d6e974c81c0"
+}

@@ -201,7 +201,11 @@ def main() -> int:
     ap.add_argument("--output", default=str(REPORT))
     ap.add_argument("--baseline-only", action="store_true",
                     help="run only the seeded all-exits-off parity floor")
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="tools/vec_exposure_ladder.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
 
     symbol = args.symbol.upper()
     start_ts = int(datetime.fromisoformat(args.start).replace(tzinfo=timezone.utc).timestamp())

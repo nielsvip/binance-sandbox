@@ -1,0 +1,365 @@
+{
+  "active_config": "/Users/niels/Documents/binance/data/hourly_reconfig/trb/active_config.json",
+  "audit_log": "/Users/niels/Documents/binance/data/persym_apply_audit.jsonl",
+  "generated_at": "2026-08-01T15:43:47.367110+00:00",
+  "records": [
+    {
+      "active_snapshot": {
+        "campaign": "stocks_repaired_20260725_c2",
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "ledger_path": "/home/niels/binance-sandbox/data/sweep_results/persym_campaign_stocks_repaired_20260725_c2_trades/STRUCTURAL_RANGE_SHIFT_TF___dc_4h_/cell__MU.jsonl",
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:03444ee0222dfc64",
+        "window": "full"
+      },
+      "key": "MU_LONG",
+      "latest_apply_audit": {
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "line": 14593,
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:03444ee0222dfc64"
+      },
+      "ledger_win_rate_pct": null,
+      "reason": "cell__*.jsonl ledger is referenced on remote /home/niels/binance-sandbox and is not present locally; raw_returns is not a certified trade ledger",
+      "snapshot_drift": false,
+      "status": "UNVERIFIABLE_LEDGER_NOT_MOUNTED"
+    },
+    {
+      "active_snapshot": {
+        "campaign": "stocks_repaired_20260725_c2",
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "ledger_path": "/home/niels/binance-sandbox/data/sweep_results/persym_campaign_stocks_repaired_20260725_c2_trades/STRUCTURAL_RANGE_SHIFT_EXIT__true/cell__NVDA.jsonl",
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:c201bf2c0ded7781",
+        "window": "full"
+      },
+      "key": "NVDA_LONG",
+      "latest_apply_audit": {
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "line": 14668,
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:c201bf2c0ded7781"
+      },
+      "ledger_win_rate_pct": null,
+      "reason": "cell__*.jsonl ledger is referenced on remote /home/niels/binance-sandbox and is not present locally; raw_returns is not a certified trade ledger",
+      "snapshot_drift": false,
+      "status": "UNVERIFIABLE_LEDGER_NOT_MOUNTED"
+    },
+    {
+      "active_snapshot": {
+        "campaign": "stocks_repaired_20260730_c5_1yr",
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "ledger_path": "/home/niels/binance-sandbox/data/sweep_results/persym_campaign_stocks_repaired_20260730_c5_1yr_trades/STRUCTURAL_RANGE_SHIFT_EXIT__true/cell__ACN.jsonl",
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:exact-actions-v2:35a7d5e5205a8be2c4a2091b",
+        "window": "1yr"
+      },
+      "key": "ACN_SHORT",
+      "latest_apply_audit": {
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "line": 14662,
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:exact-actions-v2:35a7d5e5205a8be2c4a2091b"
+      },
+      "ledger_win_rate_pct": null,
+      "reason": "cell__*.jsonl ledger is referenced on remote /home/niels/binance-sandbox and is not present locally; raw_returns is not a certified trade ledger",
+      "snapshot_drift": false,
+      "status": "UNVERIFIABLE_LEDGER_NOT_MOUNTED"
+    },
+    {
+      "active_snapshot": {
+        "campaign": "stocks_repaired_20260725_c2",
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 2,
+          "negative": 2,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "ledger_path": "/home/niels/binance-sandbox/data/sweep_results/persym_campaign_stocks_repaired_20260725_c2_trades/STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS__50.0/cell__VT.jsonl",
+        "raw_trace": {
+          "n": 3,
+          "negative": 2,
+          "positive": 1,
+          "raw_trace_sign_pct": 33.333333333333336,
+          "zero": 0
+        },
+        "real_closes": 2,
+        "trades": 3,
+        "trades_fingerprint": "3:32de6c00da5855a9",
+        "window": "full"
+      },
+      "key": "VT_LONG",
+      "latest_apply_audit": {
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 26.31578947368421,
+          "n": 38,
+          "negative": 28,
+          "positive": 10,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "line": 15121,
+        "raw_trace": {
+          "n": 39,
+          "negative": 29,
+          "positive": 10,
+          "raw_trace_sign_pct": 25.641025641025642,
+          "zero": 0
+        },
+        "real_closes": 38,
+        "trades": 39,
+        "trades_fingerprint": "39:exact-actions-v2:9adc087388d6314555fb82f2"
+      },
+      "ledger_win_rate_pct": null,
+      "reason": "cell__*.jsonl ledger is referenced on remote /home/niels/binance-sandbox and is not present locally; raw_returns is not a certified trade ledger",
+      "snapshot_drift": true,
+      "status": "UNVERIFIABLE_LEDGER_NOT_MOUNTED"
+    },
+    {
+      "active_snapshot": {
+        "campaign": "stocks_repaired_20260730_c5_1yr",
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 100.0,
+          "n": 1,
+          "negative": 0,
+          "positive": 1,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "ledger_path": "/home/niels/binance-sandbox/data/sweep_results/persym_campaign_stocks_repaired_20260730_c5_1yr_trades/STRUCTURAL_RANGE_SHIFT_EXIT__true/cell__GM.jsonl",
+        "raw_trace": {
+          "n": 2,
+          "negative": 0,
+          "positive": 2,
+          "raw_trace_sign_pct": 100.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:exact-actions-v2:8a3b8c8c02f918dda4edaf50",
+        "window": "1yr"
+      },
+      "key": "GM_LONG",
+      "latest_apply_audit": {
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 100.0,
+          "n": 1,
+          "negative": 0,
+          "positive": 1,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "line": 14617,
+        "raw_trace": {
+          "n": 2,
+          "negative": 0,
+          "positive": 2,
+          "raw_trace_sign_pct": 100.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:exact-actions-v2:8a3b8c8c02f918dda4edaf50"
+      },
+      "ledger_win_rate_pct": null,
+      "reason": "cell__*.jsonl ledger is referenced on remote /home/niels/binance-sandbox and is not present locally; raw_returns is not a certified trade ledger",
+      "snapshot_drift": false,
+      "status": "UNVERIFIABLE_LEDGER_NOT_MOUNTED"
+    },
+    {
+      "active_snapshot": {
+        "campaign": "stocks_repaired_20260730_c5_1yr",
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "ledger_path": "/home/niels/binance-sandbox/data/sweep_results/persym_campaign_stocks_repaired_20260730_c5_1yr_trades/STRUCTURAL_RANGE_SHIFT_EXIT__true/cell__PLTR.jsonl",
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:exact-actions-v2:d6509a9c4920cf7c5722b751",
+        "window": "1yr"
+      },
+      "key": "PLTR_SHORT",
+      "latest_apply_audit": {
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 0.0,
+          "n": 1,
+          "negative": 1,
+          "positive": 0,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "line": 14714,
+        "raw_trace": {
+          "n": 2,
+          "negative": 1,
+          "positive": 1,
+          "raw_trace_sign_pct": 50.0,
+          "zero": 0
+        },
+        "real_closes": 1,
+        "trades": 2,
+        "trades_fingerprint": "2:exact-actions-v2:d6509a9c4920cf7c5722b751"
+      },
+      "ledger_win_rate_pct": null,
+      "reason": "cell__*.jsonl ledger is referenced on remote /home/niels/binance-sandbox and is not present locally; raw_returns is not a certified trade ledger",
+      "snapshot_drift": false,
+      "status": "UNVERIFIABLE_LEDGER_NOT_MOUNTED"
+    },
+    {
+      "active_snapshot": {
+        "campaign": "stocks_repaired_20260725_c2",
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 98.21428571428571,
+          "n": 56,
+          "negative": 1,
+          "positive": 55,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "ledger_path": "/home/niels/binance-sandbox/data/sweep_results/persym_campaign_stocks_repaired_20260725_c2_trades/DELTA_EXIT_ENABLED__true/cell__LAC.jsonl",
+        "raw_trace": {
+          "n": 57,
+          "negative": 2,
+          "positive": 55,
+          "raw_trace_sign_pct": 96.49122807017544,
+          "zero": 0
+        },
+        "real_closes": 56,
+        "trades": 57,
+        "trades_fingerprint": "57:a1eee1e404ef71f2",
+        "window": "full"
+      },
+      "key": "LAC_SHORT",
+      "latest_apply_audit": {
+        "engine_closed_trace": {
+          "engine_closed_trace_sign_pct": 98.21428571428571,
+          "n": 56,
+          "negative": 1,
+          "positive": 55,
+          "reason": "final MTM row excluded by engine real_closes contract",
+          "zero": 0
+        },
+        "line": 14755,
+        "raw_trace": {
+          "n": 57,
+          "negative": 2,
+          "positive": 55,
+          "raw_trace_sign_pct": 96.49122807017544,
+          "zero": 0
+        },
+        "real_closes": 56,
+        "trades": 57,
+        "trades_fingerprint": "57:a1eee1e404ef71f2"
+      },
+      "ledger_win_rate_pct": null,
+      "reason": "cell__*.jsonl ledger is referenced on remote /home/niels/binance-sandbox and is not present locally; raw_returns is not a certified trade ledger",
+      "snapshot_drift": false,
+      "status": "UNVERIFIABLE_LEDGER_NOT_MOUNTED"
+    }
+  ],
+  "trade_level_wr": "N/A for every row until the referenced cell ledger is mounted and reconciled"
+}

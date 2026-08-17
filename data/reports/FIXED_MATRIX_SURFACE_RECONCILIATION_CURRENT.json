@@ -1,0 +1,688 @@
+{
+  "axis_reconciliation": {
+    "current_only_axes": 0,
+    "current_only_axes_by_sheet": {},
+    "current_only_axes_with_measurements": 0,
+    "current_only_statuses": {},
+    "fixed_axes_missing_from_current": 0,
+    "fixed_missing_axes_by_sheet": {},
+    "fixed_missing_nonzero_cells": 0,
+    "fixed_missing_statuses": {},
+    "identity_equation": "3618 - 0 + 0 = 3618",
+    "measurements_per_current_only_axis": {},
+    "net_axis_inflation": 0,
+    "net_physical_cell_inflation": 0,
+    "shared_fixed_axes": 3618,
+    "sheet_moves_for_shared_axes": 0
+  },
+  "canonical_write_performed": false,
+  "cell_reconciliation_on_shared_axes": {
+    "fixed_exact_unique_same": 583,
+    "fixed_repeated_value_removed": 2105,
+    "fixed_zero_or_blank_filled": 310,
+    "fixed_zero_or_blank_unresolved": 485432
+  },
+  "changed_fixed_exact_unique_cells": [],
+  "current_only_inventory": {
+    "blank_cells": 0,
+    "measured_cells": 0,
+    "metric_duplicate_cells_within_key": 0,
+    "path": "/Users/niels/Documents/binance/data/reports/CURRENT_ONLY_MEASURED_RECIPE_INVENTORY.csv.gz",
+    "sha256": "aae83169153db386a3e2c902811a932b80564c024309e58376ef6136a5911301"
+  },
+  "current_surface": {
+    "axes": 3618,
+    "metric_duplicate_cells_within_key": 0,
+    "physical_cells": 488430,
+    "sheet_axis_counts": {
+      "Entry": 1165,
+      "Exit": 754,
+      "Other": 1242,
+      "Sizing": 457
+    },
+    "symbol_sides": 135,
+    "valid_nonzero_cells": 893,
+    "workbook": "/Users/niels/Documents/binance/data/reports/SWITCH_MATRIX_TRB.xlsx",
+    "workbook_sha256": "a6b24f348ed9d6333f699c47799f70aa3527697aa40a8b2996d01644287ccb8d"
+  },
+  "fixed_contract": {
+    "axes": 3618,
+    "exactly_once_metric_cells": 583,
+    "physical_cells_expected": 488430,
+    "raw_nonzero_cells": 2688,
+    "repeated_metric_cells": 2105,
+    "repeated_metric_groups": 29,
+    "sheet_axis_counts": {
+      "Entry": 1165,
+      "Exit": 754,
+      "Other": 1242,
+      "Sizing": 457
+    },
+    "symbol_sides": 135,
+    "workbook": "/Users/niels/Documents/binance/data/sync/current_matrix_surface_history/1785697632_80e4d4cdc1a09dd6/SWITCH_MATRIX_TRB.xlsx",
+    "workbook_sha256": "afba07655500f79503805b5ae09ba9573705194c0b5e91128a66c19accc59e62"
+  },
+  "generated_at_epoch": 1785799595.7609758,
+  "guarded_migration_preview_not_executed": {
+    "canonical_replace_allowed": false,
+    "externalize_current_only_measurements": 0,
+    "fixed_axes": 3618,
+    "physical_cells": 488430,
+    "populate_current_measurements_on_fixed_zero_or_blank_cells": 310,
+    "populate_historical_exactly_once_values": 583,
+    "quarantine_legacy_repeated_value_representatives": 0,
+    "restore_historical_value_for_changed_cells": 0,
+    "review_required_before_staging_or_replacement": true,
+    "strict_blank_cells": 487537,
+    "strict_duplicate_cells": 0,
+    "strict_valid_nonzero_cells": 893,
+    "strict_zero_cells": 0,
+    "symbol_sides": 135
+  },
+  "per_symbol_side": [
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "COP_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CHRD_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 8,
+      "fixed_zero_or_blank_unresolved": 3610,
+      "key": "ROKU_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 3,
+      "fixed_zero_or_blank_unresolved": 3615,
+      "key": "DAR_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 12,
+      "fixed_zero_or_blank_unresolved": 3606,
+      "key": "DVN_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 5,
+      "fixed_zero_or_blank_unresolved": 3613,
+      "key": "PSX_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 1,
+      "fixed_zero_or_blank_unresolved": 3617,
+      "key": "BNO_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "LSCC_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 85,
+      "fixed_zero_or_blank_filled": 39,
+      "fixed_zero_or_blank_unresolved": 3494,
+      "key": "MU_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "PBF_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "WDAY_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "QRVO_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 31,
+      "fixed_repeated_value_removed": 18,
+      "fixed_zero_or_blank_filled": 30,
+      "fixed_zero_or_blank_unresolved": 3539,
+      "key": "NVDA_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 7,
+      "fixed_zero_or_blank_unresolved": 3611,
+      "key": "FANG_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "LEXX_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 10,
+      "fixed_zero_or_blank_unresolved": 3608,
+      "key": "BK_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AR_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "FCN_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "ROBO_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 4,
+      "fixed_zero_or_blank_unresolved": 3614,
+      "key": "RRC_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 5,
+      "fixed_zero_or_blank_unresolved": 3613,
+      "key": "CIBR_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "USAR_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 5,
+      "fixed_zero_or_blank_filled": 15,
+      "fixed_zero_or_blank_unresolved": 3598,
+      "key": "OKE_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 1,
+      "fixed_zero_or_blank_unresolved": 3617,
+      "key": "A_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "RDDT_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CMC_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "TXN_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CAT_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "EXEL_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 5,
+      "fixed_zero_or_blank_unresolved": 3613,
+      "key": "FIVN_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "STLD_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "SAP_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CIEN_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "VLO_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "SNOW_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 13,
+      "fixed_zero_or_blank_filled": 32,
+      "fixed_zero_or_blank_unresolved": 3573,
+      "key": "GM_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "PR_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "BKR_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 10,
+      "fixed_zero_or_blank_unresolved": 3608,
+      "key": "INTC_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "DELL_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "SNDK_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CDW_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CF_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "XOP_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 18,
+      "fixed_zero_or_blank_unresolved": 3600,
+      "key": "ARM_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "MRVL_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "DINO_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 110,
+      "fixed_repeated_value_removed": 1806,
+      "fixed_zero_or_blank_filled": 23,
+      "fixed_zero_or_blank_unresolved": 1679,
+      "key": "VT_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 12,
+      "fixed_zero_or_blank_unresolved": 3606,
+      "key": "MNTS_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "LLY_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "XLE_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 10,
+      "fixed_zero_or_blank_unresolved": 3608,
+      "key": "TRGP_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "LRCX_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "LNG_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 8,
+      "fixed_zero_or_blank_unresolved": 3610,
+      "key": "MPC_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AMD_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 6,
+      "fixed_zero_or_blank_unresolved": 3612,
+      "key": "EOG_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 7,
+      "fixed_zero_or_blank_unresolved": 3611,
+      "key": "BG_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "APO_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "OLED_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "PDBC_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 12,
+      "fixed_zero_or_blank_unresolved": 3606,
+      "key": "GDX_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "KGC_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 1,
+      "fixed_zero_or_blank_filled": 35,
+      "fixed_zero_or_blank_unresolved": 3582,
+      "key": "CLX_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "WPM_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 3,
+      "fixed_zero_or_blank_unresolved": 3615,
+      "key": "HAO_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CDE_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 9,
+      "fixed_zero_or_blank_unresolved": 3609,
+      "key": "MP_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "NKE_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AMAT_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 20,
+      "fixed_zero_or_blank_unresolved": 3598,
+      "key": "MU_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 8,
+      "fixed_zero_or_blank_unresolved": 3610,
+      "key": "RGLD_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "WDAY_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 9,
+      "fixed_zero_or_blank_unresolved": 3609,
+      "key": "AGI_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 18,
+      "fixed_repeated_value_removed": 124,
+      "fixed_zero_or_blank_filled": 46,
+      "fixed_zero_or_blank_unresolved": 3430,
+      "key": "TTD_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "PAAS_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 12,
+      "fixed_zero_or_blank_unresolved": 3606,
+      "key": "HII_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "NOC_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AGCO_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 8,
+      "fixed_zero_or_blank_unresolved": 3610,
+      "key": "MSTR_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "FCN_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 6,
+      "fixed_zero_or_blank_unresolved": 3612,
+      "key": "USAR_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 10,
+      "fixed_zero_or_blank_unresolved": 3608,
+      "key": "NXE_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "VICR_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AG_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "NLR_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "TECK_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CAT_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 10,
+      "fixed_zero_or_blank_unresolved": 3608,
+      "key": "RBLX_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "DE_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "FNV_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "STLD_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "SAP_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 10,
+      "fixed_repeated_value_removed": 150,
+      "fixed_zero_or_blank_filled": 41,
+      "fixed_zero_or_blank_unresolved": 3417,
+      "key": "ACN_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "MOS_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "TDG_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "DIS_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "ALB_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 8,
+      "fixed_zero_or_blank_unresolved": 3610,
+      "key": "CLF_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "UUUU_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "IBIT_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 11,
+      "fixed_repeated_value_removed": 7,
+      "fixed_zero_or_blank_unresolved": 3600,
+      "key": "LAC_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "SNDK_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AEM_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "LDOS_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 1,
+      "fixed_zero_or_blank_unresolved": 3617,
+      "key": "ARM_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AXON_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AU_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "OLED_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "COE_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CRWD_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "NEM_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "BOTZ_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "HL_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "PWR_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "FCX_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "ORCL_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "SCCO_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AMD_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 10,
+      "fixed_zero_or_blank_unresolved": 3608,
+      "key": "GOOGL_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 8,
+      "fixed_zero_or_blank_filled": 18,
+      "fixed_zero_or_blank_unresolved": 3592,
+      "key": "AAPL_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "TECK_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "AMZN_LONG"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "VALE_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 12,
+      "fixed_zero_or_blank_filled": 31,
+      "fixed_zero_or_blank_unresolved": 3575,
+      "key": "AAPL_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CIEN_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "VALE_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "CMC_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "TSLA_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "RDDT_SHORT"
+    },
+    {
+      "fixed_zero_or_blank_unresolved": 3618,
+      "key": "MNTS_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 16,
+      "fixed_zero_or_blank_unresolved": 3602,
+      "key": "HAO_LONG"
+    },
+    {
+      "fixed_exact_unique_same": 2,
+      "fixed_zero_or_blank_unresolved": 3616,
+      "key": "NVDA_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 2,
+      "fixed_zero_or_blank_unresolved": 3616,
+      "key": "PLTR_SHORT"
+    },
+    {
+      "fixed_exact_unique_same": 1,
+      "fixed_zero_or_blank_unresolved": 3617,
+      "key": "IBIT_LONG"
+    }
+  ],
+  "schema": "fixed-matrix-surface-reconciliation-v1",
+  "status": "PASS_AUDIT_ONLY_CANONICAL_UNCHANGED"
+}

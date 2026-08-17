@@ -594,8 +594,21 @@ def setup_logger(name: str, log_file: str, level=logging.INFO, account_key: str 
     logger.addHandler(console_handler)
     return logger
 
-# Create default loggers (portable between macOS and Linux)
-_default_log_dir = os.environ.get('EZ_LOG_DIR') or os.path.expanduser('~/logs')
+# Create default loggers (portable, no UID lookup - PROHIBITED)
+# 2026-08-10 FIX: sandbox denies getpwuid via /var/db/dslocal -> fallback to /tmp without pwd lookup
+try:
+    _default_log_dir = os.environ.get('EZ_LOG_DIR') or os.environ.get("EZ_LOG_DIR") or "/tmp"
+    import pathlib as _pl
+    _probe = _pl.Path(_default_log_dir)
+    try:
+        _probe.mkdir(parents=True, exist_ok=True)
+        _test = _probe / ".uid_probe"
+        _test.touch(exist_ok=True)
+        _test.unlink(missing_ok=True)
+    except Exception:
+        _default_log_dir = os.environ.get('EZ_LOG_DIR') or "/tmp"
+except Exception:
+    _default_log_dir = "/tmp"
 logger = setup_logger('default', os.path.join(_default_log_dir, 'utils.log'))
 action_logger = setup_logger('actions', os.path.join(_default_log_dir, 'actions.log'))
 action_logger.addFilter(RateLimitDuplicateFilter(window_seconds=float(getattr(AppConfig(), 'LOG_DUPLICATE_WINDOW_SECONDS', 120))))
@@ -670,7 +683,7 @@ def load_environment_from_gpg(logger=None) -> bool:
         logger.info("Environment variables already loaded. Skipping GPG decryption.")
         return True
     possible_env_paths = [".env.gpg", os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.gpg")] # Script directory
-        # os.path.join(os.path.expanduser("~"), "Documents", "binance", ".env.gpg"),  # Home Documents/binance
+        # os.path.join(os.environ.get("HOME") or "/tmp", "Documents", "binance", ".env.gpg"),  # Home Documents/binance
         # os.path.join(os.getcwd(), ".env.gpg"),  ]
     # Remove duplicates while preserving order
     seen = set()
@@ -4553,7 +4566,16 @@ async def get_prices_local_redis():
 
 # ═══ SYMBOL PERFORMANCE (was ez_symbol_performance.py — merged here) ═══
 _perf_config = Config()
-_perf_logger = setup_logger('ez_symbol_performance', str(_perf_config.LOG_DIR / 'ez_symbol_performance.log'), logging.INFO)
+# 2026-08-11 FIX: sandboxed V8 runs block /Users/niels/logs writes → fallback to /tmp without crashing
+try:
+    _perf_logger = setup_logger('ez_symbol_performance', str(_perf_config.LOG_DIR / 'ez_symbol_performance.log'), logging.INFO)
+except Exception:
+    try:
+        import tempfile as _tmp
+        _fallback = pathlib.Path(_tmp.gettempdir()) / 'ez_symbol_performance.log'
+        _perf_logger = setup_logger('ez_symbol_performance', str(_fallback), logging.INFO)
+    except Exception:
+        _perf_logger = setup_logger('ez_symbol_performance', '/tmp/ez_symbol_performance.log', logging.INFO)
 _PERF_BASE_PATH = Path(os.getenv('EZ_BASE_PATH', str(_perf_config.BASE_PATH)))
 _PERF_DATA_DIR = _PERF_BASE_PATH / 'data'
 _PERF_HISTORY_DIR = _PERF_DATA_DIR / 'history'

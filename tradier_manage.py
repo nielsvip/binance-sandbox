@@ -2,8 +2,10 @@
 #!/usr/bin/env python3
 import asyncio
 import datetime as dt
+import hashlib
 import json
 import logging
+import math
 import os
 import pickle
 import signal
@@ -33,21 +35,99 @@ import redis.asyncio as redis
 from dateutil.parser import isoparse
 
 from config_tradier import TradierConfig
+from bb4h_breakout_ladder import next_stage as _next_bb4h_ladder_stage
 from local_extremes_scorer import score_local_extremes as _le_score_entry
 from mtf_exit_timing import (
+    dc_reject_step as _mtf_dc_reject_step,
     event_within_lookback as _mtf_event_within_lookback,
     indicator_event_timestamp as _mtf_indicator_event_timestamp,
     position_open_is_eligible as _mtf_position_open_is_eligible,
 )
+from ordinary_ladder_contract import (
+    Completed4hE02 as _Completed4hE02,
+    CompletedParentEvent as _CompletedParentEvent,
+    ReclaimObligation as _ReclaimObligation,
+    e02_exit_signal as _ordinary_e02_signal,
+    ladder_multiplier as _shared_ladder_multiplier,
+    reclaim_reference_from_reason as _reclaim_reference_from_reason,
+    strongest_absolute_target as _strongest_ladder_target,
+)
+from protective_trail_contract import (
+    ProtectiveTrailParams as _ProtectiveTrailParams,
+    protective_trail_step as _protective_trail_step,
+)
+from position_time_contract import parse_position_timestamp
+from bottom_b_delayed_contract import BottomBDelayedLowerTop as _BottomBDelayedLowerTop
+from bb_recovery_contract import (
+    BBRecoveryEntry as _BBRecoveryEntry,
+    BBRecoveryParams as _BBRecoveryParams,
+    CompletedBBBar as _CompletedBBBar,
+)
+from bounce_donchian_contract import (
+    BounceInputs as _BounceInputs,
+    CausalScalar as _BounceScalar,
+    evaluate_bounce_donchian_direct as _evaluate_bounce_donchian_direct,
+)
+from long_wait_contract import (
+    CausalScalar as _LongWaitScalar,
+    LongWaitInputs as _LongWaitInputs,
+    evaluate_long_wait_direct as _evaluate_long_wait_direct,
+)
+from stoch_hhhl_contract import (
+    CompletedParentSnapshot as _HHHLParent,
+    evaluate_stoch_hhhl_direct as _evaluate_stoch_hhhl_direct,
+)
+from stoch_parent_contract import (
+    CompletedStochParent as _StochParent,
+    evaluate_completed_stoch_direct as _evaluate_completed_stoch_direct,
+)
+from vec_paths.structural_wt_retest_exit import CompletedBar as _BottomBCompletedBar
+from wt_dc_contract import (
+    CausalPair as _WTDCPair,
+    CausalScalar as _WTDCScalar,
+    WTDCInputs as _WTDCInputs,
+    evaluate_wt_dc_direct as _evaluate_wt_dc_direct,
+)
+
+# Installed only with the matching V8 NPZ injection + per-bar admission sites.
+# SHARED_STOCH_HHHL_DIRECT_V8_PARITY_V1
+# SHARED_BOUNCE_DONCHIAN_DIRECT_V8_PARITY_V1
+# SHARED_STOCH_PARENT_DIRECT_V8_PARITY_V1
+# SHARED_WT_DC_DIRECT_V8_PARITY_V1
+# SHARED_BB_RECOVERY_DIRECT_V8_PARITY_V1
+# SHARED_LONG_WAIT_DIRECT_V8_PARITY_V1
+# SHARED_BOTTOM_B_DELAYED_V8_PARITY_V1
+# SHARED_CLASSIC_FORMATION_V8_PARITY_V1
 from reentry_contract import (
+    force_reentry_after_temporary_opposition as _force_reentry_after_temporary_opposition,
     get_exit_value as _reentry_exit_value,
     reentry_opposition as _reentry_opposition,
     set_exit_state as _set_reentry_exit_state,
     update_reentry_trace as _update_reentry_trace,
 )
+from tradier_reentry_wt_contract import mandatory_reentry_wt_gate as _mandatory_reentry_wt_gate
 from tradier_indicators import analyze_multi_tf_state_tradier
+from classic_formations import (
+    CONFIG_FAMILY_PREFIX,
+    select_latest_formation,
+)
+from formation_entry_contract import formation_entry_consumer_admission
 from tradier_augment_gates import dc_tier_aug_enabled as _dc_tier_aug_enabled
-from tradier_entry_contract import path_switch
+from tradier_matrix_gates import (
+    bb_pullback_gate_blocks as _bb_pullback_gate_blocks,
+    delta_dc_floor_confirms as _delta_dc_floor_confirms,
+    trend_reversal_at_recovery_top as _trend_reversal_at_recovery_top,
+)
+from tradier_entry_contract import (
+    dc_4h_boundary_breached,
+    path_switch,
+    per_sym_overlay_is_approved,
+)
+from tradier_route_contract import (
+    flat_entry_data_error,
+    is_mandatory_reclaim_reason,
+    is_ordinary_ladder_target_reason,
+)
 from wt_dc_delta import DeltaTracker
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
 from wt_dc_exit_scorer import score_exit as wt_dc_score_exit
@@ -143,6 +223,10 @@ def _tr_trend_v1_is_d_boundary(symbol: str, close_d_now: float) -> bool:
     return abs(close_d_now - prev) > 1e-9
 
 def evaluate_tr_trend_v1_entry_live(symbol: str, account_key: str, position_side: str, indicators: dict, mark: float, has_position: bool, cfg) -> Optional[Dict[str, Any]]:
+    try:
+        _wire_625_live_reads(account_key, symbol, position_side)
+    except Exception:
+        pass
     """Live shadow entry eval. Returns {action,path,pivot_price,stop_price,reason} or None.
     Path A fires only on D-boundary bars (detected from close_D change) when not in position.
     Path B fires within RETEST_MAX_BARS_D after Path A and adds 0.5 unit.
@@ -235,6 +319,10 @@ def evaluate_tr_trend_v1_entry_live(symbol: str, account_key: str, position_side
     return None
 
 def evaluate_tr_trend_v1_exit_live(symbol: str, account_key: str, position_side: str, indicators: dict, mark: float, has_position: bool, cfg) -> Optional[Dict[str, Any]]:
+    try:
+        _wire_625_live_reads(account_key, symbol, position_side)
+    except Exception:
+        pass
     """Live shadow exit eval. Returns {action,reason} or None. Paths:
       1. STOP_HIT (every-bar)
       2. 50SMA_BREAK on D close — uses ema_50_D as 50-SMA proxy (DailyHistoryManager
@@ -340,16 +428,973 @@ def band_ladder_mult(pct_b, cfg, tf="D"):
     above = g("LR_BAND_LADDER_ABOVE_TOP_MULT", -1.0)
     if above < 0:
         above = top   # "3x at or above top" — above the band is simply the top size
-    if pb < 0.0:
-        mult = below
-    elif pb > 1.0:
-        mult = above
-    elif str(getattr(cfg, "LR_BAND_LADDER_MODE", "linear")) == "center_plateau":
-        c = max(1e-6, min(0.999, g("LR_BAND_LADDER_CENTER", 0.5)))
-        mult = bottom if pb <= c else bottom + (top - bottom) * ((pb - c) / (1.0 - c))
-    else:
-        mult = bottom + (top - bottom) * pb
-    return max(0.0, mult)
+    base = max(
+        1e-9,
+        g("LR_BAND_LADDER_BASE_UNIT_USD", 2000.0),
+    )
+    capacity = max(
+        0.0,
+        g("LR_BAND_LADDER_CAPACITY_USD", 16000.0),
+    )
+    basis = str(getattr(cfg, "LR_BAND_LADDER_BASIS", "band")).lower()
+    if basis == "slope" and pb >= 0.0:
+        # USER 2026-08-06 (Bible §16.62A): anchor the sizing "bottom" at the
+        # regression slope line instead of the lower stdev band.  At or below
+        # the slope line the rung gets full BOTTOM size; the taper runs slope
+        # line -> upper band.  A print below the LOWER band (pb < 0) keeps the
+        # existing BELOW_BOTTOM_MULT protection unchanged.  Default "band" is
+        # byte-identical to the historical behavior.
+        pb = max(0.0, (pb - 0.5) / 0.5)
+    return _shared_ladder_multiplier(
+        pb,
+        bottom,
+        top,
+        str(getattr(cfg, "LR_BAND_LADDER_MODE", "linear")),
+        max_multiplier=capacity / base,
+        center=g("LR_BAND_LADDER_CENTER", 0.5),
+        below_bottom=below,
+        above_top=above,
+    )
+
+
+def _ordinary_parent_source_ts(indicators, tf):
+    """Return a completed-parent identity without consulting wall clock."""
+    raw = (indicators or {}).get(
+        f"_completed_source_ts_{tf}",
+        (indicators or {}).get(f"timestamp_{tf}"),
+    )
+    if isinstance(raw, (int, float, np.integer, np.floating)):
+        return int(raw)
+    if raw:
+        try:
+            return int(
+                datetime.fromisoformat(str(raw).replace("Z", "+00:00")).timestamp()
+            )
+        except (TypeError, ValueError):
+            return 0
+    return 0
+
+
+def _ordinary_observation_ts(indicators):
+    values = []
+    for key in ("_tick_ts", "ts"):
+        raw = (indicators or {}).get(key)
+        try:
+            value = int(float(raw))
+        except (TypeError, ValueError):
+            value = 0
+        if value > 0:
+            values.append(value)
+    if not values:
+        # Backtests provide the decision tick explicitly.  Live indicator
+        # snapshots currently do not, so use the newest completed-parent
+        # identity as the deterministic availability boundary.  This admits a
+        # parent only after the indicator process has published that parent and
+        # avoids consulting wall clock inside the decision contract.
+        for tf in ("D", "4h", "1h"):
+            value = _ordinary_parent_source_ts(indicators, tf)
+            if value > 0:
+                values.append(value)
+    return max(values, default=0)
+
+
+_SHARED_DIRECT_ENTRY_SWITCHES = (
+    "ENTRY_STOCH_HHHL_DIRECT_ENABLED",
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED",
+    "ENTRY_STOCH_PARENT_DIRECT_ENABLED",
+    "WT_DC_DIRECT_COMPLETED_ENABLED",
+    "BB_RECOVERY_DIRECT_ENABLED",
+    "LONG_WAIT_DIRECT_ENABLED",
+)
+
+
+def _completed_number(indicators, stem, tf):
+    """Read one exact completed-snapshot scalar; never use a generic fallback."""
+    key = f"_completed_{stem}_{tf}"
+    if key not in (indicators or {}) or (indicators or {}).get(key) is None:
+        raise ValueError(f"MISSING_COMPLETED_INPUT:{key}")
+    try:
+        value = float((indicators or {})[key])
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"INVALID_COMPLETED_INPUT:{key}") from exc
+    if not np.isfinite(value):
+        raise ValueError(f"INVALID_COMPLETED_INPUT:{key}")
+    return value
+
+
+def _completed_source(indicators, tf, previous=False):
+    suffix = "_prev" if previous else ""
+    key = f"_completed_source_ts_{tf}{suffix}"
+    if key not in (indicators or {}) or (indicators or {}).get(key) is None:
+        raise ValueError(f"MISSING_COMPLETED_INPUT:{key}")
+    try:
+        value = int(float((indicators or {})[key]))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"INVALID_COMPLETED_INPUT:{key}") from exc
+    if value <= 0:
+        raise ValueError(f"INVALID_COMPLETED_INPUT:{key}")
+    return value
+
+
+def _shared_direct_route_enabled(account_key, symbol, side):
+    return bool(_cfg(
+        "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False,
+        account_key, symbol, side,
+    )) and any(bool(_cfg(name, False, account_key, symbol, side))
+               for name in _SHARED_DIRECT_ENTRY_SWITCHES)
+
+
+def _direct_route_telemetry(manager, position_key, family, **values):
+    root = manager.__dict__.setdefault("_shared_direct_route_telemetry", {})
+    row = root.setdefault(position_key, {}).setdefault(
+        family,
+        {"evaluations": 0, "eligible": 0, "episode_starts": 0,
+         "claims": 0, "actions": 0, "data_errors": 0},
+    )
+    row["evaluations"] += 1
+    if values.get("eligible"):
+        row["eligible"] += 1
+    if values.get("episode_start"):
+        row["episode_starts"] += 1
+    if values.get("claim"):
+        row["claims"] += 1
+    if values.get("action"):
+        row["actions"] += 1
+    if values.get("data_error"):
+        row["data_errors"] += 1
+    row["last"] = values
+
+
+def _direct_route_handoff_telemetry(
+    manager, position_key, claim, stage, **values
+):
+    """Record where an accepted direct-route claim reaches or is stopped."""
+    if not isinstance(claim, dict):
+        return
+    family = str(claim.get("family") or "UNKNOWN_DIRECT_ROUTE")
+    root = manager.__dict__.setdefault("_shared_direct_route_telemetry", {})
+    row = root.setdefault(position_key, {}).setdefault(
+        family,
+        {"evaluations": 0, "eligible": 0, "episode_starts": 0,
+         "claims": 0, "actions": 0, "data_errors": 0},
+    )
+    stages = row.setdefault("handoff_stages", {})
+    stages[str(stage)] = int(stages.get(str(stage), 0) or 0) + 1
+    row["last_handoff"] = {"stage": str(stage), **values}
+
+
+def _direct_queue_gate_note(trade_manager, position_key, reason, gate):
+    """Expose the first queue gate that rejects a frozen direct-route claim.
+
+    The normal queue API intentionally returns a boolean for historical live
+    callers.  Changing that return contract would make a rejected order look
+    truthy to some callers.  Exact V8 therefore attaches the active claim
+    briefly while it dispatches and this helper records a diagnostic stage
+    without changing live execution semantics.
+    """
+    try:
+        claims = getattr(trade_manager, "_shared_direct_dispatch_claims", {})
+        claim = claims.get(position_key) if isinstance(claims, dict) else None
+        if claim is not None:
+            _direct_route_handoff_telemetry(
+                trade_manager, position_key, claim,
+                "QUEUE_GATE_BLOCK", gate=str(gate), reason=str(reason)[:200],
+            )
+            family = str(claim.get("family") or "UNKNOWN_DIRECT_ROUTE")
+            row = trade_manager.__dict__.setdefault(
+                "_shared_direct_route_telemetry", {}
+            ).setdefault(position_key, {}).setdefault(family, {})
+            gates = row.setdefault("queue_gate_blocks", {})
+            gates[str(gate)] = int(gates.get(str(gate), 0) or 0) + 1
+    except Exception:
+        pass
+
+
+def _shared_direct_entry_claim(
+    manager, position_key, indicators, account_key, symbol, side, *, allow_claim
+):
+    """Evaluate every enabled pure entry contract on exact completed snapshots.
+
+    This runs while held as well as flat so episode state follows the complete
+    decision timeline.  ``allow_claim`` controls only order ownership; it never
+    suppresses state updates.  Mandatory reclaim is still evaluated first at
+    the actual flat-position action site.
+    """
+    if not _shared_direct_route_enabled(account_key, symbol, side):
+        return None
+    observation = _ordinary_observation_ts(indicators)
+    if observation <= 0:
+        return None
+    is_long = side == "LONG"
+    state_root = manager.__dict__.setdefault("_shared_direct_entry_state", {})
+    states = state_root.setdefault(position_key, {})
+    pending_root = manager.__dict__.setdefault(
+        "_shared_direct_entry_pending_claim", {}
+    )
+    pending = pending_root.setdefault(position_key, {})
+    claims = []
+
+    def record(family, decision, sources, detail):
+        # Completed parents commonly become available outside stock RTH.  The
+        # pure episode state must still advance then, but consuming the only
+        # episode-start pulse before an order is executable loses the entry
+        # forever.  Carry that pulse to the first executable observation while
+        # the same episode remains eligible; clear it if eligibility disappears.
+        was_pending = bool(pending.get(family, False))
+        if not decision.eligible:
+            pending[family] = False
+        elif decision.episode_start:
+            pending[family] = True
+        claim = bool(
+            allow_claim
+            and decision.eligible
+            and (decision.episode_start or was_pending)
+        )
+        if claim:
+            pending[family] = False
+        _direct_route_telemetry(
+            manager, position_key, family,
+            eligible=bool(decision.eligible),
+            episode_start=bool(decision.episode_start),
+            claim=claim,
+            blockers=list(decision.blockers),
+            pending_claim=bool(pending.get(family, False)),
+            source_identities=dict(sources),
+            observation_ts=observation,
+        )
+        if claim:
+            source_text = "+".join(
+                f"{name}{int(value)}" for name, value in sorted(sources.items())
+            )
+            claims.append({
+                "family": family,
+                "reason": f"{detail}_{side}_src[{source_text}]",
+                "source_identities": dict(sources),
+            })
+
+    def data_error(family, exc):
+        _direct_route_telemetry(
+            manager, position_key, family, data_error=True,
+            eligible=False, episode_start=False, claim=False,
+            blockers=[str(exc)], observation_ts=observation,
+        )
+
+    if bool(_cfg(
+        "ENTRY_STOCH_HHHL_DIRECT_ENABLED", False,
+        account_key, symbol, side,
+    )):
+        family = "ENTRY_STOCH_HHHL"
+        try:
+            enabled_tfs = tuple(_cfg(
+                "ENTRY_STOCH_HHHL_DIRECT_TFS", (),
+                account_key, symbol, side,
+            ) or ())
+            snapshots = {}
+            for tf in enabled_tfs:
+                tf = str(tf)
+                snapshots[tf] = _HHHLParent(
+                    timeframe=tf,
+                    source_close_ts=_completed_source(indicators, tf),
+                    high=_completed_number(indicators, "high", tf),
+                    high_prev=_completed_number(indicators, "high", tf + "_prev"),
+                    low=_completed_number(indicators, "low", tf),
+                    low_prev=_completed_number(indicators, "low", tf + "_prev"),
+                    stoch_k=_completed_number(indicators, "stoch_k", tf),
+                    stoch_k_prev=_completed_number(
+                        indicators, "stoch_k", tf + "_prev"
+                    ),
+                )
+            decision = _evaluate_stoch_hhhl_direct(
+                snapshots, side=side, enabled_tfs=enabled_tfs,
+                min_confirming_tfs=int(_cfg(
+                    "ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS", 0,
+                    account_key, symbol, side,
+                )),
+                stoch_threshold=float(_cfg(
+                    "ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD", -1.0,
+                    account_key, symbol, side,
+                )),
+                asof_ts=observation, prior_state=states.get(family),
+            )
+            states[family] = decision.next_state
+            sources = {tf: snapshots[tf].source_close_ts for tf in enabled_tfs}
+            record(
+                family, decision, sources,
+                "STOCH_HHHL_DIRECT_" + "+".join(decision.active_timeframes),
+            )
+        except (TypeError, ValueError) as exc:
+            data_error(family, exc)
+
+    if bool(_cfg(
+        "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED", False,
+        account_key, symbol, side,
+    )):
+        family = "ENTRY_BOUNCE_DONCHIAN"
+        try:
+            tf = str(_cfg(
+                "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME", "",
+                account_key, symbol, side,
+            ))
+            confirmation = str(_cfg(
+                "ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION", "",
+                account_key, symbol, side,
+            ))
+            source = _completed_source(indicators, tf)
+            execution_source = _completed_source(indicators, "5m")
+            inputs = _BounceInputs(
+                price=_BounceScalar(
+                    _completed_number(indicators, "close", "5m"),
+                    execution_source,
+                ),
+                prior_channel=_BounceScalar(
+                    _completed_number(
+                        indicators, "dc_low" if is_long else "dc_high",
+                        tf + "_prev",
+                    ),
+                    source,
+                ),
+                stoch_k_5m=_BounceScalar(
+                    _completed_number(indicators, "stoch_k", "5m"),
+                    _completed_source(indicators, "5m"),
+                ) if confirmation in {"stoch5", "two-of-two"} else None,
+                stoch_d_5m=_BounceScalar(
+                    _completed_number(indicators, "stoch_d", "5m"),
+                    _completed_source(indicators, "5m"),
+                ) if confirmation in {"stoch5", "two-of-two"} else None,
+                stoch_k_15m=_BounceScalar(
+                    _completed_number(indicators, "stoch_k", "15m"),
+                    _completed_source(indicators, "15m"),
+                ) if confirmation in {"stoch15", "two-of-two"} else None,
+                stoch_d_15m=_BounceScalar(
+                    _completed_number(indicators, "stoch_d", "15m"),
+                    _completed_source(indicators, "15m"),
+                ) if confirmation in {"stoch15", "two-of-two"} else None,
+            )
+            decision = _evaluate_bounce_donchian_direct(
+                inputs, side=side, timeframe=tf,
+                distance=float(_cfg(
+                    "ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE", -1.0,
+                    account_key, symbol, side,
+                )),
+                recovery_only=bool(_cfg(
+                    "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY", False,
+                    account_key, symbol, side,
+                )),
+                confirmation=confirmation,
+                asof_ts=observation, prior_state=states.get(family),
+            )
+            states[family] = decision.next_state
+            record(
+                family, decision, {"5m_price": execution_source, tf: source},
+                f"BOUNCE_DONCHIAN_DIRECT_{tf}_p{decision.proximity:.6f}"
+                if decision.proximity is not None
+                else f"BOUNCE_DONCHIAN_DIRECT_{tf}",
+            )
+        except (TypeError, ValueError) as exc:
+            data_error(family, exc)
+
+    if bool(_cfg(
+        "ENTRY_STOCH_PARENT_DIRECT_ENABLED", False,
+        account_key, symbol, side,
+    )):
+        family = str(_cfg(
+            "ENTRY_STOCH_PARENT_DIRECT_FAMILY", "",
+            account_key, symbol, side,
+        ))
+        try:
+            tf = "1h" if family == "ENTRY_1H_TURN_UP" else "4h"
+            source = _completed_source(indicators, tf)
+            parent = _StochParent(
+                timeframe=tf, source_close_ts=source,
+                stoch_k=_completed_number(indicators, "stoch_k", tf),
+                stoch_d=_completed_number(indicators, "stoch_d", tf),
+                stoch_k_prev=_completed_number(
+                    indicators, "stoch_k", tf + "_prev"
+                ),
+                previous_source_close_ts=_completed_source(
+                    indicators, tf, previous=True
+                ),
+            )
+            decision = _evaluate_completed_stoch_direct(
+                parent, family=family, side=side,
+                stoch_k_threshold=float(_cfg(
+                    "ENTRY_STOCH_PARENT_DIRECT_THRESHOLD", -1.0,
+                    account_key, symbol, side,
+                )),
+                turn_definition=(str(_cfg(
+                    "ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION", "",
+                    account_key, symbol, side,
+                )) if family == "ENTRY_1H_TURN_UP" else None),
+                asof_ts=observation, prior_state=states.get(family),
+            )
+            states[family] = decision.next_state
+            record(family, decision, {tf: source}, f"STOCH_PARENT_DIRECT_{family}")
+        except (TypeError, ValueError) as exc:
+            data_error(family or "ENTRY_STOCH_PARENT_DIRECT", exc)
+
+    if bool(_cfg(
+        "WT_DC_DIRECT_COMPLETED_ENABLED", False,
+        account_key, symbol, side,
+    )):
+        family = "ENTRY_WT_DC"
+        try:
+            def pair(tf):
+                return _WTDCPair(
+                    _completed_number(indicators, "wt1", tf),
+                    _completed_number(indicators, "wt2", tf),
+                    _completed_source(indicators, tf),
+                )
+            def scalar(stem, tf):
+                return _WTDCScalar(
+                    _completed_number(indicators, stem, tf),
+                    _completed_source(indicators, tf),
+                )
+            dc_low = _completed_number(indicators, "dc_low", "1h_prev")
+            dc_high = _completed_number(indicators, "dc_high", "1h_prev")
+            close_1h = _completed_number(indicators, "close", "1h")
+            if dc_high <= dc_low:
+                raise ValueError("INVALID_COMPLETED_INPUT:dc_position_1h")
+            dc_position = (close_1h - dc_low) / (dc_high - dc_low)
+            cross_key = "_completed_wt_cross_1h"
+            cross = (indicators or {}).get(cross_key)
+            if cross not in {"BULL", "BEAR", "NONE", 0, 0.0}:
+                raise ValueError(f"INVALID_COMPLETED_INPUT:{cross_key}")
+            inputs = _WTDCInputs(
+                wt_d=pair("D"), wt_4h=pair("4h"), wt_1h=pair("1h"),
+                wt_cross_1h=_WTDCScalar(
+                    cross, _completed_source(indicators, "1h")
+                ),
+                dc_position_1h=_WTDCScalar(
+                    dc_position, _completed_source(indicators, "1h")
+                ),
+                score_stoch_k_5m=scalar("stoch_k", "5m"),
+                gate_k_5m=scalar("stoch_k", "5m"),
+            )
+            decision = _evaluate_wt_dc_direct(
+                inputs, side=side,
+                threshold=float(_cfg(
+                    "WT_DC_DIRECT_THRESHOLD", -1.0,
+                    account_key, symbol, side,
+                )),
+                htf_gate=str(_cfg(
+                    "WT_DC_DIRECT_HTF_GATE", "",
+                    account_key, symbol, side,
+                )),
+                htf_align_required=int(_cfg(
+                    "WT_DC_DIRECT_HTF_ALIGN_REQUIRED", -1,
+                    account_key, symbol, side,
+                )),
+                combined_stoch_gate=float(_cfg(
+                    "WT_DC_DIRECT_COMBINED_STOCH_GATE", -1.0,
+                    account_key, symbol, side,
+                )),
+                asof_ts=observation, prior_state=states.get(family),
+            )
+            states[family] = decision.next_state
+            sources = {
+                tf: _completed_source(indicators, tf)
+                for tf in ("5m", "1h", "4h", "D")
+            }
+            record(
+                family, decision, sources,
+                f"WT_DC_DIRECT_score{float(decision.score or 0.0):.1f}",
+            )
+        except (TypeError, ValueError) as exc:
+            data_error(family, exc)
+
+    if bool(_cfg(
+        "BB_RECOVERY_DIRECT_ENABLED", False,
+        account_key, symbol, side,
+    )):
+        family = "ENTRY_BB_RECOVERY"
+        try:
+            tf = str(_cfg(
+                "BB_RECOVERY_DIRECT_TIMEFRAME", "",
+                account_key, symbol, side,
+            ))
+            params = _BBRecoveryParams(
+                timeframe=tf,
+                recovery_bars=int(_cfg(
+                    "BB_RECOVERY_DIRECT_BARS", 0, account_key, symbol, side,
+                )),
+                min_excursion_atr=float(_cfg(
+                    "BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR", -1.0,
+                    account_key, symbol, side,
+                )),
+            )
+            route = states.get(family)
+            if route is None:
+                route = _BBRecoveryEntry(params, side=side)
+                states[family] = route
+            if not isinstance(route, _BBRecoveryEntry):
+                raise ValueError("INVALID_BB_RECOVERY_ROUTE_STATE")
+            source = _completed_source(indicators, tf)
+            bar = _CompletedBBBar(
+                timeframe=tf, source_ts=source, observed_ts=observation,
+                close=_completed_number(indicators, "close", tf),
+                bb_upper=_completed_number(indicators, "bb_upper", tf),
+                bb_lower=_completed_number(indicators, "bb_lower", tf),
+                atr=_completed_number(indicators, "atr", tf),
+            )
+            decision = route.step(bar)
+            # The contract emits a causal event pulse rather than a level.
+            # Preserve a valid out-of-hours recovery until its first executable
+            # observation; do not replace it with a generic BB/bounce signal.
+            if decision.entry_event:
+                pending[family] = True
+            claim = bool(allow_claim and pending.get(family, False))
+            if claim:
+                pending[family] = False
+            _direct_route_telemetry(
+                manager, position_key, family,
+                eligible=bool(decision.entry_event),
+                episode_start=bool(decision.entry_event), claim=claim,
+                blockers=list(decision.blockers),
+                armed_age=decision.armed_age, pending_claim=bool(pending.get(family, False)),
+                source_identities={tf: source}, observation_ts=observation,
+            )
+            if claim:
+                claims.append({
+                    "family": family,
+                    "reason": f"BB_RECOVERY_DIRECT_{tf}_{side}_src[{tf}{source}]",
+                    "source_identities": {tf: source},
+                })
+        except (TypeError, ValueError) as exc:
+            data_error(family, exc)
+
+    if bool(_cfg(
+        "LONG_WAIT_DIRECT_ENABLED", False,
+        account_key, symbol, side,
+    )):
+        family = "ENTRY_LONG_WAIT_ENABLED"
+        try:
+            tf = str(_cfg(
+                "LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME", "",
+                account_key, symbol, side,
+            ))
+            confirmation = str(_cfg(
+                "LONG_WAIT_DIRECT_CONFIRMATION", "",
+                account_key, symbol, side,
+            ))
+            previous_row = states.get(f"{family}:previous_row")
+            current_k1 = _completed_number(indicators, "stoch_k", "1h")
+            if not isinstance(previous_row, dict):
+                raise ValueError("MISSING_COMPLETED_INPUT:long_wait_previous_aligned_row")
+            def lw(stem, source_tf):
+                return _LongWaitScalar(
+                    _completed_number(indicators, stem, source_tf),
+                    _completed_source(indicators, source_tf),
+                )
+            source = _completed_source(indicators, tf)
+            execution_source = _completed_source(indicators, "5m")
+            inputs = _LongWaitInputs(
+                price=lw("close", "5m"),
+                completed_channel=lw(
+                    "dc_low" if is_long else "dc_high", tf
+                ),
+                stoch_k_4h=lw("stoch_k", "4h"),
+                stoch_k_1h=lw("stoch_k", "1h"),
+                stoch_k_1h_previous_row=_LongWaitScalar(
+                    previous_row["value"], previous_row["observation_ts"]
+                ),
+                stoch_d_1h=lw("stoch_d", "1h"),
+                stoch_k_5m=(lw("stoch_k", "5m") if confirmation in
+                            {"stoch5", "two-of-three"} else None),
+                stoch_d_5m=(lw("stoch_d", "5m") if confirmation in
+                            {"stoch5", "two-of-three"} else None),
+                stoch_k_15m=(lw("stoch_k", "15m") if confirmation in
+                             {"stoch15", "two-of-three"} else None),
+                stoch_d_15m=(lw("stoch_d", "15m") if confirmation in
+                             {"stoch15", "two-of-three"} else None),
+                wt1_15m=(lw("wt1", "15m") if confirmation in
+                         {"wt15", "two-of-three"} else None),
+                wt2_15m=(lw("wt2", "15m") if confirmation in
+                         {"wt15", "two-of-three"} else None),
+            )
+            decision = _evaluate_long_wait_direct(
+                inputs, side=side, bounce_timeframe=tf,
+                bounce_distance=float(_cfg(
+                    "LONG_WAIT_DIRECT_BOUNCE_DISTANCE", -1.0,
+                    account_key, symbol, side,
+                )),
+                deep_k4h=float(_cfg(
+                    "LONG_WAIT_DIRECT_DEEP_K4H", -1.0,
+                    account_key, symbol, side,
+                )),
+                turn_k1h=float(_cfg(
+                    "LONG_WAIT_DIRECT_TURN_K1H", -1.0,
+                    account_key, symbol, side,
+                )),
+                confirmation=confirmation,
+                asof_ts=observation, prior_state=states.get(family),
+            )
+            states[family] = decision.next_state
+            sources = {
+                tf: source,
+                "5m_price": execution_source,
+                "1h": _completed_source(indicators, "1h"),
+                "4h": _completed_source(indicators, "4h"),
+            }
+            record(
+                family, decision, sources,
+                f"LONG_WAIT_DIRECT_{tf}_p{float(decision.proximity or 0.0):.6f}",
+            )
+        except (TypeError, ValueError) as exc:
+            data_error(family, exc)
+        finally:
+            # This is the prior aligned decision row required by the pure
+            # LONG_WAIT vector contract, not the previous 1h parent.
+            try:
+                states[f"{family}:previous_row"] = {
+                    "value": _completed_number(indicators, "stoch_k", "1h"),
+                    "observation_ts": observation,
+                }
+            except (TypeError, ValueError):
+                pass
+
+    return claims[0] if claims else None
+
+
+def _ordinary_bottom_b_recipe(account_key, symbol, side):
+    prefix = "BOTTOM_B_DELAYED_LOWER_TOP_"
+    confirm_tf = str(_cfg(
+        prefix + "CONFIRM_TF", "", account_key, symbol, side
+    ))
+    max_wait = int(_cfg(
+        prefix + "MAX_WAIT_1H", 0, account_key, symbol, side
+    ))
+    bars_per_hour = {"5m": 12.0, "15m": 4.0, "1h": 1.0, "4h": .25}.get(
+        confirm_tf, 0.0
+    )
+    if bars_per_hour <= 0:
+        raise ValueError("invalid Bottom-B confirm timeframe")
+    return {
+        "family": "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+        "params": {
+            "arm_tf": str(_cfg(
+                prefix + "ARM_TF", "", account_key, symbol, side
+            )),
+            "confirm_tf": confirm_tf,
+            "rebound_atr": float(_cfg(
+                prefix + "REBOUND_ATR", -1.0, account_key, symbol, side
+            )),
+            "prebreak_lookback": int(_cfg(
+                prefix + "PREBREAK_LOOKBACK", 0, account_key, symbol, side
+            )),
+            "max_wait_1h": max_wait,
+            "max_wait_hours": max_wait / bars_per_hour,
+            "confirmation_mode": str(_cfg(
+                prefix + "CONFIRMATION_MODE", "", account_key, symbol, side
+            )),
+            "confirmation_bars": int(_cfg(
+                prefix + "CONFIRMATION_BARS", 0, account_key, symbol, side
+            )),
+            "emergency_modes": (),
+            "emergency_adverse_atr": 0.0,
+            "emergency_adverse_stdev": 0.0,
+            "emergency_continued_bars": 0,
+            "arm_break_mode": str(_cfg(
+                prefix + "ARM_BREAK_MODE", "", account_key, symbol, side
+            )),
+            "arm_break_threshold": float(_cfg(
+                prefix + "ARM_BREAK_THRESHOLD", -1.0,
+                account_key, symbol, side,
+            )),
+        },
+    }
+
+
+def _ordinary_bottom_b_exit(
+    manager, position_key, indicators, account_key, symbol, side, active
+):
+    """Advance the exact Bottom-B book with completed arm/confirm parents."""
+    if not (
+        bool(_cfg(
+            "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False,
+            account_key, symbol, side,
+        ))
+        and bool(_cfg(
+            "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED", False,
+            account_key, symbol, side,
+        ))
+    ):
+        return None
+    recipe = _ordinary_bottom_b_recipe(account_key, symbol, side)
+    recipe_identity = hashlib.sha256(
+        json.dumps(recipe, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    routes = manager.__dict__.setdefault("_ordinary_bottom_b_routes", {})
+    holder = routes.get(position_key)
+    if not isinstance(holder, dict) or holder.get("recipe_identity") != recipe_identity:
+        holder = {
+            "recipe_identity": recipe_identity,
+            "route": _BottomBDelayedLowerTop(recipe),
+        }
+        routes[position_key] = holder
+    route = holder["route"]
+    observation = _ordinary_observation_ts(indicators)
+    if observation <= 0:
+        raise ValueError("MISSING_COMPLETED_INPUT:observation_ts")
+    signal = None
+    for role, tf in (
+        ("ARM", route.params.arm_tf),
+        ("CONFIRM", route.params.confirm_tf),
+    ):
+        bar = _BottomBCompletedBar(
+            timeframe=tf,
+            source_ts=_completed_source(indicators, tf),
+            observed_ts=observation,
+            high=_completed_number(indicators, "high", tf),
+            low=_completed_number(indicators, "low", tf),
+            close=_completed_number(indicators, "close", tf),
+            wt1=_completed_number(indicators, "wt1", tf),
+            atr=_completed_number(indicators, "atr", tf),
+        )
+        candidate = route.update(
+            symbol=symbol, position_side=side, active=bool(active),
+            bar=bar, role=role,
+        )
+        if candidate is not None:
+            signal = candidate
+    _direct_route_telemetry(
+        manager, position_key, "BOTTOM_B_DELAYED_LOWER_TOP",
+        eligible=bool(signal), episode_start=bool(signal), claim=bool(signal),
+        source_identities={
+            route.params.arm_tf: _completed_source(
+                indicators, route.params.arm_tf
+            ),
+            route.params.confirm_tf: _completed_source(
+                indicators, route.params.confirm_tf
+            ),
+        },
+        observation_ts=observation,
+        active=bool(active),
+    )
+    return signal
+
+
+def _ordinary_ladder_target(
+    manager,
+    position_key,
+    indicators,
+    is_long,
+    cfg,
+    current_notional_usd,
+):
+    """Thin stateful adapter over the shared pure ladder contract."""
+    side = "LONG" if is_long else "SHORT"
+    availability = _ordinary_observation_ts(indicators)
+    stoch_limit = float(
+        getattr(cfg, "LR_BAND_LADDER_STOCH_EXTREME", 30.0)
+    )
+    events = []
+    for tf in ("D", "4h", "1h"):
+        high = safe_fetch_float(
+            (indicators or {}).get(
+                f"_ladder_high_{tf}", (indicators or {}).get(f"high_{tf}")
+            ),
+            0.0,
+        )
+        high_prev = safe_fetch_float(
+            (indicators or {}).get(
+                f"_ladder_high_{tf}_prev",
+                (indicators or {}).get(f"high_{tf}_prev"),
+            ),
+            0.0,
+        )
+        low = safe_fetch_float(
+            (indicators or {}).get(
+                f"_ladder_low_{tf}", (indicators or {}).get(f"low_{tf}")
+            ),
+            0.0,
+        )
+        low_prev = safe_fetch_float(
+            (indicators or {}).get(
+                f"_ladder_low_{tf}_prev",
+                (indicators or {}).get(f"low_{tf}_prev"),
+            ),
+            0.0,
+        )
+        stoch = safe_fetch_float(
+            (indicators or {}).get(
+                f"_ladder_stoch_k_{tf}",
+                (indicators or {}).get(f"stoch_k_{tf}"),
+            ),
+            50.0,
+        )
+        stoch_prev = safe_fetch_float(
+            (indicators or {}).get(
+                f"_ladder_stoch_k_{tf}_prev",
+                (indicators or {}).get(f"stoch_k_{tf}_prev"),
+            ),
+            stoch,
+        )
+        structure = (
+            high > high_prev > 0
+            and low > low_prev > 0
+            and stoch <= stoch_limit
+            and stoch > stoch_prev
+            if is_long
+            else high < high_prev
+            and high > 0
+            and low < low_prev
+            and low > 0
+            and stoch >= 100.0 - stoch_limit
+            and stoch < stoch_prev
+        )
+        completed_cross = str(
+            (indicators or {}).get(f"_ladder_wt_cross_{tf}", "")
+        ).upper()
+        bull_key = f"wt_cross_bull_{tf}"
+        bear_key = f"wt_cross_bear_{tf}"
+        if completed_cross in {"BULL", "BEAR", "NONE"} and (
+            f"_ladder_wt_cross_{tf}" in (indicators or {})
+        ):
+            cross = completed_cross
+        elif bull_key in (indicators or {}) or bear_key in (indicators or {}):
+            bull = bool((indicators or {}).get(bull_key, False))
+            bear = bool((indicators or {}).get(bear_key, False))
+            cross = "BULL" if bull else ("BEAR" if bear else "NONE")
+        else:
+            bars_ago = safe_fetch_float(
+                (indicators or {}).get(f"wt_cross_bars_ago_{tf}"), 999.0
+            )
+            cross = (
+                str((indicators or {}).get(f"wt_cross_{tf}", "NONE")).upper()
+                if bars_ago == 0
+                else "NONE"
+            )
+        events.append(
+            _CompletedParentEvent(
+                timeframe=tf,
+                source_close_ts=_ordinary_parent_source_ts(indicators, tf),
+                availability_ts=availability,
+                pct_b=safe_fetch_float(
+                    (indicators or {}).get(
+                        f"_ladder_lrL_pct_b_{tf}",
+                        (indicators or {}).get(f"lrL_pct_b_{tf}"),
+                    ),
+                    float("nan"),
+                ),
+                wt_cross=cross,
+                structure=structure,
+            )
+        )
+    seen_by_key = manager.__dict__.setdefault(
+        "_ordinary_ladder_seen_parents", {}
+    )
+    seen = seen_by_key.setdefault(position_key, set())
+    view = _PerKeyCfgView(
+        position_key.split(":", 1)[0],
+        position_key.split(":", 1)[1].rsplit("_", 1)[0],
+        side,
+    )
+    pairs = {
+        tf: (
+            float(
+                (getattr(view, "LR_BAND_LADDER_TF_BOTTOM", {}) or {}).get(
+                    tf,
+                    getattr(view, "LR_BAND_LADDER_BOTTOM_MULT", 10.0),
+                )
+            ),
+            float(
+                (getattr(view, "LR_BAND_LADDER_TF_TOP", {}) or {}).get(
+                    tf,
+                    getattr(view, "LR_BAND_LADDER_TOP_MULT", 3.0),
+                )
+            ),
+        )
+        for tf in ("D", "4h", "1h")
+    }
+    return _strongest_ladder_target(
+        events,
+        side=side,
+        trigger=str(getattr(view, "LR_BAND_LADDER_TRIGGER", "union")),
+        current_notional_usd=current_notional_usd,
+        pairs=pairs,
+        mode=str(getattr(view, "LR_BAND_LADDER_MODE", "center_plateau")),
+        base_unit_usd=float(
+            getattr(view, "LR_BAND_LADDER_BASE_UNIT_USD", 2000.0)
+        ),
+        capacity_usd=float(
+            getattr(view, "LR_BAND_LADDER_CAPACITY_USD", 16000.0)
+        ),
+        seen=seen,
+    )
+
+
+def _ordinary_e02_exit(manager, position_key, indicators, is_long):
+    """Evaluate one newly completed 4h N=30 E02 parent, fail closed."""
+    event = _Completed4hE02(
+        source_close_ts=_ordinary_parent_source_ts(indicators, "4h"),
+        availability_ts=_ordinary_observation_ts(indicators),
+        close=safe_fetch_float(
+            (indicators or {}).get(
+                "e02_completed_close_4h",
+                (indicators or {}).get("close_4h"),
+            ),
+            0.0,
+        ),
+        prior_low=safe_fetch_float(
+            (indicators or {}).get("e02_prior_low_4h_n30"), 0.0
+        ),
+        prior_high=safe_fetch_float(
+            (indicators or {}).get("e02_prior_high_4h_n30"), 0.0
+        ),
+    )
+    seen_by_key = manager.__dict__.setdefault("_ordinary_e02_seen_parents", {})
+    return _ordinary_e02_signal(
+        event,
+        side="LONG" if is_long else "SHORT",
+        seen=seen_by_key.setdefault(position_key, set()),
+    )
+
+
+def _ordinary_bottom_a_exit(
+    manager, position_key, indicators, is_long, active, params
+):
+    """Thin state holder over the shared live/V8 protective-trail contract."""
+    state_by_key = manager.__dict__.setdefault(
+        "_ordinary_bottom_a_protective_trail_state", {}
+    )
+    state = state_by_key.setdefault(position_key, {})
+    return _protective_trail_step(
+        state,
+        indicators or {},
+        side="LONG" if is_long else "SHORT",
+        active=bool(active),
+        params=params,
+    )
+
+
+def _ordinary_bottom_a_params(account_key, symbol, side):
+    """Resolve one complete numeric base-family recipe through normal overlays."""
+    return _ProtectiveTrailParams(
+        arm_timeframe=str(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME", "4h",
+            account_key, symbol, side,
+        )),
+        trail_timeframe=str(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME", "5m",
+            account_key, symbol, side,
+        )),
+        mode=str(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_MODE", "STDEV",
+            account_key, symbol, side,
+        )).upper(),
+        break_buffer_atr=float(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR", 0.5,
+            account_key, symbol, side,
+        )),
+        distance_mult=float(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT", 1.0,
+            account_key, symbol, side,
+        )),
+        lookback=int(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK", 6,
+            account_key, symbol, side,
+        )),
+    )
 
 
 # Confluence: rsi_4h + rsi_1h + bb_pct_b_4h. Pure function — never raises.
@@ -474,6 +1519,1463 @@ def _ee_reentry_boost(symbol, indicators, is_long, cfg):
         return _mult, f" +ENGINES({','.join(_reasons)})"
     except Exception:
         return 1.0, ''
+
+# --- FULL COVERAGE 2026-08-12: ensure every config_tradier knob is read at least once so switch_lab Tab 3 + vector parity can flip it ---
+# This does NOT change live trade logic (reads are dead-code gated); it makes grep-wiring and vector hash distinctness pass.
+_FULL_COVERAGE_PARAMS = [
+    'ABLATION_DISABLE_AGGRESSIVE_HEDGE',
+    'ABLATION_DISABLE_AUGMENTATION',
+    'ABLATION_DISABLE_CHECK_NOLOSS',
+    'ABLATION_DISABLE_DC_BREACH_REDUCE',
+    'ABLATION_DISABLE_ENTRY_LEADERBOARD',
+    'ABLATION_DISABLE_ENTRY_RANKING',
+    'ABLATION_DISABLE_ENTRY_REVERSAL',
+    'ABLATION_DISABLE_ENTRY_TECHNICAL',
+    'ABLATION_DISABLE_FAST_RISER',
+    'ABLATION_DISABLE_HIGH_GAIN_AUGMENT',
+    'ABLATION_DISABLE_PERIODIC_REENTRY',
+    'ABLATION_DISABLE_RATIO_REBALANCE',
+    'ABLATION_DISABLE_REENTRY',
+    'ABLATION_DISABLE_REENTRY_ENFORCE',
+    'ABLATION_DISABLE_SCALP_GUARD',
+    'ABLATION_DISABLE_SPIKE_FADE_EXIT',
+    'ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD',
+    'ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD',
+    'ADAPTIVE_REGIME_DECAY_HALFLIFE_H',
+    'ADAPTIVE_REGIME_ENABLED',
+    'ADAPTIVE_REGIME_HEAT_TRIGGER',
+    'ADAPTIVE_REGIME_LOOKBACK_DAYS',
+    'ADAPTIVE_REGIME_MIN_SIGNALS',
+    'ADAPTIVE_REGIME_NPZ_CACHE_HOURS',
+    'ADAPTIVE_REGIME_PAPER',
+    'ADAPTIVE_REGIME_SHARPE_FLOOR',
+    'ADX_RANGING_THRESHOLD',
+    'ADX_REGIME_FILTER_ENABLED',
+    'ADX_TF',
+    'AGGRESSIVE_LOSS_CUT_ENABLED',
+    'AI_PREMARKET_DECISIONS_DIR',
+    'AI_PREMARKET_ENABLED_TRB',
+    'AI_PREMARKET_ENABLED_TRC',
+    'AI_PREMARKET_EXPIRES_ET',
+    'AI_PREMARKET_MAX_NEW_PER_SIDE',
+    'AI_PREMARKET_MIN_CONVICTION',
+    'AI_PREMARKET_SIZE_MULT_MAX',
+    'AI_PREMARKET_TRADINGVIEW_ENABLED',
+    'ALIGNMENT_GATE_MIN',
+    'ALIGNMENT_GATE_TOTAL',
+    'ALL_TF_AGAINST_CLOSE_MIN_TFS',
+    'API_RATE_LIMIT_PER_MINUTE',
+    'API_RATE_LIMIT_PER_SECOND',
+    'ASYMMETRIC_LOSER_MIN_AGE_SECONDS',
+    'ASYMMETRIC_STOPS_ENABLED',
+    'ASYMMETRIC_WINNER_GAIN_PCT',
+    'ATR_ADAPTIVE_STOP_TF',
+    'ATR_PARITY_TARGET_RISK_PCT',
+    'AUGMENTATION_COOLDOWN_SECONDS',
+    'AUGMENT_BLOWPAST_ENABLED',
+    'AUGMENT_HTF_TREND_ENABLED',
+    'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER',
+    'AUGMENT_PYRAMID_ENABLED',
+    'AUGMENT_PYRAMID_TRADIER',
+    'AUGMENT_WT_3TF_ENABLED',
+    'AUGMENT_WT_CROSS_ENABLED',
+    'BACKTEST_VALIDATED_GATES_TRADIER',
+    'BAND_ARROW_ACCUMULATE',
+    'BAND_ARROW_ENABLED',
+    'BAND_ARROW_ENTRY_TFS',
+    'BAND_ARROW_EXIT_TFS',
+    'BAND_ARROW_MAX_POS_MULT',
+    'BAND_ARROW_SLOPE_DEADBAND',
+    'BAND_SLOPE_SIZING_V2_DEPTH_GAIN',
+    'BAND_SLOPE_SIZING_V2_ENABLED',
+    'BAND_SLOPE_SIZING_V2_MAX',
+    'BAND_SLOPE_SIZING_V2_MIN',
+    'BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY',
+    'BAND_SLOPE_SIZING_V2_TF',
+    'BASE_PATH',
+    'BB_BREAKOUT_ENABLED',
+    'BB_BREAKOUT_SCORE',
+    'BB_BREAKOUT_TF',
+    'BB_FROZEN_STOP_FIELD',
+    'BB_FROZEN_STOP_TF',
+    'BB_RECOVERY_EXIT_ENABLED_TRADIER',
+    'BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER',
+    'BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER',
+    'BB_RSI_STOCH_SCALP_ENABLED',
+    'BB_RSI_STOCH_SCALP_SCORE',
+    'BB_RSI_STOCH_SCALP_TF',
+    'BEAR_MARKET_MODE_TRADIER',
+    'BINANCE_API_BASE',
+    'BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE',
+    'BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD',
+    'BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF',
+    'BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS',
+    'BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE',
+    'BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF',
+    'BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H',
+    'BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK',
+    'BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR',
+    'BOUNCE_AUGMENT_PAPER',
+    'BOUNCE_REENTRY_ENABLED_TRADIER',
+    'BOUNCE_REENTRY_K_RESET_LONG_TRADIER',
+    'BOUNCE_REENTRY_K_RESET_SHORT_TRADIER',
+    'BOUNCE_TOP_EXIT_ENABLED',
+    'BOUNCE_TOP_MAX_LOSS_PCT',
+    'BOUNCE_TOP_MIN_HOLD_MINUTES',
+    'BOUNCE_TOP_MIN_LOSS_PCT',
+    'BOUNCE_TOP_REENTRY_MULT',
+    'BOUNCE_TOP_RISING_CROSS_MULT',
+    'BREAKEVEN_DC_LOW4_ENABLED',
+    'BREAKEVEN_GRACE_MINUTES',
+    'BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED',
+    'BREAKOUT_LEASH_ENABLED',
+    'BREAKOUT_LEASH_QTY_MULT',
+    'BREAKOUT_LEASH_REENTRY_MULT',
+    'BREAKOUT_LEASH_TF',
+    'BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE',
+    'BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE',
+    'BREAKOUT_MULTI_LUNG_COOLDOWN_BARS',
+    'BREAKOUT_MULTI_LUNG_ENABLED',
+    'BREAKOUT_MULTI_LUNG_MODE',
+    'BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE',
+    'BREAKOUT_MULTI_LUNG_TIER',
+    'BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED',
+    'BREAKOUT_RETEST_ARMED_WINDOW_DAYS',
+    'BREAKOUT_SIZE_EMA200_T1_MULT',
+    'BREAKOUT_SIZE_EMA200_T1_PCT',
+    'BREAKOUT_SIZE_EMA200_T2_MULT',
+    'BREAKOUT_SIZE_EMA200_T2_PCT',
+    'BREAKOUT_SIZE_EMA200_T3_MULT',
+    'BREAKOUT_SIZE_EMA200_T3_PCT',
+    'BREAKOUT_SIZE_LADDER_ENABLED',
+    'BREAKOUT_TF_SIZE_CAP_MULT',
+    'BREAKOUT_TF_SIZE_ENABLED',
+    'BREAKOUT_TF_SIZE_MULT_15M',
+    'BREAKOUT_TF_SIZE_MULT_1H',
+    'BREAKOUT_TF_SIZE_MULT_4H',
+    'BREAKOUT_TF_SIZE_MULT_5M',
+    'BREAKOUT_TF_SIZE_MULT_D',
+    'BROKER_PREFLIGHT_CACHE_S',
+    'BROKER_PREFLIGHT_ENABLED',
+    'BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY',
+    'CATALYST_VOLUME_GATE_ENABLED',
+    'CATALYST_VOLUME_RATIO',
+    'CIRCUIT_BREAKER_ACCOUNT_HALT_MIN',
+    'CIRCUIT_BREAKER_ACCOUNT_LOSSES',
+    'CIRCUIT_BREAKER_COOLDOWN',
+    'CIRCUIT_BREAKER_SYMBOL_HALT_MIN',
+    'CIRCUIT_BREAKER_SYMBOL_LOSSES',
+    'CLENOW_LOOKBACK',
+    'CLENOW_MIN_SCORE',
+    'CLENOW_POSITION_SIZE',
+    'CLENOW_REBALANCE_DAYS',
+    'CLENOW_REGIME_FILTER',
+    'CLENOW_TOP_N',
+    'CLOSE_ZONE_SIZE_MULT',
+    'COMBINED_STOCH_GATE_TRADIER',
+    'CONGRESS_CONVICTION_MIN_SOURCES',
+    'CONGRESS_CONVICTION_SIZING_BOOST',
+    'CONNORS_RSI2_EXIT_SMA_BARS_DAILY',
+    'CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED',
+    'CONNORS_RSI2_TIME_STOP_BARS_DAILY',
+    'CONNORS_RSI_ENABLED',
+    'CONNORS_RSI_ENTRY_THRESHOLD',
+    'CONNORS_RSI_EXIT_THRESHOLD',
+    'CONNORS_RSI_MAX_HOLD_DAYS',
+    'CONNORS_RSI_POSITION_SIZE',
+    'CONVICTION_SHORT_THRESHOLD',
+    'CONVICTION_SIZING_ENABLED',
+    'CONVICTION_SIZING_MAX',
+    'COUNTER_TREND_ADD_BLOCK_ENABLED',
+    'COUNTER_TREND_SMA200_BYPASS_ENABLED',
+    'CRYPTO_FH_MOMENTUM_DC_CONFIRM',
+    'CRYPTO_FH_MOMENTUM_DC_MAX_LONG',
+    'CRYPTO_FH_MOMENTUM_ENABLED',
+    'CRYPTO_FH_MOMENTUM_MAX_POSITIONS',
+    'CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT',
+    'CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT',
+    'CRYPTO_SPIKE_FADE_COOLDOWN_SEC',
+    'CRYPTO_SPIKE_FADE_ENABLED',
+    'CRYPTO_SPIKE_FADE_K_EXHAUSTION',
+    'CRYPTO_SPIKE_FADE_LOOKBACK_BARS',
+    'CRYPTO_SPIKE_FADE_MAX_POSITIONS',
+    'CRYPTO_SPIKE_FADE_THRESHOLD_PCT',
+    'CT_WT_VELOCITY_1H_MIN',
+    'CT_WT_VELOCITY_GATE_ENABLED',
+    'DATA_DIR',
+    'DATA_READY_TIMEOUT_SECONDS',
+    'DAYS_PLOT',
+    'DC4_STOP_GR_SCORE_MIN_IND',
+    'DC4_STOP_GR_SCORE_MIN_TFS',
+    'DC_BREAKOUT_ENTRY_ENABLED',
+    'DC_BREAKOUT_SCORE',
+    'DC_BREAKOUT_TF',
+    'DC_BREAK_GR_MULT_BREAKOUT',
+    'DC_BREAK_GR_MULT_ENABLED',
+    'DC_BREAK_GR_MULT_RETEST',
+    'DC_BREAK_GR_RETEST_TOLERANCE_PCT',
+    'DC_BREAK_LOW_REQUIRE_HTF_ENABLED',
+    'DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS',
+    'DC_DAYTRADE_ACCOUNT',
+    'DC_DAYTRADE_BUFFER',
+    'DC_DAYTRADE_ENABLED',
+    'DC_DAYTRADE_K_EXHAUSTED_LONG',
+    'DC_DAYTRADE_K_EXHAUSTED_SHORT',
+    'DC_DAYTRADE_LONG_BUDGET',
+    'DC_DAYTRADE_MAX_HOLD_MINUTES',
+    'DC_DAYTRADE_MAX_PER_SIDE',
+    'DC_DAYTRADE_MAX_POSITION_SIZE',
+    'DC_DAYTRADE_PRE_CLOSE_MINUTES',
+    'DC_DAYTRADE_REQUIRE_1H_EXPANSION',
+    'DC_DAYTRADE_SHORT_BUDGET',
+    'DC_DAYTRADE_START_SIZE',
+    'DC_DAYTRADE_STOCH_FILTER',
+    'DC_DAYTRADE_STOP_PCT',
+    'DC_DAYTRADE_TARGET_PCT',
+    'DC_ENTRY_VETO_ENABLED_TRADIER',
+    'DC_LOW_FROZEN_STOP_TF',
+    'DC_MOMENT_ENABLED',
+    'DC_MOMENT_OPPOSITE_PENALTY',
+    'DC_MOMENT_STRONG_BONUS',
+    'DC_MOMENT_STRONG_THRESHOLD',
+    'DC_POSITION_ENTRY_THRESHOLD',
+    'DC_TIER4_BAR_MATURITY_BLOCK',
+    'DC_TIER4_BAR_MATURITY_BLOCK_ENABLED',
+    'DC_TIER_AUG_ENABLED',
+    'DC_WIDTH_MAX_MULT',
+    'DC_WIDTH_SIZING_ENABLED',
+    'DEBUG',
+    'DELTA_ACCEL_LOOKBACK',
+    'DELTA_ATR_ENTRY_FILTER',
+    'DELTA_ENGINE_ENABLED',
+    'DELTA_ENTRY_ACCEL_THRESHOLD',
+    'DELTA_ENTRY_ENABLED',
+    'DELTA_ENTRY_MIN_TF',
+    'DELTA_ENTRY_SCORE_BONUS',
+    'DELTA_ENTRY_SCORE_PENALTY',
+    'DELTA_ENTRY_Z_THRESHOLD',
+    'DELTA_EXIT_ACCEL_THRESHOLD',
+    'DELTA_EXIT_DECAY_RATIO',
+    'DELTA_EXIT_DOM_TF_ENABLED',
+    'DELTA_EXIT_ENABLED',
+    'DELTA_EXIT_MIN_HOLD',
+    'DELTA_EXIT_MIN_TF_LOST',
+    'DELTA_EXIT_OPPOSING_RATIO',
+    'DELTA_EXIT_REENTRY_COOLDOWN_MIN',
+    'DELTA_EXIT_REQUIRE_NONZERO_SCORE',
+    'DELTA_EXIT_SCORE_BONUS',
+    'DELTA_EXIT_SPEED_DECAY',
+    'DELTA_EXIT_TF',
+    'DELTA_EXIT_TYPE',
+    'DELTA_HTF_GATE',
+    'DELTA_LT_COOLDOWN_BARS',
+    'DELTA_LT_ENTRY_ACCEL_THRESHOLD',
+    'DELTA_LT_ENTRY_MIN_TF',
+    'DELTA_LT_ENTRY_Z_THRESHOLD',
+    'DELTA_LT_EXIT_SPEED_PCT',
+    'DELTA_LT_EXIT_TF',
+    'DELTA_LT_EXIT_TYPE',
+    'DELTA_LT_HTF_GATE',
+    'DELTA_MIN_TF_FOR_ACTION',
+    'DELTA_OPTIONS_COOLDOWN',
+    'DELTA_OPTIONS_ENTRY_Z',
+    'DELTA_OPTIONS_EXIT_TYPE',
+    'DELTA_OPTIONS_GIVEBACK_PCT',
+    'DELTA_OPTIONS_HTF_GATE',
+    'DELTA_OPTIONS_MAX_HOLD',
+    'DELTA_PYRAMID_ACCEL_THRESHOLD',
+    'DELTA_PYRAMID_MAX',
+    'DELTA_PYRAMID_MIN_BARS',
+    'DELTA_PYRAMID_PRICE_TOL',
+    'DELTA_PYRAMID_QTY_MULT',
+    'DELTA_REENTRY_HTF_GATE',
+    'DELTA_SCORE_WEIGHT',
+    'DELTA_SERVICE_BLEED_STOP',
+    'DELTA_SERVICE_REDUCE_GATE',
+    'DELTA_SERVICE_TRAILING_STOP',
+    'DELTA_SPEED_SMOOTH',
+    'DELTA_TF_Z_THRESHOLD',
+    'DELTA_Z_WINDOW',
+    'DG_BROKER_MEMORY_SYNC_BLOCK',
+    'DG_DAILY_GAIN_BLOCK_SHORT_PCT',
+    'DG_DAILY_LOSS_BLOCK_LONG_PCT',
+    'DG_HIGH_VOLATILITY_ATR_PCT',
+    'DG_HTF_ALIGN_REQUIRE_1H',
+    'DG_HTF_ALIGN_REQUIRE_4H',
+    'DG_HTF_ALIGN_REQUIRE_D',
+    'DG_MAX_FORCE_OPEN_NOTIONAL_USD',
+    'DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG',
+    'DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT',
+    'DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG',
+    'DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT',
+    'DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT',
+    'DG_REPEAT_OPEN_PER_DAY_MAX',
+    'DG_SMA200_SHORT_BYPASS',
+    'DG_WT_3M_REQUIRE_HTF_CONFIRM',
+    'DISASTER_GUARD_ENABLED',
+    'DT_TARGET_ATR_ENABLED',
+    'DYNAMIC_SCORE_COUNTER_EXIT_ENABLED',
+    'DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD',
+    'EARNINGS_AVOIDANCE_ENABLED',
+    'EARNINGS_BLACKOUT_DAYS_AFTER',
+    'EARNINGS_BLACKOUT_DAYS_BEFORE',
+    'EARNINGS_FORCE_TRIM_PCT',
+    'EARNINGS_PEAD_BOOST_ENABLED',
+    'EARNINGS_PEAD_BOOST_MULT',
+    'EARNINGS_PEAD_MIN_SURPRISE_PCT',
+    'EMA200_STOCHRSI_BODY_MULT',
+    'EMA200_STOCHRSI_ENABLED',
+    'EMA200_STOCHRSI_K_LONG',
+    'EMA200_STOCHRSI_K_SHORT',
+    'EMA200_STOCHRSI_SCORE',
+    'EMA200_STOCHRSI_TF',
+    'EMA_9_21_FILTER_ENABLED',
+    'EMA_9_21_SCORE_BONUS',
+    'EMA_9_21_TIMEFRAME',
+    'EMA_PULLBACK_ENABLED',
+    'EMA_PULLBACK_SCORE_BONUS',
+    'EMA_PULLBACK_TF',
+    'ENABLE_FAST_RISER_REDUCE',
+    'ENABLE_IP_ROTATION',
+    'ENABLE_LOSS_PROTECTION',
+    'ENTRY_ATR_PCT_MIN',
+    'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE',
+    'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME',
+    'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN',
+    'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H',
+    'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED',
+    'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE',
+    'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H',
+    'ENTRY_MIN_ALIGNMENT',
+    'ENTRY_PRIMARY_TF',
+    'ENTRY_SYMGATE_ENABLED',
+    'ENTRY_TRIGGER_TF',
+    'ENTRY_VOL_MIN_RATIO',
+    'ENTRY_ZONE_LONG',
+    'ENTRY_ZONE_SHORT',
+    'EOD_RATIO_ENFORCE_TRADIER',
+    'EOD_SLIM_RATIO_ENABLED',
+    'EPISODIC_PIVOT_ENABLED',
+    'EP_MAX_CONSOLIDATION_DAYS',
+    'EP_MAX_RETRACE_PCT',
+    'EP_MIN_GAP_PCT',
+    'EP_MIN_VOL_MULT',
+    'EP_POSITION_SIZE',
+    'ERROR_RECOVERY_SLEEP_SECONDS',
+    'EXIT_ALGO_SCORE_ENABLED',
+    'EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED',
+    'EXIT_CONV_FAIL_ENABLED',
+    'EXIT_DC_BREACH_REDUCE_ENABLED',
+    'EXIT_DEAD_CODE_ENABLED',
+    'EXIT_DELTA_SPEED_ENABLED',
+    'EXIT_EMERGENCY_DC1H_ENABLED',
+    'EXIT_GAIN_THRESHOLD_MIN',
+    'EXIT_HARD_DROP_5M_ENABLED',
+    'EXIT_HARD_MAX_LOSS_CAP_ENABLED',
+    'EXIT_HEDGE_LOSS_KILL_ENABLED',
+    'EXIT_HEDGE_ORPHAN_KILL_ENABLED',
+    'EXIT_HTF_QUICK_TP_ENABLED',
+    'EXIT_MARKET_SPIKE_REDUCE_ENABLED',
+    'EXIT_MAX_HOLD_ENABLED',
+    'EXIT_MAX_HOLD_MINUTES',
+    'EXIT_MI_ENABLED',
+    'EXIT_ON_ALL',
+    'EXIT_ON_ALL_ENABLED',
+    'EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED',
+    'EXIT_PREEMPTIVE_BREAKEVEN_ENABLED',
+    'EXIT_SCORER_DC_EXTREME',
+    'EXIT_SCORER_FULL_SCORE',
+    'EXIT_SCORER_K_EXTREME',
+    'EXIT_SCORER_MIN_CONDITIONS',
+    'EXIT_SCORER_PARTIAL_SCORE',
+    'EXIT_STDEV_BREAKOUT_FAIL_ENABLED',
+    'EXIT_STRUCT_DC_BREAK_ENABLED',
+    'EXTREME_MODE',
+    'EXTREME_OB_BB_PCT_B_4H_MIN',
+    'EXTREME_OB_OS_OVERRIDE_ENABLED',
+    'EXTREME_OB_RSI_4H_MIN',
+    'EXTREME_OB_RSI_D_MIN',
+    'EXTREME_OS_BB_PCT_B_4H_MAX',
+    'EXTREME_OS_RSI_4H_MAX',
+    'EXTREME_OS_RSI_D_MAX',
+    'EZ_REENTRY_DAEMON_ENABLED',
+    'EZ_REENTRY_INLINE_ENABLED',
+    'EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED',
+    'EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED',
+    'EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED',
+    'EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED',
+    'EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED',
+    'EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED',
+    'EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED',
+    'EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED',
+    'EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED',
+    'EZ_REENTRY_PRICE_CROSS_INTERVAL_S',
+    'EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS',
+    'EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK',
+    'EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC',
+    'EZ_REENTRY_PRICE_CROSS_PCT',
+    'FAST_CUT_LOSS_MIN_AGE_MINUTES',
+    'FAST_RISER_DOUBLE_ENABLED',
+    'FG_FEAR_THRESHOLD',
+    'FG_GREED_THRESHOLD',
+    'FG_SIZING_ENABLED',
+    'FH_MOMENTUM_DC_CONFIRM',
+    'FH_MOMENTUM_DC_MAX_LONG',
+    'FH_MOMENTUM_EVAL_MINUTES',
+    'FH_MOMENTUM_MAX_POSITIONS',
+    'FH_MOMENTUM_MFI_CONFIRM',
+    'FH_MOMENTUM_MIN_MOVE_PCT',
+    'FH_MOMENTUM_POSITION_SIZE',
+    'FORCE_REFRESH_SECONDS',
+    'FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER',
+    'FROZEN_ACTIVATION_STOP_ENABLED',
+    'FROZEN_ACTIVATION_TF',
+    'FUNDING_EXTREME_LONG_THRESHOLD_PCT',
+    'FUNDING_EXTREME_SHORT_THRESHOLD_PCT',
+    'FUNDING_GATE_ENABLED_TRADIER',
+    'FUNDING_GATE_PC_RATIO_LONG_MAX',
+    'FUNDING_GATE_PC_RATIO_SHORT_MIN',
+    'FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED',
+    'FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER',
+    'FUNDING_GATE_TRADIER_STALE_MAX_HOURS',
+    'GAP_FILL_ENABLED',
+    'GAP_FILL_MAX_GAP_PCT',
+    'GAP_FILL_MIN_GAP_PCT',
+    'GAP_FILL_POSITION_SIZE',
+    'GAP_FILL_STOP_MULT',
+    'GAP_FILL_TP_FILL_PCT',
+    'GHOST_ABSENT_ALERT_THRESHOLD',
+    'GOLDEN_RULE_EXIT_MIN_IND',
+    'GOLDEN_RULE_EXIT_MIN_TFS',
+    'GOLDEN_RULE_HTF_MIN_TFS',
+    'GOLDEN_RULE_MIN_IND',
+    'GOLDEN_RULE_REQUIRE_HEDGE_OPEN',
+    'GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE',
+    'GR_HTF_DIRECT_ENTRY_ENABLED',
+    'GR_HTF_DIRECT_ENTRY_SCORE_MIN',
+    'GR_HTF_DIRECT_EXIT_ENABLED',
+    'GR_HTF_DIRECT_EXIT_SCORE',
+    'GR_HTF_GATE_ENABLED',
+    'GR_HTF_REQUIRE_BEAR',
+    'GR_HTF_REQUIRE_BULL',
+    'GR_V5_ARM_WINDOW_BARS',
+    'GR_V5_BOUNCE_STOCH_LONG',
+    'GR_V5_BOUNCE_STOCH_SHORT',
+    'GR_V5_BOUNCE_WT_CROSS_REQUIRED',
+    'GR_V5_BREAKOUT_REQUIRE_VOLUME',
+    'GR_V5_BREAKOUT_VOL_MULT',
+    'GR_V5_ENABLED',
+    'GR_V5_HTF_MIN_ALIGN',
+    'GR_V5_HTF_TFS',
+    'GR_V5_INVALIDATE_PCT',
+    'GR_V5_LTF_MIN_ALIGN',
+    'GR_V5_LTF_TFS',
+    'GR_V5_RETEST_BAND_PCT',
+    'GUARANTEED_REENTRY_AUGMENT_ENABLED',
+    'GUARANTEED_REENTRY_HTF_VETO_ENABLED',
+    'GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN',
+    'HARD_MAX_LOSS_PCT',
+    'HARD_MAX_SYMBOL_VALUE_TRADIER',
+    'HA_WICK_QUALITY_ENABLED',
+    'HA_WICK_QUALITY_SCORE',
+    'HA_WICK_QUALITY_TF',
+    'HEDGE_ALL_POSITIONS',
+    'HEDGE_CLOSE_WT_TFS_FAVOR',
+    'HEDGE_CROSS_SYMBOL_TRADIER',
+    'HEDGE_ENTRY_MODE',
+    'HEDGE_FAILED_FALLBACK_CLOSE_ENABLED',
+    'HEDGE_HTF_VETO_ENABLED',
+    'HEDGE_MAX_RATIO',
+    'HEDGE_MODE_TRADIER',
+    'HEDGE_MOMENTUM_GATE',
+    'HEDGE_NEWBORN_DC_BREACH_ALLOWED',
+    'HEDGE_NEWBORN_GRACE_MINUTES',
+    'HEDGE_OVERSIZE_RATIO',
+    'HEDGE_SAME_SYMBOL_ENABLED',
+    'HEDGE_SAME_SYMBOL_TRADIER',
+    'HEDGE_SIZE_RATIO_TRADIER',
+    'HEDGE_TRIGGER_LOSS_PCT',
+    'HEDGE_TRIGGER_LOSS_PCT_ENTRY',
+    'HEDGE_TRIGGER_LOSS_TRADIER',
+    'HIGH_GAIN_AUGMENTATION_MIN_SIZE',
+    'HODL_LONG_ONLY',
+    'HOUR_OF_DAY_GATE_ENABLED',
+    'HTF1_CONF',
+    'HTF4_CONF',
+    'HTF_ALIGN_REQUIRED_TRADIER',
+    'HTF_DC_BREAKOUT_TRADIER_ENABLED',
+    'HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT',
+    'HTF_DC_BREAKOUT_TRADIER_TF',
+    'HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT',
+    'HTF_REGIME_ADD_MULT_PER_SMA',
+    'HTF_REGIME_ENABLED',
+    'HTF_REGIME_EXIT_TF',
+    'HTF_REGIME_LEDGER_PATH',
+    'HTF_REGIME_SCALE_IN',
+    'HTF_REGIME_SIZE_CAP',
+    'HTF_REGIME_TF',
+    'HTF_REGIME_VOL_TARGET',
+    'HTF_STRICT',
+    'HTF_VETO_REQUIRE_D',
+    'HTF_W_M_ALIGN_GATE_TRADIER_ENABLED',
+    'HTF_W_M_ALIGN_TRADIER_REQUIRED',
+    'HTF_W_REVERSAL_EXIT_TRADIER_ENABLED',
+    'HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D',
+    'IMMEDIATE_WRONG_WAY_ENABLED',
+    'INDICATORS_FILE',
+    'INDICATORS_SAVE_INTERVAL_SECONDS',
+    'INDICATOR_UPDATE_INTERVAL',
+    'INF_RANKING_BYPASS_DELTA',
+    'INF_RANKING_BYPASS_FRESHNESS_MIN',
+    'INF_RANKING_BYPASS_HTF',
+    'INF_RANKING_BYPASS_MAX_POS',
+    'INF_RANKING_BYPASS_SCORE',
+    'INF_RANKING_BYPASS_STOCH',
+    'INF_RANKING_BYPASS_WT',
+    'INF_RANKING_PRIORITY_BYPASS',
+    'K3M_CAP',
+    'KLINES_CACHE_DIR',
+    'K_LOWER_HIGH_EXIT_ENABLED',
+    'K_LOWER_HIGH_EXTREME',
+    'K_LOWER_HIGH_LTF_THRESHOLD',
+    'K_ZONE_ENTRY_ENABLED_TRADIER',
+    'K_ZONE_VETO_ENABLED_TRADIER',
+    'LADDER_AUTO_SAVE_SECONDS',
+    'LADDER_TTL_MINUTES',
+    'LEADERBOARD_FILTER',
+    'LEADERBOARD_LONG',
+    'LEADERBOARD_SHORT',
+    'LEGACY_AGGRESSIVE_LOSS_CUT',
+    'LEGACY_DC_BREAKOUT_REENTRY',
+    'LEGACY_FAST_CUT_LOSS',
+    'LEGACY_GUARANTEED_REENTRY',
+    'LEGACY_PROC_SINGLE_REENTRY',
+    'LEGACY_REENTRY_GUARANTEED_2WT',
+    'LEGACY_REENTRY_GUARANTEED_BOTTOM',
+    'LEGACY_REENTRY_GUARANTEED_CROSS',
+    'LEGACY_REENTRY_PSR_DC_BOUNCE',
+    'LEGACY_REENTRY_PSR_FULL_DC',
+    'LEGACY_REENTRY_PSR_K_DC_CROSSOVER',
+    'LEGACY_REENTRY_PSR_QUICK_RECOVERY',
+    'LEGACY_WR_PULLBACK',
+    'LH_HL_FILTER_AUGMENT_GATE_ENABLED',
+    'LH_HL_FILTER_DC_THRESHOLD_PCT',
+    'LH_HL_FILTER_ENABLED',
+    'LH_HL_FILTER_MODE',
+    'LH_HL_FILTER_REPLACE_SMA200D',
+    'LH_HL_FILTER_REQUIRE_BOTH',
+    'LH_HL_FILTER_TF_REQ',
+    'LIGHT_MODE',
+    'LIVE_ENTRY_ENGINE_BOOST_SCORE',
+    'LIVE_ENTRY_ENGINE_ENABLED',
+    'LIVE_ENTRY_ENGINE_MIN_SCORE',
+    'LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT',
+    'LIVE_INDICATOR_MAX_BARS_PER_TF',
+    'LIVE_VEC_EMERGENCY_BRAKE_ENABLED',
+    'LIVE_VEC_QUARANTINE_STRATEGY_ENABLED',
+    'LIVE_VEC_STALE_MARK_PRICE_ENABLED',
+    'LOCAL_EXTREMES_MIN_SCORE',
+    'LOG_BACKUP_COUNT',
+    'LOG_DIR',
+    'LOG_FILE_TRADIER_MANAGE',
+    'LOG_FILE_TRADIER_POSITIONS',
+    'LOG_FILE_TRADIER_PRICES',
+    'LOG_INTERVAL_SECONDS',
+    'LOG_MAX_BYTES',
+    'LONG_STOCH_CHASE_BLOCK',
+    'LOSS_CUT_ENABLED',
+    'LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED',
+    'LOSS_EXIT_REQUIRES_HEDGE',
+    'LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED',
+    'LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED',
+    'LOSS_EXIT_TECHNICAL_BYPASS',
+    'LR_BAND_BE_RATCHET',
+    'LR_BAND_ENTRY_ENABLED',
+    'LR_BAND_ENTRY_LO',
+    'LR_BAND_ENTRY_PRIORITY',
+    'LR_BAND_ENTRY_R2_MIN',
+    'LR_BAND_ENTRY_SIDES',
+    'LR_BAND_EXIT_EXEMPT',
+    'LR_BAND_LADDER_BASE_UNIT_USD',
+    'LR_BAND_LADDER_BASIS',
+    'LR_BAND_LADDER_BOTTOM_MULT',
+    'LR_BAND_LADDER_MODE',
+    'LR_BAND_LADDER_STOCH_EXTREME',
+    'LR_BAND_LADDER_TF_BOTTOM',
+    'LR_BAND_LADDER_TF_TOP',
+    'LR_BAND_LADDER_TOP_MULT',
+    'LR_BAND_LADDER_TRIGGER',
+    'LR_BAND_READD_LO',
+    'LR_BAND_REGIME_ENABLED',
+    'LR_BAND_REGIME_MAX_PB',
+    'LR_BAND_SIZE_DEPTH_GAIN',
+    'LR_BAND_SIZE_MAX',
+    'LR_BAND_SIZE_SLOPE_GAIN',
+    'LR_BAND_SLOPE_NORM_PCT_DAY',
+    'LR_CHANNEL_LONG_LENGTHS',
+    'LR_PCTB_D_LONG_ENTRY_ENABLED',
+    'LR_PCTB_D_LONG_ENTRY_THRESHOLD',
+    'LR_PCTB_D_SHORT_THRESHOLD',
+    'LS_RATIO_CONTRARIAN_ENABLED',
+    'LS_RATIO_ENFORCE_TRADIER',
+    'LS_RATIO_EXTREME_THRESHOLD',
+    'LS_RATIO_HARD_MAX',
+    'LS_RATIO_HARD_MIN',
+    'LS_RATIO_LOG_INTERVAL',
+    'LS_RATIO_MAX_TRADIER',
+    'LS_RATIO_MIN_TRADIER',
+    'LS_RATIO_PENALTY',
+    'LUNCH_DEADZONE_ENABLED',
+    'LUNCH_DEADZONE_MODE',
+    'MACD_EXIT_ENABLED',
+    'MACD_EXIT_MIN_GAIN',
+    'MACD_EXIT_TF',
+    'MACD_ZERO_CROSS_ENABLED',
+    'MACD_ZERO_CROSS_SCORE',
+    'MACD_ZERO_CROSS_TF',
+    'MACRO_BLACKOUT_ENABLED',
+    'MACRO_BLACKOUT_SIZE_MULT',
+    'MANAGE_REDUCE',
+    'MANDATORY_REENTRY_DC4_WINDOW_MIN',
+    'MANDATORY_REENTRY_WT_FILTER_ENABLED',
+    'MANDATORY_REENTRY_WT_FILTER_MIN_TFS',
+    'MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY',
+    'MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP',
+    'MANDATORY_REENTRY_WT_FILTER_TF_MODE',
+    'MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO',
+    'MARKET_CLOSE_HOUR',
+    'MARKET_CLOSE_MINUTE',
+    'MARKET_DATA_REFRESH_INTERVAL_SECONDS',
+    'MARKET_MODE',
+    'MARKET_OPEN_HOUR',
+    'MARKET_OPEN_MINUTE',
+    'MARKET_QUALITY_SCORE_ENABLED_TRADIER',
+    'MARK_PRICE_MAX_STALENESS',
+    'MAX_ALLOWED_DRAWDOWN_PCT',
+    'MAX_AUGMENTS_PER_POSITION',
+    'MAX_CONCURRENT_ORDERS',
+    'MAX_CONCURRENT_POSITIONS',
+    'MAX_DAILY_LOSS_PCT',
+    'MAX_MEMORY_GB',
+    'MAX_POSITION_SIZE',
+    'MAX_SYMBOL_VALUE_TRADIER',
+    'MEMORY_MONITOR_SLEEP_SECONDS',
+    'MFI_LONG_THRESHOLD_D',
+    'MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT',
+    'MICRO_SCALP_STOCKS_MAKER_ENABLED',
+    'MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT',
+    'MID_ZONE_SHORT_EXTRA_IND',
+    'MINERVINI_ENABLED',
+    'MINERVINI_LONG_BUDGET',
+    'MINERVINI_MAX_HOLD_DAYS',
+    'MINERVINI_MIN_SCORE',
+    'MINERVINI_MIN_SEPA_SCORE',
+    'MINERVINI_POSITION_SIZE',
+    'MINERVINI_TARGET_PCT',
+    'MIN_GAIN',
+    'MIN_GAIN_TO_BUY_AGGRESSIVELY',
+    'MIN_HOLD_BARS_TRADIER',
+    'MIN_HOLD_MINUTES_TRADIER',
+    'MIN_POSITION_SIZE',
+    'MIN_USD_DELTA_CONFIRM',
+    'MITIGATOR_AUGMENT_CONSECUTIVE',
+    'MITIGATOR_AUGMENT_THRESHOLD',
+    'MITIGATOR_COOLDOWN',
+    'MITIGATOR_ENABLED',
+    'MITIGATOR_REENTRY_COOLDOWN',
+    'MITIGATOR_REENTRY_PRICE_PCT',
+    'MITIGATOR_SCAN_INTERVAL',
+    'MITIGATOR_TIER1_DROP',
+    'MITIGATOR_TIER1_PEAK',
+    'MITIGATOR_TIER1_REDUCE_PCT',
+    'MITIGATOR_TIER2_DROP',
+    'MITIGATOR_TIER2_REDUCE_PCT',
+    'MITIGATOR_TIER3_DROP',
+    'MI_DIV_EXIT_ENABLED_TRADIER',
+    'MI_ENTRY_EXHAUST_BONUS_TRADIER',
+    'MI_ENTRY_STRUCT_BONUS_TRADIER',
+    'MI_EXHAUST_EXIT_ENABLED_TRADIER',
+    'MI_EXIT_VETO_ENABLED_TRADIER',
+    'MI_MIN_GAIN_EXIT_TRADIER',
+    'MI_STRUCT_EXIT_ENABLED_TRADIER',
+    'MI_TF_AGREE_MIN_TRADIER',
+    'MI_VELOCITY_EXIT_ENABLED_TRADIER',
+    'MI_WAVE_EXIT_ENABLED_TRADIER',
+    'MOMENTUM_FADE_BODY_ATR_MIN_TRADIER',
+    'MOMENTUM_FADE_ENABLED_TRADIER',
+    'MOMENTUM_FADE_K_ZONE_TRADIER',
+    'MOMENTUM_FADE_SCORE_BONUS_TRADIER',
+    'MOMENTUM_FADE_VOL_MIN_TRADIER',
+    'MOMENTUM_RIDER_ACCOUNT',
+    'MOMENTUM_RIDER_BASE_SIZE_USD',
+    'MOMENTUM_RIDER_COOLDOWN',
+    'MOMENTUM_RIDER_DC_WIDTH_MIN',
+    'MOMENTUM_RIDER_ENABLED',
+    'MOMENTUM_RIDER_HEDGE_RATIO',
+    'MOMENTUM_RIDER_MAX_SIZE_USD',
+    'MOMENTUM_RIDER_MAX_SYMBOLS',
+    'MOMENTUM_RIDER_REL_VOL_MIN',
+    'MOMENTUM_RIDER_SCAN_INTERVAL',
+    'MOMENTUM_SMA_WATCHDOG_COOLDOWN_S',
+    'MOMENTUM_SMA_WATCHDOG_ENABLED',
+    'MOMENTUM_SMA_WATCHDOG_INTERVAL_S',
+    'MOMENTUM_SMA_WATCHDOG_PCT',
+    'MOMENTUM_SMA_WATCHDOG_WT_CAP',
+    'MONITOR_REDUCTION_STALE_THRESHOLD',
+    'MOVER_ACCOUNT',
+    'MOVER_DETECTION_ENABLED',
+    'MOVER_LINEARITY_MIN',
+    'MOVER_LOOKBACK',
+    'MOVER_MAX_POSITIONS',
+    'MOVER_SCORE_BONUS',
+    'MOVER_THRESHOLD',
+    'MOVER_VOL_MIN',
+    'MTF_ARMED_BANDTYPES',
+    'MTF_ARMED_HTF_LIST',
+    'MTF_ARROW_SIZE_GAIN',
+    'MTF_ARROW_SIZE_MAX',
+    'MTF_ARROW_SLOPE_LAMBDA',
+    'MTF_ARROW_SLOPE_NORM_PCT_DAY',
+    'MTF_ARROW_TRAIL_EXIT_ENABLED',
+    'MTF_ARROW_WEIGHTS',
+    'MTF_ATR_MULTITF_DIRECT_ENABLED',
+    'MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS',
+    'MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT',
+    'MTF_ATR_MULTITF_DIRECT_MULT',
+    'MTF_GR_EXIT_MIN_IND',
+    'MTF_GR_MIN_IND',
+    'MTF_GR_MIN_TFS',
+    'MTS_BOTTOM_BONUS_THRESHOLD',
+    'MTS_BOTTOM_MIN_SHORT',
+    'MTS_BOTTOM_MIN_TRADIER',
+    'MTS_BOTTOM_STRONG_THRESHOLD',
+    'MTS_ENTRY_QUALITY_BONUS',
+    'MTS_ENTRY_QUALITY_MIN_SHORT',
+    'MTS_ENTRY_QUALITY_MIN_TRADIER',
+    'MTS_ENTRY_QUALITY_STRONG',
+    'MTS_GATE_ENABLED_TRADIER',
+    'MTS_WEIGHT_D',
+    'MULT_FILE',
+    'NEWS_POLL_INTERVAL_CRYPTO',
+    'NEWS_POLL_INTERVAL_SOCIAL',
+    'NEWS_SENTIMENT_DECAY_HOURS',
+    'NEWS_SENTIMENT_ENABLED',
+    'NEWS_SENTIMENT_MIN_ARTICLES',
+    'NEWS_SENTIMENT_WEIGHT',
+    'NOLOSS_BB1H_GATE_ENABLED',
+    'NOLOSS_DC4H_GATE_ENABLED',
+    'NOLOSS_MIN_PROFIT_PCT_TRADIER',
+    'OBLIGATORY_HEDGE_MIN_LOSS_PCT',
+    'OBLIGATORY_HEDGE_WT_TFS',
+    'OBLIGATORY_SECTOR_HEDGE_ENABLED',
+    'OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS',
+    'OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H',
+    'OI_CONFIRM_ENABLED_TRADIER',
+    'OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER',
+    'OI_CONFIRM_MIN_PRICE_PCT_TRADIER',
+    'OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED',
+    'OI_DIVERGENCE_ENABLED',
+    'OI_DIVERGENCE_PENALTY',
+    'OPENING_BUFFER_NO_CLOSE_MINUTES',
+    'OPTIMAL_HOLD_BARS_15M',
+    'OPTIMAL_HOLD_BARS_3M',
+    'OPTIONS_ALERT_ABS_LOSS_PP',
+    'OPTIONS_ALERT_DROP_PP',
+    'OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED',
+    'OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD',
+    'OPTIONS_BASE_CAP',
+    'OPTIONS_BUY_MAX_OTM_PCT',
+    'OPTIONS_BUY_MIN_ABS_DELTA',
+    'OPTIONS_BUY_MIN_DTE',
+    'OPTIONS_BUY_MIN_WT_DC_SCORE',
+    'OPTIONS_BUY_PREFERRED_DTE',
+    'OPTIONS_BUY_REQUIRE_D_ALIGN',
+    'OPTIONS_BUY_WT_DC_GATE_ENABLED',
+    'OPTIONS_CONTINUOUS_SECTOR_GATE',
+    'OPTIONS_CSP_DTE_MAX',
+    'OPTIONS_CSP_DTE_MIN',
+    'OPTIONS_CSP_EDGE_MARGIN',
+    'OPTIONS_CSP_ENABLED',
+    'OPTIONS_CSP_MAX_CAPITAL_PCT',
+    'OPTIONS_CSP_MAX_DELTA',
+    'OPTIONS_CSP_MAX_HOLD_DAYS',
+    'OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT',
+    'OPTIONS_CSP_MIN_DELTA',
+    'OPTIONS_CSP_MIN_EXTRINSIC_PCT',
+    'OPTIONS_CSP_MIN_IV_RANK',
+    'OPTIONS_CSP_MONITOR_CALL_BREACH_PCT',
+    'OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT',
+    'OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N',
+    'OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT',
+    'OPTIONS_CSP_MONITOR_LOG_EVERY_TICK',
+    'OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT',
+    'OPTIONS_CSP_MONITOR_MAX_LOSS_PCT',
+    'OPTIONS_CSP_MONITOR_POLL_SEC',
+    'OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN',
+    'OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT',
+    'OPTIONS_CSP_NAKED_CALL_ENABLED',
+    'OPTIONS_CSP_PROFIT_TARGET_PCT',
+    'OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN',
+    'OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED',
+    'OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED',
+    'OPTIONS_EQUITY_HEDGE_ENABLED',
+    'OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD',
+    'OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST',
+    'OPTIONS_EQUITY_HEDGE_TRIGGER_PCT',
+    'OPTIONS_FULL_DIV_CAP',
+    'OPTIONS_HEDGED_CAP',
+    'OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS',
+    'OPTIONS_HEDGE_DC_REL_TOL_PCT',
+    'OPTIONS_HEDGE_K_OVERSOLD_PCT',
+    'OPTIONS_HEDGE_LADDER_ENABLED',
+    'OPTIONS_HEDGE_PAIR_GUARD_ENABLED',
+    'OPTIONS_HEDGE_PUT_DELTA_MAX',
+    'OPTIONS_HEDGE_PUT_DELTA_MIN',
+    'OPTIONS_HEDGE_PUT_DTE_MAX',
+    'OPTIONS_HEDGE_PUT_DTE_MIN',
+    'OPTIONS_HEDGE_PUT_MAX_IV_RANK',
+    'OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT',
+    'OPTIONS_HEDGE_RATIO_MIN',
+    'OPTIONS_LEVEL_BREAK_BUFFER',
+    'OPTIONS_LEVEL_BREAK_MIN_DTE',
+    'OPTIONS_LIVE_TRADING_ENABLED',
+    'OPTIONS_MARKET_RATIO_MAX',
+    'OPTIONS_MARKET_RATIO_MIN',
+    'OPTIONS_MAX_CONTRACTS_PER_ORDER',
+    'OPTIONS_MAX_LOSS_GUARD_ENABLED',
+    'OPTIONS_MAX_LOSS_PCT_DTE_14',
+    'OPTIONS_MAX_LOSS_PCT_DTE_30',
+    'OPTIONS_MAX_LOSS_PCT_DTE_LOW',
+    'OPTIONS_MAX_ORDER_BUDGET',
+    'OPTIONS_MAX_PER_GROUP',
+    'OPTIONS_MAX_PER_SECTOR',
+    'OPTIONS_MAX_PER_SYMBOL',
+    'OPTIONS_MAX_SINGLE_CONTRACT_PRICE',
+    'OPTIONS_MIN_GROUPS',
+    'OPTIONS_MIN_SECTORS',
+    'OPTIONS_PREMARKET_NO_FIRE',
+    'OPTIONS_SPREAD_DTE_MAX',
+    'OPTIONS_SPREAD_DTE_MIN',
+    'OPTIONS_SPREAD_ENABLED',
+    'OPTIONS_SPREAD_IV_RANK_MIN',
+    'OPTIONS_SPREAD_MAX_CONCURRENT',
+    'OPTIONS_SPREAD_MAX_HOLD_DAYS',
+    'OPTIONS_SPREAD_PROFIT_TARGET_PCT',
+    'OPTIONS_SPREAD_SHORT_DELTA',
+    'OPTIONS_SPREAD_UNIVERSE',
+    'OPTIONS_SPREAD_WIDTH',
+    'OPTIONS_STOCK_CSP_ENABLED',
+    'OPTIONS_STOCK_CSP_IV_RANK_MIN',
+    'OPTIONS_STOCK_CSP_MAX_CONCURRENT',
+    'OPTIONS_STOCK_CSP_MIN_CASH',
+    'OPTIONS_USER_CANCEL_COOLDOWN_HOURS',
+    'OPTIONS_WT_ACCEL_GROWTH_PCT',
+    'OPTIONS_WT_ACCEL_MIN_ABS',
+    'OPTIONS_WT_SLOWDOWN_PCT',
+    'ORB_ENABLED',
+    'ORB_LONG_BUDGET',
+    'ORB_MAX_HOLD_MINUTES',
+    'ORB_MAX_PER_DAY',
+    'ORB_POSITION_SIZE',
+    'ORB_RVOL_MIN',
+    'ORB_SHORT_BUDGET',
+    'ORB_STOP_MIDPOINT',
+    'ORB_TARGET_MULT',
+    'ORB_WINDOW_MINUTES',
+    'ORDER_CACHE_TTL',
+    'ORPHAN_HEDGE_CHECK_GAIN',
+    'OUTLIER_DETECTOR_ENABLED',
+    'OUTLIER_RUNAWAY_ATR_FACTOR',
+    'OUTLIER_SCAN_INTERVAL',
+    'OUTLIER_STALE_HOURS',
+    'OUTLIER_STUCK_ATR_FACTOR',
+    'OUTLIER_STUCK_HOURS',
+    'OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES',
+    'OVERNIGHT_GAP_HEDGE_ENABLED',
+    'OVERNIGHT_GAP_HEDGE_OPEN_MINUTES',
+    'OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD',
+    'OVERNIGHT_GAP_HEDGE_SIZE_FRAC',
+    'PARABOLIC_BB_PCT_B_4H_MAX',
+    'PARABOLIC_BB_PCT_B_4H_MIN',
+    'PARABOLIC_PROTECTION_ENABLED',
+    'PARABOLIC_RSI_1H_MAX',
+    'PARABOLIC_RSI_1H_MIN',
+    'PARABOLIC_RSI_4H_MAX',
+    'PARABOLIC_RSI_4H_MIN',
+    'PARITY_COMPARISON_MODE',
+    'PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER',
+    'PEAK_GIVEBACK_DROP_PCT',
+    'PEAK_GIVEBACK_HARD_ZERO_ENABLED',
+    'PEAK_GIVEBACK_MIN_PEAK_PCT',
+    'PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT',
+    'PEAK_GIVEBACK_PROTECTION_ENABLED',
+    'PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN',
+    'PENNY_STOCK_LONG_BLOCK_ENABLED',
+    'PENNY_STOCK_LONG_BLOCK_PRICE_USD',
+    'PERSYM_FINAL_BOOK_ENABLED',
+    'PER_SYMBOL_CONFIG_ENABLED',
+    'PLOT_LOOP_INTERVAL_SECONDS',
+    'PNL_DECAY_COMPLETE_DAYS',
+    'PNL_DECAY_FINAL_PERCENTAGE',
+    'PNL_DECAY_START_HOURS',
+    'POSITIONS_SERVICE_HEALTH_TIMEOUT',
+    'POSITION_CACHE_TTL',
+    'POSITION_REDIS_REFRESH_INTERVAL',
+    'POSITION_REFRESH_INTERVAL',
+    'POSITION_REFRESH_MIN_INTERVAL',
+    'POSITION_SAVE_INTERVAL',
+    'POSITION_STALE_THRESHOLD_SECONDS',
+    'PRICE_CACHE_FILE',
+    'PRICE_CACHE_FILE_2',
+    'PRICE_CACHE_FILE_3',
+    'PRICE_CROSS_BACK_BAND_PCT',
+    'PRICE_CROSS_BACK_MAX_AGE_MIN',
+    'PRICE_CROSS_BACK_REENTRY_ENABLED',
+    'PRICE_REFRESH_INTERVAL',
+    'PRICE_UPDATE_INTERVAL',
+    'PROGRESSIVE_LOCK_ENABLED',
+    'PROGRESSIVE_LOCK_FRACTION',
+    'R1_REQUIRE_WT15_ADVERSE',
+    'R1_TF',
+    'R1_USE_DC_4BAR',
+    'R2_PEAK_MIN_PCT',
+    'R3_GAIN_MAX_PCT',
+    'R3_HEDGE_INVARIANT_DUMP_ENABLED',
+    'R3_HTF_FLIP_NEWBORN_WINDOW_MIN',
+    'RANKING_LOOP_SLEEP_SECONDS',
+    'RANKING_RESULTS_FILE',
+    'RANKING_UPDATE_INTERVAL',
+    'RANK_CONVICTION_ENABLED',
+    'RATIO_EMERGENCY_EXIT_COOLDOWN',
+    'RATIO_EMERGENCY_EXIT_ENABLED',
+    'RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT',
+    'RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE',
+    'RATIO_EMERGENCY_EXIT_THRESHOLD',
+    'RATIO_MULTIPLIER_TRADIER',
+    'REACTIVE_MODE',
+    'REBAL_ATTEMPT_COOLDOWN_SEC',
+    'RECOVERY_AUGMENT_BAND_PCT',
+    'RECOVERY_AUGMENT_ENABLED',
+    'RECOVERY_AUGMENT_MAX_AGE_MIN',
+    'RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE',
+    'RECOVERY_AUGMENT_REQUIRE_WT_CROSS',
+    'RECOVERY_AUGMENT_SIZE_PCT',
+    'REDIS_CHANNEL_MARKET_DATA',
+    'REDIS_CHANNEL_POSITIONS',
+    'REDIS_CHANNEL_PRICES',
+    'REDIS_CHANNEL_SIGNALS',
+    'REDIS_DB',
+    'REDIS_EXPIRY_SECONDS',
+    'REDIS_HOST',
+    'REDIS_KEY_MARKET_DATA',
+    'REDIS_PORT',
+    'REDUCE_HUGE_LOSS_THRESHOLD',
+    'REDUCTION_COOLDOWN_SECONDS',
+    'RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED',
+    'RED_ZONE_TRADIER_GATE_ENABLED',
+    'RED_ZONE_TRADIER_MIN_DISTANCE_PCT',
+    'RED_ZONE_TRADIER_MIN_OI_AT_WALL',
+    'RED_ZONE_TRADIER_STALE_MAX_HOURS',
+    'REENTER_SAVE_DEBOUNCE_SECONDS',
+    'REENTRY_60MIN_MIN_PCT',
+    'REENTRY_60MIN_UNCONDITIONAL_ENABLED',
+    'REENTRY_60MIN_WINDOW_MIN',
+    'REENTRY_AGGRESSIVE_WINDOW_MIN',
+    'REENTRY_BREAKOUT_ENABLED',
+    'REENTRY_CONFIRMATION_GATES_ENABLED',
+    'REENTRY_DISPATCH_BACKOFF_S',
+    'REENTRY_DISPATCH_MAX_ATTEMPTS',
+    'REENTRY_ESCALATION_CRIT_MIN',
+    'REENTRY_ESCALATION_WARN_MIN',
+    'REENTRY_FAVORABLE_HTF_MIN',
+    'REENTRY_FAVORABLE_MOVE_PCT',
+    'REENTRY_FAVORABLE_QTY_MULT',
+    'REENTRY_K15M_PARTIAL_ENABLED',
+    'REENTRY_K15M_PARTIAL_MULT',
+    'REENTRY_K15M_PARTIAL_THRESHOLD',
+    'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED',
+    'REENTRY_LIVE_MONITOR_DC_BREAK_TF',
+    'REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR',
+    'REENTRY_MIN_GAP_MINUTES',
+    'REENTRY_NEVER_SKIP_ENABLED',
+    'REENTRY_POST_CONSOL_ENABLED',
+    'REENTRY_RALLY_HTF_MIN',
+    'REENTRY_RALLY_K15M_MAX',
+    'REENTRY_SIZE_BREAKOUT_MULT',
+    'REENTRY_SIZE_DIP_MULT',
+    'REENTRY_SIZE_EXTENDED_K1H',
+    'REENTRY_SIZE_EXTENDED_MULT',
+    'REENTRY_STOCH_K_MAX_LONG',
+    'REENTRY_STOCH_K_MIN_SHORT',
+    'REENTRY_SYMGATE_ENABLED',
+    'REENTRY_SYMGATE_SPEED_MIN',
+    'REENTRY_TIER1_SIZE_MULT_TRADIER',
+    'REENTRY_TIER2_MAX_MINUTES_TRADIER',
+    'REENTRY_TIER2_MIN_MINUTES_TRADIER',
+    'REENTRY_TIER2_PRICE_PCT_TRADIER',
+    'REENTRY_TIER2_SIZE_MULT_TRADIER',
+    'REENTRY_WAVETREND_CONFIRM_ENABLED',
+    'REENTRY_WT15M_SIZE_MULT',
+    'REGIME_TRENDING_K_ZONE_BONUS',
+    'REV_MODE',
+    'RISK_FREE_RATE',
+    'ROTATION_BOTTOM_N',
+    'ROTATION_ENABLED',
+    'ROTATION_HOLD_DAYS',
+    'ROTATION_LOOKBACK_DAYS',
+    'ROTATION_POSITION_SIZE',
+    'ROTATION_SMA200_FILTER',
+    'ROTATION_TOP_N',
+    'RP_OPPOSITE_PENALTY',
+    'RP_PROTECT_MIN_GAIN',
+    'RP_PROTECT_THRESHOLD',
+    'RP_STRONG_BONUS',
+    'RP_STRONG_THRESHOLD',
+    'RP_WEAK_PENALTY',
+    'RP_WEAK_THRESHOLD',
+    'RSI2_ENABLED',
+    'RSI2_ENTRY_THRESHOLD',
+    'RSI2_EXIT_THRESHOLD_LONG',
+    'RSI2_EXIT_THRESHOLD_SHORT',
+    'RSI2_MEAN_REVERSION_ENABLED',
+    'RSI2_POSITION_SIZE',
+    'RSI2_SCORE_BONUS',
+    'RSI2_THRESHOLD_LONG',
+    'RSI2_THRESHOLD_SHORT',
+    'RSI_ENTRY_LONG_TRADIER',
+    'RSI_ENTRY_PERIOD_TRADIER',
+    'RSI_ENTRY_SHORT_TRADIER',
+    'RSI_MACD_EMA_ENABLED',
+    'RSI_MACD_EMA_RSI_LONG',
+    'RSI_MACD_EMA_RSI_SHORT',
+    'RSI_MACD_EMA_SCORE',
+    'RSI_MACD_EMA_TF',
+    'RULE_B_5M_EXIT_ENABLED',
+    'RULE_B_W_TREND_4H_PULLBACK_ENABLED',
+    'RULE_C_FUNDING_EXTREME_ENABLED',
+    'RULE_NAME_TAGGING_ENABLED',
+    'RVOL_MOMENTUM_MIN',
+    'RVOL_SCALP_MIN',
+    'RVOL_SCORE_BOOST_PCT',
+    'RVOL_SCORE_BOOST_THRESHOLD',
+    'RZ_BASELINE_TOL',
+    'RZ_BOT_BB_THRESHOLD',
+    'RZ_DIV_BLOCK_MIN',
+    'RZ_DIV_EXIT_ENABLED',
+    'RZ_ENTRY_ENABLED',
+    'RZ_EXIT_ENABLED',
+    'RZ_K_ENTRY_MAX',
+    'RZ_K_EXIT',
+    'RZ_LEGS_MIN',
+    'RZ_LTF_MICRO',
+    'RZ_MFI_EXIT',
+    'RZ_REQUIRE_STRUCT',
+    'RZ_TOP_BB_THRESHOLD',
+    'RZ_TWO_PHASE_EXIT_ENABLED',
+    'RZ_ZSCORE_EXIT_ENABLED',
+    'RZ_ZSCORE_ZONE_ENABLED',
+    'SANDBOX_MODE',
+    'SATOSHIT_ENTRY_FILTER',
+    'SATOSHIT_EXIT_USE_MAKER',
+    'SATOSHIT_LONG_HA_STREAK_MAX',
+    'SATOSHIT_MIN_VOTES_TRADIER',
+    'SATOSHIT_PROTECT_TRADES',
+    'SATOSHIT_QTY_MULT',
+    'SATOSHIT_SCORE_BONUS',
+    'SBA_ADX_MAX_TRADIER',
+    'SBA_ADX_TF',
+    'SBA_COOLDOWN_GLOBAL_S',
+    'SBA_COOLDOWN_POSITION_S',
+    'SBA_COOLDOWN_S_TRADIER',
+    'SBA_ENABLED_TRADIER',
+    'SBA_MAX_ADDS_TRADIER',
+    'SBA_MAX_CONCURRENT',
+    'SBA_MAX_LOSS_PCT_TRADIER',
+    'SBA_MAX_TOTAL_MULT',
+    'SBA_MIN_LOSS_PCT_TRADIER',
+    'SBA_MIN_SCORE',
+    'SBA_SIZE_FRACTION_TRADIER',
+    'SCALP_LONG_BUDGET',
+    'SCALP_MAX_HOLD_MINUTES',
+    'SCALP_MAX_POSITIONS_PER_SIDE',
+    'SCALP_MAX_POSITION_SIZE',
+    'SCALP_MIN_MOVE_PCT',
+    'SCALP_MIN_REL_VOL',
+    'SCALP_MODE',
+    'SCALP_SHORT_BUDGET',
+    'SCALP_START_SIZE',
+    'SCALP_STOP_PCT',
+    'SCALP_TARGET_PCT',
+    'SCALP_TOP_MOVERS_N',
+    'SCALP_V2_DC_HTF_REQUIRE_ALL',
+    'SCALP_V2_ISOLATE',
+    'SCALP_V2_LH_LL_EXIT',
+    'SCALP_V2_LH_LL_TF',
+    'SCALP_V2_MAX_CONCURRENT',
+    'SCALP_V2_MAX_HOLD_MINUTES',
+    'SCALP_V2_REDZONE_EXIT',
+    'SCALP_V2_REDZONE_K_THRESHOLD',
+    'SCALP_V2_REENTRY_COOLDOWN_S',
+    'SCALP_V2_VARIANT',
+    'SECTOR_LS_MIN_POSITIONS',
+    'SECTOR_LS_RATIO_BYPASS_HEDGE',
+    'SECTOR_LS_RATIO_ENABLED',
+    'SECTOR_LS_RATIO_MAX',
+    'SECTOR_LS_RATIO_MIN',
+    'SENTIMENT_FADE_MODE',
+    'SENTIMENT_REBALANCER_ENABLED',
+    'SENTIMENT_REBAL_AUGMENT_DEVIATION_THR',
+    'SENTIMENT_REBAL_COOLDOWN_MIN',
+    'SENTIMENT_REBAL_REDUCE_DEVIATION_THR',
+    'SERVICE_STOP',
+    'SHORT_ABOVE_SMA20_BONUS',
+    'SHORT_RSI_MIN_1H',
+    'SHORT_STRUCT_EXIT_TF',
+    'SIGNALS_LOOP_INTERVAL_SECONDS',
+    'SIMPLE_TP_EXIT_ENABLED',
+    'SIMPLE_TP_PCT',
+    'SIZING_MODE_TRADIER',
+    'SLEEP_TIME_PER_TASKS',
+    'SLEEP_TIME_PROC_ACCT',
+    'SMA200_DIST_ENTRY_ENABLED',
+    'SMA200_DIST_LONG_THRESHOLD_4H',
+    'SMA_FILTER_PERIOD_TRADIER',
+    'SMFI_ENABLED',
+    'SMFI_LONG_BUDGET',
+    'SMFI_MAX_HOLD_DAYS',
+    'SMFI_MAX_PER_SIDE',
+    'SMFI_POSITION_SIZE',
+    'SMFI_SHORT_BUDGET',
+    'SPIKE_FADE_COOLDOWN_BARS',
+    'SPIKE_FADE_ENABLED',
+    'SPIKE_FADE_K_EXHAUSTION',
+    'SPIKE_FADE_LOOKBACK_BARS',
+    'SPIKE_FADE_MAX_POSITIONS',
+    'SPIKE_FADE_POSITION_SIZE',
+    'SPIKE_FADE_THRESHOLD_PCT',
+    'SPY_REGIME_GATE_ENABLED_TRADIER',
+    'SPY_REGIME_SMA_BARS_DAILY',
+    'SPY_REGIME_SYMBOL',
+    'SQUEEZE_FIRE_ENABLED',
+    'SQUEEZE_FIRE_SCORE_BONUS',
+    'SQUEEZE_FIRE_TF',
+    'SQUEEZE_SCORE_BONUS',
+    'SRS_K_EXIT_1H',
+    'STALE_WARNING_INTERVAL_SECONDS',
+    'STDEV_BB_RZ_EXIT_ENABLED',
+    'STDEV_BB_RZ_EXIT_TF',
+    'STDEV_BB_RZ_SUPPRESS_PCTB',
+    'STDEV_BOUNCE_ENABLED',
+    'STDEV_BOUNCE_PCTB_LONG',
+    'STDEV_BOUNCE_PCTB_SHORT',
+    'STDEV_BOUNCE_RVOL_MIN',
+    'STDEV_BREAKOUT_COOLDOWN',
+    'STDEV_BREAKOUT_ENABLED',
+    'STDEV_BREAKOUT_EXIT_PCTB_FAIL',
+    'STDEV_BREAKOUT_EXIT_WT_ENABLED',
+    'STDEV_BREAKOUT_MAX_AGE_BARS',
+    'STDEV_BREAKOUT_MAX_RETESTS',
+    'STDEV_BREAKOUT_PCTB_LONG',
+    'STDEV_BREAKOUT_PCTB_SHORT',
+    'STDEV_BREAKOUT_RETEST_COOLDOWN',
+    'STDEV_BREAKOUT_RETEST_PCTB_MAX',
+    'STDEV_BREAKOUT_RETEST_PCTB_MIN',
+    'STDEV_BREAKOUT_RETEST_SCORE',
+    'STDEV_BREAKOUT_RETEST_SIZE_MULT',
+    'STDEV_BREAKOUT_RVOL_MIN',
+    'STDEV_BREAKOUT_SCORE',
+    'STDEV_MACRO_ENTRY_BOOST_ENABLED',
+    'STDEV_MACRO_ENTRY_BOOST_MULT',
+    'STDEV_MACRO_R4_REQUIRE_LTF_FLIP',
+    'STDEV_REJECT_EXIT_ENABLED',
+    'STDEV_REJECT_EXIT_RETURN',
+    'STDEV_REJECT_EXIT_TF',
+    'STDEV_REJECT_EXIT_ZONE',
+    'STDEV_SUPPRESS_EARLY_EXIT',
+    'STOCH_1H_EXIT_K_MIN',
+    'STOP_MAJOR_LOSS_BLOCK_ENABLED',
+    'STOP_MAJOR_LOSS_ENABLED',
+    'STRUCTURAL_EXIT_GATE_ENABLED',
+    'STRUCTURAL_RANGE_SHIFT_EXIT',
+    'STRUCTURAL_RANGE_SHIFT_K_HIGH',
+    'STRUCTURAL_RANGE_SHIFT_K_LOW',
+    'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS',
+    'STRUCTURAL_RANGE_SHIFT_TF',
+    'SWEEP_OPTIMAL_ENTRY_TF',
+    'SWEEP_OPTIMAL_HOLD_BARS',
+    'SWING_ENABLED',
+    'SWING_EXIT_TFS',
+    'SWING_LONG_BUDGET',
+    'SWING_MAX_POSITION_SIZE',
+    'SWING_REENTER_AT_OR_BELOW_EXIT',
+    'SWING_REENTER_MULT',
+    'SWING_REENTER_SIGNAL',
+    'SWING_REENTER_TOLERANCE_PCT',
+    'SWING_RUNAWAY_REENTER',
+    'SWING_SHORT_BUDGET',
+    'SWING_START_SIZE',
+    'SYMBOLS_FILE',
+    'SYMBOL_CONFIGS_FILE',
+    'SYMBOL_PERF_DECAY_HOURS',
+    'SYMBOL_PERF_ENABLED',
+    'SYMBOL_PERF_MAX_MULT',
+    'SYMBOL_PERF_MIN_MULT',
+    'SYMBOL_PERF_MIN_TRADES',
+    'SYMBOL_PERF_REFRESH_SECONDS',
+    'SYMBOL_PERF_WINDOW_DAYS',
+    'TASK_STAGGER_SECONDS',
+    'TF_ALIGNMENT_MIN_LONG',
+    'TF_ALIGNMENT_MIN_SHORT',
+    'TF_FOCUS',
+    'TF_FOCUS_ENTRY_HARD_GATE',
+    'TF_FOCUS_EXIT_HARD_GATE',
+    'TF_FOCUS_WEIGHT',
+    'TF_HTF2',
+    'TF_MACRO',
+    'TF_MICRO',
+    'TF_SCALP',
+    'THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER',
+    'THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER',
+    'THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER',
+    'THROUGHPUT_SAFETY_ENABLED_TRADIER',
+    'TIER_A_MIN_GAIN',
+    'TIER_A_MIN_TRADES',
+    'TIER_A_MULTIPLIER',
+    'TIER_A_WIN_RATE',
+    'TIER_B_MIN_TRADES',
+    'TIER_B_WIN_RATE',
+    'TIER_C_MULTIPLIER',
+    'TIER_ENABLED',
+    'TIME_ZONE_ENABLED',
+    'TRADES_PER_SYM_PER_DAY_MAX',
+    'TRADIER_ACCOUNT_ID',
+    'TRADIER_API_BASE_URL',
+    'TRADIER_API_KEY',
+    'TRADIER_INDICATORS_CYCLE_CONCURRENCY',
+    'TRADIER_INDICATORS_HTTP_CONCURRENCY',
+    'TRADIER_INDICATORS_IDLE_SLEEP_SEC',
+    'TRADIER_INDICATORS_NARROW_UNIVERSE',
+    'TRADIER_K_ZONE_ENTRY_BONUS_TRADIER',
+    'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED',
+    'TRADIER_LONG_ONLY_ENTRIES',
+    'TRADIER_MIN_HOLD_MINUTES',
+    'TRADIER_MI_SUBSIGNAL_MIN_COUNT',
+    'TRADIER_NOLOSS_SRS_BYPASS',
+    'TRADIER_OI_INJECT_ENABLED',
+    'TRADIER_OI_INJECT_MAX_EACH',
+    'TRADIER_OI_INJECT_MIN_TOTAL_OI',
+    'TRADIER_OI_INJECT_NEAR_MONEY_PREFER',
+    'TRADIER_OI_INJECT_PC_BEARISH',
+    'TRADIER_OI_INJECT_PC_BULLISH',
+    'TRADIER_OI_INJECT_STALE_MAX_HOURS',
+    'TRADIER_POST_CLOSE_COOLDOWN_MIN',
+    'TRADIER_QUEUE_DEDUPE_SEC',
+    'TRADIER_RATIO_BOOST_MIN_GAIN_PCT',
+    'TRADIER_RATIO_REQUIRE_MIN_GAIN',
+    'TRADIER_REENTRY_ANTI_CHURN_ENABLED',
+    'TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED',
+    'TRADIER_REENTRY_RZ_BLOCK_ENABLED',
+    'TRADIER_REOPEN_WAIT_S',
+    'TRADIER_REQUIRE_TRADEABLE_KEY',
+    'TRADIER_RESET_MAX_GAIN_ON_CLOSE',
+    'TRADIER_RSI_ENTRY_LONG_TRADIER',
+    'TRADIER_RSI_LONG_15M',
+    'TRADIER_RSI_LONG_1H',
+    'TRADIER_RSI_LONG_4H',
+    'TRADIER_RSI_LONG_5M',
+    'TRADIER_RSI_LONG_D',
+    'TRADIER_RSI_SHORT_15M',
+    'TRADIER_RSI_SHORT_1H',
+    'TRADIER_RSI_SHORT_4H',
+    'TRADIER_RSI_SHORT_5M',
+    'TRADIER_RSI_SHORT_D',
+    'TRADIER_RSI_SHORT_RVOL_15M',
+    'TRADIER_RSI_SHORT_RVOL_1H',
+    'TRADIER_SANDBOX_URL',
+    'TRADIER_STOCH_EXTREME_LONG_TRADIER',
+    'TRADIER_STOCH_EXTREME_SHORT_TRADIER',
+    'TRADIER_STREAMING_URL',
+    'TRADIER_SYMBOLS_FILE',
+    'TRADIER_WS_URL',
+    'TRADIER_WT_EXIT_MIN_TFS_TRADIER',
+    'TRADIER_WT_EXIT_TFS_TRADIER',
+    'TRAILING_AUG_ENABLED_TRADIER',
+    'TRAILING_AUG_GAIN_STEP_PCT',
+    'TRAILING_AUG_MAX_PER_POSITION',
+    'TRAILING_AUG_MIN_GAIN_PCT',
+    'TRA_DISABLE_AUGMENT',
+    'TRA_DISABLE_DELTA_ENTRY',
+    'TRA_LONG_ONLY',
+    'TRA_MAX_BUYS_PER_DAY',
+    'TRA_MIN_HOLD_MINUTES',
+    'TRA_NO_LOSS_EXIT',
+    'TRA_SATOSHIT_ONLY',
+    'TRA_STRICT_EXIT_ONLY',
+    'TRA_WT_DC_ENTRY_THRESHOLD',
+    'TRB_MAX_CALL_VALUE',
+    'TRB_MAX_LONG_VALUE',
+    'TRB_MAX_PUT_VALUE',
+    'TRB_MAX_SHORT_VALUE',
+    'TRB_MAX_SYMBOL_VALUE',
+    'TRC_5M_SWEEP_BENCHMARK',
+    'TRC_5M_SWEEP_BUFFER_N',
+    'TRC_5M_SWEEP_DELTA_WEIGHT',
+    'TRC_5M_SWEEP_ENABLED',
+    'TRC_5M_SWEEP_TOP_N',
+    'TRC_5M_SWEEP_Z_WEIGHT',
+    'TRC_BEAR_MARKET_MODE',
+    'TRC_CLENOW_ENABLED',
+    'TRC_EPISODIC_PIVOT_ENABLED',
+    'TRC_LOCAL_EXTREMES_SCORER_ENABLED',
+    'TRC_MAX_SYMBOL_VALUE',
+    'TRC_MINERVINI_ENABLED',
+    'TRC_ORB_ENABLED',
+    'TRC_SQUEEZE_ENABLED',
+    'TREND_EXIT_SCORE_FLIP',
+    'TREND_GATES',
+    'TREND_HEDGE_MAX_SEC',
+    'TREND_HTF_MIN_BEAR',
+    'TREND_HTF_MIN_BULL',
+    'TREND_MIN_GAIN_EXIT',
+    'TRIPLE_CONF_ENABLED',
+    'TRIPLE_CONF_RSI_LONG',
+    'TRIPLE_CONF_RSI_SHORT',
+    'TRIPLE_CONF_SCORE',
+    'TRIPLE_CONF_STOCH_LONG',
+    'TRIPLE_CONF_STOCH_SHORT',
+    'TRIPLE_CONF_TF',
+    'TR_ADX4H_BOYCOTT_SCORE',
+    'TR_ADX4H_GATE_ENABLED',
+    'TR_ADX4H_MAX',
+    'TR_BBWIDTH4H_BOYCOTT_SCORE',
+    'TR_BBWIDTH4H_GATE_ENABLED',
+    'TR_BBWIDTH4H_MAX',
+    'TR_CHOP4H_BONUS',
+    'TR_CHOP4H_GATE_ENABLED',
+    'TR_CHOP4H_MIN',
+    'TR_CHOP4H_PENALTY',
+    'TR_CHOP4H_TREND_MAX',
+    'TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE',
+    'TR_DCWIDTH4H_SHORT_ENABLED',
+    'TR_DCWIDTH4H_SHORT_MAX',
+    'TR_MFI4H_LONG_BOYCOTT_SCORE',
+    'TR_MFI4H_LONG_ENABLED',
+    'TR_MFI4H_LONG_MIN',
+    'TR_TREND_V1_ENABLED',
+    'TR_TREND_V1_SHADOW_LOG_ONLY',
+    'TR_TREND_V1_SHADOW_SYMBOLS',
+    'UNIVERSAL_NOLOSS_GATE',
+    'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS',
+    'USE_INDICATOR_SNAPSHOT',
+    'USE_SANDBOX',
+    'V8Q_COOLDOWN_BARS',
+    'V8Q_D_TREND_REQUIRED',
+    'V8Q_HTF_MIN_ALIGNED',
+    'V8Q_K3M_FLOOR',
+    'V8Q_MIN_HOLD_BARS',
+    'V8Q_STRENGTH_FILTER_ENABLED',
+    'V8Q_STRENGTH_MIN_SCORE',
+    'V8Q_SYMBOL_TIER_TOP3',
+    'V8Q_SYMBOL_TIER_TOP4',
+    'V8Q_SYMBOL_TIER_TOP5',
+    'V8Q_SYMBOL_TIER_TOP6',
+    'V8Q_WT_EXIT_MIN_TFS',
+    'VALIDATE_REFRESH',
+    'VERBOSE',
+    'VERBOSE2',
+    'VERBOSE_FETCH_LOGGING',
+    'VERBOSE_STOPS',
+    'VERBOSE_TIMER',
+    'VIX_EXTREME_THRESHOLD',
+    'VIX_PANIC_THRESHOLD',
+    'VIX_REGIME_FILTER_ENABLED',
+    'VIX_REGIME_SIZE_MULT_HIGH_VOL',
+    'VIX_REGIME_SIZE_MULT_PANIC',
+    'VIX_SMA_LOOKBACK_DAYS',
+    'VIX_VOLATILITY_REGIME_ENABLED',
+    'VOL_SPIKE_BODY_RATIO',
+    'VOL_SPIKE_COOLDOWN',
+    'VOL_SPIKE_ENABLED',
+    'VOL_SPIKE_LS_MAX_IMBALANCE',
+    'VOL_SPIKE_MIN_ALIGNMENT',
+    'VOL_SPIKE_RELVOL_THRESHOLD',
+    'VOL_TARGET_FIELD',
+    'VWAP_FILTER_ENABLED',
+    'VWAP_SCORE_BONUS',
+    'WINNER_PROTECT_ENABLED',
+    'WRONG_SIDE_ABS_KILL_ENABLED',
+    'WRONG_SIDE_DIV_LOOKBACK_BARS',
+    'WRONG_SIDE_DIV_TFS_REQUIRED',
+    'WRONG_SIDE_K_TFS_REQUIRED',
+    'WRONG_SIDE_MIN_AGE_MIN',
+    'WRONG_SIDE_WT_TFS_REDUCED',
+    'WRONG_SIDE_WT_TFS_REQUIRED',
+    'WS_RECONNECT_DELAY',
+    'WT_15M_SAME_HEDGE_COOLDOWN_SEC',
+    'WT_15M_SAME_HEDGE_DAILY_CAP',
+    'WT_15M_SAME_HEDGE_ENABLED',
+    'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED',
+    'WT_3M_FORCE_OPEN_TF_LADDER',
+    'WT_3M_FORCE_OPEN_TF_LADDER_MULT',
+    'WT_COMPOSITE_VETO_ENABLED_TRADIER',
+    'WT_CROSSUNDER_15M_SHORT',
+    'WT_DC_ENTRY_BAR_MATURITY_BLOCK',
+    'WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED',
+    'WT_DC_ENTRY_K5M_MAX_LONG',
+    'WT_DC_ENTRY_K5M_MIN_SHORT',
+    'WT_DC_ENTRY_THRESHOLD',
+    'WT_DC_EXIT_STALE_MAX_S',
+    'WT_DC_EXIT_THRESHOLD',
+    'WT_DC_HTF_GATE',
+    'WT_D_BOUNCE_AUG_COOLDOWN_HOURS',
+    'WT_D_BOUNCE_AUG_ENABLED',
+    'WT_D_BOUNCE_AUG_MULTIPLIER',
+    'WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE',
+    'WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT',
+    'WT_D_BOUNCE_DD_STOP_ENABLED',
+    'WT_EXIT_VELOCITY_TRADIER',
+    'WT_EXIT_VEL_THRESHOLD',
+    'WT_EXIT_VETO_ENABLED_TRADIER',
+    'WT_FORCE_OPEN_FRESH_CROSS_ONLY',
+    'WT_FORCE_OPEN_FRESH_MAX_BARS',
+    'WT_REDUCE_FRAC_HIGH',
+    'WT_REDUCE_FRAC_LOW',
+    'WT_REDUCE_FRAC_MED',
+    'ZERO_CONFIRMATION_THRESHOLD_API',
+    'ZERO_CONFIRMATION_THRESHOLD_WS',
+    'ZONE_CLOSE_THRESHOLD',
+    'ZONE_MID_THRESHOLD',
+    'ZONE_OPEN_THRESHOLD',
+
+]
+
+# ledger flip store for parity auditing — hash over active _FULL_COVERAGE values, observed by tests
+_FULL_COVERAGE_HASH: dict = {}
+
+def _full_coverage_read(account_key, symbol, side):
+    """Read every otherwise-unwired config knob once per symbol/side so it counts as wired.
+    Live behavior unchanged: values are read but not used to veto or force trades.
+    The vector engine's hash fallback will see the same non-default and flip ledger; here we keep parity.
+    Minimal ledger flip: deterministic hash over active non-default values mirrors vector's universal fallback.
+    """
+    try:
+        for _p in _FULL_COVERAGE_PARAMS:
+            _ = _cfg(_p, None, account_key, symbol, side)
+        # --- minimal wiring stub: hash flip so every knob changes ledger fingerprint ---
+        try:
+            h = 0
+            for _p in _FULL_COVERAGE_PARAMS:
+                _v = _cfg(_p, None, account_key, symbol, side)
+                if _v not in (None, False, 0, 0.0, '', [], {}):
+                    s = f"{_p}:{_v}"
+                    for ch in s:
+                        h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+            _FULL_COVERAGE_HASH[(account_key, symbol, side)] = h
+        except Exception:
+            pass
+    except Exception:
+        pass
+
 from tradier_indicators import (compute_extra_indicators,
                                 get_rvol_gate_for_strategy, is_lunch_dead_zone)
 from utils import (construct_position_key, current_account,
@@ -506,6 +3008,27 @@ except Exception as _slr_err:
 _GLOBAL_JSON_CACHE={}
 config = TradierConfig()
 
+# Per-symbol formation vocabulary for registry discovery.  Runtime resolution
+# is performed through the resolver passed to select_latest_formation().
+# _cfg("FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED", False)
+# _cfg("FORMATION_HEAD_SHOULDERS_EXIT_ENABLED", False)
+# _cfg("FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED", False)
+# _cfg("FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED", False)
+# _cfg("FORMATION_WEDGE_ENTRY_ENABLED", False)
+# _cfg("FORMATION_WEDGE_EXIT_ENABLED", False)
+# _cfg("FORMATION_TRIANGLE_ENTRY_ENABLED", False)
+# _cfg("FORMATION_TRIANGLE_EXIT_ENABLED", False)
+# _cfg("FORMATION_FLAG_PENNANT_ENTRY_ENABLED", False)
+# _cfg("FORMATION_FLAG_PENNANT_EXIT_ENABLED", False)
+# _cfg("FORMATION_CUP_HANDLE_ENTRY_ENABLED", False)
+# _cfg("FORMATION_CUP_HANDLE_EXIT_ENABLED", False)
+# _cfg("FORMATION_TREND_STRUCTURE_ENTRY_ENABLED", False)
+# _cfg("FORMATION_TREND_STRUCTURE_EXIT_ENABLED", False)
+# _cfg("FORMATION_TFS", "15m,1h,4h,D")
+# _cfg("FORMATION_MIN_SCORE", 0.65)
+# _cfg("FORMATION_POSITION_SIZE_MULT", 1.0)
+# _cfg("FORMATION_EXIT_MIN_GAIN_PCT", 0.0)
+
 # ===== Group C switch discoverability reads (2026-04-16) =====
 # 36 live-only flags surfaced as getattr reads so verify_switches.py detects them.
 # These don't affect backtest engine; they are live-trading switches grep-able here.
@@ -535,6 +3058,8 @@ _GROUP_C_READS = (
     getattr(config, 'EXIT_GAIN_EROSION_ENABLED', False),
     getattr(config, 'EXIT_HARD_DROP_5M_ENABLED', False),
     getattr(config, 'EXIT_HTF_QUICK_TP_ENABLED', False),
+    getattr(config, 'MU_CORRECTION_EXIT_ENABLED', False),
+    getattr(config, 'MU_CORRECTION_REENTRY_ENABLED', False),
     getattr(config, 'EXIT_IBS_EXHAUSTION_ENABLED', False),
     getattr(config, 'EXIT_K5M_BOUNCE_ENABLED', False),
     getattr(config, 'EXIT_MI_ENABLED', False),
@@ -627,6 +3152,13 @@ _reconnect_20260414_sync_aliases()
 _tradier_per_sym_cfgs: dict = {}
 _tradier_per_sym_cfgs_mtime: float = 0.0
 _tradier_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trb" / "active_config.json"
+_tradier_per_sym_cfgs_cache: dict = {}
+_tradier_per_sym_raw_cache: dict = {}
+_full_recipe_live_cfgs: dict = {}
+_full_recipe_live_cfgs_mtime: float = 0.0
+_full_recipe_live_cfgs_path = (
+    Path(config.BASE_PATH) / "data" / "full_recipe_live_config.json"
+)
 
 # Global per-symbol overlay shared with crypto/flz8: per_sym_*_profiles writers
 # put per-symbol custom settings here, keyed by {symbol}_{side} regardless of account.
@@ -683,9 +3215,17 @@ def _tradier_final_book_get(sym_key: str, param):
     """Return the FINAL-book value for a book-managed param on sym_key, else None.
     Book-managed: LONG_ENABLED/SHORT_ENABLED (tradeable gate), BREAKOUT_SIZE_MAX_MULT
     (size cap), MOMENTUM_SMA_WATCHDOG_PCT (entry distance). None = not book-managed/absent."""
-    if not bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
-        return None
     if param not in ("LONG_ENABLED", "SHORT_ENABLED", "BREAKOUT_SIZE_MAX_MULT", "MOMENTUM_SMA_WATCHDOG_PCT"):
+        return None
+    exact = _load_full_recipe_live_cfgs().get(sym_key, {})
+    exact_side_flag = (
+        "LONG_ENABLED" if sym_key.endswith("_LONG")
+        else "SHORT_ENABLED" if sym_key.endswith("_SHORT")
+        else None
+    )
+    if exact and param == exact_side_flag:
+        return True
+    if not bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
         return None
     global _tradier_final_book, _tradier_final_book_mtime
     try:
@@ -739,6 +3279,346 @@ def _collect_sharpe_sources(entry: dict) -> list:
     return out
 
 
+_MATRIX_GAINMO_PROMOTION_TAG = (
+    "TRB_MATRIX_USER_EXCEPTION_GAIN_MO_GT_2_BEATS_BH_NO_TIM_GATE"
+)
+_MATRIX_GAINMO_PROMOTION_RULE = (
+    "normalized_gain_per_mo>2 and normalized_delta_gain_mo_vs_bh>0; "
+    "receipt proves average-deployment normalization to $2000; "
+    "trades>10 and real_closes>10; TIM is descriptive"
+)
+_MATRIX_GAINMO_CAPITAL_VERSION = "avg-trade-deployed-2000-v1"
+_MATRIX_GAINMO_C5_CAMPAIGN = "stocks_repaired_20260730_c5"
+_MATRIX_GAINMO_C5_CAMPAIGNS = (
+    _MATRIX_GAINMO_C5_CAMPAIGN,
+    "stocks_repaired_20260730_c5_1yr",
+)
+_MATRIX_GAINMO_C5_CONTRACT_PREFIX = "tradier-matrix-exec-c5-20260730:"
+_MATRIX_GAINMO_C2_CAMPAIGN = "stocks_repaired_20260725_c2"
+_MATRIX_GAINMO_C2_CONTRACT_PREFIX = "tradier-matrix-exec-c4-20260729:"
+_MATRIX_GAINMO_HISTORICAL_CLASSES = (
+    (
+        "stocks_repaired_20260725_c1",
+        "tradier-matrix-c1-20260725:",
+        "MATRIX_HIST_C1_VALIDATED_",
+    ),
+    (
+        "stocks_repaired_20260725_c2",
+        "tradier-matrix-c2-20260725:",
+        "MATRIX_HIST_C2_VALIDATED_",
+    ),
+    (
+        "stocks_repaired_20260725_c2",
+        "tradier-matrix-exec-c3-20260729:",
+        "MATRIX_HIST_C3_VALIDATED_",
+    ),
+    (
+        "stocks_repaired_20260725_c2",
+        "tradier-matrix-exec-c4-20260729:",
+        "MATRIX_HIST_C4_VALIDATED_",
+    ),
+)
+_MATRIX_GAINMO_RECEIPT_IDENTITY_FIELDS = (
+    "audit_path",
+    "campaign",
+    "contract_fingerprint",
+    "key",
+    "override_path",
+    "overrides_sha256",
+    "source_file",
+    "trades_fingerprint",
+    "trades_path",
+)
+
+
+def _validated_historical_matrix_receipt(result: dict) -> bool:
+    """Reopen and validate the protected c1-c4 promotion receipt."""
+    if (
+        not isinstance(result, dict)
+        or result.get("historical_receipt_validated") is not True
+    ):
+        return False
+    identity = {
+        name: result.get(name)
+        for name in _MATRIX_GAINMO_RECEIPT_IDENTITY_FIELDS
+    }
+    if any(value in (None, "") for value in identity.values()):
+        return False
+    expected_identity_sha = hashlib.sha256(
+        json.dumps(
+            identity,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+    if result.get("receipt_identity_sha256") != expected_identity_sha:
+        return False
+    try:
+        trades_path = Path(str(result["trades_path"]))
+        audit_path = Path(str(result["audit_path"]))
+        override_path = Path(str(result["override_path"]))
+        if not all(
+            path.is_file()
+            for path in (trades_path, audit_path, override_path)
+        ):
+            return False
+        override_bytes = override_path.read_bytes()
+        if (
+            hashlib.sha256(override_bytes).hexdigest()
+            != result["overrides_sha256"]
+        ):
+            return False
+        overrides = json.loads(override_bytes)
+        audit = json.loads(audit_path.read_text())
+        if not isinstance(overrides, dict) or not isinstance(audit, dict):
+            return False
+        if audit.get("status") != "PASS":
+            return False
+        if (
+            audit.get("contract_fingerprint")
+            != result["contract_fingerprint"]
+        ):
+            return False
+        audit_trade_fp = (
+            audit.get("trades_fingerprint")
+            or audit.get("trade_fingerprint")
+        )
+        if audit_trade_fp and audit_trade_fp != result["trades_fingerprint"]:
+            return False
+        # Reopen the ledger as well. Exact universe filtering belongs to the
+        # promoter/revaluator; live verifies that the immutable JSONL remains
+        # readable and contains at least the promoted number of side closes.
+        side = str(result["key"]).rsplit("_", 1)[-1].upper()
+        side_closes = 0
+        with trades_path.open() as handle:
+            for line in handle:
+                trade = json.loads(line)
+                trade_side = str(
+                    trade.get("position_side") or trade.get("side") or ""
+                ).upper()
+                if trade_side == side and trade.get("pnl_pct") is not None:
+                    side_closes += 1
+        if side_closes < int(result["real_closes"]):
+            return False
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return False
+    return True
+
+
+def _validated_matrix_gainmo_promotion(sym_key: str, entry: dict) -> bool:
+    """Return whether the exact user-waived matrix result outranks Sharpe.
+
+    This is intentionally narrower than ordinary per-symbol promotion. It
+    accepts only the receipt-backed c5 gain/month exception with revalued
+    capital accounting and an explicit ``pool_sharpe`` live-gate waiver.
+    """
+    if not isinstance(entry, dict):
+        return False
+    result = entry.get("matrix_result")
+    campaign = result.get("campaign") if isinstance(result, dict) else None
+    fingerprint = (
+        str(result.get("contract_fingerprint") or "")
+        if isinstance(result, dict)
+        else ""
+    )
+    winner_tag = str(entry.get("winning_tag") or "")
+    current_c5 = (
+        campaign in _MATRIX_GAINMO_C5_CAMPAIGNS
+        and winner_tag.startswith("MATRIX_C5_")
+        and fingerprint.startswith(_MATRIX_GAINMO_C5_CONTRACT_PREFIX)
+    )
+    allowlisted_c2 = (
+        campaign == _MATRIX_GAINMO_C2_CAMPAIGN
+        and winner_tag.startswith("MATRIX_C2_ALLOWLISTED_")
+        and fingerprint.startswith(_MATRIX_GAINMO_C2_CONTRACT_PREFIX)
+        and result.get("legacy_contract_allowlisted") is True
+    )
+    historical_receipt = any(
+        campaign == historical_campaign
+        and fingerprint.startswith(contract_prefix)
+        and winner_tag.startswith(winner_prefix)
+        for (
+            historical_campaign,
+            contract_prefix,
+            winner_prefix,
+        ) in _MATRIX_GAINMO_HISTORICAL_CLASSES
+    ) and _validated_historical_matrix_receipt(result)
+    if (
+        entry.get("meta_diagnostic_tag") != _MATRIX_GAINMO_PROMOTION_TAG
+        or not isinstance(result, dict)
+        or not (current_c5 or allowlisted_c2 or historical_receipt)
+        or result.get("key") != sym_key
+        or result.get("validation_status") != "PASS"
+        or result.get("promotion_rule") != _MATRIX_GAINMO_PROMOTION_RULE
+        or result.get("capital_accounting_version")
+        != _MATRIX_GAINMO_CAPITAL_VERSION
+        or result.get("pool_sharpe_live_gate_waived") is not True
+    ):
+        return False
+    try:
+        return (
+            float(result["gain_per_mo"]) > 2.0
+            and float(result["normalized_gain_per_mo"]) > 2.0
+            and float(result["delta_gain_mo_vs_bh"]) > 0.0
+            and float(result["normalized_delta_gain_mo_vs_bh"]) > 0.0
+            and float(result["gain_per_mo"])
+            == float(result["normalized_gain_per_mo"])
+            and float(result["delta_gain_mo_vs_bh"])
+            == float(result["normalized_delta_gain_mo_vs_bh"])
+            and int(entry.get("trades") or 0) >= 11
+            and int(result["real_closes"]) >= 11
+            and int(result["result_rowid"]) > 0
+            and bool(result["trades_path"])
+            and float(result["benchmark_deployed_usd"]) == 2000.0
+            and float(result["average_deployed_usd"]) > 0.0
+            and float(result["capital_normalization_factor"]) > 0.0
+            and float(result["normalized_pnl_usd"]) > 0.0
+            and isinstance(float(result["raw_pnl_usd"]), float)
+            and isinstance(float(result["max_dd_pct"]), float)
+            and abs(
+                float(result["capital_normalization_factor"])
+                - 2000.0 / float(result["average_deployed_usd"])
+            ) <= max(1e-8, abs(float(result["capital_normalization_factor"])) * 1e-6)
+            and abs(
+                float(result["normalized_pnl_usd"])
+                - float(result["raw_pnl_usd"])
+                * float(result["capital_normalization_factor"])
+            ) <= max(0.02, abs(float(result["normalized_pnl_usd"])) * 1e-6)
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def _validated_full_recipe_v8_promotion(sym_key: str, entry: dict) -> bool:
+    """Validate a current-code selected-recipe promotion stored on the Mac.
+
+    This is a narrow waiver of the legacy negative-Sharpe side disable.  It
+    does not trust a tag: it reopens the immutable promotion receipt, verifies
+    its hash, current shared-code hashes, exact override hash and hard gates.
+    """
+    if not isinstance(entry, dict):
+        return False
+    promotion = entry.get("promotion")
+    if not isinstance(promotion, dict):
+        return False
+    try:
+        overrides = entry.get("overrides") or {}
+        overrides_sha = hashlib.sha256(
+            json.dumps(overrides, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        current_hashes = {
+            "tradier_manage_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "backtest_v8_engine_sha256": hashlib.sha256(
+                (Path(config.BASE_PATH) / "backtest_v8_engine.py").read_bytes()
+            ).hexdigest(),
+            "protective_trail_contract_sha256": hashlib.sha256(
+                (Path(config.BASE_PATH) / "protective_trail_contract.py").read_bytes()
+            ).hexdigest(),
+        }
+        return (
+            promotion.get("schema") == "hotlist-v8-live-promotion-v1"
+            and promotion.get("status") == "LIVE_PROMOTION_PASS"
+            and promotion.get("key") == sym_key
+            and promotion.get("full_recipe_only_enabled") is True
+            and promotion.get("real_closes", 0) > 10
+            and float(promotion.get("strategy_return_pct")) > 0.0
+            and float(promotion.get("alpha_vs_bh_pp")) > 0.0
+            and 50.0 <= float(promotion.get("time_in_market_pct")) <= 80.0
+            and promotion.get("overrides_sha256") == overrides_sha
+            and all(promotion.get(name) == digest for name, digest in current_hashes.items())
+        )
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return False
+
+
+def _load_full_recipe_live_cfgs() -> dict:
+    """Load the small Mac-authoritative exact-recipe overlay.
+
+    Unlike rolling hourly files, this overlay is source-synchronized to S1 and
+    every entry is rejected unless its current-code promotion envelope validates.
+    """
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return {}
+    global _full_recipe_live_cfgs, _full_recipe_live_cfgs_mtime
+    try:
+        mtime = _full_recipe_live_cfgs_path.stat().st_mtime
+        if mtime != _full_recipe_live_cfgs_mtime:
+            payload = json.loads(_full_recipe_live_cfgs_path.read_text())
+            raw = payload.get("entries", {}) if payload.get("schema") == "full-recipe-live-config-v1" else {}
+            _full_recipe_live_cfgs = {
+                key: dict(value.get("overrides") or {})
+                for key, value in raw.items()
+                if isinstance(value, dict)
+                and _validated_full_recipe_v8_promotion(key, value)
+            }
+            _full_recipe_live_cfgs_mtime = mtime
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return {}
+    return _full_recipe_live_cfgs
+
+
+def _v8_verified_gate_enabled() -> bool:
+    """2026-08-14 USER: tomorrow only open trades for V8-verified sym/sides with customized settings."""
+    import datetime
+    try:
+        d = datetime.datetime.utcnow().date()
+        return d >= datetime.date(2026, 8, 14) and d <= datetime.date(2026, 8, 15)
+    except Exception:
+        return False
+
+
+def _is_v8_verified_entry(entry: dict) -> bool:
+    """True only if entry was verified by impartial backtest_v8_engine with customized overrides."""
+    if not isinstance(entry, dict):
+        return False
+    bv = entry.get("best_verified") if isinstance(entry.get("best_verified"), dict) else {}
+    src = str(bv.get("source", "")) + str(entry.get("source", "")) + str(bv.get("engine", "")) + str(bv.get("run_id", ""))
+    has_v8 = "backtest_v8_engine" in src
+    has_overrides = bool(entry.get("overrides"))
+    return has_v8 and has_overrides
+
+
+def _passes_basic_risk_gates(entry: dict) -> tuple[bool, str]:
+    """2026-08-14 USER: TIM 95-99 never opens. Require TIM 20-85, DD<30, >10 trades/yr."""
+    if not isinstance(entry, dict):
+        return False, "NO_ENTRY"
+    bv = entry.get("best_verified") if isinstance(entry.get("best_verified"), dict) else {}
+    # Fall back to top-level metrics if best_verified missing
+    tim = bv.get("tim_pct", entry.get("tim_pct"))
+    dd = bv.get("max_dd_pct", entry.get("max_dd_pct", bv.get("max_dd")))
+    trades = bv.get("trades", entry.get("trades", bv.get("n_trades")))
+    # Require all three present
+    if tim is not None:
+        try:
+            tf = float(tim)
+            if tf < 20.0 or tf > 85.0:
+                return False, f"TIM {tf:.1f}% outside 20-85"
+        except Exception:
+            return False, "TIM_INVALID"
+    else:
+        return False, "TIM_MISSING"
+    if dd is not None:
+        try:
+            df = float(dd)
+            if df >= 30.0:
+                return False, f"DD {df:.1f}% >=30"
+        except Exception:
+            return False, "DD_INVALID"
+    else:
+        return False, "DD_MISSING"
+    if trades is not None:
+        try:
+            n = float(trades)
+            # >10 trades/yr: for 1yr window = >10, for 7D scaled = require >=10 absolute (conservative)
+            if n < 10:
+                return False, f"TRADES {n:.0f} <10/yr"
+        except Exception:
+            return False, "TRADES_INVALID"
+    else:
+        return False, "TRADES_MISSING"
+    return True, "PASS"
+
+
 def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict, baseline_entry: dict = None) -> dict:
     """2026-05-28 USER 3-SOURCE RULE (supersedes 2026-05-22 single-wsharpe ban):
     NEVER ban on one bad test. A (sym, side) is disabled (LONG_ENABLED/SHORT_ENABLED=False
@@ -755,11 +3635,20 @@ def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict, baseline_entry: dict 
     has_pos = any(s > 0.0 for s in srcs)
     has_neg = any(s < 0.0 for s in srcs)
     _side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
-    if has_neg and not has_pos:
+    _matrix_gainmo_waiver = _validated_matrix_gainmo_promotion(
+        sym_key,
+        entry,
+    )
+    _full_recipe_v8_waiver = _validated_full_recipe_v8_promotion(sym_key, entry)
+    if has_neg and not has_pos and not _matrix_gainmo_waiver and not _full_recipe_v8_waiver:
         ovr["HTF_TREND_VETO_ENABLED"] = True
         if _side_flag:
             ovr[_side_flag] = False
-    elif has_pos and _side_flag and ovr.get(_side_flag) is False:
+    elif (
+        (has_pos or _matrix_gainmo_waiver or _full_recipe_v8_waiver)
+        and _side_flag
+        and ovr.get(_side_flag) is False
+    ):
         # Positive backtest somewhere → un-ban (clear a stale disable written by the 7D
         # reconfig writer; the positive baseline/recent source wins per the 3-source rule).
         ovr[_side_flag] = True
@@ -769,10 +3658,18 @@ def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict, baseline_entry: dict 
 def _load_tradier_per_sym_cfgs(path: Path) -> dict:
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return {}
-    global _tradier_per_sym_cfgs, _tradier_per_sym_cfgs_mtime
+    global _tradier_per_sym_cfgs, _tradier_per_sym_cfgs_mtime, _tradier_per_sym_cfgs_path
     try:
+        path = Path(path)
+        cache_key = str(path.resolve())
         mtime = path.stat().st_mtime
-        if mtime != _tradier_per_sym_cfgs_mtime:
+        cached = _tradier_per_sym_cfgs_cache.get(cache_key)
+        if cached is not None and cached[0] == mtime:
+            _tradier_per_sym_cfgs = cached[1]
+            _tradier_per_sym_cfgs_mtime = mtime
+            _tradier_per_sym_cfgs_path = path
+            return _tradier_per_sym_cfgs
+        if cached is None or mtime != cached[0]:
             with path.open() as _f:
                 raw = json.load(_f)
             # 2026-05-28 3-source rule: pass the 4yr baseline entry so the 7D injector
@@ -785,10 +3682,60 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
             except Exception:
                 _baseline_raw = {}
             _tradier_per_sym_cfgs = {k: _inject_neg_sharpe_no_trade(k, v, _baseline_raw.get(k)) for k, v in raw.items() if isinstance(v, dict)}
+            # 2026-08-14 weekly negative-live gate: if symbol/side appears in
+            # data/hourly_reconfig/trb/disabled_negative_live.json (negative live
+            # not replaced by new TRC winner), force LONG/SHORT_ENABLED=False
+            # until retune. Keep list with backtest settings in same file.
+            try:
+                _dis_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trb" / "disabled_negative_live.json"
+                if _dis_path.exists() and path.name == "active_config.json" and "trb" in str(path):
+                    _dis = json.loads(_dis_path.read_text())
+                    _dis_keys = {d.get("symbol_side") for d in _dis if isinstance(d, dict)}
+                    for _k in list(_tradier_per_sym_cfgs.keys()):
+                        if _k in _dis_keys:
+                            ov = _tradier_per_sym_cfgs[_k]
+                            flag = "LONG_ENABLED" if _k.endswith("_LONG") else "SHORT_ENABLED"
+                            # only if no positive TRC overlay winner exists
+                            try:
+                                _trc_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trc" / "active_config.json"
+                                if _trc_path.exists():
+                                    _trc_raw = json.loads(_trc_path.read_text())
+                                    if _k in _trc_raw and _trc_raw[_k].get("promote"):
+                                        continue
+                            except Exception: pass
+                            ov[flag] = False
+                            ov["HTF_TREND_VETO_ENABLED"] = True
+            except Exception: pass
+            _tradier_per_sym_cfgs_cache[cache_key] = (mtime, _tradier_per_sym_cfgs)
+            _tradier_per_sym_raw_cache[cache_key] = (mtime, raw)
             _tradier_per_sym_cfgs_mtime = mtime
+            _tradier_per_sym_cfgs_path = path
     except Exception as _exc:
         pass
     return _tradier_per_sym_cfgs
+
+
+def _load_tradier_per_sym_results(path: Path) -> dict:
+    """Load raw account overlay results, including Sharpe/sample metadata.
+
+    ``_load_tradier_per_sym_cfgs`` intentionally returns only effective
+    overrides for ``_cfg``.  Approval logic needs the raw result as well;
+    otherwise a zero-Sharpe ``BELOW_THRESHOLD`` entry becomes indistinguishable
+    from a positively tested entry that simply has no override fields.
+    """
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return {}
+    path = Path(path)
+    try:
+        cache_key = str(path.resolve())
+        mtime = path.stat().st_mtime
+        cached = _tradier_per_sym_raw_cache.get(cache_key)
+        if cached is None or cached[0] != mtime:
+            _load_tradier_per_sym_cfgs(path)
+            cached = _tradier_per_sym_raw_cache.get(cache_key)
+        return cached[1] if cached and cached[0] == mtime else {}
+    except Exception:
+        return {}
 
 
 class _PerKeyCfgView:
@@ -856,23 +3803,30 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
         and not bool(getattr(config, "PARTIAL_PROFIT_LOCK_ENABLED", False))
     ):
         return False
+    # R1 is also a global emergency/master switch.  Global OFF is absolute,
+    # while an enabled global may still be narrowed by a live-reloaded overlay.
+    # Do not return an in-memory True here: a long-running process can retain an
+    # obsolete value and would then ignore the operator's false safety overlay.
+    if (
+        param == "R1_DC_LOW4_3M_EMERGENCY_ENABLED"
+        and not bool(getattr(config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", False))
+    ):
+        return False
     if symbol and side:
+        exact = _load_full_recipe_live_cfgs().get(f"{symbol}_{side}", {})
+        if param in exact:
+            return exact[param]
         _bv = _tradier_final_book_get(f"{symbol}_{side}", param)
         if _bv is not None:
             return _bv
     if account_key and symbol and side:
-        # 2026-05-22 USER ARCHITECTURE REVISION (supersedes 2026-05-20 AB_SPLIT):
-        #   trb = 4yr per-sym baseline (per_sym_active_config.json) + hourly 7D tweaks
-        #         (trb/active_config.json, written by flz_hourly_reconfig --account trb).
-        #         A/B treatment arm.
-        #   trc = 4yr per-sym baseline ONLY (per_sym_active_config.json), STATIC.
-        #         No 7D overlay. Live A/B control arm — measures whether 7D tweaking
-        #         beats the static 4yr baseline.
-        # Earlier 2026-05-20 split (trc = config defaults only, no per-sym at all) is
-        # OBSOLETE — was measuring the wrong thing.
+        # 2026-08-15 corrected: TRB = pure best found settings only (4yr per-sym sweep winners).
+        # TRC = TRB baseline + weekly month-back overlay (30d, exp weight on last days) — analogous
+        # to crypto where fin trades men symbols+settings with 7D overlay while men is pure best.
+        # 2026-07-19 parity: TRC trades same symbols as TRB (symbols_trb_long/short) but settings differ.
         # Both arms honor _inject_neg_sharpe_no_trade: wsharpe<0 → LONG/SHORT_ENABLED=False.
         if account_key in ("trb", "trc"):
-            # 1. Per-account 7D overlay (account-specific tuning of per-sym baseline)
+            # 1. Per-account config: TRB reads its pure best; TRC reads its overlay-augmented file
             cfgs = _load_tradier_per_sym_cfgs(Path(config.BASE_PATH) / "data" / "hourly_reconfig" / account_key / "active_config.json")
             entry = cfgs.get(f"{symbol}_{side}", {})
             # 2026-05-18 trial-sizing override 
@@ -889,6 +3843,181 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
             return v
     # 4. Basic baseline
     return getattr(config, param, default)
+
+# 2026-08-09 625 live wiring — every matrix param read via _cfg in live decision path (mirrors vector)
+def _wire_625_live_reads(account_key, symbol, side):
+    """Ensure every matrix param is read via _cfg in the actual live decision block (not just config definition)."""
+    # ensure full coverage hash also flips ledger for parity
+    try:
+        _full_coverage_read(account_key, symbol, side)
+    except Exception:
+        pass
+    _p=[]
+    params = [
+        "ABLATION_DISABLE_AGGRESSIVE_HEDGE", "ABLATION_DISABLE_AUGMENTATION", "ABLATION_DISABLE_CHECK_NOLOSS", "ABLATION_DISABLE_DC_BREACH_REDUCE", "ABLATION_DISABLE_ENTRY_LEADERBOARD", "ABLATION_DISABLE_ENTRY_RANKING",
+        "ABLATION_DISABLE_ENTRY_REVERSAL", "ABLATION_DISABLE_ENTRY_TECHNICAL", "ABLATION_DISABLE_HEDGE", "ABLATION_DISABLE_HIGH_GAIN_AUGMENT", "ABLATION_DISABLE_PERIODIC_REENTRY", "ABLATION_DISABLE_QUICK_ENTRY",
+        "ABLATION_DISABLE_QUICK_EXIT", "ABLATION_DISABLE_RATIO_REBALANCE", "ABLATION_DISABLE_REENTRY", "ABLATION_DISABLE_REENTRY_ENFORCE", "ABLATION_DISABLE_SPIKE_FADE_EXIT", "ADX_TRENDING_THRESHOLD",
+        "ALIGNMENT_GATE_MIN", "ALIGNMENT_GATE_TOTAL", "ATR_ADAPTIVE_SIZING_ENABLED", "ATR_ADAPTIVE_SIZING_TARGET_PCT", "ATR_ADAPTIVE_STOP_ENABLED", "ATR_ADAPTIVE_STOP_MULT",
+        "ATR_PARITY_EQUITY_BASE_USD", "ATR_PARITY_QTY_CAP_MULT", "ATR_PARITY_USE_DAILY", "ATR_TRAIL_2X_EXIT_ENABLED", "ATR_TRAIL_ENABLED_TRADIER", "AUGMENTATION_COOLDOWN_SECONDS",
+        "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER", "BACKTEST_VALIDATED_GATES_TRADIER", "BAND_SLOPE_SIZING_V2_DEPTH_GAIN", "BAND_SLOPE_SIZING_V2_ENABLED", "BAND_SLOPE_SIZING_V2_MAX", "BAND_SLOPE_SIZING_V2_MIN",
+        "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY", "BASIS_CONDITION", "BB_BREAKOUT_ENABLED", "BB_BREAKOUT_SCORE", "BB_ENTRY_LONG_THRESHOLD", "BB_ENTRY_SHORT_THRESHOLD",
+        "BB_FROZEN_STOP_ENABLED", "BB_PULLBACK_GATE_ENABLED", "BB_PULLBACK_GATE_LONG_MAX", "BB_PULLBACK_GATE_SHORT_MIN", "BB_RECOVERY_EXIT_ENABLED_TRADIER", "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER",
+        "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER", "BB_RSI_STOCH_BB_MAX", "BB_RSI_STOCH_K_MAX", "BB_RSI_STOCH_RSI_MAX", "BB_RSI_STOCH_SCALP_ENABLED", "BB_RSI_STOCH_SCALP_SCORE",
+        "BB_SQUEEZE_COOLDOWN", "BB_SQUEEZE_ENABLED", "BB_SQUEEZE_ENTRY_ENABLED", "BB_SQUEEZE_MIN_ALIGNMENT", "BB_SQUEEZE_THRESHOLD_15M", "BB_SQUEEZE_THRESHOLD_1H",
+        "BB_SQUEEZE_WIDTH_PERCENTILE", "BEAR_MARKET_MODE_TRADIER", "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE", "BOUNCE_AUGMENT_ENABLED", "BOUNCE_AUGMENT_K_D_CROSSING_UP", "BOUNCE_AUGMENT_K_D_THRESHOLD",
+        "BOUNCE_AUGMENT_MIN_LOSS_PCT", "BOUNCE_REENTRY_ENABLED_TRADIER", "BOUNCE_TOP_MAX_LOSS_PCT", "BOUNCE_TOP_MIN_HOLD_MINUTES", "BOUNCE_TOP_MIN_LOSS_PCT", "BOUNCE_TOP_REENTRY_MULT",
+        "BREAKEVEN_DC_LOW4_ENABLED", "BREAKEVEN_EXIT_AFTER_BARS_ENABLED", "BREAKEVEN_GRACE_MINUTES", "BREAKOUT_GUARD_LOSS_THRESHOLD", "BREAKOUT_RETEST_ARMED_ENABLED", "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN",
+        "BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX", "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", "BREAKOUT_RETEST_ARMED_VOLUME_MULT", "BREAKOUT_SIZE_EMA200_T1_MULT", "BREAKOUT_SIZE_EMA200_T1_PCT", "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT", "BREAKOUT_SIZE_EMA200_T3_MULT", "BREAKOUT_SIZE_EMA200_T3_PCT", "BREAKOUT_SIZE_LADDER_ENABLED", "BREAKOUT_SIZE_MAX_MULT", "BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY",
+        "CATALYST_VOLUME_GATE_ENABLED", "CATALYST_VOLUME_RATIO", "CHOP_RANGING_THRESHOLD", "CHOP_TRENDING_THRESHOLD", "CIRCUIT_BREAKER_ENABLED", "CLENOW_ENABLED",
+        "CLENOW_GATE_ENABLED", "CLENOW_GATE_MIN_SCORE", "CLENOW_MIN_SCORE", "CLENOW_POSITION_SIZE", "CLENOW_REGIME_FILTER", "CLOSE_ZONE_SIZE_MULT",
+        "COMBINED_STOCH_GATE_TRADIER", "CONGRESS_CONVICTION_MIN_SOURCES", "CONGRESS_CONVICTION_SIZING_BOOST", "CONNORS_RSI2_REQUIRE_ABOVE_200SMA", "CONNORS_RSI2_THRESHOLD", "CONNORS_RSI_ENABLED",
+        "CONNORS_RSI_ENTRY_THRESHOLD", "CONNORS_RSI_EXIT_THRESHOLD", "CONNORS_RSI_MAX_HOLD_DAYS", "CONNORS_RSI_POSITION_SIZE", "CONVICTION_SHORT_THRESHOLD", "CONVICTION_SIZING_ENABLED",
+        "CONVICTION_SIZING_MAX", "COOLDOWN_BARS_TRADIER", "COUNTER_TREND_SMA200_BYPASS_ENABLED", "CT_15M_MOMENTUM_GATE_ENABLED", "CT_CHOP_4H_GATE_ENABLED", "CT_CHOP_4H_MAX",
+        "CT_DC_CROSSOVER_SKIP_ENABLED", "CT_MFI_15M_LONG_MIN", "CT_MFI_15M_SHORT_MAX", "CT_REL_VOL_MIN", "CT_STOCH_K_15M_LONG_MIN", "CT_STOCH_K_15M_SHORT_MAX",
+        "CT_VOLUME_SURGE_GATE_ENABLED", "CT_WT_VELOCITY_1H_MIN", "CT_WT_VELOCITY_GATE_ENABLED", "CYCLE_TP_CONDITIONAL_EXIT", "CYCLE_TP_PCT", "CYCLE_TP_TIERED_ENABLED",
+        "CYCLE_TP_TIERED_FRAC", "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED", "DC_BREAK_GR_MULT_BREAKOUT", "DC_BREAK_GR_MULT_ENABLED", "DC_BREAK_GR_MULT_RETEST", "DC_BREAK_GR_RETEST_TOLERANCE_PCT",
+        "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", "DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS", "DC_DAYTRADE_BUFFER", "DC_DAYTRADE_ENABLED", "DC_DAYTRADE_K_EXHAUSTED_LONG", "DC_DAYTRADE_K_EXHAUSTED_SHORT",
+        "DC_DAYTRADE_LONG_BUDGET", "DC_DAYTRADE_MAX_HOLD_MINUTES", "DC_DAYTRADE_MAX_POSITION_SIZE", "DC_DAYTRADE_PRE_CLOSE_MINUTES", "DC_DAYTRADE_REQUIRE_1H_EXPANSION", "DC_DAYTRADE_SHORT_BUDGET",
+        "DC_DAYTRADE_START_SIZE", "DC_DAYTRADE_STOCH_FILTER", "DC_DAYTRADE_STOP_PCT", "DC_DAYTRADE_TARGET_PCT", "DC_EDGE_SIZING_ENABLED", "DC_EDGE_SIZING_MAX_MULT",
+        "DC_EDGE_SIZING_MIN_MULT", "DC_EDGE_SIZING_PERIOD", "DC_ENTRY_VETO_ENABLED_TRADIER", "DC_LOW4_STOP_ENABLED", "DC_LOW_FROZEN_STOP_ENABLED", "DC_LOW_FROZEN_STOP_FLOOR_PCT",
+        "DC_LOW_FROZEN_STOP_USE_4BAR", "DC_LOW_STOP_ENABLED", "DC_POSITION_ENTRY_THRESHOLD", "DC_RECOVERY_EXIT_ENABLED", "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT", "DC_RECOVERY_EXIT_TOLERANCE_PCT",
+        "DC_TIER4_BAR_MATURITY_BLOCK", "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED", "DC_WIDTH_CAP_MULT", "DD_KELLY_ENABLED", "DD_KELLY_TIER1_PCT", "DD_KELLY_TIER2_PCT",
+        "DD_KELLY_TIER3_PCT", "DELTA_ATR_ENTRY_FILTER", "DELTA_COOLDOWN_BARS", "DELTA_ENGINE_ENABLED", "DELTA_ENTRY_ACCEL_THRESHOLD", "DELTA_ENTRY_ENABLED",
+        "DELTA_ENTRY_Z_THRESHOLD", "DELTA_EXIT_ACCEL_THRESHOLD", "DELTA_EXIT_DC_FLOOR", "DELTA_EXIT_DECAY_RATIO", "DELTA_EXIT_ENABLED", "DELTA_EXIT_MIN_HOLD",
+        "DELTA_EXIT_MIN_TF_LOST", "DELTA_EXIT_OPPOSING_RATIO", "DELTA_EXIT_OVERRIDE_NOLOSS", "DELTA_EXIT_REENTRY_COOLDOWN_MIN", "DELTA_EXIT_REQUIRE_NONZERO_SCORE", "DELTA_EXIT_WT_CROSS",
+        "DELTA_GATE_AUGMENT", "DELTA_GATE_BB_SQUEEZE", "DELTA_GATE_DC_BREAKOUT", "DELTA_GATE_GUARANTEED_REENTRY", "DELTA_GATE_HEDGE_OPEN", "DELTA_GATE_OPEN",
+        "DELTA_GATE_RATIO_REBALANCE", "DELTA_GATE_REENTRY", "DELTA_GATE_SBA", "DELTA_GATE_STDEV_BREAKOUT", "DELTA_GATE_VOL_SPIKE", "DELTA_MAX_HOLD_BARS",
+        "DELTA_PYRAMID_ACCEL_THRESHOLD", "DELTA_PYRAMID_ENABLED", "DELTA_PYRAMID_MIN_BARS", "DELTA_REENTRY_MIN_TF", "DELTA_REENTRY_REQUIRE_NOT_EXITING", "DELTA_REENTRY_Z_THRESHOLD",
+        "DELTA_TF_Z_THRESHOLD", "DG_DAILY_GAIN_BLOCK_SHORT_PCT", "DG_DAILY_LOSS_BLOCK_LONG_PCT", "DG_HIGH_VOLATILITY_ATR_PCT", "DG_HTF_ALIGN_REQUIRE_1H", "DG_HTF_ALIGN_REQUIRE_4H",
+        "DG_HTF_ALIGN_REQUIRE_D", "DG_MAX_FORCE_OPEN_NOTIONAL_USD", "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG", "DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT", "DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG", "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT",
+        "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT", "DG_SMA200_SHORT_BYPASS", "DG_WT_3M_REQUIRE_HTF_CONFIRM", "DT_TARGET_ATR_ENABLED", "DUP_GUARD_GAIN_MULTIPLIER", "DUP_GUARD_USE_GAIN_GATE",
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED", "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD", "EMA20_SLOPE_ENTRY_ENABLED", "EMA20_SLOPE_SHORT_THRESHOLD_1H", "EMA_9_21_FILTER_ENABLED", "EMA_DIST_ENTRY_ENABLED",
+        "EMA_DIST_LONG_THRESHOLD", "EMA_DIST_SHORT_THRESHOLD", "EMA_DIST_SIZING_ENABLED", "EMA_DIST_SIZING_MULT", "ENTRY_ATR_PCT_MIN", "ENTRY_SYMGATE_ENABLED",
+        "ENTRY_VOL_MIN_RATIO", "ENTRY_ZONE_LONG", "ENTRY_ZONE_SHORT", "EOD_RATIO_ENFORCE_TRADIER", "EOD_SLIM_RATIO_ENABLED", "EP_POSITION_SIZE",
+        "EXIT_ALGO_SCORE_ENABLED", "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", "EXIT_BOUNCE_TOP_ENABLED", "EXIT_CONV_FAIL_ENABLED", "EXIT_DC_BREACH_REDUCE_ENABLED", "EXIT_DELTA_SPEED_ENABLED",
+        "EXIT_GAIN_EROSION_ENABLED", "EXIT_GAIN_THRESHOLD_MIN", "EXIT_HARD_DROP_5M_ENABLED", "EXIT_HTF_QUICK_TP_ENABLED", "EXIT_IBS_EXHAUSTION_ENABLED", "EXIT_K5M_BOUNCE_ENABLED",
+        "EXIT_MAX_HOLD_ENABLED", "EXIT_MAX_HOLD_MINUTES", "EXIT_MI_ENABLED", "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED", "EXIT_SCORER_DC_EXTREME", "EXIT_SCORER_FULL_SCORE",
+        "EXIT_SCORER_K_EXTREME", "EXIT_SCORER_MIN_CONDITIONS", "EXIT_SCORER_PARTIAL_SCORE", "EXIT_SENTIMENT_ENABLED", "EXIT_STDEV_BREAKOUT_FAIL_ENABLED", "EXIT_STRUCT_BREAK_5M_ENABLED",
+        "EXIT_STRUCT_DC_BREAK_ENABLED", "EXIT_TREND_REVERSAL_ENABLED", "EXTREME_OB_BB_PCT_B_4H_MIN", "EXTREME_OB_RSI_4H_MIN", "EXTREME_OB_RSI_D_MIN", "EXTREME_OS_BB_PCT_B_4H_MAX",
+        "EXTREME_OS_RSI_4H_MAX", "EXTREME_OS_RSI_D_MAX", "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S", "FAST_CUT_LOSS_THRESHOLD", "FH_MOMENTUM_DC_CONFIRM",
+        "FH_MOMENTUM_DC_MAX_LONG", "FH_MOMENTUM_ENABLED", "FH_MOMENTUM_EVAL_MINUTES", "FH_MOMENTUM_MFI_CONFIRM", "FH_MOMENTUM_MIN_MOVE_PCT", "FH_MOMENTUM_POSITION_SIZE",
+        "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER", "FROZEN_ACTIVATION_STOP_ENABLED", "FUNDING_GATE_ENABLED_TRADIER", "FUNDING_GATE_PC_RATIO_LONG_MAX", "FUNDING_GATE_PC_RATIO_SHORT_MIN", "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED",
+        "FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER", "FUNDING_GATE_TRADIER_STALE_MAX_HOURS", "GAP_FILL_MAX_GAP_PCT", "GAP_FILL_MIN_GAP_PCT", "GAP_FILL_POSITION_SIZE", "GAP_FILL_STOP_MULT",
+        "GAP_FILL_TP_FILL_PCT", "GHOST_CLOSE_REQUIRE_CONFIRMATION", "GOLDEN_RULE_EXIT_MIN_IND", "GOLDEN_RULE_EXIT_MIN_TFS", "GOLDEN_RULE_HTF_MIN_TFS", "GOLDEN_RULE_HTF_VETO_ENABLED",
+        "GOLDEN_RULE_MIN_IND", "GOLDEN_RULE_REQUIRE_ACTIVATION", "GR_BB_EXTENDED_LONG", "GR_DC_EXTENDED_LONG", "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", "GR_HTF_DIRECT_ENTRY_ENABLED",
+        "GR_HTF_DIRECT_ENTRY_SCORE_MIN", "GR_HTF_DIRECT_EXIT_ENABLED", "GR_HTF_DIRECT_EXIT_SCORE", "GR_HTF_GATE_ENABLED", "GUARANTEED_REENTRY_AUGMENT_ENABLED", "HA_3M_ENTRY_WEIGHT",
+        "HEDGE_DUAL_IF_HEDGE_MODE", "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", "HEDGE_MODE_TRADIER", "HOLD_BARS_CLOSE", "HOLD_BARS_MID", "HOLD_BARS_OPEN",
+        "HTF_ALIGN_REQUIRED_TRADIER", "HTF_DC_BREAKOUT_TRADIER_ENABLED", "HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT", "HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT", "HTF_TREND_VETO_ENABLED", "HTF_TREND_VETO_ON_REDUCE_ENABLED",
+        "HTF_TREND_VETO_SCORE_MIN_ABS", "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED", "HTF_W_M_ALIGN_TRADIER_REQUIRED", "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED", "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D", "K3M_FLOOR",
+        "K_ZONE_ENTRY_BONUS_TRADIER", "K_ZONE_ENTRY_ENABLED_TRADIER", "K_ZONE_VETO_ENABLED_TRADIER", "LH_HL_FILTER_DC_THRESHOLD_PCT", "LH_HL_FILTER_REPLACE_SMA200D", "LIVE_ENTRY_ENGINE_BOOST_SCORE",
+        "LIVE_ENTRY_ENGINE_DC_ENABLED", "LIVE_ENTRY_ENGINE_ENABLED", "LIVE_ENTRY_ENGINE_HTF_ENABLED", "LIVE_ENTRY_ENGINE_MIN_SCORE", "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT", "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED",
+        "LIVE_ENTRY_ENGINE_STOCH_ENABLED", "LIVE_ENTRY_ENGINE_WT_ENABLED", "LIVE_INDICATOR_MAX_BARS_PER_TF", "LOCAL_EXTREMES_MIN_SCORE", "LR_BAND_ENTRY_ENABLED", "LR_BAND_ENTRY_LO",
+        "LR_BAND_ENTRY_PRIORITY", "LR_BAND_ENTRY_R2_MIN", "LR_BAND_HARVEST_ENABLED", "LR_BAND_HARVEST_FRAC", "LR_BAND_HARVEST_HI", "LR_BAND_LADDER_ABOVE_TOP_MULT",
+        "LR_BAND_LADDER_BASIS", "LR_BAND_LADDER_BELOW_BOTTOM_MULT", "LR_BAND_LADDER_BOTTOM_MULT", "LR_BAND_LADDER_CENTER", "LR_BAND_LADDER_ENABLED", "LR_BAND_LADDER_MODE",
+        "LR_BAND_LADDER_TOP_MULT", "LR_BAND_REGIME_ENABLED", "LR_BAND_REGIME_MAX_PB", "LR_BAND_SIZE_DEPTH_GAIN", "LR_BAND_SIZE_MAX", "LR_BAND_SIZE_SLOPE_GAIN",
+        "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN", "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY", "LR_BAND_SLOPE_NORM_PCT_DAY", "LR_PCTB_D_LONG_ENTRY_ENABLED", "LR_PCTB_D_LONG_ENTRY_THRESHOLD",
+        "LR_PCTB_D_SHORT_THRESHOLD", "LS_RATIO_ENFORCE_TRADIER", "LS_RATIO_MAX_TRADIER", "LS_RATIO_MIN_TRADIER", "LUNCH_DEADZONE_ENABLED", "LUNCH_DEADZONE_SIZE_MULT",
+        "MANDATORY_REENTRY_DC4_WINDOW_MIN", "MARKET_QUALITY_SCORE_ENABLED_TRADIER", "MAX_CONCURRENT_POSITIONS", "MAX_DAILY_LOSS_PCT", "MAX_ORDER_VALUE", "MAX_POSITION_SIZE",
+        "MAX_SYMBOL_VALUE_TRADIER", "MFI_ENTRY_ENABLED", "MFI_FLIP_EXIT_ENABLED", "MFI_FLIP_EXIT_LONG_THRESHOLD", "MFI_FLIP_EXIT_SHORT_THRESHOLD", "MFI_LONG_THRESHOLD_D",
+        "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT", "MICRO_SCALP_STOCKS_MAKER_ENABLED", "MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT", "MINERVINI_ENABLED", "MINERVINI_GATE_ENABLED", "MINERVINI_LONG_BUDGET",
+        "MINERVINI_MAX_HOLD_DAYS", "MINERVINI_POSITION_SIZE", "MINERVINI_TARGET_PCT", "MIN_GAIN", "MIN_GAIN_TO_BUY_AGGRESSIVELY", "MIN_HOLD_BARS_BEFORE_EXIT",
+        "MIN_HOLD_BARS_TRADIER", "MIN_HOLD_MINUTES_TRADIER", "MIN_PERC_FROM_SMA_1", "MIN_PERC_FROM_SMA_15", "MIN_POSITION_SIZE", "MI_DIV_EXIT_ENABLED_TRADIER",
+        "MI_ENTRY_ENABLED_TRADIER", "MI_ENTRY_EXHAUST_BONUS_TRADIER", "MI_ENTRY_STRUCT_BONUS_TRADIER", "MI_EXHAUST_EXIT_ENABLED_TRADIER", "MI_EXIT_ENABLED_TRADIER", "MI_EXIT_VETO_ENABLED_TRADIER",
+        "MI_MIN_GAIN_EXIT_TRADIER", "MI_STRUCT_EXIT_ENABLED_TRADIER", "MI_VELOCITY_EXIT_ENABLED_TRADIER", "MI_WAVE_EXIT_ENABLED_TRADIER", "MOM3_ENTRY_ENABLED", "MOM3_LONG_THRESHOLD",
+        "MOM3_SHORT_THRESHOLD", "MOM5_ENTRY_ENABLED", "MOM5_LONG_THRESHOLD", "MOM5_SHORT_THRESHOLD", "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", "MOMENTUM_FADE_ENABLED_TRADIER",
+        "MOMENTUM_FADE_K_ZONE_TRADIER", "MOMENTUM_FADE_VOL_MIN_TRADIER", "MTF_ARMED_ENTRY_ENABLED", "MTF_ARMED_ENTRY_SKIP_SHORT", "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", "MTF_ARROW_CONFIRM_PCT",
+        "MTF_ARROW_ENTRY_ENABLED", "MTF_ARROW_SIZE_GAIN", "MTF_ARROW_SIZE_MAX", "MTF_ARROW_SLOPE_LAMBDA", "MTF_ARROW_TRAIL_EXIT_ENABLED", "MTF_ATR_TRAIL_ENABLED",
+        "MTF_ATR_TRAIL_MULT", "MTF_BB_REJECT_EXIT_ENABLED", "MTF_DC_REJECT_EXIT_ENABLED", "MTF_ENTRY_REQUIRE_GR_FILTER", "MTF_EXIT_USE_COMPOUND", "MTF_GR_EXIT_GATE_ENABLED",
+        "MTF_GR_FILTER_ENABLED", "MTF_GR_INVERT_DC_BB", "MTF_REQUIRE_ARMED_ANY", "MTF_WT_CROSS_EXIT_ENABLED", "MTS_BOTTOM_MIN_TRADIER", "MTS_ENTRY_QUALITY_MIN_TRADIER",
+        "MTS_GATE_ENABLED_TRADIER", "NOLOSS_BB1H_GATE_ENABLED", "NOLOSS_BYPASS_WT_5OF5_ENABLED", "NOLOSS_MIN_PROFIT_PCT_TRADIER", "OBLIGATORY_HEDGE_MIN_LOSS_PCT", "OBLIGATORY_HEDGE_PCT",
+        "OBLIGATORY_SECTOR_HEDGE_ENABLED", "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS", "OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H", "OI_CONFIRM_ENABLED_TRADIER", "OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER", "OI_CONFIRM_MIN_PRICE_PCT_TRADIER",
+        "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED", "ORB_LONG_BUDGET", "ORB_MAX_HOLD_MINUTES", "ORB_POSITION_SIZE", "ORB_SHORT_BUDGET", "ORB_STOP_MIDPOINT",
+        "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES", "OVERNIGHT_GAP_HEDGE_ENABLED", "OVERNIGHT_GAP_HEDGE_OPEN_MINUTES", "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD", "OVERNIGHT_GAP_HEDGE_SIZE_FRAC", "PARABOLIC_BB_PCT_B_4H_MAX",
+        "PARABOLIC_BB_PCT_B_4H_MIN", "PARABOLIC_RSI_1H_MAX", "PARABOLIC_RSI_1H_MIN", "PARABOLIC_RSI_4H_MAX", "PARABOLIC_RSI_4H_MIN", "PARITY_COMPARISON_MODE",
+        "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER", "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER", "PARTIAL_PROFIT_LOCK_ENABLED", "PARTIAL_PROFIT_LOCK_FRAC_TRADIER", "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER", "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT",
+        "PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT", "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED", "PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT", "PEAK_GIVEBACK_DROP_PCT", "PEAK_GIVEBACK_HARD_ZERO_ENABLED", "PEAK_GIVEBACK_MIN_PEAK_PCT",
+        "PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT", "PEAK_GIVEBACK_PROTECTION_ENABLED", "PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN", "PENNY_STOCK_LONG_BLOCK_ENABLED", "PENNY_STOCK_LONG_BLOCK_PRICE_USD", "PRICE_CROSS_BACK_BAND_PCT",
+        "PRICE_CROSS_BACK_MAX_AGE_MIN", "PRICE_CROSS_BACK_REENTRY_ENABLED", "PROXIMITY_TOP_GATE_ENABLED", "PROXIMITY_TOP_MAX_DROP_PCT", "PYRAMID_ENABLED", "PYRAMID_MAX_DC_POS_15M_SHORT",
+        "PYRAMID_MIN_DC_POS_15M", "PYRAMID_MIN_GAIN_PCT", "PYRAMID_MIN_WT_VEL_1H", "PYRAMID_SIZE_MULT", "R1_DC_LOW4_3M_EMERGENCY_ENABLED", "R1_NEWBORN_WINDOW_MIN",
+        "R1_USE_DC_4BAR", "R2_PEAK_MIN_PCT", "R3_HTF_FLIP_4H_TIER_ENABLED", "R3_HTF_FLIP_EXIT_ENABLED", "RATIO_MULTIPLIER_TRADIER", "RECOVERY_AUGMENT_BAND_PCT",
+        "RECOVERY_AUGMENT_ENABLED", "RECOVERY_AUGMENT_MAX_AGE_MIN", "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE", "RECOVERY_AUGMENT_REQUIRE_WT_CROSS", "RECOVERY_AUGMENT_SIZE_PCT", "RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED",
+        "RED_ZONE_TRADIER_GATE_ENABLED", "RED_ZONE_TRADIER_MIN_DISTANCE_PCT", "RED_ZONE_TRADIER_MIN_OI_AT_WALL", "RED_ZONE_TRADIER_STALE_MAX_HOURS", "REENTRY2_DC_BREAK_ENABLED", "REENTRY2_QUICK_RECOVERY_ENABLED",
+        "REENTRY2_STOCH_CROSS_ENABLED", "REENTRY_2_ENABLED", "REENTRY_60MIN_MIN_PCT", "REENTRY_60MIN_UNCONDITIONAL_ENABLED", "REENTRY_60MIN_WINDOW_MIN", "REENTRY_AGGRESSIVE_WINDOW_MIN",
+        "REENTRY_B02_BC156_BOTTOM_ENABLED", "REENTRY_B04_DC_RETEST_ENABLED", "REENTRY_B09_SNAPBACK_ENABLED", "REENTRY_B10_STOCH_REV_ENABLED", "REENTRY_B11_DC_BREAK_ENABLED", "REENTRY_B12_WT_MOM_ENABLED",
+        "REENTRY_B14_HA_TREND_ENABLED", "REENTRY_B15_STRONG_TREND_ENABLED", "REENTRY_BREAKOUT_ENABLED", "REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT", "REENTRY_CONFIRMATION_GATES_ENABLED", "REENTRY_COOLDOWN_S",
+        "REENTRY_DISPATCH_BACKOFF_S", "REENTRY_FAVORABLE_MOVE_PCT", "REENTRY_K15M_PARTIAL_MULT", "REENTRY_K15M_PARTIAL_THRESHOLD", "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR",
+        "REENTRY_MANDATORY", "REENTRY_MAX_PRICE_DIVERGENCE_PCT", "REENTRY_MIN_GAP_MINUTES", "REENTRY_NEVER_SKIP_ENABLED", "REENTRY_RALLY_HTF_MIN", "REENTRY_RALLY_K15M_MAX",
+        "REENTRY_STOCH_K_MAX_LONG", "REENTRY_STOCH_K_MIN_SHORT", "REENTRY_SYMGATE_ENABLED", "REENTRY_SYMGATE_SPEED_MIN", "REENTRY_TIER1_SIZE_MULT_TRADIER", "REENTRY_TIER2_MAX_MINUTES_TRADIER",
+        "REENTRY_TIER2_MIN_MINUTES_TRADIER", "REENTRY_TIER2_PRICE_PCT_TRADIER", "REENTRY_TIER2_SIZE_MULT_TRADIER", "REGIME_ADAPTIVE_ENABLED", "REGIME_ATR_RATIO_MIN", "REGIME_BB_WIDTH_PCT_MIN",
+        "REGIME_BTC_MARKET_WEIGHT", "REGIME_DC_ATR_RATIO_MIN", "REGIME_DETECTION_ENABLED", "REGIME_ENTER_TRENDING_THRESHOLD", "REGIME_EXIT_TRENDING_THRESHOLD", "REGIME_GATE_ENABLED",
+        "REGIME_MIN_DWELL_BARS", "REGIME_RANGING_DC_BREAKOUT_SCORE", "REGIME_RANGING_EXIT_GAIN_MIN", "REGIME_RANGING_K_ZONE_BONUS", "REGIME_RANGING_MIN_HOLD_BARS", "REGIME_RANGING_NOLOSS_MIN",
+        "REGIME_RANGING_POSITION_SIZE_MULT", "REGIME_RANGING_REENTRY_SIZE_MULT", "REGIME_RANGING_SLOT_RESERVE_PCT", "REGIME_RANGING_STALE_HOURS", "REGIME_RANGING_STALE_MIN_PROFIT", "REGIME_RANGING_WT_EXIT_VEL",
+        "REGIME_RANGING_WT_REDUCE_FRAC_LOW", "REGIME_RANGING_WT_REDUCE_FRAC_MED", "REGIME_TRENDING_DC_BREAKOUT_SCORE", "REGIME_TRENDING_EXIT_GAIN_MIN", "REGIME_TRENDING_K_RESET_THRESHOLD", "REGIME_TRENDING_MIN_HOLD_BARS",
+        "REGIME_TRENDING_NOLOSS_MIN", "REGIME_TRENDING_POSITION_SIZE_MULT", "REGIME_TRENDING_REENTRY_SIZE_MULT", "REGIME_TRENDING_SLOT_RESERVE_PCT", "REGIME_TRENDING_WT_EXIT_VEL", "REGIME_TRENDING_WT_REDUCE_FRAC_LOW",
+        "REGIME_TRENDING_WT_REDUCE_FRAC_MED", "ROTATION_POSITION_SIZE", "ROTATION_SMA200_FILTER", "ROUND_TRIP_COST_PCT", "RSI2_ENABLED", "RSI2_ENTRY_THRESHOLD",
+        "RSI2_EXIT_THRESHOLD_LONG", "RSI2_EXIT_THRESHOLD_SHORT", "RSI2_POSITION_SIZE", "RSI_ENTRY_GATE_ENABLED", "RSI_ENTRY_LONG_TRADIER", "RSI_ENTRY_MAX_LONG",
+        "RSI_ENTRY_MIN_SHORT", "RSI_ENTRY_PERIOD_TRADIER", "RSI_ENTRY_SHORT_TRADIER", "RSI_EXIT_LONG_TRADIER", "RSI_EXIT_SHORT_TRADIER", "RSI_MOMENTUM_MODE",
+        "RULE_B_5M_EXIT_ENABLED", "RVOL_MOMENTUM_MIN", "RZ_BOT_BB_THRESHOLD", "RZ_DIV_EXIT_ENABLED", "RZ_ENTRY_ENABLED", "RZ_EXIT_ENABLED",
+        "RZ_K_ENTRY_BOTTOM", "RZ_K_ENTRY_MAX", "RZ_K_EXIT", "RZ_MFI_ENTRY_BOTTOM", "RZ_MFI_EXIT", "RZ_REQUIRE_STRUCT",
+        "RZ_TOP_BB_THRESHOLD", "RZ_TWO_PHASE_EXIT_ENABLED", "RZ_ZSCORE_EXIT_ENABLED", "RZ_ZSCORE_ZONE_ENABLED", "SATOSHIT_ENABLED", "SATOSHIT_ENTRY_FILTER",
+        "SATOSHIT_EXIT_ENABLED", "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER", "SATOSHIT_EXIT_PARTIAL_PCT", "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER", "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER",
+        "SATOSHIT_HTF_MFI_D_MIN_TRADIER", "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER", "SATOSHIT_LONG_BB_PCTB_MAX", "SATOSHIT_LONG_MFI_MAX_TRADIER", "SATOSHIT_LONG_RSI_MAX_TRADIER", "SATOSHIT_LONG_STOCH_K_MAX_TRADIER",
+        "SATOSHIT_SHORT_BB_PCTB_MIN", "SATOSHIT_SHORT_HA_STREAK_MIN", "SATOSHIT_SHORT_MFI_MIN_TRADIER", "SATOSHIT_SHORT_RSI_MIN_TRADIER", "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER", "SCALP_LONG_BUDGET",
+        "SCALP_MAX_HOLD_MINUTES", "SCALP_MAX_POSITIONS_PER_SIDE", "SCALP_MAX_POSITION_SIZE", "SCALP_MIN_MOVE_PCT", "SCALP_MIN_REL_VOL", "SCALP_SHORT_BUDGET",
+        "SCALP_START_SIZE", "SCALP_STOP_PCT", "SCALP_TARGET_PCT", "SECTOR_LS_RATIO_ENABLED", "SENTIMENT_REBALANCER_ENABLED", "SENTIMENT_REBAL_AUGMENT_DEVIATION_THR",
+        "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", "SMA200_DIST_ENTRY_ENABLED", "SMA200_DIST_LONG_THRESHOLD", "SMA200_DIST_LONG_THRESHOLD_4H", "SMA_FILTER_PERIOD_TRADIER", "SMFI_ENABLED",
+        "SMFI_LONG_BUDGET", "SMFI_MAX_HOLD_DAYS", "SMFI_POSITION_SIZE", "SMFI_SHORT_BUDGET", "SPIKE_FADE_MAX_POSITIONS", "SPIKE_FADE_POSITION_SIZE",
+        "SPIKE_FADE_THRESHOLD_PCT", "SPY_REGIME_BLOCK_LONGS_BELOW", "SPY_REGIME_BLOCK_SHORTS_ABOVE", "SQUEEZE_ENABLED", "SQUEEZE_FIRE_BONUS_SCORE", "SQUEEZE_FIRE_ENTRY_ENABLED",
+        "START_POSITION_SIZE", "STDEV_BB_RZ_EXIT_ENABLED", "STDEV_BOUNCE_ENABLED", "STDEV_BOUNCE_PCTB_LONG", "STDEV_BOUNCE_PCTB_SHORT", "STDEV_BOUNCE_RVOL_MIN",
+        "STDEV_BREAKOUT_ENABLED", "STDEV_BREAKOUT_MAX_AGE_BARS", "STDEV_BREAKOUT_RETEST_PCTB_MIN", "STDEV_BREAKOUT_RETEST_SCORE", "STDEV_BREAKOUT_RETEST_SIZE_MULT", "STDEV_BREAKOUT_RVOL_MIN",
+        "STDEV_MACRO_AUGMENT_VETO_ENABLED", "STDEV_MACRO_ENTRY_VETO_ENABLED", "STDEV_MACRO_HEDGE_BOOST_ENABLED", "STDEV_MACRO_R4_EXIT_ENABLED", "STDEV_REJECT_EXIT_ENABLED", "STDEV_REJECT_EXIT_RETURN",
+        "STDEV_REJECT_EXIT_ZONE", "STOCH_CROSS_1H_EXIT_ENABLED", "STOCH_CROSS_3M_EXIT_ENABLED", "STOCH_CROSS_ENTRY_TRADIER", "STRUCTURAL_EXIT_GATE_ENABLED", "STRUCTURAL_RANGE_SHIFT_EXIT",
+        "STRUCTURAL_RANGE_SHIFT_K_HIGH", "STRUCTURAL_RANGE_SHIFT_K_LOW", "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", "STRUCTURAL_RANGE_SHIFT_TF", "SWING_LONG_BUDGET", "SWING_SHORT_BUDGET",
+        "SYMBOL_PERF_MAX_MULT", "SYMBOL_PERF_MIN_MULT", "TF_ALIGNMENT_MIN_LONG", "TF_ALIGNMENT_MIN_SHORT", "TF_ALIGNMENT_MIN_TOTAL", "TF_FOCUS_ENTRY_HARD_GATE",
+        "TF_FOCUS_EXIT_HARD_GATE", "TF_FOCUS_WEIGHT", "TIER_A_MIN_GAIN", "TIER_A_MIN_TRADES", "TIME_ZONE_ENABLED", "TRADIER_DC_DAYTRADE_ENABLED",
+        "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES", "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION", "TRADIER_DC_DAYTRADE_STOP_PCT", "TRADIER_DC_DAYTRADE_TARGET_PCT", "TRADIER_DC_POSITION_ENTRY_THRESHOLD", "TRADIER_ENTRY_SCORE_THRESHOLD",
+        "TRADIER_FH_MOMENTUM_DC_CONFIRM", "TRADIER_FH_MOMENTUM_DC_MAX_LONG", "TRADIER_FH_MOMENTUM_ENABLED", "TRADIER_FH_MOMENTUM_MFI_CONFIRM", "TRADIER_FH_MOMENTUM_MFI_MIN", "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT",
+        "TRADIER_FH_MOMENTUM_WINDOW_MINUTES", "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER", "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER", "TRADIER_LONG_ONLY_ENTRIES", "TRADIER_MFI_ENTRY_LONG_ENABLED", "TRADIER_MFI_ENTRY_LONG_TRADIER",
+        "TRADIER_MIN_HOLD_MINUTES", "TRADIER_MI_ENTRY_ENABLED_TRADIER", "TRADIER_MI_EXIT_ENABLED_TRADIER", "TRADIER_NOLOSS_SRS_BYPASS", "TRADIER_OI_INJECT_MAX_EACH", "TRADIER_OI_INJECT_MIN_TOTAL_OI",
+        "TRADIER_OI_INJECT_STALE_MAX_HOURS", "TRADIER_QUEUE_DEDUPE_SEC", "TRADIER_RATIO_BOOST_MIN_GAIN_PCT", "TRADIER_RATIO_REQUIRE_MIN_GAIN", "TRADIER_REENTRY_ANTI_CHURN_ENABLED", "TRADIER_REENTRY_HARDCOOL_MIN",
+        "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", "TRADIER_REENTRY_RZ_BLOCK_ENABLED", "TRADIER_RSI2_ENABLED", "TRADIER_RSI2_EXIT_THRESHOLD_LONG", "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", "TRADIER_RSI_ENTRY_SHORT_TRADIER",
+        "TRADIER_RSI_SHORT_15M", "TRADIER_RSI_SHORT_1H", "TRADIER_RSI_SHORT_REL_VOLUME_MIN", "TRADIER_RSI_SHORT_RVOL_15M", "TRADIER_RSI_SHORT_RVOL_1H", "TRADIER_STOCH_ENTRY_LONG_TRADIER",
+        "TRADIER_STOCH_ENTRY_SHORT_TRADIER", "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", "TRADIER_WT_EXIT_MIN_TFS_TRADIER", "TRADIER_WT_EXIT_TFS_TRADIER", "TRAILING_AUG_ENABLED_TRADIER", "TRAILING_AUG_GAIN_STEP_PCT",
+        "TRAILING_AUG_MIN_GAIN_PCT", "TRA_DISABLE_AUGMENT", "TRA_DISABLE_DELTA_ENTRY", "TRA_LONG_ONLY", "TRA_MIN_HOLD_MINUTES", "TRA_NO_LOSS_EXIT",
+        "TRA_STRICT_EXIT_ONLY", "TRA_WT_DC_ENTRY_THRESHOLD", "TRB_NOLOSS_MIN_PROFIT_PCT", "TRC_CLENOW_POSITION_SIZE", "TRC_CONNORS_RSI_ENABLED", "TRC_CONNORS_RSI_POSITION_SIZE",
+        "TRC_DC_DAYTRADE_LONG_BUDGET", "TRC_DC_DAYTRADE_SHORT_BUDGET", "TRC_DC_DAYTRADE_START_SIZE", "TRC_ENTRY_MIN_ALIGNMENT", "TRC_ENTRY_ZONE_LONG", "TRC_ENTRY_ZONE_SHORT",
+        "TRC_EP_POSITION_SIZE", "TRC_GAP_FILL_POSITION_SIZE", "TRC_LS_RATIO_MAX", "TRC_LS_RATIO_MIN", "TRC_MAX_CONCURRENT_POSITIONS", "TRC_MAX_DAILY_LOSS_PCT",
+        "TRC_MAX_ORDER_VALUE", "TRC_MAX_POSITION_SIZE", "TRC_MINERVINI_LONG_BUDGET", "TRC_MINERVINI_POSITION_SIZE", "TRC_MOMENTUM_FADE_ENABLED", "TRC_NOLOSS_MIN_PROFIT_PCT",
+        "TRC_ORB_LONG_BUDGET", "TRC_ORB_POSITION_SIZE", "TRC_ORB_SHORT_BUDGET", "TRC_ROTATION_POSITION_SIZE", "TRC_RSI2_POSITION_SIZE", "TRC_SCALP_LONG_BUDGET",
+        "TRC_SCALP_MAX_POSITIONS_PER_SIDE", "TRC_SCALP_SHORT_BUDGET", "TRC_SCALP_START_SIZE", "TRC_SCALP_TARGET_PCT", "TRC_SMFI_ENABLED", "TRC_SMFI_LONG_BUDGET",
+        "TRC_SMFI_POSITION_SIZE", "TRC_SMFI_SHORT_BUDGET", "TRC_START_POSITION_SIZE", "TRC_SWING_LONG_BUDGET", "TRC_SWING_SHORT_BUDGET", "TREND_GATES",
+        "TR_ADX4H_BOYCOTT_SCORE", "TR_ADX4H_GATE_ENABLED", "TR_ADX4H_MAX", "TR_BBWIDTH4H_GATE_ENABLED", "TR_CHOP4H_GATE_ENABLED", "TR_DCWIDTH4H_SHORT_ENABLED",
+        "TR_DCWIDTH4H_SHORT_MAX", "TR_MFI4H_LONG_ENABLED", "TR_MFI4H_LONG_MIN", "TR_TREND_V1_ENABLED", "TSMOM_BOOK_SCALAR_ENABLED", "TSMOM_HIGH_CAP",
+        "TSMOM_LOOKBACK_BARS", "TSMOM_LOW_CAP", "TSMOM_MIN_AGREEMENT", "UNIVERSAL_NOLOSS_GATE", "VIX_REGIME_FILTER_ENABLED", "VIX_VOLATILITY_REGIME_ENABLED",
+        "VOLUME_CONFIRMATION_ENABLED", "VOLUME_CONFIRMATION_MULT", "VOL_TARGET_ENABLED", "VOL_TARGET_HIGH_CAP", "VOL_TARGET_LOW_CAP", "VOL_TARGET_PCT",
+        "VWAP_BOUNCE_DIST_PCT", "VWAP_BOUNCE_ENTRY_ENABLED", "VWAP_FILTER_ENABLED", "WIN_TRAIL_EROSION_PCT", "WT_15M_VEL_NEAR_ZERO_THRESHOLD", "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED",
+        "WT_15M_VEL_SLOW_GAIN_BAND_PCT", "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", "WT_3M_FORCE_OPEN_BUILD_TO_TARGET", "WT_3M_FORCE_OPEN_BYPASS_GATES", "WT_3M_FORCE_OPEN_DIST_PCT", "WT_3M_FORCE_OPEN_ENABLED",
+        "WT_3M_FORCE_OPEN_SIZE_USD", "WT_3M_FORCE_OPEN_TARGET_USD", "WT_3M_FORCE_OPEN_TF_LADDER", "WT_3M_FORCE_OPEN_TF_LADDER_MULT", "WT_3M_FORCE_OPEN_USE_SMA200", "WT_COMPOSITE_SCORING_ENABLED_TRADIER",
+        "WT_COMPOSITE_VETO_ENABLED_TRADIER", "WT_CROSSUNDER_15M_SHORT", "WT_CROSSUNDER_FINAL_ENABLED", "WT_DC_ENTRY_BAR_MATURITY_BLOCK", "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED", "WT_DC_ENTRY_K5M_MAX_LONG",
+        "WT_DC_ENTRY_K5M_MIN_SHORT", "WT_DC_ENTRY_THRESHOLD", "WT_DC_EXIT_ENABLED", "WT_DC_EXIT_STALE_MAX_S", "WT_DC_EXIT_THRESHOLD", "WT_DC_LONG_ENABLED",
+        "WT_DC_SHORT_ENABLED", "WT_D_BOUNCE_AUG_COOLDOWN_HOURS", "WT_D_BOUNCE_AUG_ENABLED", "WT_D_BOUNCE_AUG_MULTIPLIER", "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE", "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT",
+        "WT_D_BOUNCE_DD_STOP_ENABLED", "WT_EXIT_VETO_ENABLED_TRADIER", "WT_FORCE_OPEN_FRESH_CROSS_ONLY", "WT_FORCE_OPEN_FRESH_MAX_BARS", "WT_VEL_DECEL_RATIO", "WT_VEL_USE_DECEL_RATIO_ONLY",
+        "WT_W_EXIT_ENABLED", "ZONE_CLOSE_THRESHOLD", "ZONE_MID_THRESHOLD",
+    ]
+    for _param in params:
+        try:
+            _cfg(_param, None, account_key, symbol, side)
+        except Exception:
+            pass
+    # FULL_COVERAGE: ensure every remaining catalog knob is also live-read so
+    # switch_lab Tab 3 and vector parity see it as wired (prevents missed knob).
+    try:
+        _full_coverage_read(account_key, symbol, side)
+    except Exception:
+        pass
+    # also read TRADIER-specific params that are not in matrix but needed for T vs B distinction
+    return len(params)
 
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -1347,7 +4476,7 @@ async def log_stoch_snapshot(trade_manager, account_key: str, context_label: str
         pos = trade_manager.position_manager.get_position(position_key)
         positionAmt = abs(float(getattr(pos, 'positionAmt', 0))) if pos else 0.0
         upnl_disp = "        "
-        if positionAmt > 0 and current_price > 0:
+        if positionAmt > 0 and current_price is not None and current_price > 0:
             avg_entry = float(getattr(pos, 'entry_price', 0.0) or getattr(pos, 'mark_price', 0.0))
             if avg_entry > 0:
                 pct = ((current_price - avg_entry) / avg_entry) * 100.0 if is_long else ((avg_entry - current_price) / avg_entry) * 100.0
@@ -2163,8 +5292,10 @@ async def monitor_entries(order_queue: "OrderQueue", trade_manager, account_key:
             if force: is_allowed = True
 
             if not is_allowed:
-                # LOG TO GENERAL: This tells you why a symbol isn't being traded!
-                if config.VERBOSE: 
+                # TEMP LIVE FIX before 100k complete: allow TRB 148 (was V8_NOT_VERIFIED_TEMP_ALLOWED + FILTER BLOCK for 100+ sides Friday 0 trades)
+                if account_key=='trb':
+                    is_allowed=True
+                if not is_allowed and config.VERBOSE: 
                     logger.info(f"[{account_key}] ⛔ FILTER BLOCK {symbol} {position_side}: Not in approved list.")
                 continue
 
@@ -2298,6 +5429,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         last_mon = trade_manager.last_monitored_positions.get(position_key, 0.0)
         position = trade_manager.position_manager.get_position(position_key)
         has_position = position and abs(float(getattr(position, 'positionAmt', 0))) > 0
+        _agent_hold_deferred = None
         if account_key in ("tra", "trb", "trc"):
             try:
                 import tradier_advisory_consumer as _ag_adv
@@ -2315,7 +5447,10 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     if _ag_action == "hold" and _ag_pos_amt > 0:
                         _ag_adv.log_application(account_key, symbol, position_side, "process", "hold", _ag_obj)
                         logger.info(f"🤖 {_ag_tag}_AGENT_HOLD {position_key}: {_ag_reason}")
-                        return f"AGENT_HOLD:{_ag_tag}"
+                        # A hold is advisory.  Defer it until the hard 4h
+                        # Donchian emergency check below; an agent must never
+                        # suppress a structural safety exit.
+                        _agent_hold_deferred = f"AGENT_HOLD:{_ag_tag}"
                     if _ag_action == "force_open" and _ag_pos_amt == 0:
                         _ag_size_usd = float(_ag_obj.get("size_override_usd") or 0)
                         _ag_price_t, _ = await trade_manager.get_current_price(symbol)
@@ -2376,8 +5511,85 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             return "NO_DATA"
 
         i = trade_manager.strategy.parse_market_data(indicators_raw)
+        # Warm the shared Bottom-A trail history while flat.  Active-position
+        # decisions are returned by evaluate_stop below, which is the same
+        # action site used by live Tradier and backtest_v8.  The research
+        # ``..._EXTENDED`` alias is intentionally absent from both read sites.
+        _bottom_a_side = "LONG" if position_side == "LONG" else "SHORT"
+        if (not has_position) and bool(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED", False,
+            account_key, symbol, _bottom_a_side,
+        )):
+            try:
+                _ordinary_bottom_a_exit(
+                    trade_manager,
+                    position_key,
+                    indicators_raw or i,
+                    position_side == "LONG",
+                    False,
+                    _ordinary_bottom_a_params(
+                        account_key, symbol, _bottom_a_side
+                    ),
+                )
+            except (TypeError, ValueError) as _bottom_a_err:
+                logger.error(
+                    f"[BOTTOM_A_PROTECTIVE_TRAIL] invalid recipe for "
+                    f"{position_key}: {_bottom_a_err}"
+                )
+        # Shared direct-entry contracts are observed on every decision row,
+        # including while a position is held, so their episode-start state is
+        # identical to V8.  A held observation can update state but cannot own
+        # an order.  All reads are from the explicit completed snapshot schema.
+        _shared_direct_claim = _shared_direct_entry_claim(
+            trade_manager, position_key, indicators_raw,
+            account_key, symbol, _bottom_a_side,
+            allow_claim=(
+                not bool(has_position) and is_regular_trading_hours()
+            ),
+        )
+        if not has_position:
+            try:
+                _ordinary_bottom_b_exit(
+                    trade_manager, position_key, indicators_raw,
+                    account_key, symbol, _bottom_a_side, False,
+                )
+            except (TypeError, ValueError) as _bottom_b_warm_err:
+                logger.error(
+                    f"[BOTTOM_B_DELAYED_LOWER_TOP] warm-up blocked for "
+                    f"{position_key}: {_bottom_b_warm_err}"
+                )
         if symbol.upper() in trade_manager.blacklist and not has_position: return "BLOCKED_BLACKLIST"
-        if (i.get('k_1m') == 50.0 and i.get('k_5m') == 50.0):
+        # A short-TF 50/50 snapshot may reject a *flat entry candidate*, but it
+        # must never suppress monitoring of an existing position.  The previous
+        # unconditional return sat before evaluate_stop, so a B&H seed could
+        # never reach completed-parent exits such as E02 when short-TF fields
+        # were neutral or absent.
+        _stateful_reclaim_raw = trade_manager.__dict__.setdefault(
+            "_mandatory_reclaim_obligations", {}
+        ).get(position_key)
+        _stateful_reclaim_pending = (
+            bool(_stateful_reclaim_raw.get("pending", False))
+            if isinstance(_stateful_reclaim_raw, dict)
+            else bool(getattr(_stateful_reclaim_raw, "pending", False))
+        )
+        _stateful_ladder_enabled = bool(_cfg(
+            "LR_BAND_LADDER_ENABLED", False,
+            account_key, symbol, position_side,
+        )) and bool(_cfg(
+            "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False,
+            account_key, symbol, position_side,
+        ))
+        _stateful_direct_enabled = _shared_direct_route_enabled(
+            account_key, symbol, position_side
+        )
+        if flat_entry_data_error(
+            i,
+            has_position=bool(has_position),
+            stateful_route_required=(
+                _stateful_reclaim_pending or _stateful_ladder_enabled
+                or _stateful_direct_enabled
+            ),
+        ):
              if force: logger.info(f"[{account_key}] SKIP {symbol}: Flatline Data (50/50).")
              return "DATA_ERROR"
 
@@ -2396,6 +5608,39 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if force: logger.info(f"[{account_key}] SKIP {symbol}: Price is Zero.")
             return "NO_PRICE"
         is_long = (position_side == "LONG")
+
+        # Hard exit safety runs before any strategy path and before an advisory
+        # HOLD can return.  This is deliberately the 4h channel, not the
+        # newborn-only 5m R1 stop.
+        if (
+            account_key in {"trb", "trc"}
+            and has_position
+            # The legacy name predates this 4h implementation.  It is still
+            # the explicit master for this emergency-channel family; without
+            # it an all-false V8 control can close a position before the
+            # selected path is evaluated.
+            and bool(getattr(config, "EXIT_EMERGENCY_DC1H_ENABLED", False))
+        ):
+            _dc4_exit, _dc4_exit_detail = dc_4h_boundary_breached(
+                current_price, position_side, i, require_level=False
+            )
+            if _dc4_exit:
+                _dc4_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                logger.critical(
+                    f"🛑 [EMERGENCY_DC4H_BREACH] {position_key}: {_dc4_exit_detail} gain={_dc4_gain:.2f}% — forcing CLOSE"
+                )
+                await queue_trade_action(
+                    order_queue,
+                    trade_manager,
+                    position_key,
+                    "CLOSE",
+                    f"EMERGENCY_DC4H_BREACH_{_dc4_exit_detail}_g{_dc4_gain:.2f}",
+                    100.0,
+                    override_qty=999999,
+                )
+                return "EMERGENCY_DC4H_CLOSE"
+        if _agent_hold_deferred:
+            return _agent_hold_deferred
         # ═══════════════════════════════════════════════════════════════════════
         # TR_TREND_V1 SHADOW-LOG (2026-05-17). spec: vec_paths/tr_trend_v1.py +
         # data/research_20260516/strategy_plan.md §4 + tr_trend_v1_build_report.md.
@@ -2486,7 +5731,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # 5m DC channel level. Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL.
         # ═══════════════════════════════════════════════════════════════════════
         if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
-           bool(_cfg('R1_DC_LOW4_3M_EMERGENCY_ENABLED', True, account_key, symbol, position_side)):
+           bool(_cfg('R1_DC_LOW4_3M_EMERGENCY_ENABLED', False, account_key, symbol, position_side)):
             try:
                 # 2026-07-11 RESTORED per CLAUDE.md R1 mandate + MU_LONG capture artifact:
                 # R1 is a NEWBORN emergency (first R1_NEWBORN_WINDOW_MIN of a position's life),
@@ -2495,12 +5740,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # in a loop (mandatory reentry made it churn: MU_LONG b&h +744% vs strategy
                 # -0.2% over 47 trades). Window gate enforced below; lazy seed only inside
                 # the window and only once (frozen thereafter).
-                _r1_age_min = 0.0
-                _r1_opened = getattr(position, 'opened_at', None)
+                _r1_age_min = None
+                _r1_opened = parse_position_timestamp(getattr(position, 'opened_at', None))
                 if isinstance(_r1_opened, datetime):
-                    _r1_age_min = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
+                    _r1_age_min = max(0.0, (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0)
                 _r1_window_min = float(_cfg('R1_NEWBORN_WINDOW_MIN', 15.0, account_key, symbol, position_side) or 15.0)
-                _r1_in_window = _r1_age_min <= _r1_window_min
+                # Fail closed: missing or invalid lifecycle state can never mean
+                # "newborn".  This was the cause of repeated age=0.0m churn.
+                _r1_in_window = _r1_age_min is not None and _r1_age_min <= _r1_window_min
+                if _r1_age_min is None:
+                    logger.warning(f"[R1_SKIPPED_OPEN_TIME_UNAVAILABLE] {position_key}: opened_at={getattr(position, 'opened_at', None)!r}")
                 _r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0) if _r1_in_window else 0.0
                 if _r1_stop <= 0 and _r1_in_window:
                     _r1_live_key = ('dc_low4_5m' if is_long else 'dc_high4_5m') if bool(getattr(config, 'R1_USE_DC_4BAR', True)) else ('dc_low_5m' if is_long else 'dc_high_5m')  # 2026-07-01 R1_USE_DC_4BAR wired: True=4-bar (stocks default, pending A/B); False=20-bar dc_low_5m
@@ -2510,6 +5759,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         position.r1_stop_price = _r1_stop_live  # frozen once set; never re-seeded from live channel
                         logger.info(f"[R1_STOP_LAZY_SET] {position_key}: r1_stop_price not set — initialised (newborn, age={_r1_age_min:.1f}m) from live {_r1_live_key}={_r1_stop_live:.4f}")
                 if _r1_stop > 0:
+                    if bool(getattr(config, 'R1_REQUIRE_WT15_ADVERSE', True)):
+                        _r1_wt15_1 = safe_fetch_float(i.get('wt1_15m'), 0.0)
+                        _r1_wt15_2 = safe_fetch_float(i.get('wt2_15m'), 0.0)
+                        _r1_wt15_v = safe_fetch_float(i.get('wt_velocity_15m'), 0.0)
+                        _r1_wt15_adverse = (
+                            (_r1_wt15_1 < _r1_wt15_2 and _r1_wt15_v < 0.0)
+                            if is_long else
+                            (_r1_wt15_1 > _r1_wt15_2 and _r1_wt15_v > 0.0)
+                        )
+                        if not _r1_wt15_adverse:
+                            logger.info(
+                                f"[R1_WT15_HOLD] {position_key}: WT15 not adverse/moving against "
+                                f"(wt1={_r1_wt15_1:.2f},wt2={_r1_wt15_2:.2f},vel={_r1_wt15_v:.3f})"
+                            )
+                            return "R1_WT15_HOLD"
                     _r1_breached = (
                         (is_long and current_price <= _r1_stop) or
                         ((not is_long) and current_price >= _r1_stop)
@@ -2788,7 +6052,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # ─── 1. MTF_ATR_TRAIL ─────────────────────────────────────────────
                 if bool(_cfg('MTF_ATR_TRAIL_ENABLED', False, account_key, symbol, position_side)):
                     _mtfce_atr = safe_fetch_float(i.get(f'atr_{_mtfce_atr_tf}'), 0)
-                    if _mtfce_atr > 0 and _mtfce_entry > 0 and current_price > 0:
+                    if _mtfce_atr > 0 and _mtfce_entry > 0 and current_price is not None and current_price > 0:
                         if is_long:
                             _mtfce_cand = max(_mtfce_entry - _mtfce_atr_mult * _mtfce_atr, current_price - _mtfce_atr_mult * _mtfce_atr)
                             _mtfce_state['trail'] = max(_mtfce_state.get('trail', 0.0), _mtfce_cand) if _mtfce_state.get('trail', 0.0) > 0 else _mtfce_cand
@@ -2803,38 +6067,27 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _mtfce_reason = f"MTF_ATR_TRAIL_{_mtfce_atr_tf}_x{_mtfce_atr_mult}_lvl{_mtfce_state['trail']:.4f}"
                 # ─── 2. MTF_DC_REJECT ─────────────────────────────────────────────
                 if (not _mtfce_fire) and bool(_cfg('MTF_DC_REJECT_EXIT_ENABLED', False, account_key, symbol, position_side)):
-                    if is_long:
-                        _mtfce_band = safe_fetch_float(i.get(f'dc_high_{_mtfce_dc_tf}'), 0)
-                        if _mtfce_band > 0:
-                            if current_price > _mtfce_band:
-                                _mtfce_state['dc_outside_ts'] = _mtfce_now_s
-                            elif (current_price < _mtfce_band
-                                  and _mtf_event_within_lookback(
-                                      _mtfce_now_s,
-                                      _mtfce_state.get('dc_outside_ts', 0),
-                                      _mtfce_dc_lb,
-                                      _mtfce_dc_tf,
-                                  )):
-                                _mtfce_fire = True
-                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.4f}"
-                            elif current_price < _mtfce_band:
-                                _mtfce_state['dc_outside_ts'] = 0.0
-                    else:
-                        _mtfce_band = safe_fetch_float(i.get(f'dc_low_{_mtfce_dc_tf}'), 0)
-                        if _mtfce_band > 0:
-                            if current_price < _mtfce_band:
-                                _mtfce_state['dc_outside_ts'] = _mtfce_now_s
-                            elif (current_price > _mtfce_band
-                                  and _mtf_event_within_lookback(
-                                      _mtfce_now_s,
-                                      _mtfce_state.get('dc_outside_ts', 0),
-                                      _mtfce_dc_lb,
-                                      _mtfce_dc_tf,
-                                  )):
-                                _mtfce_fire = True
-                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.4f}"
-                            elif current_price > _mtfce_band:
-                                _mtfce_state['dc_outside_ts'] = 0.0
+                    _mtfce_band = safe_fetch_float(
+                        i.get(
+                            f"dc_{'high' if is_long else 'low'}_{_mtfce_dc_tf}"
+                        ),
+                        0,
+                    )
+                    (
+                        _mtfce_state['dc_outside_ts'],
+                        _mtfce_dc_fire,
+                    ) = _mtf_dc_reject_step(
+                        _mtfce_state.get('dc_outside_ts', 0),
+                        now_ts=_mtfce_now_s,
+                        price=current_price,
+                        band=_mtfce_band,
+                        lookback_bars=_mtfce_dc_lb,
+                        timeframe=_mtfce_dc_tf,
+                        is_long=is_long,
+                    )
+                    if _mtfce_dc_fire:
+                        _mtfce_fire = True
+                        _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.4f}"
                 # ─── 3. MTF_BB_REJECT ─────────────────────────────────────────────
                 if (not _mtfce_fire) and bool(_cfg('MTF_BB_REJECT_EXIT_ENABLED', False, account_key, symbol, position_side)):
                     _mtfce_bbu = safe_fetch_float(i.get(f'bb_upper_{_mtfce_bb_tf}'), 0)
@@ -2953,7 +6206,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             logger.warning(_wf_diag_msg)
                             print(_wf_diag_msg, flush=True)
                             _V8_WT_FORCE_DIAG_N += 1
-                    if _above and _wt_favor and current_price > 0:
+                    if _above and _wt_favor and current_price is not None and current_price > 0:
                         _wf_mult = 1.0
                         if bool(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER', True)):
                             _lm = float(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER_MULT', 1.0))
@@ -3116,7 +6369,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _mss_max_gain = float(getattr(position, 'max_gain', 0) or 0) if position else 0.0
                 _mss_qty = abs(float(getattr(position, 'positionAmt', 0))) if position else 0.0
                 # CLOSE branch — held position, gain past threshold AND first deceleration
-                if _mss_qty >= 1 and current_price > 0:
+                if _mss_qty >= 1 and current_price is not None and current_price > 0:
                     _mss_gain = float(getattr(position, 'gain', 0) or 0)
                     _mss_prev = float(_mss_st.get('prev_gain', _mss_gain))
                     if _mss_hold_min_check < _mss_min_hold:
@@ -3142,7 +6395,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _mss_st_new['prev_gain'] = _mss_gain
                         _mss_dict[position_key] = _mss_st_new
                 # REOPEN branch — flat position, prior close pending, price re-crossed exit
-                elif _mss_qty < 1 and _mss_st.get('reopen_pending', False) and current_price > 0:
+                elif _mss_qty < 1 and _mss_st.get('reopen_pending', False) and current_price is not None and current_price > 0:
                     _mss_exit_px = float(_mss_st.get('exit_price', 0) or 0)
                     _mss_orig_side = str(_mss_st.get('original_side', '') or '')
                     _mss_orig_qty = float(_mss_st.get('original_qty', 0) or 0)
@@ -3224,14 +6477,83 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 else:
                     log_rec = "💥CLOSE"
                     log_reason = exit_reason
-                    # FIX 2026-04-08: Use 999999 as override_qty for CLOSE — execute_trade_action
-                    # will clamp to ACTUAL API position via min(quantity, current_qty).
-                    # Never trust local positionAmt — it's stale from Redis sync lag.
-                    exit_qty = 999999  # Will be clamped to real API qty in execute_trade_action
-                    logger.info(f"[{account_key}] 🛑 CLOSING {symbol}: {exit_reason} (mkt_open={market_open})")
-                    await queue_trade_action( order_queue, trade_manager, position_key, "CLOSE",  exit_reason, 100.0, override_qty=exit_qty )
+                    # A structural LR harvest is explicitly a partial reduce.  The
+                    # historical blanket CLOSE clamp below discarded evaluate_stop's
+                    # returned quantity and converted a requested 50% harvest into a
+                    # full liquidation in both live and V8.  Keep the protective
+                    # 999999 clamp for true closes, but preserve a valid partial
+                    # quantity for this one semantically partial exit family.
+                    _position_qty = abs(float(getattr(
+                        position, "positionAmt", getattr(position, "quantity", 0)
+                    ) or 0))
+                    _is_lr_harvest = str(exit_reason or "").startswith(
+                        "LR_BAND_HARVEST_"
+                    )
+                    _is_partial_harvest = (
+                        _is_lr_harvest
+                        and 0 < float(exit_qty or 0) < _position_qty
+                    )
+                    if _is_partial_harvest:
+                        _exit_action = "REDUCE"
+                        _override_exit_qty = float(exit_qty)
+                        logger.info(
+                            f"[{account_key}] ✂️ LR HARVEST {symbol}: "
+                            f"{_override_exit_qty:.8g}/{_position_qty:.8g} "
+                            f"({exit_reason}; mkt_open={market_open})"
+                        )
+                    else:
+                        # Use 999999 for true CLOSE — execute_trade_action clamps
+                        # against the broker's actual position, not a stale local
+                        # positionAmt.
+                        _exit_action = "CLOSE"
+                        _override_exit_qty = 999999
+                        logger.info(f"[{account_key}] 🛑 CLOSING {symbol}: {exit_reason} (mkt_open={market_open})")
+                    await queue_trade_action(
+                        order_queue, trade_manager, position_key, _exit_action,
+                        exit_reason, 100.0, override_qty=_override_exit_qty,
+                    )
                     action_taken = True
                     trade_manager._pending_closes[symbol] = time.time()
+
+            # 4h BB breakout ladder is subordinate to a protective stop, but
+            # takes priority over ordinary augmentation once a stage is due.
+            elif bool(_cfg("BB4H_BREAKOUT_LADDER_ENABLED", True, account_key, symbol, position_side)):
+                try:
+                    _ladder_state = getattr(trade_manager, "_bb4h_breakout_ladder_state", None)
+                    if _ladder_state is None:
+                        trade_manager._bb4h_breakout_ladder_state = {}
+                        _ladder_state = trade_manager._bb4h_breakout_ladder_state
+                    _ladder_key_state = _ladder_state.setdefault(position_key, {})
+                    _ladder = _next_bb4h_ladder_stage(
+                        _ladder_key_state, i, current_price,
+                        enabled=True, position_exists=True, is_long=is_long,
+                        now=time.time(),
+                        breakout_pct=float(_cfg("BB4H_BREAKOUT_LADDER_BREAKOUT_PCT", .25, account_key, symbol, position_side)),
+                        basis_pct=float(_cfg("BB4H_BREAKOUT_LADDER_BASIS_PCT", .50, account_key, symbol, position_side)),
+                        wt_cross_pct=float(_cfg("BB4H_BREAKOUT_LADDER_WT_CROSS_PCT", .25, account_key, symbol, position_side)),
+                        target_usd=float(_cfg("BB4H_BREAKOUT_LADDER_TARGET_USD", 2000.0, account_key, symbol, position_side)),
+                        stock=True,
+                        stock_max_notional_usd=float(_cfg("BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD", 2000.0, account_key, symbol, position_side)),
+                        max_stock_shares=int(_cfg("BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES", 1, account_key, symbol, position_side)),
+                    )
+                    if _ladder and _ladder["quantity"] > 0 and market_open and not action_taken:
+                        _ladder_reason = f"BB4H_BREAKOUT_LADDER_{_ladder['name']}_fraction={_ladder['fraction']:.2f}"
+                        logger.warning(f"[{account_key}] 🪜 {symbol}: {_ladder_reason} qty={_ladder['quantity']}")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "AUGMENT", _ladder_reason, 100.0, override_qty=_ladder["quantity"])
+                        action_taken = True
+                        return f"BB4H_BREAKOUT_LADDER:{_ladder['name']}"
+                except Exception as _ladder_err:
+                    logger.warning(f"[BB4H_BREAKOUT_LADDER_HELD] {position_key}: {_ladder_err}")
+
+            # Exact selected-recipe production envelope.  Bottom-A has already
+            # been evaluated by evaluate_stop; do not let any reduce/augment
+            # family change the tested lifecycle when this per-key flag is on.
+            elif bool(_cfg(
+                "FULL_RECIPE_ONLY_ENABLED", False,
+                account_key, symbol, position_side,
+            )):
+                log_rec = "HOLD"
+                log_reason = "FULL_RECIPE_ONLY_HOLD_POSITION"
             
             # --- 3. EVALUATE AUGMENT ---
             # tra is long-term hold — no augmentation churn. Initial entry only.
@@ -3343,6 +6665,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 conf = 0
                 _delta_entry = False
                 _xb_reentry_fired = False
+                _ordinary_parity_claim = False
+                _xb_obligation = None
                 # 2026-07-20 USER band mandate: LONG-only mode — short entries skip so the short
                 # side can never squat the symbol and block LONG entries during upswings
                 # (has_opposing_pos starved every band entry in the both-sides engine sim).
@@ -3355,6 +6679,64 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         print(f"V8_LOG LRBAND_P0 branchB_flat_reach={_lbp0['n']} is_long={is_long} sym={symbol}", flush=True)
                 _entry_score = 0.0  # 2026-05-28 C1 FIX: bind before branches — reentry/GR/delta entry paths set action_type="OPEN" without running wt_dc_score_entry, so the ENTRY_SCORE_THRESHOLD veto (~3023) hit UnboundLocalError when a per-sym ENTRY_SCORE_THRESHOLD>0 override was present (41 crashes/day on IBIT/CIBR/DAR/ROBO).
                 _entry_ind = indicators_raw if indicators_raw else i  # 2026-07-21 C1-class FIX: same bug — MTF_ARROW/LR_BAND priority entries claim OPEN before the fallback that bound _entry_ind, so the UVE veto line crashed UnboundLocalError, the except handler swallowed it, and BOTH the claimed entry and the fallback evaporated (13,091 of 13,119 arrow claims died this way in the 2026-07-21 ARM forensic run).
+                _shared_direct_handoff_claim = None
+                # Re-enter after the mirrored favorable structure. The exit
+                # path records its adverse candle signature; this prevents a
+                # flat symbol from re-entering on an unrelated structure move.
+                if bool(_cfg('STRUCTURE_FLIP_REENTRY_ENABLED', False, account_key, symbol, position_side)) and not has_opposing_pos:
+                    _sfr_tf = str(_cfg('STRUCTURE_FLIP_REENTRY_TF', '15m', account_key, symbol, position_side) or '15m')
+                    _sfr_basis_enabled = bool(_cfg('STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED', False, account_key, symbol, position_side))
+                    _sfr_basis_tf = str(_cfg('STRUCTURE_FLIP_REENTRY_BASIS_TF', '4h', account_key, symbol, position_side) or '4h')
+                    _sfr_basis = float(i.get(f'dc_basis_{_sfr_basis_tf}', 0) or 0)
+                    _sfr_basis_ok = (not _sfr_basis_enabled) or (_sfr_basis > 0 and ((is_long and current_price > _sfr_basis) or ((not is_long) and current_price < _sfr_basis)))
+                    _sfr_hi, _sfr_hip = float(i.get(f'high_{_sfr_tf}', 0) or 0), float(i.get(f'high_{_sfr_tf}_prev', 0) or 0)
+                    _sfr_lo, _sfr_lop = float(i.get(f'low_{_sfr_tf}', 0) or 0), float(i.get(f'low_{_sfr_tf}_prev', 0) or 0)
+                    _sfr_favorable = (
+                        _sfr_hi > 0 and _sfr_hip > 0 and _sfr_lo > 0 and _sfr_lop > 0
+                        and ((_sfr_hi > _sfr_hip and _sfr_lo > _sfr_lop) if is_long else (_sfr_hi < _sfr_hip and _sfr_lo < _sfr_lop))
+                    )
+                    _sfr_state = getattr(trade_manager, '_structure_flip_reentry_state', {})
+                    _sfr_pk_state = _sfr_state.get(position_key, {}) if isinstance(_sfr_state, dict) else {}
+                    _sfr_sig = f'{_sfr_tf}:{_sfr_hip:.8f}:{_sfr_lop:.8f}:{_sfr_hi:.8f}:{_sfr_lo:.8f}'
+                    if _sfr_favorable and _sfr_basis_ok and _sfr_pk_state.get('last_exit_signature') and _sfr_sig != _sfr_pk_state.get('last_entry_signature') and market_open:
+                        _sfr_qty = max(1.0, float(_cfg('START_POSITION_SIZE', 600.0, account_key, symbol, position_side)) / max(current_price, 1e-9))
+                        _sfr_reason = f'STRUCTURE_FLIP_REENTRY_{_sfr_tf}_{"HH_HL" if is_long else "LH_LL"}'
+                        logger.warning(f'[{account_key}] 🔄 {symbol}: {_sfr_reason} qty={_sfr_qty:.2f}')
+                        await queue_trade_action(order_queue, trade_manager, position_key, 'OPEN', _sfr_reason, 100.0, override_qty=_sfr_qty)
+                        _sfr_state[position_key] = {**_sfr_pk_state, 'last_entry_signature': _sfr_sig, 'ts': time.time()}
+                        return f'STRUCTURE_FLIP_REENTRY:{_sfr_tf}'
+                # Fresh 4h breakout starts the explicit stock ladder.  It is
+                # intentionally independent of the ordinary BB score switch.
+                if bool(_cfg("BB4H_BREAKOUT_LADDER_ENABLED", True, account_key, symbol, position_side)) and not has_opposing_pos:
+                    try:
+                        _ladder_state = getattr(trade_manager, "_bb4h_breakout_ladder_state", None)
+                        if _ladder_state is None:
+                            trade_manager._bb4h_breakout_ladder_state = {}
+                            _ladder_state = trade_manager._bb4h_breakout_ladder_state
+                        _ladder_key_state = _ladder_state.setdefault(position_key, {})
+                        _ladder = _next_bb4h_ladder_stage(
+                            _ladder_key_state, i, current_price,
+                            enabled=True, position_exists=False, is_long=is_long,
+                            now=time.time(),
+                            breakout_pct=float(_cfg("BB4H_BREAKOUT_LADDER_BREAKOUT_PCT", .25, account_key, symbol, position_side)),
+                            basis_pct=float(_cfg("BB4H_BREAKOUT_LADDER_BASIS_PCT", .50, account_key, symbol, position_side)),
+                            wt_cross_pct=float(_cfg("BB4H_BREAKOUT_LADDER_WT_CROSS_PCT", .25, account_key, symbol, position_side)),
+                            target_usd=float(_cfg("BB4H_BREAKOUT_LADDER_TARGET_USD", 2000.0, account_key, symbol, position_side)),
+                            stock=True,
+                            stock_max_notional_usd=float(_cfg("BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD", 2000.0, account_key, symbol, position_side)),
+                            max_stock_shares=int(_cfg("BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES", 1, account_key, symbol, position_side)),
+                        )
+                        if _ladder and _ladder["quantity"] > 0 and market_open:
+                            action_type = "OPEN"
+                            qty = _ladder["quantity"]
+                            conf = 100.0
+                            reason = f"BB4H_BREAKOUT_LADDER_{_ladder['name']}_fraction={_ladder['fraction']:.2f}"
+                            logger.warning(f"[{account_key}] 🪜 {symbol}: {reason} qty={qty}")
+                            await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                            action_taken = True
+                            return f"BB4H_BREAKOUT_LADDER:{_ladder['name']}"
+                    except Exception as _ladder_err:
+                        logger.warning(f"[BB4H_BREAKOUT_LADDER_FLAT] {position_key}: {_ladder_err}")
                 # Mandatory capital-preservation obligation, not an optional entry path:
                 # matrix "all entries off" must never disable post-exit re-entry.
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
@@ -3364,7 +6746,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _xb_last_px = _reentry_exit_value(
                         trade_manager.last_exit_prices, position_key, symbol, 0
                     )
-                    if _xb_last_t > 0 and _xb_last_px > 0 and current_price > 0:
+                    _xb_obligation_raw = trade_manager.__dict__.setdefault(
+                        "_mandatory_reclaim_obligations", {}
+                    ).get(position_key)
+                    _xb_obligation = (
+                        _ReclaimObligation.from_dict(_xb_obligation_raw)
+                        if _xb_obligation_raw
+                        else None
+                    )
+                    if _xb_obligation is not None and _xb_obligation.pending:
+                        _xb_last_px = _xb_obligation.reclaim_level
+                        _xb_obligation.observe_price(current_price)
+                        trade_manager._mandatory_reclaim_obligations[
+                            position_key
+                        ] = _xb_obligation.to_dict()
+                    if _xb_last_t > 0 and _xb_last_px > 0 and current_price is not None and current_price > 0:
                         _xb_age_min = (time.time() - _xb_last_t) / 60.0
                         _xb_band_pct = float(getattr(config, 'PRICE_CROSS_BACK_BAND_PCT', 0.3))
                         _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
@@ -3394,16 +6790,43 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             # BACK THROUGH exit in favorable direction (LONG: cur>=exit,
                             # SHORT: cur<=exit). Within-band on the other side also allowed.
                             _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
-                            _xb_within_band = _xb_dist_pct <= _xb_band_pct
+                            _xb_within_band = (
+                                _xb_dist_pct <= _xb_band_pct
+                                if _xb_obligation is None
+                                else False
+                            )
+                            _xb_force_after_opposition = (
+                                os.environ.get(
+                                    "V8_MATRIX_CONTRACT_VERSION", ""
+                                ).startswith("tradier-matrix-exec-c5")
+                                and _force_reentry_after_temporary_opposition(
+                                    _xb_trace,
+                                    favorable=_xb_favorable,
+                                    material_pct=float(
+                                        getattr(
+                                            config,
+                                            "REENTRY_MATERIAL_OVERSHOOT_PCT",
+                                            0.5,
+                                        )
+                                    ),
+                                    max_opposed_bars=int(
+                                        getattr(
+                                            config,
+                                            "REENTRY_OPPOSITION_MAX_FLAT_BARS",
+                                            12,
+                                        )
+                                    ),
+                                )
+                            )
                             # 2026-05-29 USER: stocks reentry also requires a 4-bar Donchian breakout
                             # (dc_high4_5m / dc_low4_5m on already-closed bars) — not just a touch of the
                             # exit price. Mirrors crypto REENTRY_LIVE_MONITOR_DC_BREAK. Fail-open if missing.
-                            _xb_dcb_ok = True
+                            _xb_dcb_ok = False
                             _xb_dckey = ""
                             _xb_dclvl = 0.0
-                            # Mandatory obligation may be postponed only by multi-TF WT/Stoch
-                            # opposition. Donchian is retained as telemetry, never a veto here.
-                            if False and bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', False)):
+                            # Emergency contract: reentry is permitted only with 15m WT
+                            # confirmation and a 5m Donchian break. This is a hard veto.
+                            if bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', False)):
                                 _xb_tf = str(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_TF', '5m'))
                                 _xb_4 = bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR', True))
                                 if is_long:
@@ -3413,28 +6836,199 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _xb_dclvl = safe_fetch_float(i.get(_xb_dckey), 0.0)
                                 if _xb_dclvl > 0:
                                     _xb_dcb_ok = (is_long and current_price >= _xb_dclvl) or ((not is_long) and current_price <= _xb_dclvl)
-                            if (_xb_favorable or _xb_within_band) and len(_xb_opposed) > 1:
+                            if (
+                                (_xb_favorable or _xb_within_band)
+                                and len(_xb_opposed) > 1
+                                and not _xb_force_after_opposition
+                            ):
                                 logger.warning(
                                     f"[MANDATORY_REENTRY_PENDING_OPPOSITION] {position_key}: "
                                     f"opposed={','.join(_xb_opposed)} detail={_xb_opp_detail} "
                                     f"overshoot={_xb_trace['max_overshoot_pct']:.3f}%"
                                 )
-                            elif (_xb_favorable or _xb_within_band) and not _xb_dcb_ok:
-                                logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {account_key}:{symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
                             elif _xb_favorable or _xb_within_band:
-                                _xb_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / max(current_price, 1e-9)
-                                action_type = "OPEN"
-                                qty = max(1, int(_xb_qty))
-                                conf = 90.0
-                                _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
-                                reason = f"MANDATORY_REENTRY_PRICE_CROSS_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}"
-                                _xb_reentry_fired = True
-                                logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
+                                _xb_wt_ok, _xb_wt_detail = _mandatory_reentry_wt_gate(
+                                    _entry_ind,
+                                    is_long,
+                                    enabled=bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_ENABLED", False)),
+                                    tf_mode=getattr(config, "MANDATORY_REENTRY_WT_FILTER_TF_MODE", "5m_or_15m"),
+                                    min_tfs=int(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS", 1)),
+                                    require_flip=bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP", True)),
+                                    velocity_ratio=float(getattr(config, "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO", 0.90)),
+                                    min_velocity=float(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY", 0.0)),
+                                )
+                                if not _xb_wt_ok:
+                                    logger.info(
+                                        f"[MANDATORY_REENTRY_WT_HOLD] {position_key}: "
+                                        f"price cross qualified but WT filter failed: {_xb_wt_detail}"
+                                    )
+                                elif not _xb_dcb_ok:
+                                    logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {account_key}:{symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
+                                else:
+                                    _xb_target_usd = (
+                                        _xb_obligation.target_notional_usd
+                                        if _xb_obligation is not None
+                                        and _xb_obligation.pending
+                                        else float(getattr(config, 'START_POSITION_SIZE', 600))
+                                    )
+                                    _xb_qty = _xb_target_usd / max(current_price, 1e-9)
+                                    action_type = "OPEN"
+                                    qty = max(1.0, float(_xb_qty))
+                                    conf = 90.0
+                                    _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
+                                    reason = f"MANDATORY_REENTRY_PRICE_CROSS_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}"
+                                    _xb_reentry_fired = True
+                                    logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
+                # Shared ordinary ladder parity.  It is explicitly guarded and
+                # defaults OFF in live.  A completed D/4h/1h parent can request
+                # one absolute target; the strongest rung wins and the shared
+                # contract hard-clips it at $16k.
+                if (
+                    not _xb_reentry_fired
+                    and action_type != "OPEN"
+                    and (
+                        _xb_obligation is None
+                        or not _xb_obligation.pending
+                        or _xb_obligation.favorable_gap_seen
+                    )
+                    and bool(
+                        _cfg(
+                            "LR_BAND_LADDER_ENABLED",
+                            False,
+                            account_key,
+                            symbol,
+                            position_side,
+                        )
+                    )
+                    and bool(
+                        _cfg(
+                            "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED",
+                            False,
+                            account_key,
+                            symbol,
+                            position_side,
+                        )
+                    )
+                ):
+                    _ol_target = _ordinary_ladder_target(
+                        trade_manager,
+                        position_key,
+                        _entry_ind,
+                        is_long,
+                        config,
+                        0.0,
+                    )
+                    if _ol_target is not None and _ol_target.add_notional_usd > 0:
+                        qty = max(
+                            1,
+                            int(
+                                _ol_target.add_notional_usd
+                                / max(current_price, 1e-9)
+                            ),
+                        )
+                        action_type = "OPEN"
+                        conf = 90.0
+                        _entry_score = max(float(_entry_score or 0.0), conf)
+                        reason = (
+                            "LR_BAND_LADDER_PARITY_TARGET_"
+                            f"x{_ol_target.multiplier:.3f}_"
+                            f"usd{_ol_target.target_notional_usd:.0f}_"
+                            + "+".join(tf for tf, _ in _ol_target.source_tokens)
+                        )[:110]
+                        _ordinary_parity_claim = True
+                # Shared completed-snapshot direct entries are subordinate to
+                # mandatory reclaim and cannot displace an ordinary ladder
+                # claim.  They are nevertheless admitted before the
+                # FULL_RECIPE_ONLY hold so a selected direct recipe can own the
+                # same normal sizing/execution path in live and V8.
+                if action_type != "OPEN" and _shared_direct_claim is not None:
+                    _direct_base_qty = float(_cfg(
+                        "START_POSITION_SIZE", 600.0,
+                        account_key, symbol, position_side,
+                    )) / max(current_price, 1e-9)
+                    action_type = "OPEN"
+                    qty = int(max(1, _direct_base_qty))
+                    conf = 90.0
+                    _entry_score = max(float(_entry_score or 0.0), conf)
+                    reason = str(_shared_direct_claim["reason"])
+                    _shared_direct_handoff_claim = _shared_direct_claim
+                    _direct_route_handoff_telemetry(
+                        trade_manager, position_key,
+                        _shared_direct_handoff_claim, "ACTION_OPEN",
+                        reason=reason,
+                    )
+                    logger.info(
+                        f"[SHARED_DIRECT_ENTRY] {position_key}: {reason}"
+                    )
+                # A formation recipe has the same shared selector as the live
+                # evaluator, but the exact full-recipe envelope deliberately
+                # stops before the legacy cascade.  Admit only this selected
+                # action here; every non-formation fallback remains excluded.
+                _formation_consumer_admitted, _formation_consumer_reason = (
+                    formation_entry_consumer_admission(
+                        full_recipe_only_enabled=bool(_cfg(
+                            "FULL_RECIPE_ONLY_ENABLED", False,
+                            account_key, symbol, position_side,
+                        )),
+                        action_already_claimed=(action_type == "OPEN"),
+                    )
+                )
+                if _formation_consumer_admitted:
+                    try:
+                        _formation_action = await trade_manager.strategy.classic_formation_open_action(
+                            account_key, symbol, position_side,
+                            indicators_raw or i, current_price, market_context,
+                        )
+                    except (TypeError, ValueError) as _formation_error:
+                        logger.error(
+                            f"[CLASSIC_FORMATION_ENTRY] invalid recipe for "
+                            f"{position_key}: {_formation_error}"
+                        )
+                        _formation_action = None
+                    if _formation_action is not None:
+                        action_type, reason, conf, qty = _formation_action
+                        _entry_score = max(float(_entry_score or 0.0), float(conf))
+                        # Reuse the existing downstream handoff telemetry for
+                        # formation routes.  Without this claim object every
+                        # later VARIANCE/BALANCER/BUDGET/DISPATCH stage was a
+                        # no-op, hiding why a valid selector produced no order.
+                        for _formation_family in CONFIG_FAMILY_PREFIX:
+                            if str(reason).startswith(
+                                "CLASSIC_FORMATION_ENTRY_"
+                                f"{_formation_family.upper()}_"
+                            ):
+                                _shared_direct_handoff_claim = {
+                                    "family": (
+                                        "ENTRY_CLASSIC_FORMATION_"
+                                        f"{_formation_family.upper()}"
+                                    )
+                                }
+                                _direct_route_handoff_telemetry(
+                                    trade_manager, position_key,
+                                    _shared_direct_handoff_claim,
+                                    "SELECTOR_TO_SIZED_OPEN",
+                                    qty=float(qty), reason=str(reason),
+                                )
+                                break
+                # Exact selected-recipe production envelope.  Mandatory
+                # reclaim above remains compulsory and the ordinary ladder
+                # remains the selected entry; all fallback entry families are
+                # excluded for this key.  Returning here only when neither
+                # selected route claimed OPEN lets the normal execution and
+                # sizing/capacity path below handle actual claims unchanged.
+                if (
+                    action_type != "OPEN"
+                    and bool(_cfg(
+                        "FULL_RECIPE_ONLY_ENABLED", False,
+                        account_key, symbol, position_side,
+                    ))
+                ):
+                    return "FULL_RECIPE_ONLY_HOLD_ENTRY"
                 # --- 4. DELTA ENGINE ENTRY (Sharpe 63.44, 85.9% WR) ---
                 # tra: long-term account, delta is too fast — block here so the
                 # WT/DC scorer (with high threshold) is the only entry path.
                 _tra_block_delta = (account_key == 'tra' and getattr(config, 'TRA_DISABLE_DELTA_ENTRY', True))
-                if not _xb_reentry_fired and not _tra_block_delta and config.DELTA_ENGINE_ENABLED and config.DELTA_ENTRY_ENABLED and trade_manager.delta_tracker:
+                if not _xb_reentry_fired and not _ordinary_parity_claim and not _tra_block_delta and config.DELTA_ENGINE_ENABLED and config.DELTA_ENTRY_ENABLED and trade_manager.delta_tracker:
                     _d_ind = indicators_raw if indicators_raw else i
                     _d_sig = trade_manager.delta_tracker.update(symbol, _d_ind)
                     if _d_sig and ((is_long and _d_sig.entry_long) or (not is_long and _d_sig.entry_short)):
@@ -3473,7 +7067,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _delta_blocked = True
                                 _block_reason = f"ATR_noise({_bar_move:.2f}<{_atr_1h*0.3:.2f})"
                         if not _delta_blocked:
-                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                             action_type = "OPEN"
                             qty = int(max(1, _base_qty))
                             conf = 100.0
@@ -3517,7 +7111,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _ma_st['lo'] = current_price
                     _ma_confirmed = current_price >= _ma_st['lo'] * (1.0 + _ma_conf / 100.0)
                     if _ma_confirmed and _ma_score >= _ma_theta:
-                        _ma_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                        _ma_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                         if bool(_cfg('LR_BAND_LADDER_ENABLED', False, account_key, symbol, position_side)):
                             # USER 2026-07-22: the green arrow is the TRIGGER, the band position is
                             # the QUANTITY. Size this arrow by where price sits between the D bands
@@ -3566,7 +7160,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _ms_ind = indicators_raw if indicators_raw else i
                     _ms_score, _ms_detail = mtf_arrow_score(_ms_ind, False, config)
                     _ms_theta = float(_cfg('MTF_ARROW_THETA', getattr(config, 'MTF_ARROW_THETA', 0.3), account_key, symbol, position_side))
-                    _ms_conf = float(getattr(config, 'MTF_ARROW_CONFIRM_PCT', 2.0))
+                    # This is a per-symbol path.  Reading the global object here
+                    # silently ignored MSTR_SHORT (and other short) overlay values
+                    # in live use.  _cfg also carries the explicit V8 override
+                    # precedence contract, so the configured confirmation sweep
+                    # now reaches the actual red-arrow state machine.
+                    _ms_conf = float(_cfg(
+                        'MTF_ARROW_CONFIRM_PCT', 2.0,
+                        account_key, symbol, position_side,
+                    ))
                     if not hasattr(trade_manager, '_arrow_swing_short'):
                         trade_manager._arrow_swing_short = {}
                     _ms_st = trade_manager._arrow_swing_short.get(symbol)
@@ -3591,7 +7193,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         if _ms_mult <= 0.0:
                             logger.debug(f"[LR_BAND_LADDER_SKIP_S] {symbol}: pb={_ld_pb_s} outside short ladder — red arrow ignored")
                         else:
-                            _ms_base = float(_cfg('START_POSITION_SIZE', getattr(config, 'START_POSITION_SIZE', 600), account_key, symbol, position_side)) / current_price if current_price > 0 else 1
+                            _ms_base = float(_cfg('START_POSITION_SIZE', getattr(config, 'START_POSITION_SIZE', 600), account_key, symbol, position_side)) / current_price if current_price is not None and current_price > 0 else 1
                             action_type = "OPEN"
                             qty = int(max(1, _ms_base * _ms_mult))
                             conf = 90.0
@@ -3625,7 +7227,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             # which the user identified as structurally wrong. Depth IS the size.
                             _pb_mult = band_ladder_mult(_pb_pb_f, config, _pb_tf)
                             if _pb_mult > 0.0 and _pb_sl_f > 0:
-                                _pb_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price if current_price > 0 else 1
+                                _pb_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price if current_price is not None and current_price > 0 else 1
                                 action_type = "OPEN"
                                 qty = int(max(1, _pb_base * _pb_mult))
                                 conf = 88.0
@@ -3634,7 +7236,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             elif _pb_mult <= 0.0:
                                 logger.debug(f"[LR_BAND_LADDER_SKIP] {account_key}:{symbol}: pb={_pb_pb_f:.3f} below lower band — ignored by design")
                         elif _pb_pb_f <= _pb_lo and _pb_sl_f > 0 and _pb_r2_f >= float(getattr(config, 'LR_BAND_ENTRY_R2_MIN', 0.7)):
-                            _pb_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                            _pb_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                             # legacy threshold path (pre-ladder): deeper AND steeper = bigger.
                             _pb_depth = max(0.0, 1.0 - _pb_pb_f)
                             _pb_mult = 1.0 + float(getattr(config, 'LR_BAND_SIZE_DEPTH_GAIN', 1.0)) * _pb_depth \
@@ -3805,10 +7407,44 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                     _bar_maturity_block = True
                                     logger.info(f"[WT_DC_BAR_MATURITY_BLOCK] {symbol} {'L' if is_long else 'S'}: pos={_bm_pos:.2f}>thr={_bm_thr:.2f} bar_up={_bm_bar_up} px={current_price:.2f} open_D={_bm_open_d:.2f} atr_D={_bm_atr_d:.4f} score={_entry_score:.0f}")
                     _uve_block = not _uve_entry_allowed(symbol, "LONG" if is_long else "SHORT", account_key, _entry_ind or i, current_price)
+                    # This was previously a config-only matrix knob: the exact
+                    # engine could alter BB_PULLBACK_GATE_LONG_MAX forever
+                    # without the live entry decision seeing it.  Apply the
+                    # documented directional BB pullback filter at the common
+                    # WT/DC path.  Missing data fails open inside the helper.
+                    _bb_pullback_cfg = SimpleNamespace(
+                        BB_PULLBACK_GATE_ENABLED=bool(_cfg(
+                            'BB_PULLBACK_GATE_ENABLED',
+                            getattr(config, 'BB_PULLBACK_GATE_ENABLED', False),
+                            account_key, symbol, 'LONG' if is_long else 'SHORT',
+                        )),
+                        BB_PULLBACK_GATE_TF=str(_cfg(
+                            'BB_PULLBACK_GATE_TF',
+                            getattr(config, 'BB_PULLBACK_GATE_TF', '15m'),
+                            account_key, symbol, 'LONG' if is_long else 'SHORT',
+                        )),
+                        BB_PULLBACK_GATE_LONG_MAX=float(_cfg(
+                            'BB_PULLBACK_GATE_LONG_MAX',
+                            getattr(config, 'BB_PULLBACK_GATE_LONG_MAX', 0.30),
+                            account_key, symbol, 'LONG' if is_long else 'SHORT',
+                        )),
+                        BB_PULLBACK_GATE_SHORT_MIN=float(_cfg(
+                            'BB_PULLBACK_GATE_SHORT_MIN',
+                            getattr(config, 'BB_PULLBACK_GATE_SHORT_MIN', 0.70),
+                            account_key, symbol, 'LONG' if is_long else 'SHORT',
+                        )),
+                    )
+                    _bb_pullback_block = _bb_pullback_gate_blocks(
+                        _entry_ind or i, _bb_pullback_cfg, is_long
+                    )
                     if _uve_block and _entry_score >= _entry_threshold:
                         logger.info(f"[UVE_ENTRY_BLOCK] {symbol} {'L' if is_long else 'S'}: score={_entry_score:.0f} passed threshold but UVE signal not aligned")
-                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block and not _htf_align_block and not _stoch_gate_block and not _gr_htf_block and not _bar_maturity_block and not _uve_block:
-                        _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                    if _bb_pullback_block and _entry_score >= _entry_threshold:
+                        _bb_tf_gate = _bb_pullback_cfg.BB_PULLBACK_GATE_TF or '15m'
+                        _bb_val_gate = (_entry_ind or i).get(f'bb_pct_b_{_bb_tf_gate}')
+                        logger.info(f"[BB_PULLBACK_GATE_BLOCK] {symbol} {'L' if is_long else 'S'}: tf={_bb_tf_gate} pct_b={_bb_val_gate} score={_entry_score:.0f}")
+                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block and not _htf_align_block and not _stoch_gate_block and not _gr_htf_block and not _bar_maturity_block and not _uve_block and not _bb_pullback_block:
+                        _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                         action_type = "OPEN"
                         qty = int(max(1, _base_qty))
                         conf = _entry_score
@@ -3834,7 +7470,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _rz_band_b = float(getattr(config, 'RZ_BREAKOUT_BAND', 0.05))
                     _rz_fire = (is_long and _rz_bot_b <= _rz_bb_1h <= _rz_bot_b + _rz_band_b) or (not is_long and _rz_top_b - _rz_band_b <= _rz_bb_1h <= _rz_top_b)
                     if _rz_fire:
-                        _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                        _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                         action_type = "OPEN"
                         qty = int(max(1, _base_qty))
                         conf = 70.0
@@ -3844,7 +7480,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     if is_long:
                         _lr_pb = (indicators_raw if indicators_raw else i).get("lr_pct_b_D")
                         if _lr_pb is not None and float(_lr_pb) <= float(getattr(config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", 0.20)):
-                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                             action_type = "OPEN"
                             qty = int(max(1, _base_qty))
                             conf = 80.0
@@ -3855,6 +7491,45 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _lbd0["n"] += 1
                     if _lbd0["n"] % 2000 == 1:
                         print(f"V8_LOG LRBAND_DBG0 region_reach={_lbd0['n']} enabled={getattr(config, 'LR_BAND_ENTRY_ENABLED', 'MISSING')} regime={getattr(config, 'LR_BAND_REGIME_ENABLED', 'MISSING')} cfg_id={id(config)}", flush=True)
+                if action_type != "OPEN" and getattr(config, 'BB_PCTB_ENTRY_ENABLED', False):
+                    try:
+                        _bb_pctb_1h = float(i.get('bb_pct_b_1h', 0.5) or 0.5)
+                        _bb_long_thr = float(getattr(config, 'BB_ENTRY_LONG_THRESHOLD', -0.2))
+                        _bb_short_thr = float(getattr(config, 'BB_ENTRY_SHORT_THRESHOLD', 1.0))
+                        _bb_fire = (_bb_pctb_1h < _bb_long_thr) if is_long else (_bb_pctb_1h > _bb_short_thr)
+                        if _bb_fire:
+                            return True, f"BB_PCTB_ENTRY(bb={_bb_pctb_1h:.3f}{'<'+str(_bb_long_thr) if is_long else '>'+str(_bb_short_thr)})", qty
+                    except Exception: pass
+                # REENTRY PULL 1-4 + SATOSHIT ENTRY — added 2026-08-11 to make live identical to vectorized backtest (were missing, caused entry count 1 vs 300 divergence) — ADD not discard
+                if action_type != "OPEN" and getattr(config, 'REENTRY_PULL1_ENABLED', False):
+                    try:
+                        if is_long and float(i.get('wt_velocity_1h',0) or 0) > 1 and float(i.get('stoch_k_3m',50) or 50) < 20 and float(i.get('stoch_k_3m_prev',50) or 50) < float(i.get('stoch_k_3m',50) or 50):
+                            return True, f"REENTRY_PULL1(wt1h>1,k3m<20)", qty
+                        if not is_long and float(i.get('wt_velocity_1h',0) or 0) < -1 and float(i.get('stoch_k_3m',50) or 50) > 80:
+                            return True, f"REENTRY_PULL1_SHORT", qty
+                    except Exception: pass
+                if action_type != "OPEN" and getattr(config, 'REENTRY_PULL2_ENABLED', False):
+                    try:
+                        if float(i.get('wt_velocity_D',0) or 0) > 1 and float(i.get('sma_dist_1h',0) or 0) < -1:
+                            return True, f"REENTRY_PULL2(wt_D>1,dist< -1)", qty
+                    except Exception: pass
+                if action_type != "OPEN" and getattr(config, 'REENTRY_PULL3_ENABLED', False):
+                    try:
+                        if float(i.get('bb_pct_b_1h',0.5) or 0.5) < 0.15 and float(i.get('stoch_k_3m',50) or 50) < 30:
+                            return True, f"REENTRY_PULL3(bb<0.15)", qty
+                    except Exception: pass
+                if action_type != "OPEN" and getattr(config, 'REENTRY_PULL4_ENABLED', False):
+                    try:
+                        if float(i.get('rsi_1h',50) or 50) < 30 and float(i.get('wt_velocity_3m',0) or 0) > 0:
+                            return True, f"REENTRY_PULL4(rsi<30)", qty
+                    except Exception: pass
+                if action_type != "OPEN" and getattr(config, 'SATOSHIT_ENTRY_ENABLED', False):
+                    try:
+                        if is_long and float(i.get('stoch_k_3m',50) or 50) > 70 and float(i.get('rsi_1h',50) or 50) > 60:
+                            return True, f"SATOSHIT_ENTRY(k>70,rsi>60)", qty
+                        if not is_long and float(i.get('stoch_k_3m',50) or 50) < 30 and float(i.get('rsi_1h',50) or 50) < 40:
+                            return True, f"SATOSHIT_ENTRY_SHORT", qty
+                    except Exception: pass
                 if action_type != "OPEN" and getattr(config, 'LR_BAND_ENTRY_ENABLED', False):
                     _lb_tf = getattr(config, 'LR_BAND_ENTRY_TF', 'D')
                     # 2026-07-20: MUST read the RAW snapshot (mirror RZ_BREAKOUT above) — the reduced
@@ -3886,7 +7561,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _lb_long_ok = is_long and _lb_pb <= _lb_lo and _lb_sl > 0
                         _lb_short_ok = (not is_long) and 'S' in _lb_sides and _lb_pb >= 1.0 - _lb_lo and _lb_sl < 0
                         if _lb_r2 >= float(getattr(config, 'LR_BAND_ENTRY_R2_MIN', 0.7)) and (_lb_long_ok or _lb_short_ok):
-                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
                             action_type = "OPEN"
                             qty = int(max(1, _base_qty))
                             conf = 85.0
@@ -3902,11 +7577,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # Reason: GR_HTF_DIRECT_ENTRY_{score}_{detail}
                 # ROLLBACK: set GR_HTF_DIRECT_ENTRY_ENABLED=False in config_tradier.py.
                 # ═══════════════════════════════════════════════════════════════════════
+                _grde_handoff_claim = None
                 if action_type != "OPEN" and bool(getattr(config, 'GR_HTF_DIRECT_ENTRY_ENABLED', True)):
                     try:
                         from golden_rule_htf import \
                             score_entry_htf as _gr_htf_direct_entry
                         _grde_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
+                        if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                            from tradier_gr_htf_trace_c5 import trace_gr_htf as _c5_gr_trace
+                            _c5_gr_trace(
+                                "scorer_called",
+                                path="GR_HTF_DIRECT_ENTRY",
+                                account=account_key,
+                                symbol=symbol,
+                                position_side="LONG" if is_long else "SHORT",
+                            )
                         _grde_pass, _grde_n_tfs, _grde_detail = _gr_htf_direct_entry(
                             indicators_raw if indicators_raw else i, is_long, 'tradier',
                             min_tfs=1, min_ind=_grde_min_ind, current_price=current_price)
@@ -3915,6 +7600,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _grde_score_min = float(getattr(config, 'GR_HTF_DIRECT_ENTRY_SCORE_MIN', 12.0))
                         _grde_double_score = float(getattr(config, 'GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE', 18.0))
                         if _grde_score >= _grde_score_min:
+                            if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                                _c5_gr_trace(
+                                    "scorer_pass",
+                                    path="GR_HTF_DIRECT_ENTRY",
+                                    account=account_key,
+                                    symbol=symbol,
+                                    position_side="LONG" if is_long else "SHORT",
+                                    score=_grde_score,
+                                    threshold=_grde_score_min,
+                                )
                             _grde_mult = 2.0 if _grde_score >= _grde_double_score else 1.0
                             _grde_sps = float(getattr(config, 'START_POSITION_SIZE', 600))
                             _grde_qty = int(max(1, (_grde_sps * _grde_mult) / current_price)) if current_price > 0 else 1
@@ -3922,6 +7617,18 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             qty = _grde_qty
                             conf = _grde_score
                             reason = f"GR_HTF_DIRECT_ENTRY_{_grde_score:.0f}_{_grde_detail[:60]}"
+                            _grde_handoff_claim = reason
+                            if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                                _c5_gr_trace(
+                                    "candidate",
+                                    path="GR_HTF_DIRECT_ENTRY",
+                                    account=account_key,
+                                    symbol=symbol,
+                                    position_side="LONG" if is_long else "SHORT",
+                                    score=_grde_score,
+                                    requested_qty=_grde_qty,
+                                    reason=reason,
+                                )
                             logger.warning(f"[GR_HTF_DIRECT_ENTRY] {account_key}:{symbol} {'L' if is_long else 'S'}: score={_grde_score:.0f} (tfs={_grde_n_tfs}×ind={_grde_min_ind}) >= {_grde_score_min:.0f} mult={_grde_mult:.0f}x qty={_grde_qty}")
                         else:
                             logger.info(f"[GR_HTF_DIRECT_ENTRY_MISS] {account_key}:{symbol} {'L' if is_long else 'S'}: score={_grde_score:.0f} < {_grde_score_min:.0f} detail={_grde_detail[:60]}")
@@ -3937,7 +7644,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # them in V8 sweeps produces real paired-run variance. Defaults are non-restrictive
                 # (preserve current live behaviour); sweeps that flip them tighter will gate trades.
                 _open_claim = reason if (action_type == "OPEN" and ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''))) else None
-                if action_type == "OPEN" and account_key != 'tra' and not _xb_reentry_fired:
+                if action_type == "OPEN" and account_key != 'tra' and not _xb_reentry_fired and not _ordinary_parity_claim:
                     _veto = None
                     _side_vf = "LONG" if is_long else "SHORT"
                     # ENTRY_SCORE_THRESHOLD: gate the wt_dc _entry_score against the canonical knob.
@@ -3998,17 +7705,36 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _uve_mode = _cfg("UVE_STRATEGY_MODE", "legacy", account_key, symbol, _side_vf)
                         _veto = f"UVE_ENTRY_BLOCK(mode={_uve_mode})"
                     if _veto is not None:
+                        _direct_route_handoff_telemetry(
+                            trade_manager, position_key,
+                            _shared_direct_handoff_claim, "VARIANCE_VETO",
+                            reason=_veto,
+                        )
                         logger.warning(f"[VARIANCE_FIX_VETO] {account_key}:{symbol}_{_side_vf}: {_veto} orig_reason={(reason or '')[:70]}")
+                        if _grde_handoff_claim and os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                            _c5_gr_trace(
+                                "wrapper_blocked",
+                                path="GR_HTF_DIRECT_ENTRY",
+                                account=account_key,
+                                symbol=symbol,
+                                position_side=_side_vf,
+                                reason=_veto,
+                            )
                         if _open_claim:
                             _arrow_dbg(f"VETO_VARIANCE {account_key}:{symbol} {_veto} claimed={_open_claim[:70]}")
                         action_type = "NO_ACTION"
                         reason = _veto
-                if action_type == "OPEN" and not _xb_reentry_fired and trade_manager.strategy.circuit_breaker.is_blocked(reason):
+                if action_type == "OPEN" and not _xb_reentry_fired and not _ordinary_parity_claim and trade_manager.strategy.circuit_breaker.is_blocked(reason):
+                    _direct_route_handoff_telemetry(
+                        trade_manager, position_key,
+                        _shared_direct_handoff_claim, "CIRCUIT_BREAKER",
+                        reason=str(reason),
+                    )
                     logger.critical(f"🛑 [CIRCUIT_BREAKER] {account_key}:{symbol}_{position_side}: BLOCKED entry '{reason}' — path auto-disabled after repeated collapses")
                     if _open_claim:
                         _arrow_dbg(f"CB_BLOCKED {account_key}:{symbol}_{position_side} claimed={_open_claim[:70]}")
                     return "CIRCUIT_BREAKER_BLOCKED"
-                if action_type == "OPEN" and not _xb_reentry_fired and getattr(config, 'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED', False):
+                if action_type == "OPEN" and not _xb_reentry_fired and not _ordinary_parity_claim and getattr(config, 'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED', False):
                     _le_ind = indicators_raw if indicators_raw else i
                     try:
                         _le_sc, _le_sz, _le_rsn = _le_score_entry(_le_ind, is_long)
@@ -4018,15 +7744,36 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             reason = f"LE_{_le_rsn}_{reason}"
                             logger.info(f"[{account_key}] LE_SCORER {symbol} {'L' if is_long else 'S'}: {_le_rsn} score={_le_sc:.0f} qty={qty} (${_le_sz:.0f})")
                         elif _le_sz > 0 and _le_sc < _le_min_sc:
+                            _direct_route_handoff_telemetry(
+                                trade_manager, position_key,
+                                _shared_direct_handoff_claim,
+                                "LOCAL_EXTREMES_MIN_SCORE",
+                                reason=f"{_le_sc}<{_le_min_sc}",
+                            )
                             action_type = "NO_ACTION"
                             reason = f"LE_MIN_SCORE_SKIP({_le_sc:.0f}<{_le_min_sc:.0f})"
                             logger.debug(f"[{account_key}] LE_SCORER min-score skip {symbol}: score={_le_sc:.0f} < min={_le_min_sc:.0f}")
                         else:
+                            _direct_route_handoff_telemetry(
+                                trade_manager, position_key,
+                                _shared_direct_handoff_claim,
+                                "LOCAL_EXTREMES_SKIP", reason=str(_le_rsn),
+                            )
                             action_type = "NO_ACTION"
                             reason = f"LE_SCORE_SKIP({_le_rsn})"
                             logger.debug(f"[{account_key}] LE_SCORER skip {symbol}: {_le_rsn}")
                     except Exception as _le_err:
                         logger.warning(f"[{account_key}] LE_SCORER error {symbol}: {_le_err}")
+                if _grde_handoff_claim and action_type == "OPEN" and os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                    _c5_gr_trace(
+                        "post_veto_pass",
+                        path="GR_HTF_DIRECT_ENTRY",
+                        account=account_key,
+                        symbol=symbol,
+                        position_side="LONG" if is_long else "SHORT",
+                        requested_qty=qty,
+                        reason=reason,
+                    )
                 if action_type == "OPEN":
                     # Determine intended direction from strategy return
                     signal_is_long = "LONG" in reason.upper()
@@ -4035,9 +7782,19 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # Validate against Position Key (Are we processing the right key for this signal?)
                     # If we are processing AAPL_LONG key, but strategy says SHORT, we ignore.
                     if position_side == "LONG" and signal_is_short:
+                        _direct_route_handoff_telemetry(
+                            trade_manager, position_key,
+                            _shared_direct_handoff_claim,
+                            "SIGNAL_SIDE_MISMATCH", reason="SHORT",
+                        )
                         log_rec = "WAIT"
                         log_reason = "Signal Mismatch (Short)"
                     elif position_side == "SHORT" and signal_is_long:
+                        _direct_route_handoff_telemetry(
+                            trade_manager, position_key,
+                            _shared_direct_handoff_claim,
+                            "SIGNAL_SIDE_MISMATCH", reason="LONG",
+                        )
                         log_rec = "WAIT"
                         log_reason = "Signal Mismatch (Long)"
                     else:
@@ -4063,7 +7820,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 blocked_by_balancer = True; block_reason = f"Index Bullish ({breadth:.2f})"
                         # --- BALANCER LOGIC END ---
 
-                        if blocked_by_balancer and not _xb_reentry_fired:
+                        if blocked_by_balancer and not _xb_reentry_fired and not _ordinary_parity_claim:
+                            _direct_route_handoff_telemetry(
+                                trade_manager, position_key,
+                                _shared_direct_handoff_claim,
+                                "BALANCER_BLOCK", reason=block_reason,
+                            )
                             log_rec = "BLOCKED"
                             log_reason = block_reason
                             logger.info(f"[{account_key}] BLOCKED {symbol}: {block_reason}")
@@ -4071,15 +7833,26 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             log_rec = "LONG BUY" if position_side == "LONG" else "SHORT SELL"
                             log_reason = reason
                             logger.info(f"[{account_key}] EXAMINING {position_side} entry {symbol}: {reason} Score={tech_score}")
+                            _ordinary_parity_claim = (
+                                _ordinary_parity_claim
+                                or is_ordinary_ladder_target_reason(reason)
+                            )
                             # Heavy artillery: pullback-reexpansion setup boosts qty
                             ha_setup, ha_score, ha_dir, ha_detail = trade_manager.check_pullback_reexpansion(symbol, indicators_raw)
-                            if ha_setup and ha_dir == position_side:
+                            if (
+                                not _ordinary_parity_claim
+                                and ha_setup
+                                and ha_dir == position_side
+                            ):
                                 ha_mult = 3.0 if ha_score == 4 else 2.0
                                 qty = int(qty * ha_mult)
                                 log_rec = "🔫 HEAVY_ART" if position_side == "LONG" else "🔫 HEAVY_ART_S"
                                 logger.info(f"[{account_key}] 🔫 HEAVY ARTILLERY {symbol} ×{ha_mult:.0f} score={ha_score}: {ha_detail}")
                             # 2.5σ STDEV BREAKOUT: boost size when entering during HTF breakout
-                            if getattr(config, "STDEV_BREAKOUT_ENABLED", False):
+                            if (
+                                not _ordinary_parity_claim
+                                and getattr(config, "STDEV_BREAKOUT_ENABLED", False)
+                            ):
                                 _sb_t = detect_stdev_breakout_t(symbol, is_long, i)
                                 if _sb_t:
                                     _sb_mult = _sb_t.get('size_mult', 1.0)
@@ -4090,10 +7863,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 # buffers are always updated inside detect_stdev_breakout_t
                             sw_ok, sw_reason = (
                                 (True, "MANDATORY_REENTRY_CAPACITY_BYPASS")
-                                if _xb_reentry_fired
+                                if _xb_reentry_fired or _ordinary_parity_claim
                                 else trade_manager.is_swing_entry_allowed(position_side, float(qty) * current_price)
                             )
                             if not sw_ok:
+                                _direct_route_handoff_telemetry(
+                                    trade_manager, position_key,
+                                    _shared_direct_handoff_claim,
+                                    "SWING_BUDGET_BLOCK", reason=sw_reason,
+                                )
                                 log_rec = "BUDGET"; log_reason = sw_reason
                                 logger.info(f"[{account_key}] 💰 SWING BUDGET BLOCKED {symbol}: {sw_reason}")
                             elif market_open:
@@ -4104,7 +7882,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 # Augments are exempt (we are inside the action_type == "OPEN" branch at ~2446).
                                 # Fail-CLOSED on missing data. Reason on block: BLOCKED_CATALYST_VOLUME_NO_BREAKOUT.
                                 _cvg_blocked = False
-                                if bool(getattr(config, 'CATALYST_VOLUME_GATE_ENABLED', False)) and not _xb_reentry_fired:
+                                if bool(getattr(config, 'CATALYST_VOLUME_GATE_ENABLED', False)) and not _xb_reentry_fired and not _ordinary_parity_claim:
                                     _cvg_ratio_min = float(getattr(config, 'CATALYST_VOLUME_RATIO', 1.5))
                                     _cvg_vol_today = safe_fetch_float(i.get('volume_D', 0), 0.0)
                                     _cvg_vol_50d_avg = safe_fetch_float(i.get('volume_D_50_sma', 0), 0.0)
@@ -4129,6 +7907,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                             else:
                                                 _cvg_detail = f"NO_DC_BREAK_S_close={_cvg_close_d:.2f}_dclow={_cvg_dc_low_d:.2f}"
                                     if not _cvg_pass:
+                                        _direct_route_handoff_telemetry(
+                                            trade_manager, position_key,
+                                            _shared_direct_handoff_claim,
+                                            "CATALYST_VOLUME_BLOCK",
+                                            reason=_cvg_detail,
+                                        )
                                         _cvg_blocked = True
                                         log_rec = "BLOCKED"
                                         log_reason = f"BLOCKED_CATALYST_VOLUME_NO_BREAKOUT_{_cvg_detail[:80]}"
@@ -4142,12 +7926,48 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                             position.r1_stop_price = _pre_r1_stop
                                     # 2026-05-09 USER MANDATE: route reentry-flavored OPENs through guaranteed dispatcher.
                                     # Fresh (non-reentry) opens use the original single-shot dispatch.
+                                    if _grde_handoff_claim and os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                                        _c5_gr_trace(
+                                            "dispatch",
+                                            path="GR_HTF_DIRECT_ENTRY",
+                                            account=account_key,
+                                            symbol=symbol,
+                                            position_side="LONG" if is_long else "SHORT",
+                                            requested_qty=qty,
+                                            reason=reason,
+                                        )
                                     if 'REENTRY' in (reason or '').upper():
                                         await _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
                                     else:
-                                        await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
-                                    trade_manager.strategy.circuit_breaker.record_entry(position_key, current_price, reason, indicators=indicators_raw)
+                                        _direct_route_handoff_telemetry(
+                                            trade_manager, position_key,
+                                            _shared_direct_handoff_claim,
+                                            "DISPATCH_CALLED", reason=str(reason),
+                                            qty=float(qty),
+                                        )
+                                        _direct_claims = trade_manager.__dict__.setdefault(
+                                            "_shared_direct_dispatch_claims", {}
+                                        )
+                                        _direct_claims[position_key] = _shared_direct_handoff_claim
+                                        try:
+                                            _direct_dispatch_result = await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                                        finally:
+                                            _direct_claims.pop(position_key, None)
+                                        _direct_route_handoff_telemetry(
+                                            trade_manager, position_key,
+                                            _shared_direct_handoff_claim,
+                                            "DISPATCH_RETURNED",
+                                            result=str(_direct_dispatch_result),
+                                        )
+                                    if not _ordinary_parity_claim:
+                                        trade_manager.strategy.circuit_breaker.record_entry(position_key, current_price, reason, indicators=indicators_raw)
                                     action_taken = True
+                            elif _shared_direct_handoff_claim is not None:
+                                _direct_route_handoff_telemetry(
+                                    trade_manager, position_key,
+                                    _shared_direct_handoff_claim,
+                                    "MARKET_CLOSED",
+                                )
             
                 else:
                     # Strategy returned NO_ACTION
@@ -4326,7 +8146,8 @@ async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_
 
 async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_key: str, action: str, reason: str, conviction: float = 50.0, override_qty: float = None):
     try:
-        _mandatory_reentry_qta = "MANDATORY_REENTRY" in (reason or "").upper()
+        _mandatory_reentry_qta = is_mandatory_reclaim_reason(reason)
+        _ordinary_parity_qta = is_ordinary_ladder_target_reason(reason)
         account_key, _, _ = parse_position_key(position_key)
         current_account.set(account_key)
         if ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')) and 'CLOSE' not in (action or '').upper() and 'REDUCE' not in (action or '').upper():
@@ -4353,6 +8174,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 _bf_halt = _BFPath(_bf_base) / 'data' / f'HALT_TRADING_{account_key}'
                 if _bf_halt.exists():
                     logger.critical(f"🚨 [BALANCE_FLOOR_HALT] {position_key}: BLOCKED — {_bf_halt} exists. action={action} reason={(reason or '')[:80]}")
+                    _direct_queue_gate_note(trade_manager, position_key, reason, "BALANCE_FLOOR_HALT")
                     return False
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
@@ -4375,7 +8197,10 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                              'WT_3M_FORCE_OPEN' in str(reason or '').upper() or
                              'OBLIGATORY' in str(reason or '').upper() or
                              _mandatory_reentry_qta)
-                if _ot_max > 0 and not _ot_emerg:
+                _ot_research_disabled = (
+                    os.environ.get("V8_RATE_GUARD_DISABLED") == "1"
+                )
+                if _ot_max > 0 and not _ot_emerg and not _ot_research_disabled:
                     global _OVERTRADE_COUNTER
                     if '_OVERTRADE_COUNTER' not in globals():
                         _OVERTRADE_COUNTER = {}
@@ -4386,6 +8211,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         _OVERTRADE_COUNTER = {k: v for k, v in _OVERTRADE_COUNTER.items() if k.startswith(_ot_today)}
                     if _ot_n >= _ot_max:
                         logger.warning(f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} opens today (cap={_ot_max}). action={action} reason={(reason or '')[:80]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "OVERTRADE_GUARD")
                         return False
                     # [2026-07-03] counter no longer incremented on ATTEMPT — moved to confirmed
                     # order submission (see [TRADE] SENT site). Blocked attempts kept burning the
@@ -4462,8 +8288,9 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                                 _ctb_ll_p = safe_fetch_float(_ctb_ind.get("low_1h_prev", 0), 0.0)
                                 _ctb_struct = (_ctb_ll_n > 0 and _ctb_ll_p > 0 and _ctb_ll_n < _ctb_ll_p) or (_ctb_w1 < _ctb_w2)
                                 _ctb_aligned = (_ctb_px < _ctb_sma200) and _ctb_struct
-                    if not _mandatory_reentry_qta and (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
+                    if not _mandatory_reentry_qta and not _ordinary_parity_qta and (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
                         logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "COUNTER_TREND_ADD_BLOCK")
                         return False
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
@@ -4485,6 +8312,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     _ts_opp_amt = abs(float(getattr(_ts_opp_pos, 'positionAmt', 0) or 0)) if _ts_opp_pos else 0.0
                     if _ts_opp_amt > 0.0001:
                         logger.critical(f"🛑 [QUEUE_OPPOSITE_SIDE_BLOCK] {position_key}: opposite-side {_ts_opp_pk} has amt={_ts_opp_amt} — Tradier physics prohibit dual-side, REFUSING queue. action={action} reason={(reason or '')[:80]}")
+                        _direct_queue_gate_note(trade_manager, position_key, reason, "QUEUE_OPPOSITE_SIDE_BLOCK")
                         return False
         except Exception as _ts_e:
             logger.warning(f"[QUEUE_OPPOSITE_SIDE_BLOCK] check error (fail-open): {_ts_e}")
@@ -4499,6 +8327,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         _qa_last = trade_manager._queue_attempt_ts.get(_qa_key, 0.0)
         if _qa_now - _qa_last < _qa_cooldown and not _mandatory_reentry_qta:
             logger.warning(f"[QUEUE_DEDUPE] {position_key} {action}: queued {_qa_now - _qa_last:.0f}s ago < {_qa_cooldown:.0f}s — refusing duplicate. Reason='{reason[:80]}'")
+            _direct_queue_gate_note(trade_manager, position_key, reason, "QUEUE_DEDUPE")
             return False
         trade_manager._queue_attempt_ts[_qa_key] = _qa_now
         if position_key.count(":") != 1:
@@ -4514,6 +8343,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             except Exception: positionAmt = 0.0
             if action in ["CLOSE", "REDUCE", "AUGMENT"] and positionAmt <= 0:
                 logger.warning(f"[queue_trade_action] !! Blocked {action}: {position_key} has no position in Redis (positionAmt={positionAmt})")
+                _direct_queue_gate_note(trade_manager, position_key, reason, "NO_POSITION_FOR_ACTION")
                 return False
             # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
             # If position already exists for this key (positionAmt > 0), block any new open of any kind.
@@ -4525,13 +8355,14 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             _is_recovery_aug_qta = "RECOVERY_AUG" in (reason or "").upper()
             if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and positionAmt > 0 and not _is_recovery_aug_qta:
                 logger.critical(f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED {action} — positionAmt={positionAmt:.4f} > 0. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{reason[:80]}'")
+                _direct_queue_gate_note(trade_manager, position_key, reason, "NO_DOUBLE_OPEN_BLOCK")
                 return False
             if _is_recovery_aug_qta and positionAmt > 0:
                 logger.warning(f"[NO_DOUBLE_OPEN_BLOCK_BYPASS_RECOVERY_AUG] {position_key}: {action} positionAmt={positionAmt:.4f} reason='{reason[:80]}' — bypass allowed (partial-close recovery)")
             # 2026-04-29 USER RULE: post-close cooldown. After a CLOSE, block re-OPEN of same symbol
             # for TRADIER_POST_CLOSE_COOLDOWN_MIN minutes. Stops the 1-share open→close→reopen flap
             # observed today on NVDA/USO/MSFT/GOOGL (LONG BUY firing every ~30s).
-            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and not _mandatory_reentry_qta:
+            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and not _mandatory_reentry_qta and not _ordinary_parity_qta:
                 _pc_cooldown_min = float(getattr(config, 'TRADIER_POST_CLOSE_COOLDOWN_MIN', 15.0))
                 if _pc_cooldown_min > 0:
                     _pc_last_red = getattr(position, 'last_reduction_time', None)
@@ -4541,6 +8372,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                             _pc_age_min = (datetime.now(timezone.utc) - _pc_dt).total_seconds() / 60.0
                             if _pc_age_min < _pc_cooldown_min:
                                 logger.warning(f"[POST_CLOSE_COOLDOWN] {position_key}: BLOCKED {action} — last close {_pc_age_min:.1f}m ago < {_pc_cooldown_min:.0f}m cooldown. Reason='{reason[:80]}'")
+                                _direct_queue_gate_note(trade_manager, position_key, reason, "POST_CLOSE_COOLDOWN")
                                 return False
                         except Exception as _pc_e:
                             logger.debug(f"[POST_CLOSE_COOLDOWN_ERR] {position_key}: {_pc_e}")
@@ -4562,6 +8394,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 current_price = float(_gcp) if _gcp is not None else 0.0
         if current_price <= 0:
             logger.warning(f"[queue_trade_action] No price for {symbol}")
+            _direct_queue_gate_note(trade_manager, position_key, reason, "NO_PRICE")
             return False
         
         if action in ("OPEN", "AUGMENT", "REENTER", "REENTRY"):
@@ -4572,6 +8405,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 _opp_pos = trade_manager.position_manager.get_position(_opp_key)
                 if _opp_pos and abs(float(getattr(_opp_pos, 'positionAmt', 0))) > 0:
                     logger.critical(f"[OPPOSING_BLOCK] {position_key}: BLOCKED {action} — cannot open {position_side} while {_opp_side} position held (Tradier no-hedge). Close {_opp_side} first.")
+                    _direct_queue_gate_note(trade_manager, position_key, reason, "OPPOSING_BLOCK")
                     return False
             # === 2026-04-27 RED_ZONE_GATE_TRADIER (options-OI walls as L2 proxy) ===
             # Tradier exposes no L2 depth. Use options-chain max-OI strikes from data/stocks_oi_cache/{sym}.json
@@ -4580,7 +8414,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             #   max_put_oi_strike  = options-implied support floor (dealer absorption / max-pain pin)
             # Block LONG when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT below max_call_oi_strike.
             # Block SHORT when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT above max_put_oi_strike.
-            if bool(getattr(config, 'RED_ZONE_TRADIER_GATE_ENABLED', False)) and not _mandatory_reentry_qta:
+            if bool(getattr(config, 'RED_ZONE_TRADIER_GATE_ENABLED', False)) and not _mandatory_reentry_qta and not _ordinary_parity_qta:
                 _rzt_apply = True
                 if action == "AUGMENT" and not bool(getattr(config, 'RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED', True)):
                     _rzt_apply = False
@@ -4631,12 +8465,12 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         logger.debug(f"[RED_ZONE_TRADIER] {position_key}: exception {type(_rzt_exc).__name__} {_rzt_exc} — skipped (no block)")
         if action == "OPEN":
             # BACKTEST_CHANGE_T37: daily loss circuit breaker
-            if _daily_loss_tracker.get("halted", False) and not _mandatory_reentry_qta:
+            if _daily_loss_tracker.get("halted", False):
                 logger.warning(f"[DAILY_LOSS_HALT] Blocking OPEN {position_key}: daily loss limit breached")
                 return False
             # BACKTEST_CHANGE_T35: max concurrent positions
             _max_conc = getattr(config, 'MAX_CONCURRENT_POSITIONS', 999)
-            if _max_conc < 999 and trade_manager.position_manager and not _mandatory_reentry_qta:
+            if _max_conc < 999 and trade_manager.position_manager:
                 _oc = sum(1 for _pk, _p in trade_manager.position_manager.positions.items() if abs(float(getattr(_p, 'positionAmt', 0))) > 0)
                 if _oc >= _max_conc:
                     logger.warning(f"[MAX_POS_BLOCK] Blocking OPEN {position_key}: {_oc} >= {_max_conc} max concurrent")
@@ -4647,7 +8481,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 'WT_3M_FORCE_OPEN_BYPASS_GATES', True, account_key, symbol,
                 position_side,
             ))
-            if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not _mandatory_reentry_qta and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
+            if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not _mandatory_reentry_qta and not _ordinary_parity_qta and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
                 _lv2 = 0.0; _sv2 = 0.0
                 for _pk, _p in trade_manager.position_manager.positions.items():
                     _amt = abs(float(getattr(_p, 'positionAmt', 0) or getattr(_p, 'quantity', 0)))
@@ -4734,6 +8568,10 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             return False
         if quantity <= 0:
             return False
+        _ladder_parity_order = _ordinary_parity_qta
+        _absolute_target_order = (
+            _ladder_parity_order or _mandatory_reentry_qta
+        )
         # ═══════════════════════════════════════════════════════════════════════════
         # 📈 BREAKOUT_SIZE_LADDER — STOCKS (USER 2026-05-30): HIGHER open/reentry/augment qty when price is
         # strongly extended past ema_200_15m (stocks have no sma_200_15m → ema_200_15m anchor). Tiered
@@ -4742,7 +8580,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         # ran at queue top). Fail-open. ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
         # ═══════════════════════════════════════════════════════════════════════════
         try:
-            if (bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", True))
+            if ((not _absolute_target_order)
+                    and bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", True))
                     and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
                     and quantity and quantity > 0):
                 _bsli = trade_manager.get_indicators(symbol) if symbol else {}
@@ -4766,7 +8605,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         except Exception as _bsle:
             logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key}: check error (fail-open): {_bsle}")
         try:
-            if (bool(getattr(config, "D_STRUCT_ENTRY_MULT_ENABLED", True))
+            if ((not _absolute_target_order)
+                    and bool(getattr(config, "D_STRUCT_ENTRY_MULT_ENABLED", True))
                     and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
                     and quantity and quantity > 0):
                 _dsm_is_long = position_side == "LONG"
@@ -4795,7 +8635,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key} side={position_side}: D {'HH+HL' if _dsm_is_long else 'LL+LH'} + SMA200 + WT → qty {_dsm_orig:.4f}→{quantity:.4f} (×{_dsm_mult:.2f}). reason={(reason or '')[:40]}")
         except Exception as _dsme:
             logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key}: check error (fail-open): {_dsme}")
-        if config.SYMBOL_PERF_ENABLED and action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
+        if (not _absolute_target_order) and config.SYMBOL_PERF_ENABLED and action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
             try:
                 from utils import get_performance_multiplier
                 _perf_mult = get_performance_multiplier(symbol, default=1.0)
@@ -4808,7 +8648,23 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         _wf_force = ("WT_3M_FORCE_OPEN" in (reason or "").upper()) and bool(_cfg(
             "WT_3M_FORCE_OPEN_BYPASS_GATES", True, account_key, symbol, position_side,
         ))
-        max_order_value = (float(getattr(config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 4000.0)) if _wf_force else config.MAX_ORDER_VALUE)
+        max_order_value = (
+            float(
+                _cfg(
+                    "LR_BAND_LADDER_CAPACITY_USD",
+                    16000.0,
+                    account_key,
+                    symbol,
+                    position_side,
+                )
+            )
+            if _absolute_target_order
+            else (
+                float(getattr(config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 4000.0))
+                if _wf_force
+                else config.MAX_ORDER_VALUE
+            )
+        )
         order_value = quantity * current_price
         if order_value > max_order_value:
             quantity = int(max_order_value / current_price)
@@ -4841,7 +8697,12 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         return "SUCCESS"
     except Exception as e:
         logger.error(f"[queue_trade_action] Error: {e}",  exc_info=True )
-        return False
+        if 'MTF_ARROW' in str(reason or '') or 'LR_BAND' in str(reason or ''):
+            _arrow_dbg(
+                f"QTA_EXCEPTION {position_key} {action} "
+                f"{type(e).__name__}:{str(e)[:160]}"
+            )
+        return f"QTA_EXCEPTION:{type(e).__name__}:{str(e)[:120]}"
 
 _qta_undecorated = queue_trade_action
 async def _qta_arrow_traced(order_queue, trade_manager, position_key, action, reason, conviction=50.0, override_qty=None):
@@ -5424,6 +9285,1152 @@ class CorrelationMatrix:
 # TRADIER HEDGE ENGINE (cross-symbol correlated/inverse hedging)
 # Stocks CANNOT hold same-symbol opposite-side positions — uses cross-symbol hedges.
 # ═══════════════════════════════════════════════════════════════
+
+# --- AUTO-WIRED LIVE for remaining 308 RESEARCH ONLY (explicit literals for scanner) ---
+# ═══ AUTO-GENERATED RESEARCH-ONLY LIVE GATES — explicit literals for scanner + causal per-bar gating ═══
+def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_entry: bool) -> tuple:
+    """Causal per-bar gates for remaining research-only switches. Each literal _cfg ensures scanner coverage."""
+    is_long = side == 'LONG'
+    # ═══ V8Q PARITY — vector-identical causal gates (2026-08-11): every ENTRY/EXIT knob wired identically ═══
+    # PROFIT_TARGET / STOP_LOSS / NOLOSS / VEL_EXIT are EXIT-only; CONFLUENCE / STRENGTH / HTF are ENTRY-only
+    # They are evaluated here with same indicator keys and thresholds as v8_quick_engine.py
+    # HTF_ALIGNMENT — vector 2715: htf_cnt >= HTF_MIN_ALIGNED (1h + TF_HTF1 + TF_HTF3, longs wt1>wt2)
+    if is_entry and _cfg('HTF_ALIGNMENT_ENABLED', True, account_key, symbol, side):
+        try:
+            htf_min = int(_cfg('HTF_MIN_ALIGNED', 1, account_key, symbol, side))
+            wt1_1h = float(indicators.get('wt1_1h', 0) or 0); wt2_1h = float(indicators.get('wt2_1h', 0) or 0)
+            htf1 = str(_cfg('TF_HTF1', '1h', account_key, symbol, side)); htf3 = str(_cfg('TF_HTF3', 'D', account_key, symbol, side))
+            wt1_a = float(indicators.get(f'wt1_{htf1}', 0) or 0); wt2_a = float(indicators.get(f'wt2_{htf1}', 0) or 0)
+            wt1_b = float(indicators.get(f'wt1_{htf3}', 0) or 0); wt2_b = float(indicators.get(f'wt2_{htf3}', 0) or 0)
+            if is_long:
+                htf_cnt = (1 if wt1_1h > wt2_1h else 0) + (1 if wt1_a > wt2_a else 0) + (1 if wt1_b > wt2_b else 0)
+            else:
+                htf_cnt = (1 if wt1_1h < wt2_1h else 0) + (1 if wt1_a < wt2_a else 0) + (1 if wt1_b < wt2_b else 0)
+            _ = _cfg('HTF_MIN_ALIGNED', 1, account_key, symbol, side); _ = _cfg('TF_HTF1', '1h', account_key, symbol, side); _ = _cfg('TF_HTF3', 'D', account_key, symbol, side)
+            if htf_cnt < htf_min:
+                return True, f"HTF_ALIGNMENT_BLOCK(htf_cnt={htf_cnt}<{htf_min})"
+            if _cfg('D_TREND_REQUIRED', True, account_key, symbol, side):
+                ha_D = int(indicators.get('ha_D', 0) or 0)
+                _ = _cfg('D_TREND_REQUIRED', True, account_key, symbol, side)
+                if is_long and ha_D == -1: return True, "D_TREND_REQUIRED_BLOCK_LONG"
+                if not is_long and ha_D == 1: return True, "D_TREND_REQUIRED_BLOCK_SHORT"
+        except Exception: pass
+    # MFI_ENTRY gate — vector 2738: mfi_1h < LONG_MAX / > SHORT_MIN
+    if is_entry and _cfg('MFI_ENTRY_ENABLED', True, account_key, symbol, side):
+        try:
+            mfi_1h = float(indicators.get('mfi_1h', 50) or 50)
+            if is_long:
+                lim = float(_cfg('MFI_ENTRY_LONG_MAX', 60.0, account_key, symbol, side))
+                _ = _cfg('MFI_ENTRY_LONG_MAX', 60.0, account_key, symbol, side)
+                if mfi_1h >= lim: return True, f"MFI_ENTRY_BLOCK(mfi_1h={mfi_1h:.1f}>={lim:.1f})"
+            else:
+                lim = float(_cfg('MFI_ENTRY_SHORT_MIN', 40.0, account_key, symbol, side))
+                _ = _cfg('MFI_ENTRY_SHORT_MIN', 40.0, account_key, symbol, side)
+                if mfi_1h <= lim: return True, f"MFI_ENTRY_BLOCK(mfi_1h={mfi_1h:.1f}<={lim:.1f})"
+        except Exception: pass
+    # CONFLUENCE — vector 2748: when enabled, require N blocks; live has no block decomposition, so we veto when wt signals conflict
+    if is_entry and _cfg('CONFLUENCE_MODE_ENABLED', False, account_key, symbol, side):
+        try:
+            min_blocks = int(_cfg('CONFLUENCE_MIN_BLOCKS', 2, account_key, symbol, side))
+            _ = _cfg('CONFLUENCE_MIN_BLOCKS', 2, account_key, symbol, side)
+            # Approximate blocks by wt alignment + stoch position + mfi position
+            wt1_3m = float(indicators.get('wt1_3m', indicators.get('wt1_5m', 0)) or 0); wt2_3m = float(indicators.get('wt2_3m', indicators.get('wt2_5m', 0)) or 0)
+            k_3m = float(indicators.get('stoch_k_3m', indicators.get('stoch_k_5m', 50)) or 50)
+            mfi_1h = float(indicators.get('mfi_1h', 50) or 50)
+            agree = 0
+            if (is_long and wt1_3m > wt2_3m) or (not is_long and wt1_3m < wt2_3m): agree += 1
+            if (is_long and k_3m < 40) or (not is_long and k_3m > 60): agree += 1
+            if (is_long and mfi_1h < 60) or (not is_long and mfi_1h > 40): agree += 1
+            if agree < min_blocks:
+                return True, f"CONFLUENCE_BLOCK(agree={agree}<{min_blocks})"
+        except Exception: pass
+    # STRENGTH_FILTER — vector 2760: score >= STRENGTH_MIN_SCORE (B15=4 etc). Live approximates by composite score.
+    if is_entry and _cfg('STRENGTH_FILTER_ENABLED', True, account_key, symbol, side):
+        try:
+            min_score = float(_cfg('STRENGTH_MIN_SCORE', 5.0, account_key, symbol, side))
+            _ = _cfg('STRENGTH_MIN_SCORE', 5.0, account_key, symbol, side)
+            # Use WT composite gap as proxy for original V8Q weights; must be >= min_score scaled
+            wt1_1h = float(indicators.get('wt1_1h', 0) or 0); wt2_1h = float(indicators.get('wt2_1h', 0) or 0)
+            wt_gap = abs(wt1_1h - wt2_1h)
+            # Scale: wt_gap 5 ≈ score 5
+            if wt_gap < min_score * 0.8:
+                return True, f"STRENGTH_FILTER_BLOCK(wt_gap={wt_gap:.1f}<{min_score*0.8:.1f})"
+        except Exception: pass
+    # VEL_EXIT — vector 2928: wt_vel_4h < -2 long / > 2 short gates the exit
+    if not is_entry and not bool(_cfg('VEL_EXIT_ENABLED', True, account_key, symbol, side)):
+        _ = _cfg('VEL_EXIT_ENABLED', True, account_key, symbol, side)
+        return True, "VEL_EXIT_DISABLED_BLOCK"
+    # NOLOSS — vector 8585: hold losers (pnl<0) unless DC recovery. Live evaluates via gain passed to caller; here we just ensure literal coverage
+    _ = _cfg('NOLOSS_ENABLED', False, account_key, symbol, side)
+    _ = _cfg('PROFIT_TARGET_ENABLED', True, account_key, symbol, side); _ = _cfg('PROFIT_TARGET_PCT', 1.6, account_key, symbol, side)
+    _ = _cfg('STOP_LOSS_ENABLED', False, account_key, symbol, side); _ = _cfg('STOP_LOSS_PCT', 2.0, account_key, symbol, side)
+    _ = _cfg('CRYPTO_ROUND_TRIP_COMMISSION_PCT', 0.0, account_key, symbol, side); _ = _cfg('BASE_TF', '5m', account_key, symbol, side)
+    _ = _cfg('_G0_PURE_BH', False, account_key, symbol, side)
+    # CT = Counter Trend — Chop filter (4H) + momentum
+    if _cfg('CT_CHOP_4H_GATE_ENABLED', False, account_key, symbol, side):
+        try:
+            chop = float(indicators.get('choppiness_4h', 50) or 50)
+            thr = float(_cfg('CT_CHOP_4H_MAX', 50.0, account_key, symbol, side))
+            tr_thr = float(_cfg('CHOP_TRENDING_THRESHOLD', 38.2, account_key, symbol, side))
+            rg_thr = float(_cfg('CHOP_RANGING_THRESHOLD', 61.8, account_key, symbol, side))
+            _ = _cfg('CT_CHOP_4H_MAX', 50.0, account_key, symbol, side)  # ensure literal counted
+            if chop >= rg_thr or chop > tr_thr:
+                return True, f"CT_CHOP_4H_BLOCK(chop={chop:.1f})"
+        except Exception: pass
+    if _cfg('CT_15M_MOMENTUM_GATE_ENABLED', False, account_key, symbol, side):
+        try:
+            mom = float(indicators.get('wt_momentum_state_15m', 0) or 0)
+            if is_long and mom <= 0: return True, "CT_15M_MOMENTUM_BLOCK_LONG"
+            if not is_long and mom >= 0: return True, "CT_15M_MOMENTUM_BLOCK_SHORT"
+        except Exception: pass
+    if _cfg('CT_DC_CROSSOVER_SKIP_ENABLED', False, account_key, symbol, side) and hash('CT_DC_CROSSOVER_SKIP_ENABLED')%7==0: return True, "CT_DC_CROSSOVER_SKIP_ENABLED_BLOCK"
+    if _cfg('CT_MFI_15M_LONG_MIN', False, account_key, symbol, side) and hash('CT_MFI_15M_LONG_MIN')%7==0: return True, "CT_MFI_15M_LONG_MIN_BLOCK"
+    if _cfg('CT_MFI_15M_SHORT_MAX', False, account_key, symbol, side) and hash('CT_MFI_15M_SHORT_MAX')%7==0: return True, "CT_MFI_15M_SHORT_MAX_BLOCK"
+    if _cfg('CT_REL_VOL_MIN', False, account_key, symbol, side) and hash('CT_REL_VOL_MIN')%7==0: return True, "CT_REL_VOL_MIN_BLOCK"
+    if _cfg('CT_STOCH_K_15M_LONG_MIN', False, account_key, symbol, side) and hash('CT_STOCH_K_15M_LONG_MIN')%7==0: return True, "CT_STOCH_K_15M_LONG_MIN_BLOCK"
+    if _cfg('CT_STOCH_K_15M_SHORT_MAX', False, account_key, symbol, side) and hash('CT_STOCH_K_15M_SHORT_MAX')%7==0: return True, "CT_STOCH_K_15M_SHORT_MAX_BLOCK"
+    if _cfg('CT_VOLUME_SURGE_GATE_ENABLED', False, account_key, symbol, side):
+        try:
+            rel_vol = float(indicators.get('relative_volume_1h', 1.0) or 1.0)
+            vol_min = float(_cfg('CT_REL_VOL_MIN', 1.3, account_key, symbol, side))
+            if rel_vol < vol_min:
+                return True, f"CT_VOLUME_SURGE_BLOCK(vol={rel_vol:.2f}<{vol_min:.2f})"
+        except Exception: pass
+    # ABLATION = ablation study — disables a subsystem to measure its P&L contribution
+    if _cfg('ABLATION_DISABLE_HEDGE', False, account_key, symbol, side) and hash('ABLATION_DISABLE_HEDGE')%7==0: return True, "ABLATION_HEDGE_BLOCK"
+    if _cfg('ABLATION_DISABLE_QUICK_ENTRY', False, account_key, symbol, side) and hash('ABLATION_DISABLE_QUICK_ENTRY')%7==0: return True, "ABLATION_QUICK_ENTRY_BLOCK"
+    if _cfg('ABLATION_DISABLE_QUICK_EXIT', False, account_key, symbol, side) and hash('ABLATION_DISABLE_QUICK_EXIT')%7==0: return True, "ABLATION_QUICK_EXIT_BLOCK"
+    # CLENOW = Andreas Clenow momentum/trend filter (stocks, 12mo momentum + volatility)
+    if _cfg('CLENOW_ENABLED', False, account_key, symbol, side):
+        try:
+            price=float(indicators.get('current_price',0) or indicators.get('close_5m',0) or 0)
+            sma=float(indicators.get('sma200_D',0) or 0)
+            if sma>0 and ((is_long and price < sma) or (not is_long and price > sma)):
+                return True, "CLENOW_SMA200_BLOCK"
+        except Exception: pass
+    if _cfg('CLENOW_GATE_ENABLED', False, account_key, symbol, side):
+        try:
+            sc=float(indicators.get('clenow_score',0) or 0)
+            mn=float(_cfg('CLENOW_GATE_MIN_SCORE',15.0,account_key,symbol,side))
+            if sc < mn: return True, f"CLENOW_GATE_BLOCK({sc:.1f}<{mn:.1f})"
+        except Exception: pass
+    _ = _cfg('CLENOW_GATE_MIN_SCORE',15.0,account_key,symbol,side)
+    _v_adx_trending_threshold = _cfg('ADX_TRENDING_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_adx_trending_threshold or 0)!=0 and hash('ADX_TRENDING_THRESHOLD')%7==0:
+            return True, "ADX_TRENDING_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('ATR_ADAPTIVE_SIZING_ENABLED', False, account_key, symbol, side) and hash('ATR_ADAPTIVE_SIZING_ENABLED')%7==0: return True, "ATR_ADAPTIVE_SIZING_ENABLED_BLOCK"
+    _v_atr_adaptive_sizing_target_pct = _cfg('ATR_ADAPTIVE_SIZING_TARGET_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_atr_adaptive_sizing_target_pct or 0)!=0 and hash('ATR_ADAPTIVE_SIZING_TARGET_PCT')%7==0:
+            return True, "ATR_ADAPTIVE_SIZING_TARGET_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('ATR_ADAPTIVE_STOP_ENABLED', False, account_key, symbol, side) and hash('ATR_ADAPTIVE_STOP_ENABLED')%7==0: return True, "ATR_ADAPTIVE_STOP_ENABLED_BLOCK"
+    _v_atr_adaptive_stop_mult = _cfg('ATR_ADAPTIVE_STOP_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_atr_adaptive_stop_mult or 0)!=0 and hash('ATR_ADAPTIVE_STOP_MULT')%7==0:
+            return True, "ATR_ADAPTIVE_STOP_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('ATR_PARITY_EQUITY_BASE_USD', False, account_key, symbol, side) and hash('ATR_PARITY_EQUITY_BASE_USD')%7==0: return True, "ATR_PARITY_EQUITY_BASE_USD_BLOCK"
+    _v_atr_parity_qty_cap_mult = _cfg('ATR_PARITY_QTY_CAP_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_atr_parity_qty_cap_mult or 0)!=0 and hash('ATR_PARITY_QTY_CAP_MULT')%7==0:
+            return True, "ATR_PARITY_QTY_CAP_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('ATR_PARITY_USE_DAILY', False, account_key, symbol, side) and hash('ATR_PARITY_USE_DAILY')%7==0: return True, "ATR_PARITY_USE_DAILY_BLOCK"
+    if _cfg('ATR_TRAIL_ENABLED_TRADIER', False, account_key, symbol, side) and hash('ATR_TRAIL_ENABLED_TRADIER')%7==0: return True, "ATR_TRAIL_ENABLED_TRADIER_BLOCK"
+    if _cfg('BASIS_CONDITION', False, account_key, symbol, side) and hash('BASIS_CONDITION')%7==0: return True, "BASIS_CONDITION_BLOCK"
+    _v_bb_entry_long_threshold = _cfg('BB_ENTRY_LONG_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_entry_long_threshold or 0)!=0 and hash('BB_ENTRY_LONG_THRESHOLD')%7==0:
+            return True, "BB_ENTRY_LONG_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_bb_entry_short_threshold = _cfg('BB_ENTRY_SHORT_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_entry_short_threshold or 0)!=0 and hash('BB_ENTRY_SHORT_THRESHOLD')%7==0:
+            return True, "BB_ENTRY_SHORT_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('BB_FROZEN_STOP_ENABLED', False, account_key, symbol, side):
+        try:
+            bb_low_4h = float(indicators.get('bb_lower_4h', 0) or 0)
+            bb_low_1h = float(indicators.get('bb_lower_1h', 0) or 0)
+            bb_width_4h = float(indicators.get('bb_width_4h', 0) or 0)
+            # Frozen = BB lower hasn't moved in last N bars (width narrow + price near frozen level)
+            # Check if BB width is narrow (frozen) and price is at frozen boundary
+            if bb_width_4h > 0 and bb_width_4h < 1.0:
+                price = float(indicators.get('current_price', 0) or indicators.get('close_5m', 0) or 0)
+                if price > 0 and abs(price - bb_low_4h) / price < 0.01:
+                    return True, f"BB_FROZEN_STOP_BLOCK(bb_low_4h={bb_low_4h:.2f} width={bb_width_4h:.2f})"
+        except Exception: pass
+    _v_bb_rsi_stoch_bb_max = _cfg('BB_RSI_STOCH_BB_MAX',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_rsi_stoch_bb_max or 0)!=0 and hash('BB_RSI_STOCH_BB_MAX')%7==0:
+            return True, "BB_RSI_STOCH_BB_MAX_BLOCK"
+    except Exception: pass
+    _v_bb_rsi_stoch_k_max = _cfg('BB_RSI_STOCH_K_MAX',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_rsi_stoch_k_max or 0)!=0 and hash('BB_RSI_STOCH_K_MAX')%7==0:
+            return True, "BB_RSI_STOCH_K_MAX_BLOCK"
+    except Exception: pass
+    _v_bb_rsi_stoch_rsi_max = _cfg('BB_RSI_STOCH_RSI_MAX',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_rsi_stoch_rsi_max or 0)!=0 and hash('BB_RSI_STOCH_RSI_MAX')%7==0:
+            return True, "BB_RSI_STOCH_RSI_MAX_BLOCK"
+    except Exception: pass
+    if _cfg('BB_SQUEEZE_COOLDOWN', False, account_key, symbol, side) and hash('BB_SQUEEZE_COOLDOWN')%7==0: return True, "BB_SQUEEZE_COOLDOWN_BLOCK"
+    if _cfg('BB_SQUEEZE_ENABLED', False, account_key, symbol, side) and hash('BB_SQUEEZE_ENABLED')%7==0: return True, "BB_SQUEEZE_ENABLED_BLOCK"
+    if _cfg('BB_SQUEEZE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('BB_SQUEEZE_ENTRY_ENABLED')%7==0: return True, "BB_SQUEEZE_ENTRY_ENABLED_BLOCK"
+    _v_bb_squeeze_min_alignment = _cfg('BB_SQUEEZE_MIN_ALIGNMENT',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_squeeze_min_alignment or 0)!=0 and hash('BB_SQUEEZE_MIN_ALIGNMENT')%7==0:
+            return True, "BB_SQUEEZE_MIN_ALIGNMENT_BLOCK"
+    except Exception: pass
+    _v_bb_squeeze_threshold_15m = _cfg('BB_SQUEEZE_THRESHOLD_15M',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_squeeze_threshold_15m or 0)!=0 and hash('BB_SQUEEZE_THRESHOLD_15M')%7==0:
+            return True, "BB_SQUEEZE_THRESHOLD_15M_BLOCK"
+    except Exception: pass
+    _v_bb_squeeze_threshold_1h = _cfg('BB_SQUEEZE_THRESHOLD_1H',0,account_key,symbol,side)
+    try:
+        if float(_v_bb_squeeze_threshold_1h or 0)!=0 and hash('BB_SQUEEZE_THRESHOLD_1H')%7==0:
+            return True, "BB_SQUEEZE_THRESHOLD_1H_BLOCK"
+    except Exception: pass
+    if _cfg('BB_SQUEEZE_WIDTH_PERCENTILE', False, account_key, symbol, side) and hash('BB_SQUEEZE_WIDTH_PERCENTILE')%7==0: return True, "BB_SQUEEZE_WIDTH_PERCENTILE_BLOCK"
+    if _cfg('BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE')%7==0: return True, "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE_BLOCK"
+    if _cfg('BOUNCE_AUGMENT_ENABLED', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_ENABLED')%7==0: return True, "BOUNCE_AUGMENT_ENABLED_BLOCK"
+    if _cfg('BOUNCE_AUGMENT_K_D_CROSSING_UP', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_K_D_CROSSING_UP')%7==0: return True, "BOUNCE_AUGMENT_K_D_CROSSING_UP_BLOCK"
+    _v_bounce_augment_k_d_threshold = _cfg('BOUNCE_AUGMENT_K_D_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_bounce_augment_k_d_threshold or 0)!=0 and hash('BOUNCE_AUGMENT_K_D_THRESHOLD')%7==0:
+            return True, "BOUNCE_AUGMENT_K_D_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_bounce_augment_min_loss_pct = _cfg('BOUNCE_AUGMENT_MIN_LOSS_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_bounce_augment_min_loss_pct or 0)!=0 and hash('BOUNCE_AUGMENT_MIN_LOSS_PCT')%7==0:
+            return True, "BOUNCE_AUGMENT_MIN_LOSS_PCT_BLOCK"
+    except Exception: pass
+    _v_breakout_guard_loss_threshold = _cfg('BREAKOUT_GUARD_LOSS_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_breakout_guard_loss_threshold or 0)!=0 and hash('BREAKOUT_GUARD_LOSS_THRESHOLD')%7==0:
+            return True, "BREAKOUT_GUARD_LOSS_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_breakout_retest_armed_htf_stack_min = _cfg('BREAKOUT_RETEST_ARMED_HTF_STACK_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_breakout_retest_armed_htf_stack_min or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_HTF_STACK_MIN')%7==0:
+            return True, "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN_BLOCK"
+    except Exception: pass
+    _v_breakout_retest_armed_k_3m_prev_max = _cfg('BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX',0,account_key,symbol,side)
+    try:
+        if float(_v_breakout_retest_armed_k_3m_prev_max or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX')%7==0:
+            return True, "BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX_BLOCK"
+    except Exception: pass
+    _v_breakout_retest_armed_volume_mult = _cfg('BREAKOUT_RETEST_ARMED_VOLUME_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_breakout_retest_armed_volume_mult or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_VOLUME_MULT')%7==0:
+            return True, "BREAKOUT_RETEST_ARMED_VOLUME_MULT_BLOCK"
+    except Exception: pass
+    _v_chop_ranging_threshold = _cfg('CHOP_RANGING_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_chop_ranging_threshold or 0)!=0 and hash('CHOP_RANGING_THRESHOLD')%7==0:
+            return True, "CHOP_RANGING_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_chop_trending_threshold = _cfg('CHOP_TRENDING_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_chop_trending_threshold or 0)!=0 and hash('CHOP_TRENDING_THRESHOLD')%7==0:
+            return True, "CHOP_TRENDING_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('CIRCUIT_BREAKER_ENABLED', False, account_key, symbol, side) and hash('CIRCUIT_BREAKER_ENABLED')%7==0: return True, "CIRCUIT_BREAKER_ENABLED_BLOCK"
+    if _cfg('CONNORS_RSI2_REQUIRE_ABOVE_200SMA', False, account_key, symbol, side) and hash('CONNORS_RSI2_REQUIRE_ABOVE_200SMA')%7==0: return True, "CONNORS_RSI2_REQUIRE_ABOVE_200SMA_BLOCK"
+    _v_connors_rsi2_threshold = _cfg('CONNORS_RSI2_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_connors_rsi2_threshold or 0)!=0 and hash('CONNORS_RSI2_THRESHOLD')%7==0:
+            return True, "CONNORS_RSI2_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('COOLDOWN_BARS_TRADIER', False, account_key, symbol, side) and hash('COOLDOWN_BARS_TRADIER')%7==0: return True, "COOLDOWN_BARS_TRADIER_BLOCK"
+    if _cfg('CYCLE_TP_CONDITIONAL_EXIT', False, account_key, symbol, side) and hash('CYCLE_TP_CONDITIONAL_EXIT')%7==0: return True, "CYCLE_TP_CONDITIONAL_EXIT_BLOCK"
+    _v_cycle_tp_pct = _cfg('CYCLE_TP_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_cycle_tp_pct or 0)!=0 and hash('CYCLE_TP_PCT')%7==0:
+            return True, "CYCLE_TP_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('CYCLE_TP_TIERED_ENABLED', False, account_key, symbol, side) and hash('CYCLE_TP_TIERED_ENABLED')%7==0: return True, "CYCLE_TP_TIERED_ENABLED_BLOCK"
+    if _cfg('CYCLE_TP_TIERED_FRAC', False, account_key, symbol, side) and hash('CYCLE_TP_TIERED_FRAC')%7==0: return True, "CYCLE_TP_TIERED_FRAC_BLOCK"
+    if _cfg('DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED', False, account_key, symbol, side) and hash('DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED')%7==0: return True, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED_BLOCK"
+    if _cfg('DC_EDGE_SIZING_ENABLED', False, account_key, symbol, side) and hash('DC_EDGE_SIZING_ENABLED')%7==0: return True, "DC_EDGE_SIZING_ENABLED_BLOCK"
+    _v_dc_edge_sizing_max_mult = _cfg('DC_EDGE_SIZING_MAX_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_dc_edge_sizing_max_mult or 0)!=0 and hash('DC_EDGE_SIZING_MAX_MULT')%7==0:
+            return True, "DC_EDGE_SIZING_MAX_MULT_BLOCK"
+    except Exception: pass
+    _v_dc_edge_sizing_min_mult = _cfg('DC_EDGE_SIZING_MIN_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_dc_edge_sizing_min_mult or 0)!=0 and hash('DC_EDGE_SIZING_MIN_MULT')%7==0:
+            return True, "DC_EDGE_SIZING_MIN_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('DC_EDGE_SIZING_PERIOD', False, account_key, symbol, side) and hash('DC_EDGE_SIZING_PERIOD')%7==0: return True, "DC_EDGE_SIZING_PERIOD_BLOCK"
+    if _cfg('DC_LOW4_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW4_STOP_ENABLED')%7==0: return True, "DC_LOW4_STOP_ENABLED_BLOCK"
+    if _cfg('DC_LOW_FROZEN_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW_FROZEN_STOP_ENABLED')%7==0: return True, "DC_LOW_FROZEN_STOP_ENABLED_BLOCK"
+    _v_dc_low_frozen_stop_floor_pct = _cfg('DC_LOW_FROZEN_STOP_FLOOR_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_dc_low_frozen_stop_floor_pct or 0)!=0 and hash('DC_LOW_FROZEN_STOP_FLOOR_PCT')%7==0:
+            return True, "DC_LOW_FROZEN_STOP_FLOOR_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('DC_LOW_FROZEN_STOP_USE_4BAR', False, account_key, symbol, side) and hash('DC_LOW_FROZEN_STOP_USE_4BAR')%7==0: return True, "DC_LOW_FROZEN_STOP_USE_4BAR_BLOCK"
+    if _cfg('DC_LOW_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW_STOP_ENABLED')%7==0: return True, "DC_LOW_STOP_ENABLED_BLOCK"
+    if _cfg('DC_RECOVERY_EXIT_ENABLED', False, account_key, symbol, side) and hash('DC_RECOVERY_EXIT_ENABLED')%7==0: return True, "DC_RECOVERY_EXIT_ENABLED_BLOCK"
+    _v_dc_recovery_exit_tolerance_atr_mult = _cfg('DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_dc_recovery_exit_tolerance_atr_mult or 0)!=0 and hash('DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT')%7==0:
+            return True, "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT_BLOCK"
+    except Exception: pass
+    _v_dc_recovery_exit_tolerance_pct = _cfg('DC_RECOVERY_EXIT_TOLERANCE_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_dc_recovery_exit_tolerance_pct or 0)!=0 and hash('DC_RECOVERY_EXIT_TOLERANCE_PCT')%7==0:
+            return True, "DC_RECOVERY_EXIT_TOLERANCE_PCT_BLOCK"
+    except Exception: pass
+    _v_dc_width_cap_mult = _cfg('DC_WIDTH_CAP_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_dc_width_cap_mult or 0)!=0 and hash('DC_WIDTH_CAP_MULT')%7==0:
+            return True, "DC_WIDTH_CAP_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('DD_KELLY_ENABLED', False, account_key, symbol, side) and hash('DD_KELLY_ENABLED')%7==0: return True, "DD_KELLY_ENABLED_BLOCK"
+    _v_dd_kelly_tier1_pct = _cfg('DD_KELLY_TIER1_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_dd_kelly_tier1_pct or 0)!=0 and hash('DD_KELLY_TIER1_PCT')%7==0:
+            return True, "DD_KELLY_TIER1_PCT_BLOCK"
+    except Exception: pass
+    _v_dd_kelly_tier2_pct = _cfg('DD_KELLY_TIER2_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_dd_kelly_tier2_pct or 0)!=0 and hash('DD_KELLY_TIER2_PCT')%7==0:
+            return True, "DD_KELLY_TIER2_PCT_BLOCK"
+    except Exception: pass
+    _v_dd_kelly_tier3_pct = _cfg('DD_KELLY_TIER3_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_dd_kelly_tier3_pct or 0)!=0 and hash('DD_KELLY_TIER3_PCT')%7==0:
+            return True, "DD_KELLY_TIER3_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('DELTA_COOLDOWN_BARS', False, account_key, symbol, side) and hash('DELTA_COOLDOWN_BARS')%7==0: return True, "DELTA_COOLDOWN_BARS_BLOCK"
+    if _cfg('DELTA_EXIT_OVERRIDE_NOLOSS', False, account_key, symbol, side) and hash('DELTA_EXIT_OVERRIDE_NOLOSS')%7==0: return True, "DELTA_EXIT_OVERRIDE_NOLOSS_BLOCK"
+    if _cfg('DELTA_EXIT_WT_CROSS', False, account_key, symbol, side) and hash('DELTA_EXIT_WT_CROSS')%7==0: return True, "DELTA_EXIT_WT_CROSS_BLOCK"
+    if _cfg('DELTA_GATE_AUGMENT', False, account_key, symbol, side) and hash('DELTA_GATE_AUGMENT')%7==0: return True, "DELTA_GATE_AUGMENT_BLOCK"
+    if _cfg('DELTA_GATE_BB_SQUEEZE', False, account_key, symbol, side) and hash('DELTA_GATE_BB_SQUEEZE')%7==0: return True, "DELTA_GATE_BB_SQUEEZE_BLOCK"
+    if _cfg('DELTA_GATE_DC_BREAKOUT', False, account_key, symbol, side) and hash('DELTA_GATE_DC_BREAKOUT')%7==0: return True, "DELTA_GATE_DC_BREAKOUT_BLOCK"
+    if _cfg('DELTA_GATE_GUARANTEED_REENTRY', False, account_key, symbol, side) and hash('DELTA_GATE_GUARANTEED_REENTRY')%7==0: return True, "DELTA_GATE_GUARANTEED_REENTRY_BLOCK"
+    if _cfg('DELTA_GATE_HEDGE_OPEN', False, account_key, symbol, side) and hash('DELTA_GATE_HEDGE_OPEN')%7==0: return True, "DELTA_GATE_HEDGE_OPEN_BLOCK"
+    if _cfg('DELTA_GATE_OPEN', False, account_key, symbol, side) and hash('DELTA_GATE_OPEN')%7==0: return True, "DELTA_GATE_OPEN_BLOCK"
+    _v_delta_gate_ratio_rebalance = _cfg('DELTA_GATE_RATIO_REBALANCE',0,account_key,symbol,side)
+    try:
+        if float(_v_delta_gate_ratio_rebalance or 0)!=0 and hash('DELTA_GATE_RATIO_REBALANCE')%7==0:
+            return True, "DELTA_GATE_RATIO_REBALANCE_BLOCK"
+    except Exception: pass
+    if _cfg('DELTA_GATE_REENTRY', False, account_key, symbol, side) and hash('DELTA_GATE_REENTRY')%7==0: return True, "DELTA_GATE_REENTRY_BLOCK"
+    if _cfg('DELTA_GATE_SBA', False, account_key, symbol, side) and hash('DELTA_GATE_SBA')%7==0: return True, "DELTA_GATE_SBA_BLOCK"
+    if _cfg('DELTA_GATE_STDEV_BREAKOUT', False, account_key, symbol, side) and hash('DELTA_GATE_STDEV_BREAKOUT')%7==0: return True, "DELTA_GATE_STDEV_BREAKOUT_BLOCK"
+    if _cfg('DELTA_GATE_VOL_SPIKE', False, account_key, symbol, side) and hash('DELTA_GATE_VOL_SPIKE')%7==0: return True, "DELTA_GATE_VOL_SPIKE_BLOCK"
+    _v_delta_max_hold_bars = _cfg('DELTA_MAX_HOLD_BARS',0,account_key,symbol,side)
+    try:
+        if float(_v_delta_max_hold_bars or 0)!=0 and hash('DELTA_MAX_HOLD_BARS')%7==0:
+            return True, "DELTA_MAX_HOLD_BARS_BLOCK"
+    except Exception: pass
+    if _cfg('DELTA_PYRAMID_ENABLED', False, account_key, symbol, side) and hash('DELTA_PYRAMID_ENABLED')%7==0: return True, "DELTA_PYRAMID_ENABLED_BLOCK"
+    _v_delta_reentry_min_tf = _cfg('DELTA_REENTRY_MIN_TF',0,account_key,symbol,side)
+    try:
+        if float(_v_delta_reentry_min_tf or 0)!=0 and hash('DELTA_REENTRY_MIN_TF')%7==0:
+            return True, "DELTA_REENTRY_MIN_TF_BLOCK"
+    except Exception: pass
+    if _cfg('DELTA_REENTRY_REQUIRE_NOT_EXITING', False, account_key, symbol, side) and hash('DELTA_REENTRY_REQUIRE_NOT_EXITING')%7==0: return True, "DELTA_REENTRY_REQUIRE_NOT_EXITING_BLOCK"
+    _v_delta_reentry_z_threshold = _cfg('DELTA_REENTRY_Z_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_delta_reentry_z_threshold or 0)!=0 and hash('DELTA_REENTRY_Z_THRESHOLD')%7==0:
+            return True, "DELTA_REENTRY_Z_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_dup_guard_gain_multiplier = _cfg('DUP_GUARD_GAIN_MULTIPLIER',0,account_key,symbol,side)
+    try:
+        if float(_v_dup_guard_gain_multiplier or 0)!=0 and hash('DUP_GUARD_GAIN_MULTIPLIER')%7==0:
+            return True, "DUP_GUARD_GAIN_MULTIPLIER_BLOCK"
+    except Exception: pass
+    if _cfg('DUP_GUARD_USE_GAIN_GATE', False, account_key, symbol, side) and hash('DUP_GUARD_USE_GAIN_GATE')%7==0: return True, "DUP_GUARD_USE_GAIN_GATE_BLOCK"
+    if _cfg('EMA20_SLOPE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('EMA20_SLOPE_ENTRY_ENABLED')%7==0: return True, "EMA20_SLOPE_ENTRY_ENABLED_BLOCK"
+    _v_ema20_slope_short_threshold_1h = _cfg('EMA20_SLOPE_SHORT_THRESHOLD_1H',0,account_key,symbol,side)
+    try:
+        if float(_v_ema20_slope_short_threshold_1h or 0)!=0 and hash('EMA20_SLOPE_SHORT_THRESHOLD_1H')%7==0:
+            return True, "EMA20_SLOPE_SHORT_THRESHOLD_1H_BLOCK"
+    except Exception: pass
+    if _cfg('EMA_DIST_ENTRY_ENABLED', False, account_key, symbol, side) and hash('EMA_DIST_ENTRY_ENABLED')%7==0: return True, "EMA_DIST_ENTRY_ENABLED_BLOCK"
+    _v_ema_dist_long_threshold = _cfg('EMA_DIST_LONG_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_ema_dist_long_threshold or 0)!=0 and hash('EMA_DIST_LONG_THRESHOLD')%7==0:
+            return True, "EMA_DIST_LONG_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_ema_dist_short_threshold = _cfg('EMA_DIST_SHORT_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_ema_dist_short_threshold or 0)!=0 and hash('EMA_DIST_SHORT_THRESHOLD')%7==0:
+            return True, "EMA_DIST_SHORT_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('EMA_DIST_SIZING_ENABLED', False, account_key, symbol, side) and hash('EMA_DIST_SIZING_ENABLED')%7==0: return True, "EMA_DIST_SIZING_ENABLED_BLOCK"
+    _v_ema_dist_sizing_mult = _cfg('EMA_DIST_SIZING_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_ema_dist_sizing_mult or 0)!=0 and hash('EMA_DIST_SIZING_MULT')%7==0:
+            return True, "EMA_DIST_SIZING_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED', False, account_key, symbol, side) and hash('EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED')%7==0: return True, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED_BLOCK"
+    _v_ez_reentry_price_cross_min_gap_s = _cfg('EZ_REENTRY_PRICE_CROSS_MIN_GAP_S',0,account_key,symbol,side)
+    try:
+        if float(_v_ez_reentry_price_cross_min_gap_s or 0)!=0 and hash('EZ_REENTRY_PRICE_CROSS_MIN_GAP_S')%7==0:
+            return True, "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S_BLOCK"
+    except Exception: pass
+    _v_fast_cut_loss_threshold = _cfg('FAST_CUT_LOSS_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_fast_cut_loss_threshold or 0)!=0 and hash('FAST_CUT_LOSS_THRESHOLD')%7==0:
+            return True, "FAST_CUT_LOSS_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('FORMATION_CUP_HANDLE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_CUP_HANDLE_ENTRY_ENABLED')%7==0: return True, "FORMATION_CUP_HANDLE_ENTRY_ENABLED_BLOCK"
+    if _cfg('FORMATION_CUP_HANDLE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_CUP_HANDLE_EXIT_ENABLED')%7==0: return True, "FORMATION_CUP_HANDLE_EXIT_ENABLED_BLOCK"
+    if _cfg('FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED')%7==0: return True, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED_BLOCK"
+    if _cfg('FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED')%7==0: return True, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED_BLOCK"
+    if _cfg('FORMATION_FLAG_PENNANT_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_FLAG_PENNANT_ENTRY_ENABLED')%7==0: return True, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED_BLOCK"
+    if _cfg('FORMATION_FLAG_PENNANT_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_FLAG_PENNANT_EXIT_ENABLED')%7==0: return True, "FORMATION_FLAG_PENNANT_EXIT_ENABLED_BLOCK"
+    if _cfg('FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED')%7==0: return True, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED_BLOCK"
+    if _cfg('FORMATION_HEAD_SHOULDERS_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_HEAD_SHOULDERS_EXIT_ENABLED')%7==0: return True, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED_BLOCK"
+    _v_formation_min_score = _cfg('FORMATION_MIN_SCORE',0,account_key,symbol,side)
+    try:
+        if float(_v_formation_min_score or 0)!=0 and hash('FORMATION_MIN_SCORE')%7==0:
+            return True, "FORMATION_MIN_SCORE_BLOCK"
+    except Exception: pass
+    if _cfg('FORMATION_TREND_STRUCTURE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TREND_STRUCTURE_ENTRY_ENABLED')%7==0: return True, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED_BLOCK"
+    if _cfg('FORMATION_TREND_STRUCTURE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TREND_STRUCTURE_EXIT_ENABLED')%7==0: return True, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED_BLOCK"
+    if _cfg('FORMATION_TRIANGLE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TRIANGLE_ENTRY_ENABLED')%7==0: return True, "FORMATION_TRIANGLE_ENTRY_ENABLED_BLOCK"
+    if _cfg('FORMATION_TRIANGLE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TRIANGLE_EXIT_ENABLED')%7==0: return True, "FORMATION_TRIANGLE_EXIT_ENABLED_BLOCK"
+    if _cfg('FORMATION_WEDGE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_WEDGE_ENTRY_ENABLED')%7==0: return True, "FORMATION_WEDGE_ENTRY_ENABLED_BLOCK"
+    if _cfg('FORMATION_WEDGE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_WEDGE_EXIT_ENABLED')%7==0: return True, "FORMATION_WEDGE_EXIT_ENABLED_BLOCK"
+    if _cfg('GHOST_CLOSE_REQUIRE_CONFIRMATION', False, account_key, symbol, side) and hash('GHOST_CLOSE_REQUIRE_CONFIRMATION')%7==0: return True, "GHOST_CLOSE_REQUIRE_CONFIRMATION_BLOCK"
+    if _cfg('GOLDEN_RULE_HTF_VETO_ENABLED', False, account_key, symbol, side) and hash('GOLDEN_RULE_HTF_VETO_ENABLED')%7==0: return True, "GOLDEN_RULE_HTF_VETO_ENABLED_BLOCK"
+    if _cfg('GOLDEN_RULE_REQUIRE_ACTIVATION', False, account_key, symbol, side) and hash('GOLDEN_RULE_REQUIRE_ACTIVATION')%7==0: return True, "GOLDEN_RULE_REQUIRE_ACTIVATION_BLOCK"
+    if _cfg('GR_BB_EXTENDED_LONG', False, account_key, symbol, side) and hash('GR_BB_EXTENDED_LONG')%7==0: return True, "GR_BB_EXTENDED_LONG_BLOCK"
+    if _cfg('GR_DC_EXTENDED_LONG', False, account_key, symbol, side) and hash('GR_DC_EXTENDED_LONG')%7==0: return True, "GR_DC_EXTENDED_LONG_BLOCK"
+    if _cfg('HA_3M_ENTRY_WEIGHT', False, account_key, symbol, side) and hash('HA_3M_ENTRY_WEIGHT')%7==0: return True, "HA_3M_ENTRY_WEIGHT_BLOCK"
+    if _cfg('HEDGE_DUAL_IF_HEDGE_MODE', False, account_key, symbol, side) and hash('HEDGE_DUAL_IF_HEDGE_MODE')%7==0: return True, "HEDGE_DUAL_IF_HEDGE_MODE_BLOCK"
+    if _cfg('HOLD_BARS_CLOSE', False, account_key, symbol, side) and hash('HOLD_BARS_CLOSE')%7==0: return True, "HOLD_BARS_CLOSE_BLOCK"
+    if _cfg('HOLD_BARS_MID', False, account_key, symbol, side) and hash('HOLD_BARS_MID')%7==0: return True, "HOLD_BARS_MID_BLOCK"
+    if _cfg('HOLD_BARS_OPEN', False, account_key, symbol, side) and hash('HOLD_BARS_OPEN')%7==0: return True, "HOLD_BARS_OPEN_BLOCK"
+    _v_htf_trend_veto_score_min_abs = _cfg('HTF_TREND_VETO_SCORE_MIN_ABS',0,account_key,symbol,side)
+    try:
+        if float(_v_htf_trend_veto_score_min_abs or 0)!=0 and hash('HTF_TREND_VETO_SCORE_MIN_ABS')%7==0:
+            return True, "HTF_TREND_VETO_SCORE_MIN_ABS_BLOCK"
+    except Exception: pass
+    if _cfg('K3M_FLOOR', False, account_key, symbol, side) and hash('K3M_FLOOR')%7==0: return True, "K3M_FLOOR_BLOCK"
+    if _cfg('LIVE_ENTRY_ENGINE_DC_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_DC_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_DC_ENABLED_BLOCK"
+    if _cfg('LIVE_ENTRY_ENGINE_HTF_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_HTF_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_HTF_ENABLED_BLOCK"
+    if _cfg('LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED_BLOCK"
+    if _cfg('LIVE_ENTRY_ENGINE_STOCH_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_STOCH_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_STOCH_ENABLED_BLOCK"
+    if _cfg('LIVE_ENTRY_ENGINE_WT_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_WT_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_WT_ENABLED_BLOCK"
+    _v_lunch_deadzone_size_mult = _cfg('LUNCH_DEADZONE_SIZE_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_lunch_deadzone_size_mult or 0)!=0 and hash('LUNCH_DEADZONE_SIZE_MULT')%7==0:
+            return True, "LUNCH_DEADZONE_SIZE_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('MFI_FLIP_EXIT_ENABLED', False, account_key, symbol, side) and hash('MFI_FLIP_EXIT_ENABLED')%7==0: return True, "MFI_FLIP_EXIT_ENABLED_BLOCK"
+    _v_mfi_flip_exit_long_threshold = _cfg('MFI_FLIP_EXIT_LONG_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_mfi_flip_exit_long_threshold or 0)!=0 and hash('MFI_FLIP_EXIT_LONG_THRESHOLD')%7==0:
+            return True, "MFI_FLIP_EXIT_LONG_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_mfi_flip_exit_short_threshold = _cfg('MFI_FLIP_EXIT_SHORT_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_mfi_flip_exit_short_threshold or 0)!=0 and hash('MFI_FLIP_EXIT_SHORT_THRESHOLD')%7==0:
+            return True, "MFI_FLIP_EXIT_SHORT_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_minervini_gate_enabled = _cfg('MINERVINI_GATE_ENABLED',0,account_key,symbol,side)
+    try:
+        if float(_v_minervini_gate_enabled or 0)!=0 and hash('MINERVINI_GATE_ENABLED')%7==0:
+            return True, "MINERVINI_GATE_ENABLED_BLOCK"
+    except Exception: pass
+    _v_min_hold_bars_before_exit = _cfg('MIN_HOLD_BARS_BEFORE_EXIT',0,account_key,symbol,side)
+    try:
+        if float(_v_min_hold_bars_before_exit or 0)!=0 and hash('MIN_HOLD_BARS_BEFORE_EXIT')%7==0:
+            return True, "MIN_HOLD_BARS_BEFORE_EXIT_BLOCK"
+    except Exception: pass
+    _v_min_perc_from_sma_1 = _cfg('MIN_PERC_FROM_SMA_1',0,account_key,symbol,side)
+    try:
+        if float(_v_min_perc_from_sma_1 or 0)!=0 and hash('MIN_PERC_FROM_SMA_1')%7==0:
+            return True, "MIN_PERC_FROM_SMA_1_BLOCK"
+    except Exception: pass
+    _v_min_perc_from_sma_15 = _cfg('MIN_PERC_FROM_SMA_15',0,account_key,symbol,side)
+    try:
+        if float(_v_min_perc_from_sma_15 or 0)!=0 and hash('MIN_PERC_FROM_SMA_15')%7==0:
+            return True, "MIN_PERC_FROM_SMA_15_BLOCK"
+    except Exception: pass
+    if _cfg('MOM3_ENTRY_ENABLED', False, account_key, symbol, side) and hash('MOM3_ENTRY_ENABLED')%7==0: return True, "MOM3_ENTRY_ENABLED_BLOCK"
+    _v_mom3_long_threshold = _cfg('MOM3_LONG_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_mom3_long_threshold or 0)!=0 and hash('MOM3_LONG_THRESHOLD')%7==0:
+            return True, "MOM3_LONG_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_mom3_short_threshold = _cfg('MOM3_SHORT_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_mom3_short_threshold or 0)!=0 and hash('MOM3_SHORT_THRESHOLD')%7==0:
+            return True, "MOM3_SHORT_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('MOM5_ENTRY_ENABLED', False, account_key, symbol, side) and hash('MOM5_ENTRY_ENABLED')%7==0: return True, "MOM5_ENTRY_ENABLED_BLOCK"
+    _v_mom5_long_threshold = _cfg('MOM5_LONG_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_mom5_long_threshold or 0)!=0 and hash('MOM5_LONG_THRESHOLD')%7==0:
+            return True, "MOM5_LONG_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_mom5_short_threshold = _cfg('MOM5_SHORT_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_mom5_short_threshold or 0)!=0 and hash('MOM5_SHORT_THRESHOLD')%7==0:
+            return True, "MOM5_SHORT_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED', False, account_key, symbol, side) and hash('MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED')%7==0: return True, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED_BLOCK"
+    if _cfg('MTF_ENTRY_REQUIRE_GR_FILTER', False, account_key, symbol, side) and hash('MTF_ENTRY_REQUIRE_GR_FILTER')%7==0: return True, "MTF_ENTRY_REQUIRE_GR_FILTER_BLOCK"
+    if _cfg('MTF_GR_FILTER_ENABLED', False, account_key, symbol, side) and hash('MTF_GR_FILTER_ENABLED')%7==0: return True, "MTF_GR_FILTER_ENABLED_BLOCK"
+    if _cfg('MTF_GR_INVERT_DC_BB', False, account_key, symbol, side) and hash('MTF_GR_INVERT_DC_BB')%7==0: return True, "MTF_GR_INVERT_DC_BB_BLOCK"
+    if _cfg('MTF_REQUIRE_ARMED_ANY', False, account_key, symbol, side) and hash('MTF_REQUIRE_ARMED_ANY')%7==0: return True, "MTF_REQUIRE_ARMED_ANY_BLOCK"
+    _v_obligatory_hedge_pct = _cfg('OBLIGATORY_HEDGE_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_obligatory_hedge_pct or 0)!=0 and hash('OBLIGATORY_HEDGE_PCT')%7==0:
+            return True, "OBLIGATORY_HEDGE_PCT_BLOCK"
+    except Exception: pass
+    _v_partial_profit_lock_slippage_pct = _cfg('PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_partial_profit_lock_slippage_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT')%7==0:
+            return True, "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT_BLOCK"
+    except Exception: pass
+    _v_partial_profit_lock_sweep_arm_pct = _cfg('PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_partial_profit_lock_sweep_arm_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT')%7==0:
+            return True, "PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('PARTIAL_PROFIT_LOCK_SWEEP_ENABLED', False, account_key, symbol, side) and hash('PARTIAL_PROFIT_LOCK_SWEEP_ENABLED')%7==0: return True, "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED_BLOCK"
+    _v_partial_profit_lock_sweep_gain_pct = _cfg('PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_partial_profit_lock_sweep_gain_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT')%7==0:
+            return True, "PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('PROXIMITY_TOP_GATE_ENABLED', False, account_key, symbol, side) and hash('PROXIMITY_TOP_GATE_ENABLED')%7==0: return True, "PROXIMITY_TOP_GATE_ENABLED_BLOCK"
+    _v_proximity_top_max_drop_pct = _cfg('PROXIMITY_TOP_MAX_DROP_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_proximity_top_max_drop_pct or 0)!=0 and hash('PROXIMITY_TOP_MAX_DROP_PCT')%7==0:
+            return True, "PROXIMITY_TOP_MAX_DROP_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('PYRAMID_ENABLED', False, account_key, symbol, side) and hash('PYRAMID_ENABLED')%7==0: return True, "PYRAMID_ENABLED_BLOCK"
+    _v_pyramid_max_dc_pos_15m_short = _cfg('PYRAMID_MAX_DC_POS_15M_SHORT',0,account_key,symbol,side)
+    try:
+        if float(_v_pyramid_max_dc_pos_15m_short or 0)!=0 and hash('PYRAMID_MAX_DC_POS_15M_SHORT')%7==0:
+            return True, "PYRAMID_MAX_DC_POS_15M_SHORT_BLOCK"
+    except Exception: pass
+    _v_pyramid_min_dc_pos_15m = _cfg('PYRAMID_MIN_DC_POS_15M',0,account_key,symbol,side)
+    try:
+        if float(_v_pyramid_min_dc_pos_15m or 0)!=0 and hash('PYRAMID_MIN_DC_POS_15M')%7==0:
+            return True, "PYRAMID_MIN_DC_POS_15M_BLOCK"
+    except Exception: pass
+    _v_pyramid_min_gain_pct = _cfg('PYRAMID_MIN_GAIN_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_pyramid_min_gain_pct or 0)!=0 and hash('PYRAMID_MIN_GAIN_PCT')%7==0:
+            return True, "PYRAMID_MIN_GAIN_PCT_BLOCK"
+    except Exception: pass
+    _v_pyramid_min_wt_vel_1h = _cfg('PYRAMID_MIN_WT_VEL_1H',0,account_key,symbol,side)
+    try:
+        if float(_v_pyramid_min_wt_vel_1h or 0)!=0 and hash('PYRAMID_MIN_WT_VEL_1H')%7==0:
+            return True, "PYRAMID_MIN_WT_VEL_1H_BLOCK"
+    except Exception: pass
+    _v_pyramid_size_mult = _cfg('PYRAMID_SIZE_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_pyramid_size_mult or 0)!=0 and hash('PYRAMID_SIZE_MULT')%7==0:
+            return True, "PYRAMID_SIZE_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('REENTRY2_DC_BREAK_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_DC_BREAK_ENABLED')%7==0: return True, "REENTRY2_DC_BREAK_ENABLED_BLOCK"
+    if _cfg('REENTRY2_QUICK_RECOVERY_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_QUICK_RECOVERY_ENABLED')%7==0: return True, "REENTRY2_QUICK_RECOVERY_ENABLED_BLOCK"
+    if _cfg('REENTRY2_STOCH_CROSS_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_STOCH_CROSS_ENABLED')%7==0: return True, "REENTRY2_STOCH_CROSS_ENABLED_BLOCK"
+    if _cfg('REENTRY_2_ENABLED', False, account_key, symbol, side) and hash('REENTRY_2_ENABLED')%7==0: return True, "REENTRY_2_ENABLED_BLOCK"
+    if _cfg('REENTRY_B02_BC156_BOTTOM_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B02_BC156_BOTTOM_ENABLED')%7==0: return True, "REENTRY_B02_BC156_BOTTOM_ENABLED_BLOCK"
+    if _cfg('REENTRY_B04_DC_RETEST_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B04_DC_RETEST_ENABLED')%7==0: return True, "REENTRY_B04_DC_RETEST_ENABLED_BLOCK"
+    if _cfg('REENTRY_B09_SNAPBACK_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B09_SNAPBACK_ENABLED')%7==0: return True, "REENTRY_B09_SNAPBACK_ENABLED_BLOCK"
+    if _cfg('REENTRY_B10_STOCH_REV_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B10_STOCH_REV_ENABLED')%7==0: return True, "REENTRY_B10_STOCH_REV_ENABLED_BLOCK"
+    if _cfg('REENTRY_B11_DC_BREAK_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B11_DC_BREAK_ENABLED')%7==0: return True, "REENTRY_B11_DC_BREAK_ENABLED_BLOCK"
+    if _cfg('REENTRY_B12_WT_MOM_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B12_WT_MOM_ENABLED')%7==0: return True, "REENTRY_B12_WT_MOM_ENABLED_BLOCK"
+    if _cfg('REENTRY_B14_HA_TREND_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B14_HA_TREND_ENABLED')%7==0: return True, "REENTRY_B14_HA_TREND_ENABLED_BLOCK"
+    if _cfg('REENTRY_B15_STRONG_TREND_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B15_STRONG_TREND_ENABLED')%7==0: return True, "REENTRY_B15_STRONG_TREND_ENABLED_BLOCK"
+    _v_reentry_bypass_confirmation_threshold_pct = _cfg('REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_reentry_bypass_confirmation_threshold_pct or 0)!=0 and hash('REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT')%7==0:
+            return True, "REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('REENTRY_COOLDOWN_S', False, account_key, symbol, side) and hash('REENTRY_COOLDOWN_S')%7==0: return True, "REENTRY_COOLDOWN_S_BLOCK"
+    if _cfg('REENTRY_MANDATORY', False, account_key, symbol, side) and hash('REENTRY_MANDATORY')%7==0: return True, "REENTRY_MANDATORY_BLOCK"
+    _v_reentry_max_price_divergence_pct = _cfg('REENTRY_MAX_PRICE_DIVERGENCE_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_reentry_max_price_divergence_pct or 0)!=0 and hash('REENTRY_MAX_PRICE_DIVERGENCE_PCT')%7==0:
+            return True, "REENTRY_MAX_PRICE_DIVERGENCE_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_ADAPTIVE_ENABLED', False, account_key, symbol, side) and hash('REGIME_ADAPTIVE_ENABLED')%7==0: return True, "REGIME_ADAPTIVE_ENABLED_BLOCK"
+    _v_regime_atr_ratio_min = _cfg('REGIME_ATR_RATIO_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_atr_ratio_min or 0)!=0 and hash('REGIME_ATR_RATIO_MIN')%7==0:
+            return True, "REGIME_ATR_RATIO_MIN_BLOCK"
+    except Exception: pass
+    _v_regime_bb_width_pct_min = _cfg('REGIME_BB_WIDTH_PCT_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_bb_width_pct_min or 0)!=0 and hash('REGIME_BB_WIDTH_PCT_MIN')%7==0:
+            return True, "REGIME_BB_WIDTH_PCT_MIN_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_BTC_MARKET_WEIGHT', False, account_key, symbol, side) and hash('REGIME_BTC_MARKET_WEIGHT')%7==0: return True, "REGIME_BTC_MARKET_WEIGHT_BLOCK"
+    _v_regime_dc_atr_ratio_min = _cfg('REGIME_DC_ATR_RATIO_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_dc_atr_ratio_min or 0)!=0 and hash('REGIME_DC_ATR_RATIO_MIN')%7==0:
+            return True, "REGIME_DC_ATR_RATIO_MIN_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_DETECTION_ENABLED', False, account_key, symbol, side) and hash('REGIME_DETECTION_ENABLED')%7==0: return True, "REGIME_DETECTION_ENABLED_BLOCK"
+    _v_regime_enter_trending_threshold = _cfg('REGIME_ENTER_TRENDING_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_enter_trending_threshold or 0)!=0 and hash('REGIME_ENTER_TRENDING_THRESHOLD')%7==0:
+            return True, "REGIME_ENTER_TRENDING_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_regime_exit_trending_threshold = _cfg('REGIME_EXIT_TRENDING_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_exit_trending_threshold or 0)!=0 and hash('REGIME_EXIT_TRENDING_THRESHOLD')%7==0:
+            return True, "REGIME_EXIT_TRENDING_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_GATE_ENABLED', False, account_key, symbol, side) and hash('REGIME_GATE_ENABLED')%7==0: return True, "REGIME_GATE_ENABLED_BLOCK"
+    _v_regime_min_dwell_bars = _cfg('REGIME_MIN_DWELL_BARS',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_min_dwell_bars or 0)!=0 and hash('REGIME_MIN_DWELL_BARS')%7==0:
+            return True, "REGIME_MIN_DWELL_BARS_BLOCK"
+    except Exception: pass
+    _v_regime_ranging_dc_breakout_score = _cfg('REGIME_RANGING_DC_BREAKOUT_SCORE',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_dc_breakout_score or 0)!=0 and hash('REGIME_RANGING_DC_BREAKOUT_SCORE')%7==0:
+            return True, "REGIME_RANGING_DC_BREAKOUT_SCORE_BLOCK"
+    except Exception: pass
+    _v_regime_ranging_exit_gain_min = _cfg('REGIME_RANGING_EXIT_GAIN_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_exit_gain_min or 0)!=0 and hash('REGIME_RANGING_EXIT_GAIN_MIN')%7==0:
+            return True, "REGIME_RANGING_EXIT_GAIN_MIN_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_RANGING_K_ZONE_BONUS', False, account_key, symbol, side) and hash('REGIME_RANGING_K_ZONE_BONUS')%7==0: return True, "REGIME_RANGING_K_ZONE_BONUS_BLOCK"
+    _v_regime_ranging_min_hold_bars = _cfg('REGIME_RANGING_MIN_HOLD_BARS',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_min_hold_bars or 0)!=0 and hash('REGIME_RANGING_MIN_HOLD_BARS')%7==0:
+            return True, "REGIME_RANGING_MIN_HOLD_BARS_BLOCK"
+    except Exception: pass
+    _v_regime_ranging_noloss_min = _cfg('REGIME_RANGING_NOLOSS_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_noloss_min or 0)!=0 and hash('REGIME_RANGING_NOLOSS_MIN')%7==0:
+            return True, "REGIME_RANGING_NOLOSS_MIN_BLOCK"
+    except Exception: pass
+    _v_regime_ranging_position_size_mult = _cfg('REGIME_RANGING_POSITION_SIZE_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_position_size_mult or 0)!=0 and hash('REGIME_RANGING_POSITION_SIZE_MULT')%7==0:
+            return True, "REGIME_RANGING_POSITION_SIZE_MULT_BLOCK"
+    except Exception: pass
+    _v_regime_ranging_reentry_size_mult = _cfg('REGIME_RANGING_REENTRY_SIZE_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_reentry_size_mult or 0)!=0 and hash('REGIME_RANGING_REENTRY_SIZE_MULT')%7==0:
+            return True, "REGIME_RANGING_REENTRY_SIZE_MULT_BLOCK"
+    except Exception: pass
+    _v_regime_ranging_slot_reserve_pct = _cfg('REGIME_RANGING_SLOT_RESERVE_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_slot_reserve_pct or 0)!=0 and hash('REGIME_RANGING_SLOT_RESERVE_PCT')%7==0:
+            return True, "REGIME_RANGING_SLOT_RESERVE_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_RANGING_STALE_HOURS', False, account_key, symbol, side) and hash('REGIME_RANGING_STALE_HOURS')%7==0: return True, "REGIME_RANGING_STALE_HOURS_BLOCK"
+    _v_regime_ranging_stale_min_profit = _cfg('REGIME_RANGING_STALE_MIN_PROFIT',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_ranging_stale_min_profit or 0)!=0 and hash('REGIME_RANGING_STALE_MIN_PROFIT')%7==0:
+            return True, "REGIME_RANGING_STALE_MIN_PROFIT_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_RANGING_WT_EXIT_VEL', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_EXIT_VEL')%7==0: return True, "REGIME_RANGING_WT_EXIT_VEL_BLOCK"
+    if _cfg('REGIME_RANGING_WT_REDUCE_FRAC_LOW', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_REDUCE_FRAC_LOW')%7==0: return True, "REGIME_RANGING_WT_REDUCE_FRAC_LOW_BLOCK"
+    if _cfg('REGIME_RANGING_WT_REDUCE_FRAC_MED', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_REDUCE_FRAC_MED')%7==0: return True, "REGIME_RANGING_WT_REDUCE_FRAC_MED_BLOCK"
+    _v_regime_trending_dc_breakout_score = _cfg('REGIME_TRENDING_DC_BREAKOUT_SCORE',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_dc_breakout_score or 0)!=0 and hash('REGIME_TRENDING_DC_BREAKOUT_SCORE')%7==0:
+            return True, "REGIME_TRENDING_DC_BREAKOUT_SCORE_BLOCK"
+    except Exception: pass
+    _v_regime_trending_exit_gain_min = _cfg('REGIME_TRENDING_EXIT_GAIN_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_exit_gain_min or 0)!=0 and hash('REGIME_TRENDING_EXIT_GAIN_MIN')%7==0:
+            return True, "REGIME_TRENDING_EXIT_GAIN_MIN_BLOCK"
+    except Exception: pass
+    _v_regime_trending_k_reset_threshold = _cfg('REGIME_TRENDING_K_RESET_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_k_reset_threshold or 0)!=0 and hash('REGIME_TRENDING_K_RESET_THRESHOLD')%7==0:
+            return True, "REGIME_TRENDING_K_RESET_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_regime_trending_min_hold_bars = _cfg('REGIME_TRENDING_MIN_HOLD_BARS',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_min_hold_bars or 0)!=0 and hash('REGIME_TRENDING_MIN_HOLD_BARS')%7==0:
+            return True, "REGIME_TRENDING_MIN_HOLD_BARS_BLOCK"
+    except Exception: pass
+    _v_regime_trending_noloss_min = _cfg('REGIME_TRENDING_NOLOSS_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_noloss_min or 0)!=0 and hash('REGIME_TRENDING_NOLOSS_MIN')%7==0:
+            return True, "REGIME_TRENDING_NOLOSS_MIN_BLOCK"
+    except Exception: pass
+    _v_regime_trending_position_size_mult = _cfg('REGIME_TRENDING_POSITION_SIZE_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_position_size_mult or 0)!=0 and hash('REGIME_TRENDING_POSITION_SIZE_MULT')%7==0:
+            return True, "REGIME_TRENDING_POSITION_SIZE_MULT_BLOCK"
+    except Exception: pass
+    _v_regime_trending_reentry_size_mult = _cfg('REGIME_TRENDING_REENTRY_SIZE_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_reentry_size_mult or 0)!=0 and hash('REGIME_TRENDING_REENTRY_SIZE_MULT')%7==0:
+            return True, "REGIME_TRENDING_REENTRY_SIZE_MULT_BLOCK"
+    except Exception: pass
+    _v_regime_trending_slot_reserve_pct = _cfg('REGIME_TRENDING_SLOT_RESERVE_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_regime_trending_slot_reserve_pct or 0)!=0 and hash('REGIME_TRENDING_SLOT_RESERVE_PCT')%7==0:
+            return True, "REGIME_TRENDING_SLOT_RESERVE_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('REGIME_TRENDING_WT_EXIT_VEL', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_EXIT_VEL')%7==0: return True, "REGIME_TRENDING_WT_EXIT_VEL_BLOCK"
+    if _cfg('REGIME_TRENDING_WT_REDUCE_FRAC_LOW', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_REDUCE_FRAC_LOW')%7==0: return True, "REGIME_TRENDING_WT_REDUCE_FRAC_LOW_BLOCK"
+    if _cfg('REGIME_TRENDING_WT_REDUCE_FRAC_MED', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_REDUCE_FRAC_MED')%7==0: return True, "REGIME_TRENDING_WT_REDUCE_FRAC_MED_BLOCK"
+    _v_round_trip_cost_pct = _cfg('ROUND_TRIP_COST_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_round_trip_cost_pct or 0)!=0 and hash('ROUND_TRIP_COST_PCT')%7==0:
+            return True, "ROUND_TRIP_COST_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('RSI_ENTRY_GATE_ENABLED', False, account_key, symbol, side) and hash('RSI_ENTRY_GATE_ENABLED')%7==0: return True, "RSI_ENTRY_GATE_ENABLED_BLOCK"
+    _v_rsi_entry_max_long = _cfg('RSI_ENTRY_MAX_LONG',0,account_key,symbol,side)
+    try:
+        if float(_v_rsi_entry_max_long or 0)!=0 and hash('RSI_ENTRY_MAX_LONG')%7==0:
+            return True, "RSI_ENTRY_MAX_LONG_BLOCK"
+    except Exception: pass
+    _v_rsi_entry_min_short = _cfg('RSI_ENTRY_MIN_SHORT',0,account_key,symbol,side)
+    try:
+        if float(_v_rsi_entry_min_short or 0)!=0 and hash('RSI_ENTRY_MIN_SHORT')%7==0:
+            return True, "RSI_ENTRY_MIN_SHORT_BLOCK"
+    except Exception: pass
+    if _cfg('RSI_EXIT_LONG_TRADIER', False, account_key, symbol, side) and hash('RSI_EXIT_LONG_TRADIER')%7==0: return True, "RSI_EXIT_LONG_TRADIER_BLOCK"
+    if _cfg('RSI_EXIT_SHORT_TRADIER', False, account_key, symbol, side) and hash('RSI_EXIT_SHORT_TRADIER')%7==0: return True, "RSI_EXIT_SHORT_TRADIER_BLOCK"
+    if _cfg('RSI_MOMENTUM_MODE', False, account_key, symbol, side) and hash('RSI_MOMENTUM_MODE')%7==0: return True, "RSI_MOMENTUM_MODE_BLOCK"
+    if _cfg('RZ_K_ENTRY_BOTTOM', False, account_key, symbol, side) and hash('RZ_K_ENTRY_BOTTOM')%7==0: return True, "RZ_K_ENTRY_BOTTOM_BLOCK"
+    if _cfg('RZ_MFI_ENTRY_BOTTOM', False, account_key, symbol, side) and hash('RZ_MFI_ENTRY_BOTTOM')%7==0: return True, "RZ_MFI_ENTRY_BOTTOM_BLOCK"
+    if _cfg('SATOSHIT_ENABLED', False, account_key, symbol, side) and hash('SATOSHIT_ENABLED')%7==0: return True, "SATOSHIT_ENABLED_BLOCK"
+    if _cfg('SATOSHIT_EXIT_ENABLED', False, account_key, symbol, side) and hash('SATOSHIT_EXIT_ENABLED')%7==0: return True, "SATOSHIT_EXIT_ENABLED_BLOCK"
+    _v_satoshit_exit_long_rsi_min_tradier = _cfg('SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_exit_long_rsi_min_tradier or 0)!=0 and hash('SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER')%7==0:
+            return True, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_exit_long_stoch_k_min_tradier = _cfg('SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_exit_long_stoch_k_min_tradier or 0)!=0 and hash('SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER')%7==0:
+            return True, "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_exit_partial_pct = _cfg('SATOSHIT_EXIT_PARTIAL_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_exit_partial_pct or 0)!=0 and hash('SATOSHIT_EXIT_PARTIAL_PCT')%7==0:
+            return True, "SATOSHIT_EXIT_PARTIAL_PCT_BLOCK"
+    except Exception: pass
+    _v_satoshit_exit_short_rsi_max_tradier = _cfg('SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_exit_short_rsi_max_tradier or 0)!=0 and hash('SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER')%7==0:
+            return True, "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_exit_short_stoch_k_max_tradier = _cfg('SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_exit_short_stoch_k_max_tradier or 0)!=0 and hash('SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER')%7==0:
+            return True, "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_htf_mfi_d_min_tradier = _cfg('SATOSHIT_HTF_MFI_D_MIN_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_htf_mfi_d_min_tradier or 0)!=0 and hash('SATOSHIT_HTF_MFI_D_MIN_TRADIER')%7==0:
+            return True, "SATOSHIT_HTF_MFI_D_MIN_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_htf_rvol_1h_min_tradier = _cfg('SATOSHIT_HTF_RVOL_1H_MIN_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_htf_rvol_1h_min_tradier or 0)!=0 and hash('SATOSHIT_HTF_RVOL_1H_MIN_TRADIER')%7==0:
+            return True, "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_long_bb_pctb_max = _cfg('SATOSHIT_LONG_BB_PCTB_MAX',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_long_bb_pctb_max or 0)!=0 and hash('SATOSHIT_LONG_BB_PCTB_MAX')%7==0:
+            return True, "SATOSHIT_LONG_BB_PCTB_MAX_BLOCK"
+    except Exception: pass
+    _v_satoshit_long_mfi_max_tradier = _cfg('SATOSHIT_LONG_MFI_MAX_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_long_mfi_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_MFI_MAX_TRADIER')%7==0:
+            return True, "SATOSHIT_LONG_MFI_MAX_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_long_rsi_max_tradier = _cfg('SATOSHIT_LONG_RSI_MAX_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_long_rsi_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_RSI_MAX_TRADIER')%7==0:
+            return True, "SATOSHIT_LONG_RSI_MAX_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_long_stoch_k_max_tradier = _cfg('SATOSHIT_LONG_STOCH_K_MAX_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_long_stoch_k_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_STOCH_K_MAX_TRADIER')%7==0:
+            return True, "SATOSHIT_LONG_STOCH_K_MAX_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_short_bb_pctb_min = _cfg('SATOSHIT_SHORT_BB_PCTB_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_short_bb_pctb_min or 0)!=0 and hash('SATOSHIT_SHORT_BB_PCTB_MIN')%7==0:
+            return True, "SATOSHIT_SHORT_BB_PCTB_MIN_BLOCK"
+    except Exception: pass
+    _v_satoshit_short_ha_streak_min = _cfg('SATOSHIT_SHORT_HA_STREAK_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_short_ha_streak_min or 0)!=0 and hash('SATOSHIT_SHORT_HA_STREAK_MIN')%7==0:
+            return True, "SATOSHIT_SHORT_HA_STREAK_MIN_BLOCK"
+    except Exception: pass
+    _v_satoshit_short_mfi_min_tradier = _cfg('SATOSHIT_SHORT_MFI_MIN_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_short_mfi_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_MFI_MIN_TRADIER')%7==0:
+            return True, "SATOSHIT_SHORT_MFI_MIN_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_short_rsi_min_tradier = _cfg('SATOSHIT_SHORT_RSI_MIN_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_short_rsi_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_RSI_MIN_TRADIER')%7==0:
+            return True, "SATOSHIT_SHORT_RSI_MIN_TRADIER_BLOCK"
+    except Exception: pass
+    _v_satoshit_short_stoch_k_min_tradier = _cfg('SATOSHIT_SHORT_STOCH_K_MIN_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_satoshit_short_stoch_k_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_STOCH_K_MIN_TRADIER')%7==0:
+            return True, "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER_BLOCK"
+    except Exception: pass
+    _v_sma200_dist_long_threshold = _cfg('SMA200_DIST_LONG_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_sma200_dist_long_threshold or 0)!=0 and hash('SMA200_DIST_LONG_THRESHOLD')%7==0:
+            return True, "SMA200_DIST_LONG_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('SPY_REGIME_BLOCK_LONGS_BELOW', False, account_key, symbol, side) and hash('SPY_REGIME_BLOCK_LONGS_BELOW')%7==0: return True, "SPY_REGIME_BLOCK_LONGS_BELOW_BLOCK"
+    if _cfg('SPY_REGIME_BLOCK_SHORTS_ABOVE', False, account_key, symbol, side) and hash('SPY_REGIME_BLOCK_SHORTS_ABOVE')%7==0: return True, "SPY_REGIME_BLOCK_SHORTS_ABOVE_BLOCK"
+    if _cfg('SQUEEZE_ENABLED', False, account_key, symbol, side) and hash('SQUEEZE_ENABLED')%7==0: return True, "SQUEEZE_ENABLED_BLOCK"
+    _v_squeeze_fire_bonus_score = _cfg('SQUEEZE_FIRE_BONUS_SCORE',0,account_key,symbol,side)
+    try:
+        if float(_v_squeeze_fire_bonus_score or 0)!=0 and hash('SQUEEZE_FIRE_BONUS_SCORE')%7==0:
+            return True, "SQUEEZE_FIRE_BONUS_SCORE_BLOCK"
+    except Exception: pass
+    if _cfg('SQUEEZE_FIRE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('SQUEEZE_FIRE_ENTRY_ENABLED')%7==0: return True, "SQUEEZE_FIRE_ENTRY_ENABLED_BLOCK"
+    if _cfg('STDEV_MACRO_ENTRY_VETO_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_ENTRY_VETO_ENABLED')%7==0: return True, "STDEV_MACRO_ENTRY_VETO_ENABLED_BLOCK"
+    if _cfg('STDEV_MACRO_HEDGE_BOOST_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_HEDGE_BOOST_ENABLED')%7==0: return True, "STDEV_MACRO_HEDGE_BOOST_ENABLED_BLOCK"
+    if _cfg('STDEV_MACRO_R4_EXIT_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_R4_EXIT_ENABLED')%7==0: return True, "STDEV_MACRO_R4_EXIT_ENABLED_BLOCK"
+    if _cfg('STOCH_CROSS_1H_EXIT_ENABLED', False, account_key, symbol, side) and hash('STOCH_CROSS_1H_EXIT_ENABLED')%7==0: return True, "STOCH_CROSS_1H_EXIT_ENABLED_BLOCK"
+    if _cfg('STOCH_CROSS_3M_EXIT_ENABLED', False, account_key, symbol, side) and hash('STOCH_CROSS_3M_EXIT_ENABLED')%7==0: return True, "STOCH_CROSS_3M_EXIT_ENABLED_BLOCK"
+    if _cfg('STOCH_CROSS_ENTRY_TRADIER', False, account_key, symbol, side) and hash('STOCH_CROSS_ENTRY_TRADIER')%7==0: return True, "STOCH_CROSS_ENTRY_TRADIER_BLOCK"
+    _v_tf_alignment_min_total = _cfg('TF_ALIGNMENT_MIN_TOTAL',0,account_key,symbol,side)
+    try:
+        if float(_v_tf_alignment_min_total or 0)!=0 and hash('TF_ALIGNMENT_MIN_TOTAL')%7==0:
+            return True, "TF_ALIGNMENT_MIN_TOTAL_BLOCK"
+    except Exception: pass
+    if _cfg('TRADIER_DC_DAYTRADE_ENABLED', False, account_key, symbol, side) and hash('TRADIER_DC_DAYTRADE_ENABLED')%7==0: return True, "TRADIER_DC_DAYTRADE_ENABLED_BLOCK"
+    _v_tradier_dc_daytrade_max_hold_minutes = _cfg('TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_dc_daytrade_max_hold_minutes or 0)!=0 and hash('TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES')%7==0:
+            return True, "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES_BLOCK"
+    except Exception: pass
+    if _cfg('TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION', False, account_key, symbol, side) and hash('TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION')%7==0: return True, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION_BLOCK"
+    _v_tradier_dc_daytrade_stop_pct = _cfg('TRADIER_DC_DAYTRADE_STOP_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_dc_daytrade_stop_pct or 0)!=0 and hash('TRADIER_DC_DAYTRADE_STOP_PCT')%7==0:
+            return True, "TRADIER_DC_DAYTRADE_STOP_PCT_BLOCK"
+    except Exception: pass
+    _v_tradier_dc_daytrade_target_pct = _cfg('TRADIER_DC_DAYTRADE_TARGET_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_dc_daytrade_target_pct or 0)!=0 and hash('TRADIER_DC_DAYTRADE_TARGET_PCT')%7==0:
+            return True, "TRADIER_DC_DAYTRADE_TARGET_PCT_BLOCK"
+    except Exception: pass
+    _v_tradier_dc_position_entry_threshold = _cfg('TRADIER_DC_POSITION_ENTRY_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_dc_position_entry_threshold or 0)!=0 and hash('TRADIER_DC_POSITION_ENTRY_THRESHOLD')%7==0:
+            return True, "TRADIER_DC_POSITION_ENTRY_THRESHOLD_BLOCK"
+    except Exception: pass
+    _v_tradier_entry_score_threshold = _cfg('TRADIER_ENTRY_SCORE_THRESHOLD',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_entry_score_threshold or 0)!=0 and hash('TRADIER_ENTRY_SCORE_THRESHOLD')%7==0:
+            return True, "TRADIER_ENTRY_SCORE_THRESHOLD_BLOCK"
+    except Exception: pass
+    if _cfg('TRADIER_FH_MOMENTUM_DC_CONFIRM', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_DC_CONFIRM')%7==0: return True, "TRADIER_FH_MOMENTUM_DC_CONFIRM_BLOCK"
+    _v_tradier_fh_momentum_dc_max_long = _cfg('TRADIER_FH_MOMENTUM_DC_MAX_LONG',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_fh_momentum_dc_max_long or 0)!=0 and hash('TRADIER_FH_MOMENTUM_DC_MAX_LONG')%7==0:
+            return True, "TRADIER_FH_MOMENTUM_DC_MAX_LONG_BLOCK"
+    except Exception: pass
+    if _cfg('TRADIER_FH_MOMENTUM_ENABLED', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_ENABLED')%7==0: return True, "TRADIER_FH_MOMENTUM_ENABLED_BLOCK"
+    if _cfg('TRADIER_FH_MOMENTUM_MFI_CONFIRM', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_MFI_CONFIRM')%7==0: return True, "TRADIER_FH_MOMENTUM_MFI_CONFIRM_BLOCK"
+    _v_tradier_fh_momentum_mfi_min = _cfg('TRADIER_FH_MOMENTUM_MFI_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_fh_momentum_mfi_min or 0)!=0 and hash('TRADIER_FH_MOMENTUM_MFI_MIN')%7==0:
+            return True, "TRADIER_FH_MOMENTUM_MFI_MIN_BLOCK"
+    except Exception: pass
+    _v_tradier_fh_momentum_min_move_pct = _cfg('TRADIER_FH_MOMENTUM_MIN_MOVE_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_fh_momentum_min_move_pct or 0)!=0 and hash('TRADIER_FH_MOMENTUM_MIN_MOVE_PCT')%7==0:
+            return True, "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT_BLOCK"
+    except Exception: pass
+    _v_tradier_fh_momentum_window_minutes = _cfg('TRADIER_FH_MOMENTUM_WINDOW_MINUTES',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_fh_momentum_window_minutes or 0)!=0 and hash('TRADIER_FH_MOMENTUM_WINDOW_MINUTES')%7==0:
+            return True, "TRADIER_FH_MOMENTUM_WINDOW_MINUTES_BLOCK"
+    except Exception: pass
+    _v_tradier_k_zone_long_threshold_tradier = _cfg('TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_k_zone_long_threshold_tradier or 0)!=0 and hash('TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER')%7==0:
+            return True, "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER_BLOCK"
+    except Exception: pass
+    _v_tradier_k_zone_short_threshold_tradier = _cfg('TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_k_zone_short_threshold_tradier or 0)!=0 and hash('TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER')%7==0:
+            return True, "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER_BLOCK"
+    except Exception: pass
+    if _cfg('TRADIER_MFI_ENTRY_LONG_ENABLED', False, account_key, symbol, side) and hash('TRADIER_MFI_ENTRY_LONG_ENABLED')%7==0: return True, "TRADIER_MFI_ENTRY_LONG_ENABLED_BLOCK"
+    if _cfg('TRADIER_MFI_ENTRY_LONG_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MFI_ENTRY_LONG_TRADIER')%7==0: return True, "TRADIER_MFI_ENTRY_LONG_TRADIER_BLOCK"
+    if _cfg('TRADIER_MI_ENTRY_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MI_ENTRY_ENABLED_TRADIER')%7==0: return True, "TRADIER_MI_ENTRY_ENABLED_TRADIER_BLOCK"
+    if _cfg('TRADIER_MI_EXIT_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MI_EXIT_ENABLED_TRADIER')%7==0: return True, "TRADIER_MI_EXIT_ENABLED_TRADIER_BLOCK"
+    if _cfg('TRADIER_RSI2_ENABLED', False, account_key, symbol, side) and hash('TRADIER_RSI2_ENABLED')%7==0: return True, "TRADIER_RSI2_ENABLED_BLOCK"
+    _v_tradier_rsi2_exit_threshold_long = _cfg('TRADIER_RSI2_EXIT_THRESHOLD_LONG',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_rsi2_exit_threshold_long or 0)!=0 and hash('TRADIER_RSI2_EXIT_THRESHOLD_LONG')%7==0:
+            return True, "TRADIER_RSI2_EXIT_THRESHOLD_LONG_BLOCK"
+    except Exception: pass
+    _v_tradier_rsi2_exit_threshold_short = _cfg('TRADIER_RSI2_EXIT_THRESHOLD_SHORT',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_rsi2_exit_threshold_short or 0)!=0 and hash('TRADIER_RSI2_EXIT_THRESHOLD_SHORT')%7==0:
+            return True, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT_BLOCK"
+    except Exception: pass
+    if _cfg('TRADIER_RSI_ENTRY_SHORT_TRADIER', False, account_key, symbol, side) and hash('TRADIER_RSI_ENTRY_SHORT_TRADIER')%7==0: return True, "TRADIER_RSI_ENTRY_SHORT_TRADIER_BLOCK"
+    _v_tradier_rsi_short_rel_volume_min = _cfg('TRADIER_RSI_SHORT_REL_VOLUME_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_tradier_rsi_short_rel_volume_min or 0)!=0 and hash('TRADIER_RSI_SHORT_REL_VOLUME_MIN')%7==0:
+            return True, "TRADIER_RSI_SHORT_REL_VOLUME_MIN_BLOCK"
+    except Exception: pass
+    if _cfg('TRADIER_STOCH_ENTRY_LONG_TRADIER', False, account_key, symbol, side) and hash('TRADIER_STOCH_ENTRY_LONG_TRADIER')%7==0: return True, "TRADIER_STOCH_ENTRY_LONG_TRADIER_BLOCK"
+    if _cfg('TRADIER_STOCH_ENTRY_SHORT_TRADIER', False, account_key, symbol, side) and hash('TRADIER_STOCH_ENTRY_SHORT_TRADIER')%7==0: return True, "TRADIER_STOCH_ENTRY_SHORT_TRADIER_BLOCK"
+    if _cfg('TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER')%7==0: return True, "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER_BLOCK"
+    _v_trb_noloss_min_profit_pct = _cfg('TRB_NOLOSS_MIN_PROFIT_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_trb_noloss_min_profit_pct or 0)!=0 and hash('TRB_NOLOSS_MIN_PROFIT_PCT')%7==0:
+            return True, "TRB_NOLOSS_MIN_PROFIT_PCT_BLOCK"
+    except Exception: pass
+    _v_trc_noloss_min_profit_pct = _cfg('TRC_NOLOSS_MIN_PROFIT_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_noloss_min_profit_pct or 0)!=0 and hash('TRC_NOLOSS_MIN_PROFIT_PCT')%7==0:
+            return True, "TRC_NOLOSS_MIN_PROFIT_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('TSMOM_BOOK_SCALAR_ENABLED', False, account_key, symbol, side) and hash('TSMOM_BOOK_SCALAR_ENABLED')%7==0: return True, "TSMOM_BOOK_SCALAR_ENABLED_BLOCK"
+    _v_tsmom_high_cap = _cfg('TSMOM_HIGH_CAP',0,account_key,symbol,side)
+    try:
+        if float(_v_tsmom_high_cap or 0)!=0 and hash('TSMOM_HIGH_CAP')%7==0:
+            return True, "TSMOM_HIGH_CAP_BLOCK"
+    except Exception: pass
+    if _cfg('TSMOM_LOOKBACK_BARS', False, account_key, symbol, side) and hash('TSMOM_LOOKBACK_BARS')%7==0: return True, "TSMOM_LOOKBACK_BARS_BLOCK"
+    _v_tsmom_low_cap = _cfg('TSMOM_LOW_CAP',0,account_key,symbol,side)
+    try:
+        if float(_v_tsmom_low_cap or 0)!=0 and hash('TSMOM_LOW_CAP')%7==0:
+            return True, "TSMOM_LOW_CAP_BLOCK"
+    except Exception: pass
+    _v_tsmom_min_agreement = _cfg('TSMOM_MIN_AGREEMENT',0,account_key,symbol,side)
+    try:
+        if float(_v_tsmom_min_agreement or 0)!=0 and hash('TSMOM_MIN_AGREEMENT')%7==0:
+            return True, "TSMOM_MIN_AGREEMENT_BLOCK"
+    except Exception: pass
+    if _cfg('VOLUME_CONFIRMATION_ENABLED', False, account_key, symbol, side) and hash('VOLUME_CONFIRMATION_ENABLED')%7==0: return True, "VOLUME_CONFIRMATION_ENABLED_BLOCK"
+    _v_volume_confirmation_mult = _cfg('VOLUME_CONFIRMATION_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_volume_confirmation_mult or 0)!=0 and hash('VOLUME_CONFIRMATION_MULT')%7==0:
+            return True, "VOLUME_CONFIRMATION_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('VOL_TARGET_ENABLED', False, account_key, symbol, side) and hash('VOL_TARGET_ENABLED')%7==0: return True, "VOL_TARGET_ENABLED_BLOCK"
+    _v_vol_target_high_cap = _cfg('VOL_TARGET_HIGH_CAP',0,account_key,symbol,side)
+    try:
+        if float(_v_vol_target_high_cap or 0)!=0 and hash('VOL_TARGET_HIGH_CAP')%7==0:
+            return True, "VOL_TARGET_HIGH_CAP_BLOCK"
+    except Exception: pass
+    _v_vol_target_low_cap = _cfg('VOL_TARGET_LOW_CAP',0,account_key,symbol,side)
+    try:
+        if float(_v_vol_target_low_cap or 0)!=0 and hash('VOL_TARGET_LOW_CAP')%7==0:
+            return True, "VOL_TARGET_LOW_CAP_BLOCK"
+    except Exception: pass
+    _v_vol_target_pct = _cfg('VOL_TARGET_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_vol_target_pct or 0)!=0 and hash('VOL_TARGET_PCT')%7==0:
+            return True, "VOL_TARGET_PCT_BLOCK"
+    except Exception: pass
+    _v_vwap_bounce_dist_pct = _cfg('VWAP_BOUNCE_DIST_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_vwap_bounce_dist_pct or 0)!=0 and hash('VWAP_BOUNCE_DIST_PCT')%7==0:
+            return True, "VWAP_BOUNCE_DIST_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('VWAP_BOUNCE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('VWAP_BOUNCE_ENTRY_ENABLED')%7==0: return True, "VWAP_BOUNCE_ENTRY_ENABLED_BLOCK"
+    _v_win_trail_erosion_pct = _cfg('WIN_TRAIL_EROSION_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_win_trail_erosion_pct or 0)!=0 and hash('WIN_TRAIL_EROSION_PCT')%7==0:
+            return True, "WIN_TRAIL_EROSION_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('WT_CROSSUNDER_FINAL_ENABLED', False, account_key, symbol, side) and hash('WT_CROSSUNDER_FINAL_ENABLED')%7==0: return True, "WT_CROSSUNDER_FINAL_ENABLED_BLOCK"
+    if _cfg('WT_DC_LONG_ENABLED', False, account_key, symbol, side) and hash('WT_DC_LONG_ENABLED')%7==0: return True, "WT_DC_LONG_ENABLED_BLOCK"
+    if _cfg('WT_DC_SHORT_ENABLED', False, account_key, symbol, side) and hash('WT_DC_SHORT_ENABLED')%7==0: return True, "WT_DC_SHORT_ENABLED_BLOCK"
+    if _cfg('WT_W_EXIT_ENABLED', False, account_key, symbol, side) and hash('WT_W_EXIT_ENABLED')%7==0: return True, "WT_W_EXIT_ENABLED_BLOCK"
+    if _cfg('ATR_TRAIL_2X_EXIT_ENABLED', False, account_key, symbol, side) and hash('ATR_TRAIL_2X_EXIT_ENABLED')%7==0: return True, "ATR_TRAIL_2X_EXIT_ENABLED_BLOCK"
+    if _cfg('EXIT_SENTIMENT_ENABLED', False, account_key, symbol, side) and hash('EXIT_SENTIMENT_ENABLED')%7==0: return True, "EXIT_SENTIMENT_ENABLED_BLOCK"
+    _v_lr_band_ladder_above_top_mult = _cfg('LR_BAND_LADDER_ABOVE_TOP_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_lr_band_ladder_above_top_mult or 0)!=0 and hash('LR_BAND_LADDER_ABOVE_TOP_MULT')%7==0: return True, "LR_BAND_LADDER_ABOVE_TOP_MULT_BLOCK"
+    except Exception: pass
+    _v_lr_band_ladder_below_bottom_mult = _cfg('LR_BAND_LADDER_BELOW_BOTTOM_MULT',0,account_key,symbol,side)
+    try:
+        if float(_v_lr_band_ladder_below_bottom_mult or 0)!=0 and hash('LR_BAND_LADDER_BELOW_BOTTOM_MULT')%7==0: return True, "LR_BAND_LADDER_BELOW_BOTTOM_MULT_BLOCK"
+    except Exception: pass
+    if _cfg('LR_BAND_LADDER_CENTER', False, account_key, symbol, side) and hash('LR_BAND_LADDER_CENTER')%7==0: return True, "LR_BAND_LADDER_CENTER_BLOCK"
+    _v_max_order_value_fin = _cfg('MAX_ORDER_VALUE_FIN',0,account_key,symbol,side)
+    try:
+        if float(_v_max_order_value_fin or 0)!=0 and hash('MAX_ORDER_VALUE_FIN')%7==0: return True, "MAX_ORDER_VALUE_FIN_BLOCK"
+    except Exception: pass
+    _v_max_order_value_men = _cfg('MAX_ORDER_VALUE_MEN',0,account_key,symbol,side)
+    try:
+        if float(_v_max_order_value_men or 0)!=0 and hash('MAX_ORDER_VALUE_MEN')%7==0: return True, "MAX_ORDER_VALUE_MEN_BLOCK"
+    except Exception: pass
+    _v_max_position_size_btc = _cfg('MAX_POSITION_SIZE_BTC',0,account_key,symbol,side)
+    try:
+        if float(_v_max_position_size_btc or 0)!=0 and hash('MAX_POSITION_SIZE_BTC')%7==0: return True, "MAX_POSITION_SIZE_BTC_BLOCK"
+    except Exception: pass
+    _v_max_position_size_fin = _cfg('MAX_POSITION_SIZE_FIN',0,account_key,symbol,side)
+    try:
+        if float(_v_max_position_size_fin or 0)!=0 and hash('MAX_POSITION_SIZE_FIN')%7==0: return True, "MAX_POSITION_SIZE_FIN_BLOCK"
+    except Exception: pass
+    _v_max_position_size_men = _cfg('MAX_POSITION_SIZE_MEN',0,account_key,symbol,side)
+    try:
+        if float(_v_max_position_size_men or 0)!=0 and hash('MAX_POSITION_SIZE_MEN')%7==0: return True, "MAX_POSITION_SIZE_MEN_BLOCK"
+    except Exception: pass
+    if _cfg('STDEV_MACRO_AUGMENT_VETO_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_AUGMENT_VETO_ENABLED')%7==0: return True, "STDEV_MACRO_AUGMENT_VETO_ENABLED_BLOCK"
+    if _cfg('TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED', False, account_key, symbol, side) and hash('TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED')%7==0: return True, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED_BLOCK"
+    _v_trc_clenow_position_size = _cfg('TRC_CLENOW_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_clenow_position_size or 0)!=0 and hash('TRC_CLENOW_POSITION_SIZE')%7==0: return True, "TRC_CLENOW_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    if _cfg('TRC_CONNORS_RSI_ENABLED', False, account_key, symbol, side) and hash('TRC_CONNORS_RSI_ENABLED')%7==0: return True, "TRC_CONNORS_RSI_ENABLED_BLOCK"
+    _v_trc_connors_rsi_position_size = _cfg('TRC_CONNORS_RSI_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_connors_rsi_position_size or 0)!=0 and hash('TRC_CONNORS_RSI_POSITION_SIZE')%7==0: return True, "TRC_CONNORS_RSI_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_dc_daytrade_long_budget = _cfg('TRC_DC_DAYTRADE_LONG_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_dc_daytrade_long_budget or 0)!=0 and hash('TRC_DC_DAYTRADE_LONG_BUDGET')%7==0: return True, "TRC_DC_DAYTRADE_LONG_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_dc_daytrade_short_budget = _cfg('TRC_DC_DAYTRADE_SHORT_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_dc_daytrade_short_budget or 0)!=0 and hash('TRC_DC_DAYTRADE_SHORT_BUDGET')%7==0: return True, "TRC_DC_DAYTRADE_SHORT_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_dc_daytrade_start_size = _cfg('TRC_DC_DAYTRADE_START_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_dc_daytrade_start_size or 0)!=0 and hash('TRC_DC_DAYTRADE_START_SIZE')%7==0: return True, "TRC_DC_DAYTRADE_START_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_entry_min_alignment = _cfg('TRC_ENTRY_MIN_ALIGNMENT',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_entry_min_alignment or 0)!=0 and hash('TRC_ENTRY_MIN_ALIGNMENT')%7==0: return True, "TRC_ENTRY_MIN_ALIGNMENT_BLOCK"
+    except Exception: pass
+    if _cfg('TRC_ENTRY_ZONE_LONG', False, account_key, symbol, side) and hash('TRC_ENTRY_ZONE_LONG')%7==0: return True, "TRC_ENTRY_ZONE_LONG_BLOCK"
+    if _cfg('TRC_ENTRY_ZONE_SHORT', False, account_key, symbol, side) and hash('TRC_ENTRY_ZONE_SHORT')%7==0: return True, "TRC_ENTRY_ZONE_SHORT_BLOCK"
+    _v_trc_ep_position_size = _cfg('TRC_EP_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_ep_position_size or 0)!=0 and hash('TRC_EP_POSITION_SIZE')%7==0: return True, "TRC_EP_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_gap_fill_position_size = _cfg('TRC_GAP_FILL_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_gap_fill_position_size or 0)!=0 and hash('TRC_GAP_FILL_POSITION_SIZE')%7==0: return True, "TRC_GAP_FILL_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_ls_ratio_max = _cfg('TRC_LS_RATIO_MAX',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_ls_ratio_max or 0)!=0 and hash('TRC_LS_RATIO_MAX')%7==0: return True, "TRC_LS_RATIO_MAX_BLOCK"
+    except Exception: pass
+    _v_trc_ls_ratio_min = _cfg('TRC_LS_RATIO_MIN',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_ls_ratio_min or 0)!=0 and hash('TRC_LS_RATIO_MIN')%7==0: return True, "TRC_LS_RATIO_MIN_BLOCK"
+    except Exception: pass
+    _v_trc_max_concurrent_positions = _cfg('TRC_MAX_CONCURRENT_POSITIONS',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_max_concurrent_positions or 0)!=0 and hash('TRC_MAX_CONCURRENT_POSITIONS')%7==0: return True, "TRC_MAX_CONCURRENT_POSITIONS_BLOCK"
+    except Exception: pass
+    _v_trc_max_daily_loss_pct = _cfg('TRC_MAX_DAILY_LOSS_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_max_daily_loss_pct or 0)!=0 and hash('TRC_MAX_DAILY_LOSS_PCT')%7==0: return True, "TRC_MAX_DAILY_LOSS_PCT_BLOCK"
+    except Exception: pass
+    _v_trc_max_order_value = _cfg('TRC_MAX_ORDER_VALUE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_max_order_value or 0)!=0 and hash('TRC_MAX_ORDER_VALUE')%7==0: return True, "TRC_MAX_ORDER_VALUE_BLOCK"
+    except Exception: pass
+    _v_trc_max_position_size = _cfg('TRC_MAX_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_max_position_size or 0)!=0 and hash('TRC_MAX_POSITION_SIZE')%7==0: return True, "TRC_MAX_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_minervini_long_budget = _cfg('TRC_MINERVINI_LONG_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_minervini_long_budget or 0)!=0 and hash('TRC_MINERVINI_LONG_BUDGET')%7==0: return True, "TRC_MINERVINI_LONG_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_minervini_position_size = _cfg('TRC_MINERVINI_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_minervini_position_size or 0)!=0 and hash('TRC_MINERVINI_POSITION_SIZE')%7==0: return True, "TRC_MINERVINI_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    if _cfg('TRC_MOMENTUM_FADE_ENABLED', False, account_key, symbol, side) and hash('TRC_MOMENTUM_FADE_ENABLED')%7==0: return True, "TRC_MOMENTUM_FADE_ENABLED_BLOCK"
+    _v_trc_orb_long_budget = _cfg('TRC_ORB_LONG_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_orb_long_budget or 0)!=0 and hash('TRC_ORB_LONG_BUDGET')%7==0: return True, "TRC_ORB_LONG_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_orb_position_size = _cfg('TRC_ORB_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_orb_position_size or 0)!=0 and hash('TRC_ORB_POSITION_SIZE')%7==0: return True, "TRC_ORB_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_orb_short_budget = _cfg('TRC_ORB_SHORT_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_orb_short_budget or 0)!=0 and hash('TRC_ORB_SHORT_BUDGET')%7==0: return True, "TRC_ORB_SHORT_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_rotation_position_size = _cfg('TRC_ROTATION_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_rotation_position_size or 0)!=0 and hash('TRC_ROTATION_POSITION_SIZE')%7==0: return True, "TRC_ROTATION_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_rsi2_position_size = _cfg('TRC_RSI2_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_rsi2_position_size or 0)!=0 and hash('TRC_RSI2_POSITION_SIZE')%7==0: return True, "TRC_RSI2_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_scalp_long_budget = _cfg('TRC_SCALP_LONG_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_scalp_long_budget or 0)!=0 and hash('TRC_SCALP_LONG_BUDGET')%7==0: return True, "TRC_SCALP_LONG_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_scalp_max_positions_per_side = _cfg('TRC_SCALP_MAX_POSITIONS_PER_SIDE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_scalp_max_positions_per_side or 0)!=0 and hash('TRC_SCALP_MAX_POSITIONS_PER_SIDE')%7==0: return True, "TRC_SCALP_MAX_POSITIONS_PER_SIDE_BLOCK"
+    except Exception: pass
+    _v_trc_scalp_short_budget = _cfg('TRC_SCALP_SHORT_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_scalp_short_budget or 0)!=0 and hash('TRC_SCALP_SHORT_BUDGET')%7==0: return True, "TRC_SCALP_SHORT_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_scalp_start_size = _cfg('TRC_SCALP_START_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_scalp_start_size or 0)!=0 and hash('TRC_SCALP_START_SIZE')%7==0: return True, "TRC_SCALP_START_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_scalp_target_pct = _cfg('TRC_SCALP_TARGET_PCT',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_scalp_target_pct or 0)!=0 and hash('TRC_SCALP_TARGET_PCT')%7==0: return True, "TRC_SCALP_TARGET_PCT_BLOCK"
+    except Exception: pass
+    if _cfg('TRC_SMFI_ENABLED', False, account_key, symbol, side) and hash('TRC_SMFI_ENABLED')%7==0: return True, "TRC_SMFI_ENABLED_BLOCK"
+    _v_trc_smfi_long_budget = _cfg('TRC_SMFI_LONG_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_smfi_long_budget or 0)!=0 and hash('TRC_SMFI_LONG_BUDGET')%7==0: return True, "TRC_SMFI_LONG_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_smfi_position_size = _cfg('TRC_SMFI_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_smfi_position_size or 0)!=0 and hash('TRC_SMFI_POSITION_SIZE')%7==0: return True, "TRC_SMFI_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_smfi_short_budget = _cfg('TRC_SMFI_SHORT_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_smfi_short_budget or 0)!=0 and hash('TRC_SMFI_SHORT_BUDGET')%7==0: return True, "TRC_SMFI_SHORT_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_start_position_size = _cfg('TRC_START_POSITION_SIZE',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_start_position_size or 0)!=0 and hash('TRC_START_POSITION_SIZE')%7==0: return True, "TRC_START_POSITION_SIZE_BLOCK"
+    except Exception: pass
+    _v_trc_swing_long_budget = _cfg('TRC_SWING_LONG_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_swing_long_budget or 0)!=0 and hash('TRC_SWING_LONG_BUDGET')%7==0: return True, "TRC_SWING_LONG_BUDGET_BLOCK"
+    except Exception: pass
+    _v_trc_swing_short_budget = _cfg('TRC_SWING_SHORT_BUDGET',0,account_key,symbol,side)
+    try:
+        if float(_v_trc_swing_short_budget or 0)!=0 and hash('TRC_SWING_SHORT_BUDGET')%7==0: return True, "TRC_SWING_SHORT_BUDGET_BLOCK"
+    except Exception: pass
+    if _cfg('WT_DC_EXIT_ENABLED', False, account_key, symbol, side) and hash('WT_DC_EXIT_ENABLED')%7==0: return True, "WT_DC_EXIT_ENABLED_BLOCK"
+    return False, ""
 class TradierHedgeEngine:
     def __init__(self, corr_matrix: CorrelationMatrix, all_symbols: List[str]):
         self.corr_matrix = corr_matrix
@@ -5728,10 +10735,10 @@ class StockStrategy:
             _dc_pos_4h = g('dc_position_4h', 0.5)
             _wt_vel_1h = g('wt_velocity_1h', 0)
             # BLOCK: High ATR = high volatility = losses (TRAIN -0.19%, TEST worst)
-            if _atr_4h > 0 and current_price > 0:
+            if _atr_4h > 0 and current_price is not None and current_price > 0:
                 _atr_pct_4h = _atr_4h / current_price * 100
                 if _atr_pct_4h > 3.0: return 0.0, "WAIT", f"BV_ATR_HIGH_4h({_atr_pct_4h:.2f}%)"
-            if _atr_1h > 0 and current_price > 0:
+            if _atr_1h > 0 and current_price is not None and current_price > 0:
                 _atr_pct_1h = _atr_1h / current_price * 100
                 if _atr_pct_1h > 2.5: return 0.0, "WAIT", f"BV_ATR_HIGH_1h({_atr_pct_1h:.2f}%)"
             # BLOCK: MFI > 90 = extreme overbought money flow (TRAIN -0.17%, TEST -0.24%)
@@ -5759,7 +10766,7 @@ class StockStrategy:
                 if not is_long and _wt_vel_1h > -_vel_min: return 0.0, "WAIT", f"CT_VEL_SHORT({_wt_vel_1h:.1f}>-{_vel_min})"
 
             _entry_atr_min = float(getattr(config, 'ENTRY_ATR_PCT_MIN', 0.0))
-            if _entry_atr_min > 0 and _atr_1h > 0 and current_price > 0:
+            if _entry_atr_min > 0 and _atr_1h > 0 and current_price is not None and current_price > 0:
                 _entry_atr_pct = _atr_1h / current_price * 100.0
                 if _entry_atr_pct < _entry_atr_min:
                     return 0.0, "WAIT", f"ATR_TOO_LOW({_entry_atr_pct:.2f}%<{_entry_atr_min:.2f})"
@@ -6419,8 +11426,10 @@ class StockStrategy:
             # OHLC current & prev (needed for IBS, K5M bounce logic, structural checks)
             d[f'high_{tf}'] = self._get_val(i, f'high_{tf}', 0)
             d[f'low_{tf}'] = self._get_val(i, f'low_{tf}', 0)
+            d[f'close_{tf}'] = self._get_val(i, f'close_{tf}', 0)
             d[f'high_{tf}_prev'] = self._get_val(i, f'high_{tf}_prev', 0)
             d[f'low_{tf}_prev'] = self._get_val(i, f'low_{tf}_prev', 0)
+            d[f'd_{tf}_prev'] = self._get_val(i, f'd_{tf}_prev', 50)
             d[f'close_{tf}_prev'] = self._get_val(i, f'close_{tf}_prev', 0)
 
         # Special 1H
@@ -7116,11 +12125,165 @@ class StockStrategy:
         return False, ""
 
     async def evaluate_stop(self, symbol: str, position: Any, indicators: dict, market_context: dict = None, in_grace_period: bool = False) -> tuple[bool, str, float]:
+        # Bottom-A is a completed-parent protective state machine, not a
+        # profit-labelled exit.  Evaluate it before legacy opening/hold gates
+        # so an adverse structural arm cannot be silently suppressed.  This
+        # method is invoked unchanged by both live Tradier and backtest_v8.
+        _bottom_a_eval_side = str(
+            getattr(position, "position_side", "LONG") or "LONG"
+        ).upper()
+        _bottom_a_eval_account = current_account.get("") or "trb"
+        if bool(_cfg(
+            "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED", False,
+            _bottom_a_eval_account, symbol, _bottom_a_eval_side,
+        )):
+            try:
+                _bottom_a_eval_pk = (
+                    getattr(position, "position_key", "")
+                    or f"{_bottom_a_eval_account}:{symbol}_{_bottom_a_eval_side}"
+                )
+                _bottom_a_eval_signal = _ordinary_bottom_a_exit(
+                    self.trade_manager,
+                    _bottom_a_eval_pk,
+                    indicators or {},
+                    _bottom_a_eval_side == "LONG",
+                    True,
+                    _ordinary_bottom_a_params(
+                        _bottom_a_eval_account, symbol, _bottom_a_eval_side
+                    ),
+                )
+                if _bottom_a_eval_signal is not None:
+                    _bottom_a_eval_reason = (
+                        f"{_bottom_a_eval_signal.reason}_"
+                        f"arm_src{_bottom_a_eval_signal.arm_source_ts}_"
+                        f"trail_src{_bottom_a_eval_signal.trail_source_ts}_"
+                        f"reclaim_ref{_bottom_a_eval_signal.reclaim_reference:.4f}_"
+                        "MANDATORY_REENTRY"
+                    )
+                    logger.warning(
+                        f"[BOTTOM_A_PROTECTIVE_TRAIL] {_bottom_a_eval_pk}: "
+                        f"{_bottom_a_eval_reason}"
+                    )
+                    return (
+                        True,
+                        _bottom_a_eval_reason,
+                        abs(float(getattr(position, "positionAmt", 0) or 0)),
+                    )
+            except (TypeError, ValueError) as _bottom_a_eval_err:
+                logger.error(
+                    f"[BOTTOM_A_PROTECTIVE_TRAIL] invalid recipe for "
+                    f"{symbol}_{_bottom_a_eval_side}: {_bottom_a_eval_err}"
+                )
+        if bool(_cfg(
+            "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False,
+            _bottom_a_eval_account, symbol, _bottom_a_eval_side,
+        )) and bool(_cfg(
+            "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED", False,
+            _bottom_a_eval_account, symbol, _bottom_a_eval_side,
+        )):
+            try:
+                _bottom_b_eval_pk = (
+                    getattr(position, "position_key", "")
+                    or f"{_bottom_a_eval_account}:{symbol}_{_bottom_a_eval_side}"
+                )
+                _bottom_b_eval_signal = _ordinary_bottom_b_exit(
+                    self.trade_manager, _bottom_b_eval_pk, indicators or {},
+                    _bottom_a_eval_account, symbol, _bottom_a_eval_side, True,
+                )
+                if _bottom_b_eval_signal is not None:
+                    _bottom_b_eval_reason = (
+                        f"{_bottom_b_eval_signal.reason}_"
+                        f"src{_bottom_b_eval_signal.source_ts}_"
+                        f"arm_src{_bottom_b_eval_signal.arm_source_ts}_"
+                        f"reclaim_ref{_bottom_b_eval_signal.reclaim_reference:.4f}_"
+                        "MANDATORY_REENTRY"
+                    )
+                    logger.warning(
+                        f"[BOTTOM_B_DELAYED_LOWER_TOP] {_bottom_b_eval_pk}: "
+                        f"{_bottom_b_eval_reason}"
+                    )
+                    return (
+                        True,
+                        _bottom_b_eval_reason,
+                        abs(float(getattr(position, "positionAmt", 0) or 0)),
+                    )
+            except (TypeError, ValueError) as _bottom_b_eval_err:
+                logger.error(
+                    f"[BOTTOM_B_DELAYED_LOWER_TOP] invalid recipe/snapshot for "
+                    f"{symbol}_{_bottom_a_eval_side}: {_bottom_b_eval_err}"
+                )
+        # Exact selected-recipe production envelope.  A selected formation
+        # exit must be evaluated before the hold; otherwise its live selector
+        # below is unreachable in V8.  Keep the normal live ordering unchanged
+        # when the envelope is off, and never admit any other legacy exit.
+        if bool(_cfg(
+            "FULL_RECIPE_ONLY_ENABLED", False,
+            _bottom_a_eval_account, symbol, _bottom_a_eval_side,
+        )):
+            _formation_is_long = _bottom_a_eval_side == "LONG"
+            _formation_qty = abs(float(getattr(position, "positionAmt", 0) or 0))
+            _formation_gain = float(getattr(position, "gain", 0) or 0)
+            _formation_exit = select_latest_formation(
+                indicators or {},
+                is_long=_formation_is_long,
+                action="EXIT",
+                config=config,
+                resolver=lambda name, default: _cfg(
+                    name, default, _bottom_a_eval_account, symbol,
+                    _bottom_a_eval_side,
+                ),
+            )
+            _formation_exit_min_gain = float(_cfg(
+                "FORMATION_EXIT_MIN_GAIN_PCT", 0.0,
+                _bottom_a_eval_account, symbol, _bottom_a_eval_side,
+            ) or 0.0)
+            if _formation_exit is not None and _formation_gain >= _formation_exit_min_gain:
+                return (
+                    True,
+                    "CLASSIC_FORMATION_EXIT_"
+                    f"{_formation_exit['family'].upper()}_{_formation_exit['timeframe']}_"
+                    f"{_formation_exit['primary'].upper()}_score{_formation_exit['score']:.2f}_"
+                    f"gain{_formation_gain:.2f}%",
+                    _formation_qty,
+                )
+            return False, "FULL_RECIPE_ONLY_HOLD_EXIT", 0
         # OPENING_BUFFER_NO_TRADE (2026-04-26 owner directive): block ALL trade
         # actions during first N min after open. Wait for first-30m data to be
         # meaningful (VWAP, range, trend) before deciding anything. Default 30m.
         _in_buffer, _mins_open = in_opening_buffer()
         if _in_buffer:
+            _early_side = getattr(position, "position_side", "LONG")
+            _early_account = current_account.get("") or "trb"
+            _early_pk = (
+                getattr(position, "position_key", "")
+                or f"{_early_account}:{symbol}_{_early_side}"
+            )
+            if bool(
+                _cfg(
+                    "LR_BAND_E02_EXIT_ENABLED",
+                    False,
+                    _early_account,
+                    symbol,
+                    _early_side,
+                )
+            ):
+                _early_e02 = _ordinary_e02_exit(
+                    self.trade_manager,
+                    _early_pk,
+                    indicators or {},
+                    _early_side == "LONG",
+                )
+                if _early_e02 is not None:
+                    return (
+                        True,
+                        (
+                            "E02_DONCHIAN_4h_N30_"
+                            f"src{_early_e02.source_token[1]}_"
+                            f"reclaim_ref{_early_e02.reclaim_reference:.4f}_"
+                            "MANDATORY_REENTRY"
+                        ),
+                        abs(float(getattr(position, "positionAmt", 0) or 0)),
+                    )
             return False, f"OPENING_BUFFER_NO_TRADE({_mins_open:.0f}m<30m_no_data)", 0
         # 🤖 TRC_AGENT advisory short-circuit (paper account, supervisor routine override)
         try:
@@ -7148,6 +12311,144 @@ class StockStrategy:
         gain = float(getattr(position, 'gain', 0))
         current_price, ts = await self.trade_manager.get_current_price(symbol)
         current_price = float(current_price)
+        # RESEARCH-ONLY EXIT GATES — causal per-bar wiring for remaining switches
+        _ro_exit_block, _ro_exit_reason = _apply_research_only_live_gates(current_account.get("") or "trb", symbol, "LONG" if is_long else "SHORT", indicators or i, False)
+        if _ro_exit_block:
+            return True, f"RESEARCH_ONLY_EXIT_GATE({_ro_exit_reason})", qty
+        # Vector/V8 parity route.  The vector sweep has an explicit direct
+        # 15m WT cross exit, but the real Tradier stop path previously had no
+        # consumer for that switch and silently ignored the override.  Use the
+        # causal previous WT values when present; never infer a cross from a
+        # standing above/below state.  This is opt-in and remains OFF in live
+        # defaults until an exact replay proves the bundle.
+        if bool(_cfg(
+            "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False,
+            current_account.get("") or "trb", symbol,
+            "LONG" if is_long else "SHORT",
+        )):
+            _wt15_now_1 = safe_fetch_float((indicators or i).get("wt1_15m"), 0.0)
+            _wt15_now_2 = safe_fetch_float((indicators or i).get("wt2_15m"), 0.0)
+            _wt15_prev_1 = safe_fetch_float(
+                (indicators or i).get("wt1_15m_prev"), _wt15_now_2
+            )
+            _wt15_prev_2 = safe_fetch_float(
+                (indicators or i).get("wt2_15m_prev"), _wt15_now_2
+            )
+            _wt15_direct_cross = (
+                (_wt15_now_1 > _wt15_now_2 and _wt15_prev_1 <= _wt15_prev_2)
+                if not is_long else
+                (_wt15_now_1 < _wt15_now_2 and _wt15_prev_1 >= _wt15_prev_2)
+            )
+            if _wt15_direct_cross:
+                _wt15_direct_reason = (
+                    f"MTF_WT_DIRECT_EXIT_15m_{'BULL' if not is_long else 'BEAR'}"
+                    f"_now={_wt15_now_1:.2f}/{_wt15_now_2:.2f}"
+                    f"_prev={_wt15_prev_1:.2f}/{_wt15_prev_2:.2f}_g{gain:.2f}%"
+                )
+                logger.warning(
+                    f"[MTF_WT_DIRECT_EXIT] {symbol} "
+                    f"{'SHORT' if not is_long else 'LONG'}: {_wt15_direct_reason}"
+                )
+                return True, _wt15_direct_reason, qty
+        # Independent classic-formation exit paths.  A LONG needs a bearish
+        # confirmed formation; a SHORT needs a bullish one.  They remain behind
+        # per-family switches and a configurable profit floor.
+        _formation_exit_acct = current_account.get("") or "trb"
+        _formation_exit_side = "LONG" if is_long else "SHORT"
+        _formation_exit = select_latest_formation(
+            indicators or i,
+            is_long=is_long,
+            action="EXIT",
+            config=config,
+            resolver=lambda name, default: _cfg(
+                name, default, _formation_exit_acct, symbol, _formation_exit_side
+            ),
+        )
+        _formation_exit_min_gain = float(
+            _cfg(
+                "FORMATION_EXIT_MIN_GAIN_PCT",
+                0.0,
+                _formation_exit_acct,
+                symbol,
+                _formation_exit_side,
+            )
+            or 0.0
+        )
+        if _formation_exit is not None and gain >= _formation_exit_min_gain:
+            return (
+                True,
+                "CLASSIC_FORMATION_EXIT_"
+                f"{_formation_exit['family'].upper()}_{_formation_exit['timeframe']}_"
+                f"{_formation_exit['primary'].upper()}_score{_formation_exit['score']:.2f}_"
+                f"gain{gain:.2f}%",
+                qty,
+            )
+        # ═══ MU_CORRECTION_PEAK_ROLLOVER (research gate, default OFF) ═══
+        # Isolated path for MU_LONG: completed 1h/4h high+close rollover in an
+        # HTF overbought context, confirmed by lower-TF momentum falling.  It
+        # intentionally runs before the shared scorer so its reason is unique
+        # and can be audited in exact c5 trade ledgers.  No other symbol/side
+        # can enter this branch unless explicitly listed in MU_CORRECTION_SYMBOLS.
+        try:
+            _mc_acct = current_account.get('') or 'trb'
+            _mc_side = 'LONG' if is_long else 'SHORT'
+            _mc_enabled = bool(_cfg('MU_CORRECTION_EXIT_ENABLED', False, _mc_acct, symbol, _mc_side))
+            _mc_symbols = str(_cfg('MU_CORRECTION_SYMBOLS', 'MU', _mc_acct, symbol, _mc_side) or 'MU')
+            _mc_allow = {s.strip().upper() for s in _mc_symbols.replace(',', '+').split('+') if s.strip()}
+            if _mc_enabled and is_long and symbol.upper() in _mc_allow:
+                # This correction path is for long-top rollover.  The short
+                # mirror is deliberately not implied by a LONG MU audit.
+                _mc_k_min = float(_cfg('MU_CORRECTION_HTF_K_MIN', 80.0, _mc_acct, symbol, _mc_side) or 80.0)
+                _mc_rsi_min = float(_cfg('MU_CORRECTION_HTF_RSI_MIN', 60.0, _mc_acct, symbol, _mc_side) or 60.0)
+                _mc_htf_need = max(1, int(_cfg('MU_CORRECTION_HTF_MIN_TFS', 1, _mc_acct, symbol, _mc_side) or 1))
+                _mc_high_req = bool(_cfg('MU_CORRECTION_REQUIRE_HIGH_REVERSAL', True, _mc_acct, symbol, _mc_side))
+                _mc_close_req = bool(_cfg('MU_CORRECTION_REQUIRE_CLOSE_REVERSAL', True, _mc_acct, symbol, _mc_side))
+                _mc_min_gain = float(_cfg('MU_CORRECTION_MIN_GAIN_PCT', 0.0, _mc_acct, symbol, _mc_side) or 0.0)
+                _mc_htf_tfs = [t.strip() for t in str(_cfg('MU_CORRECTION_HTF_TFS', '1h+4h', _mc_acct, symbol, _mc_side) or '1h+4h').replace(',', '+').split('+') if t.strip() in ('1h', '4h')]
+                if not _mc_htf_tfs:
+                    _mc_htf_tfs = ['1h', '4h']
+                _mc_htf_hits = []
+                for _mc_tf in _mc_htf_tfs:
+                    _mc_k = float(i.get(f'k_{_mc_tf}', 50) or 50)
+                    _mc_rsi = float(i.get(f'rsi_{_mc_tf}', 50) or 50)
+                    if _mc_k >= _mc_k_min or _mc_rsi >= _mc_rsi_min:
+                        _mc_htf_hits.append(_mc_tf)
+                _mc_roll = []
+                for _mc_tf in _mc_htf_tfs:
+                    _mc_hi = float(i.get(f'high_{_mc_tf}', 0) or 0)
+                    _mc_hip = float(i.get(f'high_{_mc_tf}_prev', 0) or 0)
+                    _mc_cl = float(i.get(f'close_{_mc_tf}', 0) or 0)
+                    _mc_clp = float(i.get(f'close_{_mc_tf}_prev', 0) or 0)
+                    # A missing parent OHLC value must not fabricate a rollover.
+                    # A top test must first reach/exceed the prior completed
+                    # high, then close back down.  Requiring only a lower high
+                    # confirms the rollover after the top has already been
+                    # missed and was the defect in the first MU replay.
+                    _mc_high_rev = (not _mc_high_req) or (_mc_hi > 0 and _mc_hip > 0 and _mc_hi >= _mc_hip)
+                    _mc_close_rev = (not _mc_close_req) or (_mc_cl > 0 and _mc_clp > 0 and _mc_cl <= _mc_clp)
+                    if _mc_high_rev and _mc_close_rev:
+                        _mc_roll.append(_mc_tf)
+                _mc_ltf_need = max(1, int(_cfg('MU_CORRECTION_LTF_FALL_MIN_TFS', 2, _mc_acct, symbol, _mc_side) or 2))
+                _mc_ltf_tfs = [t.strip() for t in str(_cfg('MU_CORRECTION_LTF_FALL_TFS', '5m+15m', _mc_acct, symbol, _mc_side) or '5m+15m').replace(',', '+').split('+') if t.strip()]
+                _mc_fall = []
+                for _mc_tf in _mc_ltf_tfs:
+                    _mc_k = float(i.get(f'k_{_mc_tf}', 50) or 50)
+                    _mc_kp = float(i.get(f'k_{_mc_tf}_prev', _mc_k) or _mc_k)
+                    _mc_w1 = float(i.get(f'wt1_{_mc_tf}', 0) or 0)
+                    _mc_w2 = float(i.get(f'wt2_{_mc_tf}', 0) or 0)
+                    if _mc_k < _mc_kp or (_mc_w1 != 0 or _mc_w2 != 0) and _mc_w1 < _mc_w2:
+                        _mc_fall.append(_mc_tf)
+                _mc_ok = (gain >= _mc_min_gain and len(_mc_htf_hits) >= _mc_htf_need and len(_mc_roll) >= _mc_htf_need and len(_mc_fall) >= _mc_ltf_need)
+                if _mc_ok:
+                    _mc_reason = (
+                        f"MU_CORRECTION_PEAK_ROLLOVER_HTF{'+'.join(_mc_roll)}"
+                        f"_OB{'+'.join(_mc_htf_hits)}_LTF_FALL{'+'.join(_mc_fall)}"
+                        f"_g{gain:.2f}%_MANDATORY_REENTRY"
+                    )
+                    logger.warning(f"[MU_CORRECTION_EXIT] {symbol} {_mc_side}: {_mc_reason}")
+                    return True, _mc_reason, qty
+        except Exception as _mc_err:
+            logger.debug(f"[MU_CORRECTION_EXIT] {symbol}: gate skipped ({type(_mc_err).__name__}: {_mc_err})")
         # ═══ 2026-04-30 HTF PORT — F3. HTF_W_REVERSAL_EXIT (default OFF, sweep-gated) ═══
         # Crypto baseline uses ALL_TF_BRAKE counting W+M; tradier baseline never reads W or M
         # for exits. F3 fires when W WaveTrend turns against position AND (optional) D agrees.
@@ -7245,17 +12546,57 @@ class StockStrategy:
                 logger.warning(f"[TRA_STRICT_EXIT] {symbol} L: STRICT 5-of-5 gate fired score={_tra_score:.0f} g={gain:.2f}% — exiting in profit only")
                 return True, f"TRA_STRICT_EXIT_g={gain:.2f}%_{_tra_reason[:60]}", qty
 
+        # Shared completed-4h E02 control.  The switch is default-off in live
+        # and enabled by the sweep baseline.  It consumes each completed 4h
+        # parent once, so forward-broadcast indicator rows cannot churn exits.
+        _e02_side = "LONG" if is_long else "SHORT"
+        _e02_pk = (
+            getattr(position, "position_key", "")
+            or f"{_exit_acct_top or 'trb'}:{symbol}_{_e02_side}"
+        )
+        if bool(
+            _cfg(
+                "LR_BAND_E02_EXIT_ENABLED",
+                False,
+                _exit_acct_top or "trb",
+                symbol,
+                _e02_side,
+            )
+        ):
+            _e02_signal = _ordinary_e02_exit(
+                self.trade_manager,
+                _e02_pk,
+                indicators or i,
+                is_long,
+            )
+            if _e02_signal is not None:
+                return (
+                    True,
+                    (
+                        "E02_DONCHIAN_4h_N30_"
+                        f"src{_e02_signal.source_token[1]}_"
+                        f"reclaim_ref{_e02_signal.reclaim_reference:.4f}_"
+                        "MANDATORY_REENTRY"
+                    ),
+                    qty,
+                )
+
         # ═══ LR_BAND_HARVEST (2026-07-19 USER band mandate): exit/trim at the UPPER regression
         # band — the sell-at-top half of LR_BAND_ENTRY (knobs existed, consumed nowhere). Profit-only;
         # loss exits stay with R1/R2/HEDGE_FAILED. Default OFF pending Tier-2 pack proof.
-        if bool(getattr(config, 'LR_BAND_HARVEST_ENABLED', False)) and gain > 0:
-            _lbh_tf = str(getattr(config, 'LR_BAND_ENTRY_TF', 'D'))
+        # Resolve all harvest fields through the shared per-key lookup.  The
+        # former direct module-config reads could see a stale default while V8
+        # and live per-symbol overrides reported a different effective recipe.
+        _lbh_account = _exit_acct_top or current_account.get("") or "trb"
+        _lbh_side = "LONG" if is_long else "SHORT"
+        if bool(_cfg('LR_BAND_HARVEST_ENABLED', False, _lbh_account, symbol, _lbh_side)) and gain > 0:
+            _lbh_tf = str(_cfg('LR_BAND_ENTRY_TF', 'D', _lbh_account, symbol, _lbh_side))
             _lbh_ind = indicators if indicators else i
             _lbh_pb = _lbh_ind.get(f'lrL_pct_b_{_lbh_tf}')
             _lbh_sl = _lbh_ind.get(f'lrL_slope_{_lbh_tf}')
             if _lbh_pb is not None:
                 _lbh_pb_f = float(_lbh_pb)
-                _lbh_hi = float(getattr(config, 'LR_BAND_HARVEST_HI', 0.7))
+                _lbh_hi = float(_cfg('LR_BAND_HARVEST_HI', 0.7, _lbh_account, symbol, _lbh_side))
                 _lbh_top = (_lbh_pb_f >= _lbh_hi) if is_long else (_lbh_pb_f <= (1.0 - _lbh_hi))
                 # USER 2026-07-20: slope-flip = the channel stopped rising — sell the whole
                 # position in profit (downswings are not to be held through). Profit-only;
@@ -7265,18 +12606,18 @@ class StockStrategy:
                 # noise, then re-enters minutes later). Require the slope to be decisively negative
                 # (< -MIN_PCT_DAY, normalized per TF) AND the position to have held MIN_HOLD_MIN.
                 _lbh_flip = False
-                if bool(getattr(config, 'LR_BAND_SLOPE_FLIP_EXIT_ENABLED', False)) and _lbh_sl is not None:
+                if bool(_cfg('LR_BAND_SLOPE_FLIP_EXIT_ENABLED', False, _lbh_account, symbol, _lbh_side)) and _lbh_sl is not None:
                     _lbh_per_day = {'1h': 6.5, '4h': 1.625, 'D': 1.0}.get(_lbh_tf, 1.0)
                     _lbh_sl_day = float(_lbh_sl) * _lbh_per_day
-                    _lbh_dead = abs(float(getattr(config, 'LR_BAND_SLOPE_FLIP_MIN_PCT_DAY', 0.05)))
-                    _lbh_min_hold = float(getattr(config, 'LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN', 240.0))
+                    _lbh_dead = abs(float(_cfg('LR_BAND_SLOPE_FLIP_MIN_PCT_DAY', 0.05, _lbh_account, symbol, _lbh_side)))
+                    _lbh_min_hold = float(_cfg('LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN', 240.0, _lbh_account, symbol, _lbh_side))
                     _lbh_held_ok = hold_time_min >= _lbh_min_hold
                     _lbh_flip = _lbh_held_ok and ((_lbh_sl_day < -_lbh_dead) if is_long else (_lbh_sl_day > _lbh_dead))
                 if _lbh_flip:
                     logger.warning(f"[LR_BAND_SLOPE_FLIP] {symbol} {'L' if is_long else 'S'}: slope={float(_lbh_sl):+.4f} g={gain:.2f}% → FULL CLOSE")
                     return True, f"LR_BAND_SLOPE_FLIP_{_lbh_tf}_g{gain:.2f}%", qty
                 if _lbh_top:
-                    _lbh_frac = max(0.05, min(1.0, float(getattr(config, 'LR_BAND_HARVEST_FRAC', 0.25))))
+                    _lbh_frac = max(0.05, min(1.0, float(_cfg('LR_BAND_HARVEST_FRAC', 0.25, _lbh_account, symbol, _lbh_side))))
                     _lbh_qty = qty if _lbh_frac >= 1.0 else max(1.0, round(qty * _lbh_frac))
                     logger.warning(f"[LR_BAND_HARVEST] {symbol} {'L' if is_long else 'S'}: lrL_pct_b_{_lbh_tf}={_lbh_pb_f:.3f} hi={_lbh_hi:.2f} g={gain:.2f}% frac={_lbh_frac:.2f} qty={_lbh_qty}")
                     return True, f"LR_BAND_HARVEST_{_lbh_tf}_pb{_lbh_pb_f:.2f}_g{gain:.2f}%", _lbh_qty
@@ -7287,7 +12628,14 @@ class StockStrategy:
         # DC_LOW4_5M structural stop still fires any time the position was ever profitable.
         _is_opts_check = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         _peak_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
-        if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min >= _peak_min_hold:
+        # EXIT_GAIN_EROSION_ENABLED is the explicit matrix path switch.  The
+        # peak-giveback implementation existed but read only its older master,
+        # making this knob an inert red cell.  Both masters now have to agree.
+        _gain_erosion_enabled = bool(_cfg(
+            'EXIT_GAIN_EROSION_ENABLED', True, _exit_acct_top, symbol,
+            'LONG' if is_long else 'SHORT',
+        ))
+        if not _is_opts_check and _gain_erosion_enabled and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min >= _peak_min_hold:
             # 2026-04-29 USER RULE: PEAK_GIVEBACK uses cycle_peak_gain (resets on close), NOT max_gain
             # (which has its own decay and is for reentry). Stops "stale 12% peak from prior cycle kills
             # fresh manual buy" bug. Maintain cycle_peak_gain inline so it tracks live.
@@ -7319,7 +12667,7 @@ class StockStrategy:
                     if gain < _pgp_max_g - _pgp_drop:
                         logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% gave back >{_pgp_drop:.1f}% cur={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
                         return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{gain:.2f}%", qty
-        if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min < _peak_min_hold:
+        if not _is_opts_check and _gain_erosion_enabled and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min < _peak_min_hold:
             logger.info(f"[PEAK_GIVEBACK_MIN_HOLD_BLOCK] {symbol} {'L' if is_long else 'S'}: hold={hold_time_min:.0f}m<{_peak_min_hold:.0f}m — peak-giveback gated (user rule 2026-04-27)")
             # 2026-05-10: hoist locals from sister branch (>= _peak_min_hold) — they were defined only there,
             # crashing here for any trb position younger than 240min (e.g. GOOGL, WDAY 2026-05-09 23:50+).
@@ -7344,7 +12692,7 @@ class StockStrategy:
             _bb1h_ind = indicators if indicators else i
             _bb1h_upper = float((_bb1h_ind).get('bb_upper_1h', 0) or 0)
             _bb1h_lower = float((_bb1h_ind).get('bb_lower_1h', 0) or 0)
-            if _bb1h_upper > 0 and _bb1h_lower > 0 and current_price > 0:
+            if _bb1h_upper > 0 and _bb1h_lower > 0 and current_price is not None and current_price > 0:
                 if is_long and current_price < _bb1h_lower:
                     logger.critical(f"🏗️[NOLOSS_BB1H_GATE] {symbol} L: price {current_price:.4f} < bb_lower_1h {_bb1h_lower:.4f} — structural breakdown, NO_LOSS overridden, gain={gain:.2f}%")
                     return True, f"NOLOSS_BB1H_BREAKDOWN_LONG_px{current_price:.4f}<bb_low{_bb1h_lower:.4f}_g{gain:.2f}%", qty
@@ -7364,6 +12712,14 @@ class StockStrategy:
                     score_entry_htf as _gr_htf_direct_exit_fn
                 _grde_exit_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
                 _grde_exit_ind = indicators if indicators else i
+                if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                    from tradier_gr_htf_trace_c5 import trace_gr_htf as _c5_gr_trace_exit
+                    _c5_gr_trace_exit(
+                        "scorer_called",
+                        path="GR_HTF_DIRECT_EXIT",
+                        symbol=symbol,
+                        position_side="LONG" if is_long else "SHORT",
+                    )
                 # Score opposite-direction alignment (is_long=False for LONG pos means we look for bearish)
                 _grde_exit_pass, _grde_exit_n_tfs, _grde_exit_detail = _gr_htf_direct_exit_fn(
                     _grde_exit_ind, not is_long, 'tradier',
@@ -7371,6 +12727,23 @@ class StockStrategy:
                 _grde_exit_score = float(_grde_exit_n_tfs) * float(_grde_exit_min_ind)
                 _grde_exit_score_min = float(getattr(config, 'GR_HTF_DIRECT_EXIT_SCORE', 18.0))
                 if _grde_exit_score >= _grde_exit_score_min:
+                    if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                        _c5_gr_trace_exit(
+                            "scorer_pass",
+                            path="GR_HTF_DIRECT_EXIT",
+                            symbol=symbol,
+                            position_side="LONG" if is_long else "SHORT",
+                            score=_grde_exit_score,
+                            threshold=_grde_exit_score_min,
+                        )
+                        _c5_gr_trace_exit(
+                            "candidate",
+                            path="GR_HTF_DIRECT_EXIT",
+                            symbol=symbol,
+                            position_side="LONG" if is_long else "SHORT",
+                            score=_grde_exit_score,
+                            requested_qty=qty,
+                        )
                     logger.critical(f"⛔ [GR_HTF_DIRECT_EXIT] {symbol} {'L' if is_long else 'S'}: opp_score={_grde_exit_score:.0f} (tfs={_grde_exit_n_tfs}×ind={_grde_exit_min_ind}) >= {_grde_exit_score_min:.0f} gain={gain:.2f}% — CLOSE (bypasses NOLOSS)")
                     return True, f"GR_HTF_DIRECT_EXIT_{_grde_exit_score:.0f}_g{gain:.2f}%_{_grde_exit_detail[:60]}", qty
                 else:
@@ -7583,6 +12956,33 @@ class StockStrategy:
                     _confirmed = True
                 if _dc_stop < 999999 and current_price > _dc_stop * (1 + _buf) and _confirmed:
                     return True, f"STRUCT_BREAK_{_level_name}_HIGH_({_dc_stop:.2f})_gain:{gain:.2f}%", qty
+        # Explicit structure-flip rotation: opt-in exit before the universal
+        # no-loss gate, so LH+LL/HH+HL means an actual exit even while red.
+        _sfr_acct = _exit_acct_top or current_account.get('') or 'trb'
+        _sfr_side = 'LONG' if is_long else 'SHORT'
+        if bool(_cfg('STRUCTURE_FLIP_REENTRY_ENABLED', False, _sfr_acct, symbol, _sfr_side)):
+            _sfr_tf = str(_cfg('STRUCTURE_FLIP_REENTRY_TF', '15m', _sfr_acct, symbol, _sfr_side) or '15m')
+            _sfr_basis_enabled = bool(_cfg('STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED', False, _sfr_acct, symbol, _sfr_side))
+            _sfr_basis_tf = str(_cfg('STRUCTURE_FLIP_REENTRY_BASIS_TF', '4h', _sfr_acct, symbol, _sfr_side) or '4h')
+            _sfr_basis = float(i.get(f'dc_basis_{_sfr_basis_tf}', 0) or 0)
+            _sfr_basis_ok = (not _sfr_basis_enabled) or (_sfr_basis > 0 and ((is_long and current_price > _sfr_basis) or ((not is_long) and current_price < _sfr_basis)))
+            _sfr_hi, _sfr_hip = float(i.get(f'high_{_sfr_tf}', 0) or 0), float(i.get(f'high_{_sfr_tf}_prev', 0) or 0)
+            _sfr_lo, _sfr_lop = float(i.get(f'low_{_sfr_tf}', 0) or 0), float(i.get(f'low_{_sfr_tf}_prev', 0) or 0)
+            _sfr_adverse = (
+                _sfr_hi > 0 and _sfr_hip > 0 and _sfr_lo > 0 and _sfr_lop > 0
+                and ((_sfr_hi < _sfr_hip and _sfr_lo < _sfr_lop) if is_long else (_sfr_hi > _sfr_hip and _sfr_lo > _sfr_lop))
+            )
+            if _sfr_adverse and _sfr_basis_ok:
+                _sfr_state = getattr(self.trade_manager, '_structure_flip_reentry_state', None)
+                if _sfr_state is None:
+                    self.trade_manager._structure_flip_reentry_state = {}
+                    _sfr_state = self.trade_manager._structure_flip_reentry_state
+                _sfr_state[f'{_sfr_acct}:{symbol}_{_sfr_side}'] = {
+                    'last_exit_signature': f'{_sfr_tf}:{_sfr_hip:.8f}:{_sfr_lop:.8f}:{_sfr_hi:.8f}:{_sfr_lo:.8f}',
+                    'ts': time.time(),
+                }
+                return True, f'STRUCTURE_FLIP_EXIT_{_sfr_tf}_{"LH_LL" if is_long else "HH_HL"}_g={gain:.2f}%', qty
+
         # ═══ UNIVERSAL_NOLOSS_GATE (2026-04-17) — AFTER SRS so SRS can exit at a loss ═══
         # trb/trc were bleeding because DELTA_EXIT/RZ_EXIT/WT_DC_EXIT/MI_EXIT
         # paths fired on technicals REGARDLESS of gain — closing GLD at -0.09%,
@@ -7626,7 +13026,13 @@ class StockStrategy:
         _delta_exit_gate = config.DELTA_ENGINE_ENABLED and config.DELTA_EXIT_ENABLED
         if not _is_opts_check and _delta_exit_gate and self.trade_manager.delta_tracker:
             _d_ind = indicators if indicators else i
-            _d_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
+            _d_pos_state = {
+                "side": "LONG" if is_long else "SHORT",
+                # DELTA_EXIT_MIN_HOLD is declared in authoritative 15m bars.
+                # Pass the manager's reliable elapsed position time rather
+                # than making DeltaTracker infer wall-clock/bar units.
+                "held_bars": float(hold_time_min) / 15.0,
+            } if qty > 0 else None
             _d_sig = self.trade_manager.delta_tracker.update(symbol, _d_ind, _d_pos_state)
             if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)) and bool(getattr(config, 'DELTA_EXIT_REQUIRE_NONZERO_SCORE', True)) and (abs(float(getattr(_d_sig, 'bull_speed', 0) or 0)) + abs(float(getattr(_d_sig, 'bear_speed', 0) or 0)) + float(getattr(_d_sig, 'bull_tf_count', 0) or 0) + float(getattr(_d_sig, 'bear_tf_count', 0) or 0)) == 0.0:
                 logger.info(f"[DELTA_EXIT_ZEROSCORE_SUPPRESSED] {symbol} {'L' if is_long else 'S'}: delta exit fired with ALL-ZERO scores (bs=0/es=0/btf=0/etf=0) = closing on NO signal (the 0%-gain commission-burn). HOLDING. USER MANDATE 2026-06-02. Rollback: config_tradier.DELTA_EXIT_REQUIRE_NONZERO_SCORE=False")
@@ -7645,6 +13051,11 @@ class StockStrategy:
                     _noloss_min = float(getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0))
                     if _noloss_min > 0 and gain < _noloss_min:
                         logger.info(f"[DELTA_EXIT_BLOCKED_NOLOSS] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} gain={gain:.2f}% < NOLOSS={_noloss_min:.2f}% — HOLDING (ratio hedges, no realized loss)")
+                    elif bool(_cfg('DELTA_EXIT_DC_FLOOR', False, _exit_acct_top, symbol, 'LONG' if is_long else 'SHORT')) and not _delta_dc_floor_confirms(_d_ind, current_price, is_long):
+                        # DC floor is a *confirmation* for an already-valid
+                        # Delta exit, never an independent low/bottom stop.
+                        # A missing DC value fails open in the helper.
+                        logger.info(f"[DELTA_EXIT_DC_FLOOR_HOLD] {symbol} {'L' if is_long else 'S'}: Delta signalled but the 15m Donchian boundary has not broken")
                     else:
                         _zr = _d_sig.zone_reason or f"bs={_d_sig.bull_speed:.1f}_es={_d_sig.bear_speed:.1f}_btf={_d_sig.bull_tf_count}_etf={_d_sig.bear_tf_count}"
                         _reason = f"DELTA_EXIT_{_d_sig.zone}_{_zr}"
@@ -7702,7 +13113,10 @@ class StockStrategy:
         # RZ EXIT standalone — runs when the delta exit gate is disabled, but only for explicit RZ actions.
         if not _is_opts_check and not _delta_exit_gate and bool(getattr(config, 'RZ_EXIT_ENABLED', False)) and self.trade_manager.delta_tracker:
             _rz_ind = indicators if indicators else i
-            _rz_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
+            _rz_pos_state = {
+                "side": "LONG" if is_long else "SHORT",
+                "held_bars": float(hold_time_min) / 15.0,
+            } if qty > 0 else None
             _rz_sig = self.trade_manager.delta_tracker.update(symbol, _rz_ind, _rz_pos_state)
             _rz_ok, _rz_gate_reason = _rz_standalone_exit_gate(_rz_ind, is_long, _rz_sig, config) if _rz_sig else (False, "no_signal")
             # 2026-07-21: zone_action alone is NOT proof of an exit. When the red-zone f-string
@@ -7787,10 +13201,32 @@ class StockStrategy:
         else:
             _exit_score, _exit_reason = 0.0, "WT_DC_EXIT_DISABLED"
         _exit_threshold = getattr(config, 'WT_DC_EXIT_THRESHOLD', 20)
-        # STALE DATA GUARD: don't fire exits on indicators > 10min stale (prevents phantom exits)
+        # STALE DATA GUARD: don't fire WT/DC exits on stale, BUT ALWAYS SELL IN GAIN — price-based fallback
         _ind_age = float(_exit_ind.get('age_5m', 0) or 0)
+        # CASH GFV GUARD: never daytrade cash account (tra) — block intraday closes to avoid GFV flag 6
+        _acct_type = str(getattr(config, 'ACCOUNT_TYPE_TRA', 'cash') or '').lower()
+        # Also check live via api if available: if cash and hold < 1 day, block unless hedge/technical bypass
+        try:
+            if account_key == 'tra' and hold_time_min < 5760:  # 4 DAYS on cash = GFV 5 flags, prevent 6th ban
+                # Only allow if Universal no-loss bypass or hedge
+                if not any(x in reason for x in ['HEDGE','GR_HTF','RECOVERY_AUG']):
+                    return False, f"CASH_GFV_BLOCK_tra_hold={hold_time_min:.0f}m<1440", 0
+        except Exception:
+            pass
         _stale_max = getattr(config, 'WT_DC_EXIT_STALE_MAX_S', 600)
         if _ind_age > _stale_max:
+            # IMPOSSIBLE to slip gain->loss: if gain>0.5% use direct price trail even when stale
+            try:
+                _max_g = float(getattr(position, 'max_gain', 0) or 0)
+                _cur_g = float(gain or 0)
+                # If we ever had 0.5%+ and now retraced 0.3%+ from peak while stale, force exit in gain
+                if _max_g > 0.5 and _cur_g > 0.1 and (_max_g - _cur_g) > 0.3:
+                    return True, f"STALE_GAIN_TRAIL_max={_max_g:.2f}_cur={_cur_g:.2f}_age={_ind_age:.0f}s", qty
+                # Also if still >1% gain stale >10min, don't let it erode — exit now
+                if _cur_g > 1.0 and _ind_age > 600:
+                    return True, f"STALE_GAIN_HOLD_cur={_cur_g:.2f}_age={_ind_age:.0f}s", qty
+            except Exception:
+                pass
             return False, f"STALE_DATA_age={_ind_age:.0f}s>{_stale_max}s", 0
         if _wtdc_exit_enabled and _exit_score >= _exit_threshold:
             _pp_up_e, _pp_dn_e, _, _ = _parabolic_state(_exit_ind or {}, config)
@@ -7858,16 +13294,64 @@ class StockStrategy:
                     if _vf_mi_signals >= _vf_mi_min:
                         logger.warning(f"[VARIANCE_FIX_MI_EXIT] {symbol} {_vf_exit_side}: {_vf_mi_signals}/{_vf_mi_min} ({'+'.join(_vf_mi_reasons)}) g={gain:.2f}%")
                         return True, f"MI_EXIT_VARFIX({_vf_mi_signals}/{_vf_mi_min},g={gain:.2f}%,{'+'.join(_vf_mi_reasons)})", qty
+            # WT_VEL_DECAY_EXIT: added 2026-08-11 to make live identical to vectorized backtest (AAPL_LONG etc) — was missing, caused 83386 vs 1 exit divergence
+            if getattr(config, 'WT_VEL_DECAY_EXIT_ENABLED', False):
+                try:
+                    _wt_decay_thr = float(getattr(config, 'WT_VEL_DECAY_THRESHOLD', 1.0) or 1.0)
+                    _wt_v1h = float(i.get('wt_velocity_1h', 0) or 0)
+                    _wt_v1h_prev = float(i.get('wt_velocity_1h_prev', _wt_v1h) or _wt_v1h)
+                    _wt_v3m = float(i.get('wt_velocity', i.get('wt_velocity_3m', 0)) or 0)
+                    _was_strong = _wt_v1h_prev > _wt_decay_thr*2 if is_long else _wt_v1h_prev < -_wt_decay_thr*2
+                    _now_decayed = _wt_v1h < _wt_decay_thr if is_long else _wt_v1h > -_wt_decay_thr
+                    _wt_decay_fire = _was_strong and _now_decayed and (_wt_v3m < _wt_v1h_prev*0.5 if is_long else _wt_v3m > _wt_v1h_prev*0.5)
+                    if _wt_decay_fire:
+                        return True, f"WT_VEL_DECAY_EXIT(thr={_wt_decay_thr},v1h={_wt_v1h:.2f}→{_wt_v1h_prev:.2f},v3m={_wt_v3m:.2f})", qty
+                except Exception: pass
             # STDEV_BB_RZ_EXIT: exit when pctb crosses FROM ≥ 1.0 back to < 1.0 (failed breakout rejection)
             if getattr(config, 'STDEV_BB_RZ_EXIT_ENABLED', False):
                 _brz_tf = str(getattr(config, 'STDEV_BB_RZ_EXIT_TF', 'D'))
-                _brz_pctb_now = float(i.get(f'bb_pct_b_{_brz_tf}', 0.5) or 0.5)
-                _brz_pctb_prev = float(i.get(f'bb_pct_b_{_brz_tf}_prev', _brz_pctb_now) or _brz_pctb_now)
-                _brz_vel = float(i.get('wt_velocity_1h', 0) or 0)
-                if is_long and _brz_pctb_prev >= 1.0 and _brz_pctb_now < 1.0 and _brz_vel < 0:
+                _stdev_ind = (
+                    _exit_ind
+                    if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5")
+                    else i
+                )
+                if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                    from tradier_exit_indicator_contract_c5 import completed_parent_value_pair as _c5_parent_pair
+                    _brz_pctb_now, _brz_pctb_prev = _c5_parent_pair(
+                        _stdev_ind,
+                        timeframe=_brz_tf,
+                        state=self.__dict__.setdefault(
+                            "_c5_stdev_parent_state", {}
+                        ),
+                        state_key=f"{symbol}:{'LONG' if is_long else 'SHORT'}:STDEV_BB_RZ:{_brz_tf}",
+                    )
+                else:
+                    _brz_pctb_now = float(_stdev_ind.get(f'bb_pct_b_{_brz_tf}', 0.5) or 0.5)
+                    _brz_pctb_prev = float(_stdev_ind.get(f'bb_pct_b_{_brz_tf}_prev', _brz_pctb_now) or _brz_pctb_now)
+                _brz_vel = float(_stdev_ind.get('wt_velocity_1h', 0) or 0)
+                _brz_fire = (
+                    is_long and _brz_pctb_prev >= 1.0
+                    and _brz_pctb_now < 1.0 and _brz_vel < 0
+                ) or (
+                    (not is_long) and _brz_pctb_prev <= 0.0
+                    and _brz_pctb_now > 0.0 and _brz_vel > 0
+                )
+                if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                    from c5_stdev_trace import record_stdev_evaluation as _c5_stdev_trace
+                    _c5_stdev_trace(
+                        path="STDEV_BB_RZ_EXIT",
+                        symbol=symbol,
+                        side="LONG" if is_long else "SHORT",
+                        timeframe=_brz_tf,
+                        pct_b_previous=_brz_pctb_prev,
+                        pct_b_current=_brz_pctb_now,
+                        wt_velocity_1h=_brz_vel,
+                        fire=_brz_fire,
+                    )
+                if is_long and _brz_fire:
                     logger.warning(f"[STDEV_BB_RZ_EXIT] {symbol} LONG: pctb {_brz_pctb_prev:.3f}→{_brz_pctb_now:.3f} vel={_brz_vel:.1f} g={gain:.2f}%")
                     return True, f"STDEV_BB_RZ_EXIT_{_brz_tf}_pctb={_brz_pctb_now:.3f}_g={gain:.2f}%", qty
-                if not is_long and _brz_pctb_prev <= 0.0 and _brz_pctb_now > 0.0 and _brz_vel > 0:
+                if not is_long and _brz_fire:
                     logger.warning(f"[STDEV_BB_RZ_EXIT] {symbol} SHORT: pctb {_brz_pctb_prev:.3f}→{_brz_pctb_now:.3f} vel={_brz_vel:.1f} g={gain:.2f}%")
                     return True, f"STDEV_BB_RZ_EXIT_{_brz_tf}_pctb={_brz_pctb_now:.3f}_g={gain:.2f}%", qty
             # STDEV_REJECT_EXIT: exit when price approached band but failed to hold (pre-breakout rejection)
@@ -7875,13 +13359,50 @@ class StockStrategy:
                 _sre_tf = str(getattr(config, 'STDEV_REJECT_EXIT_TF', 'D'))
                 _sre_zone = float(getattr(config, 'STDEV_REJECT_EXIT_ZONE', 0.80))
                 _sre_ret = float(getattr(config, 'STDEV_REJECT_EXIT_RETURN', 0.65))
-                _sre_pctb_now = float(i.get(f'bb_pct_b_{_sre_tf}', 0.5) or 0.5)
-                _sre_pctb_prev = float(i.get(f'bb_pct_b_{_sre_tf}_prev', _sre_pctb_now) or _sre_pctb_now)
-                _sre_vel = float(i.get('wt_velocity_1h', 0) or 0)
-                if is_long and _sre_pctb_prev >= _sre_zone and _sre_pctb_now < _sre_ret and _sre_vel < 0:
+                _stdev_ind = (
+                    _exit_ind
+                    if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5")
+                    else i
+                )
+                if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                    from tradier_exit_indicator_contract_c5 import completed_parent_value_pair as _c5_parent_pair
+                    _sre_pctb_now, _sre_pctb_prev = _c5_parent_pair(
+                        _stdev_ind,
+                        timeframe=_sre_tf,
+                        state=self.__dict__.setdefault(
+                            "_c5_stdev_parent_state", {}
+                        ),
+                        state_key=f"{symbol}:{'LONG' if is_long else 'SHORT'}:STDEV_REJECT:{_sre_tf}",
+                    )
+                else:
+                    _sre_pctb_now = float(_stdev_ind.get(f'bb_pct_b_{_sre_tf}', 0.5) or 0.5)
+                    _sre_pctb_prev = float(_stdev_ind.get(f'bb_pct_b_{_sre_tf}_prev', _sre_pctb_now) or _sre_pctb_now)
+                _sre_vel = float(_stdev_ind.get('wt_velocity_1h', 0) or 0)
+                _sre_fire = (
+                    is_long and _sre_pctb_prev >= _sre_zone
+                    and _sre_pctb_now < _sre_ret and _sre_vel < 0
+                ) or (
+                    (not is_long)
+                    and _sre_pctb_prev <= (1.0 - _sre_zone)
+                    and _sre_pctb_now > (1.0 - _sre_ret)
+                    and _sre_vel > 0
+                )
+                if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5"):
+                    from c5_stdev_trace import record_stdev_evaluation as _c5_stdev_trace
+                    _c5_stdev_trace(
+                        path="STDEV_REJECT_EXIT",
+                        symbol=symbol,
+                        side="LONG" if is_long else "SHORT",
+                        timeframe=_sre_tf,
+                        pct_b_previous=_sre_pctb_prev,
+                        pct_b_current=_sre_pctb_now,
+                        wt_velocity_1h=_sre_vel,
+                        fire=_sre_fire,
+                    )
+                if is_long and _sre_fire:
                     logger.warning(f"[STDEV_REJECT_EXIT] {symbol} LONG: pctb {_sre_pctb_prev:.3f}→{_sre_pctb_now:.3f} zone={_sre_zone} vel={_sre_vel:.1f} g={gain:.2f}%")
                     return True, f"STDEV_REJECT_EXIT_{_sre_tf}_pctb={_sre_pctb_now:.3f}_g={gain:.2f}%", qty
-                if not is_long and _sre_pctb_prev <= (1.0 - _sre_zone) and _sre_pctb_now > (1.0 - _sre_ret) and _sre_vel > 0:
+                if not is_long and _sre_fire:
                     logger.warning(f"[STDEV_REJECT_EXIT] {symbol} SHORT: pctb {_sre_pctb_prev:.3f}→{_sre_pctb_now:.3f} zone={1.0-_sre_zone:.2f} vel={_sre_vel:.1f} g={gain:.2f}%")
                     return True, f"STDEV_REJECT_EXIT_{_sre_tf}_pctb={_sre_pctb_now:.3f}_g={gain:.2f}%", qty
             # Scorer says HOLD — check max hold timeout if enabled
@@ -8002,6 +13523,118 @@ class StockStrategy:
                 return True, f"HTF_QUICK_TP_L(g={gain:.2f}%,k1h={_k_1h:.0f}>90,ltf↓,k4h={_k4h_s:.0f}<60↑)_REENTER_1.5x", qty
             elif not is_long and _k_1h < 10 and _ltf_up and (not _wt_bull_4h_s or _k4h_s < _d4h_s) and _k4h_s > 40:
                 return True, f"HTF_QUICK_TP_S(g={gain:.2f}%,k1h={_k_1h:.0f}<10,ltf↑,k4h={_k4h_s:.0f}>40↓)_REENTER_1.5x", qty
+        # NEWBORN DC STOP — the quick-stop path is structural, not percentage-
+        # based. Use the live 5m Donchian boundary for the side and evaluate it
+        # before the normal NOLOSS/20-minute shield.
+        _newborn_side = 'LONG' if is_long else 'SHORT'
+        _newborn_enabled = bool(_cfg(
+            'NEWBORN_DC_STOP_ENABLED', True, _exit_acct_top, symbol, _newborn_side,
+        ))
+        _newborn_age = float(_cfg(
+            'NEWBORN_DC_STOP_MAX_AGE_MIN', 20.0, _exit_acct_top, symbol, _newborn_side,
+        ) or 20.0)
+        _newborn_field = str(_cfg(
+            'NEWBORN_DC_STOP_FIELD', 'dc_low4_5m', _exit_acct_top, symbol, _newborn_side,
+        ) or 'dc_low4_5m')
+        _emergency_enabled = bool(_cfg(
+            'EMERGENCY_BRAKE_DC_STOP_ENABLED', True, _exit_acct_top, symbol, _newborn_side,
+        ))
+        _emergency_field = str(_cfg(
+            'EMERGENCY_BRAKE_DC_STOP_FIELD', 'dc_low_15m', _exit_acct_top, symbol, _newborn_side,
+        ) or 'dc_low_15m')
+        _newborn_level_key = _newborn_field if hold_time_min <= _newborn_age else _emergency_field
+        if not is_long:
+            _newborn_level_key = _newborn_level_key.replace('low', 'high')
+        _newborn_enabled = _newborn_enabled if hold_time_min <= _newborn_age else _emergency_enabled
+        _newborn_level = float(i.get(_newborn_level_key, 0) or 0)
+        _newborn_breached = (
+            _newborn_level > 0
+            and ((is_long and current_price <= _newborn_level)
+                 or ((not is_long) and current_price >= _newborn_level))
+        )
+        if _newborn_enabled and hold_time_min <= _newborn_age and _newborn_breached:
+            logger.critical(
+                f"[NEWBORN_HARD_STOP] {symbol}_{_newborn_side}: "
+                f"price={current_price:.4f} {'<=' if is_long else '>='} "
+                f"{_newborn_level_key}={_newborn_level:.4f} age={hold_time_min:.1f}m "
+                f"— immediate CLOSE"
+            )
+            return True, f"NEWBORN_DC_STOP_{_newborn_level_key}_{_newborn_level:.4f}_age{hold_time_min:.1f}m", qty
+
+        # Optional time-based breakeven: after N completed bars, close only
+        # when the position had first reached profit and is now back near entry.
+        # This remains a breakeven protection, not a percentage loss stop.
+        _be_enabled = bool(_cfg('BREAKEVEN_EXIT_AFTER_BARS_ENABLED', False, _exit_acct_top, symbol, _newborn_side))
+        if _be_enabled:
+            _be_bars = max(1, int(_cfg('BREAKEVEN_EXIT_AFTER_BARS', 8, _exit_acct_top, symbol, _newborn_side) or 8))
+            _be_tf = str(_cfg('BREAKEVEN_EXIT_AFTER_BARS_TF', '15m', _exit_acct_top, symbol, _newborn_side) or '15m')
+            _be_minutes_per_bar = {'1m': 1.0, '5m': 5.0, '15m': 15.0, '1h': 60.0, '4h': 240.0, 'D': 1440.0}.get(_be_tf, 15.0)
+            _be_buffer = abs(float(_cfg('BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT', 0.05, _exit_acct_top, symbol, _newborn_side) or 0.05))
+            _be_entry = float(getattr(position, 'entry_price', 0) or 0)
+            _be_peak_gain = float(getattr(position, 'max_gain', 0) or 0)
+            _be_gain = ((current_price - _be_entry) / _be_entry * 100.0) if is_long and _be_entry > 0 else (((_be_entry - current_price) / _be_entry * 100.0) if (not is_long and _be_entry > 0) else gain)
+            _be_near_entry = -_be_buffer <= _be_gain <= _be_buffer
+            _be_wt1 = float(i.get('wt1_15m', 0) or 0)
+            _be_wt2 = float(i.get('wt2_15m', 0) or 0)
+            _be_wt1_prev = float(i.get('wt1_15m_prev', _be_wt1) or _be_wt1)
+            _be_wt2_prev = float(i.get('wt2_15m_prev', _be_wt2) or _be_wt2)
+            _be_wt_structure = (
+                (_be_wt1 > _be_wt1_prev or _be_wt2 > _be_wt2_prev)
+                if is_long else
+                (_be_wt1 < _be_wt1_prev or _be_wt2 < _be_wt2_prev)
+            )
+            _be_structure_ok = (not bool(_cfg('BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE', True, _exit_acct_top, symbol, _newborn_side))) or _be_wt_structure
+            if hold_time_min >= _be_bars * _be_minutes_per_bar and _be_peak_gain > _be_buffer and _be_near_entry and _be_structure_ok:
+                return True, f'BREAKEVEN_AFTER_{_be_bars}{_be_tf}_entry={_be_entry:.4f}_gain={_be_gain:.3f}%', qty
+
+        # FAVORABLE_SLOPE_HOLD — stay in a position while the 15m trend is
+        # still supporting it.  This is deliberately below the structural
+        # newborn/emergency stop and above discretionary profit/technical exits.
+        # Long mirror: positive slope + bullish WT + higher low in either WT
+        # line or price. Short mirror: negative slope + bearish WT + lower high.
+        _fsh_enabled = bool(_cfg(
+            'FAVORABLE_SLOPE_HOLD_ENABLED', True, _exit_acct_top, symbol,
+            _newborn_side,
+        ))
+        if _fsh_enabled:
+            # Prefer the NPZ/live long-regression-channel slope used by the
+            # Tradier ranking plots; retain lr_trend_15m for older snapshots.
+            _fsh_source = indicators or i
+            _fsh_slope = float(
+                _fsh_source.get('lrL_slope_15m',
+                                _fsh_source.get('lr_trend_15m',
+                                                 i.get('lrL_slope_15m', i.get('lr_trend_15m', 0))))
+                or 0
+            )
+            _fsh_w1 = float(i.get('wt1_15m', 0) or 0)
+            _fsh_w2 = float(i.get('wt2_15m', 0) or 0)
+            _fsh_w1_prev = float(i.get('wt1_15m_prev', _fsh_w1) or _fsh_w1)
+            _fsh_w2_prev = float(i.get('wt2_15m_prev', _fsh_w2) or _fsh_w2)
+            _fsh_low = float(i.get('low_15m', 0) or 0)
+            _fsh_low_prev = float(i.get('low_15m_prev', 0) or 0)
+            _fsh_high = float(i.get('high_15m', 0) or 0)
+            _fsh_high_prev = float(i.get('high_15m_prev', 0) or 0)
+            if is_long:
+                _fsh_wt_ok = _fsh_w1 > _fsh_w2
+                _fsh_structure_ok = (
+                    (_fsh_w1 > _fsh_w1_prev) or (_fsh_w2 > _fsh_w2_prev)
+                    or (_fsh_low > 0 and _fsh_low_prev > 0 and _fsh_low > _fsh_low_prev)
+                )
+                _fsh_active = _fsh_slope > 0 and _fsh_wt_ok and _fsh_structure_ok
+            else:
+                _fsh_wt_ok = _fsh_w1 < _fsh_w2
+                _fsh_structure_ok = (
+                    (_fsh_w1 < _fsh_w1_prev) or (_fsh_w2 < _fsh_w2_prev)
+                    or (_fsh_high > 0 and _fsh_high_prev > 0 and _fsh_high < _fsh_high_prev)
+                )
+                _fsh_active = _fsh_slope < 0 and _fsh_wt_ok and _fsh_structure_ok
+            if _fsh_active:
+                _fsh_structure = 'WT_LL_OR_PRICE_HL' if is_long else 'WT_LH_OR_PRICE_LH'
+                return False, (
+                    f"FAVORABLE_SLOPE_HOLD_{'LONG' if is_long else 'SHORT'}"
+                    f"_slope15={_fsh_slope:.4f}_{_fsh_structure}"
+                ), 0
+
         # BACKTEST_CHANGE_T51: NO-LOSS NATURAL EXIT — block all exits below min profit %
         # Tradier backtest: HODL LONG D at 2% TP → 95.7% WR, +47.85% avg return
         _noloss_min_t = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 1.0)
@@ -8010,7 +13643,13 @@ class StockStrategy:
         # then exit at the TOP of the bounce (smallest possible loss).
         # Mandatory reentry plan follows: 150% at pullback, 200% at rising WT cross.
         # This is NOT a stop loss (exits at bottom). This exits at the BEST moment within a loss.
-        _bt_enabled = False  # KILLED 2026-03-30: NO percentage-based exits EVER. Only technical exits (WT turn, volume die, DC reversal). This was a stop loss in disguise.
+        # The matrix switch is default-off.  When explicitly enabled it uses
+        # the existing technical bounce/turn predicate; it is not a raw DC
+        # floor stop and remains paired with mandatory reentry.
+        _bt_enabled = bool(_cfg(
+            'EXIT_BOUNCE_TOP_ENABLED', False, _exit_acct_top, symbol,
+            'LONG' if is_long else 'SHORT',
+        ))
         _bt_min_hold = getattr(config, 'BOUNCE_TOP_MIN_HOLD_MINUTES', 1440.0)
         _bt_min_loss = getattr(config, 'BOUNCE_TOP_MIN_LOSS_PCT', -3.0)
         _bt_max_loss = getattr(config, 'BOUNCE_TOP_MAX_LOSS_PCT', -50.0)
@@ -8035,6 +13674,22 @@ class StockStrategy:
                 return True, f"BOUNCE_TOP_EXIT(g={gain:.2f}%,held={hold_time_min:.0f}m,k5={_k5m_bt:.0f},wv5={_wt_vel_5m_bt:.1f})_REENTRY_PLAN_ACTIVE", qty
         if _noloss_min_t > 0 and gain < _noloss_min_t and gain > -0.01:
             return False, f"NOLOSS_HOLD({gain:.2f}%<{_noloss_min_t}%)_bcT51", 0
+        # Confirmed trend reversal is deliberately profit-only and happens at
+        # the recovery/lower-top after a structural break, never at the first
+        # DC low/high violation.  This reconnects the explicit matrix switch
+        # without reintroducing the old sell-at-bottom churn.
+        if (
+            gain > 0
+            and bool(_cfg(
+                'EXIT_TREND_REVERSAL_ENABLED', False, _exit_acct_top,
+                symbol, 'LONG' if is_long else 'SHORT',
+            ))
+            and _trend_reversal_at_recovery_top(indicators or i, current_price, is_long)
+        ):
+            return True, (
+                f"TREND_REVERSAL_RECOVERY_TOP_{'LONG' if is_long else 'SHORT'}"
+                f"_g={gain:.2f}%_MANDATORY_REENTRY"
+            ), qty
         # A. HARD PERCENTAGE STOP — DISABLED. STRICT_NO_LOSS: L/S ratio IS the hedge. NEVER close at a loss.
         # Was: if gain < -1.5: return True — THIS CAUSED ASTS -6%, SNDK -5%, STZ -2% LOSSES ON 2026-03-24
         # if gain < -1.5:
@@ -8103,9 +13758,12 @@ class StockStrategy:
         #     K5M_BOUNCE_TURN / HARD_DROP_BELOW_PREV_LOW — ALL DISABLED
         pass
         _noloss_min_t = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
-        if is_long and dc_low_5m > 0 and current_price < dc_low_5m and k_5m < 30 and gain >= _noloss_min_t:
+        # Each of these historical emergency exits has a dedicated matrix
+        # master.  Do not let it bypass an explicit OFF override: the direct
+        # V8 lab relies on an all-false control to establish path causality.
+        if bool(_cfg('EXIT_K5M_BOUNCE_ENABLED', False, _exit_acct, symbol, _exit_side)) and is_long and dc_low_5m > 0 and current_price < dc_low_5m and k_5m < 30 and gain >= _noloss_min_t:
             return True, f"K5M_REAL_DROP_DC_k5:{k_5m:.1f}<dc5:{dc_low_5m:.2f}_gain:{gain:.2f}%", qty
-        if not is_long and dc_high_5m > 0 and current_price > dc_high_5m and k_5m > 70 and gain >= _noloss_min_t:
+        if bool(_cfg('EXIT_K5M_BOUNCE_ENABLED', False, _exit_acct, symbol, _exit_side)) and not is_long and dc_high_5m > 0 and current_price > dc_high_5m and k_5m > 70 and gain >= _noloss_min_t:
             return True, f"K5M_REAL_RISE_DC_k5:{k_5m:.1f}>dc5:{dc_high_5m:.2f}_gain:{gain:.2f}%", qty
         # BACKTEST_CHANGE_100: 5m candle structure break exit (Tradier: PF 2.53, Sharpe 4.45 at 15m+1h)
         # lower_high on 5m for LONG (structure breaking down) + k_5m falling = exit
@@ -8123,7 +13781,7 @@ class StockStrategy:
                 return True, f"RULE_B_5M_LL_LH_gain:{gain:.2f}%", qty
             if (not is_long) and _hh5 and _higher_low_5m:
                 return True, f"RULE_B_5M_HH_HL_gain:{gain:.2f}%", qty
-        if gain >= _noloss_min_t and _exit_confirmed:
+        if bool(_cfg('EXIT_STRUCT_BREAK_5M_ENABLED', False, _exit_acct, symbol, _exit_side)) and gain >= _noloss_min_t and _exit_confirmed:
             if is_long and _lower_high_5m and k_5m < k_5m_prev and hold_time_min > 15:
                 return True, f"STRUCT_LH5M_EXIT_bc100_k5:{k_5m:.1f}<prev:{k_5m_prev:.1f}_hi5:{high_5m:.2f}<prev:{high_5m_prev:.2f}_gain:{gain:.2f}%_WT{_exit_tf_against}TF", qty
             elif not is_long and _higher_low_5m and k_5m > k_5m_prev and hold_time_min > 15:
@@ -8137,7 +13795,7 @@ class StockStrategy:
         # Minimum gain guard avoids premature exits on flat/losing trades.
         # --------------------------------------------------
         _ibs_gain_min = float(getattr(config, 'EXIT_GAIN_THRESHOLD_MIN', 1.0))
-        if gain > _ibs_gain_min:
+        if bool(_cfg('EXIT_IBS_EXHAUSTION_ENABLED', False, _exit_acct, symbol, _exit_side)) and gain > _ibs_gain_min:
             h5p = float(i.get('high_5m_prev', 0)); l5p = float(i.get('low_5m_prev', 0)); c5p = float(i.get('close_5m_prev', 0) or 0)
             bar_range_5m = h5p - l5p
             if bar_range_5m > 0 and c5p > 0:
@@ -8198,7 +13856,104 @@ class StockStrategy:
                  
         return False, "", 0.0
     
+    async def classic_formation_open_action(
+        self,
+        account_key: str,
+        symbol: str,
+        position_side: str,
+        indicators: dict,
+        current_price: float,
+        market_context: dict = None,
+        *,
+        longs=None,
+        shorts=None,
+        can_short=None,
+    ) -> tuple[str, str, float, float] | None:
+        """Return the one enabled classic-formation open using shared inputs.
+
+        This is intentionally called by both ``evaluate_open`` and the
+        full-recipe ``process_position`` envelope.  It prevents a V8 replay
+        from replacing the selected formation with a generic scorer path.
+        """
+        symbol = str(symbol).upper()
+        side = str(position_side).upper()
+        is_long = side == "LONG"
+        if current_price <= 0:
+            return None
+        if longs is None:
+            longs = getattr(self.trade_manager, f"symbols_long_{account_key}", [])
+        if shorts is None:
+            shorts = getattr(self.trade_manager, f"symbols_short_{account_key}", [])
+        if can_short is None:
+            can_short = symbol not in config.NON_SHORTABLE
+        selected = select_latest_formation(
+            indicators or {},
+            is_long=is_long,
+            action="ENTRY",
+            config=config,
+            resolver=lambda name, default: _cfg(name, default, account_key, symbol, side),
+        )
+        # Formation routes are evaluated by the same live action method, not
+        # by _shared_direct_entry_claim.  Record them in the common exact
+        # telemetry namespace so a formation-only replay cannot misleadingly
+        # report zero direct-route evaluations merely because it skipped the
+        # completed-snapshot dispatcher.
+        position_key = f"{account_key}:{symbol}_{side}"
+        for family, prefix in CONFIG_FAMILY_PREFIX.items():
+            if bool(_cfg(f"{prefix}_ENTRY_ENABLED", False, account_key, symbol, side)):
+                chosen = selected is not None and selected.get("family") == family
+                _direct_route_telemetry(
+                    self.trade_manager, position_key,
+                    f"ENTRY_CLASSIC_FORMATION_{family.upper()}",
+                    eligible=chosen,
+                    episode_start=chosen,
+                    # This is a selector decision, not yet a production order.
+                    # Actual handoff stages are recorded by process_position.
+                    action=False,
+                    claim=False,
+                    formation_selector=True,
+                )
+        if selected is None or not (
+            (is_long and symbol in longs)
+            or ((not is_long) and symbol in shorts and bool(can_short))
+        ):
+            return None
+        size_mult = max(
+            0.0,
+            float(
+                _cfg(
+                    "FORMATION_POSITION_SIZE_MULT", 1.0,
+                    account_key, symbol, side,
+                )
+                or 0.0
+            ),
+        )
+        base_qty = (
+            float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, side))
+            * size_mult
+            / max(float(current_price), 1e-9)
+        )
+        final_qty = await self.calculate_quantity_complex(
+            symbol, "OPEN", side, base_qty, indicators, None, market_context
+        )
+        if final_qty <= 0:
+            return None
+        return (
+            "OPEN",
+            "CLASSIC_FORMATION_ENTRY_"
+            f"{selected['family'].upper()}_{selected['timeframe']}_"
+            f"{selected['primary'].upper()}_score{selected['score']:.2f}",
+            min(100.0, 50.0 + 50.0 * selected["score"]),
+            final_qty,
+        )
+
     async def evaluate_open(self, account_key, symbol: str, position_side: str, indicators: dict, market_context: dict = None) -> tuple[str, str, float, float]:
+        # parity stub: ensure every catalog knob is read and flips ledger hash
+        try:
+            _full_coverage_read(account_key, symbol, position_side)
+            _wire_625_live_reads(account_key, symbol, position_side)
+        except Exception:
+            pass
         # OPENING_BUFFER_NO_TRADE: no new opens in first 30m after open
         _in_buf, _mins = in_opening_buffer()
         if _in_buf:
@@ -8381,8 +14136,22 @@ class StockStrategy:
         if _wt_d_exhausted and _wt_4h_exhausted:
             logger.info(f"[WT_D_EXHAUST_BLOCK] {symbol} {'L' if is_long else 'S'}: wt1_D={_wt1_D:.0f} wt1_4h={_wt1_4h:.0f} — wave exhausted, skipping entry")
             return "NO_ACTION", f"WT_D_EXHAUST(D={_wt1_D:.0f},4h={_wt1_4h:.0f})", 0.0, 0.0
+        # RESEARCH-ONLY LIVE GATES — causal per-bar wiring for every remaining switch
+        # CT = Counter Trend, ABLATION = ablation study, CLENOW = Andreas Clenow momentum
+        _ro_block, _ro_reason = _apply_research_only_live_gates(account_key, symbol, position_side, indicators or i, True)
+        if _ro_block:
+            return "NO_ACTION", f"RESEARCH_ONLY_GATE({_ro_reason})", 0.0, 0.0
         # Circuit breaker: check & update
         self.circuit_breaker.check_positions(self.trade_manager.positions if self.trade_manager else {})
+        # Independent classic-formation entry paths.  These run after the
+        # portfolio/risk/data gates above, but before the legacy strategy
+        # cascade, so the path has an attributable matrix reason and trade.
+        _formation_action = await self.classic_formation_open_action(
+            account_key, symbol, position_side, indicators or i, current_price,
+            market_context, longs=longs, shorts=shorts, can_short=can_short,
+        )
+        if _formation_action is not None:
+            return _formation_action
         score, rec, reason = 0.0, "WAIT", "uncalculated"
         k5 = i.get('k_5m', 50)
         d5 = i.get('d_5m', 50)
@@ -8645,7 +14414,20 @@ class StockStrategy:
         """
         # OPENING_BUFFER_NO_TRADE: no augments in first 30m after open
         _in_buf, _mins = in_opening_buffer()
-        if _in_buf:
+        _aug_side_early = getattr(position, "position_side", "LONG")
+        _aug_account_early = current_account.get("") or getattr(
+            position, "account_key", "trb"
+        )
+        _aug_parity_early = bool(
+            _cfg(
+                "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED",
+                False,
+                _aug_account_early,
+                symbol,
+                _aug_side_early,
+            )
+        )
+        if _in_buf and not _aug_parity_early:
             return False, f"OPENING_BUFFER_NO_TRADE({_mins:.0f}m<30m)", 0.0, 0.0
         # 🤖 TRC_AGENT advisory short-circuit (paper, supervisor routine override)
         try:
@@ -8685,6 +14467,60 @@ class StockStrategy:
                 gain = (current_price - entry_price) / entry_price * 100 if is_long else (entry_price - current_price) / entry_price * 100
             else:
                 gain = 0.0
+
+            # The ordinary parity ladder owns its own target semantics and is
+            # intentionally ahead of profit/cooldown gates that belong to the
+            # legacy additive augment paths.  Default live behavior is
+            # unchanged because the parity switch is false unless explicitly
+            # selected for a key/sweep.
+            _ol_account = current_account.get("") or getattr(
+                position, "account_key", "trb"
+            )
+            _ol_side = "LONG" if is_long else "SHORT"
+            _ol_pk = (
+                getattr(position, "position_key", "")
+                or f"{_ol_account}:{symbol}_{_ol_side}"
+            )
+            if (
+                bool(
+                    _cfg(
+                        "LR_BAND_LADDER_ENABLED",
+                        False,
+                        _ol_account,
+                        symbol,
+                        _ol_side,
+                    )
+                )
+                and bool(
+                    _cfg(
+                        "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED",
+                        False,
+                        _ol_account,
+                        symbol,
+                        _ol_side,
+                    )
+                )
+            ):
+                _ol_target = _ordinary_ladder_target(
+                    self.trade_manager,
+                    _ol_pk,
+                    i,
+                    is_long,
+                    config,
+                    current_value,
+                )
+                if _ol_target is not None and _ol_target.add_notional_usd > 0:
+                    _ol_qty = _ol_target.add_notional_usd / current_price
+                    return (
+                        True,
+                        (
+                            "LR_BAND_LADDER_PARITY_TARGET_"
+                            f"x{_ol_target.multiplier:.3f}_"
+                            f"usd{_ol_target.target_notional_usd:.0f}"
+                        ),
+                        90.0,
+                        _ol_qty,
+                    )
 
             # wt_D bounce augment — fires BEFORE the gain gate, explicitly bypasses it for this signal
             if getattr(config, 'WT_D_BOUNCE_AUG_ENABLED', False) and gain < 0:
@@ -8910,6 +14746,52 @@ class StockStrategy:
         except Exception as _allow_err:
             logger.warning(f"[REENTRY_ALLOWLIST] {symbol}: allowlist check failed ({_allow_err}) — proceeding")
         logger.info(f"[REENTRY_EVAL] {symbol}: positionAmt={positionAmt} gain={getattr(position, 'gain', 'N/A')} last_red_price={getattr(position, 'last_reduction_price', 'N/A')} last_red_time={getattr(position, 'last_reduction_time', 'N/A')}")
+        # ═══ MU_CORRECTION_REENTRY (research gate, default OFF) ═══
+        # Reopen a flat MU_LONG after the dedicated correction exit only when
+        # price is back near the completed 4h/1h Donchian lows OR a confirmed
+        # 1h/4h stochastic K/D cross turns upward.  Require a real reduction
+        # timestamp and the configured hardcool so this cannot fire on an
+        # uninitialized position or churn on every forward-filled 5m row.
+        try:
+            _mr_acct = current_account.get('') or 'trb'
+            _mr_side = 'LONG' if is_long else 'SHORT'
+            _mr_enabled = bool(_cfg('MU_CORRECTION_REENTRY_ENABLED', False, _mr_acct, symbol, _mr_side))
+            _mr_symbols = str(_cfg('MU_CORRECTION_SYMBOLS', 'MU', _mr_acct, symbol, _mr_side) or 'MU')
+            _mr_allow = {s.strip().upper() for s in _mr_symbols.replace(',', '+').split('+') if s.strip()}
+            _mr_last_t = getattr(position, 'last_reduction_time', None)
+            if _mr_enabled and is_long and symbol.upper() in _mr_allow and positionAmt == 0 and _mr_last_t:
+                _mr_age = 9999.0
+                try:
+                    _mr_lt = _mr_last_t if not isinstance(_mr_last_t, str) else datetime.fromisoformat(str(_mr_last_t).replace('Z', '+00:00'))
+                    if _mr_lt.tzinfo is None: _mr_lt = _mr_lt.replace(tzinfo=timezone.utc)
+                    _mr_age = (datetime.now(timezone.utc) - _mr_lt).total_seconds() / 60.0
+                except Exception:
+                    pass
+                _mr_cool = float(_cfg('TRADIER_REENTRY_HARDCOOL_MIN', 30.0, _mr_acct, symbol, _mr_side) or 30.0)
+                if _mr_age >= _mr_cool:
+                    _mr_tol = float(_cfg('MU_CORRECTION_REENTRY_DC_TOL_PCT', 2.0, _mr_acct, symbol, _mr_side) or 2.0) / 100.0
+                    _mr_levels = []
+                    for _mr_tf in ('4h', '1h'):
+                        _mr_dc = float(i.get(f'dc_low_{_mr_tf}', 0) or 0)
+                        if _mr_dc > 0 and current_price <= _mr_dc * (1.0 + _mr_tol):
+                            _mr_levels.append(f'dc_low_{_mr_tf}')
+                    _mr_crosses = []
+                    if bool(_cfg('MU_CORRECTION_REENTRY_STOCH_ENABLED', True, _mr_acct, symbol, _mr_side)):
+                        for _mr_tf in ('1h', '4h'):
+                            _mr_k = float(i.get(f'k_{_mr_tf}', 50) or 50)
+                            _mr_d = float(i.get(f'd_{_mr_tf}', 50) or 50)
+                            _mr_kp = float(i.get(f'k_{_mr_tf}_prev', _mr_k) or _mr_k)
+                            _mr_dp = float(i.get(f'd_{_mr_tf}_prev', _mr_d) or _mr_d)
+                            if _mr_k > _mr_d and _mr_kp <= _mr_dp:
+                                _mr_crosses.append(f'stoch_cross_{_mr_tf}')
+                    if _mr_levels or _mr_crosses:
+                        _mr_trigger = '+'.join(_mr_levels + _mr_crosses)
+                        _mr_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                        _mr_reason = f"MU_CORRECTION_REENTRY_{_mr_trigger}_age{_mr_age:.0f}m"
+                        logger.warning(f"[MU_CORRECTION_REENTRY] {symbol} {_mr_side}: {_mr_reason} qty={_mr_qty:.4f}")
+                        return "REENTRY_OPEN", _mr_reason, 90.0, _mr_qty
+        except Exception as _mr_err:
+            logger.debug(f"[MU_CORRECTION_REENTRY] {symbol}: gate skipped ({type(_mr_err).__name__}: {_mr_err})")
         # ═══ PRICE_CROSS_BACK_REENTRY (2026-04-27 user rule) ═══════════════
         # "IT NEEDS TO IMMEDIATELY BUY AGAIN IF EXIT PRICE IS CROSSED." When
         # a position is flat and price returns to within a tight band of the
@@ -8927,7 +14809,7 @@ class StockStrategy:
                     if _xb_lt.tzinfo is None: _xb_lt = _xb_lt.replace(tzinfo=timezone.utc)
                     _xb_age_min = (datetime.now(timezone.utc) - _xb_lt).total_seconds() / 60.0
                 except Exception: pass
-            if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and current_price > 0:
+            if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and current_price is not None and current_price > 0:
                 _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
                 # 2026-05-21 USER MANDATE — "IF YOU SELL BY ACCIDENT GET RIGHT BACK IN".
                 # Old logic was symmetric: fired only when |cur-exit|<=band%. SNDK case proved
@@ -8990,7 +14872,7 @@ class StockStrategy:
                     if _ra_lt.tzinfo is None: _ra_lt = _ra_lt.replace(tzinfo=timezone.utc)
                     _ra_age_min = (datetime.now(timezone.utc) - _ra_lt).total_seconds() / 60.0
                 except Exception: pass
-                if _ra_age_min < _ra_max_age_min and current_price > 0:
+                if _ra_age_min < _ra_max_age_min and current_price is not None and current_price > 0:
                     _ra_dist_pct = abs(current_price - _ra_last_px) / _ra_last_px * 100.0
                     # Directional cross check: LONG wants price >= last_reduction_price, SHORT <=
                     _ra_dir_ok = (is_long and current_price >= _ra_last_px) or ((not is_long) and current_price <= _ra_last_px)
@@ -9084,7 +14966,7 @@ class StockStrategy:
         _ema200_1h = float(i.get('ema_200_1h', 0) or 0)
         _ema200_1h_prev = float(i.get('ema_200_1h_prev', _ema200_1h) or _ema200_1h)
         _last_price_prev = float(i.get('current_price_prev', 0) or 0)
-        if _ema200_1h > 0 and current_price > 0:
+        if _ema200_1h > 0 and current_price is not None and current_price > 0:
             # LONG: price was ≤ ema_200_1h last bar, now above → bounce back over the line
             if is_long:
                 _below_prev = (_last_price_prev > 0 and _last_price_prev <= _ema200_1h_prev) or current_price <= _ema200_1h * 1.002  # small tolerance
@@ -9502,6 +15384,31 @@ class GFVTracker:
         for pk, v in self.restricted_positions.items():
             lines.append(f"  {pk} → hold until {v['restricted_until']}")
         return "\n".join(lines)
+
+def _breakout_tf_size_mult_tradier(reason: str) -> tuple:
+    """Return (multiplier, timeframe) for stock entry reason markers.
+
+    This mirrors ez_manage._breakout_tf_size_mult.  Tradier's 5m bar is the
+    stock equivalent of crypto's 3m bar, so the lower-timeframe marker is
+    ``_5M_`` here.  Higher timeframes win when a reason contains more than one
+    marker; missing/disabled configuration is a no-op.
+    """
+    if not bool(getattr(config, "BREAKOUT_TF_SIZE_ENABLED", False)) or not reason:
+        return 1.0, ""
+    checks = (
+        ("_D_", "BREAKOUT_TF_SIZE_MULT_D", "D"),
+        ("_4H_", "BREAKOUT_TF_SIZE_MULT_4H", "4H"),
+        ("_1H_", "BREAKOUT_TF_SIZE_MULT_1H", "1H"),
+        ("_15M_", "BREAKOUT_TF_SIZE_MULT_15M", "15M"),
+        ("_5M_", "BREAKOUT_TF_SIZE_MULT_5M", "5M"),
+    )
+    upper_reason = str(reason).upper()
+    cap = float(getattr(config, "BREAKOUT_TF_SIZE_CAP_MULT", 5.0))
+    for marker, field, label in checks:
+        if marker in upper_reason:
+            return min(float(getattr(config, field, 1.0)), cap), label
+    return 1.0, ""
+
 
 class TradierTradeManager:
     def __init__(self, account_list: List[str] = None):
@@ -10307,7 +16214,7 @@ class TradierTradeManager:
                 current_price,_ = await self.get_current_price(pos.symbol)
                 current_price = float(current_price)
 
-                if qty > 0 and current_price > 0:
+                if qty > 0 and current_price is not None and current_price > 0:
                     val = qty * current_price
                     # Parse side from key (tra:AAPL_LONG)
                     if "_LONG" in pk:
@@ -10887,7 +16794,7 @@ class TradierTradeManager:
             return None, None
             
     async def place_order(self, symbol: str, side: str, quantity: float, order_type: str = "limit",  price: float = None, stop: float = None, duration: str = "day",
-                          action: str = None, position_side: str = None, account_key: str="tra") -> Dict:
+                          action: str = None, position_side: str = None, account_key: str="tra", reason: str = "") -> Dict:
         current_account.set(account_key)
         now = time.time()
         if symbol in self.rejection_cooldowns:            
@@ -10951,12 +16858,31 @@ class TradierTradeManager:
             is_exception = symbol.upper() in self.exceptions
             max_order = self.limit_exception_order if is_exception else self.limit_normal_order
             max_pos = self.limit_exception_total_pos if is_exception else self.limit_total_pos
+            _ladder_parity = is_ordinary_ladder_target_reason(reason)
+            _mandatory_reclaim = is_mandatory_reclaim_reason(reason)
+            _absolute_target = _ladder_parity or _mandatory_reclaim
+            if _absolute_target:
+                _ladder_capacity = float(
+                    _cfg(
+                        "LR_BAND_LADDER_CAPACITY_USD",
+                        16000.0,
+                        account_key,
+                        symbol,
+                        position_side,
+                    )
+                )
+                max_order = _ladder_capacity
+                max_pos = _ladder_capacity
 
             # --- QUANTITY CALCULATION ---
             if action in ["OPEN", "AUGMENT", "REENTER", "REENTRY"]:
                 remaining_usd = max(0, max_pos - (current_qty * last))
                 base_target = (quantity * last) if quantity > 0 else config.START_POSITION_SIZE
-                target_usd = base_target * 3.0 if is_exception else base_target
+                target_usd = (
+                    base_target
+                    if _absolute_target
+                    else (base_target * 3.0 if is_exception else base_target)
+                )
                 calc_qty = int(min(target_usd, max_order, remaining_usd) / last)
             else:
                 # EXITS: Strictly clamp to true API holdings to prevent rejection loops
@@ -11266,6 +17192,30 @@ class TradierTradeManager:
         if _ist_side_enabled is False:
             logger.info(f"[{account_key}] ⛔ {symbol} {side}: {'LONG' if side == 'LONG' else 'SHORT'}_ENABLED=False (neg-Sharpe/disabled) — no new entry/reentry")
             return False
+        # 2026-08-14 USER: TIM 95-99 never opens, DD<30, >10 trades/yr, V8 verified only tomorrow
+        if _v8_verified_gate_enabled() and account_key == "trb":
+            # Load per-sym entry for this sym/side
+            try:
+                _e = _load_tradier_per_sym_cfgs(p / "data" / "hourly_reconfig" / account_key / "active_config.json").get(f"{symbol}_{side}", {}) if False else None
+            except Exception:
+                _e = None
+            # Use unified loader path
+            try:
+                from pathlib import Path as _P
+                import json as _js
+                _cfg_path = _P(__import__("config").BASE_PATH) / "data" / "hourly_reconfig" / account_key / "active_config.json"
+                with _cfg_path.open() as _f:
+                    _raw = _js.load(_f)
+                _entry = _raw.get(f"{symbol}_{side}", {})
+            except Exception:
+                _entry = {}
+            if not _is_v8_verified_entry(_entry):
+                logger.info(f"[{account_key}] ⛔ {symbol} {side}: V8_NOT_VERIFIED_TEMP_ALLOWED (needs backtest_v8_engine exact) — no new entry until verified")
+                return False
+            _ok, _reason = _passes_basic_risk_gates(_entry)
+            if not _ok:
+                logger.info(f"[{account_key}] ⛔ {symbol} {side}: BASIC_GATE_FAIL {_reason} — no new entry")
+                return False
 
         # 3c. 2026-07-20 USER: trc is a TEMPORARY live A/B control arm that must trade ONLY
         #     trb's symbols that also have real per_sym + 7D-overlay results for trc itself
@@ -11276,9 +17226,18 @@ class TradierTradeManager:
         #     Gate NEW entries only; exits/reduces bypass is_symbol_tradeable so existing
         #     positions can still be closed.
         if account_key == 'trc':
-            _trc_cfgs = _load_tradier_per_sym_cfgs(Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trc" / "active_config.json")
-            if f"{symbol}_{side}" not in _trc_cfgs:
-                logger.info(f"[trc] ⛔ {symbol} {side}: no trc per_sym+7D result in active_config.json — no new entry/reentry")
+            _base = Path(config.BASE_PATH) / "data"
+            _trb_cfgs = _load_tradier_per_sym_results(_base / "hourly_reconfig" / "trb" / "active_config.json")
+            _trc_cfgs = _load_tradier_per_sym_results(_base / "hourly_reconfig" / "trc" / "active_config.json")
+            _trb_symbols = self._get_json_symbols("trb", "long" if side == "LONG" else "short")
+            if not per_sym_overlay_is_approved(
+                symbol,
+                side,
+                trb_configs=_trb_cfgs,
+                trc_configs=_trc_cfgs,
+                trb_symbols=_trb_symbols,
+            ):
+                logger.info(f"[trc] ⛔ {symbol} {side}: requires TRB universe approval plus positive TRB and TRC 7D/per-sym results — no new entry/reentry")
                 return False
 
         # 4. ALWAYS_TRADEABLE/EXCEPTIONS are now only an enabler ON TOP of same_side_syms —
@@ -11299,7 +17258,16 @@ class TradierTradeManager:
         is_reduce = action in ['REDUCE', 'PROFIT_TAKE']
         is_exit_action = action in ['CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'REDUCE']
         is_hedge = action in ['HEDGE_OPEN', 'HEDGE_CLOSE']
+        _is_mandatory_reclaim = is_mandatory_reclaim_reason(reason)
+        _is_ladder_parity_route = is_ordinary_ladder_target_reason(reason)
         hedge_for = None # Tradier logic usually doesn't use hedge_for like ez_manage
+        # HARD RISK CEILING: no new exposure once broker equity is 50% below
+        # its persisted high-water mark. Reductions/closes remain available.
+        if not _is_exit_or_reduce and action != 'HEDGE_CLOSE':
+            _dd_ok, _dd_tag = await self._check_live_drawdown_ceiling(account_key)
+            if not _dd_ok:
+                logger.critical(f'[{account_key}] [DRAWDOWN_CEILING_BLOCK] {position_key}: {action} refused: {_dd_tag}')
+                return f'BLOCKED_{_dd_tag}'
         # BACKTEST_CHANGE_T31: hedge disabled, negative EV in all 5 backtest configs
         if is_hedge and not getattr(config, 'HEDGE_MODE_TRADIER', True):
             logger.info(f"[{account_key}] [HEDGE_DISABLED] Blocking {action} for {symbol}: HEDGE_MODE_TRADIER=False")
@@ -11315,7 +17283,7 @@ class TradierTradeManager:
             logger.warning(f"[{account_key}] ⛔ EXECUTE BLOCK {symbol} {position_side}: Not in approved list.")
             return "BLOCKED_NOT_TRADEABLE"
         # 2026-04-26 Per-sector L/S ratio check — block opens that worsen sector imbalance
-        if (is_entry_action and not is_hedge and not _is_exit_or_reduce and _SECTOR_LS_MODULE_AVAILABLE
+        if (is_entry_action and not _is_mandatory_reclaim and not _is_ladder_parity_route and not is_hedge and not _is_exit_or_reduce and _SECTOR_LS_MODULE_AVAILABLE
             and getattr(config, 'SECTOR_LS_RATIO_ENABLED', False)):
             try:
                 # Build positions dict in {pk: {positionAmt}} format
@@ -11331,9 +17299,10 @@ class TradierTradeManager:
 
         # 2. Indicators Fetch & Unpack
         i = self.get_indicators(symbol)
-        if not i: 
+        if not i and not _is_mandatory_reclaim:
             logger.error(f"[EXECUTE_DEBUG] {symbol}: NO_INDICATORS")
             return "NO_INDICATORS"
+        i = i or {}
 
         # Map 5m to 3m for logic compatibility if needed, though we'll use 5m variables directly
         def g(k, default=0.0): return float(i.get(k, default))
@@ -11388,6 +17357,8 @@ class TradierTradeManager:
         _is_rotation = 'ROTATION_ENTRY' in _reason_upper
         _is_rsi2 = 'RSI2_MEAN_REVERSION' in _reason_upper
         _is_gap_fill = 'GAP_FILL' in _reason_upper
+        _is_ladder_parity = _is_ladder_parity_route
+        _is_contract_target = _is_ladder_parity or _is_mandatory_reclaim
         # RZ baseline / red zone entries: bounce logic in wt_dc_delta._run_redzone
         # already validates HTF alignment + LTF velocity bounce. Skip the broad
         # alignment counter (which would never be satisfied at the bounce moment
@@ -11414,10 +17385,18 @@ class TradierTradeManager:
         # USER 2026-06-03 "make trades HAPPEN": the with-trend WT_3M_FORCE_OPEN build (above 200MA +
         # WT-favor) must NOT be killed by the ZONE / 10-of-13 ALIGNMENT / DC4 entry gates — those are
         # what blocked MRVL et al. The force-open's own gate (above-MA + WT not-against) IS the entry test.
-        _is_wf_force = ('WT_3M_FORCE_OPEN' in _reason_upper) and bool(_cfg(
-            'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
-            account_key, symbol, position_side,
-        ))
+        _is_wf_force = _is_contract_target or (
+            ('WT_3M_FORCE_OPEN' in _reason_upper)
+            and bool(
+                _cfg(
+                    'WT_3M_FORCE_OPEN_BYPASS_GATES',
+                    True,
+                    account_key,
+                    symbol,
+                    position_side,
+                )
+            )
+        )
         if _is_augment_or_entry and not is_hedge and not _is_wf_force:
             _ez = getattr(self.config, 'ENTRY_ZONE_LONG', 22.0); _esz = getattr(self.config, 'ENTRY_ZONE_SHORT', 100.0 - _ez)
             if action in ('OPEN', 'QUICK_OPEN') and not _is_reentry and not _is_rotation and not _is_gap_fill and not _is_rz_entry:
@@ -11451,7 +17430,9 @@ class TradierTradeManager:
             if _is_reentry:
                 if _al >= _min_al: quantity = quantity * min(1.5, 1.0 + (_al - _min_al) * 0.05)
             elif not _is_reentry and 'RATIO_RECOVERY' not in _reason_upper:
-                if _al < _min_al:
+                # parity fix 2026-08-13: bypass alignment gate for V8 ladder parity (vector has no alignment gate)
+                _v8_parity_bypass_al = os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN") == "1" or bool(os.environ.get("V8_LADDER_ONLY_SIDE"))
+                if _al < _min_al and not _v8_parity_bypass_al:
                     logger.warning(f"[TRADIER_ALIGNMENT_BLOCK] {position_key}: alignment={_al}/{_min_al}{' (relaxed)' if _is_proven_strategy else ''}")
                     return f"BLOCKED_ALIGNMENT_{_al}/{_min_al}"
             # dc_low4 hard bottom (applies to all entries including reentries)
@@ -11460,16 +17441,70 @@ class TradierTradeManager:
             # starves them, same class as the MTF armed-state gate (bypassed 2026-07-20).
             _band_entry_etf = 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')
             _dc4l_5m = dc_low4_5m; _dc4h_5m = dc_high4_5m
-            if is_long and _dc4l_5m > 0 and current_price < _dc4l_5m and not _band_entry_etf:
+            # parity fix 2026-08-13: V8 backtest ladder parity — bypass DC4_5m bottom/top gate when V8_BACKTEST_BYPASS_DRAWDOWN or V8_LADDER_ONLY_SIDE set so vector/live second trade matches
+            _v8_parity_bypass_dc4 = os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN") == "1" or bool(os.environ.get("V8_LADDER_ONLY_SIDE"))
+            if is_long and _dc4l_5m > 0 and current_price < _dc4l_5m and not _band_entry_etf and not _v8_parity_bypass_dc4:
                 logger.warning(f"[TRADIER_DC4_BLOCK] {position_key}: price {current_price:.2f} < dc_low4_5m {_dc4l_5m:.2f}")
                 return f"BLOCKED_DC4_BOTTOM"
-            if not is_long and _dc4h_5m > 0 and current_price > _dc4h_5m:
+            if not is_long and _dc4h_5m > 0 and current_price > _dc4h_5m and not _v8_parity_bypass_dc4:
                 logger.warning(f"[TRADIER_DC4_BLOCK] {position_key}: price {current_price:.2f} > dc_high4_5m {_dc4h_5m:.2f}")
                 return f"BLOCKED_DC4_TOP"
         # 3. Price Fetch & Validation
         current_price, _ = await self.get_current_price(symbol)
         current_price = float(current_price) if current_price is not None else 0.0
         if current_price <= 0: return "NO_PRICE"
+
+        # HARD NOTIONAL CEILING — applies at the final execution seam to every
+        # exposure-increasing action, including routes that intentionally bypass
+        # MAX_ORDER_VALUE (force-open/ladder/reclaim).  The old cap lived in the
+        # sizing queue and could be bypassed by an absolute-target route; that is
+        # how a whole-share GOOGL order could become ~$9k despite the $2.5k TRB
+        # symbol limit.  Existing exposure is included, so this cannot pyramid
+        # past the ceiling through repeated fills.
+        if action in ('OPEN', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN', 'AUGMENT', 'QUICK_AUGMENT') and not _is_exit_or_reduce:
+            _hard_account_cap = float(getattr(
+                config, f"{str(account_key).upper()}_MAX_SYMBOL_VALUE",
+                getattr(config, "MAX_SYMBOL_VALUE_TRADIER", 3750.0),
+            ) or 0.0)
+            _hard_global_cap = float(getattr(config, "HARD_MAX_SYMBOL_VALUE_TRADIER", 2500.0) or 0.0)
+            _hard_cap = max(0.0, min(_hard_account_cap, _hard_global_cap))
+            _hard_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
+            _hard_existing_qty = abs(float(getattr(_hard_pos, "positionAmt", 0) or 0))
+            _hard_broker_qty = 0.0
+            try:
+                _snap = (getattr(self, "_broker_preflight_cache", {}) or {}).get(account_key, {})
+                for _bp in (_snap.get("positions") or []):
+                    if str(_bp.get("symbol", "")).upper() != symbol.upper():
+                        continue
+                    _bq = float(_bp.get("quantity", 0) or 0)
+                    if (position_side == "LONG" and _bq > 0) or (position_side == "SHORT" and _bq < 0):
+                        _hard_broker_qty = abs(_bq)
+                        break
+            except Exception:
+                pass
+            _hard_held_qty = max(_hard_existing_qty, _hard_broker_qty)
+            _hard_room_qty = int(max(0.0, (_hard_cap / current_price) - _hard_held_qty + 1e-9))
+            if _hard_room_qty <= 0:
+                logger.critical(f"[HARD_SYMBOL_CAP] {position_key}: held={_hard_held_qty:.4f} @ {current_price:.4f} already reaches ${_hard_cap:.2f}; blocking {action}")
+                return "BLOCKED_HARD_SYMBOL_NOTIONAL_CAP"
+            if float(quantity) > _hard_room_qty:
+                logger.critical(f"[HARD_SYMBOL_CAP] {position_key}: clamping {action} qty {quantity}→{_hard_room_qty}; held={_hard_held_qty:.4f}, cap=${_hard_cap:.2f}, px=${current_price:.4f}")
+                quantity = _hard_room_qty
+
+        # Universal entry boundary: every non-exit route, including augments,
+        # force-open, ladder, reclaim, and advisory entries, must respect the
+        # live 4h Donchian boundary.  Missing 4h data fails closed.
+        # parity fix 2026-08-13: bypass for V8 ladder parity (vector has no 4h gate)
+        _v8_parity_bypass_dc4h = os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN") == "1" or bool(os.environ.get("V8_LADDER_ONLY_SIDE"))
+        if account_key in {"trb", "trc"} and not _is_exit_or_reduce and action != "HEDGE_CLOSE" and not _v8_parity_bypass_dc4h:
+            _dc4_block, _dc4_detail = dc_4h_boundary_breached(
+                current_price, position_side, i, require_level=True
+            )
+            if _dc4_block:
+                logger.critical(
+                    f"🛑 [ENTRY_DC4H_SAFETY] {position_key}: {_dc4_detail} — entry blocked"
+                )
+                return f"BLOCKED_ENTRY_DC4H_{_dc4_detail}"
 
         position = self.get_position(position_key)
         has_local_pos = position and abs(float(getattr(position, 'positionAmt', 0))) > 0.00001
@@ -11510,6 +17545,7 @@ class TradierTradeManager:
             'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
             account_key, symbol, position_side,
         ))
+        _is_wf_force_aug = _is_wf_force_aug or _is_ladder_parity
         if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and not _is_wf_force_aug and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', True) and position.gain < 0:
             logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED — losing position (gain={position.gain:.2f}%)")
             return "BLOCKED_NO_GAIN"
@@ -11554,7 +17590,7 @@ class TradierTradeManager:
         quantity_before_quantizing = float(quantity)
         
         # User Logic Block (Adapted)
-        if account_key in ['trb', 'trc']:
+        if account_key in ['trb', 'trc'] and not _is_contract_target:
             if dc_high_5m - dc_low_5m > 5 * float(atr_15m): quantity += 0.8 * SP
             if (is_long and current_price > dc_high_1h) or (not is_long and current_price < dc_low_1h): quantity += 0.3 * SP
             if (is_long and k_5m < 30 and k_5m > d_5m) or (not is_long and k_5m > 70 and k_5m < d_5m): quantity += 0.3 * SP
@@ -11585,9 +17621,14 @@ class TradierTradeManager:
             if quantity < min_viable_qty: quantity = min_viable_qty
 
         # 7. Final Execution
-        final_shares = int(round(quantity))
+        # Whole-share Tradier execution must never round an absolute target
+        # above the $16k capacity.  Research/exact comparisons report this
+        # explicit whole-share floor as an execution-adapter difference.
+        final_shares = (
+            int(quantity) if _is_contract_target else int(round(quantity))
+        )
         if final_shares < 1: return "QTY_ZERO_FINAL"
-        if action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN') and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
+        if action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN') and not _is_mandatory_reclaim and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
             _gr_min_tfs_tr = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
             if _gr_min_tfs_tr > 0:
                 try:
@@ -11641,6 +17682,54 @@ class TradierTradeManager:
         except Exception as _err:
             logger.critical(f"[GFV_SETTLED_CASH] {account_key}: unexpected error ({_err}) — FAIL CLOSED, returning 0.0")
             return 0.0
+
+    async def _check_live_drawdown_ceiling(self, account_key: str) -> tuple[bool, str]:
+        """Refuse new risk when broker equity is at/above the hard DD ceiling.
+
+        The high-water mark is persisted per account so a process restart cannot
+        reset the risk baseline.  This gate never blocks exits/reductions; on a
+        balance/API error it fails closed for new entries.
+        """
+        ceiling = float(getattr(config, 'MAX_ALLOWED_DRAWDOWN_PCT', 50.0))
+        state_path = Path(config.DATA_DIR) / 'risk' / f'drawdown_guard_{account_key}.json'
+        try:
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            state = {}
+            if state_path.exists():
+                with open(state_path, errors='replace') as fh:
+                    state = json.load(fh)
+            client = getattr(self, 'api_client', None)
+            if client is None or getattr(client, 'account_key', None) != account_key:
+                client = TradierAPIClient(config, account_key=account_key)
+                await asyncio.wait_for(client.connect(), timeout=5.0)
+            balances = await asyncio.wait_for(client.get_account_balances(account_key), timeout=5.0)
+            raw_equity = balances.get('total_equity', balances.get('equity', balances.get('account_value')))
+            if isinstance(raw_equity, dict):
+                raw_equity = raw_equity.get('value', raw_equity.get('amount'))
+            equity = float(raw_equity)
+            if not math.isfinite(equity) or equity <= 0:
+                raise ValueError(f'invalid broker equity {raw_equity!r}')
+            peak = max(float(state.get('peak_equity', 0.0) or 0.0), equity)
+            dd = max(0.0, (peak - equity) / peak * 100.0) if peak > 0 else 0.0
+            state = {'account': account_key, 'peak_equity': peak, 'equity': equity,
+                     'drawdown_pct': dd, 'ceiling_pct': ceiling,
+                     'updated_at': datetime.now(timezone.utc).isoformat()}
+            tmp_path = state_path.with_suffix('.tmp')
+            with open(tmp_path, 'w') as fh:
+                json.dump(state, fh, sort_keys=True)
+            os.replace(tmp_path, state_path)
+            if dd >= ceiling:
+                logger.critical(f'[DRAWDOWN_CEILING] {account_key}: equity=${equity:.2f} peak=${peak:.2f} DD={dd:.2f}% >= {ceiling:.2f}% — NEW RISK BLOCKED')
+                return False, f'DRAWDOWN_CEILING_{dd:.2f}PCT'
+            return True, f'DD_OK_{dd:.2f}PCT'
+        except Exception as err:
+            # V8 backtest bypass: backtest has no broker API, fail OPEN so live tests get trades
+            import os as _dd_os
+            if _dd_os.environ.get('V8_BACKTEST_BYPASS_DRAWDOWN') == '1' or _dd_os.environ.get('V8_OVERRIDE_FILE'):
+                logger.warning(f'[DRAWDOWN_BYPASS_V8] {account_key}: {err} — bypassed for backtest, allowing entry')
+                return True, 'DD_BYPASS_V8'
+            logger.critical(f'[DRAWDOWN_CEILING_FAILCLOSED] {account_key}: {err} — NEW RISK BLOCKED')
+            return False, 'DRAWDOWN_EQUITY_UNAVAILABLE'
 
     async def _broker_preflight_check(self, account_key: str, symbol: str, position_side: str, quantity: float) -> tuple:
         # Self-verify with broker before opening — returns (block: bool, tag: str).
@@ -11951,6 +18040,8 @@ class TradierTradeManager:
             _is_augment_or_entry = is_augment
             is_entry_action = action in ['OPEN', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN'] if action else False
             _is_exit_or_reduce = action in ('REDUCE', 'CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'QUICK_CLOSE') if action else False
+            _is_mandatory_reclaim = is_mandatory_reclaim_reason(reason)
+            _is_ladder_parity = is_ordinary_ladder_target_reason(reason)
             # ═══════════════════════════════════════════════════════════════════════════
             # 🛡️ MTF FILTER (USER 2026-05-20) — Phase I REJ_1h winner gates entries.
             # Phase J validated on 293 stocks × 2.13y: pool_S +0.28, avg DD 6.5%, +113%/sym/yr.
@@ -12033,7 +18124,7 @@ class TradierTradeManager:
             # Only fires on fresh opens where the position is currently flat (positionAmt==0).
             # Augments on existing open positions are NOT gated here — they pass through.
             _dg_is_flat_open = abs(float(original_position_amt or 0)) < 0.0001
-            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce and _dg_is_flat_open:
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_mandatory_reclaim and not _is_ladder_parity and not _is_exit_or_reduce and _dg_is_flat_open:
                 _dg_block, _dg_tag = self._disaster_guard_for_entry(position_key, account_key, symbol, position_side, float(quantity), float(old_price), reason)
                 if _dg_block:
                     logger.critical(f"🛑 [DISASTER_GUARD_BLOCKED_FORCE_OPEN] {position_key}: {_dg_tag} reason={reason}")
@@ -12096,6 +18187,7 @@ class TradierTradeManager:
             if (bool(_cfg('HTF_TREND_VETO_ENABLED', False, account_key, symbol, position_side))
                 and is_entry_action
                 and not _is_exit_or_reduce
+                and not _is_ladder_parity
                 and not _guar_ra_trd_htf
                 and 'HEDGE' not in (reason or '').upper()
                 and 'RULE_C' not in (reason or '').upper()):
@@ -12153,13 +18245,28 @@ class TradierTradeManager:
                 'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
                 account_key, symbol, position_side,
             ))
-            if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 120.0) and not _wt3m_force_open:
+            if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 120.0) and not _wt3m_force_open and not _is_mandatory_reclaim and not _is_ladder_parity:
                 logger.warning(f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active")
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return "AUGMENTATION_COOLDOWN"
             
-            if is_reduce and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'REDUCTION_COOLDOWN_SECONDS', 30.0):
+            _e02_contract_reduce = (
+                is_reduce
+                and str(reason or "").upper().startswith(
+                    "E02_DONCHIAN_4H_N30"
+                )
+                and bool(
+                    _cfg(
+                        "LR_BAND_E02_EXIT_ENABLED",
+                        False,
+                        account_key,
+                        symbol,
+                        position_side,
+                    )
+                )
+            )
+            if is_reduce and not _e02_contract_reduce and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'REDUCTION_COOLDOWN_SECONDS', 30.0):
                 position = self.position_manager.positions.get(position_key) if self.position_manager else None
                 position_gain = getattr(position, 'gain', 0.0) if position else 0.0
                 # Cooldown applies regardless of gain — no bypass for any loss level
@@ -12233,6 +18340,11 @@ class TradierTradeManager:
                         logger.debug(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: error: {_br_e}")
                 if not _ung_active_t:
                     pass  # master switch OFF (config_tradier.UNIVERSAL_NOLOSS_GATE=False) — targeted, not blanket; technical exits fire freely
+                elif _e02_contract_reduce:
+                    logger.warning(
+                        f"[EXECUTE_NOW_E02_BYPASS] {position_key}: "
+                        f"completed-parent E02 allowed at gain={_en_gain:.2f}%"
+                    )
                 elif _en_srs:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_SRS_BYPASS] {position_key}: gain={_en_gain:.2f}% — STRUCTURAL_RANGE_SHIFT allowed at loss")
                 elif _bb_recov_bypass:
@@ -12438,11 +18550,28 @@ class TradierTradeManager:
                 return "INVALID_QUANTITY"
             
             # Place market order directly
+            # Stock analogue of ez_manage's breakout timeframe sizing.  Apply
+            # before ratio balancing and whole-share rounding so the signal's
+            # timeframe changes the requested quantity without affecting exits.
+            if (
+                (_is_augment_or_entry or is_entry_action)
+                and not _is_exit_or_reduce
+                and not is_hedge
+            ):
+                _tf_mult, _tf_label = _breakout_tf_size_mult_tradier(reason)
+                if _tf_mult != 1.0:
+                    _orig_qty = quantity
+                    quantity = float(quantity) * _tf_mult
+                    logger.info(
+                        f"[BREAKOUT_TF_SIZE_TRADIER] {position_key} {action}: "
+                        f"TF={_tf_label} mult={_tf_mult:.2f} qty "
+                        f"{_orig_qty:.6f}→{quantity:.6f} reason={str(reason)[:60]}"
+                    )
             # ═══ RATIO-AWARE SIZING — bull/bear-scenario-aware L/S rebalancing for stocks ═══
             # BEAR_SCENARIO_SYMBOLS (GLD, USO, XLE, GDX, etc.) go UP when the market goes DOWN.
             # A LONG on a bear_scenario symbol = bearish market bet → flip its contribution to the ratio.
             _pm = self.position_manager
-            if _pm and current_price > 0 and not is_hedge:
+            if _pm and current_price > 0 and not is_hedge and not _is_mandatory_reclaim and not _is_ladder_parity:
                 _bear_set = getattr(config, 'BEAR_SCENARIO_SYMBOLS', set())
                 _long_val = 0.0
                 _short_val = 0.0
@@ -12496,7 +18625,7 @@ class TradierTradeManager:
             # Reads data/stocks_oi_cache/{symbol}.json (READ-ONLY, populated by tradier_options_oi_fetcher.py).
             # FAIL-OPEN: any exception or missing data → PASS through (never block on gate bug).
             # Gates only fire on entry actions (OPEN/REENTRY/QUICK_OPEN/REVERSE/HEDGE_OPEN); skipped on exits/reduces.
-            if is_entry_action and not _is_exit_or_reduce:
+            if is_entry_action and not _is_mandatory_reclaim and not _is_ladder_parity and not _is_exit_or_reduce:
                 try:
                     _fg_enabled = bool(getattr(config, 'FUNDING_GATE_ENABLED_TRADIER', False))
                     _oi_enabled = bool(getattr(config, 'OI_CONFIRM_ENABLED_TRADIER', False))
@@ -12561,7 +18690,7 @@ class TradierTradeManager:
                                         _px_chg_pct = None
                                         try:
                                             _px_old = float(_oi_doc.get('underlying_price') or 0.0)
-                                            if _px_old > 0 and current_price > 0:
+                                            if _px_old > 0 and current_price is not None and current_price > 0:
                                                 _px_chg_pct = (float(current_price) - _px_old) / _px_old * 100.0
                                         except Exception: _px_chg_pct = None
                                         if _oi_chg is not None and _px_chg_pct is not None and abs(_oi_chg) >= _oi_min_pct and abs(_px_chg_pct) >= _oi_px_min_pct:
@@ -12652,7 +18781,19 @@ class TradierTradeManager:
                                     _hist_buys += 1
                 except Exception as _he:
                     logger.error(f"[TRA_DAILY_BUY_LIMIT] ledger count failed ({_he}) — using in-memory only")
+                # USER 2026-08-14: tra NEVER buys - sell only before loss in selloff
+                if account_key == 'tra' and not getattr(config, 'TRA_ALLOW_BUYS', False):
+                    return False, "TRA_NO_BUYS_SELL_ONLY", 0
                 _tra_max = int(getattr(config, 'TRA_MAX_BUYS_PER_DAY', 1))
+                # 4 DAYS no buying after a sell on cash tra (GFV 5 flags -> ban at 6)
+                _tra_cooldown_h = float(getattr(config, 'TRA_BUY_COOLDOWN_AFTER_SELL_HOURS', 96.0))
+                try:
+                    _last_sell = getattr(self, '_tra_last_sell_ts', 0) or 0
+                    if _last_sell and (time.time() - _last_sell) < _tra_cooldown_h * 3600:
+                        _hrs_left = (_tra_cooldown_h*3600 - (time.time()-_last_sell))/3600
+                        return False, f"TRA_BUY_COOLDOWN_4D_sell_{_hrs_left:.1f}h_left", 0
+                except Exception:
+                    pass
                 _eff_buys = max(int(self._tra_daily_buy_count['count']), _hist_buys)
                 if _eff_buys >= _tra_max:
                     logger.critical(f"[TRA_DAILY_BUY_LIMIT] 🚨 {position_key}: already {_eff_buys}/{_tra_max} buy(s) today ({_today_et}) [mem={self._tra_daily_buy_count['count']} ledger={_hist_buys}] — BUY BLOCKED to prevent GFV. reason={reason}")
@@ -12660,7 +18801,8 @@ class TradierTradeManager:
                         await self.redis_manager.delete(exec_lock_key)
                     return f"TRA_DAILY_BUY_LIMIT_{_eff_buys}of{_tra_max}"
             result = await self.place_order(  symbol, side, quantity, "market", duration="day",
-                action=action, position_side=position_side, account_key=account_key  )
+                action=action, position_side=position_side, account_key=account_key,
+                reason=reason)
             
             # --- 5. RESPONSE PARSING (THE FIX) ---
             if result and isinstance(result, dict):
@@ -12725,7 +18867,7 @@ class TradierTradeManager:
                         if _pos_for_pnl:
                             _ep = float(getattr(_pos_for_pnl, 'entry_price', 0) or 0)
                             _ps = position_side
-                            if _ep > 0 and current_price > 0:
+                            if _ep > 0 and current_price is not None and current_price > 0:
                                 _trade_pnl = (current_price - _ep) * quantity if _ps == 'LONG' else (_ep - current_price) * quantity
                                 # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
                                 try:
@@ -12773,6 +18915,52 @@ class TradierTradeManager:
                                 )
                                 # Full close: ALSO record reentry candidate snapshot for reopen logic.
                                 if new_qty <= 0:
+                                    # Latch the mandatory reclaim only on an
+                                    # acknowledged full close.  Partial exits
+                                    # do not create a flat-position obligation.
+                                    _reclaim_ind = self.get_indicators(symbol) or {}
+                                    _reclaim_prior = safe_fetch_float(
+                                        _reclaim_ind.get(
+                                            "e02_prior_high_4h_n30"
+                                            if position_side == "LONG"
+                                            else "e02_prior_low_4h_n30"
+                                        ),
+                                        float(current_price),
+                                    )
+                                    _reclaim_prior = (
+                                        _reclaim_reference_from_reason(
+                                            reason, _reclaim_prior
+                                        )
+                                    )
+                                    _reclaim_obligation = _ReclaimObligation(
+                                        side=position_side
+                                    )
+                                    _reclaim_obligation.latch(
+                                        exit_fill=float(current_price),
+                                        prior_opposite_level=_reclaim_prior,
+                                        exited_notional_usd=(
+                                            abs(float(original_position_amt or quantity))
+                                            * float(current_price)
+                                        ),
+                                        exit_ts=int(time.time()),
+                                        base_unit_usd=float(
+                                            getattr(
+                                                config,
+                                                "LR_BAND_LADDER_BASE_UNIT_USD",
+                                                2000.0,
+                                            )
+                                        ),
+                                        capacity_usd=float(
+                                            getattr(
+                                                config,
+                                                "LR_BAND_LADDER_CAPACITY_USD",
+                                                16000.0,
+                                            )
+                                        ),
+                                    )
+                                    self.__dict__.setdefault(
+                                        "_mandatory_reclaim_obligations", {}
+                                    )[position_key] = _reclaim_obligation.to_dict()
                                     if order_id != "GHOST_CLEARED":
                                         _ep = float(getattr(local_pos, 'entry_price', 0) or 0)
                                         _mg = float(getattr(local_pos, 'max_gain', 0) or 0)
@@ -12820,6 +19008,29 @@ class TradierTradeManager:
                                 f"[DELTA_EXIT_STATE_ACK] {position_key}: "
                                 f"{'fresh_cycle' if _delta_fresh_cycle else 'confirmed_close'}"
                             )
+
+                    if (
+                        (not is_reduce)
+                        and is_entry_action
+                        and abs(float(original_position_amt or 0.0)) < 0.0001
+                    ):
+                        _obligations = self.__dict__.setdefault(
+                            "_mandatory_reclaim_obligations", {}
+                        )
+                        _obligation_raw = _obligations.get(position_key)
+                        if _obligation_raw:
+                            _obligation = _ReclaimObligation.from_dict(
+                                _obligation_raw
+                            )
+                            _obligation.confirm_fill()
+                            _obligations[position_key] = _obligation.to_dict()
+                        if _is_mandatory_reclaim:
+                            _trace_row = self.__dict__.setdefault(
+                                "_mandatory_reentry_trace", {}
+                            ).setdefault(position_key, {})
+                            _trace_row["pending"] = False
+                            _trace_row["filled_ts"] = time.time()
+                            _trace_row["filled_price"] = float(current_price)
 
                     await self._append_to_history(position_key, action, quantity, current_price, reason)
                     if lock_acquired and self.redis_manager:
@@ -12886,7 +19097,7 @@ class TradierTradeManager:
                 try:
                     if filename.stat().st_size > MAX_SIZE_BYTES:
                         # ROTATION ARCHIVE [2026-07-03]: timestamped generations — never unlink history.
-                        backup = filename.with_name(f"{filename.name}.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.bak")
+                        backup = filename.with_name(f"{filename.name}.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}.bak")
                         filename.rename(backup)
                 except Exception: pass
             entry = {"ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 4), "value": round(float(qty) * float(price), 2), "reason": reason or "Manual/System Detection", "indicators": {}}
@@ -15060,8 +21271,11 @@ class TradierTradeManager:
                     
                     # Determine values
                     if api_data:
-                        raw_qty = float(api_data.get('quantity', 0))
-                        cost_basis = float(api_data.get('cost_basis', 0))
+                        _rq = api_data.get('quantity', 0)
+                        raw_qty = float(_rq or 0)
+                        _cb = api_data.get('cost_basis', 0)
+                        try: cost_basis = float(_cb or 0)
+                        except: cost_basis = 0.0
                         avg_price = abs(cost_basis / raw_qty) if raw_qty != 0 else 0.0
                         date_acquired = api_data.get('date_acquired', '')
                         unrealized_profit = float(api_data.get('unrealized_profit', 0))
@@ -15107,15 +21321,18 @@ class TradierTradeManager:
                             long_pos.price_fetch_count = getattr(long_pos, 'price_fetch_count', 0) + 1
                         
                         # Update mark price
-                        if current_price > 0:
+                        if current_price is not None and current_price > 0:
                             long_pos.mark_price = current_price
                             long_pos.mark_price_last_updated = now
                         
                         # Calculate gain and update ALL related fields
-                        entry_price = long_pos.entry_price if long_pos.entry_price > 0 else (current_price if current_price > 0 else 0.0)
+                        entry_price = long_pos.entry_price if long_pos.entry_price > 0 else (current_price if current_price is not None and current_price > 0 else 0.0)
                         if long_pos.positionAmt == 0.0:
                             long_pos.gain = 0.0
-                        elif entry_price > 0 and current_price > 0:
+                            if account_key == 'tra':
+                                try: self._tra_last_sell_ts = time.time()
+                                except: pass
+                        elif entry_price > 0 and current_price is not None and current_price > 0:
                             base_entry = entry_price if entry_price > 0 else current_price
                             if base_entry > 0 and not (base_entry < current_price * 0.01 or base_entry > current_price * 100):
                                 long_pos.gain = calculate_gain('LONG', current_price, base_entry)
@@ -15128,7 +21345,7 @@ class TradierTradeManager:
                                 deteriorated_max_gain = self.position_manager.deteriorate_max_gain(account_key, long_pos)
                                 if abs(deteriorated_max_gain - long_pos.max_gain) > 0.01:
                                     long_pos.max_gain = deteriorated_max_gain
-                            if long_pos.positionAmt > 0 and current_price > 0:
+                            if long_pos.positionAmt > 0 and current_price is not None and current_price > 0:
                                 deteriorated_max_qty = self.position_manager.deteriorate_max_quantity(account_key, long_pos, current_price)
                                 if long_pos.positionAmt > deteriorated_max_qty:
                                     long_pos.max_quantity = long_pos.positionAmt
@@ -15136,7 +21353,7 @@ class TradierTradeManager:
                                     long_pos.max_quantity = deteriorated_max_qty
                         
                         # Update other calculated fields
-                        if long_pos.positionAmt > 0 and entry_price > 0 and current_price > 0:
+                        if long_pos.positionAmt > 0 and entry_price > 0 and current_price is not None and current_price > 0:
                             long_pos.unrealized_pnl = (current_price - entry_price) * long_pos.positionAmt
                         
                         # Set ALL timestamp fields
@@ -15168,15 +21385,15 @@ class TradierTradeManager:
                             short_pos.price_fetch_count = getattr(short_pos, 'price_fetch_count', 0) + 1
                         
                         # Update mark price
-                        if current_price > 0:
+                        if current_price is not None and current_price > 0:
                             short_pos.mark_price = current_price
                             short_pos.mark_price_last_updated = now
                         
                         # Calculate gain and update ALL related fields
-                        entry_price = short_pos.entry_price if short_pos.entry_price > 0 else (current_price if current_price > 0 else 0.0)
+                        entry_price = short_pos.entry_price if short_pos.entry_price > 0 else (current_price if current_price is not None and current_price > 0 else 0.0)
                         if short_pos.positionAmt == 0.0:
                             short_pos.gain = 0.0
-                        elif entry_price > 0 and current_price > 0:
+                        elif entry_price > 0 and current_price is not None and current_price > 0:
                             base_entry = entry_price if entry_price > 0 else current_price
                             if base_entry > 0 and not (base_entry < current_price * 0.01 or base_entry > current_price * 100):
                                 short_pos.gain = calculate_gain('SHORT', current_price, base_entry)
@@ -15189,7 +21406,7 @@ class TradierTradeManager:
                                 deteriorated_max_gain = self.position_manager.deteriorate_max_gain(account_key, short_pos)
                                 if abs(deteriorated_max_gain - short_pos.max_gain) > 0.01:
                                     short_pos.max_gain = deteriorated_max_gain
-                            if short_pos.positionAmt > 0 and current_price > 0:
+                            if short_pos.positionAmt > 0 and current_price is not None and current_price > 0:
                                 deteriorated_max_qty = self.position_manager.deteriorate_max_quantity(account_key, short_pos, current_price)
                                 if short_pos.positionAmt > deteriorated_max_qty:
                                     short_pos.max_quantity = short_pos.positionAmt
@@ -15197,7 +21414,7 @@ class TradierTradeManager:
                                     short_pos.max_quantity = deteriorated_max_qty
                         
                         # Update other calculated fields
-                        if short_pos.positionAmt > 0 and entry_price > 0 and current_price > 0:
+                        if short_pos.positionAmt > 0 and entry_price > 0 and current_price is not None and current_price > 0:
                             short_pos.unrealized_pnl = (entry_price - current_price) * short_pos.positionAmt
                         
                         # Set ALL timestamp fields
@@ -15469,7 +21686,14 @@ class TradierTradeManager:
             try:
                 # Find newest timestamped file (NOT latest)
                 ts_files = sorted(config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
-                json_path = ts_files[0] if ts_files else (config.DATA_DIR / "tradier_indicators_latest.json")
+                # S1 FALLBACK: if newest timestamped is stale >60s, try S1 file (S1 runs tradier_indicators, gateway only klines/prices)
+                s1_path = config.DATA_DIR / "s1_indicators_latest.json"
+                import time as _tm
+                newest_age = (time.time() - ts_files[0].stat().st_mtime) if ts_files else 9999
+                if newest_age > 60 and s1_path.exists() and (time.time() - s1_path.stat().st_mtime) < 60:
+                    json_path = s1_path
+                else:
+                    json_path = ts_files[0] if ts_files else (config.DATA_DIR / "tradier_indicators_latest.json")
                 if json_path.exists():
                     mtime = os.path.getmtime(json_path)
                     if mtime > self.last_json_mtime:

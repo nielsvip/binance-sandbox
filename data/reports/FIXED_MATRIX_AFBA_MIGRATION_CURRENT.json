@@ -1,0 +1,73 @@
+{
+  "audit": {
+    "blank_cells": 487537,
+    "duplicate_cells_at_10dp": 0,
+    "evidence_value_changes": 0,
+    "fixed_axes": 3618,
+    "formula_cells": 0,
+    "nonfinite_or_nonnumeric_cells": 0,
+    "physical_cells": 488430,
+    "symbol_sides": 135,
+    "unexpected_values": 0,
+    "valid_unique_nonzero_cells": 893,
+    "zero_cells": 0
+  },
+  "canonical_atomically_replaceable": true,
+  "canonical_filesystem_immutable": false,
+  "canonical_write_performed": true,
+  "completion_authority": true,
+  "counts": {
+    "accepted_external_recipe_evidence": 30351,
+    "accepted_fixed_axis": 286,
+    "accepted_fixed_new": 134,
+    "accepted_fixed_overlap_current": 152,
+    "accepted_recipe_evidence": 30637,
+    "canonical_unique_nonzero": 893,
+    "current_mapped_fixed_axis": 176,
+    "current_physical_evidence": 19182,
+    "external_axes": 17217,
+    "historical_exactly_once": 583,
+    "historical_repeated_evidence": 2105
+  },
+  "current_workbook_sha256": "0d6c2c2ba833fe2e5b190a1b868d59836192ed9f69f34e60c9092dbd2612a411",
+  "fixed_workbook_sha256": "afba07655500f79503805b5ae09ba9573705194c0b5e91128a66c19accc59e62",
+  "generated_at_epoch": 1785799278.202692,
+  "mode": "COMMIT",
+  "new_canonical_sha256": "a6b24f348ed9d6333f699c47799f70aa3527697aa40a8b2996d01644287ccb8d",
+  "previous_generation_backup": "/home/niels/binance-sandbox/data/sync/current_matrix_surface_history/1785799278_0d6c2c2ba833fe2e_before_afba_lossless",
+  "proof": {
+    "accepted_recipe_rows_preserved_in_companion": 30637,
+    "accepted_recipe_source_rows": 30637,
+    "canonical_metric_collisions_at_10dp": 0,
+    "canonical_row_appends": 0,
+    "current_physical_evidence_rows_preserved_in_companion": 19182,
+    "current_physical_evidence_source_rows": 19182,
+    "external_axes_preserved_in_companion": 17217,
+    "external_axes_source": 17217,
+    "historical_repeated_rows_preserved_in_companion": 2105,
+    "historical_repeated_source_rows": 2105,
+    "source_value_mutations": 0,
+    "synthetic_uniqueness_rows": 0,
+    "zero_evidence_loss": true
+  },
+  "schema": "fixed-matrix-afba-lossless-migration-v1",
+  "source_hashes": {
+    "compact_acceptance_audit_sha256": "800f29edc66063685aec08f10668e5398b80bbfff16be653b3eadead6bd21a06",
+    "current_only_inventory_sha256": "44668df0efd5c91cef8a5f3c8191ba0950630832b413d75810d8a18c87e14fd7",
+    "current_workbook_sha256": "0d6c2c2ba833fe2e5b190a1b868d59836192ed9f69f34e60c9092dbd2612a411",
+    "fixed_workbook_sha256": "afba07655500f79503805b5ae09ba9573705194c0b5e91128a66c19accc59e62",
+    "reconciliation_audit_sha256": "b67435ac70504e0b9ba2e0968fe5a8a179fc2b0feb11bf0c8bcda5eb041ae7be"
+  },
+  "stage_root": "/home/niels/binance-sandbox/data/staging/fixed_matrix_afba_lossless_1785799226",
+  "staged": {
+    "companion_ledger": "/home/niels/binance-sandbox/data/staging/fixed_matrix_afba_lossless_1785799226/data/reports/SWITCH_MATRIX_TRB_EVIDENCE_LEDGER.jsonl.gz",
+    "companion_ledger_sha256": "85cfb12292f8ca5b80d03eed7ed753fb8dfdb6bab7f2123e5339e3b8f2014b93",
+    "companion_workbook": "/home/niels/binance-sandbox/data/staging/fixed_matrix_afba_lossless_1785799226/data/reports/SWITCH_MATRIX_TRB_EVIDENCE_COMPANION.xlsx",
+    "companion_workbook_sha256": "4bd36db9d8543b298eed81bc1741ffb59d5177d25264b6b2bd988b0f61c6120f",
+    "workbook": "/home/niels/binance-sandbox/data/staging/fixed_matrix_afba_lossless_1785799226/data/reports/SWITCH_MATRIX_TRB.xlsx",
+    "workbook_sha256": "a6b24f348ed9d6333f699c47799f70aa3527697aa40a8b2996d01644287ccb8d"
+  },
+  "status": "MIGRATION_PASS",
+  "wall_seconds": 73.60678815841675,
+  "zero_evidence_loss": true
+}

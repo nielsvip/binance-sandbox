@@ -176,6 +176,113 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "DELTA_EXIT_DECAY_RATIO is exit-only.",
     ),
     PathFamily(
+        path_id="ENTRY_REVERSAL_DC_BREAK_BOUNCE_ROLLOVER",
+        kind="ENTRY",
+        priority=4,
+        description=(
+            "Causal Donchian reversal entry: SHORT after a completed dc_low_N "
+            "break, rebound, and completed-bar rollover; LONG is the mirrored "
+            "dc_high_N break, pullback, and turn-up."
+        ),
+        settings={
+            "sides": ["SHORT", "LONG"],
+            "timeframes": ["5m", "15m", "1h", "4h", "D"],
+            "lookbacks": [5, 10, 20, 30, 55],
+            "rebound_or_pullback_pct": [0.005, 0.01, 0.02, 0.04],
+            "rollover_or_turn_up_pct": [0.0, 0.005, 0.01],
+            "principal_execution_tf": ["5m"],
+            "size_x_requested": [1, 2, 4, 8, 10],
+        },
+        fixed_entry_control="same frozen ladder sizing and $2,000 base-unit normalization",
+        fixed_exit_control="paired target/stop plus separately attributed HHHL or WT-cross exit",
+        runner="tools/mu_reversal_ladder_campaign.py",
+        adapter_status="ADAPTER_REQUIRED_RESEARCH_ONLY",
+        notes=(
+            "Registered for SHORT-first and mirrored LONG coverage. The current "
+            "runner writes vector evidence and an exact queue only; it does not "
+            "write SWITCH_MATRIX_TRB or live config until a V8 adapter reproduces "
+            "the completed-bar event fingerprint and ledger."
+        ),
+    ),
+    PathFamily(
+        path_id="EXIT_REVERSAL_HHHL",
+        kind="EXIT",
+        priority=4,
+        description=(
+            "Exit a SHORT on causal 5m higher-high plus higher-low confirmation "
+            "after the rebound/rollover episode; LONG uses the mirrored "
+            "lower-low plus lower-high confirmation."
+        ),
+        settings={
+            "sides": ["SHORT", "LONG"],
+            "confirmation_tf": ["5m"],
+            "structure_lookback": [2, 3, 5],
+            "structure_threshold": [0.0, 0.0025, 0.005],
+            "same_bar_policy": ["completed_bar_then_next_5m_open"],
+        },
+        fixed_entry_control="ENTRY_REVERSAL_DC_BREAK_BOUNCE_ROLLOVER or frozen accepted entry schedule",
+        fixed_exit_control="same-entry control with target/stop disabled for isolated structure attribution",
+        runner="tools/mu_reversal_ladder_campaign.py",
+        adapter_status="ADAPTER_REQUIRED_RESEARCH_ONLY",
+        notes=(
+            "The current vector implementation calls this STRUCTURE and uses "
+            "HH+HL for SHORT / LL+LH for LONG. No exact result is implied by "
+            "registration."
+        ),
+    ),
+    PathFamily(
+        path_id="EXIT_REVERSAL_WT_CROSS",
+        kind="EXIT",
+        priority=4,
+        description=(
+            "Exit the reversal position on a causal WaveTrend cross at the "
+            "principal 5m execution clock, with threshold and optional higher "
+            "timeframe confirmation swept independently."
+        ),
+        settings={
+            "sides": ["SHORT", "LONG"],
+            "confirmation_tf": ["5m", "15m", "1h", "4h", "D"],
+            "wt_threshold": [-60.0, -30.0, 0.0, 30.0, 60.0],
+            "confirm_mode": ["cross_only", "cross_or_htf_confirm"],
+            "same_bar_policy": ["completed_bar_then_next_5m_open"],
+        },
+        fixed_entry_control="ENTRY_REVERSAL_DC_BREAK_BOUNCE_ROLLOVER or frozen accepted entry schedule",
+        fixed_exit_control="same-entry control with HH+HL/LL+LH structure disabled for isolation",
+        runner="tools/mu_reversal_ladder_campaign.py",
+        adapter_status="ADAPTER_REQUIRED_RESEARCH_ONLY",
+        notes=(
+            "WT and structure must be reported as separate exit families; do not "
+            "pool WT_OR_STRUCTURE into either family when ranking a winner."
+        ),
+    ),
+    PathFamily(
+        path_id="ENTRY_OVERBOUGHT_FLIP_SHORT",
+        kind="ENTRY",
+        priority=5,
+        description=(
+            "Long-symbol flip research: when an extreme completed 4h/D "
+            "overbought state begins a causal correction, open a temporary SHORT "
+            "instead of waiting for the LONG entry path."
+        ),
+        settings={
+            "source_symbol_side": ["*_LONG"],
+            "flip_side": ["SHORT"],
+            "overbought_tf": ["4h", "D"],
+            "downside_confirmation_tf": ["5m", "15m", "1h"],
+            "confirmation": ["WT_crossunder", "HH_fail", "LL_break", "AND", "OR"],
+            "min_hold_bars": [1, 3, 6, 12],
+        },
+        fixed_entry_control="same $2,000 normalized entry schedule with explicit flip attribution",
+        fixed_exit_control="paired WT-cross and HH+HL/LL+LH exits; no generic exit pooling",
+        runner="tools/mu_reversal_ladder_campaign.py",
+        adapter_status="ADAPTER_REQUIRED_RESEARCH_ONLY",
+        notes=(
+            "No valid dedicated MU_LONG-to-MU_SHORT exact replay currently exists. "
+            "This registration creates the missing research lane and does not "
+            "authorize live shorting of a long-designated symbol."
+        ),
+    ),
+    PathFamily(
         "ENTRY_DC_BREAK_ENTRY_ENABLED",
         "ENTRY",
         20,

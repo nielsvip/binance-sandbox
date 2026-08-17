@@ -511,8 +511,8 @@ def main() -> int:
     parser.add_argument("--npz", type=Path, required=True)
     parser.add_argument("--npz-sha256", required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
-    parser.add_argument("--commission-bps", type=float, default=5.0)
-    parser.add_argument("--slippage-bps", type=float, default=2.0)
+    parser.add_argument("--commission-bps", type=float, default=0.0)
+    parser.add_argument("--slippage-bps", type=float, default=2.5)
     args = parser.parse_args()
     run(args)
     return 0

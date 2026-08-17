@@ -761,6 +761,73 @@ def generate_chart(sym: str, side: str, params: SymParams, m: Dict, days: int = 
     out = CHARTS_DIR / f"OPT_{sym}_{side}.png"
     plt.savefig(out, dpi=130, bbox_inches='tight', facecolor=BG)
     plt.close(fig)
+    # ── Interactive HTML with hover reasons/gain + zoom (5077 bar-chart parity) ──
+    try:
+        _write_interactive_crypto_html(sym, side, params, m, tw, dt_exit, pnl, cum, dt_p if 'dt_p' in locals() else [], c_w if 'c_w' in locals() else [])
+    except Exception as e:
+        print(f"  [chart html] {sym}:{side}: {e}")
+
+
+def _write_interactive_crypto_html(sym, side, params, m, tw, dt_exit, pnl, cum, dt_p, c_w):
+    try:
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+    except ImportError:
+        return
+    from datetime import datetime, timezone
+    import html as _html
+    CHARTS_DIR.mkdir(parents=True, exist_ok=True)
+    colors = ["#3fb950" if p > 0 else "#f85149" for p in pnl]
+    hover = []
+    for t, p in zip(tw, pnl):
+        entry_r = _html.escape(str(t.get("entry_reason") or t.get("entry_type") or ""))
+        exit_r = _html.escape(str(t.get("exit_reason") or ""))
+        s = _html.escape(str(t.get("side") or side))
+        ep = t.get("entry_price"); xp = t.get("exit_price")
+        ets = t.get("entry_ts"); xts = t.get("exit_ts")
+        try:
+            ets_s = datetime.fromtimestamp(int(ets), tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if ets else ""
+            xts_s = datetime.fromtimestamp(int(xts), tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if xts else ""
+        except Exception:
+            ets_s = str(ets or ""); xts_s = str(xts or "")
+        dur = ""
+        try:
+            if ets and xts:
+                sec = int(xts)-int(ets)
+                dur = f"{sec//3600}h {(sec%3600)//60}m" if sec >= 60 else f"{sec}s"
+        except Exception:
+            pass
+        hover.append(f"<b>{s}</b> pnl={p:+.2f}%<br>entry: {entry_r} @ {ep} ({ets_s})<br>exit: {exit_r} @ {xp} ({xts_s})<br>duration: {dur}<br>gain/trade: {p:+.4f}%")
+    has_price = len(dt_p) and len(c_w)
+    rows = 3 if has_price else 2
+    row_heights = [0.45,0.30,0.25] if has_price else [0.55,0.45]
+    fig = make_subplots(rows=rows, cols=1, shared_xaxes=True, vertical_spacing=0.04, row_heights=row_heights,
+                        subplot_titles=(["Price 15m + markers"] if has_price else [])+["Cumulative PnL %","Per-trade PnL % (hover for reason & gain)"])
+    r = 1
+    if has_price:
+        fig.add_trace(go.Scatter(x=dt_p, y=c_w, mode="lines", name="close 15m", line=dict(color="#c9d1d9", width=1), hovertemplate="%{x}<br>price=%{y:.2f}<extra></extra>"), row=1, col=1)
+        longs_x = [datetime.fromtimestamp(int(t['entry_ts']), tz=timezone.utc) for t in tw if t.get('side')=='LONG' and t.get('entry_ts')]
+        longs_y = [float(t['entry_price']) for t in tw if t.get('side')=='LONG' and t.get('entry_price') is not None]
+        shorts_x = [datetime.fromtimestamp(int(t['entry_ts']), tz=timezone.utc) for t in tw if t.get('side')=='SHORT' and t.get('entry_ts')]
+        shorts_y = [float(t['entry_price']) for t in tw if t.get('side')=='SHORT' and t.get('entry_price') is not None]
+        if longs_x: fig.add_trace(go.Scatter(x=longs_x, y=longs_y, mode="markers", name="Long entry", marker=dict(symbol="triangle-up", size=9, color="#3fb950"), hovertemplate="LONG %{x}<br>%{y:.2f}<extra></extra>"), row=1, col=1)
+        if shorts_x: fig.add_trace(go.Scatter(x=shorts_x, y=shorts_y, mode="markers", name="Short entry", marker=dict(symbol="triangle-down", size=9, color="#f0883e"), hovertemplate="SHORT %{x}<br>%{y:.2f}<extra></extra>"), row=1, col=1)
+        r = 2
+    if dt_exit and cum:
+        fig.add_trace(go.Scatter(x=dt_exit, y=cum, mode="lines", name="cum PnL", line=dict(color="#58a6ff", width=2), fill="tozeroy", fillcolor="rgba(88,166,255,0.13)", hovertemplate="%{x}<br>cum %{y:.2f}%<extra></extra>"), row=r, col=1)
+    fig.add_hline(y=0, line_dash="dash", line_color="#6e7681", line_width=0.8, row=r, col=1)
+    r2 = r+1 if has_price else r
+    if dt_exit and pnl:
+        fig.add_trace(go.Bar(x=dt_exit, y=pnl, name="per-trade", marker_color=colors, hovertext=hover, hovertemplate="%{hovertext}<extra></extra>"), row=r2, col=1)
+    fig.add_hline(y=0, line_dash="dash", line_color="#6e7681", line_width=0.8, row=r2, col=1)
+    ovr_str = f"BB_15m={params.BB_LEN_15m}/{params.BB_STD_15m}  WT_15m={params.WT_CHAN_15m}/{params.WT_AVG_15m}  DC_15m={params.DC_PERIOD_15m}  BB_1h={params.BB_LEN_1h}/{params.BB_STD_1h}  DC_1h={params.DC_PERIOD_1h}  BB_4h={params.BB_LEN_4h}/{params.BB_STD_4h}  DC_4h={params.DC_PERIOD_4h}"
+    title = f"OPT | {sym}:{side}  pool={m.get('pool_sharpe',0):+.4f}  wr={m.get('wr_pct',0):.1f}%  dd={m.get('max_dd_pct',0):.2f}%  trades={m.get('trades',len(pnl))} — {ovr_str}"
+    fig.update_layout(title=dict(text=title, font=dict(color="#c9d1d9", size=11)), paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", font=dict(color="#c9d1d9"), hovermode="x unified", bargap=0.2, legend=dict(orientation="h", y=1.02, x=1, xanchor="right", bgcolor="rgba(0,0,0,0)"), margin=dict(l=60,r=20,t=60,b=40))
+    fig.update_xaxes(showgrid=True, gridcolor="#21262d", tickfont=dict(color="#6e7681", size=10), rangeslider_visible=False)
+    fig.update_yaxes(showgrid=True, gridcolor="#21262d", tickfont=dict(color="#6e7681", size=10))
+    html_path = CHARTS_DIR / f"OPT_{sym}_{side}.html"
+    fig.write_html(str(html_path), include_plotlyjs="cdn", config=dict(scrollZoom=True, displayModeBar=True, modeBarButtonsToAdd=["zoomIn2d","zoomOut2d","autoScale2d"], displaylogo=False))
+    print(f"  [chart html] {html_path.name} (hover: reason+gain, scroll to zoom)")
 
 
 # ───────────────────────── symbol universe ────────────────────────────────

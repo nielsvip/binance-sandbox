@@ -227,6 +227,101 @@ async def _run_one_variant(
     today = datetime.now(timezone.utc).strftime("%Y%m%d")
     out = SHADOW_DIR / variant_name / f"decisions_{today}.jsonl"
     _append_jsonl(out, record)
+    # P4: Paper fills ledger — per-occ per-day dedup so same NVDA/IBIT not written every 5 min.
+    # This is paper-only, no real orders, and feeds the trailing P&L + Sharpe in the email.
+    try:
+        fills_path = SHADOW_DIR / "paper_fills.jsonl"
+        # dedup: per variant+occ per day — only first fill per occ per day counts
+        today_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+        seen_key = set()
+        try:
+            if fills_path.exists():
+                for line in fills_path.read_text().splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = json.loads(line)
+                        if rec.get("variant") and rec.get("occ") and str(rec.get("ts","")).startswith(today_str[:4]):
+                            # use variant+occ+expiry as key, only for today
+                            if today_str in str(rec.get("ts","")) or today_str == rec.get("ts","")[:10].replace("-",""):
+                                seen_key.add((rec.get("variant"), rec.get("occ")))
+                            # fallback: if ts is today prefix
+                            ts_day = str(rec.get("ts",""))[:10].replace("-","")
+                            if ts_day == today_str:
+                                seen_key.add((rec.get("variant"), rec.get("occ")))
+                    except Exception:
+                        continue
+        except Exception:
+            seen_key = set()
+        # decisions that are BUYs
+        for d in decisions:
+            action = getattr(d, "action", None) or (d.get("action") if isinstance(d, dict) else "")
+            if str(action).upper() != "BUY":
+                continue
+            occ = getattr(d, "occ_symbol", None) or (d.get("occ_symbol") if isinstance(d, dict) else "") or ""
+            sym = getattr(d, "symbol", None) or (d.get("symbol") if isinstance(d, dict) else "")
+            premium = float(getattr(d, "budget_used", 0) or (d.get("budget_used", 0) if isinstance(d, dict) else 0) or 0)
+            price = float(getattr(d, "limit_price", 0) or (d.get("limit_price", 0) if isinstance(d, dict) else 0) or 0)
+            key = (variant_name, occ)
+            if key in seen_key:
+                continue
+            seen_key.add(key)
+            fill_rec = {
+                "ts": ts,
+                "variant": variant_name,
+                "source": "make_decisions",
+                "symbol": sym,
+                "occ": occ,
+                "type": getattr(d, "option_type", "") or (d.get("option_type") if isinstance(d, dict) else ""),
+                "strike": getattr(d, "strike", 0) or (d.get("strike", 0) if isinstance(d, dict) else 0),
+                "expiry": getattr(d, "expiration", "") or (d.get("expiration") if isinstance(d, dict) else ""),
+                "qty": getattr(d, "qty", 1) or (d.get("qty", 1) if isinstance(d, dict) else 1),
+                "premium": premium,
+                "price": price,
+                "market_value": premium,
+                "gtc_price": price,
+                "mid": price,
+            }
+            _append_jsonl(fills_path, fill_rec)
+        # live-chain opportunities (the primary live path) — also paper fills at gtc_price
+        for opp in opportunities:
+            # Only BUY side (calls/puts); spreads/CSPs have capital_required semantics
+            otype = str(opp.get("type","")).lower()
+            if otype not in ("call","put"):
+                # spreads/CSPs: record at max_loss/capital_required
+                if otype in ("spread","csp"):
+                    prem = float(opp.get("max_loss", opp.get("capital_required", 0)) or 0)
+                    occ2 = opp.get("occ_symbol","")
+                    key2 = (variant_name, occ2)
+                    if key2 in seen_key:
+                        continue
+                    seen_key.add(key2)
+                    fill_rec = {
+                        "ts": ts, "variant": variant_name, "source": "_daily_find",
+                        "symbol": opp.get("symbol",""), "occ": occ2, "type": otype,
+                        "strike": opp.get("strike",0), "expiry": opp.get("expiration",""),
+                        "qty": opp.get("qty",1), "premium": prem, "price": float(opp.get("gtc_price",0) or 0),
+                        "market_value": prem, "gtc_price": float(opp.get("gtc_price",0) or 0), "mid": float(opp.get("gtc_price",0) or 0),
+                        "net_credit": opp.get("net_credit"), "capital_required": opp.get("capital_required"),
+                    }
+                    _append_jsonl(fills_path, fill_rec)
+                continue
+            prem = float(opp.get("gtc_price",0) or opp.get("mid",0) or 0) * 100 * int(opp.get("qty",1) or 1)
+            occ3 = opp.get("symbol","") + "_" + str(opp.get("strike","")) + "_" + str(opp.get("expiration",""))
+            key3 = (variant_name, occ3)
+            if key3 in seen_key:
+                continue
+            seen_key.add(key3)
+            fill_rec = {
+                "ts": ts, "variant": variant_name, "source": "_daily_find",
+                "symbol": opp.get("symbol",""), "occ": occ3, "type": otype, "strike": opp.get("strike",0), "expiry": opp.get("expiration",""),
+                "qty": opp.get("qty",1), "premium": prem, "price": float(opp.get("gtc_price",0) or opp.get("mid",0) or 0),
+                "market_value": prem, "gtc_price": float(opp.get("gtc_price",0) or 0), "mid": float(opp.get("mid",0) or 0),
+                "delta": opp.get("delta"), "score": opp.get("score"),
+            }
+            _append_jsonl(fills_path, fill_rec)
+    except Exception as e:
+        print(f"[WARN] paper_fills append error: {e}", file=sys.stderr)
     return record
 
 

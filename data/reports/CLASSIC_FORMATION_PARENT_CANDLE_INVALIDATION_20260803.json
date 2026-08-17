@@ -1,0 +1,34 @@
+{
+  "schema": "classic-formation-evidence-invalidation-v1",
+  "status": "INVALIDATED_RERUN_REQUIRED",
+  "observed_at": "2026-08-03T05:22:00Z",
+  "defect": "15m OHLC was originally evaluated on repeated native-5m rows; after that detector fix, v8_vec_sweep.load_npz still omitted timestamp_15m/1h/4h/D from the formation source, which could drop distinct consecutive flat parent candles and shift causal lookbacks",
+  "affected_evidence": [
+    "all isolated 15m/1h/4h/D arms",
+    "all direct ALL-timeframe arms",
+    "Luna ranking decisions involving 15m or ALL",
+    "entry-exit combo receipts derived from the v1 campaign",
+    "capacity_cohort_classic_formations_positive_combo_20260803",
+    "capacity_cohort_classic_formations_gate_aware_v2_20260803"
+  ],
+  "unaffected_but_not_promotable_alone": [
+    "isolated 1h arms",
+    "isolated 4h arms",
+    "isolated D arms"
+  ],
+  "old_classic_formations_sha256": "19869424838e78ea2c50224812b343c46738a7815848329693a2c4b6b9d46b19",
+  "corrected_classic_formations_sha256": "1a5fce177a9bbf5d2c37ad5ea862d36cdaecf945a049729c1a86d564c0fd6702",
+  "corrected_v8_vec_sweep_sha256": "1c3cafaea405fdb706e8e5bf530c3e6da3843c6086c2fe7a62e9b9b2c9ec625b",
+  "replacement_request_id": "classic-formations-20260803-parent-id-oom-safe-v5",
+  "strict_universe_required": {
+    "directional_cells": 115,
+    "underlying_symbols": 108,
+    "long_cells": 58,
+    "short_cells": 57,
+    "timeframes": ["15m", "1h", "4h", "D"]
+  },
+  "matrix_written": false,
+  "database_written": false,
+  "live_written": false,
+  "promotion_authorized": false
+}

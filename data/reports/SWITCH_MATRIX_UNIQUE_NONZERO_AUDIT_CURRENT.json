@@ -1,0 +1,1372 @@
+{
+  "advance_to_next_symbol_allowed": false,
+  "blank_or_unresolved_cells": 2762088,
+  "complete_symbol_sides": 0,
+  "duplicate_cells": 0,
+  "duplicate_samples": [],
+  "formula_cells": 0,
+  "formula_samples": [],
+  "generated_at_epoch": 1785764064.8238423,
+  "global_uniqueness_scope": false,
+  "non_numeric_or_nonfinite_cells": 0,
+  "per_symbol_side": [
+    {
+      "advance_allowed": false,
+      "blank": 17864,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AAPL_LONG",
+      "non_numeric": 0,
+      "valid": 2738,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20590,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AAPL_SHORT",
+      "non_numeric": 0,
+      "valid": 12,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 16881,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "ACN_SHORT",
+      "non_numeric": 0,
+      "valid": 3721,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AEM_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AGCO_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20593,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AGI_SHORT",
+      "non_numeric": 0,
+      "valid": 9,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AG_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "ALB_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AMAT_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AMD_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AMD_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AMZN_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "APO_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20584,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "ARM_LONG",
+      "non_numeric": 0,
+      "valid": 18,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20601,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "ARM_SHORT",
+      "non_numeric": 0,
+      "valid": 1,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AR_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AU_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "AXON_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20601,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "A_LONG",
+      "non_numeric": 0,
+      "valid": 1,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20595,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "BG_LONG",
+      "non_numeric": 0,
+      "valid": 7,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "BKR_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20592,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "BK_LONG",
+      "non_numeric": 0,
+      "valid": 10,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20601,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "BNO_LONG",
+      "non_numeric": 0,
+      "valid": 1,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "BOTZ_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CAT_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CAT_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CDE_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CDW_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CF_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CHRD_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20597,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CIBR_LONG",
+      "non_numeric": 0,
+      "valid": 5,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CIEN_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CIEN_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20594,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CLF_SHORT",
+      "non_numeric": 0,
+      "valid": 8,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20601,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CLX_SHORT",
+      "non_numeric": 0,
+      "valid": 1,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CMC_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CMC_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "COE_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "COP_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "CRWD_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20599,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "DAR_LONG",
+      "non_numeric": 0,
+      "valid": 3,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "DELL_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "DE_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "DINO_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "DIS_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20590,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "DVN_LONG",
+      "non_numeric": 0,
+      "valid": 12,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20596,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "EOG_LONG",
+      "non_numeric": 0,
+      "valid": 6,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "EXEL_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20595,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "FANG_LONG",
+      "non_numeric": 0,
+      "valid": 7,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "FCN_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "FCN_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "FCX_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20597,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "FIVN_LONG",
+      "non_numeric": 0,
+      "valid": 5,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "FNV_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20590,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "GDX_SHORT",
+      "non_numeric": 0,
+      "valid": 12,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20589,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "GM_LONG",
+      "non_numeric": 0,
+      "valid": 13,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20592,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "GOOGL_LONG",
+      "non_numeric": 0,
+      "valid": 10,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20586,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "HAO_LONG",
+      "non_numeric": 0,
+      "valid": 16,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20599,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "HAO_SHORT",
+      "non_numeric": 0,
+      "valid": 3,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20590,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "HII_SHORT",
+      "non_numeric": 0,
+      "valid": 12,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "HL_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20601,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "IBIT_LONG",
+      "non_numeric": 0,
+      "valid": 1,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "IBIT_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20592,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "INTC_LONG",
+      "non_numeric": 0,
+      "valid": 10,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "KGC_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20589,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "LAC_SHORT",
+      "non_numeric": 0,
+      "valid": 13,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "LDOS_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "LEXX_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "LLY_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "LNG_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "LRCX_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "LSCC_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20590,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MNTS_LONG",
+      "non_numeric": 0,
+      "valid": 12,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MNTS_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MOS_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20594,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MPC_LONG",
+      "non_numeric": 0,
+      "valid": 8,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20593,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MP_SHORT",
+      "non_numeric": 0,
+      "valid": 9,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MRVL_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20594,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MSTR_SHORT",
+      "non_numeric": 0,
+      "valid": 8,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 16911,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MU_LONG",
+      "non_numeric": 0,
+      "valid": 3691,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20582,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "MU_SHORT",
+      "non_numeric": 0,
+      "valid": 20,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "NEM_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "NKE_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "NLR_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "NOC_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 17560,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "NVDA_LONG",
+      "non_numeric": 0,
+      "valid": 3042,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20600,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "NVDA_SHORT",
+      "non_numeric": 0,
+      "valid": 2,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20592,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "NXE_SHORT",
+      "non_numeric": 0,
+      "valid": 10,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20597,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "OKE_LONG",
+      "non_numeric": 0,
+      "valid": 5,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "OLED_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "OLED_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "ORCL_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "PAAS_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "PBF_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "PDBC_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20600,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "PLTR_SHORT",
+      "non_numeric": 0,
+      "valid": 2,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "PR_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20597,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "PSX_LONG",
+      "non_numeric": 0,
+      "valid": 5,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "PWR_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "QRVO_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20592,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "RBLX_SHORT",
+      "non_numeric": 0,
+      "valid": 10,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "RDDT_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "RDDT_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20594,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "RGLD_SHORT",
+      "non_numeric": 0,
+      "valid": 8,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "ROBO_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20594,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "ROKU_LONG",
+      "non_numeric": 0,
+      "valid": 8,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20598,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "RRC_LONG",
+      "non_numeric": 0,
+      "valid": 4,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "SAP_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "SAP_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "SCCO_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "SNDK_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "SNDK_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "SNOW_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "STLD_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "STLD_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "TDG_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "TECK_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "TECK_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20592,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "TRGP_LONG",
+      "non_numeric": 0,
+      "valid": 10,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "TSLA_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 16638,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "TTD_SHORT",
+      "non_numeric": 0,
+      "valid": 3964,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "TXN_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "USAR_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20596,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "USAR_SHORT",
+      "non_numeric": 0,
+      "valid": 6,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "UUUU_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "VALE_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "VALE_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "VICR_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "VLO_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 18899,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "VT_LONG",
+      "non_numeric": 0,
+      "valid": 1703,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "WDAY_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "WDAY_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "WPM_SHORT",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "XLE_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    },
+    {
+      "advance_allowed": false,
+      "blank": 20602,
+      "duplicate": 0,
+      "expected": 20602,
+      "key": "XOP_LONG",
+      "non_numeric": 0,
+      "valid": 0,
+      "zero": 0
+    }
+  ],
+  "physical_cells_total": 2781270,
+  "schema": "switch-matrix-unique-nonzero-audit-v1",
+  "status": "FAIL_BLOCK_ADVANCEMENT",
+  "symbol_side_count": 135,
+  "uniqueness_scope": "WITHIN_SYMBOL_SIDE_ACROSS_FOUR_PATH_SHEETS",
+  "valid_unique_nonzero_cells": 19182,
+  "zero_cells": 0,
+  "zero_samples": []
+}

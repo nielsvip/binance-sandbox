@@ -44,14 +44,29 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
+
+
+def _set_local_immutable(path, enabled):
+    """Close the macOS report-puller overwrite race around atomic exports."""
+    import stat
+    import sys
+
+    path = Path(path)
+    if sys.platform != "darwin" or not path.exists():
+        return
+    flag = getattr(stat, "UF_IMMUTABLE", 0)
+    if flag:
+        current = path.stat().st_flags
+        os.chflags(path, (current | flag) if enabled else (current & ~flag))
 DB_PATH = BASE / "data" / "param_results_stocks.db"
 CENTRAL_DB = BASE / "data" / "test_results_central.db"
 INERT_EPS = 0.05  # gain/mo pp below which a delta is noise
-REPAIRED_CAMPAIGN = "stocks_repaired_20260725_c2"
-REPAIRED_CUTOFF = "2026-07-26T04:15:00Z"
+REPAIRED_CAMPAIGN = "stocks_repaired_20260730_c5"
+CAPITAL_ACCOUNTING_VERSION = "avg-trade-deployed-2000-v1"
+REPAIRED_CUTOFF = "2026-07-30T03:30:10Z"
 
 
-def trades_fingerprint(trades):
+def trades_fingerprint_c4(trades):
     # USER 2026-07-21: "If 2 fields produce the same results for different settings the
     # function is broken." A fingerprint over the realised trade list makes that mechanical:
     # identical fingerprint to the same-tier baseline => the override changed NOTHING, so the
@@ -60,6 +75,20 @@ def trades_fingerprint(trades):
     for t in sorted(trades, key=lambda x: (x.get("entry_ts") or 0, x.get("exit_ts") or 0)):
         h.update(f"{t.get('entry_ts')}|{t.get('exit_ts')}|{round(float(t.get('pnl_pct') or 0.0), 6)};".encode())
     return f"{len(trades)}:{h.hexdigest()[:16]}"
+
+
+def trades_fingerprint(trades, contract_version=None):
+    """Return the version-appropriate exact schedule/action fingerprint.
+
+    C4 remains byte-for-byte unchanged so every existing row stays historical
+    evidence.  C5 callers must pass their contract version explicitly; this
+    prevents a reporting process from silently relabelling c4 JSONL.
+    """
+    if str(contract_version or "").startswith("tradier-matrix-exec-c5"):
+        from c5_action_fingerprint import exact_action_fingerprint
+
+        return exact_action_fingerprint(trades)
+    return trades_fingerprint_c4(trades)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS key_baseline (
@@ -87,6 +116,14 @@ CREATE TABLE IF NOT EXISTS param_cell_history (
 );
 CREATE INDEX IF NOT EXISTS idx_cell_history_key
   ON param_cell_history(mode, campaign, symbol, side, param);
+CREATE TABLE IF NOT EXISTS key_baseline_history (
+  mode TEXT, symbol TEXT, side TEXT, campaign TEXT, archived_ts TEXT,
+  replacement_capital_accounting_version TEXT, archive_reason TEXT,
+  row_json TEXT,
+  UNIQUE(mode, symbol, side, campaign, archived_ts)
+);
+CREATE INDEX IF NOT EXISTS idx_baseline_history_key
+  ON key_baseline_history(mode, campaign, symbol, side);
 """
 
 MIGRATIONS = (
@@ -130,6 +167,23 @@ MIGRATIONS = (
     "ALTER TABLE key_baseline ADD COLUMN reentry_pending INTEGER",
     "ALTER TABLE key_baseline ADD COLUMN reentry_violations INTEGER",
     "ALTER TABLE key_baseline ADD COLUMN result_audit_json TEXT",
+    # Capital-accounting identity. Exact schedules can remain contract-identical
+    # while their reported performance changes when leverage normalization is
+    # repaired, so this must be queryable independently of engine fingerprint.
+    "ALTER TABLE param_cells ADD COLUMN capital_accounting_version TEXT",
+    "ALTER TABLE param_cells ADD COLUMN benchmark_deployed_usd REAL",
+    "ALTER TABLE param_cells ADD COLUMN average_deployed_usd REAL",
+    "ALTER TABLE param_cells ADD COLUMN capital_normalization_factor REAL",
+    "ALTER TABLE param_cells ADD COLUMN raw_pnl_usd REAL",
+    "ALTER TABLE param_cells ADD COLUMN normalized_pnl_usd REAL",
+    "ALTER TABLE param_cells ADD COLUMN max_dd_pct REAL",
+    "ALTER TABLE key_baseline ADD COLUMN capital_accounting_version TEXT",
+    "ALTER TABLE key_baseline ADD COLUMN benchmark_deployed_usd REAL",
+    "ALTER TABLE key_baseline ADD COLUMN average_deployed_usd REAL",
+    "ALTER TABLE key_baseline ADD COLUMN capital_normalization_factor REAL",
+    "ALTER TABLE key_baseline ADD COLUMN raw_pnl_usd REAL",
+    "ALTER TABLE key_baseline ADD COLUMN normalized_pnl_usd REAL",
+    "ALTER TABLE key_baseline ADD COLUMN max_dd_pct REAL",
 )
 
 
@@ -161,6 +215,10 @@ def _schema_current(con):
         return False
     if con.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='param_cell_history'"
+    ).fetchone() is None:
+        return False
+    if con.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='key_baseline_history'"
     ).fetchone() is None:
         return False
     for mig in MIGRATIONS:
@@ -207,7 +265,10 @@ def upsert_baseline(con, row):
             "time_in_mkt_pct", "capture_vs_bh", "tier", "trades_fingerprint",
             "validation_status", "contract_fingerprint", "real_closes", "mtm_count",
             "opens_long", "opens_short", "requested_fill_ratio", "size_clamp_count",
-            "reentry_pending", "reentry_violations", "result_audit_json")
+            "reentry_pending", "reentry_violations", "result_audit_json",
+            "capital_accounting_version", "benchmark_deployed_usd",
+            "average_deployed_usd", "capital_normalization_factor",
+            "raw_pnl_usd", "normalized_pnl_usd", "max_dd_pct")
     if (row.get("trades") or 0) <= 0 and os.environ.get("V8_ALLOW_ZERO_TRADE") != "1":
         raise ZeroTradeBug(
             f"ZERO_TRADE_BASELINE {row.get('symbol')}_{row.get('side')} tier={row.get('tier')} "
@@ -222,6 +283,15 @@ def upsert_baseline(con, row):
 
 class ZeroTradeBug(ValueError):
     """trades==0 is ALWAYS a harness bug, never a result (USER 2026-07-23)."""
+
+
+def _canonical_json(value):
+    """Normalize stored JSON receipts before deciding they describe a new run."""
+    try:
+        parsed = json.loads(value) if isinstance(value, str) else value
+    except (TypeError, json.JSONDecodeError):
+        return value
+    return json.dumps(parsed, sort_keys=True, separators=(",", ":"), default=str)
 
 
 def assert_traded(row, strict=True):
@@ -254,7 +324,10 @@ def insert_cell(con, row):
             "time_in_mkt_pct", "tier", "baseline_stamp", "trades_fingerprint", "inert",
             "validation_status", "contract_fingerprint", "real_closes", "mtm_count",
             "opens_long", "opens_short", "requested_fill_ratio", "size_clamp_count",
-            "reentry_pending", "reentry_violations", "result_audit_json")
+            "reentry_pending", "reentry_violations", "result_audit_json",
+            "capital_accounting_version", "benchmark_deployed_usd",
+            "average_deployed_usd", "capital_normalization_factor",
+            "raw_pnl_usd", "normalized_pnl_usd", "max_dd_pct")
     key_cols = ("mode", "symbol", "side", "campaign", "param", "value_json")
     key = [row.get(c) for c in key_cols]
 
@@ -280,7 +353,49 @@ def insert_cell(con, row):
             and old.get("contract_fingerprint") != row.get("contract_fingerprint")
         )
         tier_upgrade = incoming_engine and not old_engine
-        if not (contract_changed or tier_upgrade):
+        same_contract_receipt_refresh = (
+            incoming_engine
+            and old_engine
+            and bool(row.get("replace_same_contract_receipt"))
+            and old.get("contract_fingerprint")
+            == row.get("contract_fingerprint")
+            and _canonical_json(old.get("overrides_json"))
+            != _canonical_json(row.get("overrides_json"))
+        )
+        valid_statuses = (
+            {"PASS"}
+            if row.get("campaign") == REPAIRED_CAMPAIGN
+            else {
+                "PASS",
+                "PASS_WITH_CAPACITY_CLAMPS",
+                "INCOMPLETE_NO_REAL_CLOSE",
+            }
+        )
+        same_contract_validation_refresh = (
+            incoming_engine
+            and old_engine
+            and bool(row.get("replace_same_contract_invalid"))
+            and old.get("contract_fingerprint")
+            == row.get("contract_fingerprint")
+            and old.get("validation_status") not in valid_statuses
+            and row.get("validation_status") in valid_statuses
+        )
+        capital_accounting_refresh = (
+            incoming_engine
+            and old_engine
+            and bool(row.get("capital_accounting_version"))
+            and old.get("contract_fingerprint")
+            == row.get("contract_fingerprint")
+            and old.get("capital_accounting_version")
+            != row.get("capital_accounting_version")
+        )
+        if not (
+            contract_changed
+            or tier_upgrade
+            or same_contract_receipt_refresh
+            or same_contract_validation_refresh
+            or capital_accounting_refresh
+        ):
             return
 
         # A repaired contract can invalidate an existing logical cell while the UNIQUE key
@@ -296,7 +411,23 @@ def insert_cell(con, row):
                 *key,
                 str(time.time_ns()),
                 row.get("contract_fingerprint"),
-                "TIER_UPGRADE" if tier_upgrade else "CONTRACT_REFRESH",
+                (
+                    "TIER_UPGRADE"
+                    if tier_upgrade
+                    else (
+                        "SAME_CONTRACT_RECEIPT_REFRESH"
+                        if same_contract_receipt_refresh
+                        else (
+                            "SAME_CONTRACT_VALIDATION_REFRESH"
+                            if same_contract_validation_refresh
+                            else (
+                                "CAPITAL_ACCOUNTING_REFRESH"
+                                if capital_accounting_refresh
+                                else "CONTRACT_REFRESH"
+                            )
+                        )
+                    )
+                ),
                 json.dumps(old, sort_keys=True, default=str),
             ],
         )
@@ -433,19 +564,61 @@ def _table_columns(con, table):
 
 
 def _tradeable_stock_keys(base=BASE):
-    """Return the current TRB symbol-side universe without inventing opposite sides."""
-    out, seen = [], set()
-    for filename, side in (("symbols_trb_long.json", "LONG"), ("symbols_trb_short.json", "SHORT")):
-        path = Path(base) / filename
-        if not path.exists():
-            continue
-        raw = json.loads(path.read_text())
-        symbols = raw if isinstance(raw, list) else list(raw)
-        for symbol in symbols:
-            key = f"{str(symbol).upper()}_{side}"
-            if key not in seen:
-                seen.add(key)
-                out.append(key)
+    """Return the pinned-live plus historical TRB symbol-side union."""
+    try:
+        from tools.audit_stock_matrix_workbooks import configured_keys
+    except ModuleNotFoundError:
+        from audit_stock_matrix_workbooks import configured_keys  # type: ignore
+    return configured_keys(Path(base))
+
+
+def _active_stock_keys(base=BASE):
+    """Return only the pinned current live directional universe."""
+    try:
+        from tools.audit_stock_matrix_workbooks import active_keys
+    except ModuleNotFoundError:
+        from audit_stock_matrix_workbooks import active_keys  # type: ignore
+    return active_keys(Path(base))
+
+
+def _preserved_v8_evidence(base=BASE):
+    """Load immutable historical V8 cells for workbook display only."""
+    import hashlib
+
+    archive = Path(base) / "data/reports/PRESERVED_V8_CELLS.jsonl"
+    receipt_path = Path(base) / "data/reports/PRESERVED_V8_CELLS_RECEIPT.json"
+    if not archive.exists() or not receipt_path.exists():
+        return {}
+    receipt = json.loads(receipt_path.read_text())
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != receipt.get("archive_sha256"):
+        raise RuntimeError("PRESERVED_V8_CELLS archive hash mismatch")
+    out = {}
+    with archive.open() as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            item = json.loads(line)
+            if not item.get("immutable_preservation") or item.get("promotion_allowed") is not False:
+                raise RuntimeError("invalid PRESERVED_V8_CELLS evidence row")
+            logical = (item["key"], item["param"], str(item["value_json"]))
+            out[logical] = {
+                "gain_per_mo": item.get("gain_per_mo"),
+                "delta_vs_bh": item.get("delta_gain_mo_vs_bh"),
+                "trades": item.get("trades"),
+                "pool_sharpe": item.get("pool_sharpe"),
+                "validation": "PRESERVED_V8_REPLAY_REQUIRED",
+                "performance_verdict": "HISTORICAL_EXACT_NOT_PROMOTABLE",
+                "promotable": False,
+                "inert": False,
+                "real_closes": None,
+                "reentry_violations": None,
+                "campaign": item.get("campaign"),
+                "ts": item.get("ts"),
+                "source_file": item.get("source_file"),
+                "evidence_class": "PRESERVED_V8_WORKBOOK_ROW",
+                "preservation_display_status": item.get("preservation_display_status"),
+                "preservation_quarantine_reasons": item.get("preservation_quarantine_reasons") or [],
+            }
     return out
 
 
@@ -518,10 +691,23 @@ def _path_definitions(base=BASE):
     """Exhaustive ENTRY/EXIT path families with descriptions and setting grids."""
     reg_path = Path(base) / "data" / "knob_registry.json"
     manifest_path = Path(base) / "data" / "param_sweep_manifest_tradier.json"
-    if not reg_path.exists() or not manifest_path.exists():
-        return {"ENTRY": [], "EXIT": []}
+    missing = [str(path) for path in (reg_path, manifest_path) if not path.exists()]
+    if missing:
+        # Missing registry data used to produce a formally valid workbook whose
+        # Entry Paths and Exit Paths sheets contained zero path columns.  That
+        # destroys the human work-list on the next recurring refresh.  Fail
+        # before touching the canonical artifact instead.
+        raise FileNotFoundError(
+            "cannot build PARAM_BASELINE_STOCKS path sheets; missing authority: "
+            + ", ".join(missing)
+            + ". Rebuild with: V8_SBX=$PWD python3 tools/knob_registry.py build"
+        )
     registry = json.loads(reg_path.read_text()).get("tradier", {})
     manifest = json.loads(manifest_path.read_text()).get("params", {})
+    if manifest and not registry:
+        raise RuntimeError(
+            f"empty Tradier registry in {reg_path}; refusing to emit empty path sheets"
+        )
     inventory = _load_path_inventory(base)
     grouped = {"ENTRY": {}, "EXIT": {}}
     for param, info in registry.items():
@@ -571,11 +757,13 @@ def _repaired_evidence(con, mode="tradier", campaign=REPAIRED_CAMPAIGN):
         "validation_status", "contract_fingerprint", "real_closes",
         "reentry_violations", "requested_fill_ratio", "size_clamp_count",
         "tier", "time_in_mkt_pct", "capture_vs_bh",
+        "capital_accounting_version",
     }
     required_cells = {
         "validation_status", "contract_fingerprint", "real_closes",
         "reentry_violations", "requested_fill_ratio", "size_clamp_count",
         "tier", "time_in_mkt_pct", "inert",
+        "capital_accounting_version",
     }
     if not required_base.issubset(bcols) or not required_cells.issubset(ccols):
         return {}, {}
@@ -586,15 +774,34 @@ def _repaired_evidence(con, mode="tradier", campaign=REPAIRED_CAMPAIGN):
         "contract_fingerprint,real_closes,reentry_violations,requested_fill_ratio,"
         "size_clamp_count,ts,overrides_json "
         "FROM key_baseline WHERE mode=? AND campaign=? AND COALESCE(tier,'ENGINE')='ENGINE' "
-        "AND ts>=? AND validation_status IN ('PASS','PASS_WITH_CAPACITY_CLAMPS') ORDER BY ts"
+        "AND ts>=? AND validation_status='PASS' "
+        "AND capital_accounting_version=? ORDER BY ts"
     )
-    for row in con.execute(bq, (mode, campaign, REPAIRED_CUTOFF)):
+    for row in con.execute(
+        bq, (mode, campaign, REPAIRED_CUTOFF, CAPITAL_ACCOUNTING_VERSION)
+    ):
         (sym, side, gain, bh, delta, trades, sharpe, tim, capture, validation,
          contract, real_closes, reentry_violations, fill_ratio, clamps, ts, overrides) = row
         baselines[f"{sym}_{side}"] = {
             "gain_per_mo": gain, "bh_per_mo": bh, "delta_vs_bh": delta,
             "trades": trades, "pool_sharpe": sharpe, "time_in_mkt_pct": tim,
             "capture_vs_bh": capture, "validation": validation, "contract": contract,
+            # Structural validation answers whether the exact replay is usable
+            # evidence.  It must never be presented as strategy acceptance.
+            "performance_verdict": (
+                "MEETS 2X B&H RESEARCH BAR"
+                if (
+                    delta is not None
+                    and float(delta) > 0
+                    and capture is not None
+                    and float(capture) >= 2.0
+                )
+                else (
+                    "ABOVE B&H BUT BELOW 2X — GRAY/NONPROMOTABLE"
+                    if delta is not None and float(delta) > 0
+                    else "BELOW B&H — DISCARD EVIDENCE"
+                )
+            ),
             "real_closes": real_closes, "reentry_violations": reentry_violations,
             "requested_fill_ratio": fill_ratio, "size_clamp_count": clamps,
             "ts": ts, "overrides_json": overrides,
@@ -605,9 +812,12 @@ def _repaired_evidence(con, mode="tradier", campaign=REPAIRED_CAMPAIGN):
         "pool_sharpe,time_in_mkt_pct,validation_status,contract_fingerprint,real_closes,"
         "reentry_violations,requested_fill_ratio,size_clamp_count,ts,overrides_json,inert "
         "FROM param_cells WHERE mode=? AND campaign=? AND COALESCE(tier,'ENGINE')='ENGINE' "
-        "AND ts>=? AND validation_status IN ('PASS','PASS_WITH_CAPACITY_CLAMPS') ORDER BY ts"
+        "AND ts>=? AND validation_status='PASS' "
+        "AND capital_accounting_version=? ORDER BY ts"
     )
-    for row in con.execute(cq, (mode, campaign, REPAIRED_CUTOFF)):
+    for row in con.execute(
+        cq, (mode, campaign, REPAIRED_CUTOFF, CAPITAL_ACCOUNTING_VERSION)
+    ):
         (sym, side, param, value, gain, delta, trades, sharpe, tim, validation,
          contract, real_closes, reentry_violations, fill_ratio, clamps, ts,
          overrides, inert) = row
@@ -622,6 +832,10 @@ def _repaired_evidence(con, mode="tradier", campaign=REPAIRED_CAMPAIGN):
             and not bool(inert)
             and delta is not None
             and float(delta) > 0
+            and base.get("bh_per_mo") is not None
+            and float(base["bh_per_mo"]) > 0
+            and gain is not None
+            and float(gain) / float(base["bh_per_mo"]) >= 2.0
         )
         cells[(key, param, str(value))] = {
             "gain_per_mo": gain, "delta_vs_bh": delta, "trades": trades,
@@ -698,6 +912,11 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
     keys = _tradeable_stock_keys(base)
     paths = _path_definitions(base)
     baselines, cells = _repaired_evidence(con, mode)
+    preserved_cells = _preserved_v8_evidence(base)
+    display_cells = dict(preserved_cells)
+    # Receipt-valid current ENGINE wins the same logical cell.  Vector rows
+    # never enter either mapping.
+    display_cells.update(cells)
     # Include repaired evidence keys even if the live list changed after the run.
     for key in sorted(baselines):
         if key not in keys:
@@ -717,6 +936,15 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
     guide_rows = [
         ("PARAM_BASELINE_STOCKS", "Durable stock parameter workbook; restored layout."),
         ("Generated UTC", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")),
+        (
+            "Configured universe",
+            f"{len(_active_stock_keys(base))} ACTIVE plus "
+            f"{len(_tradeable_stock_keys(base)) - len(_active_stock_keys(base))} "
+            "HISTORICAL directional symbol-sides. Source paths and membership hashes are "
+            "audited separately; JSON order-only rewrites do not alter the "
+            "membership contract. Blank result cells are allowed; a missing "
+            "key row is an export failure.",
+        ),
         ("PerSym Results", "One row per current TRB tradeable symbol-side. Only repaired ENGINE "
          f"campaign {REPAIRED_CAMPAIGN} with contract-matched rows is allowed in result cells."),
         ("Entry Paths / Exit Paths", "Every registry path is a column group. Row 2 contains the "
@@ -724,13 +952,16 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
          "settings, best setting, best delta vs B&H, best gain/mo, and result status."),
         ("Green", "Contract-valid PASS cell with real close(s), no reentry violation, non-inert, and >B&H."),
         ("Amber", "Repaired evidence exists but is not promotable (capacity clamp/incomplete gate)."),
+        ("Blue", "Immutable historical V8 result recovered from the prior workbook. It cannot "
+         "be overwritten by vector output; exact replay/receipt recovery is required to promote."),
         ("Gray", "Below B&H or pending. Retained to prevent blind retesting; never promoted."),
         ("Red", "Invalid/wiring/reentry failure evidence. Diagnose; never promote."),
         ("Legacy sheets", "Baselines, ParamRanges, Suggestions, AllCells, Relevance and Matrix_Top "
          "are preserved for historical research. They may contain pre-repair or VEC evidence and "
          "MUST NOT be copied into repaired/promotable cells."),
         ("Coverage", f"{len(baselines)}/{len(keys)} current keys have repaired baselines; "
-         f"{len(cells)} contract-matched repaired cells loaded."),
+         f"{len(cells)} contract-matched repaired cells plus "
+         f"{len(preserved_cells)} immutable historical V8 cells loaded."),
     ]
     for row in guide_rows:
         guide.append(row)
@@ -744,7 +975,8 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
     headers = [
         "key", "symbol", "side", "evidence_tier", "campaign", "baseline_gain/mo",
         "B&H_gain/mo", "baseline_delta_vs_B&H", "baseline_capture_xB&H", "trades",
-        "time_in_market_%", "pool_sharpe", "validation", "real_closes",
+        "time_in_market_%", "pool_sharpe", "structural_validation",
+        "baseline_performance_verdict", "real_closes",
         "reentry_violations", "requested_fill_ratio", "size_clamps", "contract",
         "latest_result_UTC", "paths_tested", "promotable_>B&H_paths", "best_path",
         "best_setting", "best_gain/mo", "best_delta_vs_B&H", "best_status",
@@ -753,7 +985,7 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
     for cell in ws[1]:
         cell.fill, cell.font = navy, white_bold
     by_key = {}
-    for (key, param, value), meta in cells.items():
+    for (key, param, value), meta in display_cells.items():
         by_key.setdefault(key, []).append((param, value, meta))
     param_to_path = {}
     for group in ("ENTRY", "EXIT"):
@@ -770,14 +1002,21 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
         best_meta = best[2] if best else {}
         best_status = (
             "PROMOTABLE > B&H" if best_meta.get("promotable")
-            else ("REPAIRED / NOT PROMOTABLE" if best else "PENDING REPAIRED TEST")
+            else (
+                "PRESERVED V8 / REPLAY REQUIRED"
+                if best_meta.get("evidence_class") == "PRESERVED_V8_WORKBOOK_ROW"
+                else ("REPAIRED / NOT PROMOTABLE" if best else "PENDING REPAIRED TEST")
+            )
         )
         ws.append([
-            key, symbol, side, "REPAIRED ENGINE ONLY", REPAIRED_CAMPAIGN,
+            key, symbol, side,
+            (best_meta.get("evidence_class") or "REPAIRED ENGINE ONLY"),
+            (best_meta.get("campaign") or REPAIRED_CAMPAIGN),
             base_row.get("gain_per_mo"), base_row.get("bh_per_mo"),
             base_row.get("delta_vs_bh"), base_row.get("capture_vs_bh"),
             base_row.get("trades"), base_row.get("time_in_mkt_pct"),
             base_row.get("pool_sharpe"), base_row.get("validation"),
+            base_row.get("performance_verdict"),
             base_row.get("real_closes"), base_row.get("reentry_violations"),
             base_row.get("requested_fill_ratio"), base_row.get("size_clamp_count"),
             base_row.get("contract"), base_row.get("ts"),
@@ -785,23 +1024,40 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
             sum(1 for _p, _v, meta in candidates if meta.get("promotable")),
             param_to_path.get(best[0], best[0]) if best else None,
             f"{best[0]}={best[1]}" if best else None,
-            best_meta.get("gain_per_mo"), best_meta.get("delta_vs_bh"), best_status,
+            (
+                None
+                if best_meta.get("evidence_class") == "PRESERVED_V8_WORKBOOK_ROW"
+                and best_meta.get("preservation_display_status") != "PASS"
+                else best_meta.get("gain_per_mo")
+            ),
+            (
+                None
+                if best_meta.get("evidence_class") == "PRESERVED_V8_WORKBOOK_ROW"
+                and best_meta.get("preservation_display_status") != "PASS"
+                else best_meta.get("delta_vs_bh")
+            ),
+            best_status,
         ])
         fill = (
             green if best_meta.get("promotable")
+            else blue if best_meta.get("evidence_class") == "PRESERVED_V8_WORKBOOK_ROW"
             else amber if best
             else gray
         )
-        ws.cell(ws.max_row, 26).fill = fill
+        ws.cell(ws.max_row, 27).fill = fill
     ws.freeze_panes = "F2"
     ws.auto_filter.ref = ws.dimensions
     for i, width in enumerate((20, 12, 9, 23, 31, 16, 14, 20, 20, 10, 17, 13,
-                               25, 12, 19, 19, 12, 26, 21, 12, 22, 34, 44, 14, 20, 26), 1):
+                               25, 31, 12, 19, 19, 12, 26, 21, 12, 22, 34, 44,
+                               14, 20, 26), 1):
         ws.column_dimensions[get_column_letter(i)].width = width
 
     def write_path_matrix(sheet_name, group):
         ws_path = wb.create_sheet(sheet_name, 2 if group == "ENTRY" else 3)
-        fixed = ["key", "symbol", "side", "repaired baseline status", "repaired B&H gain/mo"]
+        fixed = [
+            "key", "symbol", "side", "repaired baseline status",
+            "repaired B&H gain/mo",
+        ]
         for i, value in enumerate(fixed, 1):
             ws_path.cell(1, i, value)
             ws_path.cell(1, i).fill, ws_path.cell(1, i).font = navy, white_bold
@@ -835,14 +1091,20 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
             symbol, side = key.rsplit("_", 1)
             base_row = baselines.get(key, {})
             ws_path.append([
-                key, symbol, side, base_row.get("validation") or "PENDING",
+                key, symbol, side,
+                (
+                    f"{base_row.get('validation')} / "
+                    f"{base_row.get('performance_verdict')}"
+                    if base_row
+                    else "PENDING"
+                ),
                 base_row.get("bh_per_mo"),
             ])
             row_index = ws_path.max_row
             for path_name, (start, path) in path_columns.items():
                 path_cells = [
                     (param, value, meta)
-                    for (cell_key, param, value), meta in cells.items()
+                    for (cell_key, param, value), meta in display_cells.items()
                     if cell_key == key and param in path["params"]
                 ]
                 tested = " | ".join(
@@ -854,7 +1116,15 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
                 ), default=None)
                 if best:
                     param, value, meta = best
-                    if meta.get("promotable"):
+                    if meta.get("evidence_class") == "PRESERVED_V8_WORKBOOK_ROW":
+                        if meta.get("preservation_display_status") == "PASS":
+                            status, fill = "PRESERVED V8 — EXACT REPLAY REQUIRED", blue
+                        else:
+                            reasons = ",".join(
+                                meta.get("preservation_quarantine_reasons") or []
+                            )
+                            status, fill = f"PRESERVED V8 QUARANTINED: {reasons}", red
+                    elif meta.get("promotable"):
                         status, fill = "PROMOTABLE > B&H", green
                     elif meta.get("validation") != "PASS":
                         status, fill = f"NOT PROMOTABLE: {meta.get('validation')}", amber
@@ -864,9 +1134,15 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
                         status, fill = "INVALID: INERT / wiring", red
                     else:
                         status, fill = "BELOW B&H — DISCARD EVIDENCE", gray
+                    quarantined_preserved = (
+                        meta.get("evidence_class") == "PRESERVED_V8_WORKBOOK_ROW"
+                        and meta.get("preservation_display_status") != "PASS"
+                    )
                     values = [
-                        tested, f"{param}={value}", meta.get("delta_vs_bh"),
-                        meta.get("gain_per_mo"), status,
+                        tested, f"{param}={value}",
+                        None if quarantined_preserved else meta.get("delta_vs_bh"),
+                        None if quarantined_preserved else meta.get("gain_per_mo"),
+                        status,
                     ]
                 else:
                     values, fill = ["", "", None, None, "PENDING"], gray
@@ -1102,6 +1378,18 @@ def export_xlsx(con, path, mode="tradier", campaign=None):
         args5.append(campaign)
     for row in con.execute(q5 + " ORDER BY symbol, side, param, value_num", args5):
         ws5.append(list(row))
+    # The recurring exporter previously destroyed historical daemon evidence
+    # whenever the local DB was sparse.  Re-append the hash-bound immutable V8
+    # archive on every refresh.  This is a ledger view, not promotion credit.
+    for (key, param, value), meta in sorted(_preserved_v8_evidence(BASE).items()):
+        symbol, side = key.rsplit("_", 1)
+        ws5.append([
+            symbol, side, param, value, meta.get("pool_sharpe"),
+            meta.get("trades"), None, meta.get("gain_per_mo"),
+            meta.get("delta_vs_bh"), None, meta.get("ts"),
+            meta.get("campaign"), meta.get("source_file"),
+            "PRESERVED_V8_IMMUTABLE_REPLAY_REQUIRED", None,
+        ])
     ws4 = wb.create_sheet("Relevance")
     ws4.append(["param", "max_spread_gain_mo", "n_keys_tested", "n_keys_moved", "verdict"])
     for d in relevance_ranking(con, mode, campaign):
@@ -1112,11 +1400,21 @@ def export_xlsx(con, path, mode="tradier", campaign=None):
     # disappeared whenever this recurring exporter rebuilt PARAM_BASELINE_STOCKS. Generate
     # them here, on every refresh, while keeping all legacy sheets above untouched.
     restored = _write_restored_workbook_sheets(wb, con, mode, BASE)
+    try:
+        from tools.lifecycle_workbook import write_lifecycle_sheet
+    except ModuleNotFoundError:
+        from lifecycle_workbook import write_lifecycle_sheet  # type: ignore
+    lifecycle_count = write_lifecycle_sheet(wb, BASE)
     matrix_top_preserved = _preserve_matrix_top(wb, path)
     wb["Workbook Guide"].append((
         "Legacy evidence counts",
         f"Baselines={ws.max_row - 1}; AllCells={ws5.max_row - 1}; "
         "kept in their original sheets, not blended into repaired result cells.",
+    ))
+    wb["Workbook Guide"].append((
+        "Vector Lifecycle",
+        f"{lifecycle_count} hash/provenance checked combination result(s), kept in a "
+        "separate non-exact sheet and never blended into scalar/ENGINE cells.",
     ))
     wb["Workbook Guide"].append((
         "Matrix_Top",
@@ -1126,6 +1424,7 @@ def export_xlsx(con, path, mode="tradier", campaign=None):
     ))
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    _set_local_immutable(path, False)
     # A full workbook can take more than a minute to serialize on a loaded S1.
     # Never expose that partial ZIP to the hourly puller or digest process.
     tmp_path = path.with_name(
@@ -1139,12 +1438,31 @@ def export_xlsx(con, path, mode="tradier", campaign=None):
                 raise RuntimeError(
                     f"incomplete workbook archive: {tmp_path}"
                 )
+        try:
+            from tools.audit_stock_matrix_workbooks import (
+                assert_audit,
+                audit_param_workbook,
+            )
+        except ModuleNotFoundError:
+            from audit_stock_matrix_workbooks import (  # type: ignore
+                assert_audit,
+                audit_param_workbook,
+            )
+        report = audit_param_workbook(
+            tmp_path,
+            BASE,
+            require_fresh=False,
+            require_matrix_top=matrix_top_preserved,
+        )
+        assert_audit(report)
         os.replace(tmp_path, path)
+        _set_local_immutable(path, True)
     finally:
         try:
             tmp_path.unlink()
         except FileNotFoundError:
             pass
+        _set_local_immutable(path, True)
     print(
         "[xlsx restored] "
         + " ".join(f"{key}={value}" for key, value in restored.items()),

@@ -705,7 +705,7 @@ def main() -> int:
     ap.add_argument("--validation-months", type=int, default=3)
     ap.add_argument("--inner-folds", type=int, default=3)
     ap.add_argument("--round-trip-cost-bps", type=float, default=10.0)
-    ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument("--slippage-bps", type=float, default=2.5)
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
     if args.self_test:

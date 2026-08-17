@@ -1,0 +1,112 @@
+[
+  {
+    "switch": "LH_HL_FILTER_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0665,
+    "trades_a": 6412,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": -0.0010999999999999899,
+    "winner": false
+  },
+  {
+    "switch": "STDEV_BREAKOUT_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0742,
+    "trades_a": 11199,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.006600000000000009,
+    "winner": true
+  },
+  {
+    "switch": "MI_ENTRY_ENABLED_TRADIER",
+    "val_a": true,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "HLR_RALLY_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": false,
+    "sharpe_b": 0.0774,
+    "trades_b": 5528,
+    "delta": -0.009800000000000003,
+    "winner": false
+  },
+  {
+    "switch": "TR_CHOP4H_GATE_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "TR_ADX4H_GATE_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "AUGMENT_WT_CROSS_ENABLED",
+    "val_a": false,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": true,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": true
+  },
+  {
+    "switch": "SYMBOL_PERF_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "EXIT_GAIN_EROSION_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "WT_COMP_DELTA_EXIT_ENABLED",
+    "val_a": false,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": true,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": true
+  }
+]

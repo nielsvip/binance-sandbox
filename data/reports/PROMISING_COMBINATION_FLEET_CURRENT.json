@@ -1,0 +1,200 @@
+{
+  "counts": {
+    "long": 1,
+    "selected": 9,
+    "short": 8
+  },
+  "created_utc": "2026-08-02T18:37:16.514147+00:00",
+  "publication_status": "SYNC_PENDING",
+  "rejected_or_already_owned": [
+    {
+      "key": "USAR_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "GOOGL_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "BG_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "AAPL_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "ARM_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "MRVL_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "INTC_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "ROKU_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "NVDA_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "CMC_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "SNOW_LONG",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "CLF_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "RBLX_SHORT",
+      "reason": "NO_FINITE_POSITIVE_ALPHA_AND_ACTIVITY"
+    },
+    {
+      "key": "MP_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "NXE_SHORT",
+      "reason": "NO_FINITE_POSITIVE_ALPHA_AND_ACTIVITY"
+    },
+    {
+      "key": "AEM_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "LDOS_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "IBIT_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "TTD_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "ACN_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "AG_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "LAC_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    },
+    {
+      "key": "TSLA_SHORT",
+      "reason": "ALREADY_OWNED_BY_COHORT_15_16_OR_17"
+    }
+  ],
+  "schema": "promising-combination-fleet-v1",
+  "selected": [
+    {
+      "alpha_vs_bh_per_month_pp": 57.46458463681848,
+      "closes_per_week": 0.512574026775941,
+      "entry_family": "ENTRY_4H_DEEP_VALUE",
+      "estimated_window_closes": 62.38025905863202,
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "key": "UUUU_SHORT",
+      "prior_state": "VECTOR_NEARMISS"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 42.07339945328141,
+      "closes_per_week": 0.2050296107103764,
+      "entry_family": "ENTRY_4H_DEEP_VALUE",
+      "estimated_window_closes": 24.952103623452807,
+      "exit_family": "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+      "key": "ORCL_SHORT",
+      "prior_state": "VECTOR_NEARMISS"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 18.99257815398718,
+      "closes_per_week": 0.03417160178506273,
+      "entry_family": "ENTRY_BOUNCE_15M_LOW",
+      "estimated_window_closes": 4.1586839372421345,
+      "exit_family": "EXIT_E02_DONCHIAN",
+      "key": "DIS_SHORT",
+      "prior_state": "VECTOR_NEARMISS"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 17.06326875182576,
+      "closes_per_week": 1.025148053551882,
+      "entry_family": "ENTRY_LONG_WAIT_ENABLED",
+      "estimated_window_closes": 124.76051811726404,
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "key": "RDDT_SHORT",
+      "prior_state": "VECTOR_WINNER_EXACT_PENDING"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 14.42436948963781,
+      "closes_per_week": 3.3488169749361476,
+      "entry_family": "ENTRY_1H_TURN_UP",
+      "estimated_window_closes": 407.55102584972917,
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "key": "USAR_SHORT",
+      "prior_state": "VECTOR_NEARMISS"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 9.706427581641403,
+      "closes_per_week": 3.8955626034971513,
+      "entry_family": "ENTRY_LADDER_GREEN",
+      "estimated_window_closes": 474.0899688456033,
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "key": "FNV_SHORT",
+      "prior_state": "VECTOR_NEARMISS"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 4.755713748201415,
+      "closes_per_week": 0.2392012124954391,
+      "entry_family": "ENTRY_DC_BREAK_ENTRY_ENABLED",
+      "estimated_window_closes": 29.110787560694938,
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "key": "BK_LONG",
+      "prior_state": "VECTOR_NEARMISS"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 3.8970403310936605,
+      "closes_per_week": 0.7859468410564429,
+      "entry_family": "ENTRY_DELTA_MTF",
+      "estimated_window_closes": 95.6497305565691,
+      "exit_family": "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+      "key": "TECK_SHORT",
+      "prior_state": "VECTOR_NEARMISS"
+    },
+    {
+      "alpha_vs_bh_per_month_pp": 3.889839796927533,
+      "closes_per_week": 0.17085800892531366,
+      "entry_family": "ENTRY_DELTA_MTF",
+      "estimated_window_closes": 20.793419686210672,
+      "exit_family": "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+      "key": "AAPL_SHORT",
+      "prior_state": "VECTOR_NEARMISS"
+    }
+  ],
+  "selection_contract": {
+    "not_authorized": [
+      "exact V8",
+      "matrix write",
+      "live write",
+      "Cartesian enumeration"
+    ],
+    "reported_gate": "strictly >10 real closes plus B&H/TIM/causality/capacity on fresh receipt",
+    "requirement": "current VECTOR winner/near-miss, positive finite alpha and observed positive closes/week",
+    "search": "64 random curves / 32 entry shortlist / entry beam 3 / exit beam 8 / max 8 retained recipes",
+    "source": "MATRIX_SYMBOL_SIDE_ACHIEVEMENT_CURRENT.json"
+  },
+  "stage": "PROMISING_OMITTED_LIFECYCLE_BOUNDED_BEAM_V1"
+}

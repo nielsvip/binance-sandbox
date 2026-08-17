@@ -37,8 +37,12 @@ DEFAULT_CFG = {
     "entry_speed_threshold": 0.5,
     # Exit: LOOSE — 2 TFs speed dying is enough
     "exit_speed_decay_pct": 50.0,
+    "exit_accel_threshold": -0.1,
     "exit_min_tf_lost": 2,
     "exit_min_hold": 4,
+    "exit_opposing_ratio": 1.0,
+    "accel_lookback": 5,
+    "z_window": 200,
     # 2026-04-17: HTF slowdown gate. DELTA_EXIT is sacred but must focus on HTF —
     # if 2+ of {1h,4h,D} WT still aligned with position, veto the exit (LTF noise only).
     "exit_require_htf_slowdown": True,
@@ -51,6 +55,94 @@ DEFAULT_CFG = {
     "pyramid_qty_mult": 1.5,
     "pyramid_max": 8,
 }
+
+
+def normalize_delta_cfg(cfg=None):
+    """Normalize public Tradier DELTA aliases before merging live defaults.
+
+    ``config_tradier.DELTA_EXIT_DECAY_RATIO`` is expressed as a fraction
+    (0.15 == 15%), while this module's original internal field is a percent.
+    The v8 engine used to repair that mismatch only *after* constructing the
+    tracker, leaving live trading and exact backtests with different behavior.
+    Normalize at the shared module boundary so both paths execute one contract.
+    An explicitly supplied percent remains authoritative.
+    """
+    supplied = dict(cfg or {})
+    if (
+        "exit_speed_decay_pct" not in supplied
+        and "exit_speed_decay_ratio" in supplied
+    ):
+        ratio = float(supplied["exit_speed_decay_ratio"])
+        supplied["exit_speed_decay_pct"] = (
+            ratio * 100.0 if abs(ratio) <= 1.0 else ratio
+        )
+    return {**DEFAULT_CFG, **supplied}
+
+
+def opposing_pressure_exceeds(opp_speed, current_speed, ratio=1.0):
+    """Return whether counter-pressure exceeds the configured speed ratio."""
+    threshold = max(0.0, float(ratio))
+    return float(opp_speed) > float(current_speed) * threshold
+
+
+def causal_z_speed_acceleration(
+    state,
+    direction,
+    current_speed,
+    *,
+    append,
+    lookback=5,
+    window=200,
+):
+    """Return causal z-speed acceleration for one symbol/direction.
+
+    The authoritative delta research engines define acceleration as the
+    direction-specific combined z-speed now minus its value ``lookback`` bars
+    ago. Live updates cannot use their whole-window z-score (that would see the
+    future), so this keeps a rolling causal z-score history. Repeated evaluator
+    calls within the same completed bar reuse the last value and never advance
+    history.
+    """
+    prefix = str(direction).lower()
+    if prefix not in {"bull", "bear"}:
+        raise ValueError(f"unsupported delta direction: {direction}")
+    lookback = max(1, int(lookback))
+    window = max(lookback + 1, int(window))
+    raw_key = f"_exit_{prefix}_speed_raw"
+    z_key = f"_exit_{prefix}_speed_z"
+    raw_history = state.setdefault(raw_key, [])
+    z_history = state.setdefault(z_key, [])
+
+    if append:
+        raw_history.append(float(current_speed))
+        if len(raw_history) > window:
+            del raw_history[:-window]
+        sample = np.asarray(raw_history, dtype=np.float64)
+        std = float(np.std(sample))
+        current_z = (
+            (float(current_speed) - float(np.mean(sample))) / std
+            if std > 1e-10
+            else 0.0
+        )
+        z_history.append(float(current_z))
+        if len(z_history) > window:
+            del z_history[:-window]
+
+    if len(z_history) <= lookback:
+        return 0.0
+    return float(z_history[-1] - z_history[-1 - lookback])
+
+
+def exit_acceleration_below(acceleration, threshold):
+    """Apply the established direction-speed acceleration exit threshold."""
+    return float(acceleration) < float(threshold)
+
+
+def exit_min_hold_satisfied(held_bars, minimum_bars):
+    """Apply the authoritative 15m-bar DELTA exit hold contract."""
+    if held_bars is None:
+        return True
+    return float(held_bars) >= max(0.0, float(minimum_bars))
 
 
 def delayed_retest_exit_step(
@@ -277,7 +369,7 @@ class TempKeyManager:
 
 class DeltaTracker:
     def __init__(self, cfg=None):
-        self.cfg = {**DEFAULT_CFG, **(cfg or {})}
+        self.cfg = normalize_delta_cfg(cfg)
         self._prev = defaultdict(dict)  # symbol -> {field: prev_value}
         self._max_speed = defaultdict(float)  # symbol -> max speed seen in current position
         self.temp_keys = TempKeyManager()  # Shared temp key manager
@@ -405,6 +497,29 @@ class DeltaTracker:
         sig.bear_tf_count = bear_tf_count
         sig.total_fields = total_fields
 
+        # Authoritative DELTA exit contract: direction-specific combined
+        # z-speed acceleration over DELTA_ACCEL_LOOKBACK. The research engines
+        # use whole-series z-scores; live/exact execution uses the causal rolling
+        # equivalent so no future observation enters the decision.
+        _exit_accel_lookback = int(cfg.get("accel_lookback", 5))
+        _exit_z_window = int(cfg.get("z_window", 200))
+        _bull_exit_accel = causal_z_speed_acceleration(
+            prev,
+            "bull",
+            total_bull,
+            append=_update_prev,
+            lookback=_exit_accel_lookback,
+            window=_exit_z_window,
+        )
+        _bear_exit_accel = causal_z_speed_acceleration(
+            prev,
+            "bear",
+            total_bear,
+            append=_update_prev,
+            lookback=_exit_accel_lookback,
+            window=_exit_z_window,
+        )
+
         # --- BAR-TO-BAR ACCELERATION (exposed for hedge entry/exit gates) ---
         # Computed on every update, unconditional of zone. Separate namespace from _rz_prev_* so existing BASELINE zone logic is untouched.
         _hedge_prev_bull = prev.get("_hedge_prev_total_bull", 0.0)
@@ -428,6 +543,15 @@ class DeltaTracker:
         if position_state:
             side = position_state.get("side", "")
             max_spd = self._max_speed[symbol]
+            _held_bars = _safe_float(position_state.get("held_bars"))
+            _exit_min_hold = max(0.0, float(cfg.get("exit_min_hold", 4)))
+            # Stock callers provide a reliable 15m-bar equivalent. Preserve
+            # compatibility for non-stock callers that do not expose position
+            # age; their separate upstream hold contract remains authoritative.
+            _exit_min_hold_ok = exit_min_hold_satisfied(
+                _held_bars,
+                _exit_min_hold,
+            )
 
             # Track per-bar speed delta (acceleration of speed itself)
             _prev_cur_spd_long = prev.get("_prev_cur_spd_long", 0.0)
@@ -478,6 +602,11 @@ class DeltaTracker:
             if side in ("LONG", "L"):
                 cur_spd = _dom_bull
                 opp_spd = _dom_bear
+                _exit_accel = _bull_exit_accel
+                _exit_accel_negative = exit_acceleration_below(
+                    _exit_accel,
+                    cfg.get("exit_accel_threshold", -0.1),
+                )
                 self._max_speed[symbol] = max(max_spd, cur_spd)
                 max_spd = self._max_speed[symbol]
 
@@ -488,12 +617,26 @@ class DeltaTracker:
                 slowing_prev = _prev_cur_spd_long < _prev_cur_spd_long_2 * (1 - _slowdown_pct) if _prev_cur_spd_long_2 > 0 else False
                 decelerating = slowing_now and (slowing_prev if _decel_bars >= 2 else True)
                 # 3. OPPOSING: bear pressure exceeds bull
-                opposing = opp_spd > cur_spd
+                opposing = opposing_pressure_exceeds(
+                    opp_spd,
+                    cur_spd,
+                    cfg.get("exit_opposing_ratio", 1.0),
+                ) and _exit_accel_negative and _exit_min_hold_ok
                 # 4. PEAK DECAY: dropped X% from peak (relative measure for fast-moving positions)
                 _decay_pct_cfg = cfg["exit_speed_decay_pct"]
-                peak_decay = cur_spd < max_spd * (1 - _decay_pct_cfg / 100) if max_spd > 0 else False
+                peak_decay = (
+                    cur_spd < max_spd * (1 - _decay_pct_cfg / 100)
+                    and _exit_accel_negative
+                    and _exit_min_hold_ok
+                    if max_spd > 0
+                    else False
+                )
                 # 5. TF LOST: bull TF count below threshold
-                tf_lost = bull_tf_count < cfg["exit_min_tf_lost"]
+                tf_lost = (
+                    bull_tf_count < cfg["exit_min_tf_lost"]
+                    and _exit_accel_negative
+                    and _exit_min_hold_ok
+                )
                 # 6. WT1_3M FALLING — explicit fallback per user rule
                 wt1_3m_falling = (_wt1_3m_prev is not None and _wt1_3m_now is not None and _wt1_3m_now < _wt1_3m_prev)
                 wt1_15m_falling = (_wt1_15m_prev is not None and _wt1_15m_now is not None and _wt1_15m_now < _wt1_15m_prev)
@@ -573,6 +716,8 @@ class DeltaTracker:
                     if peak_decay: _triggers.append("PEAK")
                     if opposing: _triggers.append("OPP")
                     if tf_lost: _triggers.append("TFLOST")
+                    if _exit_accel_negative:
+                        _triggers.append(f"ACCEL={_exit_accel:.3f}")
                     if _mfi_low: _triggers.append("MFI")
                     if wt1_3m_falling: _triggers.append("WT1_3M_DOWN")
                     if dc_pos_3m_falling: _triggers.append("DC_POS_3M_DOWN")
@@ -588,6 +733,11 @@ class DeltaTracker:
             elif side in ("SHORT", "S"):
                 cur_spd = _dom_bear
                 opp_spd = _dom_bull
+                _exit_accel = _bear_exit_accel
+                _exit_accel_negative = exit_acceleration_below(
+                    _exit_accel,
+                    cfg.get("exit_accel_threshold", -0.1),
+                )
                 self._max_speed[symbol] = max(max_spd, cur_spd)
                 max_spd = self._max_speed[symbol]
 
@@ -595,10 +745,24 @@ class DeltaTracker:
                 slowing_now = cur_spd < _prev_cur_spd_short * (1 - _slowdown_pct)
                 slowing_prev = _prev_cur_spd_short < _prev_cur_spd_short_2 * (1 - _slowdown_pct) if _prev_cur_spd_short_2 > 0 else False
                 decelerating = slowing_now and (slowing_prev if _decel_bars >= 2 else True)
-                opposing = opp_spd > cur_spd
+                opposing = opposing_pressure_exceeds(
+                    opp_spd,
+                    cur_spd,
+                    cfg.get("exit_opposing_ratio", 1.0),
+                ) and _exit_accel_negative and _exit_min_hold_ok
                 _decay_pct_cfg = cfg["exit_speed_decay_pct"]
-                peak_decay = cur_spd < max_spd * (1 - _decay_pct_cfg / 100) if max_spd > 0 else False
-                tf_lost = bear_tf_count < cfg["exit_min_tf_lost"]
+                peak_decay = (
+                    cur_spd < max_spd * (1 - _decay_pct_cfg / 100)
+                    and _exit_accel_negative
+                    and _exit_min_hold_ok
+                    if max_spd > 0
+                    else False
+                )
+                tf_lost = (
+                    bear_tf_count < cfg["exit_min_tf_lost"]
+                    and _exit_accel_negative
+                    and _exit_min_hold_ok
+                )
                 # SHORT direction fallbacks: wt1_3m RISING + dc_position_3m RISING = exit short
                 wt1_3m_rising = (_wt1_3m_prev is not None and _wt1_3m_now is not None and _wt1_3m_now > _wt1_3m_prev)
                 wt1_15m_rising = (_wt1_15m_prev is not None and _wt1_15m_now is not None and _wt1_15m_now > _wt1_15m_prev)
@@ -668,6 +832,8 @@ class DeltaTracker:
                     if peak_decay: _triggers.append("PEAK")
                     if opposing: _triggers.append("OPP")
                     if tf_lost: _triggers.append("TFLOST")
+                    if _exit_accel_negative:
+                        _triggers.append(f"ACCEL={_exit_accel:.3f}")
                     if _mfi_low: _triggers.append("MFI")
                     if wt1_3m_rising: _triggers.append("WT1_3M_UP")
                     if dc_pos_3m_rising: _triggers.append("DC_POS_3M_UP")

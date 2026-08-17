@@ -60,14 +60,19 @@ log = logging.getLogger("agent_inbox_poller")
 
 
 def _password():
+    def normalize(value):
+        # Google displays 16-character app passwords in four groups.  The
+        # separators are presentation-only and IMAP rejects them verbatim.
+        return "".join(str(value or "").split())
+
     try:
-        return subprocess.check_output(["security", "find-generic-password", "-a", GMAIL_USER, "-s", "gmail-app-password", "-w"], stderr=subprocess.DEVNULL).decode().strip()
+        return normalize(subprocess.check_output(["security", "find-generic-password", "-a", GMAIL_USER, "-s", "gmail-app-password", "-w"], stderr=subprocess.DEVNULL).decode())
     except Exception:
         pass
     for path in (Path.home() / ".config" / "binance-agent" / "gmail_app_password", Path("/etc/binance-agent/gmail_app_password")):
         try:
             if path.exists():
-                return path.read_text().strip()
+                return normalize(path.read_text())
         except Exception:
             continue
     log.error("no gmail app password found (keychain + ~/.config/binance-agent/gmail_app_password both empty)")

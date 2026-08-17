@@ -19,6 +19,12 @@ mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/runner_$(date -u +%Y%m%d).log"
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
+# Keep the daily tick log bounded.  Without this, a busy 60-second supervisor
+# can eventually fill the disk and make atomic state writes fail with ENOSPC.
+if [ -f "$LOG" ] && [ "$(stat -f%z "$LOG" 2>/dev/null || echo 0)" -gt 10485760 ]; then
+    tail -n 3000 "$LOG" > "$LOG.trim" && mv "$LOG.trim" "$LOG"
+fi
+
 # Time gate: Mon-Fri 13:30-20:00 UTC unless FORCE_RUN=1.
 DOW=$(date -u +%u)               # 1=Mon..7=Sun
 HOUR=${FAKE_HOUR:-$(date -u +%H)}

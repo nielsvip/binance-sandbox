@@ -65,6 +65,125 @@ def _sf(v, default=50.0):
         return default
 
 
+def derive_external_venue_pretrade_quantity(
+    *,
+    requested_quantity: float,
+    current_price: float,
+    position_side: str,
+    action: str,
+    indicators: Optional[Dict[str, Any]] = None,
+    existing_quantity: float = 0.0,
+    is_full_close: bool = False,
+) -> Dict[str, Any]:
+    """Return a dry-run quantity decision for an external-venue backtest.
+
+    This deliberately is *not* ``MultiAccountTradeManager.execute_trade_action``:
+    that coroutine owns crypto exchange state, queues and live order submission
+    and cannot safely be invoked against a Tradier manager.  The helper exposes
+    the final Donchian-channel sizing step used by that executor as a pure
+    calculation so the stock V8 lab can evaluate it immediately before the
+    native simulated Tradier fill.  It performs no I/O, submits no order, and
+    mutates neither a position nor a manager.
+
+    Reduction and full-close quantities are never amplified.  Whole-share
+    rounding and the unlevered capital clamp remain the responsibility of the
+    Tradier V8 fill seam, which has the actual position and account contract.
+    """
+    def finite(value: Any, default: float = 0.0) -> float:
+        try:
+            candidate = float(value)
+        except (TypeError, ValueError):
+            return default
+        return candidate if math.isfinite(candidate) else default
+
+    requested = max(0.0, abs(finite(requested_quantity)))
+    existing = max(0.0, abs(finite(existing_quantity)))
+    normalized_action = str(action or "").upper()
+    normalized_side = str(position_side or "").upper()
+    reduce_actions = {
+        "CLOSE", "REDUCE", "STRONG_REDUCE", "QUICK_CLOSE",
+        "QUICK_QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE",
+        "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE",
+    }
+    is_reduction = normalized_action in reduce_actions
+    if is_reduction:
+        # Preserving reduction quantities is essential: otherwise repeated
+        # partial reductions can manufacture P/L by closing more than remains.
+        approved = existing if is_full_close and existing > 0.0 else requested
+        if existing > 0.0:
+            approved = min(approved, existing)
+        return {
+            "approved_quantity": approved,
+            "requested_quantity": requested,
+            "multiplier": 1.0,
+            "policy": "preserve_reduction_quantity",
+            "action": normalized_action,
+            "position_side": normalized_side,
+            "dc_positions": {},
+        }
+
+    snapshot = indicators if isinstance(indicators, dict) else {}
+
+    def dc_position(low_key: str, high_key: str) -> float:
+        low = finite(snapshot.get(low_key))
+        high = finite(snapshot.get(high_key))
+        price = finite(current_price)
+        if low <= 0.0 or high <= low or price <= 0.0:
+            return 0.5
+        return max(0.0, min(1.0, (price - low) / (high - low)))
+
+    positions = {
+        "3m": dc_position("dc_low_3m", "dc_high_3m"),
+        "15m": dc_position("dc_low_15m", "dc_high_15m"),
+        "1h": dc_position("dc_low_1h", "dc_high_1h"),
+        "4h": dc_position("dc_low_4h", "dc_high_4h"),
+        "D": dc_position("dc_low_D", "dc_high_D"),
+    }
+    cumulative = (
+        positions["3m"] * 0.15 + positions["15m"] * 0.25
+        + positions["1h"] * 0.30 + positions["4h"] * 0.20
+        + positions["D"] * 0.10
+    )
+    multiplier = 1.0
+    if normalized_side == "LONG":
+        if cumulative < 0.20:
+            multiplier = 1.6
+        elif cumulative < 0.35:
+            multiplier = 1.25
+        elif cumulative > 0.80:
+            multiplier = 0.5
+        elif cumulative > 0.65:
+            multiplier = 0.75
+        if positions["15m"] < 0.15:
+            multiplier *= 1.2
+        if positions["1h"] < 0.20:
+            multiplier *= 1.15
+    elif normalized_side == "SHORT":
+        if cumulative > 0.80:
+            multiplier = 1.6
+        elif cumulative > 0.65:
+            multiplier = 1.25
+        elif cumulative < 0.20:
+            multiplier = 0.5
+        elif cumulative < 0.35:
+            multiplier = 0.75
+        if positions["15m"] > 0.85:
+            multiplier *= 1.2
+        if positions["1h"] > 0.80:
+            multiplier *= 1.15
+
+    return {
+        "approved_quantity": requested * multiplier,
+        "requested_quantity": requested,
+        "multiplier": multiplier,
+        "policy": "ez_manage_dc_position_sizing_pretrade",
+        "action": normalized_action,
+        "position_side": normalized_side,
+        "dc_cumulative": cumulative,
+        "dc_positions": positions,
+    }
+
+
 def check_reentry_delta_tolerant(
     indicators: dict, is_long: bool, trade_manager=None, symbol: Optional[str] = None
 ) -> Tuple[bool, str]:
@@ -1194,6 +1313,22 @@ def is_storm(indicators, position_side, account_key=None):
 TRADEABLE_KEYS = set()
 base_path = config.BASE_PATH
 logger = logging.getLogger("ez_manage")
+
+
+async def _run_redis_operation(operation: Awaitable[Any], label: str) -> None:
+    """Run a background Redis call without leaking an unobserved task error.
+
+    ``redis.asyncio`` methods return awaitables, and a few maker-fill paths
+    intentionally run them in the background.  Keeping the await inside this
+    wrapper means connection timeouts are handled here instead of surfacing as
+    ``Task exception was never retrieved`` in every account's stderr log.
+    """
+    try:
+        await asyncio.wait_for(operation, timeout=2.0)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.debug("[REDIS_BG] %s failed: %s", label, exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -3043,15 +3178,89 @@ class Signal:
     stop_levels: Optional[List[Dict[str, float]]] = None
 
 
+async def evaluate_bb4h_breakout_ladder(ctx: dict) -> Optional[Signal]:
+    """Emit one explicit long-side stage of the 4h BB breakout ladder."""
+    cfg = ctx.get("config")
+    if not bool(getattr(cfg, "BB4H_BREAKOUT_LADDER_ENABLED", False)):
+        return None
+    try:
+        from bb4h_breakout_ladder import next_stage
+        manager = ctx["trade_manager"]
+        state = getattr(manager, "_bb4h_breakout_ladder_state", None)
+        if state is None:
+            manager._bb4h_breakout_ladder_state = {}
+            state = manager._bb4h_breakout_ladder_state
+        key = ctx["position_key"]
+        per_key = state.setdefault(key, {})
+        result = next_stage(
+            per_key, ctx.get("indicators") or {}, float(ctx.get("current_price") or 0),
+            enabled=True, position_exists=bool(ctx.get("positionAmt", 0) > 0),
+            is_long=bool(ctx.get("is_long")), now=__import__("time").time(),
+            breakout_pct=float(getattr(cfg, "BB4H_BREAKOUT_LADDER_BREAKOUT_PCT", .25)),
+            basis_pct=float(getattr(cfg, "BB4H_BREAKOUT_LADDER_BASIS_PCT", .50)),
+            wt_cross_pct=float(getattr(cfg, "BB4H_BREAKOUT_LADDER_WT_CROSS_PCT", .25)),
+            target_usd=float(getattr(cfg, "BB4H_BREAKOUT_LADDER_TARGET_USD", 2000.0)),
+        )
+        if not result or result["quantity"] <= 0:
+            return None
+        action = "AUGMENT" if ctx.get("positionAmt", 0) > 0 else "OPEN"
+        return Signal(
+            action=action,
+            reason=f"BB4H_BREAKOUT_LADDER_{result['name']}_fraction={result['fraction']:.2f}",
+            conviction=100.0,
+            quantity=float(result["quantity"]),
+        )
+    except Exception as exc:
+        ctx["logger"].warning("[%s] BB4H ladder evaluation failed: %s", ctx.get("position_key"), exc)
+        return None
+
+
 async def monitor_memory():
+    import gc
+
     process = psutil.Process(os.getpid())
     while True:
-        mem_bytes = process.memory_info().rss
-        mem_gb = mem_bytes / (1024**3)
-        if mem_gb > config.MAX_MEMORY_GB:
-            print(f"Memory usage exceeded: {mem_gb:.2f} GB. Restarting...")
-            os.execv(sys.executable, ["python"] + sys.argv)  # Restart script
-        await asyncio.sleep(60)
+        try:
+            mem_bytes = process.memory_info().rss
+            mem_gb = mem_bytes / (1024**3)
+            # System OOM hits at ~36GB total across 5 accounts; per-process
+            # must restart far below 8GB. 2.5GB is safe for 5x parallel.
+            limit_gb = min(float(getattr(config, "MAX_MEMORY_GB", 8)), 2.5)
+            if mem_gb > limit_gb:
+                msg = f"[monitor_memory] RSS {mem_gb:.2f}GB > {limit_gb:.1f}GB — restarting {sys.argv}"
+                print(msg, flush=True)
+                try:
+                    if logger:
+                        logger.warning(msg)
+                except Exception:
+                    pass
+                # Try graceful GC before execv
+                try:
+                    gc.collect()
+                except Exception:
+                    pass
+                os.execv(sys.executable, ["python"] + sys.argv)
+            # Periodic GC + log every 5 min to reduce fragmentation that
+            # caused 0.7GB/10s churn and 20GB compressed pressure
+            if int(time.time()) % 300 == 0:
+                try:
+                    gc.collect()
+                except Exception:
+                    pass
+                try:
+                    if logger:
+                        logger.info(f"[monitor_memory] RSS {mem_gb:.2f}GB (limit {limit_gb:.1f}GB)")
+                except Exception:
+                    pass
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            try:
+                if logger:
+                    logger.debug(f"[monitor_memory] error: {e}")
+            except Exception:
+                pass
+        await asyncio.sleep(30)
 
 
 async def monitor_market_mode():
@@ -6394,7 +6603,11 @@ class OrderExecutionMonitor:
             self.logger.info(
                 f"[OrderMonitor] CONFIRMED: {position_key} {order['action']} filled in {elapsed:.2f}s"
             )
-            del self.pending_orders[position_key]
+            # A websocket confirmation can remove the same entry while the
+            # Redis/order cleanup above is awaiting.  ``pop`` makes that
+            # legitimate race idempotent instead of killing the monitor loop
+            # with ``Loop Error: '<position_key>'``.
+            self.pending_orders.pop(position_key, None)
             return True
         return False
 
@@ -22523,8 +22736,11 @@ class MultiAccountTradeManager:
             self._last_augment_save_time[position_key] = time.time()
             if self.redis_manager:
                 asyncio.create_task(
-                    self.redis_manager.set(
-                        f"aug_cooldown:{position_key}", str(time.time()), ex=900
+                    _run_redis_operation(
+                        self.redis_manager.set(
+                            f"aug_cooldown:{position_key}", str(time.time()), ex=900
+                        ),
+                        f"set aug_cooldown:{position_key}",
                     )
                 )
             if final_position_size > config.START_POSITION_SIZE / current_price:
@@ -22552,7 +22768,10 @@ class MultiAccountTradeManager:
             self._last_augment_save_time.pop(position_key, None)
             if self.redis_manager:
                 asyncio.create_task(
-                    self.redis_manager.delete(f"aug_cooldown:{position_key}")
+                    _run_redis_operation(
+                        self.redis_manager.delete(f"aug_cooldown:{position_key}"),
+                        f"delete aug_cooldown:{position_key}",
+                    )
                 )
             logger.critical(
                 f"[HANDLE_FILLED_MAKER_REDUCTION] {position_key}: Recorded via positions_service + RESET all augment guards — qty={quantity:.6f} price={current_price:.6f} reason={reason}"
@@ -24156,6 +24375,8 @@ class MultiAccountTradeManager:
                     _rv_abs = (
                         _r_abs.get(_redis_abs_key) if hasattr(_r_abs, "get") else None
                     )
+                    if inspect.isawaitable(_rv_abs):
+                        _rv_abs = await _rv_abs
                     if _rv_abs:
                         try:
                             _redis_abs_expiry = float(
@@ -24181,11 +24402,13 @@ class MultiAccountTradeManager:
                     self, "redis_client", None
                 )
                 if _r_abs and hasattr(_r_abs, "set"):
-                    _r_abs.set(
+                    _set_result = _r_abs.set(
                         _redis_abs_key,
                         str(_new_exp_abs),
                         ex=int(_ABSOLUTE_OPEN_LOCK_TTL) + 60,
                     )
+                    if inspect.isawaitable(_set_result):
+                        await _set_result
             except Exception:
                 pass
             # Cleanup expired entries (cheap: scan once per open, not per call)
@@ -39235,23 +39458,35 @@ async def process_position(
                 return
         except Exception as _hace:
             logger.warning(f"[HTF_AGAINST_FORCE_CLOSE] {position_key}: {_hace}")
-    # 2026-05-18 per-sym overlay
+    # 2026-05-18 per-sym overlay.  OBLIGATORY_OPEN is a safety-net entry, so it
+    # must retain its leash even if the normal R1 per-symbol overlay is off.
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
+        and (
+            bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
+            or any(
+                "OBLIGATORY_OPEN" in str(getattr(position, _field, "") or "").upper()
+                for _field in ("last_signal", "open_reason", "augment_reason")
+            )
+        )
     ):
         try:
             # 2026-05-23 USER MANDATE: check entry context. Skip R1 unless overbought-breakout.
             _r1_restrict = bool(getattr(config, "R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT", True))
-            _r1_entry_sig_for_check = (
-                str(getattr(position, "last_signal", "") or getattr(position, "open_reason", "") or "")
+            # The watchdog's OBLIGATORY_OPEN reason is stored in augment_reason on
+            # some fill/update paths while last_signal is only "OPEN".  Inspect all
+            # entry-context fields or the last-resort entry can silently bypass R1.
+            _r1_entry_sig_for_check = " ".join(
+                str(getattr(position, _field, "") or "")
+                for _field in ("last_signal", "open_reason", "augment_reason")
             ).upper()
             _r1_overbought_breakout_markers = (
                 "STRONG_BUY", "DC_BREAK", "BREAKOUT", "_BREAK_", "PARABOLIC", "MOMENTUM_RIDER",
-                "TOR_BREAK", "WT_DC_HTF", "HIGH_BREAK", "PEAK_BREAK"
+                "TOR_BREAK", "WT_DC_HTF", "HIGH_BREAK", "PEAK_BREAK", "OBLIGATORY_OPEN"
             )
             _r1_is_overbought_breakout = any(m in _r1_entry_sig_for_check for m in _r1_overbought_breakout_markers)
+            _r1_is_obligatory_entry = "OBLIGATORY_OPEN" in _r1_entry_sig_for_check
             if _r1_restrict and not _r1_is_overbought_breakout:
                 # Non-overbought entry → SKIP R1 entirely per user mandate.
                 # MTF/HTF exit logic + ATR trail manage the close instead.
@@ -39266,10 +39501,18 @@ async def process_position(
             # 2026-05-23 USER MANDATE: lazy-set only fires for overbought-breakout entries.
             # For non-overbought entries, _r1_stop is intentionally 0 and stays 0 (R1 skipped).
             if _r1_stop <= 0 and (not _r1_restrict or _r1_is_overbought_breakout):
-                _r1_live_key = ("dc_low4_3m" if (position_side == "LONG") else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if (position_side == "LONG") else "dc_high_3m")  # 2026-07-01 R1_USE_DC_4BAR wired: False→20-bar dc_low_3m (proven better for crypto)
+                # OBLIGATORY_OPEN is the emergency last resort and needs the
+                # tightest leash regardless of the broader R1 A/B selector:
+                # freeze the 4-bar Donchian stop at entry, falling back to the
+                # wider 20-bar level only when the 4-bar field is unavailable.
+                _r1_use_4bar = _r1_is_obligatory_entry or bool(getattr(config, "R1_USE_DC_4BAR", True))
+                _r1_live_key = ("dc_low4_3m" if (position_side == "LONG") else "dc_high4_3m") if _r1_use_4bar else ("dc_low_3m" if (position_side == "LONG") else "dc_high_3m")  # 2026-07-01 R1_USE_DC_4BAR wired: False→20-bar dc_low_3m (proven better for crypto)
                 if _pp_shared_ind is None:
                     _pp_shared_ind = await ii(trade_manager, symbol) or {}
                 _r1_stop_live = safe_fetch_float(_pp_shared_ind.get(_r1_live_key), 0.0)
+                if _r1_stop_live <= 0 and _r1_is_obligatory_entry:
+                    _r1_live_key = "dc_low_3m" if position_side == "LONG" else "dc_high_3m"
+                    _r1_stop_live = safe_fetch_float(_pp_shared_ind.get(_r1_live_key), 0.0)
                 if _r1_stop_live > 0:
                     _r1_stop = _r1_stop_live
                     position.r1_stop_price = _r1_stop_live
@@ -44747,6 +44990,10 @@ async def process_position(
                         )
                         return f"{EvalStatus.EXECUTION_FAILED}:AUTO_SIGNAL_{event_hint}"
         eval_funcs = []
+        # Explicit 4h BB ladder is evaluated for both flat watchlist symbols and
+        # existing longs; it must not be hidden behind the normal augmentation gate.
+        if bool(getattr(config, "BB4H_BREAKOUT_LADDER_ENABLED", False)):
+            eval_funcs.append(evaluate_bb4h_breakout_ladder)
         include_reversal_eval = (
             account_key == "fin"
             and config.REV_MODE
@@ -48643,18 +48890,36 @@ class HaikuOverseer:
         self._augment_cooldowns: Dict[str, float] = {}
         self._managed: Dict[str, dict] = {}
         self._haiku_client = None
+        self._haiku_disabled_reason: Optional[str] = None
 
     def _fingerprint(self, d: dict) -> str:
         return f"{d.get('timestamp', '')}__{d.get('position_key', '')}__{d.get('action', '')}"
 
     def _get_haiku_client(self):
+        if self._haiku_disabled_reason:
+            return None
         if not self._haiku_client:
+            # The Anthropic SDK does not have a usable subscription fallback;
+            # without one of these credentials every decision causes the same
+            # authentication exception.  Disable this optional overseer for
+            # the process and leave deterministic trading paths untouched.
+            if not (
+                os.getenv("ANTHROPIC_API_KEY")
+                or os.getenv("ANTHROPIC_AUTH_TOKEN")
+            ):
+                self._haiku_disabled_reason = "missing ANTHROPIC_API_KEY/AUTH_TOKEN"
+                logger.warning(
+                    "[HAIKU] Disabled: %s; skipping optional AI calls",
+                    self._haiku_disabled_reason,
+                )
+                return None
             try:
                 import anthropic
 
                 self._haiku_client = anthropic.Anthropic()
             except Exception as e:
-                logger.error(f"[HAIKU] Cannot init Anthropic client: {e}")
+                self._haiku_disabled_reason = str(e)
+                logger.warning(f"[HAIKU] Disabled: cannot init Anthropic client: {e}")
         return self._haiku_client
 
     async def call_haiku(self, prompt: str) -> Optional[dict]:
@@ -48677,7 +48942,14 @@ class HaikuOverseer:
                 return json.loads(json_str)
             return None
         except Exception as e:
-            logger.error(f"[HAIKU] Call failed: {e}")
+            if any(
+                marker in str(e).lower()
+                for marker in ("authentication method", "api_key", "auth_token")
+            ):
+                self._haiku_disabled_reason = str(e)
+                logger.warning(f"[HAIKU] Disabled after authentication failure: {e}")
+            else:
+                logger.error(f"[HAIKU] Call failed: {e}")
             return None
 
     def build_judgement_prompt(self, decision: dict) -> str:

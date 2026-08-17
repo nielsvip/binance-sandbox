@@ -256,7 +256,11 @@ def main():
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--output", default="")
     ap.add_argument("--status", action="store_true", help="Print available symbols and exit")
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="run_vec_stop_sweep.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
 
     if args.status:
         syms = discover_tradier_symbols()

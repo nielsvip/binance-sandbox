@@ -1,0 +1,78 @@
+{
+  "schema": "s1-trb-last3d-strict-candidate-import-v1",
+  "created_utc": "2026-08-03T19:40:00Z",
+  "source_workbook": "outputs/s1_trb_last3days_20260803/S1_TRB_Last_3_Days_Deep_Analysis.xlsx",
+  "source_workbook_sha256": "039baffd211482f71c9d3b979ebcf738b42ed30617e01b7ec283fb491d1df631",
+  "evidence_class": "CANDIDATE_INVENTORY_NOT_MATRIX_OR_PROMOTION_CREDIT",
+  "qualification": {
+    "strategy_return_positive": true,
+    "beats_side_aware_bh": true,
+    "minimum_real_closes_exclusive": 10,
+    "tim_band_pct_inclusive": [50.0, 80.0],
+    "positive_bh_target_multiple": 10.0
+  },
+  "scheduled": [
+    {
+      "key": "MRVL_LONG",
+      "source_sheet": "Lifecycle Paths",
+      "source_row": 11,
+      "strategy_return_pct_per_month": 225.332,
+      "side_aware_bh_pct_per_month": 11.7251,
+      "alpha_pp_per_month": 213.6069,
+      "positive_bh_multiple": 19.2179,
+      "real_closes": 30,
+      "tim_pct": 50.1186,
+      "sealed_r6_recipe_candidates": 65,
+      "r6_priority_rank": 4,
+      "matrix_status": "COUPLED_VECTOR_RECALC_SCHEDULED"
+    },
+    {
+      "key": "ACN_SHORT",
+      "source_sheet": "Hotlist",
+      "source_row": 5,
+      "strategy_return_pct_per_month": 17.698,
+      "side_aware_bh_pct_per_month": 1.663,
+      "alpha_pp_per_month": 16.035,
+      "positive_bh_multiple": 10.6422128683,
+      "closes_per_week": 1.142,
+      "tim_pct": 59.16,
+      "sealed_r6_recipe_candidates": 50,
+      "r6_priority_rank": 5,
+      "matrix_status": "COUPLED_VECTOR_RECALC_SCHEDULED"
+    },
+    {
+      "key": "CLF_SHORT",
+      "source_sheet": "Hotlist",
+      "source_row": 4,
+      "strategy_return_pct_per_month": 24.291,
+      "side_aware_bh_pct_per_month": -12.909,
+      "alpha_pp_per_month": 37.2,
+      "positive_bh_multiple": null,
+      "closes_per_week": 6.206,
+      "tim_pct": 69.133,
+      "sealed_r6_recipe_candidates": 40,
+      "r6_priority_rank": 6,
+      "matrix_status": "COUPLED_VECTOR_RECALC_SCHEDULED"
+    }
+  ],
+  "rejected_now": [
+    {
+      "key": "NVDA_LONG",
+      "source_sheet": "Hotlist",
+      "source_row": 6,
+      "workbook_strategy_return_pct_per_month": 4.42,
+      "workbook_side_aware_bh_pct_per_month": 3.202,
+      "workbook_positive_bh_multiple": 1.380387258,
+      "workbook_tim_pct": 28.785,
+      "fresh_r6_untouched_final": {
+        "strategy_return_pct": 9.6264103156,
+        "side_aware_bh_return_pct": 8.1762952312,
+        "alpha_vs_bh_pp": 1.4501150845,
+        "real_closes": 51,
+        "tim_pct": 23.3679013029,
+        "status": "REJECTED_STRICT_FOLD"
+      },
+      "reason": "TIM_BELOW_50_AND_NOT_10X_POSITIVE_BH"
+    }
+  ]
+}

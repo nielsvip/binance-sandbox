@@ -1,0 +1,65 @@
+{
+  "schema_version": 2,
+  "jobs": [
+    {
+      "name": "mu_pure_wt_ladder",
+      "enabled": true,
+      "resumable": true,
+      "process_match": "run_mu_all_tf_campaign.py --lane pure_ladder",
+      "complete_receipt": "data/reports/vec_research/mu_pure_ladder/campaign_completion_receipt.json",
+      "heartbeat": "data/reports/vec_research/mu_pure_ladder/launcher_heartbeat.jsonl",
+      "source_path": "tools/mu_all_tf_wt_price_ladder_vector.py",
+      "source_sha256": "00abb8439766bdb61e1469ecec6ab3edb40f85f5858b119b009b7ece3676887b",
+      "source_files": [
+        {"path": "tools/run_mu_all_tf_campaign.py", "sha256": "5fd8b9cdd7649dd465b7cac9469a5fdf16eeba5e48595a239839f75a2eee5982"},
+        {"path": "tools/v8_research_mu_wt_ladder_adapter.py", "sha256": "8ed7f665e8012b038fac9e310ee4b73751e2da5af3ff1c5d8a97f13cab9885c1"},
+        {"path": "tools/run_v8_mu_wt_ladder_queue.py", "sha256": "53ce7d20be0dd9a6bf38b411c9d5743bd85b8bddc0d91ecd5531de25975a6b52"},
+        {"path": "tools/vec_top_exit_campaign.py", "sha256": "d7fb36fbaf0c2a9e7bedbdba2ae40accbfdead3ad2d701ee03f824789a6fe4bc"},
+        {"path": "tools/research_availability_clock.py", "sha256": "efdb7788aafd8a4a9f000f278858e65b2863eb991ceb217d009d3b8c2473ddac"}
+      ],
+      "cwd": ".",
+      "log": "data/reports/vec_research/mu_pure_ladder/watchdog.log",
+      "command": ["python3", "tools/run_mu_all_tf_campaign.py", "--lane", "pure_ladder", "--npz-dir", "/home/niels/binance-sandbox/backtest_v8/indicators", "--campaign-root", "/home/niels/binance-sandbox/data/reports/vec_research/mu_pure_ladder", "--max-rounds", "5", "--defer-exact"]
+    },
+    {
+      "name": "mu_dc_fast_cycle",
+      "enabled": true,
+      "resumable": true,
+      "process_match": "run_mu_all_tf_campaign.py --lane dc_fast",
+      "complete_receipt": "data/reports/vec_research/mu_dc_fast/campaign_completion_receipt.json",
+      "heartbeat": "data/reports/vec_research/mu_dc_fast/launcher_heartbeat.jsonl",
+      "source_path": "tools/mu_all_tf_wt_price_ladder_vector.py",
+      "source_sha256": "00abb8439766bdb61e1469ecec6ab3edb40f85f5858b119b009b7ece3676887b",
+      "source_files": [
+        {"path": "tools/run_mu_all_tf_campaign.py", "sha256": "5fd8b9cdd7649dd465b7cac9469a5fdf16eeba5e48595a239839f75a2eee5982"},
+        {"path": "tools/v8_research_mu_wt_ladder_adapter.py", "sha256": "8ed7f665e8012b038fac9e310ee4b73751e2da5af3ff1c5d8a97f13cab9885c1"},
+        {"path": "tools/run_v8_mu_wt_ladder_queue.py", "sha256": "53ce7d20be0dd9a6bf38b411c9d5743bd85b8bddc0d91ecd5531de25975a6b52"},
+        {"path": "tools/vec_top_exit_campaign.py", "sha256": "d7fb36fbaf0c2a9e7bedbdba2ae40accbfdead3ad2d701ee03f824789a6fe4bc"},
+        {"path": "tools/research_availability_clock.py", "sha256": "efdb7788aafd8a4a9f000f278858e65b2863eb991ceb217d009d3b8c2473ddac"}
+      ],
+      "cwd": ".",
+      "log": "data/reports/vec_research/mu_dc_fast/watchdog.log",
+      "command": ["python3", "tools/run_mu_all_tf_campaign.py", "--lane", "dc_fast", "--npz-dir", "/home/niels/binance-sandbox/backtest_v8/indicators", "--campaign-root", "/home/niels/binance-sandbox/data/reports/vec_research/mu_dc_fast", "--max-rounds", "5", "--defer-exact"]
+    },
+    {
+      "name": "mu_dc_wt_interaction",
+      "enabled": true,
+      "resumable": true,
+      "process_match": "run_mu_all_tf_campaign.py --lane combined",
+      "complete_receipt": "data/reports/vec_research/mu_combined/campaign_completion_receipt.json",
+      "heartbeat": "data/reports/vec_research/mu_combined/launcher_heartbeat.jsonl",
+      "source_path": "tools/mu_all_tf_wt_price_ladder_vector.py",
+      "source_sha256": "00abb8439766bdb61e1469ecec6ab3edb40f85f5858b119b009b7ece3676887b",
+      "source_files": [
+        {"path": "tools/run_mu_all_tf_campaign.py", "sha256": "5fd8b9cdd7649dd465b7cac9469a5fdf16eeba5e48595a239839f75a2eee5982"},
+        {"path": "tools/v8_research_mu_wt_ladder_adapter.py", "sha256": "8ed7f665e8012b038fac9e310ee4b73751e2da5af3ff1c5d8a97f13cab9885c1"},
+        {"path": "tools/run_v8_mu_wt_ladder_queue.py", "sha256": "53ce7d20be0dd9a6bf38b411c9d5743bd85b8bddc0d91ecd5531de25975a6b52"},
+        {"path": "tools/vec_top_exit_campaign.py", "sha256": "d7fb36fbaf0c2a9e7bedbdba2ae40accbfdead3ad2d701ee03f824789a6fe4bc"},
+        {"path": "tools/research_availability_clock.py", "sha256": "efdb7788aafd8a4a9f000f278858e65b2863eb991ceb217d009d3b8c2473ddac"}
+      ],
+      "cwd": ".",
+      "log": "data/reports/vec_research/mu_combined/watchdog.log",
+      "command": ["python3", "tools/run_mu_all_tf_campaign.py", "--lane", "combined", "--npz-dir", "/home/niels/binance-sandbox/backtest_v8/indicators", "--campaign-root", "/home/niels/binance-sandbox/data/reports/vec_research/mu_combined", "--max-rounds", "5", "--defer-exact"]
+    }
+  ]
+}

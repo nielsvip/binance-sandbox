@@ -597,7 +597,16 @@ def build_spec_from_artifact(
             artifact / "top_candidate_events.jsonl.gz"
         ),
         "seed_notional_usd": seed_notional_usd,
-        "commission_round_trip_pct": 0.10,
+        "commission_round_trip_pct": (
+            2.0
+            * float(
+                manifest.get(
+                    "commission_bps_one_way",
+                    manifest.get("cost_bps_one_way", 0.0),
+                )
+            )
+            / 100.0
+        ),
         "expected_gain_pct": candidate["gain_pct"],
         "expected_tim_rth_pct": candidate["tim_rth_pct"],
         "expected_rth_rows": manifest["rth_rows"],

@@ -136,7 +136,8 @@ def run(sym, side, mode, tfmap, start, timeout):
                     "V8_DISABLE_PER_SYM": "1", "V8_LADDER_ONLY_SIDE": side})
         cmd = ["timeout", str(timeout), "nice", "-n", "18", psc.PY,
                str(SBX / "backtest_v8_engine.py"), "--mode", "tradier", "--account", "trb",
-               "--start", start, "--capital", "10000.0", "--symbols", sym]
+               "--start", start, "--capital", "10000.0", "--symbols", sym,
+               "--npz-dir", str(psc.MATRIX_NPZ_DIR)]
         proc = subprocess.run(cmd, cwd=str(SBX), env=env, capture_output=True, text=True)
         d = {}
         for line in ((proc.stdout or "") + "\n" + (proc.stderr or "")).splitlines():
@@ -173,7 +174,12 @@ def main():
     con = prs.connect()
     best = {}   # (sym) -> {gain, bh, cfg}  — the RATCHET, never drops below b&h
     for sym in syms:
-        contract = audit_npz(sym, profile="ladder", start=start)
+        contract = audit_npz(
+            sym,
+            npz_path=psc.MATRIX_NPZ_DIR / f"{sym}.npz",
+            profile="ladder",
+            start=start,
+        )
         if not contract.valid:
             print(
                 f"[{sym}] DATA QUARANTINE — no engine run or matrix write: "

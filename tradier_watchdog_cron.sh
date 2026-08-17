@@ -10,26 +10,20 @@ LOGDIR="/Users/niels/logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/tradier_watchdog_cron.log"
 WATCHDOG="$WORKDIR/run_with_watchdog.sh"
+export TRADIER_LOCAL_ONLY=1
 
-# Only run on weekdays (Mon=1 .. Fri=5)
-DOW=$(date +%u)
-if [ "$DOW" -gt 5 ]; then
-    exit 0
-fi
-
-# Current ET time (for logging)
-ET_TIME=$(TZ="America/New_York" date +"%H:%M")
-ET_HOUR=$(TZ="America/New_York" date +"%H")
-ET_MIN=$(TZ="America/New_York" date +"%M")
-ET_MINS=$((10#$ET_HOUR * 60 + 10#$ET_MIN))
-
-# Only active 9:15 ET - 16:15 ET (market hours with buffer)
-if [ "$ET_MINS" -lt 555 ] || [ "$ET_MINS" -gt 975 ]; then
+# Only active Mon-Fri 13:30-20:00 UTC.
+UTC_TIME=$(date -u +"%H:%M")
+DOW=$(date -u +%u)
+UTC_HOUR=$(date -u +%H)
+UTC_MIN=$(date -u +%M)
+UTC_MINS=$((10#$UTC_HOUR * 60 + 10#$UTC_MIN))
+if [ "$DOW" -gt 5 ] || [ "$UTC_MINS" -lt 810 ] || [ "$UTC_MINS" -ge 1200 ]; then
     exit 0
 fi
 
 log() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [ET $ET_TIME] $1" >> "$LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [UTC $UTC_TIME] $1" >> "$LOG"
 }
 
 CRITICAL_SCRIPTS=(
@@ -65,9 +59,9 @@ log "ALERT: Missing processes:$MISSING"
 # Ignore start_everything_3 — always do targeted recovery of missing processes
 # (start_everything_3 often stays alive as a dead shell, blocking recovery)
 
-# Pre-market launch (9:15-9:30 ET) — full restart
-if [ "$ET_MINS" -lt 570 ]; then
-    log "PRE-MARKET LAUNCH: Starting full tradier system via start_everything_3.command"
+# Opening launch (13:30-13:45 UTC) — full restart
+if [ "$UTC_MINS" -lt 825 ]; then
+    log "OPENING LAUNCH: Starting full tradier system via start_everything_3.command"
     cd "$WORKDIR"
     # Launch headless (no iTerm required for cron)
     for full_cmd in "tradier_prices.py" "tradier_positions.py --accounts tra trb trc" "tradier_indicators.py" "tradier_rankings.py" "tradier_manage.py --accounts trb" "tradier_manage.py --accounts trc"; do
@@ -76,10 +70,19 @@ if [ "$ET_MINS" -lt 570 ]; then
             continue
         fi
         log "  Launching: $full_cmd"
-        nohup bash "$WATCHDOG" $full_cmd >> "$LOGDIR/wd_${script_name%.py}.out" 2>&1 &
+        nohup env TRADIER_LOCAL_ONLY=1 bash "$WATCHDOG" $full_cmd >> "$LOGDIR/wd_${script_name%.py}.out" 2>&1 &
         sleep 2
     done
-    sleep 10
+    # 2026-08-13: was `sleep 10` — run_with_watchdog.sh:250-259 enforces
+    # MIN_RESTART_INTERVAL=60 and logs "Waiting Ns before restart" BEFORE it ever
+    # execs the python child, so at T+10s zero children exist yet. Verified
+    # 2026-08-13: wrappers launched 13:30:01-13:30:12, watchdog logged
+    # "Waiting 60s before restart" at 13:30:05 and "Starting tradier_rankings.py"
+    # only at 13:31:05 — the 13:30:25 verify saw 0/6 and printed a false
+    # "CRITICAL: Some processes failed to start", then 13:35 reported all healthy.
+    # 80s clears the 60s floor plus interpreter startup. Verification only: this
+    # sleep is AFTER every launch and changes no launch timing.
+    sleep 80
     # Verify
     RUNNING=0
     for script in "${CRITICAL_SCRIPTS[@]}"; do
@@ -119,7 +122,7 @@ for entry in "${TRADIER_RESTART_LIST[@]}"; do
         continue
     fi
     log "  Restarting $full_cmd (both python + wrapper dead)"
-    nohup bash "$WATCHDOG" $full_cmd >> "$LOGDIR/wd_${script_name%.py}.out" 2>&1 &
+    nohup env TRADIER_LOCAL_ONLY=1 bash "$WATCHDOG" $full_cmd >> "$LOGDIR/wd_${script_name%.py}.out" 2>&1 &
     sleep 3
 done
 log "RECOVERY COMPLETE"

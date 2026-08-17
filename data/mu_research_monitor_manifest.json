@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "watchdog_manifest": "data/research_campaign_watchdog_manifest.json",
+  "plateau_rounds": 3,
+  "plateau_epsilon": 1e-09,
+  "active_agents": [
+    {"name": "sol_mu_optimizer", "source_path": "tools/run_mu_all_tf_campaign.py"},
+    {"name": "vector_fill", "source_path": "tools/run_target_cohort_combo_vec.py"}
+  ],
+  "artifacts": [
+    {"name": "mu_pure_ladder", "patterns": ["data/reports/vec_research/mu_pure_ladder/attempts/*/result.json", "data/reports/vec_research/mu_pure_ladder/campaign_completion_receipt.json"], "metric_fields": ["return_multiple_vs_bh_or_cash", "gain_pct_per_month", "gain_pct_capacity"]},
+    {"name": "mu_dc_fast", "patterns": ["data/reports/vec_research/mu_dc_fast/attempts/*/result.json", "data/reports/vec_research/mu_dc_fast/campaign_completion_receipt.json"], "metric_fields": ["return_multiple_vs_bh_or_cash", "gain_pct_per_month", "gain_pct_capacity"]},
+    {"name": "mu_combined", "patterns": ["data/reports/vec_research/mu_combined/attempts/*/result.json", "data/reports/vec_research/mu_combined/campaign_completion_receipt.json"], "metric_fields": ["return_multiple_vs_bh_or_cash", "gain_pct_per_month", "gain_pct_capacity"]},
+    {"name": "mu_826_fill", "patterns": ["data/reports/full_trb_blank_matrix_vec_approx_20260801/ownership_receipt.json", "data/reports/full_trb_blank_matrix_vec_approx_20260801/MU_LONG*.jsonl"], "metric_fields": ["accepted_rows", "gain_per_mo", "delta_gain_mo_vs_bh"]}
+  ]
+}

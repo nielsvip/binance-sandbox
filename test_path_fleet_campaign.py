@@ -75,3 +75,22 @@ def test_registry_requires_same_entry_control():
         == 64
     )
     assert any(p.config_keys == ("SENT_STRAT_DIVERGENCE_ENABLED",) for p in fleet.PATHS)
+
+
+def test_reversal_dc_variants_are_registered_research_only():
+    by_id = {path.path_id: path for path in fleet.PATHS}
+    expected = {
+        "ENTRY_REVERSAL_DC_BREAK_BOUNCE_ROLLOVER",
+        "EXIT_REVERSAL_HHHL",
+        "EXIT_REVERSAL_WT_CROSS",
+        "ENTRY_OVERBOUGHT_FLIP_SHORT",
+    }
+    assert expected <= set(by_id)
+    reversal = by_id["ENTRY_REVERSAL_DC_BREAK_BOUNCE_ROLLOVER"]
+    assert reversal.adapter_status == "ADAPTER_REQUIRED_RESEARCH_ONLY"
+    assert reversal.settings["sides"] == ["SHORT", "LONG"]
+    assert reversal.settings["timeframes"] == ["5m", "15m", "1h", "4h", "D"]
+    assert by_id["EXIT_REVERSAL_HHHL"].settings["confirmation_tf"] == ["5m"]
+    assert by_id["EXIT_REVERSAL_WT_CROSS"].settings["confirmation_tf"] == [
+        "5m", "15m", "1h", "4h", "D"
+    ]

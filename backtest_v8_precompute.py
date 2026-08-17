@@ -49,6 +49,7 @@ except Exception as _e:
 # annualization factor (252 for tradier, 365 for crypto). Threading via kwarg
 # would alter the public signature; module-level keeps existing call sites stable.
 MODE = "tradier"
+SPLIT_ADJUSTMENTS = {}
 
 
 def _broadcast_asof_indices(
@@ -197,6 +198,27 @@ def _merge_authentic_bars(
         return resampled
     broad = resampled.loc[~resampled.index.isin(authentic.index)]
     return pd.concat([broad, authentic], axis=0).sort_index()
+
+
+def _prepend_authentic_history(
+    resampled: pd.DataFrame,
+    authentic: Optional[pd.DataFrame],
+) -> pd.DataFrame:
+    """Prepend older provider bars without replacing the causal rebuilt tail.
+
+    Some Tradier symbols have years of daily data but only a few months of
+    complete intraday data.  Throwing the provider history away makes long
+    regression/WT warmups impossible.  Conversely, allowing a stale provider
+    file to win overlaps reintroduces the stale-HTF bug.  Keep only authentic
+    rows strictly before the first rebuilt row; the recent tail always remains
+    the causally resampled source of truth.
+    """
+    if authentic is None or len(authentic) == 0 or len(resampled) == 0:
+        return resampled
+    older = authentic.loc[authentic.index < resampled.index.min()]
+    if len(older) == 0:
+        return resampled
+    return pd.concat([older, resampled], axis=0).sort_index()
 
 
 def _ann_factor() -> float:
@@ -719,6 +741,226 @@ def load_klines(path: Path) -> Optional[pd.DataFrame]:
     except Exception as e:
         logger.warning(f"Load failed {path}: {e}")
         return None
+
+
+def _resolve_split_price_factor(
+    frame: pd.DataFrame,
+    effective: pd.Timestamp,
+    action: dict,
+    sample_rows: int = 20,
+) -> float:
+    if "price_factor" in action:
+        return float(action["price_factor"])
+    ratio = float(action["split_ratio"])
+    before = frame.loc[frame.index < effective, "close"].dropna().tail(sample_rows)
+    after = frame.loc[frame.index >= effective, "close"].dropna().head(sample_rows)
+    if len(before) < 3 or len(after) < 3 or ratio <= 1.0:
+        raise ValueError("cannot auto-orient split adjustment from source price scale")
+    before_median = float(before.median())
+    after_median = float(after.median())
+    if before_median <= 0 or after_median <= 0:
+        raise ValueError("cannot auto-orient split adjustment from non-positive prices")
+    # Providers may already back-adjust one source resolution while leaving a
+    # second resolution raw.  `1.0` is therefore a real candidate, not a
+    # no-op mistake: CRWD 5m was already split-adjusted while its 15m source
+    # was still pre-split, and forcing the 15m factor onto both created an
+    # alternating 1x/4x five-minute series after the hybrid merge.
+    candidates = (1.0 / ratio, 1.0, ratio)
+    return min(
+        candidates,
+        key=lambda factor: abs(np.log(after_median / (before_median * factor))),
+    )
+
+
+def _repair_isolated_split_scale_rows(
+    frame: pd.DataFrame,
+    ratio: float,
+) -> int:
+    """Repair only one-row declared split multiples bracketed by coherent bars.
+
+    Some provider snapshots contain an isolated unadjusted bar inside an
+    otherwise back-adjusted series.  This is not interpolation: OHLC is moved
+    by the declared corporate-action ratio and volume by its inverse, and only
+    when both neighbouring closes independently prove the same scale.
+    """
+    if ratio <= 1.0 or len(frame) < 3 or "close" not in frame.columns:
+        return 0
+    observed = pd.to_numeric(frame["close"], errors="coerce").to_numpy(dtype=float)
+    previous = np.roll(observed, 1)
+    following = np.roll(observed, -1)
+    valid = (
+        np.isfinite(observed)
+        & np.isfinite(previous)
+        & np.isfinite(following)
+        & (observed > 0)
+        & (previous > 0)
+        & (following > 0)
+    )
+    valid[[0, -1]] = False
+    neighbour_agreement = np.abs(np.log(previous / following)) <= np.log(1.25)
+    reference = np.sqrt(previous * following)
+    factors = np.asarray((1.0 / ratio, 1.0, ratio), dtype=float)
+    scores = np.full((len(frame), len(factors)), np.inf, dtype=float)
+    usable = valid & neighbour_agreement
+    scores[usable] = np.abs(
+        np.log((observed[usable, None] * factors[None, :]) / reference[usable, None])
+    )
+    best = np.argmin(scores, axis=1)
+    best_score = scores[np.arange(len(frame)), best]
+    neutral_score = scores[:, 1]
+    improvement = np.full(len(frame), -np.inf, dtype=float)
+    improvement[usable] = neutral_score[usable] - best_score[usable]
+    changed = (
+        usable
+        & (best != 1)
+        & (best_score <= np.log(1.25))
+        & (improvement > np.log(2.0))
+    )
+    if not bool(changed.any()):
+        return 0
+    row_factor = factors[best]
+    for column in ("open", "high", "low", "close"):
+        if column in frame.columns:
+            values = pd.to_numeric(frame[column], errors="coerce").to_numpy(
+                dtype=float, copy=True
+            )
+            values[changed] *= row_factor[changed]
+            frame[column] = values
+    if "volume" in frame.columns:
+        values = pd.to_numeric(frame["volume"], errors="coerce").to_numpy(
+            dtype=float, copy=True
+        )
+        values[changed] /= row_factor[changed]
+        frame["volume"] = values
+    return int(changed.sum())
+
+
+def _apply_split_adjustments(symbol: str, dfs: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+    """Return split-adjusted source frames before any indicator computation.
+
+    The adjustment is opt-in through ``--split-adjustments-json`` and is used
+    for versioned research NPZs only.  Pre-split OHLC is multiplied by the
+    price factor and volume by its inverse, so every downstream timeframe and
+    indicator is recomputed from one coherent adjusted source.
+    """
+    actions = SPLIT_ADJUSTMENTS.get(symbol.upper(), [])
+    if not actions:
+        return dfs
+    adjusted = {tf: frame.copy() for tf, frame in dfs.items()}
+    for action in sorted(actions, key=lambda row: int(row["effective_epoch"])):
+        effective = pd.Timestamp(int(action["effective_epoch"]), unit="s", tz="UTC")
+        orientation_frame = adjusted.get("15m")
+        if orientation_frame is None:
+            orientation_frame = adjusted.get("5m")
+        if orientation_frame is None:
+            raise ValueError(f"cannot orient split for {symbol}: no intraday source")
+        orientation_factor = _resolve_split_price_factor(
+            orientation_frame, effective, action
+        )
+        for timeframe, frame in adjusted.items():
+            before = frame.index < effective
+            if not bool(before.any()):
+                continue
+            # Resolve each independently because provider adjustment policy can
+            # differ by resolution.  Sparse HTFs fall back to the 15m
+            # orientation; populated 5m/15m frames must prove their own scale.
+            try:
+                price_factor = _resolve_split_price_factor(frame, effective, action)
+            except ValueError:
+                price_factor = orientation_factor
+            if not (0.0 < price_factor < 100.0):
+                raise ValueError(
+                    f"invalid split price factor for {symbol}/{timeframe}: "
+                    f"{price_factor}"
+                )
+            volume_factor = 1.0 / price_factor
+            for column in ("open", "high", "low", "close"):
+                if column in frame.columns:
+                    frame[column] = frame[column].astype(float)
+                    frame.loc[before, column] = frame.loc[before, column] * price_factor
+            if "volume" in frame.columns:
+                frame["volume"] = frame["volume"].astype(float)
+                frame.loc[before, "volume"] = frame.loc[before, "volume"] * volume_factor
+            logger.info(
+                f"  {symbol}/{timeframe}: split scale effective={effective.isoformat()} "
+                f"price_factor={price_factor:g} source={action.get('source', 'unspecified')}"
+            )
+
+        # Provider snapshots can mix raw and adjusted rows inside one 5m
+        # file. Reconcile only declared split-scale multiples against the now
+        # coherent 15m reference; OHLC receives the selected factor and volume
+        # its inverse. No prices are interpolated.
+        if "split_ratio" not in action:
+            continue
+        ratio = float(action["split_ratio"])
+        for timeframe, frame in adjusted.items():
+            repaired = _repair_isolated_split_scale_rows(frame, ratio)
+            if repaired:
+                logger.info(
+                    f"  {symbol}/{timeframe}: repaired {repaired} isolated "
+                    "declared split-scale rows"
+                )
+        reference = adjusted.get("15m")
+        if reference is not None and "close" in reference.columns:
+            reference_close = pd.to_numeric(
+                reference["close"], errors="coerce"
+            ).sort_index()
+            for timeframe, frame in adjusted.items():
+                if timeframe == "15m" or "close" not in frame.columns:
+                    continue
+                aligned = reference_close.reindex(
+                    frame.index,
+                    method="ffill",
+                    tolerance=pd.Timedelta("30min"),
+                ).to_numpy(dtype=float)
+                observed = pd.to_numeric(
+                    frame["close"], errors="coerce"
+                ).to_numpy(dtype=float)
+                valid = (
+                    np.isfinite(aligned)
+                    & np.isfinite(observed)
+                    & (aligned > 0)
+                    & (observed > 0)
+                )
+                if not bool(valid.any()):
+                    continue
+                factors = np.asarray((1.0 / ratio, 1.0, ratio), dtype=float)
+                scores = np.full((len(frame), len(factors)), np.inf, dtype=float)
+                scores[valid] = np.abs(
+                    np.log(
+                        (observed[valid, None] * factors[None, :])
+                        / aligned[valid, None]
+                    )
+                )
+                best = np.argmin(scores, axis=1)
+                row_factor = factors[best]
+                neutral_score = scores[:, 1]
+                best_score = scores[np.arange(len(frame)), best]
+                # Require a wide margin so an ordinary market move cannot be
+                # mistaken for a corporate-action scale mismatch.
+                changed = valid & (best != 1) & (
+                    neutral_score - best_score > np.log(2.0)
+                )
+                if not bool(changed.any()):
+                    continue
+                for column in ("open", "high", "low", "close"):
+                    if column in frame.columns:
+                        values = pd.to_numeric(
+                            frame[column], errors="coerce"
+                        ).to_numpy(dtype=float, copy=True)
+                        values[changed] *= row_factor[changed]
+                        frame[column] = values
+                if "volume" in frame.columns:
+                    values = pd.to_numeric(
+                        frame["volume"], errors="coerce"
+                    ).to_numpy(dtype=float, copy=True)
+                    values[changed] /= row_factor[changed]
+                    frame["volume"] = values
+                logger.info(
+                    f"  {symbol}/{timeframe}: reconciled "
+                    f"{int(changed.sum())} mixed-scale rows to 15m reference"
+                )
+    return adjusted
 
 
 def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
@@ -1370,6 +1612,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
                     best_df = df
         if best_df is not None:
             dfs[tf] = best_df
+    dfs = _apply_split_adjustments(symbol, dfs)
     if base_tf not in dfs:
         logger.warning(f"[SKIP] {symbol}: no {base_tf} klines")
         return False
@@ -1427,6 +1670,10 @@ def compute_symbol(symbol: str, mode: str) -> bool:
                 # Preserve the real recent 15m tail exactly; resampling supplies
                 # only older coverage absent from the authentic file.
                 resampled = _merge_authentic_bars(resampled, dfs.get("15m"))
+            elif mode == "tradier":
+                # Keep long authentic warmup history, but never let a stale
+                # provider cache replace the causally rebuilt recent tail.
+                resampled = _prepend_authentic_history(resampled, dfs.get(tf))
             # ALWAYS use 15m-resampled version — standalone D/4h/1h files from klines_cache
             # may be stale (Mac fallback). 15m backtest data is the authoritative source.
             dfs[tf] = resampled
@@ -1443,9 +1690,8 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         )
         merged["synthetic_5m_parent_close_ts"] = (
             pd.to_datetime(_parent_close, utc=True)
-            .astype("int64")
-            .to_numpy(dtype=np.int64)
-            // 10**9
+            .to_numpy(dtype="datetime64[s]")
+            .astype(np.int64)
         )
     # Compute indicators per TF — ONE call, returns FULL arrays
     for tf in tfs:
@@ -1695,10 +1941,15 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         out_sl[L - 1:] = sl_pct.astype(np.float32)
         out_r2[L - 1:] = r2.astype(np.float32)
         return out_pb, out_sl, out_r2
-    for t, _lrL_len in _lrL_lengths.items():
+    for t, _lrL_requested_len in _lrL_lengths.items():
         if t not in dfs:
             continue
         df_t = dfs[t]
+        # Short-history stocks still need a measured ladder channel.  Adapt the
+        # window to half the completed history (minimum 20) and disclose the
+        # effective value in the NPZ; long-history symbols retain the requested
+        # window unchanged.
+        _lrL_len = min(int(_lrL_requested_len), max(20, len(df_t) // 2))
         if len(df_t) < int(_lrL_len) + 2:
             continue
         c_t = df_t["close"].values.astype(np.float64)
@@ -1710,6 +1961,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         merged[f"lrL_pct_b_{t}"] = _broadcast_values(pb_t, _idx)
         merged[f"lrL_slope_{t}"] = _broadcast_values(sl_t, _idx)
         merged[f"lrL_r2_{t}"] = _broadcast_values(r2_t, _idx)
+        merged[f"lrL_window_{t}"] = np.full(n, int(_lrL_len), dtype=np.int16)
     # 6. velocity_1h / velocity_4h. Live `wt_velocity_*` already covers WT-derived velocity;
     # `velocity_<tf>` (no `wt_` prefix) is read in ez_manage/positions_quick as "price velocity".
     # Closest faithful match: percent return per bar on the TF close array.
@@ -2050,6 +2302,20 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # Save — ATOMICALLY. Sweeps read these NPZ live; a half-written file would corrupt a
     # running sweep. Write to a temp file in the same dir (ends with .npz so savez doesn't
     # re-append it), then os.replace (atomic rename on the same filesystem).
+    # 2026-08-13 NKE_SHORT parity fix: reject truncated windows (only 60d intraday
+    # for NKE vs required 850d for 1yr tradier). An NPZ with 4062 bars silently
+    # produces vec trades where V8 correctly reports BROKEN (0 trades) → false
+    # parity divergence. Guard: tradier requires >=20000 5m bars (~250 RTH days)
+    # and >=300 days span; crypto requires >=30000 3m bars. Below → skip save
+    # and return False so parity reports NO_DATA (MATCH) rather than divergence.
+    # S1 fetch needed: tradier_klines_append.py --symbols <SYM> --days-back 400
+    _span_days = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0 if mode == "tradier" else n * (5 if mode == "tradier" else 3) / 1440.0
+    if mode == "tradier" and (n < 20000 or _span_days < 300):
+        logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} span_days={_span_days:.1f} (need 20000 bars / 300d for 1yr tradier parity)")
+        return False
+    if mode == "crypto" and n < 30000:
+        logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} (need 30000 bars for 1yr crypto)")
+        return False
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{symbol}.npz"
     tmp_path = OUT_DIR / f".{symbol}.{os.getpid()}.tmp.npz"
@@ -2117,11 +2383,17 @@ def main():
         default=None,
         help="write NPZs to an explicit versioned directory instead of the canonical indicator directory",
     )
+    parser.add_argument(
+        "--split-adjustments-json",
+        default="",
+        help="opt-in JSON mapping of symbol to effective_epoch/price_factor actions",
+    )
     args = parser.parse_args()
     # Set module-level MODE so compute_tf_arrays uses the correct annualization
     # factor (252 trading days for tradier, 365 calendar days for crypto).
-    global MODE, OUT_DIR
+    global MODE, OUT_DIR, SPLIT_ADJUSTMENTS
     MODE = args.mode
+    SPLIT_ADJUSTMENTS = json.loads(args.split_adjustments_json) if args.split_adjustments_json else {}
     if args.out_dir is not None:
         OUT_DIR = args.out_dir
     klines_dir = TRADIER_KLINES if args.mode == "tradier" else CRYPTO_KLINES

@@ -1,0 +1,43 @@
+{
+  "schema": "matrix_path_combination_10x_queue_v1",
+  "generated_utc": "2026-08-04T11:16:30Z",
+  "scope": "VECTOR_LIFECYCLE only; no exact DB, live config, or canonical matrix writes",
+  "benchmark": {"base_unit_usd": 2000, "target_multiple": 10.0, "side_aware": true},
+  "selection": {
+    "finite_positive_bh": true,
+    "positive_observed_closes": true,
+    "future_htf_reads": 0,
+    "capacity_clamps": 0,
+    "reclaim_required": true,
+    "duplicate_behavior_collapsed": true,
+    "fabricated_uniqueness": false
+  },
+  "ten_x_capable": [
+    {"key":"USAR_LONG","multiple":79.850,"strategy_month_pct":145.4748,"bh_month_pct":1.8218,"delta_month_pp":143.6530,"dd_pct":35.02,"tim_pct":95.75,"closes":104,"evidence":"COHORT3_VECTOR"},
+    {"key":"PSX_LONG","multiple":15.108,"strategy_month_pct":16.2579,"bh_month_pct":1.0761,"delta_month_pp":15.1818,"dd_pct":42.54,"tim_pct":98.64,"closes":423,"evidence":"COHORT3_VECTOR"},
+    {"key":"ACN_SHORT","multiple":10.855,"strategy_month_pct":19.9646,"bh_month_pct":1.8392,"delta_month_pp":18.1254,"dd_pct":46.99,"tim_pct":98.78,"closes":98,"evidence":"PILOT_VECTOR_LIFECYCLE"},
+    {"key":"TTD_SHORT","multiple":10.670,"strategy_month_pct":30.2929,"bh_month_pct":2.8390,"delta_month_pp":27.4539,"dd_pct":70.23,"tim_pct":63.44,"closes":148,"evidence":"PILOT_VECTOR_LIFECYCLE"},
+    {"key":"EOG_LONG","multiple":11.627,"strategy_month_pct":6.6061,"bh_month_pct":0.5682,"delta_month_pp":6.0379,"dd_pct":37.65,"tim_pct":99.99,"closes":42,"evidence":"COHORT3_VECTOR"},
+    {"key":"BG_LONG","multiple":22.397,"strategy_month_pct":2.7370,"bh_month_pct":0.1222,"delta_month_pp":2.6148,"dd_pct":61.35,"tim_pct":98.46,"closes":510,"evidence":"COHORT3_VECTOR"},
+    {"key":"DAR_LONG","multiple":13.718,"strategy_month_pct":15.4567,"bh_month_pct":1.1268,"delta_month_pp":14.3299,"dd_pct":85.68,"tim_pct":96.21,"closes":220,"evidence":"COHORT3_VECTOR"}
+  ],
+  "near_10x": [
+    {"key":"NVDA_LONG","multiple":9.030,"closes":15},
+    {"key":"VT_LONG","multiple":9.344,"closes":7},
+    {"key":"LAC_SHORT","multiple":9.779,"closes":95},
+    {"key":"MU_LONG","multiple":8.738,"closes":10},
+    {"key":"CIBR_LONG","multiple":8.436,"closes":2},
+    {"key":"A_LONG","multiple":8.337,"closes":39}
+  ],
+  "next_v8_queue": ["USAR_LONG","PSX_LONG","ACN_SHORT","TTD_SHORT","EOG_LONG","BG_LONG","DAR_LONG","NVDA_LONG","VT_LONG","LAC_SHORT","MU_LONG","CIBR_LONG","A_LONG"],
+  "replay_recipes": {
+    "USAR_LONG": {"entry":"DC_5m_N10_B100_R40","augment":"WT_IN_15m_D8_P0","reduce":"WT_OUT_4h_D3_P75 (75%)","exit":"WT_FULL_EXIT_1h_D16_P30","reenter":"WT_IN_15m_D8_P0","units":"entry 8u; augment 1u"},
+    "PSX_LONG": {"entry":"DC_5m_N5_B100_R0","augment":"same DC","reduce":"WT_OUT_15m_D16_P10 (25%)","exit":"E02_4h_N30","reenter":"DC_15m_N5_B40_R10","units":"entry 4u; augment 2u"},
+    "ACN_SHORT": {"entry":"DC_5m_N20_B10_R40","augment":"WT_IN_15m_D3_P30","reduce":"WT_OUT_4h_D0_P10 (25%)","exit":"E02_4h_N30","reenter":"WT_IN_15m_D8_P30","units":"entry 8u; augment 2u"},
+    "TTD_SHORT": {"entry":"DC_5m_N5_B10_R10","augment":"WT_IN_5m_D0_P10","reduce":"none","exit":"WT_FULL_EXIT_15m_D16_P75","reenter":"mandatory stored-level reclaim","units":"entry 1u; augment 1u"},
+    "EOG_LONG": {"entry":"DC_15m_N5_B100_R10","augment":"WT_IN_15m_D3_P0","reduce":"WT_OUT_4h_D0_P75 (25%)","exit":"WTDC_X45_N5_K75_DC0.8","reenter":"mandatory stored-level reclaim","units":"entry 4u; augment 2u"},
+    "BG_LONG": {"entry":"DC_D_N5_B10_R40","augment":"same DC","reduce":"WT_OUT_15m_D8_P30 (25%)","exit":"WTDC_X40_N5_K85_DC0.8","reenter":"DC_5m_N20_B10_R0","units":"entry 4u; augment 2u"},
+    "DAR_LONG": {"entry":"DC_5m_N40_B250_R0","augment":"same DC","reduce":"WT_OUT_4h_D3_P10 (75%)","exit":"WTDC_X60_N4_K85_DC0.85","reenter":"WT_IN_5m_D8_P75","units":"entry 1u; augment 2u"}
+  },
+  "s1_write_status": "PENDING_S1_SSH_RECONNECT"
+}

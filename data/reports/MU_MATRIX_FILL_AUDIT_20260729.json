@@ -1,5 +1,5 @@
 {
-  "as_of_utc": "2026-07-29T15:35:00Z",
+  "as_of_utc": "2026-07-29T16:54:58.353114Z",
   "audit": "MU_SWITCH_MATRIX_FILL_SNAPSHOT_V1",
   "best_visible_rows": [
     {
@@ -62,7 +62,7 @@
       "generic scaled ranges emitted values outside natural oscillator domains",
       "no current MU_LONG cell beats the same-key B&H floor"
     ],
-    "fresh_monitoring_export": true,
+    "fresh_monitoring_export": false,
     "suitable_as_live_promotion_evidence": false,
     "truthful_status_labels": true
   },
@@ -129,7 +129,7 @@
     "digest": "data/reports/SWITCH_MATRIX_TRB_DIGEST.md",
     "digest_sha256": "b7da2919cf260d62825588d234c6161aff2ac360460f505019af56dd66b504de",
     "matrix": "data/reports/SWITCH_MATRIX_TRB.csv.gz",
-    "matrix_age_hours": 0.0225,
+    "matrix_age_hours": 1.3553758649999998,
     "matrix_sha256": "848cb491392326d54fdccb67c9441489fdd2143a7aa44e3daef50550d59a7b8b"
   },
   "wrong_account_examples": [

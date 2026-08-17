@@ -1,6 +1,7 @@
 #!/bin/bash
 # Re-run only the tradier NOLOSS tests with longer timeout (3600s).
 set -uo pipefail
+export EZ_LOG_DIR="${EZ_LOG_DIR:-/tmp}"
 OUTDIR=/tmp/sell_vs_hold
 PY=/opt/anaconda3/envs/binance_env/bin/python
 TRADIER_SYMS="AAPL,MSFT,NVDA,AMZN,SPY,QQQ,XOM,GLD,TSLA,GOOGL,META,JPM"

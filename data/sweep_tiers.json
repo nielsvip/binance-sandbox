@@ -1,0 +1,150 @@
+{
+    "_meta": {
+        "created": "2026-04-16",
+        "purpose": "Sweep priority tiers for vectorized parameter search. Agents: start from TIER_1, do NOT sweep DEAD or FIXED.",
+        "tiers": {
+            "TIER_1": "HIGH IMPACT — sweep these first, biggest Sharpe sensitivity",
+            "TIER_2": "MEDIUM IMPACT — sweep after TIER_1 is stable",
+            "TIER_3": "LOW IMPACT — fine-tuning, sweep last",
+            "FIXED": "Proven optimal or safety-critical — do NOT sweep",
+            "DEAD": "Disabled/dead code — do NOT sweep"
+        }
+    },
+    "crypto": {
+        "TIER_1_ENTRY": {
+            "_doc": "Entry gates — control WHAT gets opened. Highest Sharpe sensitivity.",
+            "MTS_GATE_ENABLED":          {"current": true,  "sweep": [true, false], "note": "Multi-TF state gate. ON=+8.5% Sharpe. Critical."},
+            "MTS_BOTTOM_MIN":            {"current": 15.0,  "sweep": [10, 15, 20, 25], "note": "Entry quality floor. 15=ablation winner."},
+            "MTS_ENTRY_QUALITY_MIN":     {"current": 8.0,   "sweep": [5, 8, 12, 15], "note": "WT cross structure req. 8=winner."},
+            "TF_ALIGNMENT_MIN_TOTAL":    {"current": 4,     "sweep": [3, 4, 5], "note": "Min TFs aligned for entry. 4=3/3 LTF+D+2/3 HTF."},
+            "MIN_GAIN":                  {"current": 3.0,   "sweep": [1.5, 2.0, 3.0, 5.0], "note": "Augment gain gate. NEVER below 1.2."},
+            "K3M_CAP":                   {"current": 80,    "sweep": [0, 50, 70, 80, 95], "note": "Stoch K 3m cap for entry. 0=off. 80=tournament winner."},
+            "DELTA_GATE_OPEN":           {"current": true,  "sweep": [true, false], "note": "Require delta signal for new entries."},
+            "LEADERBOARD_FILTER":        {"current": true,  "sweep": [true, false], "note": "Only trade leaderboard symbols."}
+        },
+        "TIER_1_EXIT": {
+            "_doc": "Exit triggers — control WHEN positions close. Direct PnL impact.",
+            "SCALP_V2_VARIANT":          {"current": "V1_WT_CONFIRM", "sweep": ["V1_WT_CONFIRM", "V4_HA_FLIP", "V8_HTF_RECLAIM"], "note": "Primary scalp exit. V1=Sharpe 107 isolated."},
+            "SCALP_V2_MAX_HOLD_MINUTES": {"current": 15.0,  "sweep": [5, 10, 15, 30, 60], "note": "Max hold time. 15=winner, 60=universally worse."},
+            "SCALP_V2_REDZONE_K_THRESHOLD": {"current": 90, "sweep": [70, 80, 90, 95], "note": "Stoch K reversal threshold. 90=sweep winner."},
+            "SCALP_V2_LH_LL_TF":        {"current": "15m", "sweep": ["3m", "15m", "1h"], "note": "TF for LH/LL exit. 15m=winner."},
+            "SCALP_V2_REDZONE_EXIT":     {"current": true,  "sweep": [true, false], "note": "Secondary exit #1. +6 extra exits."},
+            "SCALP_V2_LH_LL_EXIT":       {"current": true,  "sweep": [true, false], "note": "Secondary exit #2. +23 extra exits."},
+            "WT_15M_SAME_HEDGE_ENABLED": {"current": true,  "sweep": [true, false], "note": "WT 15m hedge trigger. Cascade-fixed 2026-04-16."},
+            "REENTRY_MANDATORY":         {"current": true,  "sweep": [true, false], "note": "Force reentry after every exit."}
+        },
+        "TIER_1_SIZING": {
+            "_doc": "Position sizing — controls HOW MUCH. Drawdown/Sharpe tradeoff.",
+            "START_POSITION_SIZE":       {"current": 9.0,   "sweep": [5, 9, 15, 25], "note": "Initial entry size USD."},
+            "MAX_POSITION_SIZE":         {"current": 20.0,  "sweep": [10, 20, 40], "note": "Max position USD."},
+            "MAX_ORDER_VALUE":           {"current": 20.0,  "sweep": [10, 20, 40], "note": "Max single order USD."},
+            "MAX_AUGMENTS_PER_POSITION": {"current": 3,     "sweep": [1, 2, 3, 5], "note": "Cap total augments. Stops piling."}
+        },
+        "TIER_2_ENTRY_TUNING": {
+            "_doc": "Fine-tune entry quality. Moderate Sharpe sensitivity.",
+            "MTS_BOTTOM_MIN_SHORT":      {"current": 10.0,  "sweep": [5, 10, 15, 20], "note": "Short entry quality floor."},
+            "MTS_ENTRY_QUALITY_MIN_SHORT": {"current": 5.0, "sweep": [0, 5, 8, 12], "note": "Short WT cross req."},
+            "MTS_WEIGHT_1h":             {"current": 12.0,  "sweep": [6, 8, 12, 16], "note": "1h weight. 12=Sharpe 10.2."},
+            "MTS_WEIGHT_4h":             {"current": 4.0,   "sweep": [2, 4, 8], "note": "4h weight."},
+            "MTS_WEIGHT_15m":            {"current": 8.0,   "sweep": [4, 8, 12], "note": "15m weight."},
+            "TF_FOCUS_WEIGHT":           {"current": 8.0,   "sweep": [4, 6, 8, 12], "note": "3m focus weight. 8=1.9x over 15m."},
+            "INF_RANKING_PRIORITY_BYPASS": {"current": false, "sweep": [true, false], "note": "Bypass stoch+HTF for ranked movers. Pending V8."},
+            "INF_RANKING_BYPASS_STOCH":  {"current": true,  "sweep": [true, false], "note": "Stoch bypass for ranked movers."},
+            "INF_RANKING_BYPASS_HTF":    {"current": true,  "sweep": [true, false], "note": "HTF relax for ranked movers."}
+        },
+        "TIER_2_EXIT_TUNING": {
+            "_doc": "Fine-tune exit behavior. Controls winner ride time.",
+            "REENTRY_TIER1_SIZE_MULT":   {"current": 1.5,   "sweep": [1.0, 1.2, 1.5, 2.0], "note": "Pullback reentry size mult."},
+            "REENTRY_TIER2_SIZE_MULT":   {"current": 0.8,   "sweep": [0.5, 0.8, 1.0], "note": "Chase reentry size mult."},
+            "REENTRY_TIER2_PRICE_PCT":   {"current": 0.003, "sweep": [0.002, 0.003, 0.005], "note": "Chase trigger % move."},
+            "HEDGE_TRIGGER_LOSS_PCT":    {"current": -0.05, "sweep": [-0.02, -0.05, -0.10, -0.20], "note": "Hedge activation loss %."},
+            "SCALP_V2_REENTRY_COOLDOWN_S": {"current": 300, "sweep": [120, 300, 600, 900], "note": "Scalp reentry cooldown."},
+            "SCALP_V2_MAX_CONCURRENT":   {"current": 5,     "sweep": [3, 5, 8, 12], "note": "Max concurrent scalp positions."}
+        },
+        "TIER_3_FINE_TUNING": {
+            "_doc": "Low impact fine-tuning. Sweep only after TIER_1+2 are locked.",
+            "MTS_BOTTOM_BONUS_THRESHOLD": {"current": 25.0, "sweep": [15, 25, 35], "note": "+4 score bonus threshold."},
+            "MTS_BOTTOM_STRONG_THRESHOLD": {"current": 40.0, "sweep": [30, 40, 50], "note": "+8 score bonus threshold."},
+            "MTS_ENTRY_QUALITY_BONUS":   {"current": 25.0,  "sweep": [15, 25, 35], "note": "+2 score bonus threshold."},
+            "MTS_WEIGHT_1m":             {"current": 3.0,   "sweep": [1, 3, 5], "note": "1m micro weight."},
+            "MTS_WEIGHT_3m":             {"current": 5.0,   "sweep": [3, 5, 8], "note": "3m scalp weight."},
+            "MTS_WEIGHT_D":              {"current": 2.0,   "sweep": [1, 2, 4], "note": "Daily macro weight."},
+            "PNL_DECAY_START_HOURS":     {"current": 1,     "sweep": [1, 2, 4], "note": "PnL decay onset."},
+            "PNL_DECAY_COMPLETE_DAYS":   {"current": 5,     "sweep": [3, 5, 7], "note": "PnL full decay."},
+            "NEW_POSITION_MIN_AGE_SECONDS": {"current": 180, "sweep": [60, 120, 180, 300], "note": "Newborn immunity window."},
+            "INF_RANKING_BYPASS_FRESHNESS_MIN": {"current": 30, "sweep": [15, 30, 60], "note": "Ranking bypass window."},
+            "INF_RANKING_BYPASS_MAX_POS": {"current": 8,    "sweep": [4, 8, 12], "note": "Max bypass entries."}
+        },
+        "TIER_A_SHARPE_TRIPLE": {
+            "_doc": "2026-04-16 NEW — break the 0.69 Sharpe plateau. Sweep these first on both servers. Each independently estimated +0.3-0.5 Sharpe.",
+            "ASYMMETRIC_STOPS_ENABLED":   {"current": false, "sweep": [true, false], "note": "TIER_A #1: tight losers, wide winners. +0.5 Sharpe est."},
+            "ASYMMETRIC_LOSER_MIN_AGE_SECONDS": {"current": 540, "sweep": [180, 300, 540, 900], "note": "Min age before loser stop arms."},
+            "ASYMMETRIC_WINNER_GAIN_PCT": {"current": 1.5, "sweep": [0.8, 1.2, 1.5, 2.0, 3.0], "note": "Gain threshold for winner mode."},
+            "PROGRESSIVE_LOCK_ENABLED":   {"current": false, "sweep": [true, false], "note": "TIER_A #2: staged 25% reduces. +0.3 Sharpe est."},
+            "PROGRESSIVE_LOCK_FRACTION":  {"current": 0.25, "sweep": [0.15, 0.25, 0.33, 0.5], "note": "Reduce % per tier."},
+            "REGIME_GATE_ENABLED":        {"current": false, "sweep": [true, false], "note": "TIER_A #3: skip chop. +0.3 Sharpe est."},
+            "REGIME_ATR_RATIO_MIN":       {"current": 0.25, "sweep": [0.15, 0.20, 0.25, 0.35], "note": "atr_3m/atr_1h min."},
+            "REGIME_BB_WIDTH_PCT_MIN":    {"current": 2.0, "sweep": [1.0, 1.5, 2.0, 3.0], "note": "BB width as % of price min."},
+            "REGIME_DC_ATR_RATIO_MIN":    {"current": 1.5, "sweep": [1.0, 1.5, 2.0, 3.0], "note": "dc_width/atr min."}
+        },
+        "TIER_B_SHARPE_TRIPLE": {
+            "_doc": "2026-04-16 NEW — per-symbol routing. Infra built from overnight sweep.",
+            "PER_SYMBOL_CONFIG_ENABLED":  {"current": false, "sweep": [true, false], "note": "TIER_B #4: load per-symbol best. +0.1-0.2 Sharpe."},
+            "PER_SYMBOL_CONFIG_FILE":     {"current": "data/sweep_results/per_symbol_best_crypto_20260416_0507.json", "sweep": [], "note": "Path to JSON."}
+        },
+        "TIER_C_SHARPE_TRIPLE": {
+            "_doc": "2026-04-16 NEW — quality filters. +0.1 Sharpe each.",
+            "VOLUME_CONFIRMATION_ENABLED": {"current": false, "sweep": [true, false], "note": "TIER_C #6: volume>1.2x avg required."},
+            "VOLUME_CONFIRMATION_MULT":   {"current": 1.2, "sweep": [1.0, 1.2, 1.5, 2.0], "note": "Volume multiplier threshold."},
+            "HOUR_OF_DAY_GATE_ENABLED":   {"current": false, "sweep": [true, false], "note": "TIER_C #7: audit hourly Sharpe first."},
+            "HOUR_OF_DAY_BLOCKED_UTC":    {"current": [], "sweep": [[], [22,23,0,1,2,3,4], [2,3,4,5]], "note": "Blocked UTC hours."},
+            "CIRCUIT_BREAKER_ENABLED":    {"current": false, "sweep": [true, false], "note": "TIER_C #8: halt after N consec losses."},
+            "CIRCUIT_BREAKER_SYMBOL_LOSSES": {"current": 3, "sweep": [2, 3, 5], "note": "Symbol halt threshold."},
+            "CIRCUIT_BREAKER_SYMBOL_HALT_MIN": {"current": 30, "sweep": [15, 30, 60, 120], "note": "Symbol halt duration min."},
+            "CIRCUIT_BREAKER_ACCOUNT_LOSSES": {"current": 5, "sweep": [3, 5, 8], "note": "Account halt threshold."}
+        },
+        "TIER_D_SHARPE_TRIPLE": {
+            "_doc": "2026-04-16 NEW — winner maximizers. +0.2 Sharpe est.",
+            "PYRAMID_ENABLED":            {"current": false, "sweep": [true, false], "note": "TIER_D #9: add 50% on structural winner confirmation."},
+            "PYRAMID_MIN_GAIN_PCT":       {"current": 1.5, "sweep": [1.0, 1.5, 2.0, 3.0], "note": "Min gain before pyramid."},
+            "PYRAMID_MIN_WT_VEL_1H":      {"current": 2.0, "sweep": [1.0, 2.0, 3.0, 5.0], "note": "Min 1h velocity."},
+            "PYRAMID_MIN_DC_POS_15M":     {"current": 0.7, "sweep": [0.5, 0.6, 0.7, 0.8], "note": "LONG: min dc_position_15m."},
+            "PYRAMID_SIZE_MULT":          {"current": 0.5, "sweep": [0.25, 0.50, 0.75, 1.0], "note": "Multiple of current pos size."}
+        },
+        "FIXED_DO_NOT_SWEEP": {
+            "_doc": "Proven optimal or safety-critical. Sweeping these wastes compute.",
+            "SCALP_MODE":                {"current": true,  "note": "Master scalp ON for inf. Toggle per-test, not sweep."},
+            "SCALP_V2_ISOLATE":          {"current": true,  "note": "MUST be True — without it, main exits trample V2 (V8 Sharpe -0.30)."},
+            "SCALP_V2_DC_HTF_REQUIRE_ALL": {"current": true, "note": "Quality gate. True proven better."},
+            "TF_FOCUS":                  {"current": "3m",  "note": "3m is 79% of top 5000 configs."},
+            "TF_FOCUS_ENTRY_HARD_GATE":  {"current": true,  "note": "Focus TF mandatory for entry."},
+            "HEDGE_MODE":                {"current": true,  "note": "Hedging on for non-scalp accounts."},
+            "STRICT_NO_LOSS_ACCOUNTS":   {"current": ["ang","inf","flz","men","fin"], "note": "NEVER close losers."},
+            "ENABLE_LOSS_PROTECTION":    {"current": true,  "note": "Block closing with gain<=0.12%."},
+            "AUGMENT_ONLY_WHEN_PROFITABLE": {"current": true, "note": "NEVER augment losers."}
+        },
+        "DEAD_DO_NOT_SWEEP": {
+            "_doc": "Disabled code paths. Sweeping wastes compute — they don't fire.",
+            "FAST_CUT_LOSS_THRESHOLD":   {"current": -999.0, "note": "Dead under STRICT_NO_LOSS."},
+            "BREAKOUT_GUARD_LOSS_THRESHOLD": {"current": -999.0, "note": "Dead under STRICT_NO_LOSS."},
+            "REDUCE_HUGE_LOSS_THRESHOLD": {"current": -999.0, "note": "Dead under STRICT_NO_LOSS."},
+            "STOP_MAJOR_LOSS_ENABLED":   {"current": false, "note": "#1 PnL destroyer. DEAD."},
+            "AGGRESSIVE_LOSS_CUT_ENABLED": {"current": false, "note": "Replaced by SRS. DEAD."},
+            "EXIT_ON_ALL_ENABLED":       {"current": false, "note": "DEAD."},
+            "EXTREME_MODE":              {"current": false, "note": "DEAD."},
+            "REV_MODE":                  {"current": false, "note": "DEAD."},
+            "SCALP_OVERRIDE":            {"current": false, "note": "Legacy. DEAD."}
+        }
+    },
+    "tradier": {
+        "_doc": "Stock-specific switches. Sweep on S2 only. See config_tradier.py.",
+        "TIER_1": {
+            "ENTRY_SCORE_THRESHOLD":     {"current": 24, "sweep": [18, 22, 24, 28], "note": "Stocks use higher score than crypto."},
+            "HTF_ALIGNMENT_MIN":         {"current": 2,  "sweep": [1, 2, 3], "note": "Stocks need 2+ HTF aligned."},
+            "WT_CROSS_ALIGNMENT_MIN":    {"current": 3,  "sweep": [2, 3, 4], "note": "Stocks need 3+ WT crosses aligned."},
+            "COMBINED_STOCH_GATE":       {"current": 60, "sweep": [40, 50, 60, 70, 80], "note": "Stocks use 60 (crypto=50)."},
+            "ATR_TRAIL_ENABLED":         {"current": false, "sweep": [true, false], "note": "#1 stock PnL destroyer. Keep OFF."},
+            "STRUCTURAL_RANGE_SHIFT_TF": {"current": "bb_1h", "sweep": ["bb_1h", "dc_1h", "bb_4h"], "note": "bb_1h=stocks. NEVER dc_4h or bb_4h."}
+        }
+    }
+}

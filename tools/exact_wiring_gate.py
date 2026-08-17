@@ -313,6 +313,7 @@ def classify_param(
     *,
     symbol: str | None = None,
     side: str | None = None,
+    master_enabled_override: bool | None = None,
 ) -> dict[str, Any]:
     by_value = {}
     for row in rows:
@@ -323,6 +324,15 @@ def classify_param(
     }
     source = read_site_class(param)
     master = master_state(param, symbol, side)
+    if master_enabled_override is not None:
+        master = {
+            **master,
+            "enabled": bool(master_enabled_override),
+            "reason": (
+                f"{master.get('reason')}; effective isolated-cell recipe "
+                f"sets master={bool(master_enabled_override)}"
+            ),
+        }
     default = getattr(TradierConfig, param, object())
     binding_values = list(values)
     if isinstance(default, bool) and default not in binding_values:

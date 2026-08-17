@@ -1,0 +1,123 @@
+GOLDEN ANGLES TEST — CRYPTO
+Symbols: 30 | Entries: 64 | Exits: 18
+Combos per symbol: 2304 | Total: 69,120
+TFs: micro=1m scalp=3m htf1=15m htf2=1h
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+  5/30 (5 with data) 19s
+  10/30 (9 with data) 31s
+  15/30 (14 with data) 45s
+  20/30 (19 with data) 54s
+  25/30 (23 with data) 74s
+  30/30 (28 with data) 86s
+
+Done: 86s — 28 symbols
+
+Combo                                                                   Sharpe    WR  AvgRet Trades   N
+====================================================================================================
+
+--- TOP 20 LONG ---
+LONG|wtcv-20|dc0.1→wt_scalp|mg0.5                                       +4.268 80.5% +0.695%     6   7
+LONG|wtcv-60|dc0.2|htf1→wt_scalp|mg0.5                                  +4.235 90.0% +0.653%     6   5
+LONG|wtcv-20|dc0.2|htf2→wt_micro|mg1.0                                  +4.164 72.7% +0.262%     5   5
+LONG|wtcv-20|dc0.2|htf2→wt_htf2|mg0.1                                   +4.122 85.1% +0.318%     6   5
+LONG|wtcv-60|dc0.2|htf1→wt_scalp|mg0.1                                  +4.058 96.7% +0.742%     6  10
+LONG|wtcv-60|dc0.2|htf1→wt_scalp|mg0.3                                  +4.004 94.4% +0.923%     6   6
+LONG|wtcv-20|dc0.2|htf2→wt_htf1|mg1.0                                   +3.863 78.3% +0.422%     6   6
+LONG|wtcv-20|dc0.2|htf2→mfi_only75|mg0.3                                +3.659 78.0% +0.487%     5   7
+LONG|wtcv-20|dc0.1→wt_scalp|mg0.3                                       +3.659 87.9% +0.651%     6   8
+LONG|dc0.1|htf1→wt_scalp|mg0.5                                          +3.579 84.7% +0.700%     6   5
+LONG|wtcv-20|dc0.1→wt_scalp|mg0.1                                       +3.436 89.6% +0.569%     6   9
+LONG|wtcv-20|dc0.2|htf2→wt_scalp|mg1.0                                  +3.435 73.3% +0.474%     6   8
+LONG|dc0.1|htf1→wt_scalp|mg0.3                                          +3.271 87.2% +0.651%     6   6
+LONG|ANY→wt_scalp|mg0.1                                                 +3.253 75.7% +0.864%    31  28
+LONG|wtcv-20|dc0.5|htf1→wt_scalp|mg0.1                                  +3.100 81.8% +1.077%    19  28
+LONG|wtcv-20|dc0.2|htf2→wt_scalp|mg0.1                                  +3.015 84.5% +0.455%     6  14
+LONG|wtcv-20|dc0.4→wt_scalp|mg0.1                                       +2.991 81.0% +1.039%    18  28
+LONG|ANY→wt_scalp|mg0.3                                                 +2.946 71.6% +0.843%    28  28
+LONG|wtcv-20|dc0.5|htf1→wt_scalp|mg0.3                                  +2.925 78.0% +1.087%    17  28
+LONG|wtcv-40|htf1→wt_scalp|mg0.1                                        +2.892 80.1% +1.171%    14  28
+
+--- TOP 20 SHORT ---
+SHORT|wtcv-20|htf1|wts5→mfi_only65|mg0.1                                +4.069 80.0% +0.563%     6   6
+SHORT|wtcv-20|htf1|wts5→wt_scalp|mg0.1                                  +3.403 76.0% +0.427%     6  10
+SHORT|wtcv-20|dc0.1→wt_micro|mg0.1                                      +2.895 75.0% +0.468%     6   6
+SHORT|wtcv-20|dc0.1→wt_scalp|mg0.1                                      +2.892 83.6% +0.405%     6   8
+SHORT|wtcv-20|htf1|wts5→wt_scalp|mg0.3                                  +2.743 72.5% +0.492%     6   8
+SHORT|wtcv-40|dc0.3|htf1→wt_scalp|mg0.1                                 +2.742 84.0% +0.256%     8  22
+SHORT|wtcv-20|dc0.15|htf1→wt_scalp|mg0.1                                +2.657 87.6% +0.365%     6   7
+SHORT|wtcv-40|dc0.3|htf1→wt_scalp|mg0.3                                 +2.594 79.9% +0.284%     8  17
+SHORT|wtcv-40|htf1→wt_scalp|mg0.1                                       +2.319 78.4% +0.192%    10  27
+SHORT|wtcv-40|htf1→wt_scalp|mg0.5                                       +2.298 72.3% +0.186%     9  22
+SHORT|wtcv-40|htf1→wt_scalp|mg0.3                                       +2.201 74.3% +0.187%     9  26
+SHORT|wtcv-40|dc0.3|htf1→wt_scalp|mg0.5                                 +2.200 76.9% +0.234%     8  15
+SHORT|wtcv-60|dc0.5→wt_scalp|mg0.1                                      +2.125 75.2% +0.333%     8  27
+SHORT|wtcv-40|dc0.25→wt_scalp|mg0.1                                     +2.085 75.1% +0.192%    11  27
+SHORT|wtcv0|dc0.2→wt_scalp|mg0.1                                        +2.055 78.9% +0.254%    10  27
+SHORT|dc0.3→wt_scalp|mg0.1                                              +2.045 74.1% +0.210%    17  28
+SHORT|wtcv-20|dc0.15|htf1→wt_scalp|mg0.3                                +2.042 77.4% +0.259%     6   7
+SHORT|wtcv0|dc0.25|htf1→wt_scalp|mg0.1                                  +2.039 81.2% +0.326%     9  26
+SHORT|wtcv-60|dc0.5→wt_scalp|mg0.3                                      +2.008 71.7% +0.336%     8  25
+SHORT|wtcv-20|dc0.4→wt_scalp|mg0.1                                      +1.956 72.8% +0.123%    19  28
+
+--- TOP 20 OVERALL ---
+LONG|wtcv-20|dc0.1→wt_scalp|mg0.5                                       +4.268 80.5% +0.695%     6   7
+LONG|wtcv-60|dc0.2|htf1→wt_scalp|mg0.5                                  +4.235 90.0% +0.653%     6   5
+LONG|wtcv-20|dc0.2|htf2→wt_micro|mg1.0                                  +4.164 72.7% +0.262%     5   5
+LONG|wtcv-20|dc0.2|htf2→wt_htf2|mg0.1                                   +4.122 85.1% +0.318%     6   5
+SHORT|wtcv-20|htf1|wts5→mfi_only65|mg0.1                                +4.069 80.0% +0.563%     6   6
+LONG|wtcv-60|dc0.2|htf1→wt_scalp|mg0.1                                  +4.058 96.7% +0.742%     6  10
+LONG|wtcv-60|dc0.2|htf1→wt_scalp|mg0.3                                  +4.004 94.4% +0.923%     6   6
+LONG|wtcv-20|dc0.2|htf2→wt_htf1|mg1.0                                   +3.863 78.3% +0.422%     6   6
+LONG|wtcv-20|dc0.2|htf2→mfi_only75|mg0.3                                +3.659 78.0% +0.487%     5   7
+LONG|wtcv-20|dc0.1→wt_scalp|mg0.3                                       +3.659 87.9% +0.651%     6   8
+LONG|dc0.1|htf1→wt_scalp|mg0.5                                          +3.579 84.7% +0.700%     6   5
+LONG|wtcv-20|dc0.1→wt_scalp|mg0.1                                       +3.436 89.6% +0.569%     6   9
+LONG|wtcv-20|dc0.2|htf2→wt_scalp|mg1.0                                  +3.435 73.3% +0.474%     6   8
+SHORT|wtcv-20|htf1|wts5→wt_scalp|mg0.1                                  +3.403 76.0% +0.427%     6  10
+LONG|dc0.1|htf1→wt_scalp|mg0.3                                          +3.271 87.2% +0.651%     6   6
+LONG|ANY→wt_scalp|mg0.1                                                 +3.253 75.7% +0.864%    31  28
+LONG|wtcv-20|dc0.5|htf1→wt_scalp|mg0.1                                  +3.100 81.8% +1.077%    19  28
+LONG|wtcv-20|dc0.2|htf2→wt_scalp|mg0.1                                  +3.015 84.5% +0.455%     6  14
+LONG|wtcv-20|dc0.4→wt_scalp|mg0.1                                       +2.991 81.0% +1.039%    18  28
+LONG|ANY→wt_scalp|mg0.3                                                 +2.946 71.6% +0.843%    28  28
+
+Saved: data/golden_angles_crypto_20260325_2021.json

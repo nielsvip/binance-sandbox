@@ -608,6 +608,11 @@ class MarketDataEngine:
                         self._stale_warn_throttle[sym] = _now_ts
                         try: logger.error(f"[mark_price_freshness] CRITICAL ez_market_data {sym} buf_age={_buf_age:.1f}s>3.0s — WS likely dead, calculating with stale price")
                         except Exception: pass
+                    # Never turn a stale fallback price into a fresh indicator
+                    # snapshot.  The previous code logged the fault and then
+                    # continued, allowing the stale tick to generate signals.
+                    # Leave it buffered so a fresh source can replace it.
+                    continue
 
                 # 3. ATOMIC UPDATE & SNAPSHOT
                 # We update the store NOW, knowing we will immediately snapshot it.

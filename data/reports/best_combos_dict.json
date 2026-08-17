@@ -1,0 +1,872 @@
+{
+  "keys": {
+    "AAPL_LONG": {
+      "best": {
+        "full_overrides": {
+          "ABLATION_DISABLE_QUICK_EXIT": true,
+          "CT_WT_VELOCITY_GATE_ENABLED": false,
+          "MFI_ENTRY_SHORT_MIN": 60.0,
+          "STDEV_BREAKOUT_EXIT_WT_ENABLED": false,
+          "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK": false,
+          "MOMENTUM_FADE_VOL_MIN_TRADIER": 1.5
+        },
+        "overrides": {
+          "ABLATION_DISABLE_QUICK_EXIT": true,
+          "CT_WT_VELOCITY_GATE_ENABLED": false,
+          "MFI_ENTRY_SHORT_MIN": 60.0,
+          "STDEV_BREAKOUT_EXIT_WT_ENABLED": false,
+          "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK": false,
+          "MOMENTUM_FADE_VOL_MIN_TRADIER": 1.5
+        },
+        "delta_vs_bh_per_mo_pct": 25.043991666666667,
+        "gain_per_mo_pct": 25.043991666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 4.36,
+        "tim_pct": 60.08,
+        "run_id": "vec_mac_AAPL_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "AGI_SHORT": {
+      "best": {
+        "full_overrides": {
+          "STRUCTURAL_RANGE_SHIFT_K_HIGH": 48.75,
+          "SATOSHIT_LONG_MFI_MAX_TRADIER": 93.0,
+          "WIN_TRAIL_EROSION_PCT": 0.775,
+          "REENTRY_SYMGATE_ENABLED": true,
+          "RED_ZONE_TRADIER_GATE_ENABLED": false,
+          "RSI_ENTRY_LONG_TRADIER": 62.0
+        },
+        "overrides": {
+          "STRUCTURAL_RANGE_SHIFT_K_HIGH": 48.75,
+          "SATOSHIT_LONG_MFI_MAX_TRADIER": 93.0,
+          "WIN_TRAIL_EROSION_PCT": 0.775,
+          "REENTRY_SYMGATE_ENABLED": true,
+          "RED_ZONE_TRADIER_GATE_ENABLED": false,
+          "RSI_ENTRY_LONG_TRADIER": 62.0
+        },
+        "delta_vs_bh_per_mo_pct": 1.640125,
+        "gain_per_mo_pct": 1.640125,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 8.15,
+        "tim_pct": 36.76,
+        "run_id": "vec_mac_AGI_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "AMZN_LONG": {
+      "best": {
+        "full_overrides": {
+          "BB_SQUEEZE_ENABLED": false,
+          "DC_BREAK_GR_MULT_RETEST": 1.5,
+          "R1_USE_DC_4BAR": true,
+          "EXIT_BOUNCE_TOP_ENABLED": true,
+          "DC_DAYTRADE_START_SIZE": 300.0
+        },
+        "overrides": {
+          "BB_SQUEEZE_ENABLED": false,
+          "DC_BREAK_GR_MULT_RETEST": 1.5,
+          "R1_USE_DC_4BAR": true,
+          "EXIT_BOUNCE_TOP_ENABLED": true,
+          "DC_DAYTRADE_START_SIZE": 300.0
+        },
+        "delta_vs_bh_per_mo_pct": 7.00383389367159,
+        "gain_per_mo_pct": 7.00383389367159,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 12.8,
+        "tim_pct": 57.8,
+        "run_id": "vec_mac_AMZN_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "ASML_LONG": {
+      "best": {
+        "full_overrides": {
+          "MIN_GAIN": 2.25,
+          "TRA_DISABLE_AUGMENT": true,
+          "LIVE_ENTRY_ENGINE_ENABLED": false,
+          "SATOSHIT_LONG_BB_PCTB_MAX": 0.375,
+          "TRC_ORB_SHORT_BUDGET": 4950.0
+        },
+        "overrides": {
+          "MIN_GAIN": 2.25,
+          "TRA_DISABLE_AUGMENT": true,
+          "LIVE_ENTRY_ENGINE_ENABLED": false,
+          "SATOSHIT_LONG_BB_PCTB_MAX": 0.375,
+          "TRC_ORB_SHORT_BUDGET": 4950.0
+        },
+        "delta_vs_bh_per_mo_pct": 6.872547197320177,
+        "gain_per_mo_pct": 6.872547197320177,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 7.6,
+        "tim_pct": 37.6,
+        "run_id": "vec_mac_ASML_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "ASTS_SHORT": {
+      "best": {
+        "full_overrides": {
+          "WT_FORCE_OPEN_FRESH_MAX_BARS": 0,
+          "REENTRY_B15_STRONG_TREND_ENABLED": true,
+          "OI_CONFIRM_ENABLED_TRADIER": false,
+          "GOLDEN_RULE_HTF_VETO_ENABLED": false,
+          "TR_ADX4H_GATE_ENABLED": false
+        },
+        "overrides": {
+          "WT_FORCE_OPEN_FRESH_MAX_BARS": 0,
+          "REENTRY_B15_STRONG_TREND_ENABLED": true,
+          "OI_CONFIRM_ENABLED_TRADIER": false,
+          "GOLDEN_RULE_HTF_VETO_ENABLED": false,
+          "TR_ADX4H_GATE_ENABLED": false
+        },
+        "delta_vs_bh_per_mo_pct": 7.005205693462831,
+        "gain_per_mo_pct": 7.005205693462831,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 38.5,
+        "tim_pct": 38.5,
+        "run_id": "vec_mac_ASTS_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "CF_LONG": {
+      "best": {
+        "full_overrides": {
+          "BREAKOUT_SIZE_EMA200_T1_MULT": 1.2000000000000002,
+          "TF_HTF1": "1h",
+          "PYRAMID_ENABLED": true,
+          "MFI_ENTRY_ENABLED": false,
+          "STDEV_BOUNCE_RVOL_MIN": 0.36,
+          "CRYPTO_SPIKE_FADE_ENABLED": false,
+          "FH_MOMENTUM_MIN_MOVE_PCT": 0.3
+        },
+        "overrides": {
+          "BREAKOUT_SIZE_EMA200_T1_MULT": 1.2000000000000002,
+          "TF_HTF1": "1h",
+          "PYRAMID_ENABLED": true,
+          "MFI_ENTRY_ENABLED": false,
+          "STDEV_BOUNCE_RVOL_MIN": 0.36,
+          "CRYPTO_SPIKE_FADE_ENABLED": false,
+          "FH_MOMENTUM_MIN_MOVE_PCT": 0.3
+        },
+        "delta_vs_bh_per_mo_pct": 3.246491666666667,
+        "gain_per_mo_pct": 3.246491666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 1.3,
+        "tim_pct": 36.54,
+        "run_id": "vec_mac_CF_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "GDX_SHORT": {
+      "best": {
+        "full_overrides": {
+          "STDEV_MACRO_HEDGE_BOOST_ENABLED": true,
+          "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER": false,
+          "EMA_DIST_SIZING_MULT": 3.6,
+          "TRC_DC_DAYTRADE_SHORT_BUDGET": 2475.0,
+          "DC_EDGE_SIZING_ENABLED": false,
+          "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED": true
+        },
+        "overrides": {
+          "STDEV_MACRO_HEDGE_BOOST_ENABLED": true,
+          "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER": false,
+          "EMA_DIST_SIZING_MULT": 3.6,
+          "TRC_DC_DAYTRADE_SHORT_BUDGET": 2475.0,
+          "DC_EDGE_SIZING_ENABLED": false,
+          "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED": true
+        },
+        "delta_vs_bh_per_mo_pct": 1.0169833333333334,
+        "gain_per_mo_pct": 1.0169833333333334,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 7.04,
+        "tim_pct": 45.59,
+        "run_id": "vec_mac_GDX_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "GLD_LONG": {
+      "best": {
+        "full_overrides": {
+          "TRAILING_AUG_GAIN_STEP_PCT": 0.475,
+          "BAND_SLOPE_SIZING_V2_MAX": 2.375,
+          "DELTA_EXIT_WT_CROSS": false,
+          "COOLDOWN_BARS_TRADIER": 3.2,
+          "RZ_DIV_EXIT_ENABLED": false,
+          "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE": false
+        },
+        "overrides": {
+          "TRAILING_AUG_GAIN_STEP_PCT": 0.475,
+          "BAND_SLOPE_SIZING_V2_MAX": 2.375,
+          "DELTA_EXIT_WT_CROSS": false,
+          "COOLDOWN_BARS_TRADIER": 3.2,
+          "RZ_DIV_EXIT_ENABLED": false,
+          "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE": false
+        },
+        "delta_vs_bh_per_mo_pct": 0.03031666666666667,
+        "gain_per_mo_pct": 0.03031666666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 4.54,
+        "tim_pct": 67.22,
+        "run_id": "vec_mac_GLD_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "GOOGL_LONG": {
+      "best": {
+        "full_overrides": {
+          "EXIT_HTF_QUICK_TP_ENABLED": false,
+          "PYRAMID_ENABLED": true,
+          "TRC_LS_RATIO_MIN": 0.23249999999999998,
+          "REENTRY_SYMGATE_SPEED_MIN": 0.775,
+          "MFI_LONG_THRESHOLD_D": 26.0,
+          "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED": false,
+          "ADAPTIVE_REGIME_ENABLED": false
+        },
+        "overrides": {
+          "EXIT_HTF_QUICK_TP_ENABLED": false,
+          "PYRAMID_ENABLED": true,
+          "TRC_LS_RATIO_MIN": 0.23249999999999998,
+          "REENTRY_SYMGATE_SPEED_MIN": 0.775,
+          "MFI_LONG_THRESHOLD_D": 26.0,
+          "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED": false,
+          "ADAPTIVE_REGIME_ENABLED": false
+        },
+        "delta_vs_bh_per_mo_pct": 31.334275,
+        "gain_per_mo_pct": 31.334275,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 1.44,
+        "tim_pct": 54.54,
+        "run_id": "vec_mac_GOOGL_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "HAO_SHORT": {
+      "best": {
+        "full_overrides": {
+          "COOLDOWN_BARS_TRADIER": 5.6,
+          "DC_LOW_FROZEN_STOP_USE_4BAR": true,
+          "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED": false,
+          "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY": 0.35
+        },
+        "overrides": {
+          "COOLDOWN_BARS_TRADIER": 5.6,
+          "DC_LOW_FROZEN_STOP_USE_4BAR": true,
+          "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED": false,
+          "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY": 0.35
+        },
+        "delta_vs_bh_per_mo_pct": 11.537483333333334,
+        "gain_per_mo_pct": 11.537483333333334,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 35.27,
+        "tim_pct": 21.54,
+        "run_id": "vec_mac_HAO_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "IBIT_SHORT": {
+      "best": {
+        "full_overrides": {
+          "TRADIER_RSI2_EXIT_THRESHOLD_SHORT": 18.0,
+          "HTF_MIN_ALIGNED": 0.5,
+          "BREAKOUT_SIZE_MAX_MULT": 2.7,
+          "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG": 31.5,
+          "REGIME_RANGING_NOLOSS_MIN": 0.09000000000000001,
+          "ATR_PARITY_EQUITY_BASE_USD": 31500.0
+        },
+        "overrides": {
+          "TRADIER_RSI2_EXIT_THRESHOLD_SHORT": 18.0,
+          "HTF_MIN_ALIGNED": 0.5,
+          "BREAKOUT_SIZE_MAX_MULT": 2.7,
+          "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG": 31.5,
+          "REGIME_RANGING_NOLOSS_MIN": 0.09000000000000001,
+          "ATR_PARITY_EQUITY_BASE_USD": 31500.0
+        },
+        "delta_vs_bh_per_mo_pct": 0.5529583333333333,
+        "gain_per_mo_pct": 0.5529583333333333,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 5.5,
+        "tim_pct": 33.66,
+        "run_id": "vec_mac_IBIT_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "LAC_SHORT": {
+      "best": {
+        "full_overrides": {
+          "TRADIER_DC_DAYTRADE_ENABLED": false,
+          "DC_BREAK_GR_MULT_RETEST": 1.0499999999999998,
+          "RZ_TWO_PHASE_EXIT_ENABLED": false,
+          "SMA200_DIST_LONG_THRESHOLD_4H": -5.25,
+          "HTF_W_M_ALIGN_TRADIER_REQUIRED": 2.2
+        },
+        "overrides": {
+          "TRADIER_DC_DAYTRADE_ENABLED": false,
+          "DC_BREAK_GR_MULT_RETEST": 1.0499999999999998,
+          "RZ_TWO_PHASE_EXIT_ENABLED": false,
+          "SMA200_DIST_LONG_THRESHOLD_4H": -5.25,
+          "HTF_W_M_ALIGN_TRADIER_REQUIRED": 2.2
+        },
+        "delta_vs_bh_per_mo_pct": 0.5935166666666667,
+        "gain_per_mo_pct": 0.5935166666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 7.06,
+        "tim_pct": 84.7,
+        "run_id": "vec_mac_LAC_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "LLY_LONG": {
+      "best": {
+        "full_overrides": {
+          "GOLDEN_RULE_MIN_IND": 0.6,
+          "TRC_ENTRY_MIN_ALIGNMENT": 1.2,
+          "MARKET_QUALITY_SCORE_ENABLED_TRADIER": false,
+          "MANDATORY_REENTRY_WT_FILTER_ENABLED": false,
+          "TRADIER_DC_DAYTRADE_ENABLED": false
+        },
+        "overrides": {
+          "GOLDEN_RULE_MIN_IND": 0.6,
+          "TRC_ENTRY_MIN_ALIGNMENT": 1.2,
+          "MARKET_QUALITY_SCORE_ENABLED_TRADIER": false,
+          "MANDATORY_REENTRY_WT_FILTER_ENABLED": false,
+          "TRADIER_DC_DAYTRADE_ENABLED": false
+        },
+        "delta_vs_bh_per_mo_pct": 1.0298416666666668,
+        "gain_per_mo_pct": 1.0298416666666668,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 2.82,
+        "tim_pct": 72.56,
+        "run_id": "vec_mac_LLY_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "MRVL_LONG": {
+      "best": {
+        "full_overrides": {
+          "DELTA_GATE_OPEN": false,
+          "EMA_DIST_LONG_THRESHOLD": -1.8,
+          "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT": 0.27,
+          "TRADIER_DC_DAYTRADE_STOP_PCT": 0.0025,
+          "MI_EXIT_ENABLED": false,
+          "OPTIONS_PREMARKET_NO_FIRE": false
+        },
+        "overrides": {
+          "DELTA_GATE_OPEN": false,
+          "EMA_DIST_LONG_THRESHOLD": -1.8,
+          "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT": 0.27,
+          "TRADIER_DC_DAYTRADE_STOP_PCT": 0.0025,
+          "MI_EXIT_ENABLED": false,
+          "OPTIONS_PREMARKET_NO_FIRE": false
+        },
+        "delta_vs_bh_per_mo_pct": 0.7063166666666666,
+        "gain_per_mo_pct": 0.7063166666666666,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 12.79,
+        "tim_pct": 25.23,
+        "run_id": "vec_mac_MRVL_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "MSTR_SHORT": {
+      "best": {
+        "full_overrides": {
+          "REENTRY_STOCH_K_MAX_LONG": 20.0,
+          "OPTIONS_BUY_WT_DC_GATE_ENABLED": false,
+          "REENTRY_TIER1_SIZE_MULT_TRADIER": 0.75,
+          "LOCAL_EXTREMES_MIN_SCORE": 27.0,
+          "REGIME_RANGING_WT_EXIT_VEL": -1.5
+        },
+        "overrides": {
+          "REENTRY_STOCH_K_MAX_LONG": 20.0,
+          "OPTIONS_BUY_WT_DC_GATE_ENABLED": false,
+          "REENTRY_TIER1_SIZE_MULT_TRADIER": 0.75,
+          "LOCAL_EXTREMES_MIN_SCORE": 27.0,
+          "REGIME_RANGING_WT_EXIT_VEL": -1.5
+        },
+        "delta_vs_bh_per_mo_pct": 0.8090333333333333,
+        "gain_per_mo_pct": 0.8090333333333333,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 14.8,
+        "tim_pct": 31.25,
+        "run_id": "vec_mac_MSTR_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "MU_LONG": {
+      "best": {
+        "full_overrides": {
+          "PEAK_GIVEBACK_MIN_PEAK_PCT": 0.65,
+          "LUNCH_DEADZONE_ENABLED": false,
+          "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED": true,
+          "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED": true,
+          "PYRAMID_ENABLED": true,
+          "LIVE_ENTRY_ENGINE_ENABLED": false
+        },
+        "overrides": {
+          "PEAK_GIVEBACK_MIN_PEAK_PCT": 0.65,
+          "LUNCH_DEADZONE_ENABLED": false,
+          "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED": true,
+          "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED": true,
+          "PYRAMID_ENABLED": true,
+          "LIVE_ENTRY_ENGINE_ENABLED": false
+        },
+        "delta_vs_bh_per_mo_pct": 58.980241666666664,
+        "gain_per_mo_pct": 58.980241666666664,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 0.86,
+        "tim_pct": 47.29,
+        "run_id": "vec_mac_MU_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "NVDA_LONG": {
+      "best": {
+        "full_overrides": {
+          "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED": true,
+          "BREAKOUT_GUARD_LOSS_THRESHOLD": -2397.6,
+          "DELTA_EXIT_DECAY_RATIO": 0.09,
+          "PYRAMID_ENABLED": true
+        },
+        "overrides": {
+          "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED": true,
+          "BREAKOUT_GUARD_LOSS_THRESHOLD": -2397.6,
+          "DELTA_EXIT_DECAY_RATIO": 0.09,
+          "PYRAMID_ENABLED": true
+        },
+        "delta_vs_bh_per_mo_pct": 50.62121666666667,
+        "gain_per_mo_pct": 50.62121666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 0.65,
+        "tim_pct": 51.76,
+        "run_id": "vec_mac_NVDA_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "OLED_SHORT": {
+      "best": {
+        "full_overrides": {
+          "GOLDEN_RULE_EXIT_MIN_IND": 0.5,
+          "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER": 0.15,
+          "TRADIER_DC_DAYTRADE_TARGET_PCT": 0.0025
+        },
+        "overrides": {
+          "GOLDEN_RULE_EXIT_MIN_IND": 0.5,
+          "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER": 0.15,
+          "TRADIER_DC_DAYTRADE_TARGET_PCT": 0.0025
+        },
+        "delta_vs_bh_per_mo_pct": 0.7785000000000001,
+        "gain_per_mo_pct": 0.7785000000000001,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 6.91,
+        "tim_pct": 30.46,
+        "run_id": "vec_mac_OLED_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "PBF_LONG": {
+      "best": {
+        "full_overrides": {
+          "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES": 4.0,
+          "TRC_SWING_SHORT_BUDGET": 80000.0,
+          "MFI_FLIP_EXIT_SHORT_THRESHOLD": 18.0,
+          "SATOSHIT_LONG_MFI_MAX_TRADIER": 36.0,
+          "DC_EDGE_SIZING_MAX_MULT": 1.7999999999999998,
+          "LR_BAND_SLOPE_FLIP_EXIT_ENABLED": true
+        },
+        "overrides": {
+          "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES": 4.0,
+          "TRC_SWING_SHORT_BUDGET": 80000.0,
+          "MFI_FLIP_EXIT_SHORT_THRESHOLD": 18.0,
+          "SATOSHIT_LONG_MFI_MAX_TRADIER": 36.0,
+          "DC_EDGE_SIZING_MAX_MULT": 1.7999999999999998,
+          "LR_BAND_SLOPE_FLIP_EXIT_ENABLED": true
+        },
+        "delta_vs_bh_per_mo_pct": 1.2293333333333334,
+        "gain_per_mo_pct": 1.2293333333333334,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 12.24,
+        "tim_pct": 29.3,
+        "run_id": "vec_mac_PBF_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "PLTR_LONG": {
+      "best": {
+        "full_overrides": {
+          "REENTRY_BREAKOUT_ENABLED": true,
+          "BOUNCE_AUGMENT_K_D_CROSSING_UP": false,
+          "MTF_ARROW_CONFIRM_PCT": 1.55,
+          "TRAILING_AUG_ENABLED_TRADIER": true,
+          "ZONE_MID_THRESHOLD": 9.75,
+          "ENTRY_VOL_MIN_RATIO": 1.0075,
+          "COOLDOWN_BARS_TRADIER": 5.2
+        },
+        "overrides": {
+          "REENTRY_BREAKOUT_ENABLED": true,
+          "BOUNCE_AUGMENT_K_D_CROSSING_UP": false,
+          "MTF_ARROW_CONFIRM_PCT": 1.55,
+          "TRAILING_AUG_ENABLED_TRADIER": true,
+          "ZONE_MID_THRESHOLD": 9.75,
+          "ENTRY_VOL_MIN_RATIO": 1.0075,
+          "COOLDOWN_BARS_TRADIER": 5.2
+        },
+        "delta_vs_bh_per_mo_pct": 1.3366916666666666,
+        "gain_per_mo_pct": 1.3366916666666666,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 6.73,
+        "tim_pct": 41.72,
+        "run_id": "vec_mac_PLTR_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "RBLX_SHORT": {
+      "best": {
+        "full_overrides": {
+          "REENTRY_MANDATORY": false,
+          "SATOSHIT_ENTRY_ENABLED": true,
+          "BROKER_PREFLIGHT_ENABLED": false,
+          "REGIME_TRENDING_WT_EXIT_VEL": -6.0,
+          "RSI2_ENTRY_THRESHOLD": 0.75,
+          "SENTIMENT_REBAL_REDUCE_DEVIATION_THR": 0.45
+        },
+        "overrides": {
+          "REENTRY_MANDATORY": false,
+          "SATOSHIT_ENTRY_ENABLED": true,
+          "BROKER_PREFLIGHT_ENABLED": false,
+          "REGIME_TRENDING_WT_EXIT_VEL": -6.0,
+          "RSI2_ENTRY_THRESHOLD": 0.75,
+          "SENTIMENT_REBAL_REDUCE_DEVIATION_THR": 0.45
+        },
+        "delta_vs_bh_per_mo_pct": 1.2420416666666667,
+        "gain_per_mo_pct": 1.2420416666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 13.13,
+        "tim_pct": 27.79,
+        "run_id": "vec_mac_RBLX_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "RRC_SHORT": {
+      "best": {
+        "full_overrides": {
+          "TRC_LS_RATIO_MIN": 0.24,
+          "TRC_SCALP_START_SIZE": 396.0,
+          "DC_EDGE_SIZING_ENABLED": false,
+          "GOLDEN_RULE_REQUIRE_ACTIVATION": false,
+          "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED": true
+        },
+        "overrides": {
+          "TRC_LS_RATIO_MIN": 0.24,
+          "TRC_SCALP_START_SIZE": 396.0,
+          "DC_EDGE_SIZING_ENABLED": false,
+          "GOLDEN_RULE_REQUIRE_ACTIVATION": false,
+          "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED": true
+        },
+        "delta_vs_bh_per_mo_pct": 1.5651333333333335,
+        "gain_per_mo_pct": 1.5651333333333335,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 8.02,
+        "tim_pct": 39.58,
+        "run_id": "vec_mac_RRC_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "SCCO_SHORT": {
+      "best": {
+        "full_overrides": {
+          "DC_EDGE_SIZING_ENABLED": false,
+          "TRC_ROTATION_POSITION_SIZE": 750.0,
+          "ADX_REGIME_FILTER_ENABLED": false,
+          "TRC_DC_DAYTRADE_START_SIZE": 1782.0
+        },
+        "overrides": {
+          "DC_EDGE_SIZING_ENABLED": false,
+          "TRC_ROTATION_POSITION_SIZE": 750.0,
+          "ADX_REGIME_FILTER_ENABLED": false,
+          "TRC_DC_DAYTRADE_START_SIZE": 1782.0
+        },
+        "delta_vs_bh_per_mo_pct": 0.9748916666666667,
+        "gain_per_mo_pct": 0.9748916666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 6.76,
+        "tim_pct": 36.47,
+        "run_id": "vec_mac_SCCO_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "SLV_SHORT": {
+      "best": {
+        "full_overrides": {
+          "TRC_MAX_CONCURRENT_POSITIONS": 8.0,
+          "VERBOSE_STOPS": false,
+          "EXIT_HEDGE_ORPHAN_KILL_ENABLED": false,
+          "TRADIER_DC_DAYTRADE_TARGET_PCT": 0.0025
+        },
+        "overrides": {
+          "TRC_MAX_CONCURRENT_POSITIONS": 8.0,
+          "VERBOSE_STOPS": false,
+          "EXIT_HEDGE_ORPHAN_KILL_ENABLED": false,
+          "TRADIER_DC_DAYTRADE_TARGET_PCT": 0.0025
+        },
+        "delta_vs_bh_per_mo_pct": 0.31414166666666665,
+        "gain_per_mo_pct": 0.31414166666666665,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 6.94,
+        "tim_pct": 29.42,
+        "run_id": "vec_mac_SLV_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "SNDK_LONG": {
+      "best": {
+        "full_overrides": {
+          "EXIT_MARKET_SPIKE_REDUCE_ENABLED": false,
+          "DELTA_SERVICE_TRAILING_STOP": false,
+          "EOD_SLIM_RATIO_ENABLED": true,
+          "MTF_REQUIRE_ARMED_ANY": false,
+          "DD_KELLY_TIER1_PCT": 8.0,
+          "COOLDOWN_BARS_TRADIER": 12.8
+        },
+        "overrides": {
+          "EXIT_MARKET_SPIKE_REDUCE_ENABLED": false,
+          "DELTA_SERVICE_TRAILING_STOP": false,
+          "EOD_SLIM_RATIO_ENABLED": true,
+          "MTF_REQUIRE_ARMED_ANY": false,
+          "DD_KELLY_TIER1_PCT": 8.0,
+          "COOLDOWN_BARS_TRADIER": 12.8
+        },
+        "delta_vs_bh_per_mo_pct": 1.2601583333333333,
+        "gain_per_mo_pct": 1.2601583333333333,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 8.67,
+        "tim_pct": 19.86,
+        "run_id": "vec_mac_SNDK_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "STZ_SHORT": {
+      "best": {
+        "full_overrides": {
+          "WT_COMPOSITE_VETO_ENABLED_TRADIER": true,
+          "LR_BAND_HARVEST_HI": 0.22749999999999998,
+          "WT_CROSSUNDER_FINAL_ENABLED": false,
+          "PARITY_COMPARISON_MODE": true,
+          "DELTA_GATE_AUGMENT": false,
+          "SCALP_MIN_MOVE_PCT": 0.0,
+          "SCALP_V2_REDZONE_EXIT": false
+        },
+        "overrides": {
+          "WT_COMPOSITE_VETO_ENABLED_TRADIER": true,
+          "LR_BAND_HARVEST_HI": 0.22749999999999998,
+          "WT_CROSSUNDER_FINAL_ENABLED": false,
+          "PARITY_COMPARISON_MODE": true,
+          "DELTA_GATE_AUGMENT": false,
+          "SCALP_MIN_MOVE_PCT": 0.0,
+          "SCALP_V2_REDZONE_EXIT": false
+        },
+        "delta_vs_bh_per_mo_pct": 1.1269333333333333,
+        "gain_per_mo_pct": 1.1269333333333333,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 3.93,
+        "tim_pct": 39.88,
+        "run_id": "vec_mac_STZ_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "TSLA_SHORT": {
+      "best": {
+        "full_overrides": {
+          "DC_TIER4_BAR_MATURITY_BLOCK": 0.35,
+          "TRA_LONG_ONLY": false,
+          "REGIME_RANGING_SLOT_RESERVE_PCT": 0.3,
+          "BB_RSI_STOCH_SCALP_SCORE": 6,
+          "SATOSHIT_SHORT_BB_PCTB_MIN": 0.4125
+        },
+        "overrides": {
+          "DC_TIER4_BAR_MATURITY_BLOCK": 0.35,
+          "TRA_LONG_ONLY": false,
+          "REGIME_RANGING_SLOT_RESERVE_PCT": 0.3,
+          "BB_RSI_STOCH_SCALP_SCORE": 6,
+          "SATOSHIT_SHORT_BB_PCTB_MIN": 0.4125
+        },
+        "delta_vs_bh_per_mo_pct": 6.809514346681542,
+        "gain_per_mo_pct": 6.809514346681542,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 14.0,
+        "tim_pct": 59.0,
+        "run_id": "vec_mac_TSLA_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "TSM_LONG": {
+      "best": {
+        "full_overrides": {
+          "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED": false,
+          "TRADIER_REENTRY_HARDCOOL_MIN": 22.5,
+          "GAP_FILL_MAX_GAP_PCT": 3.75,
+          "TRADIER_MI_ENTRY_ENABLED_TRADIER": true
+        },
+        "overrides": {
+          "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED": false,
+          "TRADIER_REENTRY_HARDCOOL_MIN": 22.5,
+          "GAP_FILL_MAX_GAP_PCT": 3.75,
+          "TRADIER_MI_ENTRY_ENABLED_TRADIER": true
+        },
+        "delta_vs_bh_per_mo_pct": 6.82415049986914,
+        "gain_per_mo_pct": 6.82415049986914,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 39.7,
+        "tim_pct": 39.7,
+        "run_id": "vec_mac_TSM_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "USAR_SHORT": {
+      "best": {
+        "full_overrides": {
+          "OPTIONS_CONTINUOUS_SECTOR_GATE": false,
+          "TRADIER_MI_SUBSIGNAL_MIN_COUNT": 4.800000000000001,
+          "MARKET_QUALITY_SCORE_ENABLED_TRADIER": false,
+          "ATR_ADAPTIVE_SIZING_ENABLED": true,
+          "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD": 16.0,
+          "DELTA_EXIT_WT_CROSS": false
+        },
+        "overrides": {
+          "OPTIONS_CONTINUOUS_SECTOR_GATE": false,
+          "TRADIER_MI_SUBSIGNAL_MIN_COUNT": 4.800000000000001,
+          "MARKET_QUALITY_SCORE_ENABLED_TRADIER": false,
+          "ATR_ADAPTIVE_SIZING_ENABLED": true,
+          "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD": 16.0,
+          "DELTA_EXIT_WT_CROSS": false
+        },
+        "delta_vs_bh_per_mo_pct": 1.086725,
+        "gain_per_mo_pct": 1.086725,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 9.74,
+        "tim_pct": 33.47,
+        "run_id": "vec_mac_USAR_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "UUUU_SHORT": {
+      "best": {
+        "full_overrides": {
+          "REENTRY_MANDATORY": false,
+          "DD_KELLY_TIER3_PCT": 6.5,
+          "BB_PULLBACK_GATE_ENABLED": false,
+          "SATOSHIT_LONG_BB_PCTB_MAX": 0.325,
+          "PEAK_GIVEBACK_DROP_PCT": 1.625,
+          "TRC_SWING_LONG_BUDGET": 77500.0
+        },
+        "overrides": {
+          "REENTRY_MANDATORY": false,
+          "DD_KELLY_TIER3_PCT": 6.5,
+          "BB_PULLBACK_GATE_ENABLED": false,
+          "SATOSHIT_LONG_BB_PCTB_MAX": 0.325,
+          "PEAK_GIVEBACK_DROP_PCT": 1.625,
+          "TRC_SWING_LONG_BUDGET": 77500.0
+        },
+        "delta_vs_bh_per_mo_pct": 1.2847166666666667,
+        "gain_per_mo_pct": 1.2847166666666667,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 8.07,
+        "tim_pct": 24.48,
+        "run_id": "vec_mac_UUUU_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "VLO_LONG": {
+      "best": {
+        "full_overrides": {
+          "STDEV_BREAKOUT_RETEST_SIZE_MULT": 1.2000000000000002,
+          "HTF_REGIME_SCALE_IN": false,
+          "ABLATION_DISABLE_AGGRESSIVE_HEDGE": true,
+          "LIVE_ENTRY_ENGINE_DC_ENABLED": false,
+          "STOP_MAJOR_LOSS_BLOCK_ENABLED": false,
+          "DC_WIDTH_CAP_MULT": 16.0,
+          "GR_BB_EXTENDED_LONG": 0.22499999999999998
+        },
+        "overrides": {
+          "STDEV_BREAKOUT_RETEST_SIZE_MULT": 1.2000000000000002,
+          "HTF_REGIME_SCALE_IN": false,
+          "ABLATION_DISABLE_AGGRESSIVE_HEDGE": true,
+          "LIVE_ENTRY_ENGINE_DC_ENABLED": false,
+          "STOP_MAJOR_LOSS_BLOCK_ENABLED": false,
+          "DC_WIDTH_CAP_MULT": 16.0,
+          "GR_BB_EXTENDED_LONG": 0.22499999999999998
+        },
+        "delta_vs_bh_per_mo_pct": 1.5044833333333332,
+        "gain_per_mo_pct": 1.5044833333333332,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 6.16,
+        "tim_pct": 39.83,
+        "run_id": "vec_mac_VLO_LONG_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    },
+    "WDAY_SHORT": {
+      "best": {
+        "full_overrides": {
+          "EXIT_STDEV_BREAKOUT_FAIL_ENABLED": false,
+          "OPTIONS_BUY_REQUIRE_D_ALIGN": false,
+          "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED": false,
+          "LR_PCTB_D_LONG_ENTRY_ENABLED": true,
+          "TRADIER_DC_DAYTRADE_TARGET_PCT": 0.011000000000000001,
+          "SYMBOL_PERF_MIN_MULT": 0.017499999999999998,
+          "BB_SQUEEZE_ENTRY_ENABLED": false
+        },
+        "overrides": {
+          "EXIT_STDEV_BREAKOUT_FAIL_ENABLED": false,
+          "OPTIONS_BUY_REQUIRE_D_ALIGN": false,
+          "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED": false,
+          "LR_PCTB_D_LONG_ENTRY_ENABLED": true,
+          "TRADIER_DC_DAYTRADE_TARGET_PCT": 0.011000000000000001,
+          "SYMBOL_PERF_MIN_MULT": 0.017499999999999998,
+          "BB_SQUEEZE_ENTRY_ENABLED": false
+        },
+        "delta_vs_bh_per_mo_pct": 0.47254166666666664,
+        "gain_per_mo_pct": 0.47254166666666664,
+        "window_class": "RESEARCH_12M",
+        "max_dd_pct": 16.8,
+        "tim_pct": 41.0,
+        "run_id": "vec_mac_WDAY_SHORT_20260810",
+        "window_days": 365,
+        "months": 12
+      }
+    }
+  },
+  "generated_at": "2026-08-10T00:14:47Z",
+  "source": "vector_results.json Mac preliminary 120d"
+}

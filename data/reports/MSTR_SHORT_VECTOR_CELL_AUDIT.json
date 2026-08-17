@@ -1,0 +1,576 @@
+{
+  "allowed_isolated_fingerprint_plateau_groups": 0,
+  "allowed_isolated_metric_plateau_groups": 0,
+  "campaign_must_stop": true,
+  "contract": "STRICT_PER_KEY_UNIQUE_METRIC_AND_ACTION_WITH_ISOLATED_TWO_VALUE_PLATEAU_ONLY",
+  "exact_completion_credit": false,
+  "fingerprint_collision_groups": 19,
+  "generated_at": "2026-08-01T22:15:47Z",
+  "matrix_fill_allowed": false,
+  "metric_collision_groups": 18,
+  "passed": 7,
+  "per_family": {
+    "ALIGNMENT_GATE": {
+      "QUARANTINED": 4
+    },
+    "ALIGNMENT_GATE_TOTAL": {
+      "QUARANTINED": 4
+    },
+    "AUGMENT_ONLY_WHEN": {
+      "QUARANTINED": 1
+    },
+    "BAND_SLOPE_SIZING": {
+      "QUARANTINED": 21
+    },
+    "BEAR_MARKET_MODE": {
+      "QUARANTINED": 1
+    },
+    "BREAKOUT_SIZE_EMA200": {
+      "PASS": 2,
+      "QUARANTINED": 10
+    },
+    "CLENOW": {
+      "QUARANTINED": 1
+    },
+    "CLENOW_MIN_SCORE": {
+      "QUARANTINED": 5
+    },
+    "CLENOW_POSITION_SIZE": {
+      "QUARANTINED": 5
+    },
+    "CLENOW_REGIME_FILTER": {
+      "QUARANTINED": 2
+    },
+    "COMBINED_STOCH_GATE": {
+      "QUARANTINED": 4
+    },
+    "CONGRESS_CONVICTION_MIN": {
+      "QUARANTINED": 2
+    },
+    "CONGRESS_CONVICTION_SIZING": {
+      "QUARANTINED": 4
+    },
+    "CONNORS_RSI": {
+      "QUARANTINED": 1
+    },
+    "CONNORS_RSI_MAX": {
+      "QUARANTINED": 5
+    },
+    "CONNORS_RSI_POSITION": {
+      "QUARANTINED": 3
+    },
+    "CONVICTION_SHORT": {
+      "QUARANTINED": 4
+    },
+    "CONVICTION_SIZING": {
+      "QUARANTINED": 6
+    },
+    "COUNTER_TREND_SMA200": {
+      "QUARANTINED": 1
+    },
+    "CT_WT_VELOCITY": {
+      "QUARANTINED": 8
+    },
+    "DC_BREAK_GR": {
+      "QUARANTINED": 10
+    },
+    "DC_DAYTRADE": {
+      "QUARANTINED": 1
+    },
+    "DC_DAYTRADE_BUFFER": {
+      "QUARANTINED": 5
+    },
+    "DC_DAYTRADE_K": {
+      "QUARANTINED": 5
+    },
+    "DC_DAYTRADE_MAX": {
+      "QUARANTINED": 10
+    },
+    "DC_DAYTRADE_REQUIRE": {
+      "QUARANTINED": 2
+    },
+    "DC_DAYTRADE_SHORT": {
+      "QUARANTINED": 5
+    },
+    "DC_DAYTRADE_START": {
+      "QUARANTINED": 5
+    },
+    "DC_DAYTRADE_STOCH": {
+      "QUARANTINED": 2
+    },
+    "DC_DAYTRADE_TARGET": {
+      "QUARANTINED": 5
+    },
+    "DC_ENTRY_VETO": {
+      "QUARANTINED": 1
+    },
+    "DC_POSITION_ENTRY": {
+      "QUARANTINED": 4
+    },
+    "DELTA_PYRAMID_ACCEL": {
+      "QUARANTINED": 5
+    },
+    "DELTA_PYRAMID_MIN": {
+      "QUARANTINED": 5
+    },
+    "DG_DAILY_GAIN": {
+      "QUARANTINED": 4
+    },
+    "DG_HIGH_VOLATILITY": {
+      "QUARANTINED": 4
+    },
+    "DG_HTF_ALIGN": {
+      "QUARANTINED": 3
+    },
+    "DG_MOMENTUM_BLOCK": {
+      "QUARANTINED": 8
+    },
+    "DG_OPPOSITE_SIDE": {
+      "QUARANTINED": 4
+    },
+    "DG_SMA200_SHORT": {
+      "QUARANTINED": 1
+    },
+    "DG_WT_3M": {
+      "QUARANTINED": 1
+    },
+    "EMA_9_21": {
+      "QUARANTINED": 1
+    },
+    "ENTRY_VOL_MIN": {
+      "QUARANTINED": 4
+    },
+    "EOD_RATIO_ENFORCE": {
+      "QUARANTINED": 1
+    },
+    "EOD_SLIM_RATIO": {
+      "QUARANTINED": 1
+    },
+    "EP_POSITION_SIZE": {
+      "QUARANTINED": 4
+    },
+    "EXTREME_OB_BB": {
+      "QUARANTINED": 4
+    },
+    "EXTREME_OB_RSI": {
+      "QUARANTINED": 6
+    },
+    "EXTREME_OS_BB": {
+      "QUARANTINED": 2
+    },
+    "EXTREME_OS_RSI": {
+      "QUARANTINED": 8
+    },
+    "FH_MOMENTUM": {
+      "QUARANTINED": 1
+    },
+    "FH_MOMENTUM_DC": {
+      "QUARANTINED": 2
+    },
+    "FH_MOMENTUM_EVAL": {
+      "QUARANTINED": 3
+    },
+    "FH_MOMENTUM_MFI": {
+      "QUARANTINED": 2
+    },
+    "FH_MOMENTUM_MIN": {
+      "QUARANTINED": 5
+    },
+    "FH_MOMENTUM_POSITION": {
+      "QUARANTINED": 5
+    },
+    "FROZEN_ABSOLUTE_FLOOR": {
+      "QUARANTINED": 4
+    },
+    "FUNDING_GATE_ENABLED": {
+      "QUARANTINED": 1
+    },
+    "FUNDING_GATE_PC": {
+      "QUARANTINED": 4
+    },
+    "FUNDING_GATE_TRADIER": {
+      "QUARANTINED": 6
+    },
+    "GAP_FILL_MAX": {
+      "QUARANTINED": 5
+    },
+    "GAP_FILL_MIN": {
+      "QUARANTINED": 5
+    },
+    "GAP_FILL_POSITION": {
+      "QUARANTINED": 5
+    },
+    "GR_HTF_DIRECT": {
+      "QUARANTINED": 1
+    },
+    "HEDGE_MODE_TRADIER": {
+      "QUARANTINED": 1
+    },
+    "HTF_ALIGN_REQUIRED": {
+      "QUARANTINED": 2
+    },
+    "HTF_W_M": {
+      "QUARANTINED": 3
+    },
+    "K_ZONE_VETO": {
+      "QUARANTINED": 1
+    },
+    "LH_HL_FILTER": {
+      "QUARANTINED": 7
+    },
+    "LOCAL_EXTREMES_MIN": {
+      "QUARANTINED": 8
+    },
+    "LR_BAND_ENTRY": {
+      "QUARANTINED": 3
+    },
+    "LR_BAND_LADDER": {
+      "QUARANTINED": 11
+    },
+    "LR_BAND_REGIME": {
+      "QUARANTINED": 6
+    },
+    "LR_BAND_SIZE": {
+      "QUARANTINED": 12
+    },
+    "LR_BAND_SLOPE": {
+      "QUARANTINED": 4
+    },
+    "LR_PCTB_D": {
+      "QUARANTINED": 4
+    },
+    "LS_RATIO_ENFORCE": {
+      "QUARANTINED": 1
+    },
+    "LS_RATIO_MAX": {
+      "QUARANTINED": 4
+    },
+    "LS_RATIO_MIN": {
+      "QUARANTINED": 4
+    },
+    "LUNCH_DEADZONE": {
+      "QUARANTINED": 1
+    },
+    "MARKET_QUALITY_SCORE": {
+      "QUARANTINED": 1
+    },
+    "MAX_CONCURRENT_POSITIONS": {
+      "QUARANTINED": 4
+    },
+    "MAX_DAILY_LOSS": {
+      "QUARANTINED": 4
+    },
+    "MAX_ORDER_VALUE": {
+      "QUARANTINED": 4
+    },
+    "MAX_POSITION_SIZE": {
+      "QUARANTINED": 4
+    },
+    "MAX_SYMBOL_VALUE": {
+      "QUARANTINED": 4
+    },
+    "MINERVINI": {
+      "QUARANTINED": 1
+    },
+    "MINERVINI_MAX_HOLD": {
+      "QUARANTINED": 5
+    },
+    "MINERVINI_POSITION_SIZE": {
+      "QUARANTINED": 5
+    },
+    "MINERVINI_TARGET": {
+      "QUARANTINED": 5
+    },
+    "MIN_HOLD_BARS": {
+      "QUARANTINED": 4
+    },
+    "MIN_HOLD_MINUTES": {
+      "QUARANTINED": 4
+    },
+    "MI_ENTRY_ENABLED": {
+      "PASS": 1
+    },
+    "MOMENTUM_FADE_BODY": {
+      "QUARANTINED": 5
+    },
+    "MOMENTUM_FADE_ENABLED": {
+      "QUARANTINED": 1
+    },
+    "MOMENTUM_FADE_K": {
+      "QUARANTINED": 2
+    },
+    "MOMENTUM_FADE_VOL": {
+      "QUARANTINED": 5
+    },
+    "MTF_ARROW_CONFIRM": {
+      "QUARANTINED": 4
+    },
+    "MTF_ARROW_ENTRY": {
+      "QUARANTINED": 1
+    },
+    "MTF_ARROW_SIZE": {
+      "QUARANTINED": 8
+    },
+    "MTF_ARROW_SLOPE": {
+      "QUARANTINED": 4
+    },
+    "MTS_BOTTOM_MIN": {
+      "QUARANTINED": 4
+    },
+    "MTS_GATE_ENABLED": {
+      "QUARANTINED": 1
+    },
+    "OBLIGATORY_SECTOR_HEDGE": {
+      "QUARANTINED": 8
+    },
+    "OI_CONFIRM_ENABLED": {
+      "QUARANTINED": 1
+    },
+    "OI_CONFIRM_MIN": {
+      "QUARANTINED": 10
+    },
+    "OI_CONFIRM_TRADIER": {
+      "QUARANTINED": 1
+    },
+    "ORB_MAX_HOLD": {
+      "QUARANTINED": 5
+    },
+    "ORB_POSITION_SIZE": {
+      "QUARANTINED": 5
+    },
+    "ORB_SHORT_BUDGET": {
+      "QUARANTINED": 5
+    },
+    "OVERNIGHT_GAP_HEDGE": {
+      "QUARANTINED": 11
+    },
+    "PARABOLIC_BB_PCT": {
+      "QUARANTINED": 8
+    },
+    "PARABOLIC_RSI_1H": {
+      "QUARANTINED": 8
+    },
+    "PARABOLIC_RSI_4H": {
+      "QUARANTINED": 7
+    },
+    "PRICE_CROSS_BACK": {
+      "QUARANTINED": 8
+    },
+    "RATIO_MULTIPLIER_TRADIER": {
+      "QUARANTINED": 4
+    },
+    "RECOVERY_AUGMENT": {
+      "QUARANTINED": 1
+    },
+    "RECOVERY_AUGMENT_BAND": {
+      "QUARANTINED": 5
+    },
+    "RECOVERY_AUGMENT_MAX": {
+      "QUARANTINED": 5
+    },
+    "RECOVERY_AUGMENT_REQUIRE": {
+      "QUARANTINED": 2
+    },
+    "RECOVERY_AUGMENT_SIZE": {
+      "QUARANTINED": 5
+    },
+    "RED_ZONE_TRADIER": {
+      "QUARANTINED": 14
+    },
+    "ROTATION_POSITION_SIZE": {
+      "QUARANTINED": 5
+    },
+    "ROTATION_SMA200_FILTER": {
+      "QUARANTINED": 2
+    },
+    "RSI2": {
+      "QUARANTINED": 1
+    },
+    "RSI2_POSITION_SIZE": {
+      "QUARANTINED": 5
+    },
+    "RVOL_MOMENTUM": {
+      "QUARANTINED": 4
+    },
+    "RZ_REQUIRE_STRUCT": {
+      "QUARANTINED": 1
+    },
+    "RZ_ZSCORE_ZONE": {
+      "QUARANTINED": 1
+    },
+    "SCALP_MAX_POSITION": {
+      "QUARANTINED": 4
+    },
+    "SCALP_MIN_MOVE": {
+      "QUARANTINED": 1
+    },
+    "SCALP_MIN_REL": {
+      "QUARANTINED": 4
+    },
+    "SCALP_START_SIZE": {
+      "QUARANTINED": 4
+    },
+    "SCALP_TARGET": {
+      "QUARANTINED": 4
+    },
+    "SECTOR_LS_RATIO": {
+      "QUARANTINED": 1
+    },
+    "SENTIMENT_REBALANCER": {
+      "QUARANTINED": 1
+    },
+    "SENTIMENT_REBAL_AUGMENT": {
+      "QUARANTINED": 4
+    },
+    "SMA_FILTER_PERIOD": {
+      "QUARANTINED": 4
+    },
+    "SMFI": {
+      "QUARANTINED": 1
+    },
+    "SMFI_MAX_HOLD": {
+      "QUARANTINED": 3
+    },
+    "SMFI_POSITION_SIZE": {
+      "QUARANTINED": 5
+    },
+    "SMFI_SHORT_BUDGET": {
+      "QUARANTINED": 5
+    },
+    "SPIKE_FADE_MAX": {
+      "QUARANTINED": 3
+    },
+    "SPIKE_FADE_POSITION": {
+      "QUARANTINED": 5
+    },
+    "SPIKE_FADE_THRESHOLD": {
+      "QUARANTINED": 5
+    },
+    "STDEV_BOUNCE": {
+      "QUARANTINED": 1
+    },
+    "STDEV_BOUNCE_RVOL": {
+      "QUARANTINED": 5
+    },
+    "STDEV_BREAKOUT": {
+      "QUARANTINED": 1
+    },
+    "STDEV_BREAKOUT_MAX": {
+      "QUARANTINED": 3
+    },
+    "STDEV_BREAKOUT_RETEST": {
+      "PASS": 1,
+      "QUARANTINED": 7
+    },
+    "STDEV_BREAKOUT_RVOL": {
+      "QUARANTINED": 5
+    },
+    "STRUCTURAL_RANGE_SHIFT": {
+      "QUARANTINED": 11
+    },
+    "SWING_SHORT_BUDGET": {
+      "QUARANTINED": 5
+    },
+    "SYMBOL_PERF_MAX": {
+      "QUARANTINED": 5
+    },
+    "SYMBOL_PERF_MIN": {
+      "QUARANTINED": 5
+    },
+    "TF_ALIGNMENT_MIN": {
+      "QUARANTINED": 2
+    },
+    "TF_FOCUS_WEIGHT": {
+      "QUARANTINED": 4
+    },
+    "TIER_A_MIN": {
+      "QUARANTINED": 5
+    },
+    "TRADIER_OI_INJECT": {
+      "QUARANTINED": 13
+    },
+    "TRADIER_RATIO_BOOST": {
+      "QUARANTINED": 4
+    },
+    "TRADIER_RATIO_REQUIRE": {
+      "QUARANTINED": 1
+    },
+    "TRADIER_RSI_SHORT": {
+      "QUARANTINED": 12
+    },
+    "TREND_GATES": {
+      "QUARANTINED": 1
+    },
+    "TR_ADX4H": {
+      "QUARANTINED": 4
+    },
+    "TR_ADX4H_BOYCOTT": {
+      "QUARANTINED": 4
+    },
+    "TR_ADX4H_GATE": {
+      "QUARANTINED": 1
+    },
+    "TR_BBWIDTH4H_GATE": {
+      "QUARANTINED": 1
+    },
+    "TR_CHOP4H_GATE": {
+      "QUARANTINED": 1
+    },
+    "TR_DCWIDTH4H_SHORT": {
+      "QUARANTINED": 6
+    },
+    "VIX_REGIME_FILTER": {
+      "QUARANTINED": 1
+    },
+    "VIX_VOLATILITY_REGIME": {
+      "QUARANTINED": 1
+    },
+    "VWAP_FILTER": {
+      "QUARANTINED": 1
+    },
+    "WT_3M_FORCE": {
+      "PASS": 3,
+      "QUARANTINED": 12
+    },
+    "WT_COMPOSITE_SCORING": {
+      "QUARANTINED": 1
+    },
+    "WT_COMPOSITE_VETO": {
+      "QUARANTINED": 1
+    },
+    "WT_DC_ENTRY": {
+      "QUARANTINED": 2
+    },
+    "WT_D_BOUNCE": {
+      "QUARANTINED": 10
+    },
+    "WT_FORCE_OPEN": {
+      "QUARANTINED": 2
+    },
+    "ZONE_MID": {
+      "QUARANTINED": 2
+    }
+  },
+  "per_key": {
+    "MSTR_SHORT": {
+      "PASS": 7,
+      "QUARANTINED": 740
+    }
+  },
+  "promotion_allowed": false,
+  "quarantined": 740,
+  "raw_evidence_is_unchanged": true,
+  "raw_rows_read": 747,
+  "reason_counts": {
+    "DUPLICATE_ACTION_FINGERPRINT": 739,
+    "DUPLICATE_RESULT_NUMBER": 739,
+    "STATUS_INERT": 537,
+    "STATUS_ZERO_TRADE": 1,
+    "ZERO_REAL_CLOSES": 1
+  },
+  "rows": 747,
+  "schema_version": 1,
+  "source_ledgers": [
+    "data/reports/vector_approx_scalar_20260801/MSTR_SHORT.jsonl"
+  ]
+}

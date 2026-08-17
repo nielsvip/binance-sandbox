@@ -294,9 +294,16 @@ def _compress_htf(data: ExecutionData, tf: str) -> HTFData:
     z = data.z
     idx = data.full_indices
     availability = np.asarray(z[f"timestamp_{tf}"], dtype=np.int64)[idx]
-    changed = np.ones(len(availability), dtype=bool)
-    changed[1:] = availability[1:] != availability[:-1]
-    changed &= availability > 0
+    # Execution rows are ordered by observation availability, not necessarily
+    # by their original source-row timestamp. A synthetic row released at a
+    # parent close can therefore appear after a native row while carrying an
+    # older completed-parent timestamp. That older parent was already known;
+    # replaying it makes stateful HTF books move backwards and is non-causal.
+    # Emit only a strictly newer completed-parent identity.
+    prior_max = np.maximum.accumulate(
+        np.concatenate((np.array([0], dtype=np.int64), availability[:-1]))
+    )
+    changed = (availability > 0) & (availability > prior_max)
     event_index = np.flatnonzero(changed)
     full_event = idx[event_index]
     if len(event_index) < 30:
@@ -1512,8 +1519,8 @@ def main() -> int:
         "--select-reentry",
         help="research replay only: freeze this exact reentry label instead of re-optimizing",
     )
-    ap.add_argument("--cost-bps", type=float, default=5.0)
-    ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument("--cost-bps", type=float, default=0.0)
+    ap.add_argument("--slippage-bps", type=float, default=2.5)
     ap.add_argument("--output-root", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--allow-invalid-diagnostic", action="store_true")
     ap.add_argument("--quick", action="store_true")

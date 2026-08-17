@@ -36,6 +36,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
+# NO-LIES mandate: every Sharpe emitted must route through metrics_guard
+try:
+    import metrics_guard
+except ImportError:
+    metrics_guard = None
+
 
 def bs_d1(S, K, T, r, sigma):
     if sigma <= 0 or T <= 0:
@@ -654,6 +660,7 @@ def main():
             csp_summaries.append(csp_summary)
             per_sym_data["csp"] = csp_summary
             per_sym_data["csp_trades"] = csp_res.get("trades", [])[:5]
+            per_sym_data["csp_all_trades"] = csp_res.get("trades", [])
         if args.strategy in ("spread", "both", "all"):
             spread_res = simulate_bull_put_spread(sym, bars, args.spread_short_delta, args.dte, args.spread_width, args.risk_free, args.iv_markup, args.profit_target, args.max_hold_days, args.strike_breach_pct, args.gap_from_entry_pct, args.iv_rank_min, vol_window=args.vol_window, static_iv=args.static_iv, account_value=args.account_value, max_pos_pct=args.max_pos_pct)
             spread_summary = summarize(spread_res.get("trades", []), "BULL_PUT_SPREAD", sym)
@@ -666,6 +673,7 @@ def main():
         call_summaries.append(call_summary)
         per_sym_data["buy_call"] = call_summary
         per_sym_data["buy_call_trades"] = call_res.get("trades", [])[:5]
+        per_sym_data["buy_call_all_trades"] = call_res.get("trades", [])
         if args.strategy == "all":
             stock_res = simulate_buy_stock_strategy(sym, bars, hold_days=args.dte)
             stock_summary = summarize(stock_res.get("trades", []), "BUY_STOCK", sym)
@@ -727,6 +735,58 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         json.dump(results, f, indent=2, default=str)
+    if metrics_guard is not None:
+        try:
+            # Build honest returns_by_sym from the full trade lists we persisted (guard requires per-trade returns)
+            rbs: Dict[str, List[float]] = {}
+            for sym, per in results.get("per_symbol", {}).items():
+                # Prefer CSP full list, fallback to spread, then buy_call for baseline
+                all_trades = None
+                if per.get("csp_all_trades"):
+                    all_trades = per.get("csp_all_trades")
+                elif per.get("spread_all_trades"):
+                    all_trades = per.get("spread_all_trades")
+                elif per.get("buy_call_all_trades"):
+                    all_trades = per.get("buy_call_all_trades")
+                if all_trades and isinstance(all_trades, list) and len(all_trades) > 0 and isinstance(all_trades[0], dict) and "pnl_pct" in all_trades[0]:
+                    rbs[sym] = [float(t["pnl_pct"]) for t in all_trades]
+            if rbs:
+                years_guess = max(1.0, total_bars / (252*26)) if total_bars else 2.0
+                # Guard enforces NO-LIES: per-trade pool_sharpe, non-annualized, qualified label
+                try:
+                    all_rets = [v for rets in rbs.values() for v in rets]
+                    ps = metrics_guard.pool_sharpe(all_rets)
+                    ss = metrics_guard.sym_sharpe_from_groups(rbs)
+                    formatted_pool = metrics_guard.validate_and_format_sharpe(value=ps, label="pool_sharpe", n_syms=len(rbs), years=years_guess, trades=len(all_rets), mode="stocks")
+                    formatted_sym = metrics_guard.validate_and_format_sharpe(value=ss, label="sym_sharpe", n_syms=len(rbs), years=years_guess, trades=len(all_rets), mode="stocks")
+                    print(f"\n[metrics_guard] {formatted_pool} | {formatted_sym}")
+                    canon = metrics_guard.standard_metric_set(rbs, years_guess)
+                    print(f"[metrics_guard] {metrics_guard.format_standard_set(canon, mode='stocks')}")
+                    # Sanctioned CSV write — includes all 9 canonical cols
+                    csv_path = Path("data/sweep_results/options_csp_backtest_canonical.csv")
+                    # Build row with canonical required cols
+                    dd_est = max((abs(s.get("max_dd_pct_of_capital",0)) for s in csp_summaries), default=0)
+                    row = {
+                        "pool_sharpe": round(ps,4),
+                        "sym_sharpe": round(ss,4),
+                        "avg_gain_trade": round(canon["avg_gain_trade"],4),
+                        "gain_per_yr": round(canon["gain_per_yr"],2),
+                        "gain_sym_yr": round(canon["gain_sym_yr"],4),
+                        "trades": int(canon["trades"]),
+                        "max_dd_pct": round(dd_est,2),
+                        "n_syms": int(canon["n_syms"]),
+                        "years": round(years_guess,2),
+                        "label": f"options_csp_backtest_{len(rbs)}syms",
+                        "mode": "stocks",
+                        "strategy": "CSP",
+                    }
+                    metrics_guard.write_sharpe_row(csv_path=csv_path, row=row, mode="stocks")
+                    print(f"[metrics_guard] canonical CSV appended → {csv_path}")
+                except metrics_guard.FakeMetricRefused as e:
+                    print(f"[metrics_guard] REFUSED (honest): {e}", file=sys.stderr)
+        except Exception as e:
+            import traceback
+            print(f"[metrics_guard] reporting error: {e}\n{traceback.format_exc()}", file=sys.stderr)
     # Print summary
     print(f"\n{'=' * 90}")
     print(f"CSP BACKTEST SUMMARY — {results['summary']['label']}")

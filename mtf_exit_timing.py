@@ -67,6 +67,47 @@ def event_within_lookback(
     return 0 <= age <= window
 
 
+def dc_reject_step(
+    outside_ts: float,
+    *,
+    now_ts: float,
+    price: float,
+    band: float,
+    lookback_bars: int,
+    timeframe: Any,
+    is_long: bool,
+) -> tuple[float, bool]:
+    """Advance the live MTF Donchian outside/re-cross state by one tick.
+
+    The band must already be the latest causally available completed-parent
+    channel.  LONG exits arm above the upper band and fire after moving back
+    below it; SHORT exits are the exact side mirror.
+    """
+    try:
+        prior = float(outside_ts or 0)
+        now = float(now_ts)
+        px = float(price)
+        edge = float(band)
+    except (TypeError, ValueError):
+        return float(outside_ts or 0), False
+    if now <= 0 or edge <= 0:
+        return prior, False
+    outside = px > edge if is_long else px < edge
+    recross = px < edge if is_long else px > edge
+    if outside:
+        return now, False
+    if recross and event_within_lookback(
+        now,
+        prior,
+        lookback_bars,
+        timeframe,
+    ):
+        return 0.0, True
+    if recross:
+        return 0.0, False
+    return prior, False
+
+
 def position_open_is_eligible(position_open_ts: float, min_open_ts: float) -> bool:
     """Apply the MTF restart/simulation-start gate to a position open time."""
     try:

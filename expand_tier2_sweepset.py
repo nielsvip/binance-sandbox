@@ -65,6 +65,17 @@ def derive(name, default):
     return None
 
 
+def typed_default(meta):
+    """Restore the dataclass type after JSON transport."""
+    default = meta.get("default")
+    declared = str(meta.get("type") or "").lower()
+    if declared == "float" and isinstance(default, (int, float)) and not isinstance(default, bool):
+        return float(default)
+    if declared == "int" and isinstance(default, (int, float)) and not isinstance(default, bool):
+        return int(default)
+    return default
+
+
 def main(mode):
     mp = BASE / f"data/param_sweep_manifest_{mode}.json"
     man = json.loads(mp.read_text())
@@ -78,8 +89,9 @@ def main(mode):
             continue
         if INFRA.search(name) and not re.search(r"LONG|SHORT|HEDGE|ENTRY|EXIT|GATE|STOP|REENTRY|AUGMENT", name, re.I):
             continue
-        proposed = v.get("test_values") or derive(name, v.get("default"))
-        validation = validate_test_values(name, v.get("default"), proposed)
+        default = typed_default(v)
+        proposed = v.get("test_values") or derive(name, default)
+        validation = validate_test_values(name, default, proposed)
         grid = executable_values(validation)
         v["range_validation"] = validation
         if not grid:

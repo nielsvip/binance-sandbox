@@ -1,0 +1,17 @@
+ID,NAME,DATE,STATUS,SCOPE,RESULT,DETAIL
+BC_160,WT_2of3_EXIT_REENTRY,2026-03-30,ACTIVE,tradier+crypto,"+1562% stocks, +5397% crypto","Exit 2/3 WT against, reentry 2/3 WT favor, unlimited reentries"
+KILLED,OBLIGATORY_HEDGE,2026-03-30,DEAD,ez_manage,15378 rogue opens,3 instances killed: 2 loops + execute_now inline
+KILLED,CROSS_ACCOUNT_HEDGE,2026-03-30,DEAD,ez_manage,Spreads bad to other accounts,Launch killed line 22432
+KILLED,OUTLIER_HUNTER,2026-03-30,DEAD,ez_manage,Injects tradeable_keys,Launch killed line 22347
+KILLED,DC_BREAKOUT_HEDGE,2026-03-30,DEAD,ez_manage,Part of cascade,Launch killed
+KILLED,BOUNCE_TOP_EXIT,2026-03-30,DEAD,config+tradier+ez,Pct stop disguise,Hardcoded False
+KILLED,HARD_STOP_-0.2%,2026-03-30,DEAD,ez_manage,Pct stop on outlier,Code removed
+KILLED,RATIO_EMERGENCY_EXIT,2026-03-30,DEAD,config+ez,Closes losers,Impossible config values
+KILLED,MOMENTUM_RIDER,2026-03-30,DEAD,config,Bypassed all guards,DISABLED
+KILLED,YOUTUBE_8_STRATEGIES,2026-03-30,DEAD,config_tradier,0 trades all broken,See CLAUDE.md prohibition
+ABLATION,RE_BYPS_3pct_gate,2026-03-30,NO_IMPACT,crypto,+214% both,Gate doesn't affect empty-pos reentry
+ABLATION,MAX_3_REENTRIES,2026-03-30,KILLS_SYSTEM,crypto,+0.9% vs +214%,NEVER cap reentries
+ABLATION,MAX_50_REENTRIES,2026-03-30,KILLS_SYSTEM,crypto,+13.5% vs +214%,Even 50 is too few
+ABLATION,COOLDOWN_600s,2026-03-30,SLIGHT_LOSS,crypto,+206% vs +214%,10min ok but suboptimal
+ABLATION,COOLDOWN_1800s,2026-03-30,MODERATE_LOSS,crypto,+174% vs +214%,30min too slow
+ABLATION,NO_REENTRIES,2026-03-30,KILLS_SYSTEM,crypto,+0.4% vs +214%,Reentry IS the system

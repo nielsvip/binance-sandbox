@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.niels.trb-operator-watchdog</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/niels/Documents/binance/tools/trb_operator_watchdog.sh</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/niels/Documents/binance</string>
+  <key>RunAtLoad</key><true/>
+  <key>StartInterval</key><integer>60</integer>
+  <key>StandardOutPath</key><string>/Users/niels/Documents/binance/data/logs/trb_operator/watchdog.stdout.log</string>
+  <key>StandardErrorPath</key><string>/Users/niels/Documents/binance/data/logs/trb_operator/watchdog.stderr.log</string>
+  <key>ProcessType</key><string>Background</string>
+</dict>
+</plist>

@@ -1,0 +1,108 @@
+============================================================================
+PROPOSAL: Crypto-major USDC inclusion in v8_quick sweep harness
+Created:  2026-04-30
+Author:   sector_classify_widen_crypto agent
+Status:   PROPOSAL — DO NOT APPLY without user review
+============================================================================
+
+ROOT CAUSE FINDING
+------------------
+The "crypto finalists trade only 6-15 syms" symptom is NOT an engine
+gate-block. It is a sweep-harness symbol-list issue.
+
+v8_quick_engine.py defines:
+    FAST_SYMBOLS_CRYPTO   = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,
+                            ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,
+                            UNIUSDT,SANDUSDT"   # 12 syms
+    MEDIUM_SYMBOLS_CRYPTO = "...same 12 + ATOMUSDT,ALGOUSDT,XLMUSDT,
+                            VETUSDT,TRXUSDT,XMRUSDT,ETCUSDT,SUSHIUSDT,
+                            MANAUSDT,KSMUSDT,SNXUSDT,YFIUSDT"  # 24 syms
+
+Per CLAUDE.md USDC-OVER-USDT policy, the 10 majors (ETH, BTC, SOL, ADA,
+BNB, AVAX, XRP, LINK, LTC, UNI) HAVE NO USDT NPZ — only USDC. iter_npz
+silently skips them when symbols=[...USDT...] is requested.
+
+Result: --symbols fast actually loads 2 NPZs (DOTUSDT, SANDUSDT) instead
+of the requested 12. --symbols medium loads 14 instead of 24.
+
+The 10 USDC NPZs DO exist (verified):
+    ETHUSDC.npz BTCUSDC.npz SOLUSDC.npz ADAUSDC.npz BNBUSDC.npz
+    AVAXUSDC.npz XRPUSDC.npz LINKUSDC.npz LTCUSDC.npz UNIUSDC.npz
+
+GATE-PASS AUDIT (crypto_v13_1p7669)
+-----------------------------------
+For each major USDC NPZ, the entry gates would PASS at these rates
+(if the syms were actually loaded):
+
+    LONG  base after all gates : 6.18-7.04% bars  (healthy)
+    SHORT base after all gates : 0.00% bars       (broken — but
+        the broken gate is RSI_ENTRY_MIN_SHORT=94.5 which affects
+        ALL syms, not just majors)
+
+Conclusion: the entry gates DO accept majors. The exclusion is purely
+at the harness sym-list level.
+
+PROPOSED FIX (one-line, sweep-safe)
+-----------------------------------
+Update the FAST/MEDIUM CRYPTO symbol constants so they reference the
+correct USDC pair for the 10 majors. This fix replaces only the labels
+of the 10 majors. The remaining legacy USDT alts stay USDT.
+
+--- v8_quick_engine.py.orig
++++ v8_quick_engine.py.new
+@@ FAST_SYMBOLS_CRYPTO @@
+-FAST_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,SANDUSDT"
++FAST_SYMBOLS_CRYPTO = "BTCUSDC,ETHUSDC,SOLUSDC,BNBUSDC,XRPUSDC,ADAUSDC,AVAXUSDC,DOTUSDT,LINKUSDC,LTCUSDC,UNIUSDC,SANDUSDT"
+@@ MEDIUM_SYMBOLS_CRYPTO @@
+-MEDIUM_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,SANDUSDT,ATOMUSDT,ALGOUSDT,XLMUSDT,VETUSDT,TRXUSDT,XMRUSDT,ETCUSDT,SUSHIUSDT,MANAUSDT,KSMUSDT,SNXUSDT,YFIUSDT"
++MEDIUM_SYMBOLS_CRYPTO = "BTCUSDC,ETHUSDC,SOLUSDC,BNBUSDC,XRPUSDC,ADAUSDC,AVAXUSDC,DOTUSDT,LINKUSDC,LTCUSDC,UNIUSDC,SANDUSDT,ATOMUSDT,ALGOUSDT,XLMUSDT,VETUSDT,TRXUSDT,XMRUSDT,ETCUSDT,SUSHIUSDT,MANAUSDT,KSMUSDT,SNXUSDT,YFIUSDT"
+
+This is consistent with the USDC-OVER-USDT mandate in CLAUDE.md.
+
+OPTIONAL: SWEEPABLE INCLUSION KNOB (config-driven, no code edit)
+-----------------------------------------------------------------
+For sweeping the impact of including majors, add a config knob:
+
+    MAJOR_USDC_INCLUDE_BYPASS_TRADIER: bool = False
+
+The knob does NOT alter entry-gate logic (that already passes majors).
+It would alter the sym-list builder so when True the 10 USDC majors
+are appended to whatever --symbols list the user passes.
+
+Suggested patch sketch (only touches main()'s sym-list build):
+
+    @@ around line 5547 @@
+    syms = None
+    if args.symbols == "fast":
+        syms = (FAST_SYMBOLS_TRADIER if args.mode == "tradier"
+                else FAST_SYMBOLS_CRYPTO).split(",")
+    elif args.symbols:
+        syms = [s.strip() for s in args.symbols.split(",") if s.strip()]
++   # Sweepable: append the 10 USDC majors when knob is on (crypto only).
++   if args.mode == "crypto" and getattr(cfg, "MAJOR_USDC_INCLUDE_BYPASS_TRADIER", False):
++       _MAJORS = ["BTCUSDC","ETHUSDC","SOLUSDC","ADAUSDC","BNBUSDC",
++                  "AVAXUSDC","XRPUSDC","LINKUSDC","LTCUSDC","UNIUSDC"]
++       if syms is None:
++           syms = _MAJORS
++       else:
++           syms = sorted(set(syms) | set(_MAJORS))
+
+NOT-A-FIX (rejected alternatives)
+---------------------------------
+- Lower ENTRY_SCORE_THRESHOLD: gates accept majors at ~6-7% — already
+  fine. Lowering would just spam entries.
+- Bump major-coin priority in ranker: there is no per-sym ranker in
+  v8_quick_engine — sym order in stores doesn't affect outcome.
+- Add new gate-bypass: gates already pass. No bypass needed.
+
+NEXT STEPS (USER DECISION)
+--------------------------
+1. Patch FAST/MEDIUM constants → re-run finalist baselines on the
+   corrected 12-sym + 24-sym universes. If pool_sharpe holds, the
+   strategy is robust on majors.
+2. OR add the knob → sweep MAJOR_USDC_INCLUDE_BYPASS_TRADIER as A/B
+   on top of WINNER baseline.
+
+Hard constraint: per CLAUDE.md, v8_quick_engine.py is CRITICAL_LIVE
+and any edit must be backed up + rsync'd to S1+S2. Do NOT apply
+without explicit user approval.

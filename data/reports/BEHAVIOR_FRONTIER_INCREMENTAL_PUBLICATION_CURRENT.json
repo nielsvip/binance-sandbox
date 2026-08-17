@@ -1,0 +1,143 @@
+{
+  "accepted_action_fingerprint_unique_count": 2730,
+  "accepted_metric_unique_count": 2730,
+  "actual": {
+    "duplicate": 0,
+    "formula": 0,
+    "global": 19182,
+    "key": 2738,
+    "nonfinite": 0,
+    "zero": 0
+  },
+  "backup": "data/backups/matrix_surface_before_AAPL_LONG_1785764058_02bbce80e3f3dae3",
+  "base_workbook_sha256": "02bbce80e3f3dae34ae8400f1007177a2b16afa0b6c41a659737f484bb2ac299",
+  "c5_accepted_index_sha256": "ac705b61b29abad7ba883e526340d3ee2c7badcdb44467a071bf240d218c4a2c",
+  "c6_accepted_index_sha256": "3945833bc6f30dc62cb79061e30cb65b8a20e37f2f2905a2e4f8ed9e4ceecc2c",
+  "completion": {
+    "after_blank": 2762088,
+    "after_filled": 19182,
+    "after_total": 2781270,
+    "after_vector_unique": 18791,
+    "before_filled": 16452,
+    "before_total": 2412720,
+    "before_vector_unique": 16061
+  },
+  "database_written": false,
+  "engine_cells_modified": false,
+  "exact_completion_credit": false,
+  "existing_axes_filled": 0,
+  "expected": {
+    "global": 19182,
+    "key": 2738
+  },
+  "expected_net": 2730,
+  "exporter_source_sha256": "133e2dc971f8032fd8d6c158203beac36c50523828613f30e3d7b97c272dd2fc",
+  "frontier_audit": {
+    "accepted_keys": [
+      {
+        "accepted": 160,
+        "key": "AAPL_LONG",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/AAPL_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "95a031f061fbdf646ff03a2d2287a36315de0fa8531adc541bdeec1506c873c1"
+      },
+      {
+        "accepted": 486,
+        "key": "ACN_SHORT",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/ACN_SHORT/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "4afb82ae27312d5b6149d9581656d4751755ffeeec5ece6648abffdc749b73ae"
+      },
+      {
+        "accepted": 438,
+        "key": "MU_LONG",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/MU_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "cfd64010f5ea3bb55703bbf12e6195162f0df4037c82997754d33b90efd135c5"
+      },
+      {
+        "accepted": 352,
+        "key": "NVDA_LONG",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/NVDA_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "d7f2208651fb6ff32d8761e2521de9cbd84b5bde3a39edd101e30f09db76aa24"
+      },
+      {
+        "accepted": 465,
+        "key": "TTD_SHORT",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/TTD_SHORT/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "8522ee54d8d7413833594184bddfc9e920874999c3a5171410893d8ca263c87e"
+      },
+      {
+        "accepted": 298,
+        "key": "VT_LONG",
+        "receipt": "data/reports/behavior_distinct_vector_frontier/VT_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "847bfc5db657306bf3f7aa02c18855e5795d29571757281880d515a6cb643337"
+      },
+      {
+        "accepted": 2730,
+        "key": "AAPL_LONG",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/AAPL_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "5ac561272ca0f89737d391f9bd7e943aa658ec9a3c2bde93bce62ad9fb2562c1"
+      },
+      {
+        "accepted": 3221,
+        "key": "ACN_SHORT",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/ACN_SHORT/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "dc743d36027f94d265f318019619d8b72c6823c034a493d474e790dc2106fc0d"
+      },
+      {
+        "accepted": 3146,
+        "key": "MU_LONG",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/MU_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "f1e6217a1cef965ea204cdf21f7aba1d235cf0bc3a125282276bde3a5cc23fd2"
+      },
+      {
+        "accepted": 2649,
+        "key": "NVDA_LONG",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/NVDA_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "37d2611c0a394576451ef245fc1c14d611375cf5f71c112e622ea76f8b51bb30"
+      },
+      {
+        "accepted": 3477,
+        "key": "TTD_SHORT",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/TTD_SHORT/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "1fc49832532da21a420d055c4aeea7c3b5eac9a446681f169f67921f2e11211b"
+      },
+      {
+        "accepted": 1281,
+        "key": "VT_LONG",
+        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/VT_LONG/FRONTIER_RECEIPT.json",
+        "receipt_sha256": "c9bc25e621d3a9219d5d7f3d65410b737807a876ab0310ac6cdab9994e7dc843"
+      }
+    ],
+    "accepted_rows": 18703,
+    "available": true,
+    "contract": "HASH_BOUND_BEHAVIOR_DISTINCT_VECTOR_DIAGNOSTIC_ONLY",
+    "engine_cells_modified": false,
+    "exact_completion_credit": false,
+    "rejected_keys": []
+  },
+  "frontier_source": "interaction",
+  "generated_at": "2026-08-03T13:34:24Z",
+  "key": "AAPL_LONG",
+  "live_config_written": false,
+  "prior_result_cells_proved_unchanged": 16452,
+  "row_axes_appended": 2730,
+  "schema": "behavior-frontier-incremental-publication-v1",
+  "status": "PASS",
+  "uniqueness_audit": {
+    "allowed_isolated_fingerprint_plateau_groups": 0,
+    "allowed_isolated_metric_plateau_groups": 0,
+    "allowed_plateau_rule": "ONE_TWO_VALUE_PAIR_PER_5PLUS_VALUE_PARAMETER_AXIS; ALL_OTHER_VALUES_UNIQUE; NO_CROSS_PARAMETER_COLLISION",
+    "allowed_plateaus": [],
+    "contract": "STRICT_PER_KEY_UNIQUE_METRIC_AND_ACTION_NO_DUPLICATES",
+    "data_unavailable_rows": 0,
+    "engine_cells_modified": false,
+    "fingerprint_collision_groups": 0,
+    "input_rows": 18703,
+    "matrix_numeric_fill_requires_pass": true,
+    "metric_collision_groups": 0,
+    "passed_numeric_overlays": 18703,
+    "quarantined_numeric_overlays": 0,
+    "reason_counts": {},
+    "schema_version": 1
+  },
+  "workbook_sha256": "0d6c2c2ba833fe2e5b190a1b868d59836192ed9f69f34e60c9092dbd2612a411"
+}

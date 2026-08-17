@@ -1,7 +1,136 @@
 import json
+import os
 import sqlite3
 
 from tools import switch_matrix_digest as digest
+from tools import matrix_guard
+
+
+def test_strategy_rows_include_wt_force_open_entry_family():
+    assert "param LIKE 'WT_3M_FORCE_OPEN%'" in digest.strategy_where()
+
+
+def test_current_pilot_keys_match_canonical_six_and_exclude_dropped_hao():
+    assert digest.DEFAULT_KEYS == (
+        "MU_LONG",
+        "NVDA_LONG",
+        "VT_LONG",
+        "TTD_SHORT",
+        "ACN_SHORT",
+        "LAC_SHORT",
+    )
+
+
+def test_provisional_completion_includes_all_actionable_categories():
+    assert digest.PROVISIONAL_ACTIONABLE_CATEGORIES == matrix_guard.ACTIONABLE_CATEGORIES
+    assert digest.PROVISIONAL_ACTIONABLE_CATEGORIES == {
+        "ACTIONABLE_EXACT_ONLY",
+        "ACTIONABLE_VECTOR_THEN_EXACT",
+        "ACTIONABLE_BINDING_PROBE",
+    }
+
+
+def _factorial_payload(value):
+    return {
+        "rows": [
+            {
+                "classification": "SCREENING_LEAD_NOT_PROMOTABLE",
+                "alpha_vs_same_entry_floor_pp": value,
+                "metrics": {"capital_return_pct_sum": value},
+            }
+        ]
+    }
+
+
+def test_exit_factorial_never_falls_back_to_superseded_dc_receipts(
+    tmp_path, monkeypatch
+):
+    reports = tmp_path / "reports"
+    root = reports / "vec_research" / "exit_factorial_20260729"
+    root.mkdir(parents=True)
+    (root / "TTD_SHORT_WT.json").write_text(
+        json.dumps(_factorial_payload(98.425))
+    )
+    (root / "ACN_SHORT_WT.json").write_text(
+        json.dumps(_factorial_payload(107.207))
+    )
+    (root / "MU_LONG.json").write_text(json.dumps(_factorial_payload(0)))
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    rows = digest.load_exit_factorial()
+
+    assert set(rows) == {"MU_LONG"}
+    assert "TTD_SHORT" not in rows
+    assert "ACN_SHORT" not in rows
+
+
+def test_exit_factorial_prefers_dc_parity_correction(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    root = reports / "vec_research" / "exit_factorial_20260729"
+    root.mkdir(parents=True)
+    correction = {
+        "contract": "MTF_DC_EXACT_VECTOR_PARITY_V1",
+        "supersedes": ["TTD_SHORT_WT.json", "ACN_SHORT_WT.json"],
+        "semantics": {"decision_clock": "every execution row"},
+        "corrected_best_by_key": {
+            "TTD_SHORT": {
+                "classification": "SCREENING_LEAD_NOT_PROMOTABLE",
+                "alpha_vs_same_entry_floor_pp": 3.152,
+                "metrics": {"capital_return_pct_sum": 1136.148},
+            },
+            "ACN_SHORT": {
+                "classification": "SCREENING_LEAD_NOT_PROMOTABLE",
+                "alpha_vs_same_entry_floor_pp": 105.440,
+                "metrics": {"capital_return_pct_sum": 577.617},
+            },
+        },
+        "superseded_pack_results": {
+            "TTD_SHORT": {
+                "alpha_vs_same_entry_floor_pp": -29.412,
+                "verdict": "GRAY",
+            }
+        },
+    }
+    (root / "DC_PARITY_CORRECTION.json").write_text(json.dumps(correction))
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    rows = digest.load_exit_factorial()
+    old = digest.load_superseded_exit_factorial_packs()
+
+    assert rows["TTD_SHORT"]["_parity_corrected"] is True
+    assert rows["TTD_SHORT"]["_best"]["alpha_vs_same_entry_floor_pp"] == 3.152
+    assert rows["ACN_SHORT"]["_best"]["alpha_vs_same_entry_floor_pp"] == 105.440
+    assert old["TTD_SHORT"]["alpha_vs_same_entry_floor_pp"] == -29.412
+
+
+def test_exact_factorial_loader_separates_ttd_and_superseded_acn(
+    tmp_path, monkeypatch
+):
+    reports = tmp_path / "reports"
+    root = reports / "exact_exit_factorial_20260729"
+    root.mkdir(parents=True)
+    for name in (
+        "TTD_SHORT.json",
+        "ACN_SHORT.json",
+        "ACN_SHORT__DC_ONLY.json",
+        "ACN_SHORT__WT_ONLY.json",
+    ):
+        (root / name).write_text(json.dumps({"metrics": {"acc_gain_pct": 1}}))
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    rows = digest.load_exact_exit_factorial()
+    by_variant = {row["_variant"]: row for row in rows}
+
+    assert by_variant["dc_only_exact"]["_key"] == "TTD_SHORT"
+    assert by_variant["dc_only_exact"]["_superseded"] is False
+    assert by_variant["superseded_dc_plus_wt"]["_superseded"] is True
+    assert by_variant["dc_only"]["_superseded"] is False
+    assert by_variant["wt_only"]["_artifact"].endswith(
+        "ACN_SHORT__WT_ONLY.json"
+    )
 
 
 def test_load_vec_research_prefers_newest_artifact_per_window(tmp_path, monkeypatch):
@@ -21,8 +150,8 @@ def test_load_vec_research_prefers_newest_artifact_per_window(tmp_path, monkeypa
     payload["policy_top20"] = [{"strategy": "new"}]
     (new / "digest_MU_LONG.json").write_text(json.dumps(payload))
     # File mtimes, not directory names, define freshness.
-    (old / "digest_MU_LONG.json").touch()
-    (new / "digest_MU_LONG.json").touch()
+    os.utime(old / "digest_MU_LONG.json", ns=(1_000_000_000, 1_000_000_000))
+    os.utime(new / "digest_MU_LONG.json", ns=(2_000_000_000, 2_000_000_000))
     monkeypatch.setattr(digest, "REPORTS", reports)
     monkeypatch.setattr(digest, "BASE", tmp_path)
 
@@ -69,8 +198,14 @@ def test_load_exact_replays_keys_latest_summary_by_source(tmp_path, monkeypatch)
     (second / "run_summary.json").write_text(
         json.dumps({"source_artifact": str(source), "status": "PASS"})
     )
-    (first / "run_summary.json").touch()
-    (second / "run_summary.json").touch()
+    os.utime(
+        first / "run_summary.json",
+        ns=(1_000_000_000, 1_000_000_000),
+    )
+    os.utime(
+        second / "run_summary.json",
+        ns=(2_000_000_000, 2_000_000_000),
+    )
     monkeypatch.setattr(digest, "REPORTS", reports)
 
     rows = digest.load_exact_replays()
@@ -88,8 +223,8 @@ def test_load_latest_robust_walk_forward_prefers_newest(tmp_path, monkeypatch):
     name = "walkforward_digest_MU_LONG.json"
     (old / name).write_text(json.dumps({"run_id": "old"}))
     (new / name).write_text(json.dumps({"run_id": "new"}))
-    (old / name).touch()
-    (new / name).touch()
+    os.utime(old / name, ns=(1_000_000_000, 1_000_000_000))
+    os.utime(new / name, ns=(2_000_000_000, 2_000_000_000))
     monkeypatch.setattr(digest, "REPORTS", reports)
     monkeypatch.setattr(digest, "BASE", tmp_path)
 

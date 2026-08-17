@@ -800,6 +800,12 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
 async def execute_decisions(client: TradierAPIClient, decisions: List[TradeDecision], dry_run: bool = False, config=None) -> List[Dict]:
     """Execute all trade decisions."""
     results = []
+    if not dry_run and not bool(getattr(config or TradierConfig(), "OPTIONS_LIVE_TRADING_ENABLED", False)):
+        for d in decisions:
+            if d.action in ("BUY", "SELL"):
+                logger.warning("[PAPER_ONLY_BLOCK] decision held: %s %s", d.action, d.occ_symbol or d.symbol)
+                results.append({"action": d.action, "symbol": d.symbol, "occ": d.occ_symbol, "qty": d.qty, "status": "paper_only_blocked"})
+        return results
     for d in decisions:
         if d.action == "SKIP":
             logger.info(f"SKIP: {d.reason}")
@@ -1052,6 +1058,9 @@ def _apply_runtime_overrides(config) -> dict:
     applied: dict = {}
     active = data.get("active_overrides") or {}
     for key, info in active.items():
+        if key == "OPTIONS_LIVE_TRADING_ENABLED":
+            logger.error("[SAFETY_LOCK] refusing runtime override for OPTIONS_LIVE_TRADING_ENABLED")
+            continue
         if not hasattr(config, key):
             logger.warning(f"[RUNTIME_OVERRIDE] unknown config key {key} — skipped")
             continue
@@ -1335,6 +1344,11 @@ def _ratio_would_violate(call_cost: float, put_cost: float, new_type: str, new_c
     losing side so we can recover from a skewed book."""
     if new_cost <= 0:
         return False
+    # Bootstrap: empty book — allow the very first order on either side to seed the portfolio.
+    # Without this, an empty book (0/0) would compute new_frac=1.0 >0.65 and block every seed trade,
+    # producing the 0-opportunities deadlock observed 2026-08-04 through 2026-08-11.
+    if (call_cost + put_cost) <= 1e-9:
+        return False
     if new_type == "call":
         new_call = call_cost + new_cost
         new_put = put_cost
@@ -1363,6 +1377,55 @@ def _ratio_status(call_cost: float, put_cost: float) -> dict:
     else:
         side_needed = "balanced"
     return {"call_frac": call_frac, "put_frac": put_frac, "side_needed": side_needed, "total": total, "call_cost": call_cost, "put_cost": put_cost}
+
+
+def _scanner_liquidity_priority(
+    scan_data: dict | None,
+    option_type: str,
+) -> dict[str, float]:
+    """Map symbol -> best scanner score for liquid, BUYable 60-120 DTE outliers."""
+    target = str(option_type or "").lower()
+    out: dict[str, float] = {}
+    for item in (scan_data or {}).get("outliers", []) or []:
+        if str(item.get("type") or "").lower() != target:
+            continue
+        if "BUY" not in str(item.get("recommendation") or ""):
+            continue
+        try:
+            dte = int(item.get("dte", 0) or 0)
+            score = float(item.get("score", 0) or 0)
+            oi = float(item.get("open_interest", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if dte < 60 or dte > 120 or score < 55 or oi < 500:
+            continue
+        sym = str(item.get("symbol") or "").upper()
+        if not sym:
+            continue
+        out[sym] = max(out.get(sym, float("-inf")), score)
+    return out
+
+
+def _prioritize_signals_for_chain_fetch(
+    signals: list,
+    scan_data: dict | None,
+    option_type: str,
+) -> list:
+    """Prefer symbols with scanner-confirmed liquid outliers before raw conviction.
+
+    On 2026-08-04 the paper lane reached 0/0/0 because the top-five conviction
+    names per side were illiquid or wrong-DTE, while valid liquid calls such as
+    GOOGL existed further down the list and were never refetched.
+    """
+    priority = _scanner_liquidity_priority(scan_data, option_type)
+    return sorted(
+        signals,
+        key=lambda sig: (
+            priority.get(str(getattr(sig, "symbol", "")).upper(), float("-inf")),
+            float(getattr(sig, "conviction", 0) or 0),
+        ),
+        reverse=True,
+    )
 
 
 def _split_positions_by_side(positions: list) -> tuple:
@@ -1439,6 +1502,9 @@ def _save_daily_plan(config, plan: Dict):
 
 async def _cancel_stale_gtc(client: TradierAPIClient, config) -> int:
     """Cancel GTC orders older than GTC_MAX_AGE_DAYS."""
+    if not bool(getattr(config, "OPTIONS_LIVE_TRADING_ENABLED", False)):
+        logger.info("[PAPER_ONLY_BLOCK] stale GTC cancellation disabled")
+        return 0
     gtc_orders = _load_gtc_orders(config)
     if not gtc_orders:
         return 0
@@ -1499,6 +1565,7 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
         return []
     signals = detect_directional_signals(indicators, rankings)
     # ── Incorporate morning scanner for conviction boost ──
+    scan_data = {}
     scanner_file = config.DATA_DIR / "options_analysis_latest.json"
     if scanner_file.exists():
         try:
@@ -1545,8 +1612,8 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
     # ── CALLS: only trb_long symbols (with CSP alternative when enabled) ──
     if limits["can_buy_calls"]:
         call_signals = [s for s in signals if s.direction == "LONG" and s.conviction >= 50 and s.symbol in call_allowed]
-        call_signals.sort(key=lambda s: s.conviction, reverse=True)
-        for sig in call_signals[:5]:
+        call_signals = _prioritize_signals_for_chain_fetch(call_signals, scan_data, "call")
+        for sig in call_signals[:20]:
             if sig.symbol in held_symbols:
                 continue
             # WT/DC multi-TF gate (2026-04-26 owner directive — see helper docstring)
@@ -1666,8 +1733,8 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
                         if not any(s.symbol == sym for s in put_signals):
                             atr_D = ind.get("atr_D", 0) or 0
                             put_signals.append(DirectionalSignal(symbol=sym, direction="SHORT", conviction=min(80, 40 + loss_pct * 2), price=price, atr_D=atr_D, signals={"hedge_short": True, "loss_pct": round(loss_pct, 1)}))
-        put_signals.sort(key=lambda s: s.conviction, reverse=True)
-        for sig in put_signals[:5]:
+        put_signals = _prioritize_signals_for_chain_fetch(put_signals, scan_data, "put")
+        for sig in put_signals[:20]:
             if sig.symbol in held_symbols:
                 continue
             # WT/DC multi-TF gate (2026-04-26 owner directive — see helper docstring)
@@ -1717,6 +1784,9 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
 
 async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], dry_run: bool = False) -> List[Dict]:
     """Place GTC orders: buy_to_open, sell_to_open (CSP), or multileg credit spread."""
+    if not dry_run and not bool(getattr(config, "OPTIONS_LIVE_TRADING_ENABLED", False)):
+        logger.warning("[PAPER_ONLY_BLOCK] held %d GTC option order(s)", len(orders))
+        return [{**order, "status": "paper_only_blocked", "reason": "OPTIONS_LIVE_TRADING_ENABLED=False"} for order in orders]
     gtc_orders = _load_gtc_orders(config)
     # DEFENSIVE GATE (2026-04-26): symbol allowlist + BLACKLIST check at the
     # order-placement site itself. Upstream gates exist in make_decisions and
@@ -1831,7 +1901,7 @@ async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], 
         if dry_run:
             results.append({**order, "status": "dry_run", "occ": occ})
             continue
-        res = await place_option_order(client, order["symbol"], occ, side, qty, "limit", price, duration="gtc")
+        res = await place_option_order(client, order["symbol"], occ, side, qty, "limit", price, duration="gtc", config=config)
         if "order" in res:
             order_id = res["order"].get("id")
             status = res["order"].get("status", "")
@@ -1851,6 +1921,9 @@ async def run_daily_cycle(args):
     """Afternoon cycle: review portfolio, find opportunities, place GTC orders at dip prices."""
     config = TradierConfig()
     _apply_runtime_overrides(config)
+    if not bool(getattr(config, "OPTIONS_LIVE_TRADING_ENABLED", False)) and not getattr(args, "dry_run", False):
+        print("[PAPER_ONLY] daily options cycle is analysis-only; no orders or cancellations will run")
+        return
     account_key = getattr(args, "account", "trb") or "trb"
     dry_run = getattr(args, "dry_run", False)
     review_only = getattr(args, "review", False)
@@ -2028,6 +2101,9 @@ async def run_premarket(args):
     """Pre-market: re-scan prices, adjust GTC orders, fire pending plan orders."""
     config = TradierConfig()
     _apply_runtime_overrides(config)
+    if not bool(getattr(config, "OPTIONS_LIVE_TRADING_ENABLED", False)) and not getattr(args, "dry_run", False):
+        print("[PAPER_ONLY] premarket options cycle is analysis-only; no orders will run")
+        return
     account_key = getattr(args, "account", "trb") or "trb"
     ind_file = config.DATA_DIR / "tradier_indicators_latest.json"
     indicators = {}

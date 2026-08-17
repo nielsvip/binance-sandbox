@@ -1,0 +1,55 @@
+EVALUATE FUNCTION ABLATION TEST
+Symbols: 48 | Ablation configs: 26 | Total: 2,496
+Functions: ['tech', 'ranking', 'reentry', 'augment']
+MTS params: 5 combos
+  5/48 (0 with data) 3s
+  10/48 (0 with data) 3s
+  15/48 (0 with data) 3s
+  20/48 (0 with data) 3s
+  25/48 (0 with data) 3s
+  30/48 (0 with data) 3s
+  35/48 (0 with data) 3s
+  40/48 (0 with data) 3s
+  45/48 (0 with data) 3s
+
+Done: 4s — 0 symbols
+
+========================================================================================================================
+ABLATION RESULTS — What happens when each evaluate function is disabled?
+========================================================================================================================
+
+Config                                              Sharpe    WR  AvgRet Trades   N   Delta
+------------------------------------------------------------------------------------------
+
+--- LONG ---
+  ALL_ON (baseline)                                 +0.000  0.0% +0.000%     0   0       ---
+
+--- SHORT ---
+  ALL_ON (baseline)                                 +0.000  0.0% +0.000%     0   0       ---
+
+========================================================================================================================
+TOP 30 OVERALL (by Sharpe)
+========================================================================================================================
+Combo                                                         Sharpe    WR  AvgRet Trades   N
+
+========================================================================================================================
+FUNCTION IMPACT SUMMARY
+========================================================================================================================
+
+--- TECH ---
+  LONG: ALL=+0.000 → NO_TECH=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+  SHORT: ALL=+0.000 → NO_TECH=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+
+--- RANKING ---
+  LONG: ALL=+0.000 → NO_RANKING=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+  SHORT: ALL=+0.000 → NO_RANKING=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+
+--- REENTRY ---
+  LONG: ALL=+0.000 → NO_REENTRY=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+  SHORT: ALL=+0.000 → NO_REENTRY=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+
+--- AUGMENT ---
+  LONG: ALL=+0.000 → NO_AUGMENT=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+  SHORT: ALL=+0.000 → NO_AUGMENT=+0.000 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+
+Saved: data/eval_ablation_20260325_2148.json

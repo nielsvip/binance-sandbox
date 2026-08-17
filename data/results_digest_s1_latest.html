@@ -1,0 +1,379 @@
+
+    <html><head><style>
+body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background: #fafafa; color: #222; font-size: 13px; }
+h1 { color: #1a1a2e; border-bottom: 3px solid #e94560; padding-bottom: 8px; font-size: 20px; margin-bottom: 5px; }
+h2 { color: #1a1a2e; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 28px; font-size: 16px; }
+h3 { color: #333; font-size: 13px; margin: 12px 0 6px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; border: 1px solid #ddd; margin-bottom: 10px; }
+th { background: #1a1a2e; color: #fff; padding: 5px 7px; text-align: left; font-weight: 600; font-size: 11px; }
+td { padding: 4px 7px; border-bottom: 1px solid #eee; }
+tr:nth-child(even) { background: #f5f5f5; }
+p { font-size: 13px; line-height: 1.5; margin: 6px 0; }
+.g { color: #2e7d32; } .r { color: #c62828; } .o { color: #ef6c00; } .gr { color: #888; }
+.b { font-weight: 700; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.pg { background: #e8f5e9; color: #2e7d32; } .pr { background: #ffebee; color: #c62828; }
+.po { background: #fff3e0; color: #ef6c00; } .pb { background: #e3f2fd; color: #1565c0; }
+.box { padding: 10px 14px; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; margin: 8px 0; }
+.news { padding: 6px 12px; background: #f8f9fa; border-left: 3px solid #546e7a; margin: 4px 0; font-size: 12px; line-height: 1.4; }
+.news b { color: #1a1a2e; }
+
+    table{border-collapse:collapse;width:100%;margin:4px 0 12px 0}
+    th{background:#1a1a2e;color:#fff;padding:5px 7px;text-align:left;font-size:11px}
+    td{padding:4px 7px;border-bottom:1px solid #eee;font-size:12px}
+    .g{color:#2e7d32}.r{color:#c62828}
+    </style></head><body>
+    <h1>Results digest &mdash; 2026-07-31 12:00 UTC &rarr; 2026-07-31 13:17 UTC</h1>
+    <p>Window covers the last 1.3h since the previous digest (capped at 12h).
+    Live dashboard: <a href="http://localhost:5077/results">http://localhost:5077/results</a></p>
+
+    <h2>MATRIX FILL PROGRESS (canonical &mdash; tools/matrix_guard.py, run live at digest-build time)</h2><p>Reused verbatim from <code>tools/matrix_guard.py</code> / <code>./matrix_progress.sh</code> -- never a third counter. Current repaired artifact: <code>data/reports/SWITCH_MATRIX_TRB.csv.gz</code> (full-window campaign <code>stocks_repaired_20260730_c5</code> plus the shortened remaining-key campaign <code>stocks_repaired_20260730_c5_1yr</code>, both c5 exact). NOT the matrix: <code>data/matrix_npz/*</code>, <code>band_ladder_walkforward_*</code>, <code>data/handle_priority/*.json</code>. <code>SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz</code> is frozen/quarantined history only.</p><pre style='font-size:11px;white-space:pre-wrap'>========================================================================
+CURRENT REPAIRED MATRIX (the only artifact that counts for current work):
+  data/reports/SWITCH_MATRIX_TRB.csv.gz
+  REPORT RUN             : 2026-07-31T13:17:40Z on host=niels
+========================================================================
+  CSV EXPORT as of      : 2026-07-31T13:10:49Z (periodic — see LIVE STORE below)
+  switch x value rows : 3,579
+  distinct switches   : 788
+  key columns         : 124 (117 ACTIVE + 7 retained historical)
+  physical grid       : 443,796 cells; 2,341 numeric / 441,455 blank
+                        ^ artifact shape only; NEVER the actionable completion denominator
+
+  EXECUTABLE ACTIVE-KEY WORK (classification-aware):
+    fresh differential : 186 filled / 101,364 actionable (0.18%)
+    plateau cross-key  : 831 filled / 86,376 probes (0.96%)
+    TOTAL WORK QUEUE   : 1,017 filled / 187,740 executable cells; 186,723 remain (0.54%)
+
+  CELL CONTRACT CLASSES (active + retained historical, disjoint):
+    NO_LIVE_DECISION_READER               118,755  filled=  691 empty= 118,064  dead/unwired: no live decision reader
+    PLATEAU_CROSS_KEY_PROBE                86,376  filled=  831 empty=  85,545  plateau: cross-key/domain retest
+    ACTIONABLE_EXACT_ONLY                  70,428  filled=  162 empty=  70,266  exact-only actionable
+    INTENTIONAL_CONTROL                    40,014  filled=  174 empty=  39,840  baseline/off control; identical by design
+    HISTORICAL_KEY_AXIS                    25,053  filled=    1 empty=  25,052  retained historical key axis; not active work
+    BLOCKED_STATIC_CONTRACT                23,868  filled=  133 empty=  23,735  blocked static contract
+    ACTIONABLE_VECTOR_THEN_EXACT           23,355  filled=   11 empty=  23,344  vector screen -&gt; exact actionable
+    ACCOUNT_INAPPLICABLE                   22,932  filled=   63 empty=  22,869  wrong TRA/TRC account namespace
+    SIDE_INAPPLICABLE                      14,952  filled=    0 empty=  14,952  opposite-side cell; identical by design
+    ACTIONABLE_BINDING_PROBE                7,581  filled=   13 empty=   7,568  exact binding probes
+    HELPER_NOT_SINGLE_KNOB                  5,733  filled=    0 empty=   5,733  helper/bundle; not OFAT
+    OBSERVED_OUTSIDE_CURRENT_GRID           4,749  filled=   44 empty=   4,705  preserved exact value outside current grid
+
+  row status:
+    DEGENERATE               1749  &lt;- redo; values produced no distinct outcome
+    NOT_ENGINE_TESTED        1064  &lt;- only classifier-approved active/applicable rows enter queue
+    EXACT_QUEUE_EMPTY         413
+    OK                        353
+
+  PILOT EXECUTABLE COMPLETION (not all physical rows):
+    pilot         filled    empty      pct     plateau f/e
+    MU_LONG            3      839     0.4%      0/767     
+    NVDA_LONG         13      829     1.5%      0/767     
+    VT_LONG          136      706    16.2%    766/1       
+    TTD_SHORT         14      878     1.6%     25/683     
+    ACN_SHORT          1      891     0.1%     37/671     
+    LAC_SHORT         13      879     1.5%      3/705     
+    TOTAL GAP                8616
+
+  LIVE STORE (param_cells, ENGINE tier) — updates continuously, unlike the CSV:
+    CANONICAL MERGED EXACT (receipt/capital validated; 2+yr outranks 1yr):
+        stocks_repaired_20260725_c1            cells=6
+        stocks_repaired_20260725_c2            cells=2,176
+        stocks_repaired_20260730_c5            cells=47
+        stocks_repaired_20260730_c5_1yr        cells=126
+        MU_LONG            5
+        NVDA_LONG         32
+        VT_LONG         1966
+        TTD_SHORT        150
+        ACN_SHORT        171
+        LAC_SHORT         23
+    Grouped recipes/helpers are excluded from these scalar counts.
+    RAW ACTIVITY (not completion; historical/stale rows may appear):
+    source: local data/param_results_stocks.db
+    CURRENT            stocks_repaired_20260730_c5    cells=47 keys=5 latest=2026-07-31T13:00:57Z
+        MU_LONG            2
+        NVDA_LONG          9
+        VT_LONG           23
+        TTD_SHORT          7
+        ACN_SHORT          0
+        LAC_SHORT          6
+    FROZEN/HISTORICAL  stocks_baseline_v2_s4h         cells=5,869 keys=199 latest=2026-07-23T09:55:01Z
+        MU_LONG         1100
+        NVDA_LONG         82
+        VT_LONG            3
+        TTD_SHORT          3
+        ACN_SHORT          3
+        LAC_SHORT          3
+    read at 2026-07-31T13:18:00Z
+    current-campaign rows rejected by current exact fingerprint: 0
+    current-campaign rows rejected by validation status: 0
+    NOTE: this guard reads SWITCH_MATRIX_TRB.csv.gz, the stocks_repaired_20260730_c5 export.
+          SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz is frozen history and is never counted above.
+
+  NOT the matrix — never report from these:
+    data/matrix_npz/                                     pinned NPZ INPUTS, not results
+    data/reports/vec_research/band_ladder_walkforward_*  discarded band-ladder lane (USER 2026-07-28)
+    data/handle_priority/*.json                          by-products of the discarded lane
+    data/reports/SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz frozen historical comparison only; never current coverage/candidates
+
+  STATUS: INCOMPLETE — 8,616 pilot cells remain. See
+          MATRIX_FILL_HANDOFF_20260728.md for the ordered procedure.
+</pre><p>The guard reports coverage only. Live promotion state is read from active configuration metadata and is never inferred from a cell count.</p>
+
+    <h2>CURRENT C5 EXACT RESULTS (ledger-backed, per symbol/side)</h2><div class='box'><p><b>Current c5 exact-result lineage:</b> <code>stocks_repaired_20260730_c5</code>: 47 exact rows / 5 keys, latest 2026-07-31T13:00:57Z · <code>stocks_repaired_20260725_c2</code>: 2201 exact rows / 6 keys, latest 2026-07-31T01:18:45Z · <code>stocks_repaired_20260725_c1</code>: 329 exact rows / 1 keys, latest 2026-07-31T01:18:22Z · <code>stocks_repaired_20260730_c5_1yr</code>: 135 exact rows / 9 keys, latest 2026-07-31T12:45:30Z</p><p><b>8</b> symbol/sides currently meet the user promotion bar (gain/month &gt;2% and gain/month delta versus B&amp;H &gt;0). This is a test-result count, not a claim that those configs are present in a live active_config file.</p><table><tr><th>key</th><th>window</th><th>best tested cell</th><th>gain/mo</th><th>&Delta; vs B&amp;H</th><th>pool Sharpe</th><th>max DD</th><th>avg deployed/trade</th><th>TIM</th><th>trades</th><th>campaign / accounting</th><th>tested UTC</th></tr><tr><td>MU_LONG</td><td>1yr</td><td>WT_DC_EXIT_THRESHOLD=45</td><td class='g'>+89.7580%</td><td class='g'>+34.6085 pp/mo</td><td>+1.002</td><td>0.00%</td><td>$6957.13</td><td>99.90%</td><td>2</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T01:50:15Z</td></tr><tr><td>NVDA_LONG</td><td>full</td><td>STRUCTURAL_RANGE_SHIFT_K_LOW=25.0</td><td class='g'>+9.1966%</td><td class='g'>+5.0335 pp/mo</td><td>+0.969</td><td>4.06%</td><td>$6980.59</td><td>99.97%</td><td>2</td><td>stocks_repaired_20260725_c2 / avg-trade-deployed-2000-v1</td><td>2026-07-31T01:18:22Z</td></tr><tr><td>LAC_SHORT</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td class='g'>+6.0079%</td><td class='g'>+4.8397 pp/mo</td><td>+0.454</td><td>43.69%</td><td>$7097.32</td><td>99.73%</td><td>2</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T01:36:16Z</td></tr><tr><td>ACN_SHORT</td><td>1yr</td><td>GROUP_COMBO={&quot;members&quot;:[{&quot;arm_id&quot;:&quot;arm-cbd239b1a8a7715c&quot;,&quot;family&quot;:&quot;STRUCTURAL_RANGE_SHIFT&quot;,&quot;group&quot;:&quot;EXIT&quot;,&quot;param&quot;:&quot;STRUCTURAL_RANGE_SHIFT_EXIT&quot;,&quot;timeframe&quot;:&quot;&quot;,&quot;value_json&quot;:&quot;true&quot;},{&quot;arm_id&quot;:&quot;arm-b6d9bc5dab2e8743&quot;,&quot;family&quot;:&quot;ENTRY_ZONE_SHORT&quot;,&quot;group&quot;:&quot;ENTRY&quot;,&quot;param&quot;:&quot;ENTRY_ZONE_SHORT&quot;,&quot;timeframe&quot;:&quot;&quot;,&quot;value_json&quot;:&quot;80.0&quot;}],&quot;omitted_arm&quot;:null,&quot;parents&quot;:[],&quot;recipe_id&quot;:&quot;gcr-9cec1ea75425cd1aed76cb49&quot;,&quot;schema&quot;:&quot;trb-grouped-combo-v1&quot;,&quot;stage&quot;:&quot;CROSS_GROUP_CHAMPION&quot;}</td><td class='g'>+7.0654%</td><td class='g'>+3.0955 pp/mo</td><td>+0.999</td><td>0.02%</td><td>$6912.81</td><td>99.93%</td><td>2</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T04:03:23Z</td></tr><tr><td>VT_LONG</td><td>1yr</td><td>GROUP_COMBO={&quot;members&quot;:[{&quot;arm_id&quot;:&quot;arm-832c75625f9691cb&quot;,&quot;family&quot;:&quot;WT_DC_EXIT&quot;,&quot;group&quot;:&quot;EXIT&quot;,&quot;param&quot;:&quot;WT_DC_EXIT_ENABLED&quot;,&quot;timeframe&quot;:&quot;&quot;,&quot;value_json&quot;:&quot;true&quot;},{&quot;arm_id&quot;:&quot;arm-70a76c6777845a7c&quot;,&quot;family&quot;:&quot;STDEV_REJECT_EXIT&quot;,&quot;group&quot;:&quot;EXIT&quot;,&quot;param&quot;:&quot;STDEV_REJECT_EXIT_ZONE&quot;,&quot;timeframe&quot;:&quot;&quot;,&quot;value_json&quot;:&quot;0.6&quot;}],&quot;omitted_arm&quot;:null,&quot;parents&quot;:[],&quot;recipe_id&quot;:&quot;gcr-5425c7ff345e159be0d676d3&quot;,&quot;schema&quot;:&quot;trb-grouped-combo-v1&quot;,&quot;stage&quot;:&quot;WITHIN_EXIT&quot;}</td><td class='g'>+3.7968%</td><td class='g'>+2.2955 pp/mo</td><td>+0.227</td><td>3.71%</td><td>$4929.07</td><td>95.37%</td><td>51</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T04:23:18Z</td></tr><tr><td>TTD_SHORT</td><td>1yr</td><td>LR_BAND_HARVEST_ENABLED=true</td><td class='g'>+8.6555%</td><td class='g'>+2.1773 pp/mo</td><td>+1.656</td><td>0.00%</td><td>$4986.37</td><td>99.87%</td><td>2</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T05:40:07Z</td></tr><tr><td>GM_LONG</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td class='g'>+5.7087%</td><td class='g'>+1.2468 pp/mo</td><td>+1.004</td><td>0.00%</td><td>$5930.13</td><td>99.91%</td><td>2</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T01:18:45Z</td></tr><tr><td>PLTR_SHORT</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td class='g'>+2.8275%</td><td class='g'>+1.1809 pp/mo</td><td>+0.670</td><td>8.56%</td><td>$4451.59</td><td>99.45%</td><td>2</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T01:18:45Z</td></tr><tr><td>FIVN_LONG</td><td>1yr</td><td>WT_DC_EXIT_ENABLED=true</td><td class='r'>-0.5346%</td><td class='r'>+0.6582 pp/mo</td><td>-0.045</td><td>48.37%</td><td>$8521.78</td><td>95.02%</td><td>9</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T01:18:45Z</td></tr><tr><td>OKE_LONG</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td class='r'>+1.5839%</td><td class='r'>+0.5918 pp/mo</td><td>+0.211</td><td>20.17%</td><td>$8975.48</td><td>93.89%</td><td>5</td><td>stocks_repaired_20260730_c5_1yr / avg-trade-deployed-2000-v1</td><td>2026-07-31T01:18:45Z</td></tr></table><p style='font-size:11px;color:#888'>Selection is per symbol/side: merge by logical cell in the order full c5, validated c2/c3/c4, c1, then current c5 1yr gap-fill; then maximize gain/month delta versus side-aware B&amp;H. Every row requires an exact ENGINE PASS, matching audit fingerprint, and co-located trade ledger.</p></div>
+
+    <div class='box' style='color:#9a6b00;font-style:italic'><h3>VEC scalar-gap diagnostic — separate, nonpromotable</h3><p><b>10406</b> screened hypotheses as of 2026-07-31T06:49:29.147925Z. <b>Exact completion credit: none.</b> ENGINE/database writes, live config writes, ranking, and promotion are forbidden; MOVED means queue for exact replay, not a winner.</p><table><tr><th>key</th><th>screened</th><th>moved</th><th>inert</th><th>zero trade</th><th>VEC_NATIVE</th><th>VEC_PARITY</th><th>VEC_APPROX</th><th>approx H/M/L</th><th>approx mismatch classes</th><th>exact replay priority</th></tr><tr><td>AAPL_LONG</td><td>449</td><td>376</td><td>0</td><td>73</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>376</td></tr><tr><td>ACN_SHORT</td><td>1248</td><td>580</td><td>595</td><td>73</td><td>314</td><td>15</td><td>919</td><td>0/161/758</td><td>INCOMPATIBLE_THRESHOLD_UNITS_RANK_MAPPED_TO_ENTRY_SCORE:159, BOOLEAN_FAMILY_EVENT_PROXY:140</td><td>580</td></tr><tr><td>CLX_SHORT</td><td>449</td><td>376</td><td>0</td><td>73</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>376</td></tr><tr><td>FCN_SHORT</td><td>449</td><td>374</td><td>0</td><td>75</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>374</td></tr><tr><td>FIVN_LONG</td><td>449</td><td>376</td><td>0</td><td>73</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>376</td></tr><tr><td>GM_LONG</td><td>449</td><td>376</td><td>0</td><td>73</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>376</td></tr><tr><td>IBIT_LONG</td><td>449</td><td>376</td><td>0</td><td>73</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>376</td></tr><tr><td>LAC_SHORT</td><td>799</td><td>194</td><td>604</td><td>1</td><td>314</td><td>15</td><td>470</td><td>0/141/329</td><td>INCOMPATIBLE_THRESHOLD_UNITS_RANK_MAPPED_TO_ENTRY_SCORE:159, PATH_SPECIFIC_SIZING_COLLAPSED_TO_SIDE_SIZE_MULT:94</td><td>194</td></tr><tr><td>MU_LONG</td><td>1217</td><td>547</td><td>595</td><td>75</td><td>316</td><td>15</td><td>886</td><td>0/144/742</td><td>INCOMPATIBLE_THRESHOLD_UNITS_RANK_MAPPED_TO_ENTRY_SCORE:146, BOOLEAN_FAMILY_EVENT_PROXY:140</td><td>547</td></tr><tr><td>NVDA_LONG</td><td>1211</td><td>557</td><td>579</td><td>75</td><td>315</td><td>15</td><td>881</td><td>0/142/739</td><td>INCOMPATIBLE_THRESHOLD_UNITS_RANK_MAPPED_TO_ENTRY_SCORE:145, BOOLEAN_FAMILY_EVENT_PROXY:140</td><td>557</td></tr><tr><td>OKE_LONG</td><td>449</td><td>376</td><td>0</td><td>73</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>376</td></tr><tr><td>PLTR_SHORT</td><td>449</td><td>376</td><td>0</td><td>73</td><td>0</td><td>0</td><td>449</td><td>0/20/429</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, NORMALIZED_RANK_TIME_PROXY:75</td><td>376</td></tr><tr><td>TTD_SHORT</td><td>1248</td><td>607</td><td>568</td><td>73</td><td>314</td><td>15</td><td>919</td><td>0/161/758</td><td>INCOMPATIBLE_THRESHOLD_UNITS_RANK_MAPPED_TO_ENTRY_SCORE:159, BOOLEAN_FAMILY_EVENT_PROXY:140</td><td>607</td></tr><tr><td>VT_LONG</td><td>1091</td><td>496</td><td>515</td><td>80</td><td>264</td><td>0</td><td>827</td><td>0/115/712</td><td>BOOLEAN_FAMILY_EVENT_PROXY:140, INCOMPATIBLE_THRESHOLD_UNITS_RANK_MAPPED_TO_ENTRY_SCORE:137</td><td>496</td></tr></table></div>
+
+    <h2>MU_LONG ladder promotion (2026-07-29 19:20 UTC) -- live trb</h2><p class='r'>ledger file missing: /home/niels/binance-sandbox/data/history/trb/MU_LONG.jsonl</p>
+    <h2>Historical stock diagnostics &mdash; QUARANTINED / NOT RANKED</h2><p><code>stocks_bh_capture.json</code>, <code>data/_diagnostic/capture/*.summary.json</code>, and the old <code>armq_20260709</code>/GAINMO queue are preserved for audit only. They are not current matrix coverage, winner evidence, candidate inputs, or live-promotion inputs. The active stock lane is exclusively the c5 <code>stocks_repaired_20260730_c5</code> matrix printed above.</p><h2>LIVE vs SANDBOX SYNC (post-update drift guard)</h2><p class='r'><b>&#9888; PARITY CHECK SKIPPED ON THIS HOST.</b> This digest instance is running directly on S1 (base=/home/niels/binance-sandbox). This check compares local files to <code>ssh s1-int</code> -- run from S1 itself that ssh loops back to the same files, so any 'in sync' result would be a self-comparison, not real Mac-vs-S1 parity. See the Mac-run instance of this digest (crontab 0 0,12 on the MacBook) for the authoritative parity check.</p><h3>Live fills last 24h (per account, from /history/ — signal-price ledger)</h3><p class='r'><b>&#9888; LEDGER STALE ON THIS HOST (base=/home/niels/binance-sandbox): newest data/history/*/*.jsonl file is 1181h old.</b> The rows below reflect what THIS process can see, not necessarily what happened live -- 'no fills' here can mean 'no fills' OR 'this host's ledger mirror is dead', and those are NOT the same claim. See the Mac-run instance of this digest for the authoritative live-fills read (data/history/ is the MacBook live-trading source of truth per CLAUDE.md).</p><table><tr><th>account</th><th>fills by type (24h)</th></tr><tr><td>trb</td><td>no fills</td></tr><tr><td>trc</td><td>no fills</td></tr><tr><td>ang</td><td>no fills</td></tr><tr><td>inf</td><td>no fills</td></tr><tr><td>fin</td><td>no fills</td></tr><tr><td>flz</td><td>no fills</td></tr><tr><td>men</td><td>no fills</td></tr></table><h3>Latest live-vs-backtest trade parity diff (nightly)</h3><p class='r'>no recent parity_diff run (nightly cron) &mdash; drift UNCHECKED</p><h2>QUALIFYING KEYS - EVERY key at the bar (pool_sharpe&gt;0.5 AND &gt;=2x b&amp;h, post-parity) [DIAGNOSTIC n_syms=1 each]</h2><p style='color:#888;margin:2px 0 10px 0'>NONE yet - the 8-qualifier bar is unmet</p><h2>Mandatory-8 live configuration status (not matrix evidence)</h2><table><tr><th>mandatory key (USER 2026-07-10)</th><th>final book</th><th>trb universe</th></tr><tr><td>MU_LONG</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr><tr><td>NVDA_LONG</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr><tr><td>SNDK_LONG</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr><tr><td>MRVL_LONG</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr><tr><td>VLO_LONG</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr><tr><td>INTC_LONG</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr><tr><td>MSTR_SHORT</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr><tr><td>WDAY_SHORT</td><td class='g'>TRADEABLE</td><td class='g'>in universe</td></tr></table><h2>2x buy&amp;hold target (USER: trb + flz/ang by Monday)</h2><p class='r'><b>&#9888; LEDGER STALE ON THIS HOST (base=/home/niels/binance-sandbox): newest data/history/*/*.jsonl file is 1181h old.</b> 'NO ACTIVITY (7d)' below can mean this host's ledger mirror is dead, not that trading was quiet -- see the Mac-run instance of this digest for the authoritative 7d activity read.</p><table><tr><th>account</th><th>ledger activity 7d (fills by type)</th><th>benchmark 7d</th></tr><tr><td>trb</td><td>NO ACTIVITY (7d)</td><td>SPY klines not on Mac - check manually</td></tr><tr><td>flz</td><td>NO ACTIVITY (7d)</td><td>BTC -1.54%</td></tr><tr><td>ang</td><td>NO ACTIVITY (7d)</td><td>BTC -1.54%</td></tr></table><p style='font-size:11px;color:#666'>True PnL is NOT in the ledgers (signal prices, no commissions) - verify 2x-b&amp;h against EXCHANGE INCOME (crypto) / Tradier account balance (stocks). Benchmark = single-symbol proxy. Target: account PnL &gt;= 2x benchmark.</p>
+    <div style='background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:10px 14px;margin:6px 0 14px 0'><b>&#9888; STALE PROGRESS &mdash; testing wrong params?</b><ul style='margin:6px 0 0 0'><li><b>CRYPTO</b>: no improvement in 142.3h (best real_sharpe_1sym=0.7389, best B&amp;H multiple=9.014x) &mdash; the current sweep grid is very likely testing the wrong params. Check switch_priority.csv for untested high-signal knobs, or widen the param range.</li></ul></div>
+    <h2>Latest matrix-filling campaigns <span style='color:#666'>[RESEARCH ONLY &mdash; NOT ACCEPTED/LIVE]</span></h2><p class='r'><b>&#9888; STALE (109h since newest row).</b> No active path-fleet producer was found running on S1 at digest-build time. This lane is NOT the same artifact as MATRIX FILL PROGRESS above -- do not read it as current pilot progress.</p><p class='r'><b>3 research key(s) excluded:</b> they are not in the current ranked TRB side files, so no TIM band may be guessed. ASTS_SHORT: TRB_TIM_KEY_NOT_TRADEABLE: ASTS_SHORT; EGO_SHORT: TRB_TIM_KEY_NOT_TRADEABLE: EGO_SHORT; UEC_SHORT: TRB_TIM_KEY_NOT_TRADEABLE: UEC_SHORT</p><p><b>Scope/units:</b> returns are capital-return percent on one final chronological outer-validation fold (no fold summing); TIM is percent. Strategy capacity and B&amp;H capital are shown from each campaign contract. Control is the identical frozen entry schedule with E02. Representative rows are selected only by discovery-fold gate coverage and TIM proximity; the untouched final is displayed afterward. Gray rows remain rejected and cannot be promoted without every discovery gate plus exact-engine validation.</p><h3>Append-only campaign manifests</h3><table><tr><th>campaign</th><th>fleet stage</th><th>keys</th><th>strategy / B&amp;H capital</th><th>entry schedules</th><th>vector candidates</th><th>exact queue</th><th>manifest</th></tr><tr><td><code>state_aware_entry_exit_beam_priority_20260727T0038Z</code></td><td><code>VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code></td><td>3</td><td>&mdash; / &mdash;</td><td>&mdash;</td><td>&mdash;</td><td>0</td><td>campaign_result.json</td></tr><tr><td><code>regime_entry_exit_beam_priority_20260727T0015Z</code></td><td><code>VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code></td><td>3</td><td>$16,000 / $2,000</td><td>3</td><td>21,840</td><td>0</td><td>campaign_manifest.json</td></tr><tr><td><code>entry_exit_beam_remaining17_20260726T2340Z</code></td><td><code>VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code></td><td>17</td><td>$16,000 / $2,000</td><td>46</td><td>66,976</td><td>0</td><td>compact_result.json</td></tr><tr><td><code>entry_exit_beam_priority_20260726T2345Z</code></td><td><code>VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code></td><td>3</td><td>$16,000 / $2,000</td><td>10</td><td>14,560</td><td>0</td><td>campaign_result.json</td></tr></table><h3><code>VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code> &mdash; LONG (kept separate)</h3><table><tr><th>key</th><th>discovery-selected entry / exit</th><th>discovery folds (pass + TIM)</th><th>untouched final capital return</th><th>TIM / why gray</th><th>candidates / rows</th></tr><tr><td><b>MU_LONG</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED</td><td>F1&#10007; 78.5% (TIM&gt;60)<br>F2&#10007; 91.3% (TIM&gt;60)</td><td>597.83% vs B&amp;H 204.90%<br>vs control 1231.32%<br>7 exits</td><td>69.51%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>&mdash; / 1 fleet rows</td></tr><tr><td><b>ARM_LONG</b></td><td>ENTRY_4H_DEEP_VALUE<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 79.6% (TIM&gt;60)<br>F2&#10003; 41.3%</td><td>929.64% vs B&amp;H 126.60%<br>vs control 1147.32%<br>24 exits</td><td>69.60%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>&mdash; / 1 fleet rows</td></tr><tr><td><b>PBF_LONG</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED</td><td>F1&#10007; 70.5% (TIM&gt;60)<br>F2&#10007; 75.1% (TIM&gt;60)</td><td>519.70% vs B&amp;H 121.26%<br>vs control 641.10%<br>6 exits</td><td>83.44%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>&mdash; / 1 fleet rows</td></tr></table><h3><code>VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code> &mdash; LONG (kept separate)</h3><table><tr><th>key</th><th>discovery-selected entry / exit</th><th>discovery folds (pass + TIM)</th><th>untouched final capital return</th><th>TIM / why gray</th><th>candidates / rows</th></tr><tr><td><b>MU_LONG</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED</td><td>F1&#10007; 78.6% (TIM&gt;60)<br>F2&#10007; 98.4% (TIM&gt;60, no exit)</td><td>631.17% vs B&amp;H 204.90%<br>vs control 1121.36%<br>5 exits</td><td>71.44%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>7,280 / 1 fleet rows</td></tr><tr><td><b>ARM_LONG</b></td><td>ENTRY_4H_DEEP_VALUE<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 78.2% (TIM&gt;60)<br>F2&#10003; 33.0%</td><td>991.94% vs B&amp;H 126.60%<br>vs control 1153.03%<br>24 exits</td><td>68.83%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>7,280 / 1 fleet rows</td></tr><tr><td><b>PBF_LONG</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED</td><td>F1&#10007; 61.1% (TIM&gt;60)<br>F2&#10007; 78.1% (TIM&gt;60)</td><td>474.96% vs B&amp;H 121.26%<br>vs control 566.49%<br>2 exits</td><td>81.88%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>7,280 / 1 fleet rows</td></tr></table><h3><code>VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code> &mdash; LONG (kept separate)</h3><table><tr><th>key</th><th>discovery-selected entry / exit</th><th>discovery folds (pass + TIM)</th><th>untouched final capital return</th><th>TIM / why gray</th><th>candidates / rows</th></tr><tr><td><b>MU_LONG</b></td><td>ENTRY_1H_TURN_UP<br>BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED</td><td>F1&#10003; 41.5%<br>F2&#10007; 94.5% (TIM&gt;60)</td><td>507.86% vs B&amp;H 204.90%<br>vs control 1315.70%<br>7 exits</td><td>55.21%<br>discovery fold failed; final &le; control; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>ARM_LONG</b></td><td>ENTRY_4H_DEEP_VALUE<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 79.2% (TIM&gt;60)<br>F2&#10003; 32.7%</td><td>950.38% vs B&amp;H 126.60%<br>vs control 1155.90%<br>24 exits</td><td>71.42%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>5,824 / 4 fleet rows</td></tr><tr><td><b>PBF_LONG</b></td><td>ENTRY_BOUNCE_15M_LOW<br>EXIT_PEAK_GIVEBACK</td><td>F1&#10003; 43.9%<br>F2&#10003; 55.9%</td><td>449.38% vs B&amp;H 121.26%<br>vs control 904.51%<br>61 exits</td><td>83.08%<br>final &le; control; final TIM&gt;60; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>AMD_LONG</b></td><td>ENTRY_LADDER_GREEN<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 14.3% (TIM&lt;20)<br>F2&#10007; 73.4% (TIM&gt;60)</td><td>769.46% vs B&amp;H 134.45%<br>vs control 1180.81%<br>56 exits</td><td>77.36%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>2,912 / 2 fleet rows</td></tr><tr><td><b>DINO_LONG</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_C_DELAYED_EMERGENCY_EXTENDED</td><td>F1&#10003; 79.2%<br>F2&#10003; 73.4%</td><td>449.04% vs B&amp;H 90.70%<br>vs control 466.07%<br>7 exits</td><td>91.18%<br>final &le; control; final TIM&gt;80; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>INTC_LONG</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 70.5% (TIM&gt;60)<br>F2&#10007; 72.4% (TIM&gt;60)</td><td>421.55% vs B&amp;H 139.23%<br>vs control 953.96%<br>55 exits</td><td>77.66%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>MPC_LONG</b></td><td>ENTRY_BOUNCE_5M_LOW<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10003; 34.6%<br>F2&#10007; 78.7% (TIM&gt;60)</td><td>206.54% vs B&amp;H 88.48%<br>vs control 186.73%<br>12 exits</td><td>37.64%<br>discovery fold failed; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>MRVL_LONG</b></td><td>ENTRY_LADDER_GREEN<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 78.3% (TIM&gt;60)<br>F2&#10007; 69.6% (TIM&gt;60)</td><td>275.54% vs B&amp;H 123.58%<br>vs control 1672.73%<br>19 exits</td><td>41.27%<br>discovery fold failed; final &le; control; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>SNDK_LONG</b></td><td>ENTRY_BOUNCE_15M_LOW<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F2&#10007; 95.7% (TIM&gt;60)</td><td>4917.74% vs B&amp;H 467.09%<br>vs control 2212.76%<br>3 exits</td><td>99.03%<br>discovery fold failed; final TIM&gt;60; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>VLO_LONG</b></td><td>ENTRY_BOUNCE_15M_LOW<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10003; 27.5%<br>F2&#10007; 75.3% (TIM&gt;60)</td><td>316.73% vs B&amp;H 84.91%<br>vs control 466.78%<br>16 exits</td><td>85.51%<br>discovery fold failed; final &le; control; final TIM&gt;60; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr></table><h3><code>VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS</code> &mdash; SHORT (kept separate)</h3><table><tr><th>key</th><th>discovery-selected entry / exit</th><th>discovery folds (pass + TIM)</th><th>untouched final capital return</th><th>TIM / why gray</th><th>candidates / rows</th></tr><tr><td><b>ACN_SHORT</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_C_DELAYED_EMERGENCY_EXTENDED</td><td>F1&#10003; 79.0%<br>F2&#10003; 72.6%</td><td>393.46% vs B&amp;H 44.50%<br>vs control 403.42%<br>6 exits</td><td>80.92%<br>final &le; control; final TIM&gt;80; not exact-validated</td><td>2,912 / 2 fleet rows</td></tr><tr><td><b>ALB_SHORT</b></td><td>ENTRY_1H_TURN_UP<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 72.5% (TIM&gt;60)<br>F2&#10007; 64.6% (&le;B&amp;H, TIM&gt;60)</td><td>-2.98% vs B&amp;H 19.41%<br>vs control 64.38%<br>30 exits</td><td>33.71%<br>discovery fold failed; final &le; B&amp;H; final &le; control; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>HL_SHORT</b></td><td>ENTRY_LADDER_GREEN<br>BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED</td><td>F1&#10007; 72.0% (TIM&gt;60)<br>F2&#10007; 40.6% (&le;B&amp;H)</td><td>29.21% vs B&amp;H 21.95%<br>vs control 50.25%<br>26 exits</td><td>16.88%<br>discovery fold failed; final &le; control; final TIM&lt;20; not exact-validated</td><td>2,912 / 2 fleet rows</td></tr><tr><td><b>LAC_SHORT</b></td><td>ENTRY_LADDER_GREEN<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 77.0% (TIM&gt;60)<br>F2&#10007; 54.4% (&le;B&amp;H, insolvent)</td><td>67.94% vs B&amp;H 36.98%<br>vs control 109.33%<br>22 exits</td><td>11.75%<br>discovery fold failed; final &le; control; final TIM&lt;20; not exact-validated</td><td>2,912 / 2 fleet rows</td></tr><tr><td><b>LDOS_SHORT</b></td><td>ENTRY_LADDER_GREEN<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10003; 29.3%<br>F2&#10007; 9.8% (TIM&lt;20)</td><td>36.04% vs B&amp;H 37.50%<br>vs control 67.76%<br>60 exits</td><td>10.53%<br>discovery fold failed; final &le; B&amp;H; final &le; control; final TIM&lt;20; not exact-validated</td><td>2,912 / 2 fleet rows</td></tr><tr><td><b>TTD_SHORT</b></td><td>ENTRY_DC_TIER_AUG_ENABLED<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 32.7% (TIM&lt;50)<br>F2&#10003; 77.4%</td><td>326.57% vs B&amp;H 54.33%<br>vs control 481.90%<br>41 exits</td><td>72.52%<br>discovery fold failed; final &le; control; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr><tr><td><b>UUUU_SHORT</b></td><td>ENTRY_LADDER_GREEN<br>BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED</td><td>F1&#10007; 71.0% (TIM&gt;60)<br>F2&#10003; 20.6%</td><td>32.53% vs B&amp;H 26.20%<br>vs control 68.24%<br>22 exits</td><td>13.66%<br>discovery fold failed; final &le; control; final TIM&lt;20; not exact-validated</td><td>4,368 / 3 fleet rows</td></tr></table><h2>SWITCH_MATRIX_TRB progress</h2><p>source <code>/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB_DIGEST.md</code> &middot; age 0.1h</p><p style='color:#666'>The current repaired campaign and canonical pilot bar are <code>MU_LONG</code>, <code>NVDA_LONG</code>, <code>VT_LONG</code>, <code>TTD_SHORT</code>, <code>ACN_SHORT</code>, and <code>LAC_SHORT</code>. HAO is not a current pilot because its frozen history is insufficient. Only c5-fingerprinted exact cells count toward coverage or promotion.</p><pre style='font-size:11px;white-space:pre-wrap'># SWITCH_MATRIX_TRB progress digest — 2026-07-31 13:12:50Z
+
+&gt; Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&amp;H.
+
+## Freshness
+
+- Current repaired matrix latest row: `2026-07-31T13:00:57Z` (11m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-31T13:00:57Z` (11m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **2,144**; new current rows in 24h: **2,144**.
+- Raw repaired-campaign pilot rows since cutoff: **47**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **9,965/10,012**. They remain preserved as evidence.
+- Current contract: campaign `stocks_repaired_20260730_c5`, cutoff `2026-07-30T03:30:10Z`, exact code+NPZ+side fingerprint required.
+- Current stock cost contract: ordinary exact ENGINE **0.05% round trip**; new vector/research manifests **0 bps commission + 2.5 bps adverse slippage one way** (also 0.05% round trip). Historical 5+2 bps research receipts remain quarantined under their declared 14 bps cost.
+- Crypto cost remains **0.08% round trip** in the engine; it was not changed to 0.8% because repository/live history does not support that tenfold value.
+- VEC diagnostic rows: **83,604** (never matrix proof).
+- Separate vector scalar-gap receipt: **10,406** amber/italic hypotheses; exact completion credit **0**; ENGINE ranking and promotion **forbidden**.
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-31 13:11:54Z (0m old, 1,985,016 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-31 13:10:49Z (2m old, 44,808 bytes)
+- `SWITCH_MATRIX_INTERDEPENDENCY_20260729.json`: 2026-07-29 21:24:17Z (1.7d old, 2,575,706 bytes)
+- `SWITCH_MATRIX_INTERDEPENDENCY_20260729.csv`: 2026-07-29 21:24:17Z (1.7d old, 867,032 bytes)
+- Description coverage in current CSV: **3,579/3,579** rows.
+- Workbook axis audit: **SWITCH_MATRIX_TRB=PASS** (117 active + 7 historical = 124 visible keys; fresh=yes; missing axes=0; blank descriptions=0; formula errors=0); **PARAM_BASELINE_STOCKS=PASS** (117 active + 7 historical = 124 visible keys; fresh=yes; missing axes=0; blank descriptions=0; formula errors=0)
+- Coverage contract: every current `symbols_trb_long/short` key must remain visible on every relevant path sheet. Blank/white result cells are valid; a missing row or column is an export failure.
+
+## Stocks 5m execution provenance
+
+Historical native 5m availability is provider-limited. Older rows use the disclosed containing-15m interpolation; native bars replace it permanently as they are collected.
+Retention report scope: **224 symbols**, **224 native archives**, **6,982,876 native rows**, **0 availability warnings**, **0 hard errors**.
+
+| key | native rows | native coverage | native range | interpolated rows | interpolated coverage | retention |
+|---|---:|---:|---|---:|---:|---|
+| MU_LONG | 16486 | — | 2026-03-23 → 2026-07-30 | — | — | PASS |
+| NVDA_LONG | 18684 | — | 2026-03-23 → 2026-07-30 | — | — | PASS |
+| VT_LONG | 41635 | — | 2024-07-11 → 2026-07-30 | — | — | PASS |
+| TTD_SHORT | 12803 | — | 2026-03-23 → 2026-07-30 | — | — | PASS |
+| ACN_SHORT | 7453 | — | 2026-03-25 → 2026-07-30 | — | — | PASS |
+| LAC_SHORT | 5889 | — | 2026-05-18 → 2026-07-30 | — | — | PASS |
+
+The append/merge ledger blocks any refresh that shrinks native row count, advances the first timestamp, regresses the last timestamp, or introduces duplicate/out-of-order timestamps. `synthetic_5m_parent_close_ts` records the bounded 0/5/10-minute parent lag.
+
+## Ordinary baseline actionability
+
+| key | gain/mo | side B&amp;H/mo | TIM | real closes | clamps | scheduler state |
+|---|---:|---:|---:|---:|---:|---|
+| MU_LONG | 22.3332 | 22.7537 | 99.9721% | 0 | 0 | ACTIVE BUT ABOVE 60% TARGET |
+| NVDA_LONG | 4.0392 | 4.0433 | 99.9721% | 0 | 0 | ACTIVE BUT ABOVE 60% TARGET |
+| VT_LONG | 1.3544 | 1.3835 | 99.9859% | 0 | 0 | ACTIVE BUT ABOVE 80% TARGET |
+| TTD_SHORT | 2.8336 | 2.8257 | 99.9721% | 0 | 0 | ACTIVE BUT ABOVE 80% TARGET |
+| ACN_SHORT | 2.0540 | 2.0460 | 99.9930% | 0 | 0 | ACTIVE BUT ABOVE 80% TARGET |
+| LAC_SHORT | 1.9909 | 2.0495 | 99.9733% | 0 | 0 | ACTIVE BUT ABOVE 60% TARGET |
+
+An all-exits-off ladder floor is expected to have zero real closes; high exposure makes it actionable because the exit family under test must create the closes. Only a floor under 1% TIM is entry-inert. Its exact worker is dependency-gated to source-backed ENTRY masters and ENTRY_SOURCE binding probes; helper packs never count as matrix coverage.
+
+## Pilot-key matrix coverage
+
+| key | differential actionable | plateau cross-key | combined executable | latest Tier-2 row | age | strategy tests |
+|---|---:|---:|---:|---|---:|---:|
+| MU_LONG | 5/842 (0.6%) | 0/767 | 5/1,609 (0.3%) | 2026-07-31T11:27:41Z | 1.8h | 5 |
+| NVDA_LONG | 14/842 (1.7%) | 0/767 | 14/1,609 (0.9%) | 2026-07-31T13:00:57Z | 11m | 18 |
+| VT_LONG | 140/842 (16.6%) | 766/767 | 906/1,609 (56.3%) | 2026-07-31T12:45:30Z | 27m | 1,883 |
+| TTD_SHORT | 14/892 (1.6%) | 25/708 | 39/1,600 (2.4%) | 2026-07-31T12:57:11Z | 15m | 96 |
+| ACN_SHORT | 1/892 (0.1%) | 37/708 | 38/1,600 (2.4%) | 2026-07-31T11:03:08Z | 2.2h | 118 |
+| LAC_SHORT | 13/892 (1.5%) | 3/708 | 16/1,600 (1.0%) | 2026-07-31T11:39:35Z | 1.6h | 17 |
+
+Coverage uses the same disjoint classifier as `tools/matrix_guard.py`: only active-key, side-applicable, exact-executable differential rows enter the denominator. Plateau cross-key probes are shown separately. Historical axes, no-live-reader rows, wrong-account rows, helpers, intentional controls, and opposite-side cells are not actionable empties.
+VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
+
+## Vector scalar-gap diagnostic (separate amber layer)
+
+&gt; `VEC_DIAGNOSTIC` only. These rows are screening evidence, not exact completion, ENGINE ranking, or promotion evidence. `MOVED` means queue the logical cell for exact replay.
+
+| key | executable scalar | parity-eligible | screened | moved | inert | zero | VEC_NATIVE | VEC_PARITY | VEC_APPROX | approx H/M/L | exact replay priority | exact credit |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| MU_LONG | 1609 | 331 | 1217 | 547 | 595 | 75 | 316 | 15 | 886 | 0/144/742 | 547 | 0 |
+| NVDA_LONG | 1609 | 331 | 1211 | 557 | 579 | 75 | 315 | 15 | 881 | 0/142/739 | 557 | 0 |
+| VT_LONG | 1609 | 331 | 1091 | 496 | 515 | 80 | 264 | 0 | 827 | 0/115/712 | 496 | 0 |
+| TTD_SHORT | 1600 | 331 | 1248 | 607 | 568 | 73 | 314 | 15 | 919 | 0/161/758 | 607 | 0 |
+| ACN_SHORT | 1600 | 331 | 1248 | 580 | 595 | 73 | 314 | 15 | 919 | 0/161/758 | 580 | 0 |
+| LAC_SHORT | 1600 | 331 | 799 | 194 | 604 | 1 | 314 | 15 | 470 | 0/141/329 | 194 | 0 |
+
+Why the fast denominator is smaller: the old 346 candidates were 316 reviewed native values plus 30 values from six EMA200 aliases. T1_MULT, T1_PCT and T3_MULT failed sampled exact parity, removing 15 values; the approved vector denominator is 331 (316 native plus 15 T2_MULT/T2_PCT/T3_PCT values with 5/5 VT MOVED/INERT agreement). VEC_APPROX expands discovery coverage using explicit proxy mappings; those cells remain exact-only and are reported by confidence and mismatch class, never as ENGINE completion. The classification-aware executable total is 1,609 for LONG and 1,600 for SHORT after side applicability; it also includes exact-only and plateau cross-key work. GROUP_COMBO, STOP_PACK and TF_EXCLUDE are not scalar completion.
+
+## Current c5 vector-first bundle cycle
+
+This is the fast discovery lane, not matrix coverage or promotion. It uses a $10,000 stock account denominator, $2,000 side-specific B&amp;H capital, the $16,000/8× strategy ceiling and 0.05% round-trip cost. Each row must beat both 2× B&amp;H/cash and its same-entry/all-exits-off control on every frozen fold before exact replay.
+Current runner `026ecaa14684`; latest receipt `2026-07-30T16:32:50.037577+00:00`; exact queue **0**; historical/unbound TIM receipts quarantined **0/0**.
+
+| key | current bundles | top performance probe | best probe inside key TIM band |
+|---|---:|---|---|
+| MU_LONG | 30 | `C4_WTDC55_PPL_PATIENT` 7.424% vs -4.649% (positive cash floor required); control -8.620%; TIM 41.94%; trades 32; capture_below_2x_side_bh | `C4_WTDC55_PPL_PATIENT` 7.424% vs -4.649% (positive cash floor required); control -8.620%; TIM 41.94%; trades 32; capture_below_2x_side_bh |
+| NVDA_LONG | 30 | `C4_WTDC60_R3_D4H` 9.968% vs 4.977% (2.003× B&amp;H); control 6.034%; TIM 23.68%; trades 18; capture_below_2x_side_bh; did_not_beat_same_fold_control | `C4_WTDC60_R3_D4H` 9.968% vs 4.977% (2.003× B&amp;H); control 6.034%; TIM 23.68%; trades 18; capture_below_2x_side_bh; did_not_beat_same_fold_control |
+| VT_LONG | 30 | `C4_WTDC60_R3_D4H` 0.077% vs 0.462% (0.166× B&amp;H); control -0.665%; TIM 13.36%; trades 8; capture_below_2x_side_bh; tim_not_50_80 | — |
+| TTD_SHORT | 31 | `C4_ORDINARY_LADDER_DC_REJECT_1H_LB5` 4.802% vs 7.648% (0.628× B&amp;H); control 1.816%; TIM 21.22%; trades 38; capture_below_2x_side_bh; tim_not_50_80 | `C4_WTDC55_PPL_BALANCED` 0.846% vs 7.648% (0.111× B&amp;H); control -3.675%; TIM 65.90%; trades 104; capture_below_2x_side_bh |
+| ACN_SHORT | 31 | `C4_WTDC55_R2_PEAK0P35` -0.610% vs -3.220% (positive cash floor required); control -0.610%; TIM 75.55%; trades 18; nonpositive_return_against_cash_floor; did_not_beat_same_fold_control | `C4_WTDC55_R2_PEAK0P35` -0.610% vs -3.220% (positive cash floor required); control -0.610%; TIM 75.55%; trades 18; nonpositive_return_against_cash_floor; did_not_beat_same_fold_control |
+| LAC_SHORT | 31 | `C4_WTDC60_R3_D` 28.226% vs 11.084% (2.547× B&amp;H); control 16.925%; TIM 43.24%; trades 249; nonpositive_return_against_cash_floor; did_not_beat_same_fold_control | `C4_WTDC60_R3_D` 28.226% vs 11.084% (2.547× B&amp;H); control 16.925%; TIM 43.24%; trades 249; nonpositive_return_against_cash_floor; did_not_beat_same_fold_control |
+
+All rejected receipts remain gray so identical code/data/bundle identities are not blindly retested. `EXACT_PENDING` is still only a queue entry; the exact same-entry control, route attribution, reentry and capacity audits decide whether a result can enter the ENGINE matrix.
+
+### Key-scoped adaptive vector cycle
+
+This second lane tests slower/smaller profit locks and daily-only selective R3 settings only for MU_LONG, NVDA_LONG and LAC_SHORT. VT, TTD and ACN are intentionally excluded from this generic catalog.
+Current runner `026ecaa14684`; latest receipt `2026-07-30T01:17:13.598727+00:00`; exact queue **0**; historical/unbound TIM receipts quarantined **0/0**.
+
+| key | adaptive bundles | top performance probe | best probe inside key TIM band |
+|---|---:|---|---|
+| MU_LONG | 15 | `C4A_MU_LONG_WTDC55_PPL_SLOW5` 0.226% vs -4.649% (positive cash floor required); control -8.620%; TIM 49.20%; trades 25; capture_below_2x_side_bh | `C4A_MU_LONG_WTDC55_PPL_SLOW5` 0.226% vs -4.649% (positive cash floor required); control -8.620%; TIM 49.20%; trades 25; capture_below_2x_side_bh |
+| NVDA_LONG | 13 | `C4A_NVDA_LONG_WTDC27P5_R3_D` 8.065% vs 4.977% (1.621× B&amp;H); control 3.356%; TIM 30.23%; trades 20; capture_below_2x_side_bh | `C4A_NVDA_LONG_WTDC27P5_R3_D` 8.065% vs 4.977% (1.621× B&amp;H); control 3.356%; TIM 30.23%; trades 20; capture_below_2x_side_bh |
+| LAC_SHORT | 16 | `C4A_LAC_SHORT_WTDC27P5_R3_D` 26.880% vs 11.084% (2.425× B&amp;H); control 15.922%; TIM 44.20%; trades 485; nonpositive_return_against_cash_floor; did_not_beat_same_fold_control | `C4A_LAC_SHORT_WTDC27P5_R3_D` 26.880% vs 11.084% (2.425× B&amp;H); control 15.922%; TIM 44.20%; trades 485; nonpositive_return_against_cash_floor; did_not_beat_same_fold_control |
+
+### Targeted entry-replenishment cycle 3
+
+This isolated 38-arm lane added the registered WT force-open entry source to the strongest MU/NVDA/LAC exits. It is diagnostic only; identical returns expose an inert or absent entry condition rather than exit alpha.
+Latest receipt `2026-07-30T01:21:21.388181+00:00`; strict vector survivors **0**; historical/unbound TIM-contract receipts quarantined **0/30**. Quarantined receipts are retained as gray history and never enter either current-ranked column.
+
+| key | targeted bundles | top performance probe | best probe inside key TIM band |
+|---|---:|---|---|
+| MU_LONG | 0 | — | — |
+| NVDA_LONG | 0 | — | — |
+| LAC_SHORT | 8 | `C4T3_LAC_SHORT_WTDC35_WF_GATED_PPL_PATIENT` 15.976% vs 11.084% (1.441× B&amp;H); control 15.922%; TIM 72.57%; trades 111; capture_below_2x_side_bh; tim_not_20_60 | — |
+
+### SHORT-native Donchian recovery cycle
+
+This 31-arm TTD/ACN lane covers only after a causally completed lower Donchian downside extension and upward re-cross, with optional side-aware partial banking or winner-velocity decay. It does not invert LONG stops.
+Latest receipt `2026-07-30T01:23:04.127298+00:00`; strict vector survivors **0**; historical/unbound TIM-contract receipts quarantined **5/26**. Quarantined receipts are retained as gray history and never enter either current-ranked column.
+
+| key | short-native bundles | top performance probe | best probe inside key TIM band |
+|---|---:|---|---|
+| TTD_SHORT | 0 | — | — |
+| ACN_SHORT | 0 | — | — |
+
+### BB breakout entry-replenishment cycle 4
+
+This sealed two-arm lane adds the registered BB pullback entry to the strongest prior MU and NVDA exit bundles. It is vector research only and does not fill ENGINE matrix cells.
+Latest receipt `none`; strict vector survivors **0**; historical/unbound TIM-contract receipts quarantined **0/0**.
+
+| key | cycle-4 bundles | top performance probe | best probe inside key TIM band |
+|---|---:|---|---|
+| MU_LONG | 0 | — | — |
+| NVDA_LONG | 0 | — | — |
+
+## Path interpretation guardrails
+
+- `DC_LOW4_STOP_ENABLED` and stock `R1_DC_LOW4_3M_EMERGENCY_ENABLED` (legacy name; actual stock level is `dc_low4_5m`/`dc_high4_5m`) are **ENTRY-QUALITY FAILURE DIAGNOSTICS / LOSING-CHURN EXIT EVIDENCE**. They close a recently failed entry at a tight loss; they are not top/profit-taking exits. Below-B&amp;H observations stay gray and preserved so they are not blindly retested.
+- The current `LONG_STRUCT_EXIT_TF` / `SHORT_STRUCT_EXIT_TF` path closes immediately on its selected structural break. The first armed-break → lower price/WT1 rebound-top baseline is **VEC-REJECTED / NO Tier-2 result**: `data/reports/vec_research/structural_wt_rebound_20260726T062654Z` scored 0/6 contract-valid LONG folds above side-and-hold, median alpha -4.70pp, mean TIM 77.9%, and 50 exits / 30 losing. HAO_SHORT&#x27;s +20.18pp is quarantined because its NPZ contract is invalid. Profit/MFE-gated variants remain research candidates and do not fill matrix cells.
+- The nested profit-gated grid `structural_wt_profit_grid_20260726T063646Z` selected one universal setting on MU+VT 2025Q4, then froze it. Validation had 9/9 winning exits but only 1/4 folds above B&amp;H (median alpha -1.04pp). The remaining loss is reentry execution: delayed E10 reclaim filled 10.01% worse on recent MU and 1.46% worse on recent VT. A persistent resting-reclaim model is now the priority; this grid remains VEC-only.
+- Frozen exit settings with causal resting reclaim (`resting_reclaim_compare_20260726T064428Z`) improved median validation alpha to +1.94pp and cut mean reclaim overshoot from 0.80% to 0.02%. Recent MU returned +13.59% versus B&amp;H +2.60%, but VT still trailed; this is evidence for the execution fix, not a universal promotion.
+- MU ladder discovery `struct_wt_resting_reclaim_probe_20260726T070000Z_MU_LONG` reached +409.93% versus B&amp;H +204.90% (2.0006×) at 52.3% weighted exposure, but is **REJECTED versus the same-entry research control**. The source frozen 2026 ladder + 4h N=30 E02 fold returned +1,316.02% versus B&amp;H +205.25% (6.4117×) at 77.1% exposure. The structural candidate discarded 906.09pp of return; beating B&amp;H alone is not sufficient. Both paths remain VEC-only pending exact replay.
+- Nested/frozen same-ladder validation (`struct_wt_nested_frozen_20260726T073000Z`) selected only on MU Jan-Mar, then scored MU Apr-Jul without reselection. Structural returned +359.24% (2.191× B&amp;H) but the same ladder returned +1,380.56% (8.420× B&amp;H): -1,021.32pp and only 0.260× of ladder return. The universal VT score improved a losing ladder (-8.90% versus -61.85%) but remained below B&amp;H (+1.57%). Verdict **REJECT / NO MATRIX**; every exit candidate must beat both B&amp;H and the strongest same-entry/same-window causal control.
+- The complete registered `EXIT_STRUCTURAL_WT_LOWER_TOP` screen now supersedes the exploratory structural grids: 20 frozen top/bottom symbol-sides × 768 settings, with completed HTF bars, side isolation, resting reclaim and a compiled-to-Python parity gate. All 20 selected winners reproduced exactly, but **0/20 passed** both B&amp;H + same-entry E02 and the 70–80% discovery/validation TIM gates. MU validated +1,127.00pp over B&amp;H but -44.324pp versus E02 at 65.21% TIM; SNDK&#x27;s headline used 98.70% TIM. Path-fleet job 37 preserves all rows gray and correctly queues no exact replay.
+- `EXIT_PARTIAL_RUNNER` completed the corrected 192-setting registry grid on 20 frozen keys (the listed 4×4×3×2×2 fields cannot equal 128; all clip sums are valid). It produced **0 strict survivors**. Five selected validation winners had zero fast partial fills; E05/E06 filled in only 25%/40% of their validation settings versus WT 100%. The winners created 919 per-exit reclaim obligations, filled 633 and left 286 open. MU made one partial (-$107.98 net) versus ten slow full exits and lost 122.07pp to E02. Job 39 preserves all 20 rows gray and queues no exact replay.
+- `EXIT_E06_REGRESSION_RETEST` completed 3,840 same-entry candidates with **0 strict survivors**. The registry is stale: `rebound_atr` is actually passed to `corr_gate`, active code has no ATR rebound/later retest state, and there is no live Tradier E06 config key. Correlation gate 1.0 was 960/960 zero-signal/zero-fill (red); all 20 frozen winners had actual signals/exits. MU was in-band at 73.46% but lost 303.33pp to E02 and left one reclaim open. Job 46 preserves 20 gray rows and queues no exact replay.
+- Reentry invariant for structural research: after an exit, the stored exit/top level and reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but must never erase it or allow price to outrun the stored level without reopening. This is a design requirement, not a measured performance claim.
+
+### Preserved dc_low4 diagnostic evidence (pre-repair; gray/quarantined)
+
+| key | switch | gain/mo | TIM | trades | status |
+|---|---|---:|---:|---:|---|
+| MU_LONG | False | 0.0275 | 0.13% | 17 | PRE-REPAIR / validation NULL |
+| MU_LONG | True | -0.1045 | 0.21% | 103 | LOSING-CHURN SIGNATURE; validation NULL |
+| MU_SHORT | False | -0.4670 | 6.89% | 48 | PRE-REPAIR / validation NULL |
+| MU_SHORT | True | -0.1061 | 0.15% | 155 | NEGATIVE + HIGH-CHURN; validation NULL |
+
+These historical rows are retained for diagnosis and excluded from the automatic matrix-fill queues. They are not valid proof because the repaired contract fields were absent.
+
+## New ladder / entry / exit / interaction strategy results
+
+### MU_LONG
+
+| time | campaign | path/value | gain/mo | B&amp;H/mo | vs B&amp;H/mo | capture | TIM | trades | verdict |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-31T11:27:41Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS=125.0` | 45.9383 | 22.7537 | 23.1846 | 2.019× | 99.96% | 5 | B&amp;H FLOOR ONLY |
+| 2026-07-31T09:49:17Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_TF=&quot;dc_1h&quot;` | 48.3129 | 22.7537 | 25.5592 | 2.123× | 99.97% | 4 | B&amp;H FLOOR ONLY |
+| 2026-07-31T07:03:44Z | stocks_repaired_20260730_c5_1yr | `NOLOSS_BB1H_GATE_ENABLED=true` | 51.1548 | 55.1494 | -3.9946 | 0.928× | 98.85% | 8 | BELOW B&amp;H |
+| 2026-07-31T01:50:15Z | stocks_repaired_20260730_c5_1yr | `WT_DC_EXIT_THRESHOLD=45` | 89.7580 | 55.1495 | 34.6085 | 1.628× | 99.90% | 2 | B&amp;H FLOOR ONLY |
+| 2026-07-31T01:18:22Z | stocks_repaired_20260725_c2 | `STRUCTURAL_RANGE_SHIFT_TF=&quot;dc_4h&quot;` | 55.0843 | 23.8051 | 31.2792 | 2.314× | 99.97% | 2 | B&amp;H FLOOR ONLY |
+
+Best trading candidate: **none with at least two trades and complete return metrics**.
+
+### NVDA_LONG
+
+| time | campaign | path/value | gain/mo | B&amp;H/mo | vs B&amp;H/mo | capture | TIM | trades | verdict |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-31T13:00:57Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS=125.0` | 8.9611 | 4.0433 | 4.9178 | 2.216× | 99.97% | 2 | B&amp;H FLOOR ONLY |
+| 2026-07-31T10:17:51Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_TF=&quot;dc_1h&quot;` | 8.9128 | 4.0433 | 4.8695 | 2.204× | 99.97% | 2 | B&amp;H FLOOR ONLY |
+| 2026-07-31T09:53:16Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_K_LOW=15.0` | 8.9611 | 4.0433 | 4.9178 | 2.216× | 99.97% | 2 | B&amp;H FLOOR ONLY |
+| 2026-07-31T09:37:34Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_K_HIGH=85.0` | 8.9611 | 4.0433 | 4.9178 | 2.216× | 99.97% | 2 | B&amp;H FLOOR ONLY |
+| 2026-07-31T05:07:06Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS=150.0` | 8.4987 | 4.0432 | 4.4555 | 2.102× | 99.74% | 3 | B&amp;H FLOOR ONLY |
+| 2026-07-31T04:29:43Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_K_LOW=20.0` | 8.9611 | 4.0433 | 4.9178 | 2.216× | 99.97% | 2 | B&amp;H FLOOR ONLY |
+| 2026-07-31T04:00:40Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_K_HIGH=75.0` | 7.0248 | 4.0433 | 2.9815 | 1.737× | 99.96% | 3 | B&amp;H FLOOR ONLY |
+| 2026-07-31T03:39:58Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_EXIT=true` | 8.9611 | 4.0433 | 4.9178 | 2.216× | 99.97% | 2 | B&amp;H FLOOR ONLY |
+
+Best trading candidate: **none with at least two trades and complete return metrics**.
+
+### VT_LONG
+
+| time | campaign | path/value | gain/mo | B&amp;H/mo | vs B&amp;H/mo | capture | TIM | trades | verdict |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-31T12:45:30Z | stocks_repaired_20260730_c5_1yr | `NOLOSS_MIN_PROFIT_PCT_TRADIER=1.0` | 1.2306 | 1.5014 | -0.2708 | 0.820× | 99.00% | 15 | BELOW B&amp;H |
+| 2026-07-31T11:06:21Z | stocks_repaired_20260730_c5_1yr | `PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT=0.225` | 0.6077 | 1.5013 | -0.8936 | 0.405× | 98.80% | 10 | BELOW B&amp;H |
+| 2026-07-31T11:03:57Z | stocks_repaired_20260730_c5_1yr | `PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT=0.375` | 0.6077 | 1.5013 | -0.8936 | 0.405× | 98.80% | 10 | BELOW B&amp;H |
+| 2026-07-31T11:01:41Z | stocks_repaired_20260730_c5_1yr | `PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT=0.0375` | 0.6077 | 1.5013 | -0.8936 | 0.405× | 98.80% | 10 | BELOW B&amp;H |
+| 2026-07-31T09:03:43Z | stocks_repaired_20260730_c5 | `STDEV_REJECT_EXIT_RETURN=0.975` | 0.2572 | 1.3835 | -1.1263 | 0.186× | 86.08% | 339 | BELOW B&amp;H |
+| 2026-07-31T08:58:11Z | stocks_repaired_20260730_c5_1yr | `NOLOSS_MIN_PROFIT_PCT_TRADIER=3.0` | 1.5496 | 1.5013 | 0.0483 | 1.032× | 99.49% | 6 | GRAY: BEATS B&amp;H OUTSIDE 50-80% TIM |
+| 2026-07-31T08:15:15Z | stocks_repaired_20260730_c5 | `STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS=100.0` | 2.3187 | 1.3835 | 0.9352 | 1.676× | 99.58% | 5 | B&amp;H FLOOR ONLY |
+| 2026-07-31T07:46:48Z | stocks_repaired_20260730_c5 | `STDEV_REJECT_EXIT_RETURN=0.8125` | 1.4276 | 1.3835 | 0.0441 | 1.032× | 97.98% | 51 | GRAY: BEATS B&amp;H OUTSIDE 50-80% TIM |
+
+Best trading candidate: **none with at least two trades and complete return metrics**.
+
+### TTD_SHORT
+
+| time | campaign | path/value | gain/mo | B&amp;H/mo | vs B&amp;H/mo | capture | TIM | trades | verdict |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-31T12:57:11Z | stocks_repaired_20260730_c5 | `WT_DC_EXIT_STALE_MAX_S=450` | 0.7673 | 2.8257 | -2.0584 | 0.272× | 97.15% | 43 | BELOW B&amp;H |
+| 2026-07-31T11:39:19Z | stocks_repaired_20260730_c5 | `STDEV_REJECT_EXIT_ZONE=0.6` | 2.8142 | 2.8257 | -0.0115 | 0.996× | 97.00% | 24 | BELOW B&amp;H |
+| 2026-07-31T10:04:12Z | stocks_repaired_20260730_c5 | `WT_DC_EXIT_THRESHOLD=15` | 0.7673 | 2.8257 | -2.0584 | 0.272× | 97.15% | 43 | BELOW </pre>
+
+    <h2>What changed (LEGACY reopt store — capture-era sections above are the live view)</h2>
+    <p class='r'><b>&#9888; STALE (60h since last write).</b> reopt_loop.sh is disabled under the 2026-07-29 S1-matrix-only directive, so this section is a frozen snapshot, not live progress. See MATRIX FILL PROGRESS above for the current active work.</p>
+    <h3>Newly gated off (real-engine confirmed negative &mdash; NOT trading live)</h3>
+    <p style='color:#888;margin:2px 0 10px 0'>none this window</p>
+    <h3>Re-enabled (vec false-negative corrected by real engine)</h3>
+    <p style='color:#888;margin:2px 0 10px 0'>none this window</p>
+    <h3>Rescued to qualifier status (real-engine Sharpe &gt;0.5 and actual B&amp;H multiple &ge;2x)</h3>
+    <p style='color:#888;margin:2px 0 10px 0'>none this window</p>
+    <h3>New qualifiers this window (real-engine Sharpe &gt;0.5 and actual B&amp;H multiple &ge;2x)</h3>
+    <p style='color:#888;margin:2px 0 10px 0'>none this window</p>
+
+    <h2>Progress / liveness</h2>
+    <ul><li><b>CRYPTO</b>: 32/101 vec-screened keys real-engine-confirmed (+0 since last digest) &middot; keys baselined delta (vec-screen) +0 &middot; reopt queue ?/? done (rescued=0 enabled=0 hopeless=0)</li><li><b>STOCK</b>: 2712 ledger-backed current c5 exact rows across 10 symbol/sides; 8 meet the user bar (gain/month &gt;2% and beat B&amp;H). Legacy reopt counters are quarantined and do not supply this line.</li></ul>
+    <p>S1: %Cpu(s):  0.5 us,  1.5 sy, 30.8 ni, 67.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st &middot; Mem:           31270        3745       23979          17        3936       27524</p>
+
+    <h2>Top 10 &ge;2x B&amp;H qualifiers &mdash; CRYPTO (LEGACY reopt store)</h2>
+    <p style='color:#888;margin:2px 0 10px 0'>no real-engine qualifiers (Sharpe &gt;0.5 and actual B&amp;H multiple &ge;2x) yet</p>
+    <h2>Top current STOCK exact rows by gain/month delta vs B&amp;H (c5; 1yr preferred per key)</h2>
+    <table><tr><th>key</th><th>window</th><th>best exact cell</th><th>gain/mo</th><th>&Delta; vs B&amp;H</th><th>trades</th></tr><tr><td>MU_LONG</td><td>1yr</td><td>WT_DC_EXIT_THRESHOLD=45</td><td>+89.7580%</td><td>+34.6085 pp/mo</td><td>2</td></tr><tr><td>NVDA_LONG</td><td>full</td><td>STRUCTURAL_RANGE_SHIFT_K_LOW=25.0</td><td>+9.1966%</td><td>+5.0335 pp/mo</td><td>2</td></tr><tr><td>LAC_SHORT</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td>+6.0079%</td><td>+4.8397 pp/mo</td><td>2</td></tr><tr><td>ACN_SHORT</td><td>1yr</td><td>GROUP_COMBO={"members":[{"arm_id":"arm-cbd239b1a8a7715c","family":"STRUCTURAL_RANGE_SHIFT","group":"EXIT","param":"STRUCTURAL_RANGE_SHIFT_EXIT","timeframe":"","value_json":"true"},{"arm_id":"arm-b6d9bc5dab2e8743","family":"ENTRY_ZONE_SHORT","group":"ENTRY","param":"ENTRY_ZONE_SHORT","timeframe":"","value_json":"80.0"}],"omitted_arm":null,"parents":[],"recipe_id":"gcr-9cec1ea75425cd1aed76cb49","schema":"trb-grouped-combo-v1","stage":"CROSS_GROUP_CHAMPION"}</td><td>+7.0654%</td><td>+3.0955 pp/mo</td><td>2</td></tr><tr><td>VT_LONG</td><td>1yr</td><td>GROUP_COMBO={"members":[{"arm_id":"arm-832c75625f9691cb","family":"WT_DC_EXIT","group":"EXIT","param":"WT_DC_EXIT_ENABLED","timeframe":"","value_json":"true"},{"arm_id":"arm-70a76c6777845a7c","family":"STDEV_REJECT_EXIT","group":"EXIT","param":"STDEV_REJECT_EXIT_ZONE","timeframe":"","value_json":"0.6"}],"omitted_arm":null,"parents":[],"recipe_id":"gcr-5425c7ff345e159be0d676d3","schema":"trb-grouped-combo-v1","stage":"WITHIN_EXIT"}</td><td>+3.7968%</td><td>+2.2955 pp/mo</td><td>51</td></tr><tr><td>TTD_SHORT</td><td>1yr</td><td>LR_BAND_HARVEST_ENABLED=true</td><td>+8.6555%</td><td>+2.1773 pp/mo</td><td>2</td></tr><tr><td>GM_LONG</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td>+5.7087%</td><td>+1.2468 pp/mo</td><td>2</td></tr><tr><td>PLTR_SHORT</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td>+2.8275%</td><td>+1.1809 pp/mo</td><td>2</td></tr><tr><td>FIVN_LONG</td><td>1yr</td><td>WT_DC_EXIT_ENABLED=true</td><td>-0.5346%</td><td>+0.6582 pp/mo</td><td>9</td></tr><tr><td>OKE_LONG</td><td>1yr</td><td>STRUCTURAL_RANGE_SHIFT_EXIT=true</td><td>+1.5839%</td><td>+0.5918 pp/mo</td><td>5</td></tr></table>
+
+    <h2>Links</h2>
+    <ul>
+      <li><a href="http://localhost:5077/results">Live dashboard (/results)</a></li>
+      <li><a href="http://localhost:5077/trb_review/crypto">/trb_review/crypto</a></li>
+      <li><a href="http://localhost:5077/trb_review/trb">/trb_review/trb</a></li>
+      <li><a href='http://localhost:5077/spreadsheets/SYMBOL_OVERVIEW_crypto.xlsx'>SYMBOL_OVERVIEW_crypto.xlsx</a> (also attached to this email)</li><li><a href='http://localhost:5077/spreadsheets/SYMBOL_OVERVIEW_stocks.xlsx'>SYMBOL_OVERVIEW_stocks.xlsx</a> (also attached to this email)</li><li><a href='http://localhost:5077/spreadsheets/PERSYM_APPLIED_REVIEW.xlsx'>PERSYM_APPLIED_REVIEW.xlsx</a></li><li><a href='http://localhost:5077/spreadsheets/FULL_PARAM_MATRIX_crypto.xlsx'>FULL_PARAM_MATRIX_crypto.xlsx</a></li><li><a href='http://localhost:5077/spreadsheets/FULL_PARAM_MATRIX_stocks.xlsx'>FULL_PARAM_MATRIX_stocks.xlsx</a></li>
+    </ul>
+
+    <div class="box" style="font-size:11.5px;color:#666;line-height:1.5">
+    <b>Coverage:</b> 42/2813 reported units (1%) have real-engine evidence across both
+    systems. Crypto retains its legacy vec-screen denominator. Stocks uses only
+    ledger-backed current c5 exact rows and symbol/side keys; it never substitutes
+    the legacy reopt zero counters. Every per-key result is n_syms=1 diagnostic evidence.
+    </div>
+    </body></html>

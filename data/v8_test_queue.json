@@ -1,0 +1,98 @@
+[
+  {
+    "test_id": "MT_T1_SCORE_6",
+    "description": "Lower entry score threshold from 12 to 6 (captures 72% more winners)",
+    "config_changes": {
+      "MIN_ENTRY_SCORE": 6
+    },
+    "rationale": "SCORE_THRESHOLD kills 96.6% of profitable trades. Median winner score=6.",
+    "priority": "HIGH",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  },
+  {
+    "test_id": "MT_T2_K3M_WIDEN",
+    "description": "Widen K3M exhaustion zone from 30-70 to 20-80",
+    "config_changes": {
+      "K3M_EXHAUSTION_LOW": 20,
+      "K3M_EXHAUSTION_HIGH": 80
+    },
+    "rationale": "K3M_EXHAUSTION kills 47.3% of profitable trades. Winners enter at high momentum.",
+    "priority": "HIGH",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  },
+  {
+    "test_id": "MT_T3_LTF_2OF3",
+    "description": "Relax LTF alignment from 3/3 to 2/3",
+    "config_changes": {
+      "LTF_ALIGNMENT_MIN": 2
+    },
+    "rationale": "LTF_ALIGNMENT kills 70.8% of profitable trades.",
+    "priority": "MEDIUM",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  },
+  {
+    "test_id": "MT_T4_DAILY_OPTIONAL",
+    "description": "Make daily stoch alignment optional (not mandatory)",
+    "config_changes": {
+      "DAILY_ALIGNMENT_MANDATORY": false
+    },
+    "rationale": "DAILY_MANDATORY kills 45.0% \u2014 winners trade against daily 45% of time.",
+    "priority": "MEDIUM",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  },
+  {
+    "test_id": "MT_T5_PATTERN_SHORT",
+    "description": "Pattern: dc_width_4h <= 9.3456 AND adx_14 > 21.5555 AND stoch_k <= 70.7572",
+    "config_changes": {
+      "PATTERN_RULE": "dc_width_4h <= 9.3456 AND adx_14 > 21.5555 AND stoch_k <= 70.7572",
+      "PATTERN_SIDE": "SHORT"
+    },
+    "rationale": "WR=96.5% on 29 trades from master traders. Avg PnL=1.44%",
+    "priority": "MEDIUM",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  },
+  {
+    "test_id": "MT_T6_PATTERN_SHORT",
+    "description": "Pattern: dc_width_4h <= 9.3456 AND adx_14 > 19.3568 AND rvol_4h <= 1.2023",
+    "config_changes": {
+      "PATTERN_RULE": "dc_width_4h <= 9.3456 AND adx_14 > 19.3568 AND rvol_4h <= 1.2023",
+      "PATTERN_SIDE": "SHORT"
+    },
+    "rationale": "WR=93.1% on 29 trades from master traders. Avg PnL=1.13%",
+    "priority": "MEDIUM",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  },
+  {
+    "test_id": "MT_T7_PATTERN_SHORT",
+    "description": "Pattern: atr_pct > 1.224 AND atr_pct > 1.3013 AND choppiness <= 52.252 AND bb_pct_b <= 0.",
+    "config_changes": {
+      "PATTERN_RULE": "atr_pct > 1.224 AND atr_pct > 1.3013 AND choppiness <= 52.252 AND bb_pct_b <= 0.8132",
+      "PATTERN_SIDE": "SHORT"
+    },
+    "rationale": "WR=87.5% on 24 trades from master traders. Avg PnL=2.02%",
+    "priority": "MEDIUM",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  },
+  {
+    "test_id": "MT_T_COMBO",
+    "description": "Combined: Score=6 + K3M=20-80 + LTF=2/3 + Daily optional",
+    "config_changes": {
+      "MIN_ENTRY_SCORE": 6,
+      "K3M_EXHAUSTION_LOW": 20,
+      "K3M_EXHAUSTION_HIGH": 80,
+      "LTF_ALIGNMENT_MIN": 2,
+      "DAILY_ALIGNMENT_MANDATORY": false
+    },
+    "rationale": "All top gate killers relaxed together. Expected to capture ~60% of winning master entries. MUST be validated by V8 \u2014 false positive risk.",
+    "priority": "CRITICAL",
+    "status": "PENDING",
+    "created": "2026-05-21"
+  }
+]

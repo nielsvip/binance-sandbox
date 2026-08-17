@@ -21,6 +21,8 @@ import aiofiles
 import aiofiles.os as aio_os
 import aiohttp
 import numpy as np
+
+from classic_formations import select_latest_formation
 import pandas as pd
 from dateutil.parser import isoparse
 from requests.adapters import HTTPAdapter
@@ -2095,6 +2097,18 @@ class AdvancedSignalRater:
             except Exception: pass
         # ─────────────────────────────────────────────────────────────────────
 
+        # 2026-08-10 CROSS-CONNECT from tradier: WT_DC long/short gates (+86/+85 pos) + STOCH_CROSS
+        if not is_exit and not skip_boycott:
+            if is_long and not bool(getattr(config, 'WT_DC_LONG_ENABLED', True)):
+                return -100.0, "BOYCOTT", "WT_DC_LONG_DISABLED"
+            if (not is_long) and not bool(getattr(config, 'WT_DC_SHORT_ENABLED', True)):
+                return -100.0, "BOYCOTT", "WT_DC_SHORT_DISABLED"
+            if not bool(getattr(config, 'WT_DC_ENTRY_ENABLED', True)):
+                return -100.0, "BOYCOTT", "WT_DC_ENTRY_DISABLED"
+            if not bool(getattr(config, 'STOCH_CROSS_ENTRY_ENABLED', True)):
+                # STOCH_CROSS gate is reentry-only; for entry we just mark but don't boycott unless explicitly disabled for entry
+                pass
+
         # BASIS_CONDITION BOYCOTT
         if getattr(config, 'BASIS_CONDITION', False) and not is_exit and not skip_boycott:
             b15 = safe_fetch_float(ind.get('dc_basis_15m'), 0)
@@ -3506,6 +3520,33 @@ class AdvancedSignalRater:
                 _is_hedge_pos = (tracker_data.get('is_hedge', False) if isinstance(tracker_data, dict) else False)
                 if not _is_hedge_pos:
                     return 0, "HOLD", f"NOLOSS_HOLD({pnl_pct:.2f}%<{_noloss_min}%)_bc108"
+            # Causal classic-formation exit.  This deliberately runs after the
+            # global no-loss gate, so enabling a formation can never turn a
+            # protected crypto position into a loss-taking exit.
+            _formation_exit_floor = max(
+                float(_noloss_min or 0.0),
+                float(getattr(config, "FORMATION_EXIT_MIN_GAIN_PCT", 0.0) or 0.0),
+            )
+            if pnl_pct >= _formation_exit_floor:
+                try:
+                    _formation_exit = select_latest_formation(
+                        ind,
+                        is_long=is_long,
+                        action="EXIT",
+                        config=config,
+                        resolver=(lambda _name, _default: config.get_symbol_setting(
+                            account_key, _rpk, _name
+                        ) if account_key else getattr(config, _name, _default)),
+                    )
+                except Exception as _formation_exit_err:
+                    logger.debug("[CLASSIC_FORMATION_EXIT] %s: %s", position_key, _formation_exit_err)
+                    _formation_exit = None
+                if _formation_exit:
+                    return -10, "STRONG_REDUCE", (
+                        f"CLASSIC_FORMATION_EXIT_{_formation_exit['family'].upper()}_"
+                        f"{_formation_exit['primary'].upper()}_{_formation_exit['timeframe']}_"
+                        f"score={_formation_exit['score']:.3f}_gain={pnl_pct:.2f}%"
+                    )
             # BACKTEST_CHANGE_139: Simple fixed TP% exit — 567k backtests showed simple > complex trailing
             if getattr(config, 'SIMPLE_TP_EXIT_ENABLED', False) and pnl_pct >= getattr(config, 'SIMPLE_TP_PCT', 0.50):
                 return 100, "REDUCE", f"SIMPLE_TP_EXIT(gain={pnl_pct:.2f}%>=tp={getattr(config, 'SIMPLE_TP_PCT', 0.50)}%)_bc139"
@@ -13417,7 +13458,7 @@ async def log_stoch_snapshot(account_key: str, trade_manager, context_label: str
         is_zombie_temp = (now_ts - last_check_ts_temp) > 300 if last_check_ts_temp > 0 else False
         if not is_action and not is_zombie_temp and (now_ts - last_log_time < 60.0): 
             if last_check_ts_temp > 0 and (now_ts - last_check_ts_temp) >= 5.0:
-                 tracker_manager.register_check(position_key)
+                 await tracker_manager.register_check(position_key)
             return
         _log_throttle[throttle_key] = now_ts
         if not indicators: indicators = {}
@@ -15273,8 +15314,85 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                 should_trade = False
                 pyramid_data = None
                 _dc_breakout_entry = False
+                _formation_size_mult = 1.0
                 _min_qty_sym = trade_manager.min_qty.get(symbol, 0.0)
                 _pos_min_qty_entry = max(config.MIN_POSITION_SIZE / current_price if current_price > 0 else 0.0, _min_qty_sym)
+                # Frozen WDAY_SHORT composite.  This is the single shared
+                # execution site for live Tradier and V8; the latter calls this
+                # function from backtest_v8_engine.py with historical indicators.
+                # Default OFF and fail-closed in the pure predicate.
+                if pos_amt <= _pos_min_qty_entry:
+                    try:
+                        from entry_bounce_deep_turn_composite_v1 import (
+                            evaluate_bounce_deep_turn_composite_v1,
+                        )
+                        _bdtc_decision = evaluate_bounce_deep_turn_composite_v1(
+                            indicators,
+                            position_side,
+                            current_price,
+                            # Tradier/V8 overrides live on the manager's
+                            # TradierConfig instance; this module's global
+                            # ``config`` is the crypto Config compatibility
+                            # object and must not be used for this stock path.
+                            getattr(trade_manager, "config", config),
+                            symbol=symbol,
+                        )
+                    except Exception as _bdtc_err:
+                        logger.warning(
+                            "[ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1] %s: predicate error %s",
+                            position_key,
+                            _bdtc_err,
+                        )
+                        _bdtc_decision = None
+                    if _bdtc_decision:
+                        should_trade = True
+                        # Marks this as a standalone entry so the ordinary
+                        # WAIT-text veto cannot discard the explicit decision.
+                        _dc_breakout_entry = True
+                        score = max(float(score or 0.0), 29.0)
+                        rec = "STRONG_BUY" if is_long else "STRONG_SELL"
+                        reason = _bdtc_decision["reason"]
+                        logger.warning(
+                            "[ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1] %s: %s",
+                            position_key,
+                            reason,
+                        )
+                # Standalone classic-formation entry for flat positions.  It is
+                # still subject to the downstream trend, RSI, tradeable-key,
+                # duplicate-open, and execution risk gates in this function.
+                if pos_amt <= _pos_min_qty_entry and not should_trade:
+                    try:
+                        _formation_entry = select_latest_formation(
+                            indicators,
+                            is_long=is_long,
+                            action="ENTRY",
+                            config=config,
+                            resolver=(lambda _name, _default: config.get_symbol_setting(
+                                account_key, f"{symbol}_{position_side}", _name
+                            )),
+                        )
+                    except Exception as _formation_entry_err:
+                        logger.debug("[CLASSIC_FORMATION_ENTRY] %s: %s", position_key, _formation_entry_err)
+                        _formation_entry = None
+                    if _formation_entry:
+                        should_trade = True
+                        _dc_breakout_entry = True
+                        score = max(float(score or 0.0), 29.0)
+                        rec = "STRONG_BUY" if is_long else "STRONG_SELL"
+                        reason = (
+                            f"CLASSIC_FORMATION_ENTRY_{_formation_entry['family'].upper()}_"
+                            f"{_formation_entry['primary'].upper()}_{_formation_entry['timeframe']}_"
+                            f"score={_formation_entry['score']:.3f}"
+                        )
+                        _formation_size_mult = max(
+                            0.0,
+                            float(config.get_symbol_setting(
+                                account_key,
+                                f"{symbol}_{position_side}",
+                                "FORMATION_POSITION_SIZE_MULT",
+                            ) or 1.0),
+                        )
+                        logger.warning("[CLASSIC_FORMATION_ENTRY] %s: %s", position_key, reason)
                 # == BC_155: TWO-TIER MANDATORY REENTRY (runs BEFORE everything) ==
                 # Tier 1: Price reclaimed exit level → full size reentry (existing PRICE_CROSS)
                 # Tier 2: Trend continues past exit without pullback → chase at 80% size
@@ -15920,6 +16038,12 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     if _sb_size_mult > 1.0:
                         qty = qty * _sb_size_mult
                         logger.info(f"[STDEV_SIZE_BOOST] {position_key}: qty *= {_sb_size_mult:.1f}x")
+                    if _formation_size_mult != 1.0:
+                        qty = qty * _formation_size_mult
+                        logger.info(
+                            f"[CLASSIC_FORMATION_SIZE] {position_key}: "
+                            f"qty *= {_formation_size_mult:.2f}x"
+                        )
                     # Apply HLR_RALLY size multiplier — recompute from indicators so it's always fresh
                     if getattr(config, 'HLR_RALLY_ENABLED', True) and current_price > 0:
                         _hlr_band_e = getattr(config, 'HLR_SMA_BAND_PCT', 0.03)

@@ -1056,8 +1056,17 @@ def build_occ_symbol(symbol: str, expiration: str, option_type: str, strike: flo
 
 # ── Options Order Placement ──────────────────────────────────────────────────
 
-async def place_option_order(client: TradierAPIClient, symbol: str, option_symbol: str, side: str, qty: int, order_type: str = "limit", price: float = None, duration: str = "day") -> Dict:
+def _options_live_trading_enabled(config=None) -> bool:
+    """Return the explicit live-order switch; default closed everywhere."""
+    if config is not None:
+        return bool(getattr(config, "OPTIONS_LIVE_TRADING_ENABLED", False))
+    return bool(getattr(TradierConfig(), "OPTIONS_LIVE_TRADING_ENABLED", False))
+
+async def place_option_order(client: TradierAPIClient, symbol: str, option_symbol: str, side: str, qty: int, order_type: str = "limit", price: float = None, duration: str = "day", config=None) -> Dict:
     """Place an option order via Tradier API. Side: buy_to_open, sell_to_close, etc."""
+    if not _options_live_trading_enabled(config):
+        logger.warning("[PAPER_ONLY_BLOCK] refused option order %s %s x%s", option_symbol, side, qty)
+        return {"status": "paper_only_blocked", "reason": "OPTIONS_LIVE_TRADING_ENABLED=False"}
     data = {"class": "option", "symbol": symbol.upper(), "option_symbol": option_symbol, "side": side.lower(), "quantity": str(qty), "type": order_type.lower(), "duration": duration.lower()}
     if price is not None:
         data["price"] = f"{float(price):.2f}"
@@ -1076,6 +1085,9 @@ async def smart_fill_option(client: TradierAPIClient, symbol: str, occ: str, sid
     For sell_to_close: start ABOVE ask (best for us), walk DOWN toward mid. NEVER below mid.
     We are not desperate — patience gets better fills.
     """
+    if not _options_live_trading_enabled(config):
+        logger.warning("[PAPER_ONLY_BLOCK] refused smart-fill %s %s x%s", occ, side, qty)
+        return {"status": "paper_only_blocked", "reason": "OPTIONS_LIVE_TRADING_ENABLED=False"}
     is_buy = "buy" in side.lower()
     mid = (bid + ask) / 2.0
     spread = ask - bid
@@ -1736,6 +1748,9 @@ async def _place_equity_hedge(client: TradierAPIClient, account_key: str, symbol
     """Place a MARKET equity hedge order. hedge_side: 'sell_short' or 'buy'."""
     if hedge_qty <= 0:
         return {"skipped": "qty<=0"}
+    if not _options_live_trading_enabled():
+        logger.warning("[PAPER_ONLY_BLOCK] refused equity hedge %s %s x%s", symbol, hedge_side, hedge_qty)
+        return {"status": "paper_only_blocked", "reason": "OPTIONS_LIVE_TRADING_ENABLED=False"}
     try:
         res = await client.place_order(account_key=account_key, symbol=symbol, side=hedge_side, quantity=hedge_qty, order_type="market", duration="day")
         logger.critical(f"[EQUITY_HEDGE_OPEN] {symbol} {hedge_side} x{hedge_qty} — {reason} — resp={str(res)[:200]}")
@@ -1747,6 +1762,9 @@ async def _place_equity_hedge(client: TradierAPIClient, account_key: str, symbol
 
 async def _unwind_equity_hedge(client: TradierAPIClient, account_key: str, symbol: str, hedge_qty: int, opened_side: str, reason: str) -> Dict:
     """Close out a hedge — opposite side at market."""
+    if not _options_live_trading_enabled():
+        logger.warning("[PAPER_ONLY_BLOCK] refused equity hedge close %s x%s", symbol, hedge_qty)
+        return {"status": "paper_only_blocked", "reason": "OPTIONS_LIVE_TRADING_ENABLED=False"}
     close_side = "buy_to_cover" if opened_side == "sell_short" else "sell"
     try:
         res = await client.place_order(account_key=account_key, symbol=symbol, side=close_side, quantity=hedge_qty, order_type="market", duration="day")

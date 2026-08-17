@@ -1,0 +1,4353 @@
+{
+  "contract": "REPORT_ONLY_NO_BACKTEST_NO_MATRIX_NO_WORKBOOK_NO_DB_NO_LIVE",
+  "generated_at": "2026-08-03T07:22:52.581437Z",
+  "rows": [
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/AXON_SHORT/entry/result.json",
+      "artifact_actual_sha256": "79374c5b9cf85e1c8df7218286d4dc4dfd33d965aa7ebc3a862c4506ecab208b",
+      "artifact_expected_sha256": "79374c5b9cf85e1c8df7218286d4dc4dfd33d965aa7ebc3a862c4506ecab208b",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 6,
+          "selected_event_count": 27,
+          "selected_exit_event_count": 21,
+          "undeclared_event_count": 122,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 6,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 2,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 12,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 40,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 9,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 29,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 14,
+          "selected_event_count": 28,
+          "selected_exit_event_count": 14,
+          "undeclared_event_count": 107,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 3,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 4,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 23,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 8,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 7,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 32,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 11,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 16,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": -7.041017850035598,
+      "exact_real_closes": 41,
+      "exact_recipe_matches_selected": true,
+      "exact_run_id": "full_recipe_20260803T070301Z_AXON_SHORT",
+      "exact_selected_entry_fills": 27,
+      "exact_selected_exit_fills": 30,
+      "exact_side_aware_bh_return_pct": 6.651017850035599,
+      "exact_status": "V8_FULL_RECIPE_FAIL",
+      "exact_strategy_return_pct": -0.39,
+      "exact_summary_present": true,
+      "exact_time_in_market_pct": 45.3901,
+      "key": "AXON_SHORT",
+      "selected_entry_event_count": 6,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 27,
+      "selected_exit_event_count": 21,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 122,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 130.5357644733259,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 137.1867823233615,
+      "vector_positive_bh_multiple": 20.626434241584125,
+      "vector_real_closes": 86,
+      "vector_side_aware_bh_return_pct": 6.651017850035599,
+      "vector_time_in_market_pct": 16.003539
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/AMAT_SHORT/entry/result.json",
+      "artifact_actual_sha256": "3c2d9fbc39e1f6bc55bc2404192e53075c1b09b0e5926b88dd98bbd27db81707",
+      "artifact_expected_sha256": "3c2d9fbc39e1f6bc55bc2404192e53075c1b09b0e5926b88dd98bbd27db81707",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 9,
+          "selected_event_count": 11,
+          "selected_exit_event_count": 2,
+          "undeclared_event_count": 62,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R2",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 2,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 3,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 12,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 15,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 4,
+          "selected_event_count": 9,
+          "selected_exit_event_count": 5,
+          "undeclared_event_count": 114,
+          "undeclared_event_families": [
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R2",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 3,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 21,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 8,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 13,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 37,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 8,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 19,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "AMAT_SHORT",
+      "selected_entry_event_count": 9,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "selected_event_count": 11,
+      "selected_exit_event_count": 2,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_CUP_HANDLE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "undeclared_event_count": 62,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:R2",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 126.78578551204285,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 24.122186560443588,
+      "vector_positive_bh_multiple": null,
+      "vector_real_closes": 43,
+      "vector_side_aware_bh_return_pct": -102.66359895159927,
+      "vector_time_in_market_pct": 3.705188
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/NXE_SHORT/entry/result.json",
+      "artifact_actual_sha256": "4d40b81558012ec066ce13799d3aafc8d599c11432a5517c54bfb897975afaad",
+      "artifact_expected_sha256": "4d40b81558012ec066ce13799d3aafc8d599c11432a5517c54bfb897975afaad",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 20,
+          "selected_event_count": 48,
+          "selected_exit_event_count": 28,
+          "undeclared_event_count": 154,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R2",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 13,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 15,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 18,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 12,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 51,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 7,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 32,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 16,
+          "selected_event_count": 48,
+          "selected_exit_event_count": 32,
+          "undeclared_event_count": 144,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R2",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 8,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 16,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 7,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 17,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 52,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 9,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 29,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": 5.814498457563269,
+      "exact_real_closes": 49,
+      "exact_recipe_matches_selected": true,
+      "exact_run_id": "full_recipe_20260803T061358Z_NXE_SHORT",
+      "exact_selected_entry_fills": 39,
+      "exact_selected_exit_fills": 36,
+      "exact_side_aware_bh_return_pct": -2.4344984575632695,
+      "exact_status": "V8_FULL_RECIPE_PASS",
+      "exact_strategy_return_pct": 3.38,
+      "exact_summary_present": true,
+      "exact_time_in_market_pct": 66.6146,
+      "key": "NXE_SHORT",
+      "selected_entry_event_count": 20,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 48,
+      "selected_exit_event_count": 28,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 154,
+      "undeclared_event_families": [
+        "AUGMENT:GOLDEN_RULE",
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:R2",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 98.97795700981791,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 96.54345855225465,
+      "vector_positive_bh_multiple": null,
+      "vector_real_closes": 110,
+      "vector_side_aware_bh_return_pct": -2.4344984575632695,
+      "vector_time_in_market_pct": 13.644675
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/AGI_SHORT/entry/result.json",
+      "artifact_actual_sha256": "bb3f1fe6eef1f41602cf137c41ca61120f6805cd76490ab2211617a833f5cc4d",
+      "artifact_expected_sha256": "bb3f1fe6eef1f41602cf137c41ca61120f6805cd76490ab2211617a833f5cc4d",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_IN",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 14,
+          "selected_event_count": 44,
+          "selected_exit_event_count": 30,
+          "undeclared_event_count": 231,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:IN",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 3,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 5,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 17,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "IN",
+              "type": "CLOSE"
+            },
+            {
+              "count": 8,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 38,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 69,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 19,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 67,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 21,
+          "selected_event_count": 40,
+          "selected_exit_event_count": 19,
+          "undeclared_event_count": 171,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 3,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 16,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 34,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 45,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 7,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 54,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": -29.962551275642262,
+      "exact_real_closes": 36,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": "full_recipe_20260803T032103Z_AGI_SHORT",
+      "exact_selected_entry_fills": 32,
+      "exact_selected_exit_fills": 23,
+      "exact_side_aware_bh_return_pct": 23.392551275642262,
+      "exact_status": "V8_FULL_RECIPE_FAIL",
+      "exact_strategy_return_pct": -6.57,
+      "exact_summary_present": true,
+      "exact_time_in_market_pct": 71.2645,
+      "key": "AGI_SHORT",
+      "selected_entry_event_count": 14,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 44,
+      "selected_exit_event_count": 30,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 231,
+      "undeclared_event_families": [
+        "AUGMENT:GOLDEN_RULE",
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:IN",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "CLOSE:WT_CROSSOVER_FINAL",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 86.9716231316458,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 107.27560812125142,
+      "vector_positive_bh_multiple": 5.283475543159131,
+      "vector_real_closes": 169,
+      "vector_side_aware_bh_return_pct": 20.303984989605624,
+      "vector_time_in_market_pct": 10.268502
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/WPM_SHORT/entry/result.json",
+      "artifact_actual_sha256": "28d266e9694670392fdad087a634cf4327b7861b1db06b67cddc6692ff45eb6b",
+      "artifact_expected_sha256": "28d266e9694670392fdad087a634cf4327b7861b1db06b67cddc6692ff45eb6b",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_IN",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 3,
+          "selected_event_count": 24,
+          "selected_exit_event_count": 21,
+          "undeclared_event_count": 146,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:IN",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 2,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 2,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 8,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "IN",
+              "type": "CLOSE"
+            },
+            {
+              "count": 7,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 22,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 43,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 12,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 45,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 8,
+          "selected_event_count": 16,
+          "selected_exit_event_count": 8,
+          "undeclared_event_count": 82,
+          "undeclared_event_families": [
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 10,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 5,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 14,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 19,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 7,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 24,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "WPM_SHORT",
+      "selected_entry_event_count": 3,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_CUP_HANDLE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 24,
+      "selected_exit_event_count": 21,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 146,
+      "undeclared_event_families": [
+        "AUGMENT:GOLDEN_RULE",
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:IN",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 71.312105989532,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 70.46431453975472,
+      "vector_positive_bh_multiple": null,
+      "vector_real_closes": 106,
+      "vector_side_aware_bh_return_pct": -0.8477914497772765,
+      "vector_time_in_market_pct": 6.858238
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/LDOS_SHORT/entry/result.json",
+      "artifact_actual_sha256": "2d47ed7dcd33104933ae46e5768feb113541b50565a29131dfedbdca51187b4c",
+      "artifact_expected_sha256": "2d47ed7dcd33104933ae46e5768feb113541b50565a29131dfedbdca51187b4c",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_IN",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 5,
+          "selected_event_count": 14,
+          "selected_exit_event_count": 9,
+          "undeclared_event_count": 149,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:IN",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "CLOSE:R2",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 4,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 19,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "IN",
+              "type": "CLOSE"
+            },
+            {
+              "count": 20,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 11,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 46,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 16,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 21,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 3,
+          "selected_event_count": 12,
+          "selected_exit_event_count": 9,
+          "undeclared_event_count": 59,
+          "undeclared_event_families": [
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "CLOSE:R2",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 10,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 23,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 3,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "LDOS_SHORT",
+      "selected_entry_event_count": 5,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 14,
+      "selected_exit_event_count": 9,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_CUP_HANDLE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 149,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:IN",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:R1",
+        "CLOSE:R2",
+        "CLOSE:WT_CROSSOVER_FINAL",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 66.67485703194045,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 107.88359823478751,
+      "vector_positive_bh_multiple": 2.617978494022379,
+      "vector_real_closes": 90,
+      "vector_side_aware_bh_return_pct": 41.208741202847065,
+      "vector_time_in_market_pct": 17.20346
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/AGCO_SHORT/entry/result.json",
+      "artifact_actual_sha256": "6c1f59b20cb186e4d8fb759878a2bfba71195889131ffb440c1906b1494f541f",
+      "artifact_expected_sha256": "6c1f59b20cb186e4d8fb759878a2bfba71195889131ffb440c1906b1494f541f",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 4,
+          "selected_event_count": 6,
+          "selected_exit_event_count": 2,
+          "undeclared_event_count": 57,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 18,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 3,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 11,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 7,
+          "selected_event_count": 16,
+          "selected_exit_event_count": 9,
+          "undeclared_event_count": 69,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "CLOSE:R2",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 14,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 23,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 6,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 12,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "AGCO_SHORT",
+      "selected_entry_event_count": 4,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "selected_event_count": 6,
+      "selected_exit_event_count": 2,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "undeclared_event_count": 57,
+      "undeclared_event_families": [
+        "AUGMENT:GOLDEN_RULE",
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:R1",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 60.02300640821463,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 45.83213552643333,
+      "vector_positive_bh_multiple": null,
+      "vector_real_closes": 36,
+      "vector_side_aware_bh_return_pct": -14.190870881781294,
+      "vector_time_in_market_pct": 9.96487
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/ALB_SHORT/entry/result.json",
+      "artifact_actual_sha256": "91610525bbceaaaa36657d054f148bf059a34d8d8653ed47143b1ac63e4dd488",
+      "artifact_expected_sha256": "91610525bbceaaaa36657d054f148bf059a34d8d8653ed47143b1ac63e4dd488",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 3,
+          "selected_event_count": 21,
+          "selected_exit_event_count": 18,
+          "undeclared_event_count": 168,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 6,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 7,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 31,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 53,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 9,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 44,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 4,
+          "selected_event_count": 27,
+          "selected_exit_event_count": 23,
+          "undeclared_event_count": 165,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 12,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 22,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 58,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 49,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "ALB_SHORT",
+      "selected_entry_event_count": 3,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_CUP_HANDLE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 21,
+      "selected_exit_event_count": 18,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 168,
+      "undeclared_event_families": [
+        "AUGMENT:GOLDEN_RULE",
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 59.18354972314043,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 70.31623481547281,
+      "vector_positive_bh_multiple": 6.316197236541164,
+      "vector_real_closes": 113,
+      "vector_side_aware_bh_return_pct": 11.132685092332382,
+      "vector_time_in_market_pct": 7.498563
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/QRVO_LONG/entry/result.json",
+      "artifact_actual_sha256": "dba953c5b81c8295d60a967c57fb1b6c0fdf84e172f0b5f856d6159392460c87",
+      "artifact_expected_sha256": "dba953c5b81c8295d60a967c57fb1b6c0fdf84e172f0b5f856d6159392460c87",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_MTM",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 7,
+          "selected_event_count": 9,
+          "selected_exit_event_count": 2,
+          "undeclared_event_count": 19,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:MTM",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R2",
+            "OPEN:GOLDEN_RULE",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 6,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "MTM",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 4,
+          "selected_event_count": 5,
+          "selected_exit_event_count": 1,
+          "undeclared_event_count": 25,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "WT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 2,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "QRVO_LONG",
+      "selected_entry_event_count": 7,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 9,
+      "selected_exit_event_count": 2,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 19,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:MTM",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:R2",
+        "OPEN:GOLDEN_RULE",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 48.53065689986667,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 54.62151914213431,
+      "vector_positive_bh_multiple": 8.967781074260284,
+      "vector_real_closes": 16,
+      "vector_side_aware_bh_return_pct": 6.090862242267642,
+      "vector_time_in_market_pct": 2.808828
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/NOC_SHORT/entry/result.json",
+      "artifact_actual_sha256": "051f511bfcd7ec5c83e38fac53d7f7f207b7eb7bc355b5a704d896a8182b5519",
+      "artifact_expected_sha256": "051f511bfcd7ec5c83e38fac53d7f7f207b7eb7bc355b5a704d896a8182b5519",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 3,
+          "selected_event_count": 34,
+          "selected_exit_event_count": 31,
+          "undeclared_event_count": 92,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 3,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 45,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 11,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 10,
+          "selected_event_count": 21,
+          "selected_exit_event_count": 11,
+          "undeclared_event_count": 85,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 22,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 7,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 5,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 32,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 3,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 9,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "NOC_SHORT",
+      "selected_entry_event_count": 3,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 34,
+      "selected_exit_event_count": 31,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 92,
+      "undeclared_event_families": [
+        "AUGMENT:GOLDEN_RULE",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:R1",
+        "CLOSE:WT_CROSSOVER_FINAL",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 39.96246418694537,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 45.31022786493165,
+      "vector_positive_bh_multiple": 8.472743111564238,
+      "vector_real_closes": 65,
+      "vector_side_aware_bh_return_pct": 5.347763677986276,
+      "vector_time_in_market_pct": 8.060877
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/RGLD_SHORT/entry/result.json",
+      "artifact_actual_sha256": "209d8f50db00f09550164158447f6f6c81941b3eb4c5e712da288a77b615f31d",
+      "artifact_expected_sha256": "209d8f50db00f09550164158447f6f6c81941b3eb4c5e712da288a77b615f31d",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 4,
+          "selected_event_count": 14,
+          "selected_exit_event_count": 10,
+          "undeclared_event_count": 123,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 4,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 16,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 15,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 34,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 13,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 29,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 5,
+          "selected_event_count": 15,
+          "selected_exit_event_count": 10,
+          "undeclared_event_count": 101,
+          "undeclared_event_families": [
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 18,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 7,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 34,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 28,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "RGLD_SHORT",
+      "selected_entry_event_count": 4,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "selected_event_count": 14,
+      "selected_exit_event_count": 10,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "undeclared_event_count": 123,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 38.57839112100264,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 41.46545314297735,
+      "vector_positive_bh_multiple": 14.362508608185543,
+      "vector_real_closes": 81,
+      "vector_side_aware_bh_return_pct": 2.8870620219747116,
+      "vector_time_in_market_pct": 7.762752
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/NEM_SHORT/entry/result.json",
+      "artifact_actual_sha256": "f28c09acaa27022530fb43a69c970952361c81922c546e1828cf1899c49edf87",
+      "artifact_expected_sha256": "f28c09acaa27022530fb43a69c970952361c81922c546e1828cf1899c49edf87",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 4,
+          "selected_event_count": 15,
+          "selected_exit_event_count": 11,
+          "undeclared_event_count": 163,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 4,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 9,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 12,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 24,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 47,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 14,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 40,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 5,
+          "selected_event_count": 9,
+          "selected_exit_event_count": 4,
+          "undeclared_event_count": 78,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 10,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 5,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 13,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 21,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 5,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 22,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "NEM_SHORT",
+      "selected_entry_event_count": 4,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_CUP_HANDLE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "1h"
+      },
+      "selected_event_count": 15,
+      "selected_exit_event_count": 11,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "1h"
+      },
+      "undeclared_event_count": 163,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 33.52218840982041,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 31.277163203979327,
+      "vector_positive_bh_multiple": null,
+      "vector_real_closes": 107,
+      "vector_side_aware_bh_return_pct": -2.2450252058410842,
+      "vector_time_in_market_pct": 7.886826
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/TDG_SHORT/entry/result.json",
+      "artifact_actual_sha256": "e47d0b2610e3d3781edd555d1e5abcc2365befca9f115649e08b2d0356ad3efe",
+      "artifact_expected_sha256": "e47d0b2610e3d3781edd555d1e5abcc2365befca9f115649e08b2d0356ad3efe",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 3,
+          "selected_event_count": 17,
+          "selected_exit_event_count": 14,
+          "undeclared_event_count": 101,
+          "undeclared_event_families": [
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 8,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 9,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 14,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 37,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 4,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 28,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 4,
+          "selected_event_count": 16,
+          "selected_exit_event_count": 12,
+          "undeclared_event_count": 57,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 7,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 21,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 1,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 16,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "TDG_SHORT",
+      "selected_entry_event_count": 3,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_CUP_HANDLE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 17,
+      "selected_exit_event_count": 14,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 101,
+      "undeclared_event_families": [
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 28.225498747856335,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 37.02535428691432,
+      "vector_positive_bh_multiple": 4.207495693830201,
+      "vector_real_closes": 73,
+      "vector_side_aware_bh_return_pct": 8.799855539057987,
+      "vector_time_in_market_pct": 6.107783
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/HII_SHORT/entry/result.json",
+      "artifact_actual_sha256": "584c5c1b7f5e8a218565acaaf400331e42377845d10c5840630b7f417456fef6",
+      "artifact_expected_sha256": "584c5c1b7f5e8a218565acaaf400331e42377845d10c5840630b7f417456fef6",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 17,
+          "selected_event_count": 28,
+          "selected_exit_event_count": 11,
+          "undeclared_event_count": 88,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 2,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 8,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 5,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 17,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 19,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 7,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 28,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 9,
+          "selected_event_count": 14,
+          "selected_exit_event_count": 5,
+          "undeclared_event_count": 42,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 3,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 1,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 15,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "HII_SHORT",
+      "selected_entry_event_count": 17,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 28,
+      "selected_exit_event_count": 11,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 88,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 28.01505690351825,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 36.77653836031827,
+      "vector_positive_bh_multiple": 4.19752510367696,
+      "vector_real_closes": 71,
+      "vector_side_aware_bh_return_pct": 8.76148145680002,
+      "vector_time_in_market_pct": 6.078139
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/LAC_SHORT/entry/result.json",
+      "artifact_actual_sha256": "fe9293a21ebbf7696715832a9e5b77ce07f18b7ef5c3a918f9c3deb3bfdd1899",
+      "artifact_expected_sha256": "fe9293a21ebbf7696715832a9e5b77ce07f18b7ef5c3a918f9c3deb3bfdd1899",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 8,
+          "selected_event_count": 62,
+          "selected_exit_event_count": 54,
+          "undeclared_event_count": 88,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 18,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 9,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 26,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 32,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 2,
+          "selected_event_count": 38,
+          "selected_exit_event_count": 36,
+          "undeclared_event_count": 79,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 19,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 12,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 34,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 10,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "LAC_SHORT",
+      "selected_entry_event_count": 8,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "selected_event_count": 62,
+      "selected_exit_event_count": 54,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "undeclared_event_count": 88,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG"
+      ],
+      "vector_alpha_vs_bh_pp": 17.784656246869538,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 67.14083257372205,
+      "vector_positive_bh_multiple": 1.3603329425094401,
+      "vector_real_closes": 66,
+      "vector_side_aware_bh_return_pct": 49.35617632685251,
+      "vector_time_in_market_pct": 30.068817
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/IBIT_SHORT/entry/result.json",
+      "artifact_actual_sha256": "98acc1fe35523e9300d0a22ceeb1345a63fa406413e44c141f7bb0b2f97be7a8",
+      "artifact_expected_sha256": "98acc1fe35523e9300d0a22ceeb1345a63fa406413e44c141f7bb0b2f97be7a8",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 2,
+          "selected_event_count": 18,
+          "selected_exit_event_count": 16,
+          "undeclared_event_count": 173,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 3,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 14,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 13,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 25,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 55,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 19,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 36,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 6,
+          "selected_event_count": 38,
+          "selected_exit_event_count": 32,
+          "undeclared_event_count": 255,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R2",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 4,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 8,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 24,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 20,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 29,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 78,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 29,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 55,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "IBIT_SHORT",
+      "selected_entry_event_count": 2,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "selected_event_count": 18,
+      "selected_exit_event_count": 16,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "undeclared_event_count": 173,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 14.979938947154778,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 43.8131916481916,
+      "vector_positive_bh_multiple": 1.519536907697414,
+      "vector_real_closes": 112,
+      "vector_side_aware_bh_return_pct": 28.83325270103682,
+      "vector_time_in_market_pct": 11.271122
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/GDX_SHORT/entry/result.json",
+      "artifact_actual_sha256": "5b7195e735d4302e6726f8131ba2fe1eac771af68c8bc1c1eb432ae2c41b71fb",
+      "artifact_expected_sha256": "5b7195e735d4302e6726f8131ba2fe1eac771af68c8bc1c1eb432ae2c41b71fb",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 9,
+          "selected_event_count": 14,
+          "selected_exit_event_count": 5,
+          "undeclared_event_count": 166,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 3,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 3,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 16,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 11,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 28,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 41,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 15,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 45,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 7,
+          "selected_event_count": 13,
+          "selected_exit_event_count": 6,
+          "undeclared_event_count": 122,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 1,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 2,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 14,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 18,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 34,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 8,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 34,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "GDX_SHORT",
+      "selected_entry_event_count": 9,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 14,
+      "selected_exit_event_count": 5,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_CUP_HANDLE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 166,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 12.667186838056196,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 22.20952228455227,
+      "vector_positive_bh_multiple": 2.327472389655675,
+      "vector_real_closes": 111,
+      "vector_side_aware_bh_return_pct": 9.542335446496075,
+      "vector_time_in_market_pct": 10.49793
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/AG_SHORT/entry/result.json",
+      "artifact_actual_sha256": "a303774d88196b97a1b657531d0f9f32f1b2f9f34670a50c5e71533b82dc5e06",
+      "artifact_expected_sha256": "a303774d88196b97a1b657531d0f9f32f1b2f9f34670a50c5e71533b82dc5e06",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_CLOSE_R2",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 8,
+          "selected_event_count": 30,
+          "selected_exit_event_count": 22,
+          "undeclared_event_count": 100,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "CLOSE:R2",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 12,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 4,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 11,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 5,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 5,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "R2",
+              "type": "CLOSE"
+            },
+            {
+              "count": 27,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 18,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 12,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_R1",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 13,
+          "selected_event_count": 38,
+          "selected_exit_event_count": 25,
+          "undeclared_event_count": 92,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:R1",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 5,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 2,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 3,
+              "reason_group": "R1",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 29,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 8,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 17,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": 6.986713800694909,
+      "exact_real_closes": 56,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": "full_recipe_20260803T055903Z_AG_SHORT",
+      "exact_selected_entry_fills": 56,
+      "exact_selected_exit_fills": 44,
+      "exact_side_aware_bh_return_pct": 2.93328619930509,
+      "exact_status": "V8_FULL_RECIPE_PASS",
+      "exact_strategy_return_pct": 9.92,
+      "exact_summary_present": true,
+      "exact_time_in_market_pct": 73.4277,
+      "key": "AG_SHORT",
+      "selected_entry_event_count": 8,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 30,
+      "selected_exit_event_count": 22,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 100,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:DC_HOPELESS_EXIT",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:R1",
+        "CLOSE:R2",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 7.587834127554553,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 0.8089465767491948,
+      "vector_positive_bh_multiple": null,
+      "vector_real_closes": 65,
+      "vector_side_aware_bh_return_pct": -6.778887550805358,
+      "vector_time_in_market_pct": 6.448476
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/OLED_SHORT/entry/result.json",
+      "artifact_actual_sha256": "6f53f7052997e9fb0ade397ce798744a0e69bb9f047d4fb1629c069c517d65d1",
+      "artifact_expected_sha256": "6f53f7052997e9fb0ade397ce798744a0e69bb9f047d4fb1629c069c517d65d1",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 5,
+          "selected_event_count": 9,
+          "selected_exit_event_count": 4,
+          "undeclared_event_count": 128,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 4,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 10,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 10,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 23,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 33,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 10,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 37,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_GOLDEN_RULE",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 2,
+          "selected_event_count": 13,
+          "selected_exit_event_count": 11,
+          "undeclared_event_count": 196,
+          "undeclared_event_families": [
+            "AUGMENT:GOLDEN_RULE",
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 2,
+              "reason_group": "GOLDEN_RULE",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 4,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 1,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 11,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 12,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 34,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 2,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 64,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 4,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 59,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "OLED_SHORT",
+      "selected_entry_event_count": 5,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "1h"
+      },
+      "selected_event_count": 9,
+      "selected_exit_event_count": 4,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "1h"
+      },
+      "undeclared_event_count": 128,
+      "undeclared_event_families": [
+        "AUGMENT:REENTRY",
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "CLOSE:WT_4H_VEL_EXIT",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 2.62201607265839,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 35.61157850652015,
+      "vector_positive_bh_multiple": 1.0794801712788724,
+      "vector_real_closes": 85,
+      "vector_side_aware_bh_return_pct": 32.98956243386176,
+      "vector_time_in_market_pct": 9.178131
+    },
+    {
+      "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/DIS_SHORT/entry/result.json",
+      "artifact_actual_sha256": "33756d697bb547e968a6ed5e9c63f4c707375e6fa5c4e7627731f60a6979b21a",
+      "artifact_expected_sha256": "33756d697bb547e968a6ed5e9c63f4c707375e6fa5c4e7627731f60a6979b21a",
+      "artifact_hash_matches": true,
+      "event_path_parity_by_window": {
+        "holdout": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 7,
+          "selected_event_count": 10,
+          "selected_exit_event_count": 3,
+          "undeclared_event_count": 131,
+          "undeclared_event_families": [
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 14,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 20,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 18,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 38,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 9,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 31,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        },
+        "train": {
+          "blockers": [
+            "VECTOR_EVENT_LEDGER_UNDECLARED_PATHS",
+            "UNDECLARED_AUGMENT_REENTRY",
+            "UNDECLARED_CLOSE_DC_HOPELESS_EXIT",
+            "UNDECLARED_CLOSE_HYBRID_STRUCT_EXIT",
+            "UNDECLARED_CLOSE_MTF_DC_REJECT",
+            "UNDECLARED_CLOSE_PPL_SL_CLOSE",
+            "UNDECLARED_CLOSE_WT_4H_VEL_EXIT",
+            "UNDECLARED_CLOSE_WT_CROSSOVER_FINAL",
+            "UNDECLARED_OPEN_DELTA_ENTRY",
+            "UNDECLARED_OPEN_GOLDEN_RULE",
+            "UNDECLARED_OPEN_MOMENTUM_WATCHDOG",
+            "UNDECLARED_REDUCE_PPL_TP"
+          ],
+          "pass": false,
+          "selected_entry_event_count": 14,
+          "selected_event_count": 19,
+          "selected_exit_event_count": 5,
+          "undeclared_event_count": 207,
+          "undeclared_event_families": [
+            "AUGMENT:REENTRY",
+            "CLOSE:DC_HOPELESS_EXIT",
+            "CLOSE:HYBRID_STRUCT_EXIT",
+            "CLOSE:MTF_DC_REJECT",
+            "CLOSE:PPL_SL_CLOSE",
+            "CLOSE:WT_4H_VEL_EXIT",
+            "CLOSE:WT_CROSSOVER_FINAL",
+            "OPEN:DELTA_ENTRY",
+            "OPEN:GOLDEN_RULE",
+            "OPEN:MOMENTUM_WATCHDOG",
+            "REDUCE:PPL_TP"
+          ],
+          "undeclared_paths": [
+            {
+              "count": 3,
+              "reason_group": "REENTRY",
+              "type": "AUGMENT"
+            },
+            {
+              "count": 2,
+              "reason_group": "DC_HOPELESS_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 25,
+              "reason_group": "HYBRID_STRUCT_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 17,
+              "reason_group": "MTF_DC_REJECT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 30,
+              "reason_group": "PPL_SL_CLOSE",
+              "type": "CLOSE"
+            },
+            {
+              "count": 1,
+              "reason_group": "WT_4H_VEL_EXIT",
+              "type": "CLOSE"
+            },
+            {
+              "count": 4,
+              "reason_group": "WT_CROSSOVER_FINAL",
+              "type": "CLOSE"
+            },
+            {
+              "count": 6,
+              "reason_group": "DELTA_ENTRY",
+              "type": "OPEN"
+            },
+            {
+              "count": 53,
+              "reason_group": "GOLDEN_RULE",
+              "type": "OPEN"
+            },
+            {
+              "count": 11,
+              "reason_group": "MOMENTUM_WATCHDOG",
+              "type": "OPEN"
+            },
+            {
+              "count": 55,
+              "reason_group": "PPL_TP",
+              "type": "REDUCE"
+            }
+          ]
+        }
+      },
+      "exact_admission_authorized": false,
+      "exact_admission_blocker": "UNDECLARED_VECTOR_EVENT_PATHS_DO_NOT_MATCH_SELECTED_FORMATION_RECIPE",
+      "exact_alpha_vs_bh_pp": null,
+      "exact_real_closes": null,
+      "exact_recipe_matches_selected": false,
+      "exact_run_id": null,
+      "exact_selected_entry_fills": null,
+      "exact_selected_exit_fills": null,
+      "exact_side_aware_bh_return_pct": null,
+      "exact_status": null,
+      "exact_strategy_return_pct": null,
+      "exact_summary_present": false,
+      "exact_time_in_market_pct": null,
+      "key": "DIS_SHORT",
+      "selected_entry_event_count": 7,
+      "selected_entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "selected_entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "selected_event_count": 10,
+      "selected_exit_event_count": 3,
+      "selected_exit_family": "EXIT_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "selected_exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "undeclared_event_count": 131,
+      "undeclared_event_families": [
+        "CLOSE:HYBRID_STRUCT_EXIT",
+        "CLOSE:MTF_DC_REJECT",
+        "CLOSE:PPL_SL_CLOSE",
+        "OPEN:DELTA_ENTRY",
+        "OPEN:GOLDEN_RULE",
+        "OPEN:MOMENTUM_WATCHDOG",
+        "REDUCE:PPL_TP"
+      ],
+      "vector_alpha_vs_bh_pp": 2.329232586101286,
+      "vector_evidence_class": "GROUP_VECTOR_RESEARCH",
+      "vector_group_return_pct": 11.578664855006569,
+      "vector_positive_bh_multiple": 1.2518243842848273,
+      "vector_real_closes": 86,
+      "vector_side_aware_bh_return_pct": 9.249432268905283,
+      "vector_time_in_market_pct": 12.002476
+    }
+  ],
+  "schema": "classic-formation-vector-exact-parity-digest-v1",
+  "sources": {
+    "exact": "data/reports/vec_research/hotlist_v8_full_recipe/BATCH_STATUS_CURRENT.json",
+    "exact_sha256": "30f1ef885ce9fe01cbee421c2ffc29000a64d4857f860160e457862f53c0f343",
+    "materialized": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+    "materialized_sha256": "68fbfc37e3d61a66f675cfa8d7a4c7e9bf54a2c838179403c9023f9877f17f38",
+    "priority": "data/reports/vec_research/classic_formations_gate_aware_source_v4_20260803/CLASSIC_FORMATION_GATE_AWARE_PRIORITY_HOTLIST_v4.json",
+    "priority_sha256": "a9b99d06f738cc36249f495c80543090b38dcce28eb32ddf58d9bdd7fc19513d"
+  },
+  "status": "PASS",
+  "summary": {
+    "artifact_hash_match_count": 20,
+    "digest_row_count": 20,
+    "exact_admission_blocked_count": 20,
+    "exact_authorized_group_recipe_count": 0,
+    "exact_authorized_isolated_recipe_count": 0,
+    "exact_recipe_match_count": 2,
+    "exact_summary_present_count": 4,
+    "formation_exact_ready_pass_count": 0,
+    "group_vector_research_count": 20,
+    "independent_exact_pass_count": 2,
+    "isolated_vector_research_count": 0,
+    "priority_combo_count": 20
+  },
+  "truth_contract": "GROUP_VECTOR_RESEARCH_REMAINS_NUMERIC_RESEARCH;_UNDECLARED_EVENT_PATHS_BLOCK_EXACT_ADMISSION;_EXACT_SUMMARY_IS_INDEPENDENT_EXECUTION_EVIDENCE"
+}

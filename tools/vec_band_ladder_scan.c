@@ -132,6 +132,15 @@ int vec_band_ladder_scan(
                     out->fill_count++;
                     out->reclaim_count += pending_reason == 1;
                     out->ladder_reentry_count += pending_reason == 2;
+                    /* Any confirmed flat->position fill satisfies the
+                       persistent reclaim obligation.  A lower/higher ladder
+                       fill must not leave a stale exit level armed. */
+                    if (isfinite(last_exit_fill)) {
+                        last_exit_fill = NAN;
+                        reclaim_level = NAN;
+                        prior_exit_notional = 0.0;
+                        gap_seen = 0;
+                    }
                 }
             }
             pending = 0;
@@ -174,8 +183,8 @@ int vec_band_ladder_scan(
             if (side > 0) gap_seen |= low[i] < last_exit_fill;
             else gap_seen |= high[i] > last_exit_fill;
             const int reclaim_crossed = side > 0
-                ? cp >= reclaim_level
-                : cp <= reclaim_level;
+                ? high[i] >= reclaim_level
+                : low[i] <= reclaim_level;
             if (reclaim_crossed) {
                 pending = 1;
                 pending_signal = i;

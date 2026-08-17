@@ -1,0 +1,53 @@
+{
+  "generated_at_utc": "2026-04-27T02:53:09+00:00",
+  "syms_in_scope": 101,
+  "syms_loaded": 101,
+  "syms_skipped": 0,
+  "bars_per_sym_min": 1200,
+  "bars_per_sym_max": 1734,
+  "approx_days": 18.1,
+  "approx_years": 0.0495,
+  "advisory_metrics": {
+    "trades": 54,
+    "pool_sharpe": -0.1152,
+    "sym_sharpe": 0.0,
+    "sym_sharpes_count_qualified": 0,
+    "avg_gain_trade": -0.0988,
+    "gain_per_yr": -107.94,
+    "gain_sym_yr": -1.0687,
+    "max_dd_pct": 9.77,
+    "hit_rate": 38.89,
+    "acc_gain_pct": -5.34
+  },
+  "baseline_metrics": {
+    "trades": 16772,
+    "pool_sharpe": -0.04,
+    "sym_sharpe": -0.0759,
+    "sym_sharpes_count_qualified": 100,
+    "avg_gain_trade": -0.1171,
+    "gain_per_yr": -39702.31,
+    "gain_sym_yr": -393.0921,
+    "max_dd_pct": 100.0,
+    "hit_rate": 45.29,
+    "acc_gain_pct": -1963.38
+  },
+  "compare": {
+    "delta_pool_sharpe": -0.0752,
+    "delta_avg_gain_trade": 0.0183,
+    "delta_hit_rate": -6.4,
+    "delta_max_dd_pct": -90.23
+  },
+  "rule_constants": {
+    "ENTRY_SCORE_MIN": 75.0,
+    "ENTRY_MTF_MIN": 4,
+    "ENTRY_NEAR_DIST_MAX_PCT": 1.5,
+    "LOSER_GAIN_THRESHOLD": -0.5,
+    "SR_BREAK_GAIN_THRESHOLD": 0.0,
+    "HOLD_MIN_MTF_ALIGN": 3,
+    "TOTAL_COST_PCT": 0.12,
+    "BASELINE_HOLD_BARS": 16,
+    "ADV_MAX_HOLD_BARS": 96,
+    "SHARPE_CAP": 5.0,
+    "MIN_TRADES_FOR_SYM_AVG": 30
+  }
+}

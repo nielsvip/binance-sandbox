@@ -69,6 +69,61 @@ STOCKS_128 = [
     "SPY","QQQ","IWM","DIA","GLD","SLV","USO","TLT","HYG","LQD","XLF","XLE",
 ]
 
+# The quick engine has neutral fallbacks for interactive use, but a sweep must
+# never treat a missing indicator as a real signal.  Tradier's native base
+# timeframe is 5m; crypto's native base timeframe remains 3m.
+TRADIER_SWEEP_REQUIRED_FIELDS = {
+    *(f"{name}_{tf}" for tf in ("5m", "15m", "1h", "4h", "D")
+      for name in ("close", "high", "low", "open", "stoch_k", "stoch_d",
+                   "wt1", "wt2", "wt_velocity", "wt_bullish", "ha")),
+    "mfi_5m", "mfi_1h", "mfi_D", "vwap_D", "dc_position_D",
+    "bb_pct_b_1h", "bb_upper_1h", "bb_lower_1h", "rsi_1h",
+    "dc_basis_crossover_15m", "dc_basis_crossover_1h",
+    "high_5m_prev", "low_5m_prev", "high_1h_prev", "low_1h_prev",
+    "high_4h_prev", "low_4h_prev",
+}
+
+
+def validate_sweep_data(npz_dir: str, mode: str, symbols: List[str]) -> None:
+    """Reject incomplete sweep inputs before workers produce misleading scores."""
+    if mode != "tradier":
+        return
+    import numpy as np
+
+    root = Path(npz_dir)
+    missing_files = []
+    missing_fields = {}
+    for symbol in symbols:
+        path = root / f"{symbol}.npz"
+        if not path.exists():
+            missing_files.append(symbol)
+            continue
+        try:
+            with np.load(path, allow_pickle=True) as archive:
+                keys = set(archive.files)
+        except Exception as exc:
+            missing_fields[symbol] = [f"unreadable: {exc}"]
+            continue
+        absent = sorted(TRADIER_SWEEP_REQUIRED_FIELDS - set(keys))
+        if absent:
+            missing_fields[symbol] = absent
+
+    if not missing_files and not missing_fields:
+        return
+    details = []
+    if missing_files:
+        details.append(f"missing NPZ files ({len(missing_files)}): {', '.join(missing_files[:12])}")
+    if missing_fields:
+        examples = []
+        for symbol, fields in list(missing_fields.items())[:4]:
+            examples.append(f"{symbol}: {', '.join(fields[:8])}")
+        details.append(f"missing fields in {len(missing_fields)} symbols: " + "; ".join(examples))
+    raise RuntimeError(
+        "[FULL_SWEEP] DATA CONTRACT ERROR — refusing Tradier sweep with incomplete "
+        + " or unreadable NPZ inputs (" + " | ".join(details) + "). Regenerate the "
+        "Tradier indicators before rerunning."
+    )
+
 
 def worker_run(args):
     """One worker process: load subset, run simulate, return raw per-symbol pnl."""
@@ -225,6 +280,8 @@ def main():
                     npz_dir = str(d); break
             if npz_dir: break
     log(f"[FULL_SWEEP] npz_dir={npz_dir}")
+    validate_sweep_data(npz_dir, args.mode, symbols)
+    log(f"[FULL_SWEEP] data contract passed for {len(symbols)} symbols")
 
     # Shard symbols into workers
     worker_size = args.worker_size

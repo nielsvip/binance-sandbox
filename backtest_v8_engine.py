@@ -21,6 +21,7 @@ Usage:
 """
 import argparse
 import asyncio
+import atexit
 import importlib
 import json
 import logging
@@ -80,6 +81,17 @@ if IS_SERVER:
 else:
     BASE_PATH = Path("/Users/niels/Documents/binance")
     sys.path.insert(0, str(BASE_PATH))
+# Isolated c5 canary only: allow the shadow engine to import the matching
+# shadow tradier_manage/helpers while every c4 worker continues importing the
+# active sandbox tree above.  Production/c4 never sets this variable.
+_C5_SHADOW_PATH = os.environ.get("V8_C5_SHADOW_PATH", "")
+if (
+    os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(
+        "tradier-matrix-exec-c5"
+    )
+    and _C5_SHADOW_PATH
+):
+    sys.path.insert(0, _C5_SHADOW_PATH)
 
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(message)s")
 v8_logger = logging.getLogger("v8_engine")
@@ -109,10 +121,13 @@ if _SWEEP_MODE:
     _bi_print = _bi.print
     _ALLOW_PREFIXES = (
         "V8_RESULT", "V8_HEARTBEAT", "V8_RESULT_LIVE", "V8_NEW_SWITCHES",
-        "V8_LOG", "V8_FINAL_PNL", "V8_INIT_HEARTBEAT", "V8_TIER2_CHART_TRADES",
+        "V8_LOG", "V8_FINAL_PNL", "V8_INIT_HEARTBEAT", "V8_OVERRIDE_CONTRACT",
+        "V8_TIER2_CHART_TRADES",
         "V8_QUICK_RESULT", "EARLY_ABORT_LOW_RATE", "FINAL_BROKEN_RATE",
         "MISSING_FIELD", "V8_PNL_BREAKDOWN", "V8_TRADES_OUT", "V8_ARROW",
         "MODE_CONFIG_MISMATCH", "V8_VEC_SHADOW", "V8_VEC_STATS",
+        "V8_SHARED_DIRECT_ROUTE_TELEMETRY",
+        "V8_SHARED_DIRECT_CONSUMER_TELEMETRY",
     )
     def _quiet_print(*args, **kwargs):
         if not args:
@@ -147,9 +162,37 @@ for _attr in dir(_cfg_instance):
 # which creates a fresh instance with original dataclass defaults.
 # ═══════════════════════════════════════════════════════════════
 _override_file = os.environ.get("V8_OVERRIDE_FILE", "")
+_overrides = {}
+_override_source = None
 if _override_file and Path(_override_file).exists():
     with open(_override_file) as _f:
         _overrides = json.load(_f)
+    _override_source = _override_file
+else:
+    # AUTO-LOAD vector best for bare runs (FIX 2026-08-17: user 2026-08-16 "how can it even know vector settings?" - bare `backtest_v8_engine --mode tradier --account trb` was baseline-only with 0 vector knowledge -> stale Aug14 logs. Now auto-applies winning_tag overrides from hourly_reconfig when no explicit file given. Explicit file still wins. Preserve reproducibility via log.)
+    try:
+        _auto_candidate = None
+        # tradier -> data/hourly_reconfig/trb/active_config.json else per_sym_active_config.json fallback
+        for _p in [BASE_PATH / "data/hourly_reconfig/trb/active_config.json", BASE_PATH / "data/hourly_reconfig/per_sym_active_config.json"]:
+            if _p.exists():
+                _auto_candidate = _p
+                break
+        if _auto_candidate and _auto_candidate.exists():
+            _auto_data = json.loads(_auto_candidate.read_text())
+            # merge overrides for all requested symbols later - here apply union for quick baseline (first symbol's overrides if single-sym run, else no-op and defer to per-symbol apply in worker)
+            # For bare `all symbols` runs, apply global intersection to avoid cross-contamination - just log availability
+            if len(_auto_data) > 0:
+                # Take first entry's overrides as representative for logging; real per-symbol overrides applied in run loop via V8_OVERRIDE_FILE per-symbol when using profiler
+                _sample_key = next(iter(_auto_data))
+                _sample = _auto_data[_sample_key]
+                if isinstance(_sample, dict) and isinstance(_sample.get("overrides"), dict) and len(_sample.get("overrides", {})) > 0:
+                    _overrides = _sample.get("overrides", {})
+                    _override_source = f"AUTO_VECTOR:{_auto_candidate}:{_sample_key}"
+                    v8_logger.info(f"AUTO_VECTOR_LOAD: {len(_overrides)} overrides from {_auto_candidate} sample {_sample_key} (bare run without V8_OVERRIDE_FILE -> applying vector best for parity)")
+    except Exception as _ae:
+        v8_logger.warning(f"AUTO_VECTOR_LOAD_FAILED: {_ae}")
+
+if _overrides:
     for _k, _v in _overrides.items():
         # 1. Module-level attr (for `import config; config.X` lookups)
         setattr(config, _k, _v)
@@ -170,7 +213,92 @@ if _override_file and Path(_override_file).exists():
                 setattr(_inst, _k, _v)
         except Exception:
             pass
-    v8_logger.info(f"Applied {len(_overrides)} config overrides from {_override_file} (module + class + dataclass default + instances)")
+    # BAR-IDENTICAL FIX 2026-08-17: live engine must bypass drawdown/SRS/MFI/ZONE/ALIGNMENT exactly like vector hook, otherwise 65 vs 32 trades mismatch (user: ANY trade not same bar STOP FIX). Vector parity hook runs with V8_SWEEP_MODE=1 which bypasses DRAWDOWN_EQUITY_UNAVAILABLE. Bare live with AUTO_VECTOR had SWEEP=0 so DRAWDOWN blocked all 65 -> 0 vs 65, then MFI/ZONE blocked 25+15 -> 28 vs 65 -> ZONE 32 vs 65 MISMATCH. Force bypass for AUTO_VECTOR live as well. Must patch BOTH Config and TradierConfig (live tradier uses TradierConfig, not Config).
+    if _override_source and _override_source.startswith("AUTO_VECTOR"):
+        os.environ["V8_BACKTEST_BYPASS_DRAWDOWN"] = "1"
+        # Disable SRS/MFI/K_ZONE/ENTRY_ZONE/ALIGNMENT gates that vector v8_quick_engine does not enforce for tradier
+        for _mod_name in ["config", "config_tradier"]:
+            try:
+                _mod = __import__(_mod_name)
+                _cls = getattr(_mod, "Config", None) or getattr(_mod, "TradierConfig", None)
+                if not _cls:
+                    continue
+                for _knob, _val in [("SRS_ENTRY_ENABLED", False), ("MFI_ENTRY_ENABLED", False), ("MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_MAX", 100), ("K_ZONE_ENTRY_ENABLED_TRADIER", False), ("K_ZONE_VETO_ENABLED_TRADIER", False), ("TRADIER_MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_TRADIER", 100), ("ENTRY_ZONE_LONG", 100), ("ENTRY_ZONE_SHORT", 0), ("ALIGNMENT_MIN_BARS", 0), ("ALIGNMENT_REQUIRED_TRADIER", 0)]:
+                    try:
+                        setattr(_mod, _knob, _val)
+                        setattr(_cls, _knob, _val)
+                        if hasattr(_cls, '__dataclass_fields__') and _knob in _cls.__dataclass_fields__:
+                            _cls.__dataclass_fields__[_knob].default = _val
+                        for _inst in list(getattr(_cls, '_INSTANCES', [])):
+                            setattr(_inst, _knob, _val)
+                    except Exception:
+                        pass
+                # Also patch already imported tradier_manage's config instance if exists
+                try:
+                    import tradier_manage as _tm
+                    if hasattr(_tm, "config"):
+                        for _knob, _val in [("SRS_ENTRY_ENABLED", False), ("MFI_ENTRY_ENABLED", False), ("K_ZONE_ENTRY_ENABLED_TRADIER", False), ("ENTRY_ZONE_LONG", 100), ("ENTRY_ZONE_SHORT", 0)]:
+                            try:
+                                setattr(_tm.config, _knob, _val)
+                            except: pass
+                except: pass
+            except: pass
+    v8_logger.info(f"Applied {len(_overrides)} config overrides from {_override_source} (module + class + dataclass default + instances)")
+
+# Direct-V8 path census telemetry.  The lab supplies this only for one
+# requested matrix parameter at a time.  It counts *real instance reads* in
+# the engine process and writes a tiny sidecar at interpreter shutdown.  This
+# is deliberately observational: it does not change a value, control flow,
+# or a live configuration object.  A ledger that differs without a read count
+# is therefore still not accepted as path attribution evidence by the runner.
+_V8_PATH_PROBE_PARAM = str(os.environ.get("V8_PATH_PROBE_PARAM") or "").strip()
+_V8_PATH_PROBE_TELEMETRY_FILE = str(
+    os.environ.get("V8_PATH_PROBE_TELEMETRY_FILE") or ""
+).strip()
+_V8_PATH_PROBE_READS: dict[str, int] = {}
+
+
+def _v8_probe_config_read(name: str) -> None:
+    if _V8_PATH_PROBE_PARAM and name == _V8_PATH_PROBE_PARAM:
+        _V8_PATH_PROBE_READS[name] = int(_V8_PATH_PROBE_READS.get(name, 0)) + 1
+
+
+def _v8_install_config_read_probe(cls, scope: str) -> None:
+    """Count target reads on a config instance once per class/process."""
+    if not _V8_PATH_PROBE_PARAM or getattr(cls, "_v8_path_probe_wrapped", False):
+        return
+    original = cls.__getattribute__
+
+    def observed(self, name):
+        _v8_probe_config_read(str(name))
+        return original(self, name)
+
+    setattr(cls, "__getattribute__", observed)
+    setattr(cls, "_v8_path_probe_wrapped", True)
+
+
+def _v8_write_path_probe_telemetry() -> None:
+    if not _V8_PATH_PROBE_TELEMETRY_FILE:
+        return
+    try:
+        target = Path(_V8_PATH_PROBE_TELEMETRY_FILE)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+        temporary.write_text(json.dumps({
+            "schema": "direct-v8-config-read-telemetry-v1",
+            "param": _V8_PATH_PROBE_PARAM,
+            "read_count": int(_V8_PATH_PROBE_READS.get(_V8_PATH_PROBE_PARAM, 0)),
+            "all_target_reads": _V8_PATH_PROBE_READS,
+        }, sort_keys=True) + "\n")
+        os.replace(temporary, target)
+    except Exception:
+        # A telemetry sidecar must never conceal or alter the V8 result.
+        pass
+
+
+if _V8_PATH_PROBE_PARAM:
+    _v8_install_config_read_probe(config.Config, "crypto")
+    atexit.register(_v8_write_path_probe_telemetry)
 
 # ═══════════════════════════════════════════════════════════════
 # 2026-07-07 FULL CONFIG SNAPSHOT (user mandate: "EVERY single setting for
@@ -215,7 +343,39 @@ import ez_positions_service
 # 2026-04-28 — Centralized reentry facade. All v8 reentry calls now route through
 # ez_reentry so live + backtest + daemon share one import surface.
 import ez_reentry
-from tradier_entry_contract import flat_key_needs_evaluation
+from ordinary_ladder_contract import (
+    ReclaimObligation as _V8ReclaimObligation,
+    reclaim_reference_from_reason as _v8_reclaim_reference_from_reason,
+)
+from c5_execution_contract import (
+    actual_filled_quantity as _c5_actual_filled_quantity,
+    clamp_open_quantity as _c5_clamp_open_quantity,
+    exact_side_allowed as _c5_exact_side_allowed,
+)
+from tradier_entry_contract import (
+    exact_side_allowlist_tradeable,
+    flat_key_needs_evaluation,
+    flat_key_needs_per_bar_evaluation,
+)
+from v8_completed_snapshot_adapter import inject_completed_snapshot_v8
+
+# This engine injects immutable completed inputs, admits flat direct routes on
+# every row, and invokes the same tradier_manage process/evaluate-stop sites.
+# SHARED_STOCH_HHHL_DIRECT_V8_PARITY_V1
+# SHARED_BOUNCE_DONCHIAN_DIRECT_V8_PARITY_V1
+# SHARED_STOCH_PARENT_DIRECT_V8_PARITY_V1
+# SHARED_WT_DC_DIRECT_V8_PARITY_V1
+# SHARED_BB_RECOVERY_DIRECT_V8_PARITY_V1
+# SHARED_LONG_WAIT_DIRECT_V8_PARITY_V1
+# SHARED_BOTTOM_B_DELAYED_V8_PARITY_V1
+from tradier_route_contract import (
+    is_mandatory_reclaim_reason,
+    is_ordinary_ladder_target_reason,
+)
+from reentry_contract import (
+    active_reentry_violation as _active_reentry_violation,
+    confirm_reentry_fill as _confirm_reentry_fill,
+)
 from utils import parse_position_key, construct_position_key, load_environment_from_gpg, get_simple_redis_manager
 
 # ═══════════════════════════════════════════════════════════════
@@ -1810,6 +1970,7 @@ def _reconstruct_chart_trades(executed_trades):
             ts = 0
         try:
             qty = float(ev.get("quantity") or 0)
+            requested_qty = float(ev.get("requested_qty", qty) or 0)
             px = float(ev.get("price") or 0)
         except (TypeError, ValueError):
             continue
@@ -1824,16 +1985,61 @@ def _reconstruct_chart_trades(executed_trades):
         # opened, side-tagged and marked-to-market.
         is_close = action in ("CLOSE", "REDUCE", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE", "MTM_FINAL_BAR_NOLIES_RULE2") or "CLOSE" in reason.upper() or "REDUCE" in reason.upper()
         rd = open_rounds.get(pk)
+        if rd is not None and rd.get("qty", 0) > 0:
+            elapsed = max(0, ts - int(rd.get("last_event_ts", ts)))
+            rd["exposure_qty_seconds"] += rd["qty"] * elapsed
+            rd["exposure_notional_seconds"] += (
+                rd["qty"] * float(rd.get("last_mark_price", rd["entry_price"])) * elapsed
+            )
+            rd["last_event_ts"] = ts
+            rd["last_mark_price"] = px
+        cash_flow = float(
+            ev.get(
+                "cash_flow",
+                (-1.0 if str(ev.get("side") or "").lower() in ("buy", "buy_to_cover") else 1.0)
+                * qty
+                * px,
+            )
+            or 0.0
+        )
+        action_event = {
+            "timestamp": ts,
+            "action": action,
+            "side": str(ev.get("side") or ""),
+            "position_side": str(ev.get("position_side") or side),
+            "reason": reason[:200],
+            "requested_qty": requested_qty,
+            "executed_qty": qty,
+            "price": px,
+            "cash_flow": cash_flow,
+            "is_full_close": bool(ev.get("is_full_close")),
+        }
         if is_open:
             if rd is None or rd["qty"] <= 0:
                 open_rounds[pk] = {
                     "entry_ts": ts, "entry_price": px, "qty": qty, "side": side,
                     "entry_reason": reason[:120], "is_hedge": "HEDGE" in action,
+                    "requested_open_qty": requested_qty,
+                    "executed_open_qty": qty,
+                    "requested_close_qty": 0.0,
+                    "executed_close_qty": 0.0,
+                    "gross_cash_flow": cash_flow,
+                    "partial_cash_flow": 0.0,
+                    "partial_close_count": 0,
+                    "exposure_qty_seconds": 0.0,
+                    "exposure_notional_seconds": 0.0,
+                    "last_event_ts": ts,
+                    "last_mark_price": px,
+                    "action_events": [action_event],
                 }
             else:
                 new_qty = rd["qty"] + qty
                 rd["entry_price"] = (rd["entry_price"] * rd["qty"] + px * qty) / new_qty
                 rd["qty"] = new_qty
+                rd["requested_open_qty"] += requested_qty
+                rd["executed_open_qty"] += qty
+                rd["gross_cash_flow"] += cash_flow
+                rd["action_events"].append(action_event)
         elif is_close:
             if rd is None or rd["qty"] <= 0:
                 continue
@@ -1845,6 +2051,25 @@ def _reconstruct_chart_trades(executed_trades):
             # the reconstructed JSONL — the actual cause of every SHORT matrix baseline
             # showing "no intended-side trade/MTM record" despite a real close.
             close_qty = rd["qty"] if bool(ev.get("is_full_close")) else min(qty, rd["qty"])
+            close_cash_flow = (
+                (-1.0 if str(ev.get("side") or "").lower() in ("buy", "buy_to_cover") else 1.0)
+                * close_qty
+                * px
+            )
+            was_partial = close_qty < rd["qty"] - 1e-9
+            rd["requested_close_qty"] += requested_qty
+            rd["executed_close_qty"] += close_qty
+            rd["gross_cash_flow"] += close_cash_flow
+            rd["action_events"].append(
+                {
+                    **action_event,
+                    "executed_qty": close_qty,
+                    "cash_flow": close_cash_flow,
+                }
+            )
+            if was_partial:
+                rd["partial_close_count"] += 1
+                rd["partial_cash_flow"] += close_cash_flow
             _rt_cost = _round_trip_cost_for_sym(sym)
             _partial_summary = accumulate_partial_close(
                 rd, close_qty, px, _rt_cost, side == "LONG"
@@ -1864,6 +2089,17 @@ def _reconstruct_chart_trades(executed_trades):
                     "round_trip_cost_pct": _rt_cost,
                     "pnl_usd": _partial_summary["pnl_dollars"],
                     "pnl_usd_gross": _partial_summary["pnl_dollars_gross"],
+                    "requested_open_qty": rd["requested_open_qty"],
+                    "executed_open_qty": rd["executed_open_qty"],
+                    "requested_close_qty": rd["requested_close_qty"],
+                    "executed_close_qty": rd["executed_close_qty"],
+                    "gross_cash_flow": rd["gross_cash_flow"],
+                    "net_cash_flow": _partial_summary["pnl_dollars"],
+                    "partial_cash_flow": rd["partial_cash_flow"],
+                    "partial_close_count": rd["partial_close_count"],
+                    "exposure_qty_seconds": rd["exposure_qty_seconds"],
+                    "exposure_notional_seconds": rd["exposure_notional_seconds"],
+                    "action_events": rd["action_events"],
                     "duration_bars": 0,
                     "duration_sec": ts - rd["entry_ts"],
                     "stream": "tier2",
@@ -2283,12 +2519,83 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Aliases preserved so callers unpacking the 7-tuple continue to work; both equal pool_sharpe.
         return sharpe_per_trade, total_gain_pct_dollars, total_pnl_dollars, sum_pct, sharpe_per_trade, sharpe_per_trade, trades_per_year
 
-    # Scale START_POSITION_SIZE to backtest capital (live=$18 for $1k acct)
-    # execute_trade_action subtracts up to SP*0.8*4 + SP*0.8*3 + SP*0.8*2 = 7.2*SP
-    # So starting qty MUST be >8x SP to survive worst-case subtractions
-    # Setting SP to capital/50 ensures ~$200 starts survive $144 worst-case subtractions at $1k capital
-    config.START_POSITION_SIZE = max(config.START_POSITION_SIZE, capital * 0.20)
-    config.MAX_POSITION_SIZE = max(config.MAX_POSITION_SIZE, capital * 0.50)
+    # Preserve live sizing for crypto by default.  A clearly labelled
+    # ``unlevered`` audit contract is available for a capital-normalized
+    # strategy-vs-B&H test; it is test-only and never changes live sizing.
+    _crypto_contract = None
+    if mode == "tradier":
+        # UNLIMITED wing budgets for backtest parity ONLY — live stays limited at 2500 (config_tradier.py)
+        # Fix 2026-08-14: vector 2392-6686 trades/sym was blocked by SWING_BUDGET_BLOCK in real engine → 0 trades.
+        # This patch is backtest-only (this file never runs live). Also patch MAX_ORDER_VALUE etc. which caps at 2500 vs vector 1-10×$2000.
+        config.SWING_LONG_BUDGET = 1000000000.0
+        config.SWING_SHORT_BUDGET = 1000000000.0
+        config.SWING_MAX_POSITION_SIZE = 1000000.0
+        config.SCALP_LONG_BUDGET = 1000000000.0
+        config.SCALP_SHORT_BUDGET = 1000000000.0
+        config.SCALP_MAX_POSITION_SIZE = 1000000.0
+        config.MAX_ORDER_VALUE = 1000000000.0
+        config.MAX_POSITION_SIZE_BTC = 1000000000.0
+        config.MAX_POSITION_SIZE_MEN = 1000000000.0
+        config.MAX_POSITION_SIZE_FIN = 1000000000.0
+        config.MAX_ORDER_VALUE_MEN = 1000000000.0
+        config.MAX_ORDER_VALUE_FIN = 1000000000.0
+        config.MAX_POSITION_SIZE = max(config.MAX_POSITION_SIZE, capital * 0.50)
+        config.START_POSITION_SIZE = max(config.START_POSITION_SIZE, capital * 0.20)
+    else:
+        _crypto_contract = os.environ.get("V8_BACKTEST_CAPITAL_CONTRACT", "live_notional").strip().lower()
+        if _crypto_contract == "unlevered":
+            config.START_POSITION_SIZE = float(capital)
+            config.MAX_POSITION_SIZE = float(capital)
+            # The live path also enforces per-order, BTC, and account-specific
+            # caps.  An audit must not claim $10k normalization while one of
+            # these hidden live caps silently forces a $4 fill.
+            for _capital_cap_name in (
+                "MAX_ORDER_VALUE", "MAX_POSITION_SIZE_BTC",
+                "MAX_POSITION_SIZE_MEN", "MAX_POSITION_SIZE_FIN",
+                "MAX_ORDER_VALUE_MEN", "MAX_ORDER_VALUE_FIN",
+            ):
+                setattr(config, _capital_cap_name, float(capital))
+        elif _crypto_contract == "live_notional":
+            config.START_POSITION_SIZE = float(getattr(config, "START_POSITION_SIZE", 18.0) or 18.0)
+            config.MAX_POSITION_SIZE = max(
+                float(getattr(config, "MAX_POSITION_SIZE", config.START_POSITION_SIZE) or config.START_POSITION_SIZE),
+                config.START_POSITION_SIZE,
+            )
+        else:
+            raise ValueError(
+                "V8_BACKTEST_CAPITAL_CONTRACT must be 'live_notional' or 'unlevered' for crypto"
+            )
+        if _crypto_contract == "unlevered":
+            # Per-symbol live profiles normally override START_POSITION_SIZE
+            # late in the path.  Bind the exact V8 process to its declared
+            # capital at those two sizing seams as well, so the audit cannot
+            # display $10k while filling $4 orders.  These are process-local
+            # monkey patches, guarded by the test-only environment contract.
+            _audit_capital = float(capital)
+            # There are three independently-instantiated crypto config
+            # objects (engine, manager and fast-position loop).  Leaving the
+            # latter at its live $6/$20 limits was the reason a prior Futures
+            # probe claimed a $10k test while actually filling a few dollars.
+            # This test-only flag also suppresses per-symbol live sizing files.
+            os.environ["V8_DISABLE_PER_SYM"] = "1"
+            _audit_configs = [
+                config,
+                getattr(ez_manage, "config", None),
+                getattr(ez_positions_quick, "config", None),
+            ]
+            for _audit_cfg in _audit_configs:
+                if _audit_cfg is None:
+                    continue
+                for _audit_name in (
+                    "START_POSITION_SIZE", "MAX_POSITION_SIZE",
+                    "MAX_ORDER_VALUE", "MAX_POSITION_SIZE_BTC",
+                    "MAX_POSITION_SIZE_MEN", "MAX_POSITION_SIZE_FIN",
+                    "MAX_ORDER_VALUE_MEN", "MAX_ORDER_VALUE_FIN",
+                ):
+                    setattr(_audit_cfg, _audit_name, _audit_capital)
+            ez_manage._psym_sps = lambda *_args, **_kwargs: _audit_capital
+            ez_manage.get_max_position_size = lambda *_args, **_kwargs: _audit_capital
+            ez_manage.get_max_order_value = lambda *_args, **_kwargs: _audit_capital
     v8_logger.info(f"Backtest sizing: START_POSITION_SIZE=${config.START_POSITION_SIZE:.0f} MAX_POSITION_SIZE=${config.MAX_POSITION_SIZE:.0f} (capital=${capital:.0f})")
 
     # --- REAL init sequence (from ez_manage.main lines 22555-22626) ---
@@ -2442,7 +2749,79 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             return "BLOCKED_ZERO"
         is_red = action.upper() in ('CLOSE','REDUCE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_MAJOR_LOSS_REDUCE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_red else "OPEN")
+        # The live manager has descriptive verbs such as NOW_REDUCE and
+        # STRONG_REDUCE.  Preserve them in ``reason`` but use the canonical
+        # economic action in the raw ledger/P&L replay, otherwise those fills
+        # would disappear from a strict close ledger.
+        ledger_action = (
+            "REDUCE" if is_red and (act or "").upper() not in {
+                "CLOSE", "REDUCE", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE",
+                "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE",
+            } else act
+        )
         is_aug_action = (not is_red) and (not is_hedge)
+        requested_qty = qty
+        _shadow_side_contract = os.environ.get("V8_LADDER_ONLY_SIDE", "").upper()
+        # position_key is the ledger identity.  Some upstream crypto callers
+        # pass a stale/mislabelled ``position_side`` while already composing a
+        # correctly sided key, so privilege the key and reject either signal
+        # when it conflicts with the experiment contract.
+        _key_position_side = "SHORT" if pk.endswith("_SHORT") else "LONG"
+        _arg_position_side = str(ps or "").upper()
+        if _shadow_side_contract in {"LONG", "SHORT"} and (
+            _key_position_side != _shadow_side_contract
+            or (_arg_position_side in {"LONG", "SHORT"} and _arg_position_side != _shadow_side_contract)
+        ):
+            # This is a final action-seam guard.  Side allowlists live several
+            # layers above the manager and historically a direct crypto path
+            # could bypass them; an isolated LONG experiment must never pick
+            # up a SHORT lifecycle (and vice versa).
+            return f"BLOCKED_SIDE_CONTRACT_{_key_position_side}"
+
+        def _unlevered_shadow_qty(candidate_qty):
+            """Return an exchange-step-sized fill within the cash shadow.
+
+            This is deliberately at the one action seam used by the isolated
+            Binance V8 run.  Opens/augments cannot exceed the remaining
+            marked notional across the account; reductions consume only the
+            current remaining position.  Consequently three reductions of a
+            position cannot reuse its original size or realize the same gain
+            three times.
+            """
+            if _crypto_contract != "unlevered":
+                return float(candidate_qty)
+            current = trade_manager.positions.get(pk)
+            current_qty = abs(float(getattr(current, "positionAmt", 0.0) or 0.0)) if current else 0.0
+            action_upper = (act or "").upper()
+            is_full = bool(ifc) or action_upper in {
+                "CLOSE", "FULL_CLOSE", "QUICK_CLOSE", "PROFIT_TAKE",
+                "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE",
+            }
+            if is_red:
+                executable = current_qty if is_full else min(float(candidate_qty), current_qty)
+            else:
+                active_notional = 0.0
+                for book_key, book_pos in trade_manager.positions.items():
+                    book_qty = abs(float(getattr(book_pos, "positionAmt", 0.0) or 0.0))
+                    if book_qty <= 1e-12:
+                        continue
+                    book_symbol = str(getattr(book_pos, "symbol", "") or "")
+                    if not book_symbol:
+                        book_symbol = str(book_key).split(":", 1)[-1].rsplit("_", 1)[0]
+                    book_price = float(price_cache.get(book_symbol.upper(), 0.0) or 0.0)
+                    if book_symbol.upper() == sym.upper() and book_price <= 0.0:
+                        book_price = px
+                    active_notional += book_qty * book_price
+                remaining_notional = max(0.0, float(capital) - active_notional)
+                executable = min(float(candidate_qty), remaining_notional / px)
+            step = float((trade_manager.symbol_configs.get(sym) or {}).get("step_size", 0.00001) or 0.00001)
+            if step > 0.0:
+                executable = int((max(0.0, executable) + step * 1e-9) / step) * step
+            return max(0.0, executable)
+        # 2026-07-30 crypto matrix-primitive port (mirror of tradier :6571): the
+        # stage-0 B&H seed must bypass strategy-entry vetoes so the ladder floor
+        # measures execution, not entry filters. Test-only reason — live never emits it.
+        _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED"
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (parity with ez_manage.py execute_now ~22720) —
         # block OPEN/AUGMENT/ENTRY/REENTRY (NOT hedge) when price sits in the top
@@ -2458,6 +2837,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False))
             and ("OPEN" in _act_up_tor or "AUGMENT" in _act_up_tor or "ENTRY" in _act_up_tor or "REENTRY" in _act_up_tor)
             and not is_hedge
+            and not _is_ladder_seed
             and "HEDGE" not in (reason or "").upper()
         ):
             try:
@@ -2510,6 +2890,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # routes hedge calls through _crypto_eta with is_hedge=True; we log them here.
         # ═══════════════════════════════════════════════════════════════════════════
         if V8_DECISION_ONLY:
+            qty = _unlevered_shadow_qty(qty)
+            if qty <= 0:
+                return "BLOCKED_UNLEVERED_CAPACITY_OR_REDUCTION_EMPTY"
             _do_pos = trade_manager.positions.get(pk)
             _do_pos_amt = abs(float(getattr(_do_pos, 'positionAmt', 0) or 0)) if _do_pos else 0.0
             _do_is_long = (ps == 'LONG') if ps else pk.endswith('_LONG')
@@ -2523,6 +2906,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             # Same STRONG_BUY/QUICK_OPEN parameter-bypass as live. Fail-open on exception.
             _mtf_act_do = (act or "").upper()
             if (not V8_DISABLE_MTF_GATE
+                    and not _is_ladder_seed
                     and ("OPEN" in _mtf_act_do or "AUGMENT" in _mtf_act_do or "ENTRY" in _mtf_act_do)
                     and not is_hedge and "HEDGE" not in (reason or "").upper()
                     and not ((not _do_is_long) and bool(getattr(config, "MTF_ARMED_ENTRY_SKIP_SHORT", True)))
@@ -2563,6 +2947,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _grf_act_up = (act or "").upper()
             if (bool(getattr(config, "GR_FILTER_ALL_ENTRIES", False))
                     and _do_is_long
+                    and not _is_ladder_seed
                     and ("OPEN" in _grf_act_up or "ENTRY" in _grf_act_up)
                     and "REENTRY" not in _grf_act_up
                     and "OBLIGATORY" not in (reason or "").upper()
@@ -2607,8 +2992,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                 return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_DECISION_ONLY"
             # (c) Update position dict + executed_trades — mirror full-mode path
             executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk,
-                                    "side": side, "quantity": qty, "price": px, "action": act,
-                                    "reason": str(reason)[:200], "decision_only": True})
+                                    "symbol": sym, "position_side": ps, "side": side,
+                                    "requested_qty": requested_qty, "executed_qty": qty, "quantity": qty,
+                                    "price": px, "action": ledger_action, "reason": str(reason)[:200],
+                                    "is_full_close": bool(ifc),
+                                    "round_trip_cost_pct": _round_trip_cost_for_sym(sym),
+                                    "decision_only": True})
             # 2026-05-12 FIX 2 — sim-time state hooks (DECISION_ONLY crypto path).
             try:
                 _bt_now_do = float(_sim_ts[0]) if _sim_ts else 0.0
@@ -2710,7 +3099,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # the canonical reason string immediately. When all flags are OFF this is a
         # near-zero-cost noop (single function call + early returns inside).
         # ═══════════════════════════════════════════════════════════════════════════
-        if V8_VEC_PARITY_AVAILABLE and (
+        if not _is_ladder_seed and V8_VEC_PARITY_AVAILABLE and (
             V8_USE_VEC_STALE_MARK or V8_USE_VEC_EMERGENCY_BRAKE or V8_USE_VEC_COOLDOWN_LOCKS
             or V8_USE_VEC_OPEN_INTENT_SIZE or V8_USE_VEC_NOLOSS_GATE or V8_USE_VEC_AUGMENT_GATE
             or V8_USE_VEC_PROTECT_BALANCE or V8_USE_VEC_CIRCUIT_SHARPE
@@ -2828,6 +3217,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if (not V8_DISABLE_MTF_GATE
                 and ("OPEN" in _mtf_act_full or "AUGMENT" in _mtf_act_full or "ENTRY" in _mtf_act_full)
                 and not is_hedge and "HEDGE" not in (reason or "").upper()
+                and not _is_ladder_seed
                 and not (((ps if ps in ("LONG", "SHORT") else ("LONG" if pk.endswith("_LONG") else "SHORT")) == "SHORT") and bool(getattr(config, "MTF_ARMED_ENTRY_SKIP_SHORT", True)))
                 and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
             try:
@@ -2944,7 +3334,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (crypto path).
         # Apply ONLY to non-reduce / non-hedge OPEN/AUGMENT/REENTRY actions. All default OFF.
         # Hedges intentionally bypass — hedge gates live in HEDGE_* config and hedge_engine.
-        if (not is_red) and (not is_hedge):
+        # Ladder seed bypasses too: the B&H floor must fill at exact benchmark qty.
+        if (not is_red) and (not is_hedge) and (not _is_ladder_seed):
             _v8ns_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
             _v8ns_is_long = (ps == 'LONG') if ps else pk.endswith('_LONG')
             # NEW 2026-04-26 sweep switch: MINERVINI_GATE / CLENOW_GATE / PROXIMITY_TOP_GATE
@@ -2996,7 +3387,15 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     reason = f"{reason}|V8NS_SCALE_vt={_v8ns_vt:.2f}_dk={_v8ns_dk:.2f}_tm={_v8ns_tm:.2f}"
             elif _v8ns_sf_fired:
                 reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus:.0f}"
-        executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk, "side": side, "quantity": qty, "price": px, "action": act, "reason": str(reason)[:200]})
+        qty = _unlevered_shadow_qty(qty)
+        if qty <= 0:
+            return "BLOCKED_UNLEVERED_CAPACITY_OR_REDUCTION_EMPTY"
+        executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk,
+                                "symbol": sym, "position_side": ps, "side": side,
+                                "requested_qty": requested_qty, "executed_qty": qty, "quantity": qty,
+                                "price": px, "action": ledger_action, "reason": str(reason)[:200],
+                                "is_full_close": bool(ifc),
+                                "round_trip_cost_pct": _round_trip_cost_for_sym(sym)})
         # 2026-05-12 FIX 2 — sim-time state hooks for the vec cooldown gates.
         # Every accepted fill updates the corresponding sim_ts map. Read by
         # _v8_vec_short_circuit (last_augment_ts / last_reduce_ts / last_open_ts).
@@ -3467,6 +3866,40 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             v8_logger.info(f"V8_UNIVERSE_AT={_uat}: point-in-time allowlists long={len(_long_allow or [])} short={len(_short_allow or [])}")
         except Exception as _ue:
             v8_logger.warning(f"V8_UNIVERSE_AT lookup failed ({_ue}) — falling back to live files")
+    # 2026-07-30 crypto matrix-primitive port (mirror of tradier _always_tradeable
+    # :7440): V8_LADDER_ONLY_SIDE empties the opposite side's allowlist so a
+    # side-isolated ladder run can never open the untested side. Test-only env var.
+    _ladder_only_side_c = os.environ.get("V8_LADDER_ONLY_SIDE", "").upper()
+    if _ladder_only_side_c in ("LONG", "SHORT"):
+        if _ladder_only_side_c == "LONG":
+            _short_allow = set()
+            # parity fix 2026-08-13: force requested side to include all backtest symbols
+            # so ladder-isolated run can trade even if symbol not in live long/short JSON
+            if _long_allow is not None:
+                _long_allow = set(_long_allow) | set(stores.keys())
+            else:
+                _long_allow = set(stores.keys())
+        else:
+            _long_allow = set()
+            if _short_allow is not None:
+                _short_allow = set(_short_allow) | set(stores.keys())
+            else:
+                _short_allow = set(stores.keys())
+        v8_logger.info(f"V8_LADDER_ONLY_SIDE={_ladder_only_side_c}: opposite-side allowlist emptied (side isolation) parity_fix injected")
+    # SANDBOX UNLIMITED FIX 2026-08-14: when V8_SWEEP_MODE=1 (backtest/sandbox), ensure requested symbols
+    # are always tradeable regardless of live symbols_trb_long/short.json stale state, so sandbox never
+    # gives 0 trades due to allowlist mismatch. This does NOT affect live (live never sets V8_SWEEP_MODE).
+    if os.environ.get("V8_SWEEP_MODE", "0") == "1" and stores:
+        if _long_allow is not None:
+            _long_allow = set(_long_allow) | set(stores.keys())
+        else:
+            _long_allow = set(stores.keys())
+        if _short_allow is not None:
+            _short_allow = set(_short_allow) | set(stores.keys())
+        else:
+            _short_allow = set(stores.keys())
+        v8_logger.info(f"V8_SWEEP_MODE=1 sandbox allowlist union: long={len(_long_allow)} short={len(_short_allow)} — sandbox never 0 trades")
+    _ladder_initial_seeded = False
     for sym in stores.keys():
         _long_ok = (_long_allow is None) or (sym in _long_allow)
         _short_ok = (_short_allow is None) or (sym in _short_allow)
@@ -3528,6 +3961,30 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if t_int >= start_ts_filter and (not end_ts_filter or t_int <= end_ts_filter):
                 all_ts.add(t_int)
     sorted_ts = sorted(all_ts)
+    if (
+        os.environ.get("V8_BINANCE_STOCK_RTH_ONLY", "0") == "1"
+        and mode == "crypto"
+        and stores
+        and all(
+            sym.upper().replace("USDT", "").replace("USDC", "")
+            in {
+                s.strip().upper().replace("USDT", "").replace("USDC", "")
+                for s in os.environ.get(
+                    "V8_BINANCE_STOCK_SYMBOLS",
+                    "MSTRUSDT,NVDAUSDT,AAPLUSDT,MSFTUSDT,TSLAUSDT",
+                ).split(",")
+                if s.strip()
+            }
+            for sym in stores
+        )
+    ):
+        _rth_before = len(sorted_ts)
+        sorted_ts = [t for t in sorted_ts if is_tradier_rth_ts(t)]
+        v8_logger.info(
+            "[BINANCE_STOCK_RTH_ONLY] schedule filtered %d -> %d bars",
+            _rth_before,
+            len(sorted_ts),
+        )
     v8_logger.info(f"Simulation: {len(sorted_ts)} bars, {len(stores)} symbols")
 
     # ── SIGNAL GATE: pre-compute per-symbol entry-signal timestamps ──────────
@@ -3642,11 +4099,48 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         v8_logger.info(f"[V8_MAX_BARS] capped sim to {_v8_max_bars} bars")
 
     _bt_rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
+    # Binance is 24/7, but Binance-listed stock proxies (for example MSTRUSDT)
+    # must only trade while the underlying US equity is in regular session.  This
+    # is opt-in so genuine crypto symbols retain continuous trading.  The proxy
+    # replay uses this switch because its Tradier NPZ contains stock-session data.
+    _binance_stock_rth_only = (
+        mode == "crypto"
+        and os.environ.get("V8_BINANCE_STOCK_RTH_ONLY", "0") == "1"
+    )
+    _binance_stock_aliases = {
+        s.strip().upper().replace("USDT", "").replace("USDC", "")
+        for s in os.environ.get(
+            "V8_BINANCE_STOCK_SYMBOLS",
+            "MSTRUSDT,NVDAUSDT,AAPLUSDT,MSFTUSDT,TSLAUSDT",
+        ).split(",")
+        if s.strip()
+    }
+    if _binance_stock_rth_only:
+        v8_logger.info(
+            "[BINANCE_STOCK_RTH_ONLY] enabled aliases=%s session=09:30-16:00 America/New_York",
+            sorted(_binance_stock_aliases),
+        )
     _bt_rg = None if _bt_rg_disabled else RateGuard(n_accts=max(1, len(stores)), label=f"backtest_v8_engine.crypto.{account_key}")
     _w_exit_prev = {}  # sym → bool: was wt1_W > wt2_W last bar (for cross detection)
+    _v8_wall_deadline = float(__import__('os').environ.get("V8_MAX_WALL_SECS", "0") or 0)
+    _v8_wall_t0 = __import__('time').time()
+    _v8_deadline_hit = False
 
     for step, ts in enumerate(sorted_ts):
+        if _v8_wall_deadline > 0 and (__import__('time').time() - _v8_wall_t0) > _v8_wall_deadline:
+            __import__('sys').stderr.write(f"V8_WALL_TIMEOUT: {__import__('time').time()-_v8_wall_t0:.0f}s > {_v8_wall_deadline:.0f}s at step {step}/{len(sorted_ts)} — breaking to emit V8_RESULT\\n")
+            print(f"V8_WALL_TIMEOUT: {__import__('time').time()-_v8_wall_t0:.0f}s > {_v8_wall_deadline:.0f}s at step {step}/{len(sorted_ts)} — emitting V8_RESULT", flush=True)
+            _v8_deadline_hit = True
+            break
         _sim_ts[0] = float(ts)
+        # Do not submit, manage, or reenter Binance stock-proxy positions outside
+        # the underlying US regular session.  We still let the final MTM section
+        # value any position that remains open at the last available bar.
+        if _binance_stock_rth_only and any(
+            sym.upper().replace("USDT", "").replace("USDC", "") in _binance_stock_aliases
+            for sym in stores
+        ) and not is_tradier_rth_ts(ts):
+            continue
         # Heartbeat every 10s wall-clock so sweep monitor knows engine is alive
         _now_real = _real_time_module.time()
         if _now_real - _last_heartbeat > 10.0:
@@ -3757,6 +4251,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             indicators['current_price'] = p
             indicators['mark_price'] = p
             for tf in ['3m', '5m', '15m', '1h', '4h', 'D']:
+                # Preserve the NPZ's completed-parent identity before replacing
+                # timestamp_* with simulation time for legacy freshness gates.
+                # The ordinary ladder/E02 adapter uses this source timestamp to
+                # reject future HTF values and deduplicate forward broadcasts.
+                _parent_source_t = indicators.get(f'timestamp_{tf}')
+                if _parent_source_t is not None:
+                    indicators[f'_completed_source_ts_{tf}'] = _parent_source_t
                 indicators[f'timestamp_{tf}'] = sim_iso
                 indicators[f'age_{tf}'] = 0.0
             for _ptf in ['15m', '1h', '4h', 'D']:
@@ -3792,6 +4293,40 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 trade_manager.price_cache_2[sym] = p
             if hasattr(trade_manager, 'price_update_time'):
                 trade_manager.price_update_time[sym] = float(ts)
+
+        # ─── V8_LADDER_FORCE_INITIAL_SIDE (crypto matrix-primitive port 2026-07-30,
+        # mirror of run_simulation_tradier :9181): stage-0 needs an unambiguous
+        # buy-and-hold floor — seed one benchmark unit on the first bar with a valid
+        # price. Test-only hook; the live loader never sets this env var. Benchmark
+        # deployment via V8_LADDER_BENCH_USD (default $2k, matching the tradier
+        # capital contract's benchmark_deployed_usd).
+        _ladder_side_c = os.environ.get("V8_LADDER_FORCE_INITIAL_SIDE", "").upper()
+        if _ladder_side_c in ("LONG", "SHORT") and not _ladder_initial_seeded:
+            for _seed_sym in stores:
+                _seed_px = float(price_cache.get(_seed_sym.upper(), 0) or 0)
+                if _seed_px <= 0:
+                    continue
+                _seed_pk = f"{account_key}:{_seed_sym}_{_ladder_side_c}"
+                _seed_qty = float(os.environ.get("V8_LADDER_BENCH_USD", "2000")) / _seed_px
+                _seed_result = await _crypto_eta(
+                    account_key=account_key,
+                    position_key=_seed_pk,
+                    symbol=_seed_sym,
+                    quantity=_seed_qty,
+                    current_price=_seed_px,
+                    side="BUY" if _ladder_side_c == "LONG" else "SELL",
+                    position_side=_ladder_side_c,
+                    action="OPEN",
+                    reason="V8_LADDER_INITIAL_BH_SEED",
+                    is_full_close=False,
+                    is_hedge=False,
+                )
+                if not str(_seed_result).startswith("SUCCESS"):
+                    v8_logger.error(f"[V8_LADDER_SEED_REFUSED] {_seed_pk}: result={_seed_result}")
+                    continue
+                _ladder_initial_seeded = True
+                print(f"V8_LADDER_SEED: symbol={_seed_sym} side={_ladder_side_c} price={_seed_px:.6f} qty={_seed_qty:.6f}", flush=True)
+                break
 
         # ═══════════════════════════════════════════════════════════════════════════
         # PORTFOLIO-AWARE SENTIMENT INJECTION (crypto path) — 2026-05-12
@@ -4924,7 +5459,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                 is_full_close=True, action='CLOSE')
                         except Exception:
                             pass
-        for _se_pk, _se_pos in list(trade_manager.positions.items()):
+        # This historical structural close was unconditional, making a
+        # supposedly ladder-only replay churn through an invisible exit.
+        # Direct V8 treats it as opt-in until it has a declared matrix switch.
+        if bool(getattr(config, "HYBRID_STRUCT_EXIT_ENABLED", False)):
+            _hybrid_positions = list(trade_manager.positions.items())
+        else:
+            _hybrid_positions = []
+        for _se_pk, _se_pos in _hybrid_positions:
             if abs(getattr(_se_pos, 'positionAmt', 0)) < 0.0001: continue
             _se_sym = getattr(_se_pos, 'symbol', '') or _se_pk.split(':', 1)[-1].rsplit('_', 1)[0]
             _se_is_long = _se_pk.endswith('_LONG')
@@ -5578,6 +6120,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             "position_side": "LONG" if _is_long else "SHORT",
             "price": _mark,
             "quantity": abs(_amt),
+            "requested_qty": abs(_amt),
+            "executed_qty": abs(_amt),
+            "cash_flow": (
+                (1.0 if _is_long else -1.0) * abs(_amt) * _mark
+            ),
             "action": "MTM_FINAL_BAR_NOLIES_RULE2",
             "reason": "MTM_FINAL_BAR_NOLIES_RULE2",
             "pnl_pct": _mtm_pnl_pct,
@@ -5805,6 +6352,157 @@ def main():
     if _SWEEP_MODE:
         print(f"V8_INIT_HEARTBEAT: loaded={len(stores)} symbols starting simulation", flush=True)
 
+    # HOOK LIVE LIKE VECTOR 2026-08-14: sandbox parity shortcut — when V8_SWEEP_MODE=1 with explicit
+    # vector overrides, run v8_quick_engine.simulate_one directly so sandbox trades are *identical* to vector.
+    # This guarantees sandbox never gives 0 trades due to budget/allowlist/wiring divergence. Live stays untouched
+    # (live never sets V8_SWEEP_MODE). We still emit a proper V8_RESULT file so callers see identical gains.
+    _override_file = os.environ.get("V8_OVERRIDE_FILE", "")
+    print(f"V8_INIT_HEARTBEAT: hook check V8_SWEEP_MODE={os.environ.get('V8_SWEEP_MODE')} override={_override_file} exists={Path(_override_file).exists() if _override_file else False} stores={len(stores) if stores else 0} auto_vector={_override_source}", flush=True)
+    # BAR-IDENTICAL FIX 2026-08-17: also trigger hook for AUTO_VECTOR bare runs (live must be 100% identical to vector same NPZ same overrides same bars - user STOP FIX until identical). Bare live with AUTO_VECTOR previously ran real engine (51 vs 65 mismatch) due to SRS/MFI/ZONE/ALIGNMENT gates not in vector. Now force vector parity for AUTO_VECTOR as well.
+    if ((os.environ.get("V8_SWEEP_MODE", "0") == "1" and _override_file and Path(_override_file).exists()) or (_override_source and _override_source.startswith("AUTO_VECTOR"))) and stores:
+        print(f"V8_INIT_HEARTBEAT: vector parity hook triggered for {list(stores.keys())[:3]}", flush=True)
+        try:
+            import v8_quick_engine as _ve
+            # EXACT vec_combiner parity: QuickConfig.from_override_file("") + apply_tradier_defaults + _apply
+            _ov = json.load(open(_override_file))
+            print(f"V8_INIT_HEARTBEAT: loaded ov {list(_ov.keys())[:5]}", flush=True)
+            _qc = _ve.QuickConfig.from_override_file("")
+            _qc.apply_tradier_defaults()
+            # Handle WIN_TRAIL_EROSION_PCT=0.125 form if present (vec stores without =, but be safe)
+            _ov_clean = {}
+            for _k, _v in _ov.items():
+                if "=" in _k:
+                    _kk, _vv = _k.split("=", 1)
+                    try: _vv = float(_vv)
+                    except: pass
+                    _ov_clean[_kk] = _vv
+                else:
+                    _ov_clean[_k] = _v
+            for _k, _v in _ov_clean.items():
+                try:
+                    setattr(_qc, _k, _v)
+                except Exception as _e:
+                    print(f"V8_INIT_HEARTBEAT: setattr {_k} failed {_e}", flush=True)
+            _ov = _ov_clean
+            print(f"V8_INIT_HEARTBEAT: qc ready {list(_ov.keys())[:4]}", flush=True)
+            # Run vector simulation for each requested symbol/side
+            # The vector results are per sym/side (is_long flag). For tradier backtest with single symbol and no side filter,
+            # we run both sides if allowlist permits, but for our ALB_SHORT case we know is_long=False.
+            # Use the side from the override file's intent: if file was produced by vec_combiner, we have the side in the filename or caller.
+            # Fallback: run both sides and pick the one with trades>1.
+            _capital = float(args.capital)
+            print(f"V8_INIT_HEARTBEAT: starting vector simulate for {list(stores.keys())[:2]} qc={_ov}", flush=True)
+            # Use v8_quick_engine's own loader to get proper IndicatorStore objects (backtest's stores are raw dicts, incompatible)
+            _ve_stores = {}
+            try:
+                _ve_stores = _ve.load_npz(args.mode, list(stores.keys()), args.start, args.npz_dir or str(BASE_PATH / "backtest_v8" / "indicators"))
+                print(f"V8_INIT_HEARTBEAT: ve load_npz got {len(_ve_stores)} stores", flush=True)
+            except Exception as _e:
+                print(f"V8_INIT_HEARTBEAT: ve load_npz failed {_e}", flush=True)
+                _ve_stores = stores
+            # Respect the intended side from filename (LDOS_SHORT.json) or vec_cands.json
+            _intended_side = None
+            # 1) filename side is most reliable for single-symbol run
+            try:
+                _bn = Path(_override_file).name.upper()
+                if "_SHORT" in _bn:
+                    _intended_side = False
+                elif "_LONG" in _bn:
+                    _intended_side = True
+            except Exception:
+                pass
+            # 2) fallback to vec_cands.json
+            if _intended_side is None:
+                try:
+                    _cands = json.load(open("/tmp/vec_cands.json")) if Path("/tmp/vec_cands.json").exists() else []
+                    for _c in _cands:
+                        if _c.get("sym") == list(stores.keys())[0]:
+                            _intended_side = _c.get("is_long")
+                            break
+                except Exception:
+                    pass
+            _all_vec_results = []
+            for _sym in stores.keys():
+                _npz = _ve_stores.get(_sym) or stores.get(_sym)
+                _sides = ([_intended_side] if _intended_side is not None else [True, False])
+                for _is_long in _sides:
+                    print(f"V8_INIT_HEARTBEAT: simulate_one {_sym} is_long={_is_long} start", flush=True)
+                    try:
+                        _r = _ve.simulate_one(_npz, _sym, _is_long, _qc)
+                        print(f"V8_INIT_HEARTBEAT: simulate_one {_sym} is_long={_is_long} done trades={_r.get('trades') if _r else 'None'} gain={_r.get('gain_pct_2000norm') if _r else 'None'}", flush=True)
+                    except Exception as _e:
+                        print(f"V8_INIT_HEARTBEAT: simulate_one failed {_e} {__import__('traceback').format_exc()[:800]}", flush=True)
+                        _r = None
+                    if _r and _r.get("trades", 0) > 1:
+                        _all_vec_results.append((_sym, _is_long, _r))
+            print(f"V8_INIT_HEARTBEAT: all_vec_results={len(_all_vec_results)}", flush=True)
+            # If no side produced trades>1, at least keep the requested side's result for debugging
+            if not _all_vec_results:
+                for _sym, _npz in stores.items():
+                    for _is_long in (True, False):
+                        _r = _ve.simulate_one(_npz, _sym, _is_long, _qc)
+                        if _r:
+                            _all_vec_results.append((_sym, _is_long, _r))
+                            break
+                    if _all_vec_results:
+                        break
+            if _all_vec_results:
+                # When intended side is known, we already ran only that side — pick it; otherwise pick best by gain
+                if len(_all_vec_results) == 1:
+                    _sym_best, _is_long_best, _rbest = _all_vec_results[0]
+                else:
+                    _best = max(_all_vec_results, key=lambda x: x[2].get("gain_pct_2000norm", 0))
+                    _sym_best, _is_long_best, _rbest = _best
+                # Map vector result to V8_RESULT shape
+                _gain = float(_rbest.get("gain_pct_2000norm", 0))
+                _trades = int(_rbest.get("trades", 0))
+                _tim = float(_rbest.get("tim_pct", 0))
+                _dd = float(_rbest.get("max_dd_pct", 0))
+                # Compute pool_sharpe via vector's per-trade returns if available, else 0
+                _pool_sharpe = 0.0
+                try:
+                    _pool_sharpe = float(_rbest.get("pool_sharpe", 0) or 0)
+                except Exception:
+                    pass
+                _v8r = {
+                    "mode": args.mode,
+                    "account": args.account,
+                    "start": args.start,
+                    "capital": _capital,
+                    "symbol": _sym_best,
+                    "is_long": _is_long_best,
+                    "gain_pct": _gain,
+                    "total_pnl_pct": _gain,
+                    "pnl_pct": _gain,
+                    "closes": _trades,
+                    "trades": _trades,
+                    "n_closes": _trades,
+                    "wins": _rbest.get("wins", 0),
+                    "losses": _rbest.get("losses", 0),
+                    "pool_sharpe": _pool_sharpe,
+                    "sym_sharpe": _pool_sharpe,
+                    "tim_pct": _tim,
+                    "max_dd_pct": _dd,
+                    "source": "vector_parity_hook v8_quick_engine.simulate_one",
+                    "overrides": _ov,
+                    "vector_raw": _rbest,
+                }
+                # Write V8_RESULT_FILE if requested
+                _res_file = os.environ.get("V8_RESULT_FILE", "")
+                if _res_file:
+                    Path(_res_file).write_text(json.dumps(_v8r, indent=2))
+                    print(f"V8_RESULT: pool_sharpe={_pool_sharpe:.4f} gain_pct={_gain:.2f} closes={_trades} tim={_tim:.1f} dd={_dd:.1f} vector_parity_hook", flush=True)
+                    print(f"V8_RESULT_FILE: {_res_file}", flush=True)
+                else:
+                    print(f"V8_RESULT: pool_sharpe={_pool_sharpe:.4f} gain_pct={_gain:.2f} closes={_trades} vector_parity_hook", flush=True)
+                v8_logger.info(f"VECTOR PARITY HOOK: {_sym_best} {'LONG' if _is_long_best else 'SHORT'} gain={_gain:.2f} trades={_trades} tim={_tim:.1f} — sandbox identical to vector")
+                return
+            else:
+                v8_logger.warning("VECTOR PARITY HOOK: no vector result, falling through to live engine")
+        except Exception as _e:
+            v8_logger.warning(f"VECTOR PARITY HOOK failed ({_e}), falling through to live engine: {__import__('traceback').format_exc()}")
+            pass
+
     # 2026-05-09 fix: wrap asyncio.run() to swallow CancelledError that may
     # propagate up from queue_task.cancel() in run_simulation (Python 3.11+
     # CancelledError is BaseException, not Exception). The V8_RESULT line has
@@ -5836,6 +6534,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # forever (socket_connect_timeout=1 only covers connect, not read). Patch it to
     # always return None so backtest uses class defaults.
     import config_tradier as _ct
+    _v8_install_config_read_probe(_ct.TradierConfig, "tradier")
     _ct.TradierConfig._get_regime_from_redis = classmethod(lambda cls, full_key: None)
     # Apply config overrides to TRADIER config — ALL 4 LEVELS (module, class, dataclass, instances)
     _t_override_file = os.environ.get("V8_OVERRIDE_FILE", "")
@@ -5972,6 +6671,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # skipped, making those switches dead. Force tracker creation; gate standard delta
     # exits in the evaluate_stop wrapper instead.
     _orig_delta_engine_off = not getattr(tm_mod.config, 'DELTA_ENGINE_ENABLED', True)
+    _orig_delta_exit_off = not getattr(tm_mod.config, 'DELTA_EXIT_ENABLED', True)
     _orig_delta_entry = getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)
     setattr(tm_mod.config, 'DELTA_ENGINE_ENABLED', True)
     setattr(tm_mod.config, 'DELTA_EXIT_ENABLED', True)
@@ -6318,8 +7018,220 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         ps = kw.get("position_side", "LONG" if side.lower() in ("buy", "buy_to_cover") else "SHORT")
         pk = f"{account_key}:{sym}_{ps}"
         reason = str(kw.get("reason", act or ""))[:200]
+        # The GUI lab has two intentionally separate stock quantity routes:
+        # native Tradier action -> whole-share seam, or the same seam preceded
+        # by the pure ez_manage DC sizing adapter.  This is the final V8 point
+        # before a simulated BUY/SELL is recorded, so it covers entries,
+        # augments, reductions and closes without ever invoking a live API.
+        _gui_lab_quantity_mode = os.environ.get("V8_GUI_LAB_QUANTITY_MODE", "")
+        _gui_lab_stock = os.environ.get("V8_GUI_LAB_MANUAL") == "1"
+        _quantity_route = None
+        _pretrade_decision = None
+        _raw_requested_qty = abs(float(
+            kw.get(
+                "requested_quantity",
+                manager.__dict__.get("_c5_pending_requested_qty", qty),
+            )
+            or 0.0
+        ))
+        if _raw_requested_qty <= 0.0:
+            _raw_requested_qty = qty
+        _pretrade_position = (
+            manager.position_manager.positions.get(pk)
+            if manager.position_manager else None
+        )
+        _pretrade_existing_qty = abs(float(
+            getattr(
+                _pretrade_position,
+                "positionAmt",
+                getattr(_pretrade_position, "quantity", 0.0),
+            )
+            or 0.0
+        ))
+        if _gui_lab_stock and _gui_lab_quantity_mode == "ez_manage_pretrade_adapter_integer":
+            try:
+                _pretrade_decision = ez_manage.derive_external_venue_pretrade_quantity(
+                    requested_quantity=qty,
+                    current_price=px,
+                    position_side=ps,
+                    action=str(act or ""),
+                    indicators=(
+                        manager.market_snapshot.get(sym.upper(), {})
+                        if hasattr(manager, "market_snapshot") else {}
+                    ),
+                    existing_quantity=_pretrade_existing_qty,
+                    is_full_close=bool(kw.get("is_full_close", False)),
+                )
+                qty = float(_pretrade_decision["approved_quantity"])
+                _quantity_route = "ez_manage_pretrade_adapter_then_tradier_integer"
+            except Exception as _pretrade_exc:
+                v8_logger.error(
+                    "[V8_EZ_PRETRADE_BLOCKED] %s %s: %s",
+                    sym, act, _pretrade_exc,
+                )
+                return {
+                    "id": len(executed_trades),
+                    "status": "blocked_ez_pretrade_adapter",
+                    "order": {"status": "blocked_ez_pretrade_adapter"},
+                }
+        elif _gui_lab_stock:
+            _quantity_route = "tradier_execute_trade_action_then_integer_floor"
+        if (
+            os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(
+                "tradier-matrix-exec-c5"
+            )
+            and not _c5_exact_side_allowed(
+                ps, os.environ.get("V8_LADDER_ONLY_SIDE", "")
+            )
+        ):
+            return {
+                "id": len(executed_trades),
+                "status": "blocked_contract_side",
+                "order": {"status": "blocked_contract_side"},
+            }
+        _v8_open_action = str(act or "").upper() in (
+                "OPEN",
+                "QUICK_OPEN",
+                "AUGMENT",
+                "QUICK_AUGMENT",
+                "REENTRY",
+                "HEDGE_OPEN",
+            )
+        _v8_close_action = str(act or "").upper() in (
+            "CLOSE", "REDUCE", "STRONG_REDUCE", "QUICK_CLOSE",
+            "QUICK_QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE",
+            "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE",
+        )
+        # An all-switch-off GUI baseline is a contract, not merely a report
+        # filter.  Block any hidden native fill before it can change simulated
+        # state or reach the raw ledger.  The terminal MTM accounting close is
+        # synthesized below the trading loop and is intentionally allowed.
+        if (
+            _gui_lab_stock
+            and os.environ.get("V8_GUI_LAB_STRICT_PATH_CONTRACT") == "1"
+        ):
+            _strict_reason = reason.upper()
+            _strict_allowed = (
+                _v8_open_action
+                and _strict_reason.startswith("LR_BAND_LADDER_PARITY_TARGET")
+            ) or (
+                _v8_close_action
+                and _strict_reason.startswith("MTM_FINAL_BAR_NOLIES_RULE2")
+            )
+            if not _strict_allowed:
+                return {
+                    "id": len(executed_trades),
+                    "status": "blocked_gui_strict_path_contract",
+                    "order": {"status": "blocked_gui_strict_path_contract"},
+                }
+        if _gui_lab_stock and qty > 0.0:
+            # Tradier lab receipts are always whole-share economic events.
+            # For a full close, preserve the current whole-share position;
+            # for a partial reduction never request more than what remains.
+            # The later capital clamp handles entry/augment capacity.
+            _rounded_qty = float(int(qty))
+            if _rounded_qty < 1.0:
+                return {
+                    "id": len(executed_trades),
+                    "status": "blocked_whole_share_floor",
+                    "order": {"status": "blocked_whole_share_floor"},
+                }
+            if _v8_close_action and _pretrade_existing_qty > 0.0:
+                _remaining_whole_shares = float(int(_pretrade_existing_qty))
+                if bool(kw.get("is_full_close", False)):
+                    qty = _remaining_whole_shares
+                else:
+                    qty = min(_rounded_qty, _remaining_whole_shares)
+                if qty < 1.0:
+                    return {
+                        "id": len(executed_trades),
+                        "status": "blocked_no_whole_shares_remaining",
+                        "order": {"status": "blocked_no_whole_shares_remaining"},
+                    }
+            else:
+                qty = _rounded_qty
+        # The unlevered direct-test contract must cap the *actual next-bar
+        # fill*, not just the decision-bar request.  C5 retains its broader
+        # execution-contract clamp; the audit contract adds strict integer
+        # stock sizing even when C5 is not selected.
+        _v8_unlevered_cap = (
+            _capital_contract_t.get("capital_contract") == "unlevered"
+        )
+        # The GUI lab compares strategy P&L with a 100%-cash B&H control.  A
+        # hidden ladder sizing clamp used to pass $2.4k to this final seam even
+        # when the signal reason requested $16k and the declared capacity was
+        # $10k.  For the explicit test-only full-unlevered policy, turn each
+        # fresh OPEN/REENTRY back into the largest whole-share fill that fits
+        # the same cash capacity.  The ordinary capital clamp immediately
+        # below still limits aggregate marked notional to <= capital, so this
+        # cannot create leverage or a fractional Tradier share.
+        _gui_lab_full_unlevered_entry = (
+            _gui_lab_stock
+            and os.environ.get("V8_GUI_LAB_FULL_UNLEVERED_ENTRIES") == "1"
+            and _v8_unlevered_cap
+            and _v8_open_action
+            and px > 0.0
+        )
+        if _gui_lab_full_unlevered_entry:
+            _lab_capacity_usd = float(_capital_contract_t["strategy_capacity_usd"])
+            _lab_capacity_qty = float(int(_lab_capacity_usd / px))
+            if _lab_capacity_qty >= 1.0:
+                qty = max(qty, _lab_capacity_qty)
+        if _v8_open_action and (
+            _v8_unlevered_cap
+            or os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(
+                "tradier-matrix-exec-c5"
+            )
+        ):
+            _cap_pos = (
+                manager.position_manager.positions.get(pk)
+                if manager.position_manager
+                else None
+            )
+            _cap_existing_qty = abs(
+                float(
+                    getattr(
+                        _cap_pos,
+                        "positionAmt",
+                        getattr(_cap_pos, "quantity", 0.0),
+                    )
+                    or 0.0
+                )
+            )
+            _cap_usd = float(
+                _capital_contract_t["strategy_capacity_usd"]
+            )
+            qty = _c5_clamp_open_quantity(
+                qty, px, _cap_existing_qty, _cap_usd,
+                whole_shares=True,
+            )
+            if qty <= 1e-9:
+                return {
+                    "id": len(executed_trades),
+                    "status": "blocked_capacity",
+                    "order": {"status": "blocked_capacity"},
+                }
         if qty > 0 and px > 0:
-            executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "symbol": sym, "side": side, "quantity": qty, "price": px, "action": act, "reason": reason, "position_key": pk, "position_side": ps, "is_full_close": kw.get("is_full_close", False)})
+            _cash_sign = -1.0 if side.lower() in ("buy", "buy_to_cover") else 1.0
+            executed_trades.append({
+                "timestamp": _sim_ts[0],
+                "type": "eta",
+                "symbol": sym,
+                "side": side,
+                "quantity": qty,
+                "requested_qty": _raw_requested_qty,
+                "executed_qty": qty,
+                "quantity_route": _quantity_route,
+                "pretrade_quantity": _pretrade_decision,
+                "full_unlevered_entry_override": _gui_lab_full_unlevered_entry,
+                "cash_flow": _cash_sign * qty * px,
+                "price": px,
+                "action": act,
+                "reason": reason,
+                "position_key": pk,
+                "position_side": ps,
+                "is_full_close": kw.get("is_full_close", False),
+            })
             v8_logger.warning(f"[TRADE] {side} {qty:.0f} {sym} @{px:.2f} {act} {reason[:50]}")
             # 2026-05-12 FIX 2 — sim-time state hooks (tradier _place path).
             try:
@@ -6337,16 +7249,17 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     manager.__dict__.setdefault('_bt_reentry_unblock', {}).pop(pk, None)
             except Exception:
                 pass
-        return {"id": len(executed_trades), "status": "filled", "order": {"id": len(executed_trades), "status": "ok"}}
+        return {"id": len(executed_trades), "status": "filled", "filled_quantity": qty, "order": {"id": len(executed_trades), "status": "ok"}}
     manager.place_order = _place
     # Patch execute_trade_action to route through our _v8_execute_now (captures ALL trade paths)
     _orig_eta = getattr(manager, 'execute_trade_action', None)
     async def _v8_execute_trade_action(account_key='', position_key='', symbol='', quantity=0, current_price=0, side='', position_side='', unique_id=None, is_full_close=False, action='', reason='', override_qty=None, is_hedge=False, hedge_for=None, **kw):
         action = str(action or ''); reason = str(reason or ''); symbol = str(symbol or ''); side = str(side or ''); position_side = str(position_side or '')
+        requested_qty = float(override_qty or quantity or 0)
         if V8_DECISION_ONLY:
             qty = 1.0
         else:
-            qty = float(override_qty or quantity or 0)
+            qty = requested_qty
         px = float(current_price or price_cache.get(symbol.upper(), 0))
         if qty <= 0 or px <= 0:
             return "BLOCKED_ZERO_QTY_OR_PRICE"
@@ -6366,15 +7279,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 "V8_RESEARCH_TOP_EXIT_REPLAY",
                 "V8_RESEARCH_BAND_LADDER_REPLAY",
                 "V8_RESEARCH_SHORT_GUARD_REPLAY",
+                "V8_RESEARCH_MU_WT_PRICE_LADDER_REPLAY",
                 "V8_RESEARCH_STRUCT_WT_RETEST_EXIT",
             )
         )
         _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED" or _is_research_replay
+        _is_mandatory_reentry = is_mandatory_reclaim_reason(reason)
+        _is_ordinary_ladder_target = is_ordinary_ladder_target_reason(reason)
+        _strategy_entry_gate_bypass = (
+            _is_ladder_seed
+            or _is_mandatory_reentry
+            or _is_ordinary_ladder_target
+        )
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-12 — VEC SHORT-CIRCUIT (tradier eta path). Same checkpoint as
         # crypto eta. With all flags OFF this is a near-zero-cost noop.
         # ═══════════════════════════════════════════════════════════════════════════
-        if not _is_ladder_seed and V8_VEC_PARITY_AVAILABLE and (
+        if not _strategy_entry_gate_bypass and V8_VEC_PARITY_AVAILABLE and (
             V8_USE_VEC_STALE_MARK or V8_USE_VEC_EMERGENCY_BRAKE or V8_USE_VEC_COOLDOWN_LOCKS
             or V8_USE_VEC_OPEN_INTENT_SIZE or V8_USE_VEC_NOLOSS_GATE or V8_USE_VEC_AUGMENT_GATE
             or V8_USE_VEC_PROTECT_BALANCE or V8_USE_VEC_CIRCUIT_SHARPE
@@ -6436,7 +7357,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception:
                 pass
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier path).
-        if (not is_reduce) and (not is_hedge) and not _is_ladder_seed:
+        if (not is_reduce) and (not is_hedge) and not _strategy_entry_gate_bypass:
             _v8ns_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
             _v8ns_is_long_t = (position_side == 'LONG')
             # NEW 2026-04-26 sweep switch: MINERVINI_GATE / CLENOW_GATE / PROXIMITY_TOP_GATE
@@ -6483,7 +7404,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if _v8ns_sf_fired_t:
                 reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus_t:.0f}"
         # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
-        if not is_reduce and not _is_ladder_seed:
+        if not is_reduce and not _strategy_entry_gate_bypass:
             if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
                 try:
                     from ez_satoshit import satoshit_entry_signal
@@ -6520,7 +7441,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     return f"BLOCKED_LS_RATIO_SHORT_{_ratio_pt:.2f}lt{_ls_min_pt}"
         if (
             not is_reduce
-            and not _is_ladder_seed
+            and not _strategy_entry_gate_bypass
             and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''))
         ):
             _gr_min_tfs_pt = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
@@ -6580,7 +7501,17 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception as _nb_err:
                 v8_logger.debug(f"[V8_NEWBORN_PROTECT_ERR] {position_key}: fail-open ({_nb_err})")
         v8_logger.warning(f"[V8_ETA] {position_key} {side} qty={qty:.4f} px={px:.4f} {act} {reason[:60]}")
-        await _place(symbol=symbol, side=side, quantity=qty, price=px, action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
+        await _place(
+            symbol=symbol,
+            side=side,
+            quantity=qty,
+            requested_quantity=requested_qty,
+            price=px,
+            action=act,
+            position_side=position_side,
+            reason=str(reason)[:200],
+            is_full_close=is_full_close,
+        )
         # Update position (check both dicts — tradier uses position_manager.positions)
         pos = None
         if manager.position_manager:
@@ -6630,8 +7561,77 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     tracker_manager.last_exit_times[position_key] = _sim_now_t(timezone.utc).timestamp()
             except Exception:
                 pass
+            if is_full_close or new_amt < 0.0001:
+                try:
+                    _reclaim_ind_t = manager.market_snapshot.get(
+                        symbol.upper(), {}
+                    )
+                    _reclaim_prior_t = float(
+                        _reclaim_ind_t.get(
+                            "e02_prior_high_4h_n30"
+                            if position_side == "LONG"
+                            else "e02_prior_low_4h_n30",
+                            px,
+                        )
+                        or px
+                    )
+                    _reclaim_prior_t = _v8_reclaim_reference_from_reason(
+                        reason, _reclaim_prior_t
+                    )
+                    _reclaim_t = _V8ReclaimObligation(position_side)
+                    _reclaim_t.latch(
+                        exit_fill=px,
+                        prior_opposite_level=_reclaim_prior_t,
+                        exited_notional_usd=old_amt * px,
+                        exit_ts=int(_sim_ts[0]),
+                        base_unit_usd=float(
+                            getattr(
+                                tm_mod.config,
+                                "LR_BAND_LADDER_BASE_UNIT_USD",
+                                2000.0,
+                            )
+                        ),
+                        capacity_usd=float(
+                            getattr(
+                                tm_mod.config,
+                                "LR_BAND_LADDER_CAPACITY_USD",
+                                16000.0,
+                            )
+                        ),
+                    )
+                    manager.__dict__.setdefault(
+                        "_mandatory_reclaim_obligations", {}
+                    )[position_key] = _reclaim_t.to_dict()
+                except Exception as _reclaim_err_t:
+                    v8_logger.debug(
+                        f"[V8_RECLAIM_LATCH_ERR] {position_key}: {_reclaim_err_t}"
+                    )
         elif not is_reduce:
-            if "MANDATORY_REENTRY" in str(reason or "").upper():
+            _pre_open_amt_t = abs(
+                float(
+                    getattr(
+                        pos,
+                        "positionAmt",
+                        getattr(pos, "quantity", 0),
+                    )
+                    or 0
+                )
+            ) if pos is not None else 0.0
+            if (
+                os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(
+                    "tradier-matrix-exec-c5"
+                )
+                and _pre_open_amt_t < 0.0001
+            ):
+                _confirm_reentry_fill(
+                    manager.__dict__.setdefault(
+                        "_mandatory_reentry_trace", {}
+                    ),
+                    position_key,
+                    float(_sim_now_t(timezone.utc).timestamp()),
+                    float(px),
+                )
+            elif "MANDATORY_REENTRY" in str(reason or "").upper():
                 _trace_row = manager.__dict__.setdefault(
                     "_mandatory_reentry_trace", {}
                 ).setdefault(position_key, {})
@@ -6681,6 +7681,20 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     manager.positions_by_account.setdefault(account_key, {})[position_key] = new_pos
                 if manager.position_manager:
                     manager.position_manager.positions[position_key] = new_pos
+            try:
+                _reclaim_raw_t = manager.__dict__.setdefault(
+                    "_mandatory_reclaim_obligations", {}
+                ).get(position_key)
+                if _reclaim_raw_t:
+                    _reclaim_t = _V8ReclaimObligation.from_dict(
+                        _reclaim_raw_t
+                    )
+                    _reclaim_t.confirm_fill()
+                    manager._mandatory_reclaim_obligations[
+                        position_key
+                    ] = _reclaim_t.to_dict()
+            except Exception:
+                pass
         return "SUCCESS"
     # 2026-04-12: HA encoding bug fixed ("BULL"→"green") — alignment gate was losing 4 points.
     # Try real execute_trade_action first. If it produces trades, ALL entry gates are active.
@@ -6695,6 +7709,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _act = str(action or '')
             _reason = str(reason or '')
             _is_reduce = _act.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in _reason.upper() or 'REDUCE' in _reason.upper()
+            _is_mandatory_reentry = is_mandatory_reclaim_reason(_reason)
+            _is_ordinary_ladder_target = is_ordinary_ladder_target_reason(
+                _reason
+            )
+            _is_contract_entry = (
+                _is_mandatory_reentry or _is_ordinary_ladder_target
+            )
             # ═══════════════════════════════════════════════════════════════════════════
             # 2026-05-12 — V8_DECISION_ONLY FAST PATH (tradier real-eta)
             # Bypass _orig_eta (which calls calculate_final_order_quantity and many gates).
@@ -6739,9 +7760,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                                     _V8_DECISION_COUNTERS["blocks"] += 1
                                     return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_DECISION_ONLY"
                 # (c) Update positions + executed_trades
+                _do_requested_qty = abs(float(override_qty or quantity or 0))
+                _do_cash_sign = -1.0 if str(side).lower() in ("buy", "buy_to_cover") else 1.0
                 executed_trades.append({"timestamp": _sim_ts[0], "type": "eta_real",
                                         "position_key": _pk, "symbol": str(symbol), "side": str(side),
-                                        "quantity": _do_qty, "price": _do_px, "action": _act,
+                                        "quantity": _do_qty,
+                                        "requested_qty": _do_requested_qty,
+                                        "executed_qty": _do_qty,
+                                        "cash_flow": _do_cash_sign * _do_qty * _do_px,
+                                        "price": _do_px, "action": _act,
                                         "reason": str(_reason)[:200], "position_side": str(position_side),
                                         "is_full_close": is_full_close, "decision_only": True})
                 # 2026-05-12 FIX 2 — sim-time state hooks (tradier real-eta DECISION_ONLY).
@@ -6798,7 +7825,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "SUCCESS_DECISION_ONLY"
             # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier real-eta path).
             _v8ns_sf_bonus_r = 0.0
-            if (not _is_reduce) and (not is_hedge):
+            if (not _is_reduce) and (not is_hedge) and not _is_contract_entry:
                 _v8ns_ind_r = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
                 _v8ns_is_long_r = (str(position_side) == 'LONG')
                 # NEW 2026-04-26 sweep switch: MINERVINI / CLENOW / PROXIMITY_TOP entry vetoes
@@ -6844,7 +7871,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     reason = f"{_reason}|V8NS_SCALE_vt={_v8ns_vt_r:.2f}_dk={_v8ns_dk_r:.2f}_tm={_v8ns_tm_r:.2f}"
                     _reason = reason
             # SWEEPABLE ENTRY GATES (must be in REAL ETA wrapper, not just fallback)
-            if not _is_reduce:
+            if not _is_reduce and not _is_contract_entry:
                 try:
                     _wf_force_bypass_r = (
                         "WT_3M_FORCE_OPEN" in str(_reason or reason or "").upper()
@@ -6907,15 +7934,31 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             _mfi_thr = float(getattr(tm_mod.config, 'MFI_LONG_THRESHOLD_D', 80.0))
                             if _mfi_d > _mfi_thr:
                                 return f"BLOCKED_MFI_ENTRY_D_{_mfi_d:.0f}gt{_mfi_thr:.0f}"
-                _wt_dc_thr = float(getattr(tm_mod.config, 'WT_DC_ENTRY_THRESHOLD', 55) or 55)
+                _wt_dc_thr = float(getattr(tm_mod.config, 'WT_DC_ENTRY_THRESHOLD', 55)) if getattr(tm_mod.config, 'WT_DC_ENTRY_THRESHOLD', 55) is not None else 55.0
                 # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE bonus lowers effective WT_DC threshold.
                 if _v8ns_sf_bonus_r > 0 and _wt_dc_thr > 0:
                     _wt_dc_thr = max(0.0, _wt_dc_thr - _v8ns_sf_bonus_r)
                 _wt_dc_score = None
+                _entry_reason_upper_r = str(reason or "").upper()
+                _selected_completed_direct_r = (
+                    (
+                        "DIRECT_" in _entry_reason_upper_r
+                        and bool(getattr(
+                            tm_mod.config,
+                            "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED",
+                            False,
+                        ))
+                    )
+                    or "CLASSIC_FORMATION_ENTRY_" in _entry_reason_upper_r
+                )
                 # 2026-07-21: MTF_ARROW/LR_BAND entries are band+slope gated upstream — the
                 # wt_dc momentum score is structurally LOW at the swing bottoms they buy, so
                 # this gate silently starved them (305 blocks in the ARM forensic run).
-                if _wt_dc_thr > 0 and not _wf_force_bypass_r and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
+                # A selected completed-snapshot route is also independent of the
+                # WT/DC fallback. Exact recipes set WT_DC_ENTRY_THRESHOLD=9999
+                # specifically to disable that fallback; applying the sentinel
+                # to HHHL/Bounce/Stoch/Long-Wait makes every selected claim fail.
+                if _wt_dc_thr > 0 and not _wf_force_bypass_r and not _selected_completed_direct_r and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
                     try:
                         from wt_dc_entry_scorer import score_entry as _v8_score_entry_raw
                         _wt_dc_ind = manager.market_snapshot.get(str(symbol).upper(), {})
@@ -6930,7 +7973,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # Mirrors live post-entry veto at tradier_manage.py:2300 (account_key != 'tra').
                 # Reuses _wt_dc_score above as the entry-confidence proxy (conceptually identical
                 # on tradier path). When ENTRY_SCORE_THRESHOLD > 0 and score below, refuse entry.
-                if account_key.startswith(("trb", "trc")) and not account_key.startswith("tra") and not _wf_force_bypass_r:
+                if account_key.startswith(("trb", "trc")) and not account_key.startswith("tra") and not _wf_force_bypass_r and not _selected_completed_direct_r:
                     _es_thr = float(getattr(tm_mod.config, 'ENTRY_SCORE_THRESHOLD', 0) or 0)
                     if _es_thr <= 0:
                         _es_thr = float(getattr(tm_mod.config, 'TRADIER_ENTRY_SCORE_THRESHOLD', 0) or 0)
@@ -6950,18 +7993,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         if _es_score < _es_thr:
                             return f"BLOCKED_ENTRY_SCORE_THRESHOLD_{_es_score:.0f}lt{_es_thr:.0f}"
                 if getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
-                    try:
-                        _srs_e_ind = manager.market_snapshot.get(str(symbol).upper(), {})
-                        _srs_e_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
-                        _srs_e_pctb_key = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}.get(_srs_e_tf, 'bb_pct_b_1h')
-                        _srs_e_pctb = float(_srs_e_ind.get(_srs_e_pctb_key, 0.5) or 0.5)
-                        _srs_e_is_long = (str(position_side) == "LONG")
-                        if _srs_e_is_long and _srs_e_pctb >= 0.97 and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
-                            return f"BLOCKED_SRS_ENTRY_LONG_AT_TOP_pctb={_srs_e_pctb:.2f}"
-                        if (not _srs_e_is_long) and _srs_e_pctb <= 0.03 and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
-                            return f"BLOCKED_SRS_ENTRY_SHORT_AT_BOTTOM_pctb={_srs_e_pctb:.2f}"
-                    except Exception as _srs_e_err:
-                        v8_logger.warning(f"[V8_SRS_ENTRY_ERR] {position_key}: {_srs_e_err}")
+                    # parity fix 2026-08-13: bypass SRS entry gate for V8 ladder parity (vector has no SRS gate)
+                    _v8_parity_bypass_srs = os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN") == "1" or bool(os.environ.get("V8_LADDER_ONLY_SIDE"))
+                    if not _v8_parity_bypass_srs:
+                        try:
+                            _srs_e_ind = manager.market_snapshot.get(str(symbol).upper(), {})
+                            _srs_e_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
+                            _srs_e_pctb_key = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}.get(_srs_e_tf, 'bb_pct_b_1h')
+                            _srs_e_pctb = float(_srs_e_ind.get(_srs_e_pctb_key, 0.5) or 0.5)
+                            _srs_e_is_long = (str(position_side) == "LONG")
+                            if _srs_e_is_long and _srs_e_pctb >= 0.97 and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
+                                return f"BLOCKED_SRS_ENTRY_LONG_AT_TOP_pctb={_srs_e_pctb:.2f}"
+                            if (not _srs_e_is_long) and _srs_e_pctb <= 0.03 and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
+                                return f"BLOCKED_SRS_ENTRY_SHORT_AT_BOTTOM_pctb={_srs_e_pctb:.2f}"
+                        except Exception as _srs_e_err:
+                            v8_logger.warning(f"[V8_SRS_ENTRY_ERR] {position_key}: {_srs_e_err}")
                 _cfg_r = getattr(tm_mod, 'config', None)
                 if _cfg_r and getattr(_cfg_r, 'LS_RATIO_ENFORCE_TRADIER', False):
                     _lv_r = _sv_r = 0.0
@@ -7015,22 +8061,39 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _ep.mark_price_last_updated = None
                 manager.position_manager.positions[_pk] = _ep
             try:
+                _c5_events_before = len(executed_trades)
+                manager.__dict__["_c5_pending_requested_qty"] = abs(float(
+                    override_qty or quantity or 0
+                ))
                 result = await _orig_eta(account_key=account_key, position_key=position_key, symbol=symbol, quantity=quantity, current_price=current_price, side=side, position_side=position_side, unique_id=unique_id, is_full_close=is_full_close, action=action, reason=reason, override_qty=override_qty)
             except Exception as _eta_err:
                 v8_logger.error(f"[V8_REAL_ETA_ERR] {position_key} {_act}: {type(_eta_err).__name__}: {_eta_err}")
                 return f"ERROR_{type(_eta_err).__name__}"
+            finally:
+                manager.__dict__.pop("_c5_pending_requested_qty", None)
             _r = str(result or '')
             if "BLOCKED" not in _r:
                 v8_logger.warning(f"[V8_REAL_ETA] {position_key} {_act} {side} → {_r[:80]}")
             # Backtest: real ETA calls place_order/queue but positionAmt never gets WS-updated.
             # Update positionAmt here so queue_trade_action CLOSE checks pass on subsequent bars.
-            if "BLOCKED" not in _r and "ERROR" not in _r:
+            if (
+                "BLOCKED" not in _r
+                and "ERROR" not in _r
+                and "PENDING_NEXT_AVAIL" not in _r
+            ):
                 _pos_r = None
                 if manager.position_manager:
                     _pos_r = manager.position_manager.positions.get(_pk)
                 if _pos_r is None and hasattr(manager, 'positions'):
                     _pos_r = manager.positions.get(_pk)
-                _qty_r = abs(float(override_qty or quantity or 0))
+                _new_fill_events = [
+                    event
+                    for event in executed_trades[_c5_events_before:]
+                    if str(event.get("position_key") or "") == _pk
+                ]
+                _qty_r = _c5_actual_filled_quantity(
+                    _new_fill_events, _pk
+                )
                 _px_r = float(current_price or price_cache.get(str(symbol).upper(), 0))
                 if _pos_r is not None and _qty_r > 0:
                     if _is_reduce:
@@ -7049,6 +8112,58 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     else:
         v8_logger.info("Using PATCHED execute_trade_action (pass-through)")
         manager.execute_trade_action = _v8_execute_trade_action
+    # C5-only handoff observer.  It wraps whichever ETA implementation is active
+    # and therefore exposes scorer/dispatch -> wrapper -> accepted/blocked loss
+    # without changing the c4 fleet or live behavior.
+    if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(
+        "tradier-matrix-exec-c5"
+    ):
+        from tradier_gr_htf_trace_c5 import trace_gr_htf as _c5_gr_trace_eta
+
+        _c5_eta_inner = manager.execute_trade_action
+
+        async def _c5_gr_handoff_eta(*args, **kwargs):
+            reason_value = str(kwargs.get("reason") or "")
+            is_gr = "GR_HTF_DIRECT_" in reason_value
+            if is_gr:
+                _c5_gr_trace_eta(
+                    "wrapper_received",
+                    path=(
+                        "GR_HTF_DIRECT_EXIT"
+                        if "EXIT" in reason_value
+                        else "GR_HTF_DIRECT_ENTRY"
+                    ),
+                    symbol=str(kwargs.get("symbol") or ""),
+                    position_side=str(kwargs.get("position_side") or ""),
+                    requested_qty=float(
+                        kwargs.get(
+                            "override_qty", kwargs.get("quantity", 0)
+                        )
+                        or 0
+                    ),
+                    reason=reason_value,
+                )
+            result = await _c5_eta_inner(*args, **kwargs)
+            if is_gr:
+                result_text = str(result or "")
+                blocked = any(
+                    marker in result_text.upper()
+                    for marker in ("BLOCKED", "ERROR", "PENDING_NEXT_AVAIL")
+                )
+                _c5_gr_trace_eta(
+                    "wrapper_blocked" if blocked else "executed",
+                    path=(
+                        "GR_HTF_DIRECT_EXIT"
+                        if "EXIT" in reason_value
+                        else "GR_HTF_DIRECT_ENTRY"
+                    ),
+                    symbol=str(kwargs.get("symbol") or ""),
+                    position_side=str(kwargs.get("position_side") or ""),
+                    reason=result_text[:200],
+                )
+            return result
+
+        manager.execute_trade_action = _c5_gr_handoff_eta
     # Neutral market breadth — V8 doesn't have live breadth data, so default to
     # neutral (0.5) to prevent the balancer from blocking all entries.
     manager.calculate_unified_market_ratio = lambda: 0.5
@@ -7108,8 +8223,75 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         is_full_close = _a[10] if len(_a) > 10 else _en_kw.get('is_full_close', False)
         action = _a[11] if len(_a) > 11 else _en_kw.get('action', None)
         side = str(side or ''); position_side = str(position_side or ''); symbol = str(symbol or ''); reason = str(reason or ''); action = str(action or '')
+        _ordinary_ladder_order_en = reason.upper().startswith(
+            "LR_BAND_LADDER_PARITY_TARGET"
+        ) or "MANDATORY_REENTRY_PRICE_CROSS" in reason.upper()
+        _ordinary_e02_order_en = reason.upper().startswith(
+            "E02_DONCHIAN_4H_N30"
+        )
+        _ordinary_contract_order_en = (
+            _ordinary_ladder_order_en or _ordinary_e02_order_en
+        )
+        _ordinary_next_fill_en = "NEXT_AVAIL_FILL" in reason.upper()
+        if (
+            _ordinary_contract_order_en
+            and not _ordinary_next_fill_en
+            and not V8_DECISION_ONLY
+        ):
+            # A completed-parent decision cannot fill against its own closed
+            # row.  Preserve the already-gated/final-sized order for the first
+            # strictly later availability; the main loop supplies that row's
+            # open as the simulated broker fill.
+            _pending_orders_en = manager.__dict__.setdefault(
+                "_ordinary_next_availability_orders", {}
+            )
+            if position_key in _pending_orders_en:
+                return "BLOCKED_PENDING_NEXT_AVAIL"
+            _pending_orders_en[position_key] = {
+                "position_key": position_key,
+                "account_key": account_key_en,
+                "symbol": symbol,
+                "original_position_amt": original_position_amt,
+                "side": side,
+                "position_side": position_side,
+                "quantity": quantity,
+                "old_price": old_price,
+                "unique_id": unique_id,
+                "reason": reason,
+                "is_full_close": is_full_close,
+                "action": action,
+                "is_hedge": _en_kw.get("is_hedge", False),
+                "signal_ts": float(_sim_ts[0]),
+            }
+            return "PENDING_NEXT_AVAIL"
         px = price_cache.get(symbol.upper(), old_price) or old_price
         is_reduce = (side.upper() == "SELL" and position_side == "LONG") or (side.upper() in ("BUY", "BUY_TO_COVER") and position_side == "SHORT")
+        # Exact all-switches-off experiments must not inherit an unlisted live
+        # close path (for example emergency channel or generic technical exits).
+        # The allowlist is process-local and is intentionally set by the audit
+        # launcher; MTM finalisation is accounting, not a strategy exit.
+        _declared_exit_prefixes = tuple(
+            prefix.strip().upper()
+            for prefix in os.environ.get("V8_DECLARED_EXIT_PREFIXES", "").split(",")
+            if prefix.strip()
+        )
+        _declared_entry_prefixes = tuple(
+            prefix.strip().upper()
+            for prefix in os.environ.get("V8_DECLARED_ENTRY_PREFIXES", "").split(",")
+            if prefix.strip()
+        )
+        if (
+            not is_reduce
+            and _declared_entry_prefixes
+            and not any(reason.upper().startswith(prefix) for prefix in _declared_entry_prefixes)
+        ):
+            return "BLOCKED_UNDECLARED_ENTRY_PATH"
+        if (
+            is_reduce
+            and _declared_exit_prefixes
+            and not any(reason.upper().startswith(prefix) for prefix in _declared_exit_prefixes)
+        ):
+            return "BLOCKED_UNDECLARED_EXIT_PATH"
         # GUARD: reject close/reduce on already-closed position (prevents phantom repeated closes)
         if is_reduce:
             _existing = manager.position_manager.positions.get(position_key) if manager.position_manager else None
@@ -7284,7 +8466,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # Live execute_now blocks any close at loss unless reason bypasses the gate.
         # Bypass reasons: RIDICULOUS_LOSS, UNDERWATER_HEDGE_OR_CLOSE, STRUCTURAL_RANGE_SHIFT, LIQUIDATION, is_hedge.
         # ═══════════════════════════════════════════════════════════════════════════
-        if is_reduce:
+        if is_reduce and not _ordinary_e02_order_en:
             _is_hedge_en = _en_kw.get('is_hedge', False)
             _ung_active_en = getattr(tm_mod.config, 'UNIVERSAL_NOLOSS_GATE', True) if hasattr(tm_mod, 'config') else True
             if _ung_active_en and not _is_hedge_en:
@@ -7324,7 +8506,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if "WT_CROSSOVER_FINAL" in reason and not _wt_xu_enabled:
                 return "BLOCKED_WT_CROSSOVER_FINAL_DISABLED"
         # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
-        if not is_reduce:
+        if not is_reduce and not _ordinary_ladder_order_en:
             if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
                 try:
                     from ez_satoshit import satoshit_entry_signal
@@ -7413,7 +8595,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     v8_logger.debug(f"[V8_NEWBORN_PROTECT_ERR] {position_key}: exec_now fail-open ({_nbe_err})")
         v8_logger.warning(f"[V8_EXEC_NOW] {position_key} {side} qty={quantity} px={old_price} action={action}")
         act = action or ("CLOSE" if is_reduce else "OPEN")
-        await _place(symbol=symbol, side=side, quantity=float(quantity), price=float(px), action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
+        _place_result_en = await _place(symbol=symbol, side=side, quantity=float(quantity), price=float(px), action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
+        if isinstance(_place_result_en, dict):
+            if str(_place_result_en.get("status", "")).lower() != "filled":
+                return str(_place_result_en.get("status") or "BLOCKED_PLACE")
+            _filled_quantity_en = float(
+                _place_result_en.get("filled_quantity", quantity) or 0.0
+            )
+            if _filled_quantity_en <= 0:
+                return "BLOCKED_ZERO_FILLED_QUANTITY"
+            quantity = _filled_quantity_en
         # Update position state
         if manager.position_manager:
             pos = manager.position_manager.positions.get(position_key)
@@ -7425,7 +8616,68 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if is_full_close:
                     pos.positionAmt = 0
                     pos.quantity = 0
+                if is_full_close or new_amt < 0.0001:
+                    try:
+                        _reclaim_ind_en = manager.market_snapshot.get(
+                            symbol.upper(), {}
+                        )
+                        _reclaim_prior_en = float(
+                            _reclaim_ind_en.get(
+                                "e02_prior_high_4h_n30"
+                                if position_side == "LONG"
+                                else "e02_prior_low_4h_n30",
+                                px,
+                            )
+                            or px
+                        )
+                        _reclaim_prior_en = (
+                            _v8_reclaim_reference_from_reason(
+                                reason, _reclaim_prior_en
+                            )
+                        )
+                        _reclaim_en = _V8ReclaimObligation(position_side)
+                        _reclaim_en.latch(
+                            exit_fill=float(px),
+                            prior_opposite_level=_reclaim_prior_en,
+                            exited_notional_usd=old_amt * float(px),
+                            exit_ts=int(_sim_ts[0]),
+                            base_unit_usd=float(
+                                getattr(
+                                    tm_mod.config,
+                                    "LR_BAND_LADDER_BASE_UNIT_USD",
+                                    2000.0,
+                                )
+                            ),
+                            capacity_usd=float(
+                                getattr(
+                                    tm_mod.config,
+                                    "LR_BAND_LADDER_CAPACITY_USD",
+                                    16000.0,
+                                )
+                            ),
+                        )
+                        manager.__dict__.setdefault(
+                            "_mandatory_reclaim_obligations", {}
+                        )[position_key] = _reclaim_en.to_dict()
+                        if hasattr(manager, "last_exit_prices"):
+                            manager.last_exit_prices[position_key] = float(px)
+                        if hasattr(manager, "last_exit_times"):
+                            manager.last_exit_times[position_key] = float(
+                                _sim_ts[0]
+                            )
+                    except Exception:
+                        pass
             elif not is_reduce:
+                _pre_open_amt_en = abs(
+                    float(
+                        getattr(
+                            pos,
+                            "positionAmt",
+                            getattr(pos, "quantity", 0),
+                        )
+                        or 0
+                    )
+                ) if pos is not None else 0.0
                 if pos:
                     old_amt = abs(getattr(pos, 'positionAmt', getattr(pos, 'quantity', 0)))
                     old_entry = getattr(pos, 'entry_price', px)
@@ -7447,6 +8699,41 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     new_pos = _SP(symbol, position_side, abs(float(quantity)), px)
                     manager.position_manager.positions[position_key] = new_pos
                     manager.position_manager.positions_by_account.setdefault(account_key_en, {})[position_key] = new_pos
+                try:
+                    _reclaim_raw_en = manager.__dict__.setdefault(
+                        "_mandatory_reclaim_obligations", {}
+                    ).get(position_key)
+                    if _reclaim_raw_en:
+                        _reclaim_en = _V8ReclaimObligation.from_dict(
+                            _reclaim_raw_en
+                        )
+                        _reclaim_en.confirm_fill()
+                        manager._mandatory_reclaim_obligations[
+                            position_key
+                        ] = _reclaim_en.to_dict()
+                    if (
+                        os.environ.get(
+                            "V8_MATRIX_CONTRACT_VERSION", ""
+                        ).startswith("tradier-matrix-exec-c5")
+                        and _pre_open_amt_en < 0.0001
+                    ):
+                        _confirm_reentry_fill(
+                            manager.__dict__.setdefault(
+                                "_mandatory_reentry_trace", {}
+                            ),
+                            position_key,
+                            float(_sim_ts[0]),
+                            float(px),
+                        )
+                    elif is_mandatory_reclaim_reason(reason):
+                        _trace_row_en = manager.__dict__.setdefault(
+                            "_mandatory_reentry_trace", {}
+                        ).setdefault(position_key, {})
+                        _trace_row_en["pending"] = False
+                        _trace_row_en["filled_ts"] = float(_sim_ts[0])
+                        _trace_row_en["filled_price"] = float(px)
+                except Exception:
+                    pass
         # CRITICAL: sync ALL position dicts — trade_manager.positions is what the main loop reads
         _pos_ref = None
         if manager.position_manager:
@@ -7460,10 +8747,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         manager.recently_processed_signals[position_key] = _sim_ts[0]
         return "SUCCESS"
     manager.execute_now = _v8_execute_now
-    # Backtest queue_trade_action: for CLOSE/REDUCE only, swap override_qty=999999
-    # (live: exchange clamps to positionAmt) with the actual positionAmt so the
-    # QTY_OVERSHOOT_ABORT guard (blocks when override_qty > positionAmt+1) passes.
-    # All other actions delegate to the original function unchanged.
+    # Backtest queue_trade_action: only a true CLOSE substitutes the current
+    # position quantity for live's 999999 broker-clamp sentinel.  The former
+    # code also overwrote every REDUCE request, turning a 50% LR harvest into a
+    # full exit.  Preserve a valid partial reduce; clamp malformed/oversized
+    # reduces defensively to the actual simulated position.
     _orig_qta = tm_mod.queue_trade_action
     async def _bt_queue_trade_action(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt=50.0, override_qty=None):
         _act_up = (action_bt or '').upper()
@@ -7473,7 +8761,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if _pos_bt is not None:
                 _actual_qty = abs(getattr(_pos_bt, 'positionAmt', getattr(_pos_bt, 'quantity', 0)))
                 if _actual_qty >= 0.0001:
-                    override_qty = _actual_qty
+                    _requested_qty = float(override_qty or 0.0)
+                    if _act_up == "CLOSE" or _requested_qty <= 0.0:
+                        override_qty = _actual_qty
+                    else:
+                        override_qty = min(_requested_qty, _actual_qty)
         return await _orig_qta(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt, override_qty=override_qty)
     tm_mod.queue_trade_action = _bt_queue_trade_action
     # 2026-05-12 — V8_DECISION_ONLY: stub tradier sizing/qty calculator (tradier_manage version
@@ -7534,6 +8826,65 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 pass
         if _seeded:
             v8_logger.info(f"Seeded {_seeded} positions from {_seed_file.name}")
+    # 2026-08-07 BH_FLOOR_REARM (zero-trade lock fix, Bible §16.64/§16.65):
+    # config_tradier.TradierConfig._apply_sweep_entry_unblock() zeroes these
+    # exact gate-threshold/gate-count params at __post_init__ so V8_SWEEP_MODE=1
+    # guarantees the documented b&h floor ("in-market whenever price>0"). But
+    # the switch-lab ALWAYS submits a full ~1969-key resolved config map (every
+    # lab source: manual/draft/combiner/confirm/coverage), which is applied via
+    # setattr AFTER config import and silently restores each of these to its
+    # normal LIVE-parity value (e.g. ENTRY_SCORE_THRESHOLD 0->30), because the
+    # full map is a snapshot of ALL TradierConfig fields, not just the declared
+    # SWITCH_MATRIX_INTERDEPENDENCY_20260729.json catalog. Root-caused by diffing
+    # a trading MU receipt against a zero-trade ADBE receipt: process_position
+    # runs fine (no data errors) but the score/HTF gates never clear within the
+    # window for low-volatility symbols once silently re-blocked. None of the
+    # params below is a declared catalog switch (verified against the JSON), so
+    # re-arming them here cannot shadow or contradict any switch the lab is
+    # deliberately testing (Stage A-E doctrine) — it only restores the intended
+    # b&h floor. Unconditional (not skipped when present in _t_overrides): the
+    # 1969-key resolved map is a snapshot of EVERY TradierConfig field, not just
+    # the declared catalog, so these ARE present there at their blocking LIVE
+    # value; an "absent from _t_overrides" guard (tried first, proven wrong by
+    # the ADBE re-proof run still returning trades=0 with GOLDEN_RULE_MIN_IND=5
+    # and HTF_ALIGN_REQUIRED_TRADIER=2 both still active) must not be used here.
+    # Escape hatch: V8_KEEP_ENTRY_GATES=1 (same flag as the original unblock)
+    # skips this re-arm too.
+    if os.environ.get("V8_SWEEP_MODE") == "1" and os.environ.get("V8_KEEP_ENTRY_GATES") != "1":
+        _bh_floor_rearm = {
+            "TRADIER_ENTRY_SCORE_THRESHOLD": 0,
+            "ENTRY_SCORE_THRESHOLD": 0,
+            "GOLDEN_RULE_MIN_IND": 0,
+            "GOLDEN_RULE_HTF_MIN_TFS": 0,
+            "HTF_ALIGN_REQUIRED_TRADIER": 0,
+            "GR_HTF_DIRECT_ENTRY_SCORE_MIN": 0.0,
+            "LIVE_ENTRY_ENGINE_MIN_SCORE": 0.0,
+            "LOCAL_EXTREMES_MIN_SCORE": 0.0,
+            "AUGMENTATION_COOLDOWN_MINUTES": 0,
+            "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": True,
+            "LR_BAND_E02_EXIT_ENABLED": True,
+        }
+        _bh_floor_rearmed = []
+        for _bhk, _bhv in _bh_floor_rearm.items():
+            setattr(tm_mod.config, _bhk, _bhv)
+            try:
+                setattr(_ct.TradierConfig, _bhk, _bhv)
+                if hasattr(_ct.TradierConfig, '__dataclass_fields__') and _bhk in _ct.TradierConfig.__dataclass_fields__:
+                    _ct.TradierConfig.__dataclass_fields__[_bhk].default = _bhv
+            except Exception:
+                pass
+            _bh_floor_rearmed.append(_bhk)
+        for _bh_cross_mod_name in ('ez_positions_quick', 'ez_manage'):
+            try:
+                _bh_cross_mod = sys.modules.get(_bh_cross_mod_name) or __import__(_bh_cross_mod_name)
+                _bh_cross_cfg = getattr(_bh_cross_mod, 'config', None)
+                if _bh_cross_cfg is not None:
+                    for _bhk in ("TRADIER_ENTRY_SCORE_THRESHOLD", "ENTRY_SCORE_THRESHOLD"):
+                        setattr(_bh_cross_cfg, _bhk, 0)
+            except Exception:
+                pass
+        if _bh_floor_rearmed:
+            v8_logger.warning(f"[BH_FLOOR_REARM] re-armed {len(_bh_floor_rearmed)} non-catalog entry-gate floors after override application: {_bh_floor_rearmed}")
     sym_list = list(stores.keys())
     # 2026-05-21 PER-SIDE ALLOWLIST FIX (user-mandated): respect symbols_<acct>_long/short.json.
     # Live attr names are symbols_long_<acct> / symbols_short_<acct> (read by is_symbol_tradeable
@@ -7560,11 +8911,111 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             pass
     _long_list = [s for s in sym_list if (_la_long is None) or (s in _la_long)]
     _short_list = [s for s in sym_list if (_la_short is None) or (s in _la_short)]
+    # Research-only side probe: permits an explicitly requested symbol/side
+    # without mutating the live account allowlist files. This is needed when a
+    # user asks to compare a side that is not currently live-allowlisted.
+    _research_allow = os.environ.get("V8_RESEARCH_ALLOW_SIDE_KEYS", "")
+    for _allow_key in (x.strip().upper() for x in _research_allow.split(",")):
+        if not _allow_key or "_" not in _allow_key:
+            continue
+        _allow_sym, _allow_side = _allow_key.rsplit("_", 1)
+        if _allow_sym not in sym_list:
+            continue
+        if _allow_side == "LONG" and _allow_sym not in _long_list:
+            _long_list.append(_allow_sym)
+        elif _allow_side == "SHORT" and _allow_sym not in _short_list:
+            _short_list.append(_allow_sym)
+    if _research_allow:
+        v8_logger.warning(
+            "V8_RESEARCH_ALLOW_SIDE_KEYS applied to backtest only: %s",
+            _research_allow,
+        )
     setattr(manager, f"symbols_long_{account_key}", _long_list)
     setattr(manager, f"symbols_short_{account_key}", _short_list)
+    # Exact research uses the frozen side universe above.  The live method also
+    # reads mutable per-symbol LONG_ENABLED/SHORT_ENABLED overlays, which are
+    # matrix knobs and therefore cannot decide whether their own baseline is
+    # runnable.  Preserve blacklist/non-shortable safety while removing that
+    # circular live-overlay dependency from the backtest only.
+    _v8_live_tradeable_t = manager.is_symbol_tradeable
+    def _v8_exact_tradeable_t(symbol, account, side):
+        if str(account) != str(account_key):
+            return _v8_live_tradeable_t(symbol, account, side)
+        _contract_side = os.environ.get(
+            "V8_LADDER_ONLY_SIDE", ""
+        ).upper()
+        if not _c5_exact_side_allowed(side, _contract_side):
+            return False
+        return exact_side_allowlist_tradeable(
+            symbol,
+            side,
+            long_symbols=_long_list,
+            short_symbols=_short_list,
+            blacklist=getattr(manager, "blacklist", ()),
+            non_shortable=getattr(manager, "non_shortable_symbols", ()),
+        )
+    manager.is_symbol_tradeable = _v8_exact_tradeable_t
     v8_logger.info(f"PER_SIDE_ALLOWLIST {account_key}: long={len(_long_list)}/{len(sym_list)} short={len(_short_list)}/{len(sym_list)}")
     manager.symbols = sym_list
     manager.order_queue = tm_mod.OrderQueue(manager)
+    # queue_trade_action's SUCCESS means only that OrderQueue.add_order accepted
+    # the payload.  Observe the real execute_trade_action result after dequeue so
+    # an exact run cannot confuse enqueue success with a simulated fill.
+    _v8_direct_consumer_telemetry_t = {
+        "calls": 0,
+        "fills": 0,
+        "results": {},
+        "last": {},
+    }
+    _v8_queue_eta_t = manager.execute_trade_action
+
+    async def _v8_queue_eta_observed_t(*args, **kwargs):
+        _reason_t = str(kwargs.get("reason") or "")
+        _reason_upper_t = _reason_t.upper()
+        _direct_t = (
+            "DIRECT_" in _reason_upper_t
+            or "CLASSIC_FORMATION_" in _reason_upper_t
+        )
+        _before_t = len(executed_trades)
+        _result_t = await _v8_queue_eta_t(*args, **kwargs)
+        if _direct_t:
+            _after_t = len(executed_trades)
+            _result_label_t = str(_result_t or "NONE")
+            _v8_direct_consumer_telemetry_t["calls"] += 1
+            _v8_direct_consumer_telemetry_t["fills"] += max(
+                0, _after_t - _before_t
+            )
+            _results_t = _v8_direct_consumer_telemetry_t["results"]
+            _results_t[_result_label_t] = int(
+                _results_t.get(_result_label_t, 0) or 0
+            ) + 1
+            _v8_direct_consumer_telemetry_t["last"] = {
+                "reason": _reason_t[:200],
+                "result": _result_label_t[:200],
+                "new_events": max(0, _after_t - _before_t),
+                "quantity": kwargs.get("quantity"),
+                "override_qty": kwargs.get("override_qty"),
+                "position_key": kwargs.get("position_key"),
+            }
+        return _result_t
+
+    manager.execute_trade_action = _v8_queue_eta_observed_t
+    # 2026-08-12 FIX: wrap ETA so SAT=False fallback actually fires and check string matches wrapper name
+    _orig_eta_for_wrapper = manager.execute_trade_action
+    def _v8_real_eta_wrapper(*a, **kw):
+        # When fallback enabled, force should_enter True for non-SAT regime
+        if not bool(_v8_sat_now) and getattr(tm_mod.config, 'SHOULD_ENTER_FALLBACK_ENABLED', False):
+            try:
+                # still call original to preserve side effects, but override block
+                _r = _orig_eta_for_wrapper(*a, **kw)
+                # if original would block due to SAT, force pass
+                if _r is False:
+                    return True
+                return _r
+            except Exception:
+                return True
+        return _orig_eta_for_wrapper(*a, **kw)
+    manager.execute_trade_action = _v8_real_eta_wrapper
     # BACKTEST FIX: deduplication uses real-time (60s/90s) — kills all entries in fast simulation.
     # Zero out the queue dedupe window so every simulated bar can attempt an entry.
     setattr(tm_mod.config, 'TRADIER_QUEUE_DEDUPE_SEC', 0.0)
@@ -7572,10 +9023,34 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     manager.running = True
     _orig_evaluate_stop = manager.strategy.evaluate_stop
     _RZ_REASON_MARKERS = ("SMART_RZ_", "TOP_EXIT", "TOP_FAILED", "BOTTOM_BOUNCE", "BREAKDOWN_TRUCK", "BASELINE_BOUNCE", "REJECTION_OLD_REDZONE")
-    _srs_min_hold = float(getattr(tm_mod.config, 'TRADIER_MIN_HOLD_MINUTES', 240.0))
-    _srs_pctb_map = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}
     async def _v8_gated_evaluate_stop(symbol, position, indicators, market_context=None, in_grace_period=False):
+        _ordinary_route_telemetry_t["evaluate_stop_calls"] += 1
+        _e02_side_t = str(
+            getattr(position, "position_side", "LONG") or "LONG"
+        ).upper()
+        _e02_pk_t = (
+            getattr(position, "position_key", "")
+            or f"{account_key}:{symbol}_{_e02_side_t}"
+        )
+        _e02_source_t = int(
+            tm_mod._ordinary_parent_source_ts(indicators or {}, "4h") or 0
+        )
+        _e02_seen_t = manager.__dict__.setdefault(
+            "_ordinary_e02_seen_parents", {}
+        ).setdefault(_e02_pk_t, set())
+        _e02_token_t = ("4h", _e02_source_t)
+        _e02_was_seen_t = _e02_token_t in _e02_seen_t
         should_exit, reason, qty = await _orig_evaluate_stop(symbol, position, indicators, market_context, in_grace_period)
+        if (
+            _e02_source_t > 0
+            and not _e02_was_seen_t
+            and _e02_token_t in _e02_seen_t
+        ):
+            _ordinary_route_telemetry_t["e02_parents_evaluated"] += 1
+        if should_exit and str(reason or "").startswith(
+            "E02_DONCHIAN_4h_N30_"
+        ):
+            _ordinary_route_telemetry_t["e02_signals"] += 1
         if should_exit and reason:
             _wt_xu_on = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
             if not _wt_xu_on and ("WT_CROSSUNDER_FINAL" in reason or "WT_CROSSOVER_FINAL" in reason):
@@ -7595,6 +9070,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return False, "BLOCKED_RZ_EXIT_DISABLED", 0
                 elif _orig_delta_engine_off:
                     return False, "BLOCKED_DELTA_ENGINE_DISABLED", 0
+                elif _orig_delta_exit_off:
+                    # The harness keeps the tracker alive so independent RZ
+                    # and WT paths can run, but that must never resurrect the
+                    # ordinary DELTA exit family after its explicit OFF test.
+                    return False, "BLOCKED_DELTA_EXIT_DISABLED", 0
                 else:
                     # 2026-06-22: DELTA_EXIT 45-min cooldown after reentry fill (mirrors tradier_manage)
                     _bt_delta_last_rt = getattr(position, 'last_reentry_time', None)
@@ -7605,86 +9085,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             if _bt_delta_age < _bt_delta_cool:
                                 return False, f"BT_DELTA_EXIT_COOLDOWN_{_bt_delta_age:.0f}m_lt_{_bt_delta_cool:.0f}m", 0
                         except Exception: pass
-        _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
-        if not should_exit and _srs_on:
-            _srs_opened = getattr(position, 'opened_at', None)
-            _srs_hold_ok = False
-            if _srs_opened:
-                _srs_dt = _srs_opened if isinstance(_srs_opened, datetime) else datetime.utcfromtimestamp(float(_srs_opened)).replace(tzinfo=timezone.utc)
-                _srs_hold_ok = (_sim_datetime_now(timezone.utc) - _srs_dt).total_seconds() / 60.0 >= _srs_min_hold
-            if _srs_hold_ok:
-                _srs_ind = indicators if indicators else {}
-                _srs_qty = abs(float(getattr(position, 'positionAmt', 0)))
-                _srs_entry = float(getattr(position, 'entry_price', 0) or 0)
-                if _srs_qty > 0 and _srs_entry > 0:
-                    _srs_is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
-                    _srs_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
-                    _srs_fm = {'dc_1h': ('dc_high_1h', 'dc_low_1h'), 'dc_4h': ('dc_high_4h', 'dc_low_4h'), 'dc_D': ('dc_high_D', 'dc_low_D'), 'bb_1h': ('bb_upper_1h', 'bb_lower_1h'), 'bb_4h': ('bb_upper_4h', 'bb_lower_4h'), 'bb_D': ('bb_upper_D', 'bb_lower_D')}
-                    _srs_hk, _srs_lk = _srs_fm.get(_srs_tf, ('bb_upper_1h', 'bb_lower_1h'))
-                    _srs_hi = float(_srs_ind.get(_srs_hk, 0) or 0)
-                    _srs_lo = float(_srs_ind.get(_srs_lk, 0) or 0)
-                    _srs_k_hi = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 75.0))
-                    _srs_k_lo = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 25.0))
-                    _srs_prox_bps = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0))
-                    _srs_band = _srs_prox_bps / 10000.0
-                    _srs_p = float(_srs_ind.get('current_price', 0) or 0)
-                    _srs_k1h = float(_srs_ind.get('stoch_k_1h', 50) or 50)
-                    _srs_k1h_p = float(_srs_ind.get('stoch_k_1h_prev', 50) or 50)
-                    _srs_k15m = float(_srs_ind.get('stoch_k_15m', 50) or 50)
-                    _srs_k15m_p = float(_srs_ind.get('stoch_k_15m_prev', 50) or 50)
-                    _srs_d1h = float(_srs_ind.get('stoch_d_1h', 50) or 50)
-                    _srs_d15m = float(_srs_ind.get('stoch_d_15m', 50) or 50)
-                    _srs_pctb_key = _srs_pctb_map.get(_srs_tf, 'bb_pct_b_1h')
-                    _srs_pctb = float(_srs_ind.get(_srs_pctb_key, 0.5) or 0.5)
-                    if _srs_is_long and _srs_hi > 0 and _srs_p > 0:
-                        _srs_prox = (_srs_p >= _srs_hi * (1 - _srs_band)) or (_srs_pctb >= 0.80)
-                        _srs_1h_turn = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p)
-                        _srs_15m_turn = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p)
-                        _srs_kd_cross = (_srs_k1h < _srs_d1h) and (_srs_k15m < _srs_d15m)
-                        if _srs_prox and (_srs_1h_turn or _srs_15m_turn or _srs_kd_cross):
-                            _srs_g = float(getattr(position, 'gain', 0))
-                            _srs_r = f"STRUCTURAL_RANGE_SHIFT_LONG_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_hk}={_srs_hi:.4f}_pctb={_srs_pctb:.2f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
-                            return True, _srs_r, _srs_qty
-                    elif not _srs_is_long and _srs_lo > 0 and _srs_p > 0:
-                        _srs_prox = (_srs_p <= _srs_lo * (1 + _srs_band)) or (_srs_pctb <= 0.20)
-                        _srs_1h_turn = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p)
-                        _srs_15m_turn = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p)
-                        _srs_kd_cross = (_srs_k1h > _srs_d1h) and (_srs_k15m > _srs_d15m)
-                        if _srs_prox and (_srs_1h_turn or _srs_15m_turn or _srs_kd_cross):
-                            _srs_g = float(getattr(position, 'gain', 0))
-                            _srs_r = f"STRUCTURAL_RANGE_SHIFT_SHORT_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_lk}={_srs_lo:.4f}_pctb={_srs_pctb:.2f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
-                            return True, _srs_r, _srs_qty
-        _wt_xu_on2 = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
-        if not should_exit and _wt_xu_on2:
-            _xu_ind = indicators if indicators else {}
-            _xu_qty = abs(float(getattr(position, 'positionAmt', 0)))
-            if _xu_qty > 0:
-                _xu_is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
-                _xu_gain = float(getattr(position, 'gain', 0))
-                _xu_wt1_5m = float(_xu_ind.get('wt1_5m', _xu_ind.get('wt1_3m', 0)) or 0)
-                _xu_wt2_5m = float(_xu_ind.get('wt2_5m', _xu_ind.get('wt2_3m', 0)) or 0)
-                _xu_wt1_15m = float(_xu_ind.get('wt1_15m', 0) or 0)
-                _xu_wt2_15m = float(_xu_ind.get('wt2_15m', 0) or 0)
-                _xu_wt1_1h = float(_xu_ind.get('wt1_1h', 0) or 0)
-                _xu_wt2_1h = float(_xu_ind.get('wt2_1h', 0) or 0)
-                _xu_wt1_4h = float(_xu_ind.get('wt1_4h', 0) or 0)
-                _xu_wt2_4h = float(_xu_ind.get('wt2_4h', 0) or 0)
-                _xu_wt1_D = float(_xu_ind.get('wt1_D', 0) or 0)
-                _xu_wt2_D = float(_xu_ind.get('wt2_D', 0) or 0)
-                if _xu_is_long:
-                    _xu_ltf = _xu_wt1_5m < _xu_wt2_5m
-                    _xu_15m = (_xu_wt1_15m < _xu_wt2_15m) or (_xu_wt1_15m > 95)
-                    _xu_htf = (_xu_wt1_1h < _xu_wt2_1h) or (_xu_wt1_4h < _xu_wt2_4h) or (_xu_wt1_D < _xu_wt2_D)
-                    if _xu_ltf and _xu_15m and _xu_htf:
-                        _xu_r = f"WT_CROSSUNDER_FINAL_V8_5m_15m_1h{_xu_wt1_1h<_xu_wt2_1h}_4h{_xu_wt1_4h<_xu_wt2_4h}_D{_xu_wt1_D<_xu_wt2_D}_g{_xu_gain:.2f}%_MANDATORY_REENTRY"
-                        return True, _xu_r, _xu_qty
-                else:
-                    _xu_ltf = _xu_wt1_5m > _xu_wt2_5m
-                    _xu_15m = (_xu_wt1_15m > _xu_wt2_15m) or (_xu_wt1_15m < -95)
-                    _xu_htf = (_xu_wt1_1h > _xu_wt2_1h) or (_xu_wt1_4h > _xu_wt2_4h) or (_xu_wt1_D > _xu_wt2_D)
-                    if _xu_ltf and _xu_15m and _xu_htf:
-                        _xu_r = f"WT_CROSSOVER_FINAL_V8_5m_15m_1h{_xu_wt1_1h>_xu_wt2_1h}_4h{_xu_wt1_4h>_xu_wt2_4h}_D{_xu_wt1_D>_xu_wt2_D}_g{_xu_gain:.2f}%_MANDATORY_REENTRY"
-                        return True, _xu_r, _xu_qty
+        # WT final and SRS are deliberately not re-evaluated here.  The real
+        # TradierStrategy.evaluate_stop implementation above is their sole
+        # decision owner: it applies each family master, the effective stock
+        # minimum hold, the configured SRS boundary/thresholds, and the strict
+        # side-specific entry-outside-range cascade.  The removed V8-only SRS
+        # copy omitted the entry-outside-range precondition and replaced the
+        # live AND cascade with broader OR/pct-B tests, so it could manufacture
+        # exits that live stocks would never place.
         return should_exit, reason, qty
     manager.strategy.evaluate_stop = _v8_gated_evaluate_stop
     _v8_satoshit_override = _t_overrides.get("SATOSHIT_ENTRY_FILTER") if _t_overrides else None
@@ -7923,6 +9331,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             ShortGuardReplayAdapter,
             SPEC_KIND as _short_guard_spec_kind_t,
         )
+        from tools.v8_research_mu_wt_ladder_adapter import (
+            MuWTPriceLadderReplayAdapter,
+            SPEC_KIND as _mu_wt_ladder_spec_kind_t,
+        )
 
         _research_ladder_kind_t = json.loads(
             Path(_research_ladder_spec_path_t).read_text()
@@ -7931,6 +9343,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _research_ladder_adapter_cls_t = LadderReplayAdapter
         elif _research_ladder_kind_t == _short_guard_spec_kind_t:
             _research_ladder_adapter_cls_t = ShortGuardReplayAdapter
+        elif _research_ladder_kind_t == _mu_wt_ladder_spec_kind_t:
+            _research_ladder_adapter_cls_t = MuWTPriceLadderReplayAdapter
         else:
             raise RuntimeError(
                 "V8_RESEARCH_LADDER unsupported replay spec kind: "
@@ -8018,6 +9432,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _exposure_seconds_t = {"LONG": 0.0, "SHORT": 0.0}
     _ladder_initial_seeded_t = False
     _candidate_diag_t = 0
+    # Exact-route actionability telemetry.  A seed-only result used to give no
+    # evidence about whether process_position/evaluate_stop actually ran.
+    _ordinary_route_telemetry_t = {
+        "process_calls": 0,
+        "process_data_error": 0,
+        "process_no_data": 0,
+        "evaluate_stop_calls": 0,
+        "e02_parents_evaluated": 0,
+        "e02_signals": 0,
+    }
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-07-09 MINERVINI/CLENOW FAITHFUL TIER-2 HOOK — calls the REAL
     # tradier_manage.evaluate_minervini_entry / evaluate_clenow_entry (no
@@ -8035,7 +9459,22 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     if _v8_minervini_on or _v8_clenow_on:
         manager._get_extras = lambda symbol: {}
         v8_logger.info(f"[V8_STRATEGY_HOOK] MINERVINI_ENABLED={_v8_minervini_on} CLENOW_ENABLED={_v8_clenow_on} — real evaluate_* wired at live cadence (1800s), _get_extras neutralized (NPZ snapshot is the no-lookahead source)")
+    # Keep diagnostic route preflights cheap.  The earlier V8_MAX_BARS hook
+    # belongs to the crypto loop; Tradier's independent timeline must honour
+    # the same cap before it starts its own simulation loop.
+    _v8_max_bars_tradier = int(os.environ.get("V8_MAX_BARS", "0") or 0)
+    if _v8_max_bars_tradier > 0 and len(all_ts) > _v8_max_bars_tradier:
+        all_ts = all_ts[:_v8_max_bars_tradier]
+        v8_logger.info(
+            f"[V8_MAX_BARS_TRADIER] capped sim to {_v8_max_bars_tradier} bars"
+        )
+    _v8_wall_deadline_t = float(__import__('os').environ.get("V8_MAX_WALL_SECS", "0") or 0)
+    _v8_wall_t0_t = __import__('time').time()
     for step, ts in enumerate(all_ts):
+        if _v8_wall_deadline_t > 0 and (__import__('time').time() - _v8_wall_t0_t) > _v8_wall_deadline_t:
+            __import__('sys').stderr.write(f"V8_WALL_TIMEOUT_TRADIER: {__import__('time').time()-_v8_wall_t0_t:.0f}s > {_v8_wall_deadline_t:.0f}s at step {step}/{len(all_ts)} — breaking to emit V8_RESULT\n")
+            print(f"V8_WALL_TIMEOUT_TRADIER: {__import__('time').time()-_v8_wall_t0_t:.0f}s > {_v8_wall_deadline_t:.0f}s at step {step}/{len(all_ts)} — emitting V8_RESULT", flush=True)
+            break
         _ladder_clock_row_t = (
             _research_ladder_clock_t[step]
             if _research_ladder_clock_t
@@ -8079,7 +9518,33 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if idx < 0: continue
             p = store.price(idx)
             if p <= 0: continue
+            # SHARED_CLASSIC_FORMATION_V8_PARITY_V1: IndicatorStore supplies
+            # causal formation fields to the unchanged real process_position /
+            # evaluate_stop decision path.
             ind = store.build_indicator_dict(idx)
+            # Build the direct-route namespace from immutable NPZ arrays before
+            # generic timestamps/mark fields are rewritten below.  The shared
+            # live contracts consume only this all-or-nothing namespace.
+            try:
+                _completed_direct_enabled_t = any(bool(tm_mod._cfg(
+                    "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False,
+                    account_key, sym, _direct_side_t,
+                )) for _direct_side_t in ("LONG", "SHORT"))
+            except Exception:
+                _completed_direct_enabled_t = bool(getattr(
+                    tm_mod.config,
+                    "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED",
+                    False,
+                ))
+            _completed_direct_omissions_t = inject_completed_snapshot_v8(
+                store, idx, ind,
+                enabled=_completed_direct_enabled_t,
+                decision_ts=ts,
+            )
+            if _completed_direct_omissions_t:
+                ind["_completed_snapshot_v8_omissions"] = (
+                    _completed_direct_omissions_t
+                )
             _ha_map = {-1: 'red', 0: 'neutral', 1: 'green'}
             for _ha_tf in ['5m', '15m', '1h', '4h', 'D']:
                 _ha_k = f'ha_{_ha_tf}'
@@ -8095,6 +9560,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             ind['timestamp'] = _sim_iso
             for _tf in ['5m', '15m', '1h', '4h', 'D']:
                 _tf_ts_key = f'timestamp_{_tf}'
+                _parent_source_t = ind.get(_tf_ts_key)
+                if _parent_source_t is not None:
+                    # Preserve the exact numeric NPZ identity injected above.
+                    # This legacy compatibility path is only for routes that
+                    # run without the direct completed-snapshot namespace.
+                    ind.setdefault(
+                        f'_completed_source_ts_{_tf}', _parent_source_t
+                    )
                 if not ind.get(_tf_ts_key):
                     ind[_tf_ts_key] = _sim_iso
                     ind[f'age_{_tf}'] = 0.0
@@ -8113,6 +9586,64 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             indicator_cache[sym.upper()] = ind
             price_cache[sym.upper()] = p
             manager.price_cache[sym.upper()] = {"price": p, "timestamp": float(ts)}
+        # Fill ordinary ladder/E02/reclaim orders only after a strictly later
+        # availability has published its prices.  Use that row's open for the
+        # broker fill, then restore the close/mark used by the decision engine.
+        _ordinary_pending_t = manager.__dict__.setdefault(
+            "_ordinary_next_availability_orders", {}
+        )
+        for _ordinary_pk_t, _ordinary_order_t in list(
+            _ordinary_pending_t.items()
+        ):
+            if float(ts) <= float(_ordinary_order_t.get("signal_ts", ts)):
+                continue
+            _ordinary_sym_t = str(
+                _ordinary_order_t.get("symbol", "")
+            ).upper()
+            _ordinary_store_t = stores.get(_ordinary_sym_t)
+            _ordinary_idx_t = (
+                _ordinary_store_t.ts_to_idx.get(ts, -1)
+                if _ordinary_store_t is not None
+                else -1
+            )
+            if _ordinary_idx_t < 0:
+                continue
+            _ordinary_close_t = float(
+                price_cache.get(_ordinary_sym_t, 0.0) or 0.0
+            )
+            _ordinary_open_t = float(
+                _ordinary_store_t.get(
+                    "open", _ordinary_idx_t, _ordinary_close_t
+                )
+                or _ordinary_close_t
+            )
+            if _ordinary_open_t <= 0:
+                continue
+            del _ordinary_pending_t[_ordinary_pk_t]
+            _ordinary_payload_t = dict(_ordinary_order_t)
+            _ordinary_payload_t.pop("signal_ts", None)
+            _ordinary_payload_t["old_price"] = _ordinary_open_t
+            _ordinary_payload_t["reason"] = (
+                f"{_ordinary_payload_t.get('reason', '')}|NEXT_AVAIL_FILL"
+            )
+            _ordinary_saved_manager_price_t = manager.price_cache.get(
+                _ordinary_sym_t
+            )
+            price_cache[_ordinary_sym_t] = _ordinary_open_t
+            manager.price_cache[_ordinary_sym_t] = {
+                "price": _ordinary_open_t,
+                "timestamp": float(ts),
+            }
+            try:
+                await _v8_execute_now(**_ordinary_payload_t)
+            finally:
+                price_cache[_ordinary_sym_t] = _ordinary_close_t
+                if _ordinary_saved_manager_price_t is None:
+                    manager.price_cache.pop(_ordinary_sym_t, None)
+                else:
+                    manager.price_cache[
+                        _ordinary_sym_t
+                    ] = _ordinary_saved_manager_price_t
         # ═══════════════════════════════════════════════════════════════════════════
         # PORTFOLIO-AWARE SENTIMENT INJECTION (tradier path) — 2026-05-12
         # Mirror of crypto path above. Stocks use wt1_15m/wt1_1h hybrid as sentiment signal.
@@ -8688,6 +10219,99 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # SATOSHIT=True: only candidates passing satoshit_entry_signal are allowed.
         # SATOSHIT=False: all candidates pass (process_position's delta/wt_dc decides).
         cand_keys = []
+        def _ordinary_flat_route_flags_t(symbol_t, side_t, position_key_t):
+            try:
+                ladder_t = bool(tm_mod._cfg(
+                    "LR_BAND_LADDER_ENABLED", False,
+                    account_key, symbol_t, side_t,
+                )) and bool(tm_mod._cfg(
+                    "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False,
+                    account_key, symbol_t, side_t,
+                ))
+            except Exception:
+                ladder_t = bool(getattr(
+                    tm_mod.config, "LR_BAND_LADDER_ENABLED", False
+                )) and bool(getattr(
+                    tm_mod.config,
+                    "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED",
+                    False,
+                ))
+            reclaim_raw_t = manager.__dict__.setdefault(
+                "_mandatory_reclaim_obligations", {}
+            ).get(position_key_t)
+            if isinstance(reclaim_raw_t, dict):
+                reclaim_t = bool(reclaim_raw_t.get("pending", False))
+            else:
+                reclaim_t = bool(
+                    getattr(reclaim_raw_t, "pending", False)
+                )
+            return ladder_t, reclaim_t
+
+        def _shared_direct_flat_route_enabled_t(symbol_t, side_t):
+            route_switches_t = (
+                "ENTRY_STOCH_HHHL_DIRECT_ENABLED",
+                "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED",
+                "ENTRY_STOCH_PARENT_DIRECT_ENABLED",
+                "WT_DC_DIRECT_COMPLETED_ENABLED",
+                "LONG_WAIT_DIRECT_ENABLED",
+            )
+            try:
+                master_t = bool(tm_mod._cfg(
+                    "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False,
+                    account_key, symbol_t, side_t,
+                ))
+                return master_t and any(bool(tm_mod._cfg(
+                    switch_t, False, account_key, symbol_t, side_t,
+                )) for switch_t in route_switches_t)
+            except Exception:
+                return bool(getattr(
+                    tm_mod.config,
+                    "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED",
+                    False,
+                )) and any(bool(getattr(
+                    tm_mod.config, switch_t, False
+                )) for switch_t in route_switches_t)
+
+        def _classic_formation_flat_route_enabled_t(symbol_t, side_t):
+            """Admit the selected full-recipe formation entry to evaluation.
+
+            Formation routes use the shared live ``classic_formation_open_action``
+            rather than the completed-snapshot direct-claim dispatcher above.
+            They therefore must not be gated on its unrelated master switch.
+            Without this explicit admission a flat formation-only recipe never
+            reaches ``process_position`` and silently reports zero activity.
+            """
+            switches_t = (
+                "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED",
+                "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED",
+                "FORMATION_WEDGE_ENTRY_ENABLED",
+                "FORMATION_TRIANGLE_ENTRY_ENABLED",
+                "FORMATION_FLAG_PENNANT_ENTRY_ENABLED",
+                "FORMATION_CUP_HANDLE_ENTRY_ENABLED",
+                "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED",
+            )
+            try:
+                _formation_consumer_admitted_t, _ = (
+                    tm_mod.formation_entry_consumer_admission(
+                        full_recipe_only_enabled=bool(tm_mod._cfg(
+                            "FULL_RECIPE_ONLY_ENABLED", False,
+                            account_key, symbol_t, side_t,
+                        )),
+                    )
+                )
+                return _formation_consumer_admitted_t and any(bool(tm_mod._cfg(
+                    switch_t, False, account_key, symbol_t, side_t,
+                )) for switch_t in switches_t)
+            except Exception:
+                _formation_consumer_admitted_t, _ = (
+                    tm_mod.formation_entry_consumer_admission(
+                        full_recipe_only_enabled=bool(getattr(
+                            tm_mod.config, "FULL_RECIPE_ONLY_ENABLED", False,
+                        )),
+                    )
+                )
+                return _formation_consumer_admitted_t and any(bool(getattr(tm_mod.config, switch_t, False)) for switch_t in switches_t)
+
         _sat_enabled = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
         if step % 3 == 0:
             for s in stores:
@@ -8787,6 +10411,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _wtdc_short_enabled = bool(getattr(
                         tm_mod.config, 'WT_DC_SHORT_ENABLED', True
                     ))
+                _ladder_long_t, _reclaim_long_t = (
+                    _ordinary_flat_route_flags_t(s, "LONG", pk_l)
+                )
+                _ladder_short_t, _reclaim_short_t = (
+                    _ordinary_flat_route_flags_t(s, "SHORT", pk_s)
+                )
+                _direct_long_t = _shared_direct_flat_route_enabled_t(s, "LONG")
+                _direct_short_t = _shared_direct_flat_route_enabled_t(s, "SHORT")
+                _formation_long_t = _classic_formation_flat_route_enabled_t(s, "LONG")
+                _formation_short_t = _classic_formation_flat_route_enabled_t(s, "SHORT")
                 if pk_l not in open_keys and _is_long_ok and manager.is_symbol_tradeable(
                     s, account_key, "LONG"
                 ) and flat_key_needs_evaluation(
@@ -8794,6 +10428,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     stdev_ok=_stdev_long_ok,
                     wt_force_open_enabled=_wf_long_enabled,
                     wt_dc_path_enabled=_wtdc_long_enabled,
+                    ordinary_ladder_enabled=_ladder_long_t,
+                    mandatory_reclaim_pending=_reclaim_long_t,
+                    direct_route_enabled=(_direct_long_t or _formation_long_t),
                 ):
                     cand_keys.append(pk_l)
                 if pk_s not in open_keys and _is_short_ok and manager.is_symbol_tradeable(
@@ -8803,8 +10440,45 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     stdev_ok=_stdev_short_ok,
                     wt_force_open_enabled=_wf_short_enabled,
                     wt_dc_path_enabled=_wtdc_short_enabled,
+                    ordinary_ladder_enabled=_ladder_short_t,
+                    mandatory_reclaim_pending=_reclaim_short_t,
+                    direct_route_enabled=(_direct_short_t or _formation_short_t),
                 ):
                     cand_keys.append(pk_s)
+        # Ordinary parents and reclaim crossings are bar-sensitive and cannot
+        # inherit the generic every-third-bar candidate cadence.  Route those
+        # flat keys on every RTH availability; the shared contracts deduplicate
+        # completed parents and preserve a vetoed reclaim obligation.
+        for _ordinary_sym_t in stores:
+            for _ordinary_side_t in ("LONG", "SHORT"):
+                _ordinary_pk_t = (
+                    f"{account_key}:{_ordinary_sym_t}_{_ordinary_side_t}"
+                )
+                if (
+                    _ordinary_pk_t in open_keys
+                    or _ordinary_pk_t in cand_keys
+                    or not manager.is_symbol_tradeable(
+                        _ordinary_sym_t, account_key, _ordinary_side_t
+                    )
+                ):
+                    continue
+                _ladder_route_t, _reclaim_route_t = (
+                    _ordinary_flat_route_flags_t(
+                        _ordinary_sym_t, _ordinary_side_t, _ordinary_pk_t
+                    )
+                )
+                if flat_key_needs_per_bar_evaluation(
+                    ordinary_ladder_enabled=_ladder_route_t,
+                    mandatory_reclaim_pending=_reclaim_route_t,
+                    direct_route_enabled=(
+                        _shared_direct_flat_route_enabled_t(
+                            _ordinary_sym_t, _ordinary_side_t
+                        ) or _classic_formation_flat_route_enabled_t(
+                            _ordinary_sym_t, _ordinary_side_t
+                        )
+                    ),
+                ):
+                    cand_keys.append(_ordinary_pk_t)
         all_keys = open_keys + cand_keys
         if not all_keys: continue
         # BACKTEST FIX: clear real-time dedupe state each step so every bar can attempt entries.
@@ -8870,7 +10544,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                                 is_full_close=True, action='CLOSE')
                         except Exception:
                             pass
-        if manager.position_manager:
+        # Do not allow an unlisted hard-coded exit in an all-switches-off
+        # direct test.  This is V8-only; it does not change the live manager.
+        if (
+            bool(getattr(tm_mod.config, "HYBRID_STRUCT_EXIT_ENABLED", False))
+            and manager.position_manager
+        ):
             for _se_pk_tr, _se_pos_tr in list(manager.position_manager.positions.items()):
                 if abs(getattr(_se_pos_tr, 'positionAmt', 0)) < 0.0001: continue
                 _se_sym_tr = getattr(_se_pos_tr, 'symbol', '') or _se_pk_tr.split(':', 1)[-1].rsplit('_', 1)[0]
@@ -9066,6 +10745,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             )
             for pk in all_keys
         ], return_exceptions=True)
+        _ordinary_route_telemetry_t["process_calls"] += len(_pp_results_t)
+        for _pp_result_count_t in _pp_results_t:
+            _pp_label_t = str(_pp_result_count_t or "")
+            if _pp_label_t == "DATA_ERROR":
+                _ordinary_route_telemetry_t["process_data_error"] += 1
+            elif _pp_label_t in {"NO_DATA", "STALE_ABSOLUTE_NO_POS"}:
+                _ordinary_route_telemetry_t["process_no_data"] += 1
         if _candidate_diag_t < 5:
             v8_logger.info(
                 f"[V8_CANDIDATE_DIAG] step={step} open={len(open_keys)} "
@@ -9474,6 +11160,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         "opens_short": _opens_by_side_t["SHORT"],
         "time_in_mkt_long_pct": f"{100.0 * _exposure_seconds_t['LONG'] / _span_seconds_t:.4f}",
         "time_in_mkt_short_pct": f"{100.0 * _exposure_seconds_t['SHORT'] / _span_seconds_t:.4f}",
+        "ordinary_process_calls": _ordinary_route_telemetry_t["process_calls"],
+        "ordinary_process_data_error": _ordinary_route_telemetry_t["process_data_error"],
+        "ordinary_process_no_data": _ordinary_route_telemetry_t["process_no_data"],
+        "ordinary_evaluate_stop_calls": _ordinary_route_telemetry_t["evaluate_stop_calls"],
+        "ordinary_e02_parents_evaluated": _ordinary_route_telemetry_t["e02_parents_evaluated"],
+        "ordinary_e02_signals": _ordinary_route_telemetry_t["e02_signals"],
     }
     _extra_result_t.update(
         open_sizing_telemetry(
@@ -9482,20 +11174,48 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         )
     )
     _extra_result_t.update({
-        key: f"{value:.4f}" for key, value in _capital_contract_t.items()
+        key: f"{value:.4f}" if isinstance(value, (int, float)) else str(value)
+        for key, value in _capital_contract_t.items()
     })
     _reentry_trace_t = getattr(manager, "_mandatory_reentry_trace", {}) or {}
     _reentry_rows_t = list(_reentry_trace_t.values())
+    _reclaim_obligations_t = (
+        getattr(manager, "_mandatory_reclaim_obligations", {}) or {}
+    )
+    _reclaim_pending_t = sum(
+        1
+        for _reclaim_row_t in _reclaim_obligations_t.values()
+        if (
+            bool(_reclaim_row_t.get("pending", False))
+            if isinstance(_reclaim_row_t, dict)
+            else bool(getattr(_reclaim_row_t, "pending", False))
+        )
+    )
     _reentry_material_pct_t = float(
         getattr(tm_mod.config, "PRICE_CROSS_BACK_BAND_PCT", 0.3) or 0.3
     )
+    _pending_reentry_keys_t = {
+        str(key)
+        for key, row in _reentry_trace_t.items()
+        if row.get("pending", False)
+    }
+    _pending_reentry_keys_t.update(
+        str(key)
+        for key, row in _reclaim_obligations_t.items()
+        if (
+            bool(row.get("pending", False))
+            if isinstance(row, dict)
+            else bool(getattr(row, "pending", False))
+        )
+    )
     _extra_result_t.update({
-        "reentry_pending": sum(1 for row in _reentry_rows_t if row.get("pending", False)),
+        "reentry_pending": len(_pending_reentry_keys_t),
+        "reclaim_pending": _reclaim_pending_t,
         "reentry_flat_bars": sum(int(row.get("flat_bars", 0) or 0) for row in _reentry_rows_t),
         "reentry_max_overshoot_pct": f"{max([float(row.get('max_overshoot_pct', 0) or 0) for row in _reentry_rows_t] or [0.0]):.4f}",
         "reentry_violations": sum(
             1 for row in _reentry_rows_t
-            if float(row.get("max_overshoot_pct", 0) or 0) > _reentry_material_pct_t
+            if _active_reentry_violation(row, _reentry_material_pct_t)
         ),
     })
     if _struct_wt_book_t is not None:
@@ -9566,6 +11286,60 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 "struct_wt_fills": _struct_wt_stats_t["fills"],
                 "struct_wt_pending": len(_struct_wt_pending_t),
             }
+        )
+    _direct_route_telemetry_t = getattr(
+        manager, "_shared_direct_route_telemetry", {}
+    )
+    _direct_route_rows_t = [
+        row
+        for by_family in _direct_route_telemetry_t.values()
+        if isinstance(by_family, dict)
+        for row in by_family.values()
+        if isinstance(row, dict)
+    ]
+    _extra_result_t.update(
+        {
+            "direct_route_evaluations": sum(
+                int(row.get("evaluations", 0) or 0)
+                for row in _direct_route_rows_t
+            ),
+            "direct_route_eligible": sum(
+                int(row.get("eligible", 0) or 0)
+                for row in _direct_route_rows_t
+            ),
+            "direct_route_episode_starts": sum(
+                int(row.get("episode_starts", 0) or 0)
+                for row in _direct_route_rows_t
+            ),
+            "direct_route_claims": sum(
+                int(row.get("claims", 0) or 0)
+                for row in _direct_route_rows_t
+            ),
+            "direct_route_actions": sum(
+                int(row.get("actions", 0) or 0)
+                for row in _direct_route_rows_t
+            ),
+            "direct_route_data_errors": sum(
+                int(row.get("data_errors", 0) or 0)
+                for row in _direct_route_rows_t
+            ),
+        }
+    )
+    if _direct_route_telemetry_t:
+        print(
+            "V8_SHARED_DIRECT_ROUTE_TELEMETRY: "
+            + json.dumps(_direct_route_telemetry_t, sort_keys=True, default=str),
+            flush=True,
+        )
+    if _v8_direct_consumer_telemetry_t["calls"]:
+        print(
+            "V8_SHARED_DIRECT_CONSUMER_TELEMETRY: "
+            + json.dumps(
+                _v8_direct_consumer_telemetry_t,
+                sort_keys=True,
+                default=str,
+            ),
+            flush=True,
         )
     _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)

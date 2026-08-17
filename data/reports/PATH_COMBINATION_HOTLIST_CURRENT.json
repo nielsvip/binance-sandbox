@@ -1,0 +1,925 @@
+{
+  "generated_at": "2026-08-12T15:05:09.446030Z",
+  "promotion_note": "Vector winners require shared live/V8 adapter audit and exact complete-recipe replay before promotion.",
+  "ranking": "accepted behavior-unique winners ordered by validation alpha vs side-aware B&H",
+  "reported_unresolved_use_bh_count": 56,
+  "rows": [
+    {
+      "action_fingerprint": "42f42723913949ca66dd714f0baafc64c11eb757ad126c493447d337344f9a96",
+      "alpha_vs_bh_pp": 571.0114180182352,
+      "bh_gain_per_month_pct": 1.9995289667548521,
+      "clamp_count": 0,
+      "closes_per_week": 1.401035673187572,
+      "entry_family": "ENTRY_STOCH_HHHL",
+      "entry_params": {
+        "enabled_tfs": [
+          "1h",
+          "4h",
+          "D"
+        ],
+        "min_confirming_tfs": 1,
+        "stoch_threshold": 20.0
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "exit_params": {
+        "arm_timeframe": "4h",
+        "break_buffer_atr": 0.25,
+        "distance_mult": 1.0,
+        "lookback": 10,
+        "mode": "DC",
+        "trail_timeframe": "5m"
+      },
+      "key": "USAR_LONG",
+      "max_drawdown_account_pct": 42.30487727590306,
+      "priority": 1,
+      "source_declared_exact_queue_status": "ELIGIBLE_FOR_EXACT_REPLAY_ADAPTER_UNVERIFIED",
+      "source_receipt": "data/reports/vec_research/capacity_cohort11_long_20260802/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 86.78079743470624,
+      "tim_pct": 54.86266894525436
+    },
+    {
+      "action_fingerprint": "00b9c0cb6fdebc88b1193deedfc7938efc3b4970113960710c40016990c6f0ba",
+      "alpha_vs_bh_pp": 192.72165955960685,
+      "bh_gain_per_month_pct": 1.1066052074512758,
+      "clamp_count": 0,
+      "closes_per_week": 1.0934912571220075,
+      "entry_family": "ENTRY_BOUNCE_5M_LOW",
+      "entry_params": {
+        "confirmation": "none",
+        "distance": 0.025,
+        "recovery_only": false,
+        "timeframe": "5m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "exit_params": {
+        "arm_timeframe": "4h",
+        "break_buffer_atr": 0.25,
+        "distance_mult": 1.25,
+        "lookback": 20,
+        "mode": "ATR",
+        "trail_timeframe": "5m"
+      },
+      "key": "MOS_SHORT",
+      "max_drawdown_account_pct": 34.11338670848742,
+      "priority": 2,
+      "source_declared_exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "source_receipt": "data/reports/vec_research/capacity_failed_retry_14_short_20260802/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 29.72107112377095,
+      "tim_pct": 78.87350000082127
+    },
+    {
+      "action_fingerprint": "757c90faabccf4b4f588d9ac84c02ae91eff0e7e56a97c1f6ac0607d3a75f62c",
+      "alpha_vs_bh_pp": 114.92304210675258,
+      "bh_gain_per_month_pct": 4.0467363514919965,
+      "clamp_count": 0,
+      "closes_per_week": 1.025148053551882,
+      "entry_family": "ENTRY_LONG_WAIT_ENABLED",
+      "entry_params": {
+        "bounce_distance": 0.015,
+        "bounce_timeframe": "15m",
+        "confirmation": "stoch5",
+        "deep_k4h": 50.0,
+        "turn_k1h": 40.0
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "exit_params": {
+        "arm_timeframe": "15m",
+        "break_buffer_atr": 0.25,
+        "distance_mult": 1.25,
+        "lookback": 20,
+        "mode": "ATR",
+        "trail_timeframe": "15m"
+      },
+      "key": "RDDT_SHORT",
+      "max_drawdown_account_pct": 32.83863299852882,
+      "priority": 3,
+      "source_declared_exact_queue_status": "ELIGIBLE_FOR_EXACT_REPLAY_ADAPTER_UNVERIFIED",
+      "source_receipt": "data/reports/vec_research/capacity_cohort14_short_20260802/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 21.110005103317757,
+      "tim_pct": 57.18215434610915
+    },
+    {
+      "action_fingerprint": "b1956c19cc7d07223c75673f1a3f3e8dc52e97c7aab65ac758282662ce24bada",
+      "alpha_vs_bh_pp": 63.73391803728083,
+      "bh_gain_per_month_pct": 3.1549631064254116,
+      "clamp_count": 0,
+      "closes_per_week": 1.0593196553369446,
+      "entry_family": "ENTRY_BOUNCE_15M_LOW",
+      "entry_params": {
+        "confirmation": "none",
+        "distance": 0.015,
+        "recovery_only": false,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "exit_params": {
+        "arm_timeframe": "1h",
+        "break_buffer_atr": 0.5,
+        "distance_mult": 1.0,
+        "lookback": 80,
+        "mode": "DC",
+        "trail_timeframe": "5m"
+      },
+      "key": "AAPL_LONG",
+      "max_drawdown_account_pct": 34.13493858605639,
+      "priority": 4,
+      "source_declared_exact_queue_status": "ELIGIBLE_FOR_EXACT_REPLAY_ADAPTER_UNVERIFIED",
+      "source_receipt": "data/reports/vec_research/capacity_cohort16_nearmiss_long_20260802/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 12.617895449155828,
+      "tim_pct": 50.93197053804843
+    },
+    {
+      "action_fingerprint": "19fc1c91474eb52d8369751d64a8893767432174c696e0873105eb289c186b7b",
+      "alpha_vs_bh_pp": 35.79270848636303,
+      "bh_gain_per_month_pct": 0.001257564604404314,
+      "clamp_count": 0,
+      "closes_per_week": 1.0934912571220075,
+      "entry_family": "ENTRY_BOUNCE_15M_LOW",
+      "entry_params": {
+        "confirmation": "none",
+        "distance": 0.015,
+        "recovery_only": false,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "exit_params": {
+        "arm_timeframe": "15m",
+        "break_buffer_atr": 0.0,
+        "distance_mult": 4.0,
+        "lookback": 20,
+        "mode": "STDEV",
+        "trail_timeframe": "5m"
+      },
+      "key": "GOOGL_LONG",
+      "max_drawdown_account_pct": 22.54801163304378,
+      "priority": 5,
+      "source_declared_exact_queue_status": "ELIGIBLE_FOR_EXACT_REPLAY_ADAPTER_UNVERIFIED",
+      "source_receipt": "data/reports/vec_research/capacity_cohort11_long_20260802/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 5.315601781939403,
+      "tim_pct": 56.37991369790857
+    },
+    {
+      "action_fingerprint": "3eda2b4ed648f8d8a967cc60da8f5e0f5594f545bbb8f2d9275e877a041c7d7d",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -2.601685907579321,
+      "clamp_count": null,
+      "closes_per_week": 2.0795449521816654,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "AAPL_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 6,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 0.22743569101263594,
+      "tim_pct": 12.20878
+    },
+    {
+      "action_fingerprint": "847094b61d5c19372faf82bd846f0594fc0a8801552b92693a1dd83ec74a0519",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 2.1439758962501805,
+      "clamp_count": null,
+      "closes_per_week": 2.5860253896170913,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "AEM_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 7,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 13.142902757929695,
+      "tim_pct": 11.193843
+    },
+    {
+      "action_fingerprint": "77ca8241d5ce5d1bfe80d988406fe36d6355de4076e3039d0293c314ed9344db",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -1.836174856079808,
+      "clamp_count": null,
+      "closes_per_week": 1.071264096357088,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "AGCO_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 8,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 5.930278384966562,
+      "tim_pct": 9.96487
+    },
+    {
+      "action_fingerprint": "57ffd54e1993af4612c0881457b9974b5add9137c50f1a665fc9717b52817d5b",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 2.6228997674391064,
+      "clamp_count": null,
+      "closes_per_week": 4.872292139467712,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "AGI_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 9,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 15.456284145540076,
+      "tim_pct": 9.637773
+    },
+    {
+      "action_fingerprint": "5ab79b750f4e4f2c0d249f5efa1f0c9d4c154126c873708fa53ef025d34b3fb9",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -0.8756683259951926,
+      "clamp_count": null,
+      "closes_per_week": 1.9310060270258322,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "AG_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 10,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 0.1044963335610062,
+      "tim_pct": 6.448476
+    },
+    {
+      "action_fingerprint": "018f6b18314900862f21a7eb349ca8bad73b52313bf6a6a3ae81c1d14857d81b",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 1.43824322460887,
+      "clamp_count": null,
+      "closes_per_week": 3.5059319411079835,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "1h"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "1h"
+      },
+      "key": "ALB_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 11,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 7.776992834268679,
+      "tim_pct": 9.874287
+    },
+    {
+      "action_fingerprint": "e96c1e6415d281adcd1041874c606ccbc1bef71c2c1fd742b0041db93774ee5a",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -12.879414789405642,
+      "clamp_count": null,
+      "closes_per_week": 1.2406153846153845,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_CUP_HANDLE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "AMAT_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 12,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 3.026190874974576,
+      "tim_pct": 3.705188
+    },
+    {
+      "action_fingerprint": "7fb1caf5277ca1802175c965f086e0ce840fe09704436f530b004f57dab558e6",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 0.8597968216105598,
+      "clamp_count": null,
+      "closes_per_week": 2.5567910337708306,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "AXON_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 13,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 17.73454260207325,
+      "tim_pct": 16.003539
+    },
+    {
+      "action_fingerprint": "7338f7f49aa7646710ac6867a8d248348d759ede781fd459ce349e0ccf5e7e5e",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 7.278169669959402,
+      "clamp_count": null,
+      "closes_per_week": 0.520340125324424,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "COE_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 14,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 10.230337574557215,
+      "tim_pct": 4.069459
+    },
+    {
+      "action_fingerprint": "bc993522d04af6bec685c7c995f08b9874ce7b12195ff0d48e4c8c75e59233d0",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 1.1948029541153786,
+      "clamp_count": null,
+      "closes_per_week": 2.554869512680332,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "DIS_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 15,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 1.4956834723771766,
+      "tim_pct": 12.002476
+    },
+    {
+      "action_fingerprint": "96718cf3639efe413e46a5dc4e0b190b7915b928286b57c5556bc0babc41e770",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 1.2326389608756811,
+      "clamp_count": null,
+      "closes_per_week": 3.297564138459498,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_CUP_HANDLE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "GDX_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 16,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 2.8689331478520095,
+      "tim_pct": 10.49793
+    },
+    {
+      "action_fingerprint": "06ea63c0ab41fae7ae452191c0aec6ecc1999f28de46d7188f4e018a4c4101f4",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 1.1336090456275032,
+      "clamp_count": null,
+      "closes_per_week": 2.1126773036560342,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "HII_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 17,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 4.758352426776726,
+      "tim_pct": 6.078139
+    },
+    {
+      "action_fingerprint": "be6b2c6c3f7199a80b38ef542216d480ae65e6734560a9376b06dada27b7e9c7",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 3.647166609100717,
+      "clamp_count": null,
+      "closes_per_week": 3.2581348032495923,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "IBIT_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 18,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 5.542004271050166,
+      "tim_pct": 11.271122
+    },
+    {
+      "action_fingerprint": "62854706ad71254f0b027f2a8e9f1238ae890792f736679ccd3def4f4191116b",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 6.375624315603795,
+      "clamp_count": null,
+      "closes_per_week": 1.960713812056999,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_WEDGE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "LAC_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 19,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 8.672971785580046,
+      "tim_pct": 30.068817
+    },
+    {
+      "action_fingerprint": "d978737919cd8d43bd17d944991d3431f6faeae6b304f378ba4bbba5fce23955",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 5.332051505345654,
+      "clamp_count": null,
+      "closes_per_week": 2.67816024089272,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_CUP_HANDLE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "LDOS_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 20,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 13.959196170014575,
+      "tim_pct": 17.20346
+    },
+    {
+      "action_fingerprint": "5a62c96e9b1bd2ef39c2e92c21aff5284a1e2440c5eacc5e928bc954bae0024a",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -0.29000723481289337,
+      "clamp_count": null,
+      "closes_per_week": 3.2084880636604773,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "1h"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "1h"
+      },
+      "key": "NEM_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 21,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 3.998359766007904,
+      "tim_pct": 7.913351
+    },
+    {
+      "action_fingerprint": "6802d964449bf05d9f69e34e1b99da338ef1b8e7dff436d64061e08bd4f6205d",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 0.6913314810899392,
+      "clamp_count": null,
+      "closes_per_week": 1.664911737379994,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "NOC_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 22,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 4.508857928252925,
+      "tim_pct": 7.236503
+    },
+    {
+      "action_fingerprint": "285c795e0c7d080f6c5b3b2a7fa2a6ccf2fb75c28226514b5261082ca38476a5",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -0.31469627921962456,
+      "clamp_count": null,
+      "closes_per_week": 3.2701212139086326,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "NXE_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 23,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 12.479723326585429,
+      "tim_pct": 13.644675
+    },
+    {
+      "action_fingerprint": "de33fb6636b4fa82e765455461bdafd381336baa21df608aafdc89237fd6653f",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 4.268561496947986,
+      "clamp_count": null,
+      "closes_per_week": 2.529373560843125,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "1h"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "1h"
+      },
+      "key": "OLED_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 24,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 4.607827495839812,
+      "tim_pct": 9.178131
+    },
+    {
+      "action_fingerprint": "274c37c181ffae4c89bb54a4d7e1a83186e02bb6688a2fa720ec600891a5d5cd",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 5.533043339178744,
+      "clamp_count": null,
+      "closes_per_week": 5.258277950516497,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "ORCL_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 25,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_positive_combo_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 12.95247970177245,
+      "tim_pct": 21.989066
+    },
+    {
+      "action_fingerprint": "cacb8caf126f68d2cdfb708f6bb60d9fe2a75bafa22c37b6485c49185085d1b7",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 0.7651547494370614,
+      "clamp_count": null,
+      "closes_per_week": 0.4622527944969906,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "QRVO_LONG",
+      "max_drawdown_account_pct": null,
+      "priority": 26,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 6.8617402808820485,
+      "tim_pct": 2.808828
+    },
+    {
+      "action_fingerprint": "2f53591068bac65842cf397ca194d8de01cfe3c613ca94f68beda5e18d1152c7",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 0.373213574267159,
+      "clamp_count": null,
+      "closes_per_week": 2.4081048797392755,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "15m"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "15m"
+      },
+      "key": "RGLD_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 27,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 5.360283173103766,
+      "tim_pct": 7.762752
+    },
+    {
+      "action_fingerprint": "9f0640760fe061fc7c79735582278d19ff3dac1a2299313a8df18d6c9834e3bf",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": 1.138322073833225,
+      "clamp_count": null,
+      "closes_per_week": 2.1717085263996694,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_CUP_HANDLE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "TDG_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 28,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 4.7894852238451575,
+      "tim_pct": 6.107783
+    },
+    {
+      "action_fingerprint": "1c7b673be849ae82f7b2e3ca176f66c179379c923f9231ce773283123889f1d5",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -5.21054327084104,
+      "clamp_count": null,
+      "closes_per_week": 2.2888823355942196,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_DOUBLE_TOP_BOTTOM",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "TECK_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 29,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 6.196268438141842,
+      "tim_pct": 8.24683
+    },
+    {
+      "action_fingerprint": "8b97915b1185a44092e37a1d86a7dea99d47782cfc7bebafad1e55416033af48",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -2.158420997190098,
+      "clamp_count": null,
+      "closes_per_week": 1.9019428638816005,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_HEAD_SHOULDERS",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "VALE_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 30,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 0.6870267191756567,
+      "tim_pct": 9.444559
+    },
+    {
+      "action_fingerprint": "40af7b4bbafe1d12714b9a45ece1c166d2c3c30dff88c17e106a4f49c4050c15",
+      "alpha_vs_bh_pp": null,
+      "bh_gain_per_month_pct": -0.10951576552825826,
+      "clamp_count": null,
+      "closes_per_week": 3.1490716180371354,
+      "entry_family": "ENTRY_CLASSIC_FORMATION_CUP_HANDLE",
+      "entry_params": {
+        "min_score": 0.65,
+        "position_size_mult": 1.0,
+        "timeframe": "ALL"
+      },
+      "exact_queue_status": "NOT_DISPATCHED_ADAPTER_UNVERIFIED",
+      "exit_family": "EXIT_CLASSIC_FORMATION_TREND_STRUCTURE",
+      "exit_params": {
+        "exit_min_gain_pct": 0.0,
+        "min_score": 0.65,
+        "timeframe": "ALL"
+      },
+      "key": "WPM_SHORT",
+      "max_drawdown_account_pct": null,
+      "priority": 31,
+      "source_declared_exact_queue_status": null,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "strategy_gain_per_month_pct": 9.102419411368846,
+      "tim_pct": 6.858238
+    }
+  ],
+  "schema": "trb-path-combination-hotlist-v1",
+  "source_receipt_sha256": {
+    "data/reports/vec_research/capacity_cohort10_long_20260802/campaign_receipt.json": "5880232249106581730dc6adfb7b13321522f8546b25047a83247f79ccbd3b97",
+    "data/reports/vec_research/capacity_cohort10_short_20260802/campaign_receipt.json": "eaadb6c170c86c33ddc648e1d0237d68dd411dc20b04df95ad58844efef10ecb",
+    "data/reports/vec_research/capacity_cohort11_long_20260802/campaign_receipt.json": "d5294d2c25ce1a72f6537376e5c99fdd2a4f6f0df5a1d787ae20154b972011f4",
+    "data/reports/vec_research/capacity_cohort11_short_20260802/campaign_receipt.json": "024a3674965ff97c6da91758801f00d35bddee4d4a64b07ca32e1638ebaabce7",
+    "data/reports/vec_research/capacity_cohort12_long_20260802/campaign_receipt.json": "7a7db526a1c77a2c1c8b45cd18682a453bbf24f3b90e39ff9e9ed13ed550dcaa",
+    "data/reports/vec_research/capacity_cohort12_short_20260802/campaign_receipt.json": "6b1ffd0ea90b0a32af8a5627b0d450d865bb679d00fc0bc74420333f312803bf",
+    "data/reports/vec_research/capacity_cohort13_long_20260802/campaign_receipt.json": "e7ae35060965603e495c28245c0c04567a6dba3857cd65d0d2188bd62963a170",
+    "data/reports/vec_research/capacity_cohort13_short_20260802/campaign_receipt.json": "c394106335e3728622ff5e8cb3f842f7267ba8b5570095356930b876a870658c",
+    "data/reports/vec_research/capacity_cohort14_long_20260802/campaign_receipt.json": "0e8dd80fcf1f58f8b1f86a2ecd05a64ea6b6de2ef481ae3898274d1f8d31c43a",
+    "data/reports/vec_research/capacity_cohort14_short_20260802/campaign_receipt.json": "4a0c3abc8f9144d86a5723dbe84ded186b4c99ce2a6af8b96242f2b5dbb32897",
+    "data/reports/vec_research/capacity_cohort15_refine_long_20260802/campaign_receipt.json": "a82b025d34ce5eb664ae0cd7a74ed3ef9d70ec8e8d04463d004d8d6baf70d1d6",
+    "data/reports/vec_research/capacity_cohort15_refine_short_20260802/campaign_receipt.json": "1eb872436c4f55e8bcba8de48c9cdc455a6265d6bcfb99dd18964c020cdcd9f8",
+    "data/reports/vec_research/capacity_cohort16_nearmiss_long_20260802/campaign_receipt.json": "82321c05d525e231cfa6cfb0daf295388fc30d042d7529f52c4864282ac1d6f1",
+    "data/reports/vec_research/capacity_cohort16_nearmiss_short_20260802/campaign_receipt.json": "ff9e7e369748f62e22c0f73cebeed3699f7378a0d8f3e6737534f44ffad4c53a",
+    "data/reports/vec_research/capacity_cohort17_nearmiss_long_20260802/campaign_receipt.json": "70baa19f7a7a370e849c0fca2882266454535f5729c19a605e13d80be622b49f",
+    "data/reports/vec_research/capacity_cohort17_nearmiss_short_20260802/campaign_receipt.json": "13755307b220e258f4b9518801acc8af1738c3f3f9c4179a7a867e826e74dfaf",
+    "data/reports/vec_research/capacity_cohort6_long_20260802/campaign_receipt.json": "77fb8f72ca318e3b39ac231c69019300f549d06646ba4311acc1bcfd28c6be59",
+    "data/reports/vec_research/capacity_cohort6_short_20260802/campaign_receipt.json": "ff0905558efc259d0de243f8900a72b23f642c98aa01b2d7e04423b837239683",
+    "data/reports/vec_research/capacity_cohort7_long_20260802/campaign_receipt.json": "dabd91397555165204d2860fef55d835f547a6772821154161f4147cd0df935f",
+    "data/reports/vec_research/capacity_cohort7_short_20260802/campaign_receipt.json": "abbdc0e3c6c4625be4b74049fad3bf55d602f0e2a3823a99cf1c45d987714954",
+    "data/reports/vec_research/capacity_cohort8_long_20260802/campaign_receipt.json": "da8fb1440c53e652e1675881dc255281b026253e8a7da460e8fa1ef689d10d1f",
+    "data/reports/vec_research/capacity_cohort8_short_20260802/campaign_receipt.json": "e2e9f75e3edc68b1806c2249d03366b55f016fe981372dbcf8e8982b00b538e6",
+    "data/reports/vec_research/capacity_cohort9_long_20260802/campaign_receipt.json": "3bcfecc93eb627c96c81d4ab948fbc997392a8b9dac7e3557465fb5297ca80fd",
+    "data/reports/vec_research/capacity_cohort9_short_20260802/campaign_receipt.json": "924ddf2c6dc90db91d8a3dcf054036f4ec228dc15a74401b0848a08612170282",
+    "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v2_20260803/campaign_receipt.json": "86e137965e223e5d27769984a8210ca10f67944f8fd5d408448e662e0b0b0775",
+    "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json": "68fbfc37e3d61a66f675cfa8d7a4c7e9bf54a2c838179403c9023f9877f17f38",
+    "data/reports/vec_research/capacity_cohort_classic_formations_positive_combo_20260803/campaign_receipt.json": "56ec95b821fe3638f900c28f6f671cc90476119efe6b9c49b9102131e5ed66a6",
+    "data/reports/vec_research/capacity_failed_retry_01_long_20260802/campaign_receipt.json": "335d6d470dc0a4de47db917f33c9cf13a6ebbd25cff40dbd757163eea89ecb31",
+    "data/reports/vec_research/capacity_failed_retry_02_short_20260802/campaign_receipt.json": "9304383410e02272754fff4d422638616783305076f37d7c1fc8961769c883b5",
+    "data/reports/vec_research/capacity_failed_retry_03_long_20260802/campaign_receipt.json": "4d02afcadab754101136930327dc9e1f40333a56900a833a04d669799a3c0fdd",
+    "data/reports/vec_research/capacity_failed_retry_04_short_20260802/campaign_receipt.json": "5830183e3ca8030e3437278a46448c4dc2c63b00d18bc664aa2fbfaab3129885",
+    "data/reports/vec_research/capacity_failed_retry_05_long_20260802/campaign_receipt.json": "7858537226c05c243dd499570853a607cf70154a1f97737ab4813bd2fa3ea54c",
+    "data/reports/vec_research/capacity_failed_retry_06_short_20260802/campaign_receipt.json": "440942d3ab83678bb24e37a70c63a83ce218f1814666c088f7ecbde3756e6b94",
+    "data/reports/vec_research/capacity_failed_retry_07_long_20260802/campaign_receipt.json": "bbbc25391664d845f5bb50cdcd9a88a5b87d1deecad96bb4ffaeefb5a32e15cb",
+    "data/reports/vec_research/capacity_failed_retry_08_short_20260802/campaign_receipt.json": "99918369ca5549f7ebbf26492f77e753b457e7cd02d5351f7fc260076a44a466",
+    "data/reports/vec_research/capacity_failed_retry_09_long_20260802/campaign_receipt.json": "9083fb5e652cc1f9e3ae13894b00f220bf08675142025c7cf29005df2a45f4df",
+    "data/reports/vec_research/capacity_failed_retry_10_short_20260802/campaign_receipt.json": "dbb8dbc40f609787be562a52b2b9807ea5c8e1714f45c0bded31a329ebc9b291",
+    "data/reports/vec_research/capacity_failed_retry_11_long_20260802/campaign_receipt.json": "09939c4e974eb41b4e26b31d19f15d3ddd3377aff731d518b9041aa4a54a79e1",
+    "data/reports/vec_research/capacity_failed_retry_12_short_20260802/campaign_receipt.json": "b4d91193cbec399f836fcf5d3974ae3093ab215101505189f10fabdcf68ff795",
+    "data/reports/vec_research/capacity_failed_retry_13_long_20260802/campaign_receipt.json": "b81436898c72a6e2d691865b04ebb2b93508f1ac062a35c4fff2f808db0d8a50",
+    "data/reports/vec_research/capacity_failed_retry_14_short_20260802/campaign_receipt.json": "60cfff69b2b2ae887715668e83722a6014fac291f944ef88e323ab222562e1a6",
+    "data/reports/vec_research/capacity_failed_retry_15_long_20260802/campaign_receipt.json": "77691479044afbe34127be73fdf135436c81577bb47eb4082cbf68a270fadedd",
+    "data/reports/vec_research/capacity_failed_retry_16_short_20260802/campaign_receipt.json": "249a053b5f55b89fff95efbaf60f94f3112a528d05c80c0fb7616282d1e5a6ee",
+    "data/reports/vec_research/capacity_failed_retry_17_long_20260802/campaign_receipt.json": "e3ed18876f21ae89320316c1109ffc4851aaa4aa45a20a913859b6d312b43eb1",
+    "data/reports/vec_research/capacity_failed_retry_18_short_20260802/campaign_receipt.json": "40d48edcdc9ecdae26a175ea5fbc7578494dd080ca41a6ef83cda3884884adcb",
+    "data/reports/vec_research/capacity_promising_combo_long_01_20260802/campaign_receipt.json": "30186dacf837f2576234452f78f108c053d1bfbfbc1f2aefa2a5c053087cd204",
+    "data/reports/vec_research/capacity_promising_combo_long_01_readonly_retry_20260802/campaign_receipt.json": "70852c1d54921951e5b5a23933bec3cfb668fb96622b90c773be9b4da7378531",
+    "data/reports/vec_research/capacity_promising_combo_short_01_20260802/campaign_receipt.json": "1fce16cac6e032df902788a90f004c072beb35d0f66c729c4da2aef37dae2329",
+    "data/reports/vec_research/capacity_promising_combo_short_02_20260802/campaign_receipt.json": "fe0893c59b469a9f3b0f2084ad77078877dce7056f617e4a58cccebb7769b22f",
+    "data/reports/vec_research/classic_formations_gate_aware_source_v4_20260803/holdout/campaign_receipt.json": "ae96de97ba1fde717b897db6d079e9c8aa9a0f61b3fc1899c3c4c40a11c1eab0",
+    "data/reports/vec_research/classic_formations_gate_aware_source_v4_20260803/holdout_sealed115/campaign_receipt.json": "d668fb99cfb75a6124d49a06f4f2cc5f2b1637758007c11c0f30017779f2d830",
+    "data/reports/vec_research/classic_formations_gate_aware_source_v4_20260803/train/campaign_receipt.json": "f8a8f173af67f9fd52289e2e6bad0ba21ced4915aef0f90a7b13a2338328511a"
+  },
+  "winner_count": 31
+}

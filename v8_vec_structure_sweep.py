@@ -651,7 +651,11 @@ def main():
                     help="Use 6-cell smoke grid (Mac small test).")
     ap.add_argument("--account", default="struct_sweep")
     ap.add_argument("--out-label", default=None)
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="v8_vec_structure_sweep.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
     if args.smoke or args.grid == "smoke":
         grid = smoke_grid(args.mode)

@@ -1,0 +1,47 @@
+{
+  "append_only_evidence_semantics": true,
+  "archive": "data/reports/PILOT_V8_CELLS_IMMUTABLE.jsonl",
+  "archive_sha256": "775727650cb84bd54948351f6d673f32c12928d921bb43185703f1e28750804e",
+  "by_key": {
+    "ACN_SHORT": {
+      "PASS_UNIQUE_NONZERO": 12,
+      "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 196
+    },
+    "MU_LONG": {
+      "PASS_UNIQUE_NONZERO": 98,
+      "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 1150
+    },
+    "NVDA_LONG": {
+      "PASS_UNIQUE_NONZERO": 22,
+      "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 94
+    },
+    "TTD_SHORT": {
+      "PASS_UNIQUE_NONZERO": 20,
+      "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 155
+    },
+    "VT_LONG": {
+      "PASS_UNIQUE_NONZERO": 110,
+      "REJECT_DUPLICATE_WITHIN_SYMBOL_SIDE": 1887
+    }
+  },
+  "generated_at_epoch": 1785714031.541646,
+  "historical_metric_precision": "AS_STORED_IN_SOURCE_DB; legacy rows may be four-decimal persisted",
+  "latest_logical_rows": 3744,
+  "physical_display_pass_rows": 262,
+  "physical_duplicate_within_symbol_side_allowed": false,
+  "physical_zero_allowed": false,
+  "pilots": [
+    "MU_LONG",
+    "NVDA_LONG",
+    "VT_LONG",
+    "TTD_SHORT",
+    "ACN_SHORT"
+  ],
+  "precedence": "CURRENT_C5_ENGINE>RECOVERED_HISTORICAL_V8_DB>PRESERVED_WORKBOOK>VECTOR",
+  "promotion_allowed": false,
+  "raw_engine_rows_read": 5121,
+  "schema": "pilot-v8-cell-immutable-receipt-v1",
+  "source": "S1:param_results_stocks.db:param_cells",
+  "source_db_path": "/home/niels/binance-sandbox/data/param_results_stocks.db",
+  "status": "PASS"
+}

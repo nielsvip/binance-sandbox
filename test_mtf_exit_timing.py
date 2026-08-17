@@ -1,4 +1,5 @@
 from mtf_exit_timing import (
+    dc_reject_step,
     effective_mtf_min_open_ts,
     event_within_lookback,
     indicator_event_timestamp,
@@ -60,3 +61,67 @@ def test_dc_rejection_lookback_expires_at_selected_tf_boundary():
 
 def test_missing_event_timestamp_never_arms_rejection():
     assert not event_within_lookback(1_672_531_200.0, 0, 5, "1h")
+
+
+def test_dc_reject_step_is_side_mirrored_and_recrosses_on_later_tick():
+    now = 1_672_531_200.0
+    short_state, short_fire = dc_reject_step(
+        0,
+        now_ts=now,
+        price=89,
+        band=90,
+        lookback_bars=5,
+        timeframe="1h",
+        is_long=False,
+    )
+    assert short_state == now
+    assert not short_fire
+    short_state, short_fire = dc_reject_step(
+        short_state,
+        now_ts=now + 300,
+        price=91,
+        band=90,
+        lookback_bars=5,
+        timeframe="1h",
+        is_long=False,
+    )
+    assert short_state == 0
+    assert short_fire
+
+    long_state, long_fire = dc_reject_step(
+        0,
+        now_ts=now,
+        price=111,
+        band=110,
+        lookback_bars=5,
+        timeframe="1h",
+        is_long=True,
+    )
+    assert long_state == now
+    assert not long_fire
+    long_state, long_fire = dc_reject_step(
+        long_state,
+        now_ts=now + 300,
+        price=109,
+        band=110,
+        lookback_bars=5,
+        timeframe="1h",
+        is_long=True,
+    )
+    assert long_state == 0
+    assert long_fire
+
+
+def test_dc_reject_step_clears_an_expired_arm():
+    outside = 1_672_531_200.0
+    state, fire = dc_reject_step(
+        outside,
+        now_ts=outside + 5 * 3600 + 1,
+        price=91,
+        band=90,
+        lookback_bars=5,
+        timeframe="1h",
+        is_long=False,
+    )
+    assert state == 0
+    assert not fire

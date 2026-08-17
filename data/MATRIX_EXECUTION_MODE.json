@@ -1,0 +1,12 @@
+{
+  "schema": "matrix-execution-mode-v1",
+  "effective_at": "2026-08-02T01:28:00Z",
+  "global_pause": false,
+  "discovery_mode": "VECTOR_LIFECYCLE",
+  "discovery_workers": 6,
+  "legacy_scalar_watchdogs": "RETIRED_IDLE",
+  "exact_v8_mode": "FINALIST_COMPLETE_RECIPES_ONLY",
+  "exact_v8_max_recipes_per_key": 2,
+  "live_write_allowed": false,
+  "operator_instruction": "Advance with bounded vector lifecycle discovery; use V8 only after complete winners are clear."
+}

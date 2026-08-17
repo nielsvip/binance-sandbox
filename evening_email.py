@@ -31,14 +31,27 @@ from xml.etree import ElementTree
 
 BASE = Path("/Users/niels/Documents/binance") if platform.system() == "Darwin" else Path("/home/niels/binance")
 sys.path.insert(0, str(BASE))
+sys.path.insert(0, str(BASE / "tools"))
+import direct_v8_digest as direct_results  # noqa: E402
 DATA_DIR = BASE / "data"
 DECISIONS_DIR = DATA_DIR / "decisions"
 TRADIER_DIR = DATA_DIR / "tradier"
-# USER 2026-07-29: S1 now runs ONLY SWITCH_MATRIX_TRB work + email digests. This script's
-# own tree (/home/niels/binance) has no matrix data of its own -- the matrix lives in the
-# separate binance-sandbox tree on the same host, so the canonical counter is run there in
-# place (no ssh needed, same box) rather than re-implemented here as a second/competing count.
+# The active research result section is supplied by direct_v8_digest.py.  The
+# old matrix helpers below remain callable for forensic compatibility but are
+# not inserted into the evening email payload.
 SANDBOX_MATRIX_GUARD = Path(os.environ.get("MATRIX_GUARD_PATH", "/home/niels/binance-sandbox/tools/matrix_guard.py"))
+MATRIX_REPORTING_ROOT = Path(
+    os.environ.get(
+        "MATRIX_REPORTING_ROOT",
+        str(SANDBOX_MATRIX_GUARD.parent.parent)
+        if SANDBOX_MATRIX_GUARD.exists()
+        else str(BASE),
+    )
+)
+sys.path.insert(0, str(MATRIX_REPORTING_ROOT / "tools"))
+import current_matrix_reporting  # noqa: E402
+
+MATRIX_GUARD_TIMEOUT_SECONDS = 180
 TO_EMAIL = "nielsvip@gmail.com"
 FROM_EMAIL = "nielsvip@gmail.com"
 PUBLIC_RECIPIENTS = [
@@ -523,8 +536,7 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed, trb_closed):
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
 <h1>Evening Recap &mdash; {now_et.strftime('%A, %B %d %Y')} &middot; Market Close</h1>
 
-<h2>MATRIX FILL PROGRESS (canonical &mdash; tools/matrix_guard.py)</h2>
-{build_matrix_progress_section()}
+{direct_results.render_section(direct_results.snapshot(), title="DIRECT-V8 RESULTS — CURRENT EVENING SNAPSHOT")}
 
 <h2>Market Close</h2>
 {build_market_close(market_quotes)}
@@ -583,21 +595,44 @@ def send_email(html_body, to=None, subject=None):
 def build_matrix_progress_section():
     """Canonical SWITCH_MATRIX_TRB fill progress, reused verbatim from
     tools/matrix_guard.py (binance-sandbox) -- never a second/competing counter."""
-    if not SANDBOX_MATRIX_GUARD.exists():
-        return "<p class='r'>matrix_guard.py not found at %s (not on this host).</p>" % SANDBOX_MATRIX_GUARD
+    guard = SANDBOX_MATRIX_GUARD
+    if not guard.exists():
+        local_guard = BASE / "tools" / "matrix_guard.py"
+        if local_guard.exists():
+            guard = local_guard
+        else:
+            return "<p class='r'>matrix_guard.py not found at %s (not on this host).</p>" % SANDBOX_MATRIX_GUARD
     try:
-        proc = subprocess.run([sys.executable, str(SANDBOX_MATRIX_GUARD)],
-                               cwd=str(SANDBOX_MATRIX_GUARD.parent.parent),
-                               capture_output=True, text=True, timeout=60)
+        proc = subprocess.run([sys.executable, str(guard)],
+                               cwd=str(guard.parent.parent),
+                               capture_output=True, text=True,
+                               timeout=MATRIX_GUARD_TIMEOUT_SECONDS)
         body = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
         body = body.strip() or "matrix_guard.py produced no output (exit=%s)" % proc.returncode
     except Exception as e:
         body = "matrix_guard.py failed to run: %s" % e
     import html as _html_lib
-    return ("<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
-            "<p><b>Live promotion status:</b> 0 matrix-derived configs are currently deployed to any "
-            "live trb/trc override -- the EOD positions above run on pre-existing configs, NOT matrix output.</p>"
-            ) % _html_lib.escape(body)
+    historical = BASE / "data" / "reports" / "SWITCH_MATRIX_TRB_HISTORICAL_INTEGRATION_20260801.md"
+    historical_note = ""
+    if historical.exists():
+        historical_note = "<p>Historical BASELINE_V2_S4H rows are integrated only through the provenance sidecar; they are not current exact evidence.</p>"
+    return (
+        "<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
+        "%s"
+        "<p>The guard reports matrix coverage only. Live promotion state is "
+        "reported from active configuration metadata, never inferred from a "
+        "filled-cell count.</p>"
+    ) % (_html_lib.escape(body), historical_note)
+
+
+def build_current_matrix_results_section():
+    try:
+        return current_matrix_reporting.html_section(MATRIX_REPORTING_ROOT)
+    except Exception as exc:
+        return (
+            "<p class='r'>Current c5 exact-result report failed closed: %s</p>"
+            % exc
+        )
 
 
 def build_public_evening_html(market_quotes, tra_data, trb_data):

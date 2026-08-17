@@ -1,0 +1,361 @@
+{
+  "campaign": "stocks_repaired_20260730_c5",
+  "canonical_db_writes": false,
+  "canonical_matrix_writes": false,
+  "contract_scope": "c5-current-only",
+  "contract_version": "tradier-matrix-exec-c5-20260730",
+  "exact_engine_legs": 22,
+  "excluded_prior_evidence": [
+    {
+      "classification": "WRONG_SIDE_INAPPLICABLE",
+      "evidence_scope": "NVDA_LONG/VT_LONG c4 collision rows",
+      "param": "STRUCTURAL_RANGE_SHIFT_K_LOW",
+      "reason": "K_LOW is consumed only by the SHORT structural range-bottom branch.",
+      "scheduled_exact_legs": 0
+    }
+  ],
+  "generated_at": "2026-07-31T00:33:27.787269+00:00",
+  "rows": [
+    {
+      "activation_dependencies": [
+        "DELTA_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": -0.05,
+      "high_override_sha256": "4240936f1faf99484385ff3138a9b340580cbdc613f691ed390714a692bab8e3",
+      "low": -0.15,
+      "low_override_sha256": "1288ae36e7e6cc404903a1bb956a4f4838351727533c2c8dceaed9da5dab68c7",
+      "only_recipe_differential": [
+        "DELTA_EXIT_ACCEL_THRESHOLD"
+      ],
+      "param": "DELTA_EXIT_ACCEL_THRESHOLD",
+      "path_prefix": "DELTA_EXIT_",
+      "position_key": "ACN_SHORT",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "ACN_SHORT",
+        "rank": 9,
+        "side": "SHORT",
+        "source": "symbols_trb_short.json:first_10",
+        "symbol": "ACN",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "SHORT",
+      "source_disposition": "CONNECTED_AFTER_C5_ACCEL_REPAIR",
+      "source_note": "C5 repair reconnects the authoritative direction-specific z-speed acceleration contract: current causal rolling z-speed minus its configured lookback value gates decay, opposing pressure, and TF-loss symmetrically for LONG and SHORT.",
+      "symbol": "ACN",
+      "trace_kind": "DELTA_ACTION"
+    },
+    {
+      "activation_dependencies": [
+        "DELTA_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 0.45,
+      "high_override_sha256": "56f74f1db88aa717bf815d983aefc83bee5fb0fc598b843617d5a84fea20c75d",
+      "low": 0.15,
+      "low_override_sha256": "e3521b8b18fe9212f1c1655ca031bd15b418304ae6fd17bb61545bb24af2a664",
+      "only_recipe_differential": [
+        "DELTA_EXIT_DECAY_RATIO"
+      ],
+      "param": "DELTA_EXIT_DECAY_RATIO",
+      "path_prefix": "DELTA_EXIT_",
+      "position_key": "ACN_SHORT",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "ACN_SHORT",
+        "rank": 9,
+        "side": "SHORT",
+        "source": "symbols_trb_short.json:first_10",
+        "symbol": "ACN",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "SHORT",
+      "source_disposition": "CONNECTED_AFTER_C5_ALIAS_REPAIR",
+      "source_note": "C5 repair normalizes Tradier's fractional exit_speed_decay_ratio into the percent field consumed by the shared live/exact DeltaTracker. Exact pair proof is still required.",
+      "symbol": "ACN",
+      "trace_kind": "DELTA_ACTION"
+    },
+    {
+      "activation_dependencies": [
+        "DELTA_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 6,
+      "high_override_sha256": "92ac771bee7ecd3c8d60f9dce5f1e4fd63ea782b1114483728fe658fcfd472fd",
+      "low": 2,
+      "low_override_sha256": "0d1f216f4d83c2310e88d47fe85419e118c67f03c127d5a419242fd8ffafa739",
+      "only_recipe_differential": [
+        "DELTA_EXIT_MIN_HOLD"
+      ],
+      "param": "DELTA_EXIT_MIN_HOLD",
+      "path_prefix": "DELTA_EXIT_",
+      "position_key": "ACN_SHORT",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "ACN_SHORT",
+        "rank": 9,
+        "side": "SHORT",
+        "source": "symbols_trb_short.json:first_10",
+        "symbol": "ACN",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "SHORT",
+      "source_disposition": "CONNECTED_AFTER_C5_HOLD_REPAIR",
+      "source_note": "Tradier now passes reliable position age as authoritative 15m bars and DeltaTracker applies exit_min_hold to acceleration-gated exit predicates. The current 4,320-minute stock-wide upstream floor dominates the 2\u20136 bar grid, so equality can still be a legitimate gated plateau rather than a disconnect.",
+      "symbol": "ACN",
+      "trace_kind": "DELTA_ACTION"
+    },
+    {
+      "activation_dependencies": [
+        "DELTA_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 3,
+      "high_override_sha256": "ca2edb0ad738c7e2bf3d759c415c674198813d09f3689976a71067834cd59f78",
+      "low": 1,
+      "low_override_sha256": "83641750fd2334ada1e67c02e442d014f4c39f9948abd4b242581b53d53fe9f7",
+      "only_recipe_differential": [
+        "DELTA_EXIT_MIN_TF_LOST"
+      ],
+      "param": "DELTA_EXIT_MIN_TF_LOST",
+      "path_prefix": "DELTA_EXIT_",
+      "position_key": "ACN_SHORT",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "ACN_SHORT",
+        "rank": 9,
+        "side": "SHORT",
+        "source": "symbols_trb_short.json:first_10",
+        "symbol": "ACN",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "SHORT",
+      "source_disposition": "CONNECTED",
+      "source_note": "Consumed by live DeltaTracker for both LONG and SHORT exits; c4 tested only a one-trade window, so equality is not a disconnect.",
+      "symbol": "ACN",
+      "trace_kind": "DELTA_ACTION"
+    },
+    {
+      "activation_dependencies": [
+        "DELTA_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 2.25,
+      "high_override_sha256": "8bff19a707af02e259bc0eadbdbfa89737a40239435296b35016af865cb3d52d",
+      "low": 0.75,
+      "low_override_sha256": "4c6caad2a4f638187e12d220e54d5216abed9fc2b0020f2bfaceb8b133984117",
+      "only_recipe_differential": [
+        "DELTA_EXIT_OPPOSING_RATIO"
+      ],
+      "param": "DELTA_EXIT_OPPOSING_RATIO",
+      "path_prefix": "DELTA_EXIT_",
+      "position_key": "ACN_SHORT",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "ACN_SHORT",
+        "rank": 9,
+        "side": "SHORT",
+        "source": "symbols_trb_short.json:first_10",
+        "symbol": "ACN",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "SHORT",
+      "source_disposition": "CONNECTED_AFTER_C5_RATIO_REPAIR",
+      "source_note": "C5 repair applies exit_opposing_ratio symmetrically as opp_speed > current_speed * ratio for LONG and SHORT.",
+      "symbol": "ACN",
+      "trace_kind": "DELTA_ACTION"
+    },
+    {
+      "activation_dependencies": [
+        "GR_HTF_DIRECT_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 18.0,
+      "high_override_sha256": "e37c7926d680acb026f1da8cc176f176a4fca188b26b447db3a878a9f09bedf1",
+      "low": 6.0,
+      "low_override_sha256": "e867a32dc0d8038eb2322bc4a48ebca139187bd744775f0e2dbb735390f5946f",
+      "only_recipe_differential": [
+        "GR_HTF_DIRECT_EXIT_SCORE"
+      ],
+      "param": "GR_HTF_DIRECT_EXIT_SCORE",
+      "path_prefix": "GR_HTF_DIRECT_EXIT",
+      "position_key": "VT_LONG",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "VT_LONG",
+        "rank": 4,
+        "side": "LONG",
+        "source": "symbols_trb_long.json:first_10",
+        "symbol": "VT",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "LONG",
+      "source_disposition": "CONNECTED",
+      "source_note": "Connected to the opposite-direction GR score; discrete score support may legitimately leave two thresholds on one plateau.",
+      "symbol": "VT",
+      "trace_kind": "GR_HTF_EXIT"
+    },
+    {
+      "activation_dependencies": [
+        "LR_BAND_HARVEST_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 0.375,
+      "high_override_sha256": "7311b0f50ecdc230d997f21cb4a27dfc03b049338e153d84d7170a50abce2e8e",
+      "low": 0.125,
+      "low_override_sha256": "5eef3b9c03681186ccfad4505511c31645124dc5fa675d31fe677791cda0a9c4",
+      "only_recipe_differential": [
+        "LR_BAND_HARVEST_FRAC"
+      ],
+      "param": "LR_BAND_HARVEST_FRAC",
+      "path_prefix": "LR_BAND_HARVEST",
+      "position_key": "VT_LONG",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "VT_LONG",
+        "rank": 4,
+        "side": "LONG",
+        "source": "symbols_trb_long.json:first_10",
+        "symbol": "VT",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "LONG",
+      "source_disposition": "CONNECTED",
+      "source_note": "Connected to partial close quantity. C4 fingerprints omitted partial quantity/cash flow, and share rounding can create genuine small-position plateaus; c5 action identity is mandatory.",
+      "symbol": "VT",
+      "trace_kind": "PARTIAL_ACTION"
+    },
+    {
+      "activation_dependencies": [],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": true,
+      "high_override_sha256": "a759a2c21ffbca096a5a3d53e2848c50c07971fd34a1aa16cef21632a601547e",
+      "low": false,
+      "low_override_sha256": "0ddc92008c0143c55d533cf21b98c0c21714c8d944ae7d223620ab14ef206a42",
+      "only_recipe_differential": [
+        "MTF_BB_REJECT_EXIT_ENABLED"
+      ],
+      "param": "MTF_BB_REJECT_EXIT_ENABLED",
+      "path_prefix": "MTF_BB_REJECT",
+      "position_key": "TTD_SHORT",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "TTD_SHORT",
+        "rank": 7,
+        "side": "SHORT",
+        "source": "symbols_trb_short.json:first_10",
+        "symbol": "TTD",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "SHORT",
+      "source_disposition": "CONNECTED",
+      "source_note": "Connected inside the compound exit evaluator. It fires only after a BB tag and subsequent failure inside the configured lookback.",
+      "symbol": "TTD",
+      "trace_kind": "ACTION_ONLY"
+    },
+    {
+      "activation_dependencies": [
+        "STDEV_REJECT_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 0.975,
+      "high_override_sha256": "37c103c21ab0a7b8c7a405b059f1daf8a9c3ac7774b6c2f22171780d0b36cd1e",
+      "low": 0.325,
+      "low_override_sha256": "81bb935dd2bac44fba5ffc148eedb49ac99b2fca6e7db0e883661112b14125b6",
+      "only_recipe_differential": [
+        "STDEV_REJECT_EXIT_RETURN"
+      ],
+      "param": "STDEV_REJECT_EXIT_RETURN",
+      "path_prefix": "STDEV_REJECT_EXIT",
+      "position_key": "VT_LONG",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "VT_LONG",
+        "rank": 4,
+        "side": "LONG",
+        "source": "symbols_trb_long.json:first_10",
+        "symbol": "VT",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "LONG",
+      "source_disposition": "CONNECTED",
+      "source_note": "Connected and c5-instrumented. Exact trace must show evaluations and whether either return threshold entered the trigger domain.",
+      "symbol": "VT",
+      "trace_kind": "STDEV"
+    },
+    {
+      "activation_dependencies": [
+        "STDEV_REJECT_EXIT_ENABLED"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 1.2,
+      "high_override_sha256": "0072fcbc795e7d134af57fbe88c04db72706298b84d48df46d54d1a08876e720",
+      "low": 0.4,
+      "low_override_sha256": "ce4bc1dd3a8fb73417256936b016c9d69a572b80709eedac38a552aafde15c88",
+      "only_recipe_differential": [
+        "STDEV_REJECT_EXIT_ZONE"
+      ],
+      "param": "STDEV_REJECT_EXIT_ZONE",
+      "path_prefix": "STDEV_REJECT_EXIT",
+      "position_key": "VT_LONG",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "VT_LONG",
+        "rank": 4,
+        "side": "LONG",
+        "source": "symbols_trb_long.json:first_10",
+        "symbol": "VT",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "LONG",
+      "source_disposition": "CONNECTED",
+      "source_note": "Connected and c5-instrumented. Values outside observed pctB support are legitimate no-trigger plateaus, not dead wiring.",
+      "symbol": "VT",
+      "trace_kind": "STDEV"
+    },
+    {
+      "activation_dependencies": [
+        "STRUCTURAL_RANGE_SHIFT_EXIT"
+      ],
+      "execution": "TWO_LEG_EXACT_C5",
+      "high": 25.0,
+      "high_override_sha256": "06544df2f1eac8b0279751028b57198e76c23227d48d7edc773519dac7e3df37",
+      "low": 15.0,
+      "low_override_sha256": "7696d46bebe819e8bc6926a430ffea31d5f7a9051da47b9438671de36df1dcad",
+      "only_recipe_differential": [
+        "STRUCTURAL_RANGE_SHIFT_K_LOW"
+      ],
+      "param": "STRUCTURAL_RANGE_SHIFT_K_LOW",
+      "path_prefix": "STRUCTURAL_RANGE_SHIFT_SHORT",
+      "position_key": "TTD_SHORT",
+      "ranked_tim_contract": {
+        "cohort": "TOP_10",
+        "position_key": "TTD_SHORT",
+        "rank": 7,
+        "side": "SHORT",
+        "source": "symbols_trb_short.json:first_10",
+        "symbol": "TTD",
+        "tim_max_pct": 80.0,
+        "tim_min_pct": 50.0
+      },
+      "side": "SHORT",
+      "source_disposition": "WRONG_SIDE_C4_EVIDENCE",
+      "source_note": "K_LOW is consumed only by the SHORT range-bottom branch. The c4 collision evidence came from NVDA_LONG/VT_LONG and is therefore wrong-side/inapplicable, not a dead-knob result.",
+      "symbol": "TTD",
+      "trace_kind": "ACTION_ONLY"
+    }
+  ],
+  "s1_writes": false,
+  "tim_policy": "runtime-ranked per side: ranks 1-10 50-80%; all remaining tradeable keys 20-60%"
+}

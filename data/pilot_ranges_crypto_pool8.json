@@ -1,0 +1,1933 @@
+{
+ "_meta": {
+  "mode": "crypto",
+  "n_syms": 8,
+  "start": "2026-05-15",
+  "bh_pct": -33.505,
+  "baseline_sharpe": null,
+  "baseline_pnl": null,
+  "n_params": 627,
+  "DIAGNOSTIC": "25-sym POOLED subset \u2014 not for promotion"
+ },
+ "switches": {
+  "GOLDEN_RULE_BB_15M_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BB_1H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BB_4H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BB_D_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_DC_15M_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_DC_1H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_BASE_USD": {
+   "values": [
+    {
+     "value": "1.25",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3.75",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "5.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "7.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "10",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "10.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "15.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 8,
+   "family": "GOLDEN",
+   "live_refs": "ez_manage"
+  },
+  "GOLDEN_RULE_DC_4H_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_DC_D_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GOLDEN_RULE_HTF_VETO_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GOLDEN",
+   "live_refs": "ez_manage"
+  },
+  "GOLDEN_RULE_HTF_MIN_TFS": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "6",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "9",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 6,
+   "family": "GOLDEN",
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "GOLDEN_RULE_MIN_IND": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "8",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "10",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "15",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 7,
+   "family": "GOLDEN",
+   "live_refs": "tradier_manage|ez_manage|ez_positions_quick"
+  },
+  "GOLDEN_RULE_MULT_15M": {
+   "values": [
+    {
+     "value": "0.25",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "0.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "0.75",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 8,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_MULT_1H": {
+   "values": [
+    {
+     "value": "0.375",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "0.75",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1.125",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2.25",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 8,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_MULT_4H": {
+   "values": [
+    {
+     "value": "0.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "6.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 9,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": ""
+  },
+  "GOLDEN_RULE_MULT_D": {
+   "values": [
+    {
+     "value": "0.75",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2.25",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "6.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "6",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "9.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 8,
+   "family": "GOLDEN",
+   "live_refs": ""
+  },
+  "DC4_STOP_GR_SCORE_MIN_IND": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "8",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "10",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "15",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 7,
+   "family": "GR_",
+   "live_refs": ""
+  },
+  "DC4_STOP_GR_SCORE_MIN_TFS": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "6",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "9",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 6,
+   "family": "GR_",
+   "live_refs": ""
+  },
+  "GR_FILTER_ALL_ENTRIES": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": "ez_manage"
+  },
+  "GR_HEDGE_SCORE_FLOOR": {
+   "values": [
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "8",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "11",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "15",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "22",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "30",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "45",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 7,
+   "family": "GR_",
+   "live_refs": "ez_manage"
+  },
+  "GR_HTF_DIRECT_ENTRY_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE": {
+   "values": [
+    {
+     "value": "8.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "17",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "17.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "25.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "34.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "51.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "68.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "68",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "102.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 9,
+   "family": "GR_",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GR_HTF_DIRECT_EXIT_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GR_HTF_DIRECT_ENTRY_SCORE_MIN": {
+   "values": [
+    {
+     "value": "5.75",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "11.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "17.25",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "23.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "34.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "46.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "46",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "69.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 8,
+   "family": "GR_",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "GR_TOTAL_VOTE_SCORE_MIN": {
+   "values": [
+    {
+     "value": "0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 3,
+   "family": "GR_",
+   "live_refs": ""
+  },
+  "GR_HTF_DIRECT_EXIT_SCORE": {
+   "values": [
+    {
+     "value": "3.75",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "7.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "11.25",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "15.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "22.5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "30.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "30",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "45.0",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 8,
+   "family": "GR_",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "HEDGE_TRIGGER_GR_SCORE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": "ez_manage|ez_positions_quick"
+  },
+  "MTF_ENTRY_REQUIRE_GR_FILTER": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": ""
+  },
+  "MTF_GR_EXIT_GATE_ENABLED": {
+   "values": [
+    {
+     "value": "False",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "MTF_GR_EXIT_MIN_TFS": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "6",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "9",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 6,
+   "family": "GR_",
+   "live_refs": "tradier_manage|ez_manage"
+  },
+  "MTF_GR_MIN_IND": {
+   "values": [
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "5",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "7",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "10",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "14",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "21",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 7,
+   "family": "GR_",
+   "live_refs": "ez_manage"
+  },
+  "WT_3M_FORCE_OPEN_GR_GATE_ENABLED": {
+   "values": [
+    {
+     "value": "True",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 1,
+   "family": "GR_",
+   "live_refs": "ez_manage"
+  },
+  "MTF_GR_MIN_TFS": {
+   "values": [
+    {
+     "value": "1",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "2",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "3",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "4",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "6",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    },
+    {
+     "value": "9",
+     "sharpe": null,
+     "pnl": null,
+     "trades": 0,
+     "gain_vs_bh": null,
+     "err": "no_result"
+    }
+   ],
+   "moved": false,
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)",
+   "best_value": null,
+   "best_sharpe": null,
+   "best_gain_vs_bh": null,
+   "max_abs_delta": 0.0,
+   "useful_range": [],
+   "n_tested": 6,
+   "family": "GR_",
+   "live_refs": "ez_manage"
+  }
+ },
+ "_ranking": [
+  {
+   "knob": "GOLDEN_RULE_BB_15M_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_BB_1H_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_BB_4H_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_BB_D_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_DC_15M_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_DC_1H_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_BASE_USD",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_DC_4H_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_DC_D_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_HTF_VETO_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_HTF_MIN_TFS",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_MIN_IND",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_MULT_15M",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_MULT_1H",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_MULT_4H",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GOLDEN_RULE_MULT_D",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GOLDEN",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "DC4_STOP_GR_SCORE_MIN_IND",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "DC4_STOP_GR_SCORE_MIN_TFS",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_FILTER_ALL_ENTRIES",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_HEDGE_SCORE_FLOOR",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_HTF_DIRECT_ENTRY_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_HTF_DIRECT_EXIT_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_HTF_DIRECT_ENTRY_SCORE_MIN",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_TOTAL_VOTE_SCORE_MIN",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "GR_HTF_DIRECT_EXIT_SCORE",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "HEDGE_TRIGGER_GR_SCORE_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "MTF_ENTRY_REQUIRE_GR_FILTER",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "MTF_GR_EXIT_GATE_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "MTF_GR_EXIT_MIN_TFS",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "MTF_GR_MIN_IND",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "WT_3M_FORCE_OPEN_GR_GATE_ENABLED",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  },
+  {
+   "knob": "MTF_GR_MIN_TFS",
+   "max_abs_delta": 0.0,
+   "best_value": null,
+   "best_sharpe": null,
+   "useful_range": [],
+   "family": "GR_",
+   "zero_delta_reason": "ZERO_TRADES_ALL: pool never trades under any value (engine entry-path blocked for this pool/window)"
+  }
+ ]
+}

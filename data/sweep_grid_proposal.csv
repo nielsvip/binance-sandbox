@@ -1,0 +1,114 @@
+param_name,current_value,sweep_values,category,description,priority
+WT_EXIT_LEAD_TFS,"1h+4h+D","4h+D|1h+4h+D|4h|D|1h+D|15m+1h+4h+D",EXIT_LEAD,Which slow TFs detect end-of-move (bear cross = exit signal). Core question: does D alone catch tops or do we need 4h confirmation?,1
+WT_EXIT_LEAD_MIN_TFS,1,"1|2|3",EXIT_LEAD,How many lead TFs must turn bearish before exit process starts. 1=early exit (less drawdown) vs 3=ride longer (more profit but bigger pullbacks),1
+WT_EXIT_LEAD_USE_CROSS,True,"True|False",EXIT_LEAD,Use WT cross (wt1 crosses below wt2) vs velocity for lead exit signal. Cross is discrete event; velocity is continuous,1
+WT_EXIT_LEAD_VELOCITY_4H,-6.0,"-3.0|-4.0|-6.0|-8.0|-12.0",EXIT_LEAD,4h WT velocity threshold to signal exhaustion. Less negative = earlier exit. More negative = only exit on strong reversals,1
+WT_EXIT_LEAD_VELOCITY_D,-4.0,"-2.0|-3.0|-4.0|-6.0|-8.0",EXIT_LEAD,Daily WT velocity threshold. D moves slowly so thresholds should be less negative than LTF,1
+WT_EXIT_LEAD_EXTREME_ZONE,53,"40|45|50|53|60",EXIT_LEAD,WT extreme zone threshold on lead TFs. When WT > this on 4h/D position is extended and more likely to reverse,1
+WT_EXIT_LEAD_PERCENTILE_THRESHOLD,80,"70|75|80|85|90",EXIT_LEAD,WT percentile on 4h/D above which we consider the move extended. 90th percentile = historically extreme,1
+WT_EXIT_LEAD_MOMENTUM_STATE,EXHAUST_UP,"EXHAUST_UP|IMPULSE_DOWN",EXIT_LEAD,Which momentum state on lead TFs triggers exit. EXHAUST_UP = momentum fading. IMPULSE_DOWN = already reversing,1
+WT_EXIT_LEAD_WAVE_PHASE,CONTRACTING,"CONTRACTING|any",EXIT_LEAD,Require wave phase CONTRACTING on lead TF before exit. Contracting = WT1/WT2 converging = momentum dying,1
+WT_EXIT_LEAD_DIVERGENCE_ENABLED,False,"True|False",EXIT_LEAD,Use WT divergence (BEAR or HIDDEN_BEAR on 4h/D) as exit lead signal. Bear div = price HH but WT LH = weakening,1
+WT_EXIT_LEAD_STRUCTURE,LH,"LH|LL|any",EXIT_LEAD,WT peak structure on lead TF that signals exit. LH (lower-high) = downtrend starting. LL = already in downtrend,1
+WT_EXIT_CONFIRM_TFS,"3m+15m","3m|5m|15m|3m+5m|3m+15m|5m+15m|3m+5m+15m",EXIT_CONFIRM,Which fast TFs find the best exit price after lead signals end-of-move. 3m = most precise but noisiest,1
+WT_EXIT_CONFIRM_MIN_TFS,1,"1|2",EXIT_CONFIRM,How many confirm TFs must agree. 1=fast exit on first LTF turn. 2=wait for confirmation (better price but risk of missing),1
+WT_EXIT_CONFIRM_CROSS_TYPE,BEAR_CROSS,"BEAR_CROSS|any_bear",EXIT_CONFIRM,What signal on confirm TF triggers actual exit. BEAR_CROSS = discrete WT cross. any_bear = cross OR velocity,1
+WT_EXIT_CONFIRM_VELOCITY_3M,-6.0,"-2.0|-4.0|-6.0|-8.0|-10.0",EXIT_CONFIRM,3m WT velocity for exit confirmation. 3m is noisy so too sensitive = whipsaws. Too loose = miss the top,1
+WT_EXIT_CONFIRM_VELOCITY_15M,-4.0,"-2.0|-3.0|-4.0|-6.0|-8.0",EXIT_CONFIRM,15m WT velocity for exit confirmation. 15m is smoother than 3m so can be tighter,1
+WT_EXIT_CONFIRM_CROSS_BARS_AGO_MAX,3,"1|2|3|5|8",EXIT_CONFIRM,Max bars since bear cross on confirm TF to count as active. Old crosses are stale,1
+WT_EXIT_CONFIRM_CROSS_RISING,False,"True|False",EXIT_CONFIRM,If WT is rising since last bear cross on confirm TF should we still exit? Rising = bounce starting = maybe hold,1
+WT_EXIT_VEL_THRESHOLD,-6.0,"-2.0|-3.0|-4.0|-6.0|-8.0|-10.0|-12.0",WT_SENSITIVITY,Global WT velocity exit threshold (current live value). Core sensitivity knob for all exits,1
+WT_EXIT_ACCELERATION_THRESHOLD,0,"0|-1.0|-2.0|-3.0",WT_SENSITIVITY,WT acceleration (rate of change of score). Negative acceleration = momentum decelerating even if still positive,1
+WT_EXIT_SCORE_THRESHOLD,0,"0|-5|-10|-15|-20",WT_SENSITIVITY,WT score (wt1-wt2) below which exit triggers. 0 = exit when wt1 crosses below wt2. -10 = wait for deep cross,1
+WT_ENTRY_SCORE_THRESHOLD_3M,5,"3|5|8|10|15",ENTRY_TF,Minimum WT score on 3m for entry confirmation. Higher = stronger signal but fewer entries,2
+WT_ENTRY_SCORE_THRESHOLD_15M,5,"3|5|8|10|15",ENTRY_TF,Minimum WT score on 15m for entry confirmation. 15m is the primary entry TF,2
+WT_ENTRY_CROSS_BARS_AGO_MAX_3M,5,"2|3|5|8|10",ENTRY_TF,Max bars since bull cross on 3m to count entry as valid. Too old = momentum already spent,2
+WT_ENTRY_CROSS_BARS_AGO_MAX_15M,8,"3|5|8|12|15",ENTRY_TF,Max bars since bull cross on 15m. 15m bars are longer so allow more lookback,2
+WT_ENTRY_VELOCITY_MIN_3M,2.0,"0.5|1.0|2.0|3.0|5.0",ENTRY_TF,Minimum 3m WT velocity for entry. Ensures momentum is accelerating into entry,2
+WT_ENTRY_VELOCITY_MIN_15M,1.0,"0.5|1.0|2.0|3.0",ENTRY_TF,Minimum 15m WT velocity for entry. Lower than 3m because 15m moves slower,2
+WT_ENTRY_MOMENTUM_STATE_3M,IMPULSE_UP,"IMPULSE_UP|any_bull",ENTRY_TF,Required momentum state on 3m for entry. IMPULSE_UP = strong fresh move. any_bull = also allow EXHAUST_DOWN (reversal starting),2
+WT_ENTRY_WAVE_PHASE_15M,EXPANDING,"EXPANDING|any",ENTRY_TF,Require EXPANDING wave phase on 15m for entries. Expanding = WT diverging = new trend starting,2
+WT_ENTRY_OVERSOLD_REQUIRED,False,"True|False",ENTRY_TF,Require WT extreme oversold on at least one TF before long entry. Catches bottoms but misses trend continuations,2
+WT_ENTRY_PERCENTILE_MAX_3M,70,"50|60|70|80|90",ENTRY_TF,Max WT percentile on 3m for entry. If already at 90th percentile the move is extended and risky to enter,2
+WT_ENTRY_DIVERGENCE_BOOST,True,"True|False",ENTRY_TF,Give extra score for bullish divergence (price LL but WT HL) on entry TF. Hidden strength signal,2
+WT_ENTRY_TROUGH_STRUCTURE,HL,"HL|LL|any",ENTRY_TF,Required WT trough structure on 15m for entries. HL (higher-low) = uptrend. LL = still falling,2
+DC_BREAKOUT_TF,1h,"15m|1h|4h|1h+4h",DC_ENTRY,Which TF Donchian breakout to use for entries. 1h = current. 4h = fewer but stronger signals,2
+DC_BREAKOUT_SCORE,15,"5|10|15|20|25|30",DC_ENTRY,Score added when price breaks DC high/low. Higher = must combine with other signals,2
+DC_BREAKOUT_BUFFER,0.001,"0.0005|0.001|0.002|0.003|0.005",DC_ENTRY,Minimum % price must exceed DC channel boundary. Filters fake breakouts,2
+DC_BREAKOUT_REQUIRE_WIDTH_MIN,0,"0|0.5|1.0|1.5|2.0",DC_ENTRY,Minimum DC width (% of price) for breakout to count. Narrow channels = chop. Wide = real volatility,2
+DC_BREAKOUT_REQUIRE_EXPANSION,False,"True|False",DC_ENTRY,Require DC channel to be expanding (widening) for breakout entry. Expansion = volatility increasing = trend starting,2
+DC_POSITION_ENTRY_THRESHOLD,0.25,"0.10|0.15|0.20|0.25|0.30|0.35|0.40",DC_ENTRY,DC position below this for long entries (above 1-this for shorts). Lower = closer to channel bottom = better value,2
+DC_POSITION_ENTRY_TF,15m,"15m|1h|4h",DC_ENTRY,Which TF DC position to use for entry zone filter. 1h avoids noise. 4h = very slow filter,2
+DC_EXIT_POSITION_THRESHOLD,0.85,"0.70|0.75|0.80|0.85|0.90|0.95",DC_EXIT,DC position above this signals long is near channel top (end of move). Exit lead signal from DC,1
+DC_EXIT_POSITION_TF,"1h","15m|1h|4h|1h+4h",DC_EXIT,Which TF DC position to check for exit. 1h = main. Adding 4h catches multi-day tops,1
+DC_EXIT_WIDTH_CONTRACTION,True,"True|False",DC_EXIT,Exit when DC width is contracting (channel narrowing). Narrowing after expansion = move exhausting,1
+DC_EXIT_WIDTH_CONTRACTION_PCT,0.10,"0.05|0.10|0.15|0.20",DC_EXIT,DC width must contract by this % from recent peak to trigger exit signal. 10% = moderate contraction,1
+DC_EXIT_BASIS_CROSSUNDER,True,"True|False",DC_EXIT,Exit long when price crosses below DC basis (midline). Losing the midline = trend weakening,1
+DC_EXIT_BASIS_TF,1h,"15m|1h|4h",DC_EXIT,Which TF DC basis crossunder to watch. 15m = responsive. 4h = confirms trend break,1
+DC_EXIT_LOW_CROSSUNDER_ENABLED,False,"True|False",DC_EXIT,Exit long if price breaks below DC low (channel bottom). Strong reversal signal but very late,2
+DC_EXIT_4BAR_CROSS_ENABLED,True,"True|False",DC_EXIT,Use fast 4-bar DC crossunder for exit timing on confirm TFs. 4-bar DC reacts faster than standard,1
+DC_EXIT_4BAR_TF,3m,"3m|5m|15m",DC_EXIT,Which TF 4-bar DC to use for fast exit confirmation. 3m = most responsive for precise exit timing,1
+WT_REDUCE_FRAC_LOW,0.15,"0.05|0.10|0.15|0.20|0.25|0.30",WT_SENSITIVITY,Partial exit fraction at low gains (0.3-0.5%). Lower = keep more position. Higher = bank small profits faster,2
+WT_REDUCE_FRAC_MED,0.25,"0.10|0.15|0.20|0.25|0.30|0.40|0.50",WT_SENSITIVITY,Partial exit fraction at medium gains (0.5-1.0%). Balance between taking profit and letting it run,2
+WT_REDUCE_FRAC_HIGH,0.50,"0.25|0.35|0.50|0.65|0.75",WT_SENSITIVITY,Partial exit fraction at high gains (1-3%). Even at high gains cutting 75% might be too aggressive if trend continues,2
+WT_BULL_ALIGNMENT_MIN_ENTRY,2,"1|2|3|4",COMPOSITE,Minimum TFs with bullish WT for long entry. Higher = more confirmation but fewer entries,2
+WT_BEAR_ALIGNMENT_MIN_ENTRY,2,"1|2|3|4",COMPOSITE,Minimum TFs with bearish WT for short entry. Same logic as bull alignment,2
+WT_COMPOSITE_DELTA_MIN_ENTRY,5,"0|3|5|8|10|15",COMPOSITE,Minimum wt_composite_delta (long-short difference) for entry. Ensures net directional bias across TFs,2
+WT_COMPOSITE_BIAS_REQUIRED,True,"True|False",COMPOSITE,Require wt_composite_bias to match entry direction. False = allow entries against overall bias if LTF signals strong,2
+WT_OVERSOLD_TF_COUNT_LONG_MIN,1,"0|1|2|3",COMPOSITE,Minimum oversold TF count for long entries. More oversold TFs = deeper pullback = better entry,2
+WT_OVERBOUGHT_TF_COUNT_EXIT,2,"1|2|3|4",COMPOSITE,How many TFs must be overbought to trigger exit lead. More = stricter = holds longer,1
+WT_HH_COUNT_EXIT_THRESHOLD,3,"2|3|4",COMPOSITE,If wt_hh_count (higher-high count across TFs) drops below this while in profit trigger exit consideration. Trend weakening,2
+WT_LL_COUNT_EXIT_THRESHOLD,2,"1|2|3",COMPOSITE,If wt_ll_count rises above this for a long position trigger exit. Multiple TFs making lower-lows = trend reversing,2
+DC_WIDTH_SIZING_ENABLED,True,"True|False",SIZING,Scale position size by DC width (volatility). Wider channel = more volatile = maybe size down or up depending on trend,3
+DC_WIDTH_MAX_MULT,5.0,"2.0|3.0|5.0|8.0|10.0",SIZING,Maximum DC width sizing multiplier. Caps how much DC width can boost size,3
+DC_EDGE_SIZING_ENABLED,True,"True|False",SIZING,Scale size by DC position. At channel edge (trending) = larger size. At center (sideways) = smaller,3
+DC_EDGE_SIZING_MAX_MULT,3.0,"1.5|2.0|3.0|4.0|5.0",SIZING,Maximum multiplier at DC edges. 3x = current. 5x = very aggressive in trends,3
+DC_EDGE_SIZING_MIN_MULT,1.0,"0.3|0.5|0.75|1.0",SIZING,Minimum multiplier at DC center. Below 1.0 actively reduces size in sideways markets,3
+DC_EDGE_SIZING_PERIOD,20,"10|15|20|30|40",SIZING,DC lookback period for edge detection. Shorter = more reactive. Longer = smoother trend identification,3
+WT_COMPOSITE_SIZING_MULT,1.0,"0.5|0.75|1.0|1.25|1.5|2.0",SIZING,Size multiplier based on WT composite delta strength. Strong alignment = bigger position,3
+WT_ALIGNMENT_SIZING_ENABLED,False,"True|False",SIZING,Scale size by number of aligned TFs. 5/5 bullish = full size. 2/5 = half size,3
+REGIME_RANGING_WT_EXIT_VEL,-3.0,"-1.5|-2.0|-3.0|-4.0|-6.0",WT_SENSITIVITY,WT exit velocity in ranging regime. Ranging = exits should be faster (smaller moves),2
+REGIME_TRENDING_WT_EXIT_VEL,-12.0,"-8.0|-10.0|-12.0|-15.0|-20.0",WT_SENSITIVITY,WT exit velocity in trending regime. Trending = exits should be slower (let winners run),2
+REGIME_RANGING_WT_REDUCE_FRAC_LOW,0.40,"0.20|0.30|0.40|0.50|0.60",WT_SENSITIVITY,Reduce fraction in ranging at low gains. Ranging = take profits faster,3
+REGIME_TRENDING_WT_REDUCE_FRAC_LOW,0.10,"0.05|0.10|0.15|0.20",WT_SENSITIVITY,Reduce fraction in trending at low gains. Trending = hold more position,3
+WT_EXIT_TFS_TRADIER,"1h+4h+D","1h|4h|D|1h+4h|4h+D|1h+4h+D|15m+1h+4h+D",EXIT_LEAD,Tradier-specific: which TFs signal WT exit for stocks. Currently 1h+4h+D. Stocks may need different than crypto,1
+WT_EXIT_MIN_TFS_TRADIER,1,"1|2|3",EXIT_LEAD,Tradier-specific: how many TFs must agree for stock exit. 1 = very sensitive. 3 = ride the wave until all turn,1
+WT_EXIT_VELOCITY_TRADIER,False,"True|False",EXIT_LEAD,Tradier: use velocity vs cross for exit trigger. Currently False (cross only). Velocity might catch turns earlier,1
+DC_DAYTRADE_TARGET_PCT,0.01,"0.005|0.0075|0.01|0.015|0.02|0.03",DC_EXIT,DC daytrade profit target. 1% current. Lower = more wins but smaller. Higher = fewer wins but bigger,2
+DC_DAYTRADE_STOP_PCT,0.015,"0.005|0.01|0.015|0.02|0.025|0.03",DC_EXIT,DC daytrade stop loss. Note: this is the ONLY permitted % stop (daytrade-specific). Ratio to target matters most,2
+DC_DAYTRADE_MAX_HOLD_MINUTES,240,"60|120|180|240|360|480",DC_EXIT,Max hold time for DC daytrades. 240 = 4h. Shorter = cut losers. Longer = give more room,2
+DC_DAYTRADE_BUFFER,0.001,"0.0005|0.001|0.002|0.003",DC_ENTRY,Min % outside DC channel for daytrade entry. Too small = false breaks. Too large = miss entries,2
+DC_DAYTRADE_REQUIRE_1H_EXPANSION,True,"True|False",DC_ENTRY,Require 1h DC expanding for daytrade. Ensures higher-TF trend supports the breakout direction,2
+DC_DAYTRADE_K_EXHAUSTED_LONG,85.0,"70.0|75.0|80.0|85.0|90.0",DC_ENTRY,Stoch K above this blocks long daytrade entry (chasing). Lower = stricter filter,3
+DC_DAYTRADE_K_EXHAUSTED_SHORT,15.0,"10.0|15.0|20.0|25.0|30.0",DC_ENTRY,Stoch K below this blocks short daytrade entry (chasing). Higher = stricter filter,3
+STOCH_CROSS_1H_EXIT_ENABLED,True,"True|False",EXIT_CONFIRM,Tradier: stoch cross on 1h triggers exit. Simple but effective mean-reversion exit signal,2
+MFI_FLIP_EXIT_LONG_THRESHOLD,70.0,"60.0|65.0|70.0|75.0|80.0",EXIT_CONFIRM,Tradier: MFI above this on 1h exits longs (overbought flow). Lower = earlier exit. Higher = ride longer,2
+MFI_FLIP_EXIT_SHORT_THRESHOLD,30.0,"20.0|25.0|30.0|35.0|40.0",EXIT_CONFIRM,Tradier: MFI below this on 1h exits shorts (oversold flow). Higher = earlier exit,2
+MFI_FLIP_EXIT_ENABLED,True,"True|False",EXIT_CONFIRM,Tradier: enable MFI-based exits. MFI measures buying/selling pressure. Exhausted flow = exit,2
+BOUNCE_REENTRY_K_RESET_LONG,35,"20|25|30|35|40|45|50",ENTRY_TF,Stoch K must drop below this before long reentry allowed. Prevents chasing. Lower = stricter pullback required,2
+BOUNCE_REENTRY_K_RESET_SHORT,65,"50|55|60|65|70|75|80",ENTRY_TF,Stoch K must rise above this before short reentry. Higher = stricter bounce required,2
+WT_COMPOSITE_SCORING_ENABLED_TRADIER,True,"True|False",COMPOSITE,Tradier: use cross-TF WT composite scoring. Aggregates all TFs into single score. Could be noise or signal,3
+REENTRY_TIER1_SIZE_MULT,1.5,"1.0|1.25|1.5|1.75|2.0",SIZING,Reentry at better price: size multiplier vs original. 1.5 = 50% bigger (rewarding patience),3
+REENTRY_TIER2_SIZE_MULT,0.8,"0.5|0.6|0.8|1.0",SIZING,Reentry at worse price: size multiplier. 0.8 = 20% smaller (penalizing bad timing),3
+REENTRY_TIER2_MAX_MINUTES,120.0,"60.0|90.0|120.0|180.0|240.0",ENTRY_TF,Max minutes before forced Tier 2 reentry. Prevents being out of position too long,3
+DC_WIDTH_CAP_MULT,10.0,"5.0|8.0|10.0|15.0|20.0",SIZING,Hard cap on DC width multiplier. Safety valve against extreme volatility over-sizing,3
+DC_POSITION_EXIT_THRESHOLD_1H,0.90,"0.80|0.85|0.90|0.95|0.98",DC_EXIT,dc_position_1h above this for LONG = near top of 1h channel = end of move. Exit signal.,1
+DC_POSITION_EXIT_THRESHOLD_4H,0.90,"0.80|0.85|0.90|0.95",DC_EXIT,dc_position_4h above this for LONG = 4h channel top. Slower but stronger exit signal.,1
+DC_POSITION_EXIT_THRESHOLD_D,0.85,"0.75|0.80|0.85|0.90|0.95",DC_EXIT,dc_position_D above this for LONG = daily channel top. Strongest exit signal — end of multi-day move.,1
+DC_POSITION_ENTRY_LONG_15M,0.25,"0.10|0.15|0.20|0.25|0.30|0.40",DC_ENTRY,dc_position_15m below this = bottom of 15m channel = entry zone for longs.,1
+DC_POSITION_ENTRY_LONG_1H,0.25,"0.10|0.15|0.20|0.25|0.30|0.35",DC_ENTRY,dc_position_1h below this for long entry. 1h gives better signal than 15m (less noise).,1
+DC_POSITION_ENTRY_LONG_4H,0.30,"0.15|0.20|0.25|0.30|0.35|0.40",DC_ENTRY,dc_position_4h below this for long entry. 4h = slow mean-reversion setup.,2
+DC_POSITION_ENTRY_LONG_D,0.35,"0.15|0.20|0.25|0.30|0.35|0.40|0.50",DC_ENTRY,dc_position_D below this for long entry. Daily = strongest mean-reversion but rare.,2
+DC_WIDTH_EXIT_CONTRACTION_1H,True,"True|False",DC_EXIT,Exit when 1h dc_width contracts (channel narrowing = momentum dying). Use dc_width_1h < dc_width_1h_prev.,1
+DC_WIDTH_EXIT_CONTRACTION_4H,True,"True|False",DC_EXIT,Exit when 4h dc_width contracts. Slower signal — confirms 1h contraction.,2
+DC_WIDTH_MIN_ENTRY,0.5,"0.2|0.3|0.5|0.8|1.0|1.5",DC_ENTRY,Minimum dc_width_1h for entry. Too narrow = no trend = no trade. Filters sideways chop.,2
+DC_BASIS_CROSSUNDER_EXIT,True,"True|False",DC_EXIT,Exit LONG when price crosses below dc_basis (channel midpoint). Midpoint loss = trend dying.,1
+DC_BASIS_CROSSOVER_EXIT,True,"True|False",DC_EXIT,Exit SHORT when price crosses above dc_basis. Mirror of above.,1
+DC_HIGH4_BREAKOUT_ENTRY,True,"True|False",DC_ENTRY,Enter LONG on dc_high4 breakout (4-bar fast channel). Momentum confirmation.,2
+DC_LOW4_BREAKDOWN_ENTRY,True,"True|False",DC_ENTRY,Enter SHORT on dc_low4 breakdown. Mirror of above.,2
+DC_POSITION_COMBINED_SCORE,True,"True|False",DC_ENTRY,Use weighted sum of dc_position across TFs (5m:1 15m:2 1h:3 4h:4 D:5) for entry scoring.,1
+DC_POSITION_WEIGHT_5M,1,"0|1|2",COMPOSITE,Weight of 5m dc_position in combined DC score. 0=ignore 5m.,3
+DC_POSITION_WEIGHT_15M,2,"1|2|3",COMPOSITE,Weight of 15m dc_position in combined DC score.,3
+DC_POSITION_WEIGHT_1H,3,"2|3|4|5",COMPOSITE,Weight of 1h dc_position in combined DC score. Higher = 1h matters more.,2
+DC_POSITION_WEIGHT_4H,4,"3|4|5|6",COMPOSITE,Weight of 4h dc_position in combined DC score.,2
+DC_POSITION_WEIGHT_D,5,"3|4|5|6|8",COMPOSITE,Weight of D dc_position in combined DC score. Highest weight = daily channel is king.,2

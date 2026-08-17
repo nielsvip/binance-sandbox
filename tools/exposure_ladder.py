@@ -92,6 +92,26 @@ EXIT_BAND_TOP = {
     "LR_BAND_HARVEST_ENABLED": True, "LR_BAND_HARVEST_HI": 0.7, "LR_BAND_HARVEST_FRAC": 1.0,
 }
 
+# Prepared shared-direct routes do not all match the generic name patterns.
+# The B&H floor must clear their action toggles explicitly, even while the
+# adapter markers are absent, so a later installed route cannot leak into an
+# unrelated ladder cell.
+PREPARED_DIRECT_ENTRY_OFF = {
+    "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED": False,
+    "ENTRY_STOCH_HHHL_DIRECT_ENABLED": False,
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED": False,
+    "ENTRY_STOCH_PARENT_DIRECT_ENABLED": False,
+    "WT_DC_DIRECT_COMPLETED_ENABLED": False,
+    "BB_RECOVERY_DIRECT_ENABLED": False,
+    "LONG_WAIT_DIRECT_ENABLED": False,
+}
+PREPARED_DIRECT_EXIT_OFF = {
+    "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED": False,
+    "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED": False,
+    "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED": False,
+    "MTF_ATR_MULTITF_DIRECT_ENABLED": False,
+}
+
 
 def manifest():
     return json.loads(MANIFEST.read_text())["params"]
@@ -234,11 +254,30 @@ def params_of(prefix):
 
 
 def all_exits_off():
-    return off_switches(EXIT_PAT)
+    # The B&H floor must be a hold-only control. These newer band/ladder
+    # switches do not all contain an EXIT-shaped token, so pattern discovery
+    # alone leaves ordinary ladder/E02 paths live and can latch a reclaim
+    # obligation at the end of the data window.
+    out = off_switches(EXIT_PAT)
+    out.update(
+        {
+            "LR_BAND_ENTRY_ENABLED": False,
+            "LR_BAND_ENTRY_PRIORITY": False,
+            "LR_BAND_REGIME_ENABLED": False,
+            "LR_BAND_LADDER_ENABLED": False,
+            "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": False,
+            "LR_BAND_E02_EXIT_ENABLED": False,
+            "BREAKOUT_SIZE_LADDER_ENABLED": False,
+            **PREPARED_DIRECT_EXIT_OFF,
+        }
+    )
+    return out
 
 
 def all_entries_off():
-    return off_switches(ENTRY_PAT, anti=EXIT_PAT)
+    out = off_switches(ENTRY_PAT, anti=EXIT_PAT)
+    out.update(PREPARED_DIRECT_ENTRY_OFF)
+    return out
 
 
 V8_RESULT_RE = re.compile(r"V8_RESULT:\s*(.*)")

@@ -199,7 +199,56 @@ def generate_sym_chart(sym: str, npz: dict, trades: List[Dict], m: Dict,
     plt.savefig(out_path, dpi=110, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"  [chart] {out_path.name}")
+    # interactive HTML parity
+    try:
+        _write_interactive_men_html(sym, trades_w, m, overrides, days, dt_cum, cum_pnl, pnl, n_win)
+    except Exception as e:
+        print(f"  [chart html] {sym}: {e}")
     return out_path
+
+
+def _write_interactive_men_html(sym, trades_w, m, overrides, days, dt_cum, cum_pnl, pnl, n_win):
+    try:
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+    except ImportError:
+        return
+    from datetime import datetime, timezone
+    import html as _html, time
+    CHARTS_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    colors=["#3fb950" if p>0 else "#f85149" for p in pnl]
+    hover=[]
+    for t,p in zip(trades_w, pnl):
+        entry_r=_html.escape(str(t.get("entry_reason") or t.get("entry_type") or "")); exit_r=_html.escape(str(t.get("exit_reason") or ""))
+        side=_html.escape(str(t.get("side") or "")); ep=t.get("entry_price"); xp=t.get("exit_price")
+        ets=t.get("entry_ts"); xts=t.get("exit_ts")
+        try:
+            ets_s=datetime.fromtimestamp(int(ets),tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if ets else ""; xts_s=datetime.fromtimestamp(int(xts),tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if xts else ""
+        except Exception:
+            ets_s=str(ets or ""); xts_s=str(xts or "")
+        dur=""
+        try:
+            if ets and xts:
+                sec=int(xts)-int(ets); dur=f"{sec//3600}h {(sec%3600)//60}m" if sec>=60 else f"{sec}s"
+        except Exception:
+            pass
+        hover.append(f"<b>{side}</b> pnl={p:+.2f}%<br>entry: {entry_r} @ {ep} ({ets_s})<br>exit: {exit_r} @ {xp} ({xts_s})<br>duration: {dur}<br>gain/trade: {p:+.4f}%")
+    fig=make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06, row_heights=[0.55,0.45], subplot_titles=["Cumulative PnL %","Per-trade PnL % (hover for reason & gain)"])
+    if dt_cum and cum_pnl:
+        fig.add_trace(go.Scatter(x=dt_cum, y=cum_pnl, mode="lines", name="cum PnL", line=dict(color="#58a6ff", width=2), fill="tozeroy", fillcolor="rgba(88,166,255,0.13)", hovertemplate="%{x}<br>cum %{y:.2f}%<extra></extra>"), row=1, col=1)
+    fig.add_hline(y=0, line_dash="dash", line_color="#6e7681", line_width=0.8, row=1, col=1)
+    if dt_cum and pnl:
+        # reuse dt_cum as bar x (exit times)
+        fig.add_trace(go.Bar(x=dt_cum, y=pnl, name="per-trade", marker_color=colors, hovertext=hover, hovertemplate="%{hovertext}<extra></extra>"), row=2, col=1)
+    fig.add_hline(y=0, line_dash="dash", line_color="#6e7681", line_width=0.8, row=2, col=1)
+    ovr_str="  ".join(f"{k}={v}" for k,v in list(overrides.items())[:8] if not k.startswith("_"))
+    title=f"OPT | {sym}  pool={m.get('pool_sharpe',0):+.4f}  wr={m.get('wr_pct',0):.1f}%  dd={m.get('max_dd_pct',0):.1f}%  trades={m.get('trades',len(pnl))}  wins={n_win}/{len(pnl)}  ({days}d) — {ovr_str}"
+    fig.update_layout(title=dict(text=title, font=dict(color="#c9d1d9", size=11)), paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", font=dict(color="#c9d1d9"), hovermode="x unified", bargap=0.2, legend=dict(orientation="h", y=1.02, x=1, xanchor="right", bgcolor="rgba(0,0,0,0)"), margin=dict(l=60,r=20,t=60,b=40))
+    fig.update_xaxes(showgrid=True, gridcolor="#21262d", tickfont=dict(color="#6e7681", size=10), rangeslider_visible=False)
+    fig.update_yaxes(showgrid=True, gridcolor="#21262d", tickfont=dict(color="#6e7681", size=10))
+    html_path=CHARTS_OUT_DIR / f"OPT_{sym}.html"
+    fig.write_html(str(html_path), include_plotlyjs="cdn", config=dict(scrollZoom=True, displayModeBar=True, modeBarButtonsToAdd=["zoomIn2d","zoomOut2d","autoScale2d"], displaylogo=False))
+    print(f"  [chart html] {html_path.name} (hover: reason+gain, scroll to zoom)")
 
 
 def promote_winners_to_active_config(winners: Dict[str, Tuple[Dict, Dict]]) -> None:

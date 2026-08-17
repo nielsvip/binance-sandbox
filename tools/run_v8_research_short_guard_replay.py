@@ -48,7 +48,12 @@ def main() -> int:
     spec_path = out / "research_short_guard_spec.json"
     spec_path.write_text(json.dumps(spec, indent=2, sort_keys=True) + "\n")
     override = out / "backtest_only_override.json"
-    override.write_text(json.dumps({"ROUND_TRIP_COST_PCT": 0.10}) + "\n")
+    commission_round_trip_pct = (
+        2.0 * float(spec["commission_bps_one_way"]) / 100.0
+    )
+    override.write_text(
+        json.dumps({"ROUND_TRIP_COST_PCT": commission_round_trip_pct}) + "\n"
+    )
     audit = out / "exact_engine_audit.json"
     env = os.environ.copy()
     env.update({

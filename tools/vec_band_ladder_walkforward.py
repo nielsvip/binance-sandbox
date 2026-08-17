@@ -51,7 +51,13 @@ if str(ROOT) not in sys.path:
 if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import vec_top_exit_campaign as top  # noqa: E402
-from research_availability_clock import next_strictly_later_index  # noqa: E402
+from ordinary_ladder_contract import (  # noqa: E402
+    Completed4hE02,
+    ReclaimObligation,
+    e02_exit_signal,
+    ladder_multiplier as shared_ladder_multiplier,
+    next_strictly_later_index,
+)
 
 
 # Principal decision timeframes. USER 2026-07-28 asked whether every timeframe had
@@ -64,6 +70,16 @@ ACCOUNT_EQUITY = 10_000.0
 CAPACITY = 16_000.0
 MAX_MULT = CAPACITY / BASE_UNIT
 BH_RATIO_ABS_FLOOR_PP = 20.0
+# Strategy arm; the B&H comparator remains a separate hold-only leg.
+VECTOR_STRATEGY_ARM = {
+    "ordinary_ladder": True,
+    "e02_donchian_4h_n30": True,
+    "band_regime_structure_union": True,
+    "breakout_size_ladder": True,
+}
+BREAKOUT_SIZE_LADDER_THRESHOLDS = (1.0, 1.5, 2.5)
+BREAKOUT_SIZE_LADDER_MULTIPLIERS = (1.5, 2.0, 3.0)
+BREAKOUT_SIZE_LADDER_MAX_MULT = 3.0
 KNOWN_GAPS = {
     "VT": (("2026-03-30", "2026-06-08"),),
 }
@@ -127,17 +143,13 @@ def ladder_mult(pb: float, bottom: float, top_: float, mode: str) -> float:
     Below the lower band is zero; above the upper band keeps the top size.
     Multipliers are clipped to the campaign's hard 8x capacity.
     """
-    if not math.isfinite(pb):
-        return 0.0
-    if pb < 0.0:
-        return 0.0
-    if pb > 1.0:
-        return min(MAX_MULT, max(0.0, top_))
-    if mode == "center_plateau":
-        value = bottom if pb <= 0.5 else bottom + (top_ - bottom) * ((pb - 0.5) / 0.5)
-    else:
-        value = bottom + (top_ - bottom) * pb
-    return min(MAX_MULT, max(0.0, value))
+    return shared_ladder_multiplier(
+        pb,
+        bottom,
+        top_,
+        mode,
+        max_multiplier=MAX_MULT,
+    )
 
 
 def _curves(seed: int, n_random: int) -> list[Curve]:
@@ -206,6 +218,7 @@ def _build_signals(
     curve: Curve,
     exit_n: int,
     side: str = "LONG",
+    exit_tf: str = "4h",
 ) -> SignalData:
     side = side.upper()
     if side not in {"LONG", "SHORT"}:
@@ -304,14 +317,67 @@ def _build_signals(
         entry_mult = np.sum(mult_by_tf, axis=0)
     else:
         entry_mult = np.max(mult_by_tf, axis=0)
-    entry_mult = np.clip(entry_mult, 0.0, MAX_MULT)
+    # Apply the same causal SMA-distance sizing ladder as v8_vec_sweep's
+    # BREAKOUT_SIZE_LADDER.  The anchor is read at the 5m decision bar; no
+    # future or completed-parent value is used.  This is sizing, not a new
+    # entry trigger, so every ordinary-ladder/band-regime request receives the
+    # same live-equivalent clip multiplier.
+    anchor_key = "ema_200_15m"
+    if anchor_key in data.z.files:
+        anchor = np.asarray(data.z[anchor_key], dtype=np.float64)[data.full_indices]
+    else:
+        # Synthetic/unit-test stores may not carry the optional live anchor;
+        # absence means the neutral 1x rung, never a fabricated breakout.
+        anchor = np.zeros(len(data.ts), dtype=np.float64)
+    distance = np.zeros(len(data.ts), dtype=np.float64)
+    valid_anchor = anchor > 0.0
+    if is_long:
+        np.divide(
+            data.close - anchor,
+            anchor,
+            out=distance,
+            where=valid_anchor,
+        )
+    else:
+        np.divide(
+            anchor - data.close,
+            anchor,
+            out=distance,
+            where=valid_anchor,
+        )
+    distance *= 100.0
+    t1, t2, t3 = BREAKOUT_SIZE_LADDER_THRESHOLDS
+    m1, m2, m3 = BREAKOUT_SIZE_LADDER_MULTIPLIERS
+    breakout_mult = np.where(
+        distance >= t3,
+        m3,
+        np.where(distance >= t2, m2, np.where(distance >= t1, m1, 1.0)),
+    )
+    entry_mult = np.clip(entry_mult * breakout_mult, 0.0, MAX_MULT)
 
-    h4 = htfs["4h"]
-    prior_low = top._rolling_prior(h4.low, exit_n, "min")
-    prior_high = top._rolling_prior(h4.high, exit_n, "max")
-    event_h = h4.close < prior_low if is_long else h4.close > prior_high
+    if exit_tf not in htfs:
+        raise ValueError(f"exit timeframe {exit_tf!r} is not in ladder timeframes")
+    h_exit = htfs[exit_tf]
+    prior_low = top._rolling_prior(h_exit.low, exit_n, "min")
+    prior_high = top._rolling_prior(h_exit.high, exit_n, "max")
+    # E02 is evaluated through the same completed-parent contract as the
+    # ordinary Tradier adapter.  This keeps its side mirror, parent causality,
+    # and prior opposite-band reclaim reference in one implementation.
+    event_h = np.zeros(len(h_exit.close), dtype=bool)
+    for h_index in range(len(h_exit.close)):
+        signal = e02_exit_signal(
+            Completed4hE02(
+                source_close_ts=int(h_exit.source_ts[h_index]),
+                availability_ts=int(data.ts[int(h_exit.event_index[h_index])]),
+                close=float(h_exit.close[h_index]),
+                prior_low=float(prior_low[h_index]),
+                prior_high=float(prior_high[h_index]),
+            ),
+            side=side,
+        )
+        event_h[h_index] = signal is not None
     reclaim_ref = prior_high if is_long else prior_low
-    mapped, refs = top._map_events(n, h4, event_h, reclaim_ref)
+    mapped, refs = top._map_events(n, h_exit, event_h, reclaim_ref)
     return SignalData(
         entry_mult=np.ascontiguousarray(entry_mult),
         event_tf=event_tf,
@@ -345,10 +411,7 @@ def _simulate_python(
     # so mechanically shrinks the denominator of a winning SHORT and inflates
     # the denominator of a winning LONG, manufacturing side-dependent "alpha".
     entry_notional = 0.0
-    last_exit_fill = math.nan
-    reclaim_level = math.nan
-    prior_exit_notional = 0.0
-    gap_seen = False
+    reclaim = ReclaimObligation(side)
     pending: dict[str, Any] | None = None
     peak_equity = ACCOUNT_EQUITY
     min_equity = ACCOUNT_EQUITY
@@ -378,16 +441,16 @@ def _simulate_python(
                 close_qty = abs(qty)
                 notional = close_qty * px
                 cash += side_sign * (notional - side_sign * commission_rate * notional)
-                prior_exit_notional = min(CAPACITY, notional)
-                last_exit_fill = px
-                reclaim_level = (
-                    max(px, float(pending["ref"]))
-                    if is_long
-                    else min(px, float(pending["ref"]))
+                reclaim.latch(
+                    exit_fill=px,
+                    prior_opposite_level=float(pending["ref"]),
+                    exited_notional_usd=notional,
+                    exit_ts=int(data.ts[i]),
+                    base_unit_usd=BASE_UNIT,
+                    capacity_usd=CAPACITY,
                 )
                 qty = 0.0
                 entry_notional = 0.0
-                gap_seen = False
                 exit_count += 1
             elif kind == "entry":
                 px = op * (1.0 + side_sign * slippage_rate)
@@ -414,6 +477,8 @@ def _simulate_python(
                     lower_count += int(
                         pending.get("reason") in {"ladder_lower", "ladder_higher"}
                     )
+                    if reclaim.pending:
+                        reclaim.confirm_fill()
             pending = None
 
         mark_equity = equity(close)
@@ -457,24 +522,22 @@ def _simulate_python(
                     "fill_index": fill_index,
                 }
         else:
-            if math.isfinite(last_exit_fill):
-                gap_seen |= (
-                    float(data.low[i]) < last_exit_fill
-                    if is_long
-                    else float(data.high[i]) > last_exit_fill
+            if reclaim.pending:
+                reclaim.observe_price(
+                    float(data.low[i]) if is_long else float(data.high[i])
                 )
-                reclaim_crossed = (
-                    close >= reclaim_level if is_long else close <= reclaim_level
-                )
-                if reclaim_crossed:
+                if reclaim.crossed(
+                    high=float(data.high[i]),
+                    low=float(data.low[i]),
+                ):
                     pending = {
                         "kind": "entry",
-                        "requested_notional": max(BASE_UNIT, prior_exit_notional),
+                        "requested_notional": reclaim.target_notional_usd,
                         "absolute_target": True,
                         "reason": "reclaim",
                         "fill_index": fill_index,
                     }
-                elif signals.entry_mult[i] > 0 and gap_seen:
+                elif signals.entry_mult[i] > 0 and reclaim.favorable_gap_seen:
                     pending = {
                         "kind": "entry",
                         "requested_notional": BASE_UNIT * float(signals.entry_mult[i]),
@@ -483,7 +546,9 @@ def _simulate_python(
                         "fill_index": fill_index,
                     }
                 elif (
-                    close > reclaim_level if is_long else close < reclaim_level
+                    close > reclaim.reclaim_level
+                    if is_long
+                    else close < reclaim.reclaim_level
                 ):
                     beyond_reclaim += 1
             elif signals.entry_mult[i] > 0:
@@ -934,7 +999,7 @@ def run(args: argparse.Namespace) -> Path:
     def sig(curve: Curve) -> SignalData:
         key = (curve, args.exit_n)
         if key not in cache:
-            cache[key] = _build_signals(data, htfs, curve, args.exit_n, side)
+            cache[key] = _build_signals(data, htfs, curve, args.exit_n, side, args.exit_tf)
         return cache[key]
 
     folds: list[dict[str, Any]] = []
@@ -1056,6 +1121,9 @@ def run(args: argparse.Namespace) -> Path:
         "bh_ratio_eligible_all_folds": all(
             r["bh_ratio_eligible"] for r in validations
         ),
+        "all_folds_beat_bh": bool(validations)
+        and all(float(r["alpha_vs_bh_pp"]) > 0.0 for r in validations),
+        "strategy_arm": dict(VECTOR_STRATEGY_ARM),
     }
     aggregate["strategy_bh_multiple"] = (
         aggregate["capital_return_pct_sum"] / aggregate["bh_capital_return_pct_sum"]
@@ -1067,6 +1135,11 @@ def run(args: argparse.Namespace) -> Path:
         or aggregate["deployed_alpha_vs_bh_or_cash_pp_sum"] <= 0.0
         or aggregate["insolvent_folds"] > 0
         or aggregate["max_drawdown_account_pct_max"] >= 100.0
+    )
+    aggregate["vector_gate_pass"] = bool(
+        aggregate["all_folds_beat_bh"]
+        and not aggregate["control_failure"]
+        and aggregate["insolvent_folds"] == 0
     )
     aggregate["control_failure_reasons"] = [
         reason
@@ -1117,7 +1190,8 @@ def run(args: argparse.Namespace) -> Path:
         "hard_max_multiplier": MAX_MULT,
         "commission_bps_one_way": args.commission_bps,
         "slippage_bps_one_way": args.slippage_bps,
-        "exit": {"family": "E02_DONCHIAN", "tf": "4h", "n": args.exit_n},
+        "exit": {"family": "E02_DONCHIAN", "tf": args.exit_tf, "n": args.exit_n},
+        "ladder_timeframes": list(TF_ORDER),
         "reentry": (
             "ladder lower first; mandatory zero-buffer stored exit/top reclaim"
             if side == "LONG"
@@ -1125,6 +1199,8 @@ def run(args: argparse.Namespace) -> Path:
         ),
         "candidate_count": len(curves),
         "selection": "nested frozen 3-fold inner robust block/Pareto-style search",
+        "strategy_arm": dict(VECTOR_STRATEGY_ARM),
+        "benchmark": "separate side-aware B&H hold-only leg; never mutated by strategy arm",
     }
     payload = {
         "manifest": manifest,
@@ -1211,6 +1287,7 @@ def main() -> None:
     ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end")
     ap.add_argument("--exit-n", type=int, default=30)
+    ap.add_argument("--exit-tf", default="4h", help="Completed timeframe for the paired top exit (default: 4h)")
     ap.add_argument("--tfs", default=",".join(TF_ORDER),
                     help="Principal decision timeframes, high-to-low (e.g. '4h,1h,15m'). "
                          "Only D/4h/1h were ever tested before 2026-07-28.")
@@ -1224,8 +1301,8 @@ def main() -> None:
     ap.add_argument("--tim-weight", type=float, default=0.0)
     ap.add_argument("--random-curves", type=int, default=160)
     ap.add_argument("--seed", type=int, default=20260725)
-    ap.add_argument("--commission-bps", type=float, default=5.0)
-    ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument("--commission-bps", type=float, default=0.0)
+    ap.add_argument("--slippage-bps", type=float, default=2.5)
     ap.add_argument(
         "--no-replay-spec",
         action="store_false",
@@ -1235,6 +1312,11 @@ def main() -> None:
         ),
     )
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument(
+        "--require-bh",
+        action="store_true",
+        help="write the artifact, then exit nonzero unless every frozen OOS fold beats B&H",
+    )
     args = ap.parse_args()
     if args.self_test:
         _self_test()
@@ -1243,6 +1325,8 @@ def main() -> None:
     if len(tfs) != 3:
         raise SystemExit("--tfs requires exactly three timeframes (the ladder has three slots)")
     TF_ORDER = tfs
+    if args.exit_tf not in TF_ORDER:
+        raise SystemExit("--exit-tf must be one of the three --tfs (same-TF paired exit)")
     BASE_UNIT = float(args.base_unit)
     CAPACITY = float(args.capacity)
     ACCOUNT_EQUITY = float(args.account_equity)
@@ -1254,7 +1338,16 @@ def main() -> None:
         # ``_load_execution`` enforces that contract and raises with the exact
         # quarantine reasons.
         pass
-    run(args)
+    result_path = run(args)
+    if args.require_bh:
+        result = json.loads((result_path / "result.json").read_text())
+        aggregate = result["frozen_oos_aggregate"]
+        if not aggregate.get("vector_gate_pass", False):
+            raise SystemExit(
+                f"VECTOR_GATE_FAIL:{args.symbol.upper()}_{args.side}: "
+                f"all_folds_beat_bh={aggregate.get('all_folds_beat_bh')} "
+                f"reasons={aggregate.get('control_failure_reasons', [])}"
+            )
 
 
 if __name__ == "__main__":

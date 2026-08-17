@@ -1,0 +1,8 @@
+{
+  "configs": [
+    {"mode": "tradier", "hash": "mstr-base", "overrides_json": "{}"},
+    {"mode": "tradier", "hash": "mstr-mtf-short", "overrides_json": "{\"MTF_ARMED_ENTRY_ENABLED\": true, \"MTF_ARMED_ENTRY_SKIP_SHORT\": false}"},
+    {"mode": "tradier", "hash": "mstr-red-arrow", "overrides_json": "{\"MTF_ARROW_SHORT_ENTRY_ENABLED\": true, \"LR_BAND_LADDER_ENABLED\": true, \"MTF_ARROW_CONFIRM_PCT\": 1.0}"},
+    {"mode": "tradier", "hash": "mstr-wtdc-exit", "overrides_json": "{\"WT_DC_EXIT_ENABLED\": true, \"WT_DC_EXIT_THRESHOLD\": 45.0, \"WT_DC_EXIT_STALE_MAX_S\": 600.0}"}
+  ]
+}

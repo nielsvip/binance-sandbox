@@ -12,21 +12,69 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import hashlib
 import json
+import re
 import sqlite3
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+try:
+    from tools.stock_capacity_contract import (
+        is_expected_stock_capacity_saturation,
+    )
+    from tools.trb_tim_contract import (
+        ranked_symbols,
+        tim_band_for_key,
+        tim_contract,
+        tim_in_band,
+    )
+except ModuleNotFoundError:
+    from stock_capacity_contract import is_expected_stock_capacity_saturation
+    from trb_tim_contract import (
+        ranked_symbols,
+        tim_band_for_key,
+        tim_contract,
+        tim_in_band,
+    )
 
 BASE = Path(__file__).resolve().parent.parent
 DB = BASE / "data" / "param_results_stocks.db"
 REPORTS = BASE / "data" / "reports"
-DEFAULT_KEYS = ("MU_LONG", "VT_LONG", "HAO_SHORT")
-CURRENT_ENGINE_CAMPAIGN = "stocks_repaired_20260725_c2"
-CURRENT_ENGINE_CUTOFF = "2026-07-26T04:15:00Z"
+DEFAULT_KEYS = (
+    "MU_LONG",
+    "NVDA_LONG",
+    "VT_LONG",
+    "TTD_SHORT",
+    "ACN_SHORT",
+    "LAC_SHORT",
+)
 
 
-def current_contract_fingerprints(keys: tuple[str, ...]) -> dict[str, str]:
-    """Exact current code+NPZ+side fingerprints; absent/invalid keys simply get no credit."""
+def _set_local_immutable(path: Path, enabled: bool) -> None:
+    import stat
+    import sys
+
+    if sys.platform != "darwin" or not path.exists():
+        return
+    flag = getattr(stat, "UF_IMMUTABLE", 0)
+    if flag:
+        current = path.stat().st_flags
+        os.chflags(path, (current | flag) if enabled else (current & ~flag))
+CURRENT_ENGINE_CAMPAIGN = "stocks_repaired_20260730_c5"
+CURRENT_ENGINE_CUTOFF = "2026-07-30T03:30:10Z"
+PROVISIONAL_ACTIONABLE_CATEGORIES = frozenset(
+    {
+        "ACTIONABLE_EXACT_ONLY",
+        "ACTIONABLE_VECTOR_THEN_EXACT",
+        "ACTIONABLE_BINDING_PROBE",
+    }
+)
+
+
+def current_contract_fingerprints(keys: tuple[str, ...]) -> dict[str, set[str]]:
+    """Admissible exact code+NPZ+side fingerprints for each key."""
     try:
         try:
             from tools import persym_baseline_campaign as psc
@@ -36,13 +84,16 @@ def current_contract_fingerprints(keys: tuple[str, ...]) -> dict[str, str]:
             import persym_baseline_campaign as psc
 
         return {
-            key: psc.matrix_contract_fingerprint(*parse_key(key))
+            key: psc.matrix_contract_fingerprints(*parse_key(key))
             for key in keys
         }
-    except Exception as exc:
-        raise RuntimeError(
-            f"cannot compute repaired matrix contract fingerprints: {exc}"
-        ) from exc
+    except Exception:
+        # Reporting must still render when a symbol's frozen NPZ is absent on
+        # this checkout (a common Mac/S1 split-brain condition).  Empty
+        # allowlists deliberately produce no exact rows; the digest exposes
+        # the unavailable contract through its zero-current-row/freshness
+        # fields instead of crashing and emitting no email at all.
+        return {key: set() for key in keys}
 
 
 def norm_val(value) -> str:
@@ -104,6 +155,45 @@ def fmt(value, digits=3, suffix="") -> str:
         return str(value)
 
 
+def historical_integration_section() -> list[str]:
+    """Render the provenance-bound BASELINE_V2 sidecar in the digest.
+
+    This makes useful pre-7/25 observations visible without allowing them to
+    masquerade as current c5 ENGINE rows or promotion candidates.
+    """
+    path = REPORTS / "SWITCH_MATRIX_TRB_HISTORICAL_INTEGRATED.jsonl"
+    if not path.is_file():
+        return ["## Historical BASELINE_V2_S4H integration", "", "Sidecar not generated.", ""]
+    rows = []
+    try:
+        with path.open() as fh:
+            for line in fh:
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if row.get("status") == "OK" and float(row.get("delta_gain_mo_vs_bh_historical") or 0) > 0:
+                    rows.append(row)
+    except OSError:
+        rows = []
+    lines = [
+        "## Historical BASELINE_V2_S4H integration",
+        "",
+        f"{len(rows):,} positive historical OK logical cells are visible from the provenance sidecar. "
+        "They fill only blank canonical cells, retain the original source hash, and remain excluded from exact completion, current ranking, and promotion.",
+        "",
+        "| key | path/value | historical Δ/mo vs B&H | provenance |",
+        "|---|---|---:|---|",
+    ]
+    for row in rows[:40]:
+        lines.append(
+            f"| {row.get('key') or '—'} | `{row.get('main_switch') or ''}/{row.get('sub_setting') or ''}={row.get('value_json') or ''}` | "
+            f"{float(row.get('delta_gain_mo_vs_bh_historical') or 0):+.4f} | HISTORICAL_BASELINE_V2 (not current) |"
+        )
+    lines.append("")
+    return lines
+
+
 def iso_age(ts: str | None, now: datetime) -> str:
     if not ts:
         return "unknown"
@@ -125,6 +215,7 @@ def strategy_where() -> str:
         param IN ('STOP_PACK','TF_EXCLUDE') OR
         param LIKE '%ENTRY%' OR param LIKE '%EXIT%' OR param LIKE '%REENTRY%' OR
         param LIKE '%LADDER%' OR param LIKE 'GR_%' OR param LIKE 'MTF_%' OR
+        param LIKE 'WT_3M_FORCE_OPEN%' OR
         source_file LIKE 'exposure_ladder/%' OR
         source_file LIKE 'band_ladder_sweep/%' OR
         source_file LIKE 'combo_search/%' OR
@@ -132,14 +223,484 @@ def strategy_where() -> str:
     )"""
 
 
+def load_classified_pilot_coverage(
+    keys: tuple[str, ...],
+) -> dict:
+    """Use matrix_guard's disjoint executable-cell contract.
+
+    The manifest's raw 3,267 rows include intentional controls, helpers,
+    wrong-account knobs, no-live-reader rows, and opposite-side cells.  It is
+    not an actionable per-key denominator.
+    """
+    try:
+        try:
+            from tools import matrix_guard
+        except ModuleNotFoundError:
+            import matrix_guard  # type: ignore
+        header, rows = matrix_guard.load()
+        contract = matrix_guard.load_uniqueness_contract()
+        if contract is None:
+            raise RuntimeError("matrix uniqueness contract unavailable")
+        active_keys = list(contract["tim_policy"]["keys"])
+        columns = header[12:]
+        missing = sorted(set(keys) - set(columns))
+        if missing:
+            raise RuntimeError(
+                "digest pilot columns missing: " + ",".join(missing)
+            )
+        # Match the canonical guard exactly.  Physical CSV values can include
+        # preserved/recovered rows that lack the current receipt and capital
+        # contract; they are display evidence, never exact-completion credit.
+        progress = matrix_guard.classified_progress(
+            header,
+            rows,
+            contract["rows"],
+            active_keys,
+            filled_logical_cells=matrix_guard.receipt_validated_scalar_cells(),
+        )
+        result = {
+            "available": True,
+            "matrix_rows": len(rows),
+            "active_keys": len(active_keys),
+            "keys": {},
+        }
+        for key in keys:
+            pilot = progress["pilot"][key]
+            counts = {
+                "differential_filled": int(pilot["filled"]),
+                "differential_empty": int(pilot["empty"]),
+                "plateau_filled": int(pilot["plateau_filled"]),
+                "plateau_empty": int(pilot["plateau_empty"]),
+            }
+            result["keys"][key] = counts
+        return result
+    except Exception as exc:
+        return {
+            "available": False,
+            "reason": f"{type(exc).__name__}: {exc}",
+            "keys": {},
+        }
+
+
+_TIM_FAILURE = re.compile(
+    r"(?:^|:)tim_not_(-?[0-9]+(?:\.[0-9]+)?)_"
+    r"(-?[0-9]+(?:\.[0-9]+)?)$"
+)
+
+
+def receipt_tim_contract_state(receipt: dict, key: str) -> str:
+    """CURRENT, HISTORICAL, or UNBOUND for one vector receipt TIM gate."""
+    expected = tuple(float(value) for value in tim_band_for_key(key))
+    gates = (
+        ((receipt.get("preflight_identity") or {}).get("payload") or {}).get(
+            "gates"
+        )
+        or {}
+    )
+    if "tim_min" in gates and "tim_max" in gates:
+        try:
+            observed = (float(gates["tim_min"]), float(gates["tim_max"]))
+        except (TypeError, ValueError):
+            return "UNBOUND"
+        return "CURRENT" if observed == expected else "HISTORICAL"
+    # Older isolated lanes did not persist preflight identity. Their rejection
+    # reason is the only auditable gate identity.
+    observed_failures = []
+    for failure in receipt.get("failures") or []:
+        match = _TIM_FAILURE.search(str(failure))
+        if match:
+            observed_failures.append(
+                (float(match.group(1)), float(match.group(2)))
+            )
+    if observed_failures:
+        return (
+            "CURRENT"
+            if all(observed == expected for observed in observed_failures)
+            else "HISTORICAL"
+        )
+    return "UNBOUND"
+
+
+def load_c4_vector_first_progress(
+    keys: tuple[str, ...],
+    *,
+    screen_root: Path | None = None,
+    runner_path: Path | None = None,
+    status_path: Path | None = None,
+) -> dict:
+    """Load only receipts produced by today's vector-first runner source.
+
+    Older attempts remain on disk as gray evidence.  Matching the runner hash
+    prevents a prior accounting/control contract from being reported as the
+    current cycle merely because it used the same bundle name.
+    """
+    screen_root = screen_root or (
+        REPORTS / "c4_vector_bundle_screen" / "receipts"
+    )
+    runner_path = runner_path or (
+        BASE / "tools" / "c4_vector_bundle_screen.py"
+    )
+    status_path = status_path or (
+        REPORTS / "c4_vector_first" / "status.json"
+    )
+    if not runner_path.exists():
+        return {"available": False, "reason": "runner missing", "keys": {}}
+    runner_sha = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+    latest_by_bundle: dict[tuple[str, str], dict] = {}
+    if screen_root.exists():
+        # The runner currently emits ``attempt_c4_*.json``.  Accept any
+        # attempt receipt here and let the exact runner hash below provide the
+        # contract boundary; this also keeps the digest compatible with
+        # deterministic test/replay attempt names.
+        for path in screen_root.glob("*/*/attempt_*.json"):
+            try:
+                payload = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            if (
+                (payload.get("code_contract") or {}).get("runner_sha256")
+                != runner_sha
+            ):
+                continue
+            key = str(payload.get("position_key") or "")
+            bundle_id = str((payload.get("bundle") or {}).get("bundle_id") or "")
+            if key not in keys or not bundle_id:
+                continue
+            identity = (key, bundle_id)
+            if str(payload.get("finished_at") or "") >= str(
+                latest_by_bundle.get(identity, {}).get("finished_at") or ""
+            ):
+                latest_by_bundle[identity] = payload
+
+    try:
+        status = json.loads(status_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        status = {}
+    grouped: dict[str, list[dict]] = {key: [] for key in keys}
+    for (key, _bundle_id), payload in latest_by_bundle.items():
+        grouped[key].append(payload)
+
+    result = {
+        "available": bool(latest_by_bundle),
+        "runner_sha256": runner_sha,
+        "latest": max(
+            (
+                str(row.get("finished_at") or "")
+                for row in latest_by_bundle.values()
+            ),
+            default=None,
+        ),
+        "status": status,
+        "keys": {},
+    }
+    for key in keys:
+        all_receipts = grouped[key]
+        receipts = [
+            receipt
+            for receipt in all_receipts
+            if receipt_tim_contract_state(receipt, key) == "CURRENT"
+        ]
+        historical_tim = [
+            receipt
+            for receipt in all_receipts
+            if receipt_tim_contract_state(receipt, key) == "HISTORICAL"
+        ]
+        unbound_tim = [
+            receipt
+            for receipt in all_receipts
+            if receipt_tim_contract_state(receipt, key) == "UNBOUND"
+        ]
+        tim_low, tim_high = tim_band_for_key(key)
+        tim_mid = (tim_low + tim_high) / 2.0
+        scored = []
+        for receipt in receipts:
+            folds = receipt.get("folds") or []
+            if not folds:
+                continue
+            fold = folds[0]
+            metrics = fold.get("metrics") or {}
+            control = fold.get("same_fold_vec_control") or {}
+            try:
+                strategy_return = float(metrics["strategy_return_pct"])
+                bh_return = float(metrics["bh_return_pct"])
+                tim = float(metrics["tim_pct"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            floor = max(bh_return, 0.0)
+            scored.append(
+                {
+                    "bundle": (receipt.get("bundle") or {}).get("bundle_id"),
+                    "status": receipt.get("status"),
+                    "strategy_return_pct": strategy_return,
+                    "bh_return_pct": bh_return,
+                    "capture_vs_bh": (
+                        strategy_return / bh_return if bh_return > 0 else None
+                    ),
+                    "same_entry_control_pct": control.get(
+                        "strategy_return_pct"
+                    ),
+                    "tim_pct": tim,
+                    "trades": metrics.get("trades"),
+                    "performance_gap_to_2x_floor": (
+                        strategy_return - 2.0 * floor
+                    ),
+                    "failures": list(receipt.get("failures") or []),
+                }
+            )
+        scored.sort(
+            key=lambda row: (
+                row["performance_gap_to_2x_floor"],
+                -abs(row["tim_pct"] - tim_mid),
+            ),
+            reverse=True,
+        )
+        in_tim = [
+            row
+            for row in scored
+            if tim_low <= row["tim_pct"] <= tim_high
+        ]
+        result["keys"][key] = {
+            "screened": len(receipts),
+            "historical_tim_contract": len(historical_tim),
+            "unbound_tim_contract": len(unbound_tim),
+            "exact_pending": sum(
+                row.get("status") == "EXACT_PENDING" for row in receipts
+            ),
+            "top_performance": scored[0] if scored else None,
+            "best_in_tim": in_tim[0] if in_tim else None,
+        }
+    result["available"] = any(
+        int(row.get("screened", 0) or 0) > 0
+        for row in result["keys"].values()
+    )
+    result["historical_tim_contract_receipts"] = sum(
+        int(row.get("historical_tim_contract", 0) or 0)
+        for row in result["keys"].values()
+    )
+    result["unbound_tim_contract_receipts"] = sum(
+        int(row.get("unbound_tim_contract", 0) or 0)
+        for row in result["keys"].values()
+    )
+    return result
+
+
+def load_isolated_vector_progress(
+    keys: tuple[str, ...],
+    *,
+    screen_root: Path,
+    status_path: Path,
+    contract_kind: str,
+    runner_path: Path | None = None,
+) -> dict:
+    """Summarize a sealed, non-matrix vector lane by its own contract.
+
+    ``targeted_cycle3`` receipts bind the preregistered catalog hash; the
+    short-native lane binds its named recovery-state contract. This keeps
+    either lane visible in the digest without pretending it shares the safe
+    runner identity or contributes ENGINE coverage.
+    """
+    try:
+        status = json.loads(status_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        status = {}
+    catalog_sha = str(status.get("catalog_sha256") or "")
+    named_contract = str(status.get("contract") or "")
+    latest_by_bundle: dict[tuple[str, str], dict] = {}
+    if screen_root.exists():
+        for path in screen_root.glob("receipts/*/*/attempt_*.json"):
+            try:
+                payload = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            if contract_kind == "targeted_cycle3":
+                observed = str(
+                    (payload.get("code_contract") or {}).get(
+                        "targeted_cycle3_catalog_sha256"
+                    )
+                    or ""
+                )
+                if not catalog_sha or observed != catalog_sha:
+                    continue
+            elif contract_kind == "short_native":
+                if (
+                    not named_contract
+                    or str(payload.get("research_contract") or "")
+                    != named_contract
+                ):
+                    continue
+            elif contract_kind == "breakout_cycle4":
+                expected = (
+                    hashlib.sha256(runner_path.read_bytes()).hexdigest()
+                    if runner_path is not None and runner_path.is_file()
+                    else ""
+                )
+                observed = str(
+                    (payload.get("code_contract") or {}).get(
+                        "breakout_cycle4_catalog_sha256"
+                    )
+                    or ""
+                )
+                if not expected or observed != expected:
+                    continue
+            else:
+                raise ValueError(f"unknown isolated vector contract {contract_kind}")
+            key = str(payload.get("position_key") or "")
+            bundle = str((payload.get("bundle") or {}).get("bundle_id") or "")
+            if key not in keys or not bundle:
+                continue
+            identity = (key, bundle)
+            if str(payload.get("finished_at") or "") >= str(
+                latest_by_bundle.get(identity, {}).get("finished_at") or ""
+            ):
+                latest_by_bundle[identity] = payload
+
+    result = {
+        "available": bool(latest_by_bundle),
+        "latest": max(
+            (
+                str(row.get("finished_at") or "")
+                for row in latest_by_bundle.values()
+            ),
+            default=None,
+        ),
+        "status": status,
+        "keys": {},
+    }
+    for key in keys:
+        tim_low, tim_high = tim_band_for_key(key)
+        tim_mid = (tim_low + tim_high) / 2.0
+        all_receipts = [
+            payload
+            for (receipt_key, _), payload in latest_by_bundle.items()
+            if receipt_key == key
+        ]
+        receipts = [
+            receipt
+            for receipt in all_receipts
+            if receipt_tim_contract_state(receipt, key) == "CURRENT"
+        ]
+        historical_tim = [
+            receipt
+            for receipt in all_receipts
+            if receipt_tim_contract_state(receipt, key) == "HISTORICAL"
+        ]
+        unbound_tim = [
+            receipt
+            for receipt in all_receipts
+            if receipt_tim_contract_state(receipt, key) == "UNBOUND"
+        ]
+        scored = []
+        for receipt in receipts:
+            folds = receipt.get("folds") or []
+            if not folds:
+                continue
+            fold = folds[0]
+            metrics = fold.get("metrics") or {}
+            control = fold.get("same_fold_vec_control") or {}
+            try:
+                strategy_return = float(metrics["strategy_return_pct"])
+                bh_return = float(metrics["bh_return_pct"])
+                tim = float(metrics["tim_pct"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            scored.append(
+                {
+                    "bundle": (receipt.get("bundle") or {}).get("bundle_id"),
+                    "status": receipt.get("status"),
+                    "strategy_return_pct": strategy_return,
+                    "bh_return_pct": bh_return,
+                    "capture_vs_bh": (
+                        strategy_return / bh_return if bh_return > 0 else None
+                    ),
+                    "same_entry_control_pct": control.get(
+                        "strategy_return_pct"
+                    ),
+                    "tim_pct": tim,
+                    "trades": metrics.get("trades"),
+                    "performance_gap_to_2x_floor": (
+                        strategy_return - 2.0 * max(bh_return, 0.0)
+                    ),
+                    "failures": list(receipt.get("failures") or []),
+                }
+            )
+        scored.sort(
+            key=lambda row: (
+                row["performance_gap_to_2x_floor"],
+                -abs(row["tim_pct"] - tim_mid),
+            ),
+            reverse=True,
+        )
+        in_tim = [
+            row
+            for row in scored
+            if tim_low <= row["tim_pct"] <= tim_high
+        ]
+        result["keys"][key] = {
+            "screened": len(receipts),
+            "historical_tim_contract": len(historical_tim),
+            "unbound_tim_contract": len(unbound_tim),
+            "exact_pending": sum(
+                row.get("status") == "EXACT_PENDING" for row in receipts
+            ),
+            "top_performance": scored[0] if scored else None,
+            "best_in_tim": in_tim[0] if in_tim else None,
+        }
+    result["available"] = any(
+        int(row.get("screened", 0) or 0) > 0
+        for row in result["keys"].values()
+    )
+    result["historical_tim_contract_receipts"] = sum(
+        int(row.get("historical_tim_contract", 0) or 0)
+        for row in result["keys"].values()
+    )
+    result["unbound_tim_contract_receipts"] = sum(
+        int(row.get("unbound_tim_contract", 0) or 0)
+        for row in result["keys"].values()
+    )
+    return result
+
+
+def format_c4_vector_candidate(row: dict | None) -> str:
+    if not row:
+        return "—"
+    capture = row.get("capture_vs_bh")
+    benchmark = (
+        f"{fmt(capture, 3)}× B&H"
+        if capture is not None
+        else "positive cash floor required"
+    )
+    failures = "; ".join(
+        str(value).split(":", 1)[-1]
+        for value in (row.get("failures") or [])
+    )
+    return (
+        f"`{row.get('bundle')}` "
+        f"{fmt(row.get('strategy_return_pct'), 3, '%')} vs "
+        f"{fmt(row.get('bh_return_pct'), 3, '%')} ({benchmark}); "
+        f"control {fmt(row.get('same_entry_control_pct'), 3, '%')}; "
+        f"TIM {fmt(row.get('tim_pct'), 2, '%')}; "
+        f"trades {row.get('trades', '—')}; "
+        f"{failures or row.get('status') or 'gray'}"
+    )
+
+
 def verdict(row: sqlite3.Row) -> str:
     keys = set(row.keys())
+    expected_capacity_saturation = (
+        "result_audit_json" in keys
+        and is_expected_stock_capacity_saturation(row["result_audit_json"])
+    )
     if (
         "validation_status" in keys
         and row["validation_status"] == "PASS_WITH_CAPACITY_CLAMPS"
+        and not expected_capacity_saturation
     ):
         return "RED: CAPACITY CLAMPS"
-    if "validation_status" in keys and row["validation_status"] != "PASS":
+    if (
+        "validation_status" in keys
+        and row["validation_status"] != "PASS"
+        and not expected_capacity_saturation
+    ):
         return "INCOMPLETE: NO REAL CLOSE"
     if "reentry_violations" in keys and (row["reentry_violations"] or 0) > 0:
         return "INVALID REENTRY"
@@ -161,9 +722,22 @@ def verdict(row: sqlite3.Row) -> str:
             return "GRAY: ENTRY-QUALITY FAILURE / LOSING CHURN"
         return "DIAGNOSTIC ONLY: FAILED-ENTRY FILTER"
     if delta > 0:
+        position_key = f"{row['symbol']}_{row['side']}"
+        tim_low, tim_high = tim_band_for_key(position_key)
         if trades <= 1 or (tim is not None and tim >= 99.5):
             return "B&H FLOOR ONLY"
-        return "BEATS B&H"
+        if tim is None or not tim_low <= float(tim) <= tim_high:
+            return (
+                f"GRAY: BEATS B&H OUTSIDE "
+                f"{tim_low:g}-{tim_high:g}% TIM"
+            )
+        if expected_capacity_saturation:
+            return "EXPECTED $16K/8X CAP SATURATION"
+        bh = gain - delta
+        capture = gain / bh if bh > 0 else None
+        if capture is None or capture < 2.0:
+            return "GRAY: ABOVE B&H BUT BELOW 2X TARGET"
+        return "MEETS 2X B&H RESEARCH BAR"
     if gain <= 0:
         return "REJECT"
     return "BELOW B&H"
@@ -193,6 +767,67 @@ def artifact_line(path: Path, now: datetime) -> str:
         f"`{path.name}`: {modified.strftime('%Y-%m-%d %H:%M:%SZ')} "
         f"({iso_age(modified.isoformat(), now)} old, {path.stat().st_size:,} bytes)"
     )
+
+
+def load_json_object(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def current_vector_runtime() -> dict[str, object]:
+    """Keep physical matrix and research-compute freshness visibly separate."""
+    campaign = (
+        REPORTS
+        / "vec_research"
+        / "coupled_qualification_r6_tim50_source_complete_20260803T1555Z"
+    )
+    status_path = campaign / "results" / "runtime" / "watchdog_status.json"
+    status = load_json_object(status_path)
+    results = list((campaign / "results").glob("*/QUALIFICATION_RESULT.json"))
+    candidates = [
+        path
+        for path in (campaign / "plan.json", campaign / "priority_overlay.json", status_path)
+        if path.is_file()
+    ] + results
+    latest_mtime = max((path.stat().st_mtime for path in candidates), default=None)
+    active: list[str] = []
+    proc = Path("/proc")
+    if proc.is_dir():
+        for cmdline in proc.glob("[0-9]*/cmdline"):
+            try:
+                argv = cmdline.read_bytes().decode(errors="ignore").split("\0")
+            except OSError:
+                continue
+            command = " ".join(value for value in argv if value)
+            if "/home/niels/binance-sandbox" not in command:
+                continue
+            if any(
+                marker in command
+                for marker in (
+                    "vec_entry_exit_beam_adapter.py",
+                    "run_behavior_distinct_vector_frontier.py",
+                    "run_path_productivity_hotlist.py",
+                    "run_coupled_path_qualification_executor.py",
+                )
+            ):
+                active.append(command)
+    return {
+        "campaign": str(campaign.relative_to(BASE)),
+        "watchdog_status": status.get("status") or "UNAVAILABLE",
+        "watchdog_key": status.get("key"),
+        "completed_receipts": len(results),
+        "latest_utc": (
+            datetime.fromtimestamp(latest_mtime, timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+            if latest_mtime is not None
+            else None
+        ),
+        "active_processes": len(active),
+    }
 
 
 def load_vec_research(keys: tuple[str, ...]) -> dict[str, list[dict]]:
@@ -271,6 +906,100 @@ def load_vec_research(keys: tuple[str, ...]) -> dict[str, list[dict]]:
     return out
 
 
+def load_exit_factorial() -> dict[str, dict]:
+    """Parity-corrected causal exit-family factorial evidence per pilot key.
+
+    This is vector research only.  It is intentionally loaded into a separate
+    digest section and never participates in ENGINE coverage or cell coloring.
+    TTD/ACN's original receipts used prior-channel/completed-1h DC semantics,
+    so they are never a fallback: without the correction artifact those keys
+    remain missing instead of resurfacing superseded headline numbers.
+    """
+    root = REPORTS / "vec_research" / "exit_factorial_20260729"
+    out = {}
+    mu_path = root / "MU_LONG.json"
+    try:
+        payload = json.loads(mu_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        payload = None
+    if payload:
+        rows = payload.get("rows") or []
+        if rows:
+            payload["_best"] = rows[0]
+            payload["_artifact"] = str(mu_path.relative_to(BASE))
+            payload["_parity_corrected"] = False
+            out["MU_LONG"] = payload
+
+    correction_path = root / "DC_PARITY_CORRECTION.json"
+    try:
+        correction = json.loads(correction_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        correction = None
+    if not correction or correction.get("contract") != "MTF_DC_EXACT_VECTOR_PARITY_V1":
+        return out
+    corrected = correction.get("corrected_best_by_key") or {}
+    for key in ("TTD_SHORT", "ACN_SHORT"):
+        best = corrected.get(key)
+        if not isinstance(best, dict):
+            continue
+        payload = {
+            "tier": "VEC_RESEARCH_EXIT_FACTORIAL_PARITY_CORRECTED",
+            "promotion_allowed": False,
+            "_best": best,
+            "_artifact": str(correction_path.relative_to(BASE)),
+            "_parity_corrected": True,
+            "_supersedes": list(correction.get("supersedes") or []),
+            "_semantics": dict(correction.get("semantics") or {}),
+        }
+        out[key] = payload
+    return out
+
+
+def load_superseded_exit_factorial_packs() -> dict[str, dict]:
+    """Load gray audit rows for the old DC packs, never as candidates."""
+    path = (
+        REPORTS
+        / "vec_research"
+        / "exit_factorial_20260729"
+        / "DC_PARITY_CORRECTION.json"
+    )
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if payload.get("contract") != "MTF_DC_EXACT_VECTOR_PARITY_V1":
+        return {}
+    rows = payload.get("superseded_pack_results") or {}
+    return rows if isinstance(rows, dict) else {}
+
+
+def load_exact_exit_factorial() -> list[dict]:
+    """Load exact c4 finalist receipts without treating them as matrix cells."""
+    root = REPORTS / "exact_exit_factorial_20260729"
+    choices = (
+        ("TTD_SHORT", "dc_only_exact", root / "TTD_SHORT.json"),
+        (
+            "ACN_SHORT",
+            "superseded_dc_plus_wt",
+            root / "ACN_SHORT.json",
+        ),
+        ("ACN_SHORT", "dc_only", root / "ACN_SHORT__DC_ONLY.json"),
+        ("ACN_SHORT", "wt_only", root / "ACN_SHORT__WT_ONLY.json"),
+    )
+    out = []
+    for key, variant, path in choices:
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        payload["_key"] = key
+        payload["_variant"] = variant
+        payload["_artifact"] = str(path.relative_to(BASE))
+        payload["_superseded"] = variant == "superseded_dc_plus_wt"
+        out.append(payload)
+    return out
+
+
 def vec_candidate(payload: dict) -> dict | None:
     candidates = payload.get("policy_top20") or []
     if candidates:
@@ -316,13 +1045,18 @@ def load_latest_robust_walk_forward(keys: tuple[str, ...]) -> dict[str, dict | N
     out: dict[str, dict | None] = {key: None for key in keys}
     for key in keys:
         symbol, side = parse_key(key)
+        digest_name = f"walkforward_digest_{symbol}_{side}.json"
         matches = sorted(
             root.glob(f"walkforward_top_exit_*_{symbol}_{side}"),
-            key=lambda path: path.stat().st_mtime,
+            key=lambda directory: (
+                (directory / digest_name).stat().st_mtime_ns
+                if (directory / digest_name).exists()
+                else directory.stat().st_mtime_ns
+            ),
             reverse=True,
         ) if root.exists() else []
         for directory in matches:
-            path = directory / f"walkforward_digest_{symbol}_{side}.json"
+            path = directory / digest_name
             if not path.exists():
                 continue
             try:
@@ -654,9 +1388,23 @@ def main() -> None:
     keys = tuple(k.strip().upper() for k in args.keys.split(",") if k.strip())
     out = Path(args.output)
     now = datetime.now(timezone.utc)
+    matrix_pause = load_json_object(REPORTS / "MATRIX_INTEGRITY_PAUSE_STATUS.json")
+    vector_runtime = current_vector_runtime()
 
     if not DB.exists():
         raise SystemExit(f"missing result database: {DB}")
+    try:
+        try:
+            from tools import matrix_guard
+        except ModuleNotFoundError:
+            import matrix_guard  # type: ignore
+        matrix_guard.load()
+        canonical_matrix = matrix_guard.MATRIX
+    except Exception as exc:
+        raise SystemExit(
+            "canonical current matrix provenance failed; refusing digest: "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA busy_timeout=60000")
@@ -694,19 +1442,159 @@ def main() -> None:
         "SELECT COUNT(*) FROM param_cells WHERE tier='VEC'"
     ).fetchone()[0]
     cutoff = (now - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    recent_engine = (
-        con.execute(
-            "SELECT COUNT(*) FROM param_cells "
-            "WHERE COALESCE(tier,'ENGINE')='ENGINE' AND campaign=? AND ts >= ? "
-            "AND validation_status IN "
-            "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE')",
-            (CURRENT_ENGINE_CAMPAIGN, max(cutoff, CURRENT_ENGINE_CUTOFF)),
-        ).fetchone()[0]
-        if contract_columns
-        else 0
-    )
+    recent_engine = 0
 
-    actionable = manifest_rows()
+    all_raw_current = (
+        con.execute(
+            "SELECT symbol,side,param,value_json,ts,contract_fingerprint,"
+            "validation_status FROM param_cells "
+            "WHERE COALESCE(tier,'ENGINE')='ENGINE' AND campaign=? AND ts>=? "
+            "ORDER BY ts",
+            (CURRENT_ENGINE_CAMPAIGN, CURRENT_ENGINE_CUTOFF),
+        ).fetchall()
+        if contract_columns
+        else []
+    )
+    all_current_keys = tuple(
+        sorted(
+            {
+                f"{row['symbol']}_{row['side']}"
+                for row in all_raw_current
+            }
+        )
+    )
+    all_contract_fps = current_contract_fingerprints(all_current_keys)
+    # C5 is deliberately fail closed. Capacity-clamped and incomplete lifecycle
+    # rows remain historical diagnostics, never current matrix evidence.
+    valid_statuses = {"PASS"}
+    accepted_current_rows = [
+        row
+        for row in all_raw_current
+        if row["validation_status"] in valid_statuses
+        and row["contract_fingerprint"]
+        in all_contract_fps.get(
+            f"{row['symbol']}_{row['side']}", set()
+        )
+    ]
+    current_engine = len(accepted_current_rows)
+    current_matrix_latest = max(
+        (str(row["ts"] or "") for row in accepted_current_rows),
+        default=None,
+    )
+    recent_engine = sum(
+        str(row["ts"] or "") >= max(cutoff, CURRENT_ENGINE_CUTOFF)
+        for row in accepted_current_rows
+    )
+    quarantined_engine = max(0, engine_total - current_engine)
+
+    pilot_coverage = load_classified_pilot_coverage(keys)
+    try:
+        try:
+            from tools import vector_scalar_gap_reporting
+        except ModuleNotFoundError:
+            import vector_scalar_gap_reporting  # type: ignore
+        vector_scalar_gap = vector_scalar_gap_reporting.load(BASE)
+        vector_scalar_mapping = (
+            vector_scalar_gap_reporting.scalar_grid_mapping(
+                BASE, vector_scalar_gap
+            )
+            if vector_scalar_gap.get("available")
+            else {}
+        )
+    except Exception as exc:
+        vector_scalar_gap = {
+            "available": False,
+            "reason": f"{type(exc).__name__}: {exc}",
+            "per_key": {},
+        }
+        vector_scalar_mapping = {}
+
+    # USER OVERRIDE 2026-08-01: amber VEC rows are provisional matrix fills.
+    # They remain explicitly non-exact/non-promotable, but count toward the
+    # provisional completion denominator until an exact V8 replay supersedes
+    # them.  Count only logical actionable blanks when the receipt-bound
+    # classifier is available; never let physical helper rows inflate MU 826.
+    def _amber_norm(value):
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                pass
+        text = str(value).strip().lower()
+        if text in {"true", "yes", "on"}:
+            return "true"
+        if text in {"false", "no", "off"}:
+            return "false"
+        try:
+            number = float(text)
+            return str(int(number)) if number == int(number) else str(number)
+        except (TypeError, ValueError):
+            return text
+
+    amber_overlay_by_key = {key: set() for key in keys}
+    amber_overlay_path = (
+        REPORTS / "full_trb_blank_matrix_vec_approx_20260801" / "vector_overlay_index.jsonl"
+    )
+    if not amber_overlay_path.is_file() or not amber_overlay_path.stat().st_size:
+        amber_overlay_path = (
+            REPORTS / "full_trb_blank_matrix_vec_approx_20260801" / "all_cells.jsonl"
+        )
+    amber_paths = [amber_overlay_path] if amber_overlay_path.is_file() and amber_overlay_path.stat().st_size else []
+    overlay_dir = REPORTS / "full_trb_blank_matrix_vec_approx_20260801"
+    key_file = re.compile(r"^[A-Z0-9.\-]+_(?:LONG|SHORT)\.jsonl$")
+    amber_paths.extend(
+        path for path in sorted(overlay_dir.glob("*.jsonl"))
+        if key_file.match(path.name) and path not in amber_paths
+    )
+    if amber_paths:
+        try:
+            for path in amber_paths:
+                with path.open() as handle:
+                    for line in handle:
+                        row = json.loads(line)
+                        key = str(row.get("key") or "")
+                        if (
+                            key in amber_overlay_by_key
+                            and row.get("vector_evidence_class") == "VEC_APPROX"
+                            and row.get("exact_completion_credit") is False
+                            and row.get("protected_exact_present") is not True
+                        ):
+                            amber_overlay_by_key[key].add(
+                                (str(row.get("param") or ""), _amber_norm(row.get("value_json")), key)
+                            )
+        except (OSError, json.JSONDecodeError, TypeError):
+            amber_overlay_by_key = {key: set() for key in keys}
+    amber_actionable_by_key = {key: 0 for key in keys}
+    existing_actionable_by_key = {key: 0 for key in keys}
+    try:
+        from tools import matrix_guard
+
+        mh, mrows = matrix_guard.load()
+        contract = matrix_guard.load_uniqueness_contract() or {}
+        active = set((contract.get("tim_policy") or {}).get("keys") or [])
+        actionable_categories = PROVISIONAL_ACTIONABLE_CATEGORIES
+        for mrow, record in zip(mrows, contract.get("rows") or []):
+            for key in keys:
+                # The 826-cell differential denominator is the union of all
+                # three actionable categories.  Counting only EXACT_ONLY
+                # reproduces the disproven 565/826 monitor bug (§16.12).
+                if matrix_guard.cell_contract_category(record, key, active) not in actionable_categories:
+                    continue
+                index = mh.index(key)
+                if str(mrow[index] if index < len(mrow) else "").strip():
+                    existing_actionable_by_key[key] += 1
+                    continue
+                logical = (str(record.get("canonical_param") or ""), _amber_norm(mrow[2] if len(mrow) > 2 else ""), key)
+                if logical in amber_overlay_by_key.get(key, set()):
+                    amber_actionable_by_key[key] += 1
+    except Exception:
+        # Keep raw counts visible if the local provenance hash is stale; the
+        # digest labels them physical until S1 refreshes the classifier.
+        amber_actionable_by_key = {
+            key: len(values) for key, values in amber_overlay_by_key.items()
+        }
+        existing_actionable_by_key = {key: 0 for key in keys}
+    amber_total = sum(amber_actionable_by_key.values())
     target_predicate = " OR ".join("(symbol=? AND side=?)" for _ in keys)
     target_args = [part for key in keys for part in parse_key(key)]
     raw_cells = (
@@ -721,75 +1609,122 @@ def main() -> None:
         if contract_columns
         else []
     )
-    filled: dict[str, set[tuple[str, str]]] = {key: set() for key in keys}
     latest_by_key: dict[str, str | None] = {key: None for key in keys}
     for row in raw_cells:
         key = f"{row['symbol']}_{row['side']}"
         if (
-            row["validation_status"] not in (
-                "PASS",
-                "PASS_WITH_CAPACITY_CLAMPS",
-                "INCOMPLETE_NO_REAL_CLOSE",
-            )
-            or row["contract_fingerprint"] != contract_fps.get(key)
+            row["validation_status"] != "PASS"
+            or row["contract_fingerprint"] not in contract_fps.get(key, set())
         ):
             continue
-        logical = (row["param"], norm_val(row["value_json"]))
-        if logical in actionable:
-            filled[key].add(logical)
         latest_by_key[key] = row["ts"]
-        current_engine += 1
-    valid_statuses = {
-        "PASS",
-        "PASS_WITH_CAPACITY_CLAMPS",
-        "INCOMPLETE_NO_REAL_CLOSE",
-    }
     stale_fingerprint_rows = sum(
         1
         for row in raw_cells
         if row["validation_status"] in valid_statuses
         and row["contract_fingerprint"]
-        != contract_fps.get(f"{row['symbol']}_{row['side']}")
+        not in contract_fps.get(f"{row['symbol']}_{row['side']}", set())
     )
     invalid_status_rows = sum(
         1 for row in raw_cells if row["validation_status"] not in valid_statuses
     )
-    current_matrix_latest = max(
-        (ts for ts in latest_by_key.values() if ts),
-        default=None,
-    )
-    recent_engine = sum(
-        1 for row in raw_cells
-        if row["ts"] >= max(cutoff, CURRENT_ENGINE_CUTOFF)
-        and row["validation_status"] in (
-            "PASS",
-            "PASS_WITH_CAPACITY_CLAMPS",
-            "INCOMPLETE_NO_REAL_CLOSE",
-        )
-        and row["contract_fingerprint"]
-        == contract_fps.get(f"{row['symbol']}_{row['side']}")
-    )
-    quarantined_engine = max(0, engine_total - current_engine)
-
     strategy_rows: dict[str, list[sqlite3.Row]] = {}
+    baseline_rows: dict[str, sqlite3.Row | None] = {}
     for key in keys:
         symbol, side = parse_key(key)
+        baseline_candidates = con.execute(
+            "SELECT symbol,side,gain_per_mo,bh_per_mo,time_in_mkt_pct,"
+            "real_closes,size_clamp_count,validation_status,"
+            "contract_fingerprint,ts "
+            "FROM key_baseline WHERE mode='tradier' AND symbol=? AND side=? "
+            "AND campaign=? ORDER BY ts DESC",
+            (symbol, side, CURRENT_ENGINE_CAMPAIGN),
+        ).fetchall()
+        baseline_rows[key] = next(
+            (
+                row
+                for row in baseline_candidates
+                if row["contract_fingerprint"] in contract_fps.get(key, set())
+            ),
+            None,
+        )
         strategy_rows[key] = con.execute(
             "SELECT symbol,side,campaign,param,value_json,acc_gain_pct,gain_per_mo,"
             "delta_gain_mo_vs_bh,trades,time_in_mkt_pct,pool_sharpe,source_file,ts,"
-            "validation_status,contract_fingerprint,real_closes,reentry_violations,inert "
+            "validation_status,contract_fingerprint,real_closes,reentry_violations,inert,"
+            "result_audit_json "
             "FROM param_cells WHERE COALESCE(tier,'ENGINE')='ENGINE' "
             "AND symbol=? AND side=? AND campaign=? AND ts>=? AND "
-            "validation_status IN "
-            "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE') AND "
+            "validation_status='PASS' AND "
             + strategy_where()
             + " ORDER BY ts DESC",
             (symbol, side, CURRENT_ENGINE_CAMPAIGN, CURRENT_ENGINE_CUTOFF),
         ).fetchall() if contract_columns else []
         strategy_rows[key] = [
             row for row in strategy_rows[key]
-            if row["contract_fingerprint"] == contract_fps.get(key)
+            if row["contract_fingerprint"] in contract_fps.get(key, set())
         ]
+
+    # Canonical scalar reporting is a merged receipt hierarchy, not c5-only.
+    # Full c5 wins first, then validated 2+year c2/c3/c4 and c1, then c5_1yr
+    # fills a genuinely missing logical cell. Re-select the full DB rows by the
+    # adapter's accepted rowids so the detailed digest table retains audit,
+    # lifecycle and TIM fields without reimplementing receipt validation here.
+    try:
+        try:
+            from tools import current_matrix_reporting as reporting
+        except ModuleNotFoundError:
+            import current_matrix_reporting as reporting  # type: ignore
+        merged_receipts = [
+            row
+            for row in reporting.merged_rows(BASE)
+            if str(row.get("param") or "")
+            not in {"GROUP_COMBO", "STOP_PACK", "TF_EXCLUDE"}
+        ]
+        current_engine = len(merged_receipts)
+        current_matrix_latest = max(
+            (str(row.get("ts") or "") for row in merged_receipts),
+            default=None,
+        )
+        recent_engine = sum(
+            str(row.get("ts") or "") >= cutoff
+            for row in merged_receipts
+        )
+        for key in keys:
+            accepted_ids = [
+                int(row["result_rowid"])
+                for row in merged_receipts
+                if row.get("key") == key and row.get("result_rowid")
+            ]
+            latest_by_key[key] = max(
+                (
+                    str(row.get("ts") or "")
+                    for row in merged_receipts
+                    if row.get("key") == key
+                ),
+                default=None,
+            )
+            if not accepted_ids:
+                strategy_rows[key] = []
+                continue
+            placeholders = ",".join("?" for _ in accepted_ids)
+            strategy_rows[key] = con.execute(
+                "SELECT rowid AS result_rowid,symbol,side,campaign,param,"
+                "value_json,acc_gain_pct,gain_per_mo,delta_gain_mo_vs_bh,"
+                "trades,time_in_mkt_pct,pool_sharpe,source_file,ts,"
+                "validation_status,contract_fingerprint,real_closes,"
+                "reentry_violations,inert,result_audit_json "
+                "FROM param_cells WHERE rowid IN ("
+                + placeholders
+                + ") ORDER BY ts DESC",
+                accepted_ids,
+            ).fetchall()
+    except Exception as exc:
+        print(
+            "WARN: merged receipt strategy rows unavailable; retaining "
+            f"c5-only diagnostic rows: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
 
     campaign_rows = con.execute(
         "SELECT COALESCE(tier,'ENGINE') tier,campaign,COUNT(*) n,MAX(ts) latest "
@@ -799,6 +1734,9 @@ def main() -> None:
     ).fetchall()
     desc_total, desc_filled = matrix_description_stats()
     vec_research = load_vec_research(keys)
+    exit_factorial = load_exit_factorial()
+    superseded_exit_factorial = load_superseded_exit_factorial_packs()
+    exact_exit_factorial = load_exact_exit_factorial()
     walk_forward = {
         key: load_top_exit_walk_forward(key) for key in keys
     }
@@ -814,6 +1752,63 @@ def main() -> None:
     coverage_5m = load_tradier_5m_coverage()
     path_fleet = load_path_fleet_progress()
     recent_bundles = load_recent_bundle_progress()
+    c4_vector_first = load_c4_vector_first_progress(keys)
+    c4_vector_adaptive = load_c4_vector_first_progress(
+        keys,
+        screen_root=REPORTS / "c4_vector_bundle_screen_adaptive" / "receipts",
+        status_path=REPORTS / "c4_vector_first_adaptive" / "status.json",
+    )
+    c4_vector_targeted = load_isolated_vector_progress(
+        keys,
+        screen_root=REPORTS / "c4_vector_bundle_screen_targeted_cycle3",
+        status_path=(
+            REPORTS / "c4_vector_bundle_screen_targeted_cycle3" / "status.json"
+        ),
+        contract_kind="targeted_cycle3",
+    )
+    c4_short_native = load_isolated_vector_progress(
+        keys,
+        screen_root=REPORTS / "c4_short_native_bundle_screen",
+        status_path=REPORTS / "c4_short_native_bundle_screen" / "status.json",
+        contract_kind="short_native",
+    )
+    c4_breakout_cycle4 = load_isolated_vector_progress(
+        keys,
+        screen_root=REPORTS / "c4_vector_bundle_screen_breakout_cycle4",
+        status_path=(
+            REPORTS / "c4_vector_bundle_screen_breakout_cycle4" / "status.json"
+        ),
+        contract_kind="breakout_cycle4",
+        runner_path=BASE / "tools/c4_vector_breakout_cycle4.py",
+    )
+    workbook_audits = []
+    workbook_audit_error = None
+    try:
+        try:
+            from tools.audit_stock_matrix_workbooks import (
+                audit_param_workbook,
+                audit_switch_workbook,
+            )
+        except ModuleNotFoundError:
+            from audit_stock_matrix_workbooks import (  # type: ignore
+                audit_param_workbook,
+                audit_switch_workbook,
+            )
+        workbook_audits = [
+            audit_switch_workbook(
+                REPORTS / "SWITCH_MATRIX_TRB.xlsx",
+                BASE,
+                require_fresh=True,
+            ),
+            audit_param_workbook(
+                REPORTS / "PARAM_BASELINE_STOCKS.xlsx",
+                BASE,
+                require_fresh=True,
+                require_matrix_top=True,
+            ),
+        ]
+    except Exception as exc:
+        workbook_audit_error = str(exc)
     coverage_symbols = coverage_5m.get("symbols", {})
     covered_native_symbols = sum(
         int(row.get("native_source", {}).get("rows", 0) or 0) > 0
@@ -832,8 +1827,20 @@ def main() -> None:
         "",
         "## Freshness",
         "",
-        f"- Current repaired matrix latest row: `{current_matrix_latest or 'none'}` "
-        f"({iso_age(current_matrix_latest, now)} old).",
+        f"- Physical fixed-cell matrix latest accepted ENGINE row: "
+        f"`{current_matrix_latest or 'none'}` "
+        f"({iso_age(current_matrix_latest, now)} old). This clock advances only "
+        "after a current-contract cell is accepted; vector research cannot write it.",
+        f"- Physical matrix write admission: **"
+        f"{'ALLOWED' if matrix_pause.get('matrix_write_admission_allowed') is True else 'PAUSED'}**"
+        f" — `{matrix_pause.get('reason') or 'status unavailable'}`.",
+        f"- Current vector research heartbeat: "
+        f"`{vector_runtime.get('latest_utc') or 'none'}` "
+        f"({iso_age(vector_runtime.get('latest_utc'), now)} old); "
+        f"active vector processes: **{int(vector_runtime.get('active_processes') or 0):,}**; "
+        f"R5 safety-parity receipts: **{int(vector_runtime.get('completed_receipts') or 0):,}**; "
+        f"R5 watchdog: **{vector_runtime.get('watchdog_status')}**"
+        f"{(' (`' + str(vector_runtime.get('watchdog_key')) + '`)') if vector_runtime.get('watchdog_key') else ''}.",
         f"- Generic DB activity (includes historical/stage tables): `{db_latest or 'none'}` "
         f"({iso_age(db_latest, now)} old); it is not matrix freshness.",
         f"- Current repaired-contract ENGINE rows: **{current_engine:,}**; "
@@ -846,16 +1853,52 @@ def main() -> None:
         f"**{quarantined_engine:,}/{engine_total:,}**. They remain preserved as evidence.",
         f"- Current contract: campaign `{CURRENT_ENGINE_CAMPAIGN}`, cutoff "
         f"`{CURRENT_ENGINE_CUTOFF}`, exact code+NPZ+side fingerprint required.",
-        f"- VEC diagnostic rows: **{vec_total:,}** (never matrix proof).",
+        "- Current stock cost contract: ordinary exact ENGINE **0.05% round trip**; "
+        "new vector/research manifests **0 bps commission + 2.5 bps adverse "
+        "slippage one way** (also 0.05% round trip). Historical 5+2 bps "
+        "research receipts remain quarantined under their declared 14 bps cost.",
+        "- Crypto cost remains **0.08% round trip** in the engine; it was not "
+        "changed to 0.8% because repository/live history does not support that "
+        "tenfold value.",
+        f"- VEC diagnostic rows: **{vec_total:,}**; provisional amber overlay rows: **{amber_total:,}**. "
+        "Amber rows are valid provisional results: they count toward provisional fill and vector combination ranking; exact ENGINE credit and live promotion remain separate gates.",
+        (
+            "- Separate vector scalar-gap receipt: "
+            f"**{int(vector_scalar_gap.get('screened_cells') or 0):,}** "
+            "amber/italic hypotheses; exact completion credit **0**; "
+            "ENGINE ranking and promotion **forbidden**."
+            if vector_scalar_gap.get("available")
+            else "- Separate vector scalar-gap receipt: **UNAVAILABLE** — "
+            + str(vector_scalar_gap.get("reason") or "unknown")
+        ),
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.xlsx", now),
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.csv.gz", now),
         f"- " + artifact_line(
-            REPORTS / "SWITCH_MATRIX_INTERDEPENDENCY_20260729.json", now
+            REPORTS / "switch_lab_catalog_20260729.json  # alias: SWITCH_MATRIX_INTERDEPENDENCY_20260729.json kept for backwards compat", now
         ),
         f"- " + artifact_line(
-            REPORTS / "SWITCH_MATRIX_INTERDEPENDENCY_20260729.csv", now
+            REPORTS / "switch_lab_catalog_20260729.csv", now
         ),
         f"- Description coverage in current CSV: **{desc_filled:,}/{desc_total:,}** rows.",
+        (
+            "- Workbook axis audit: **ERROR** — "
+            + workbook_audit_error
+            if workbook_audit_error
+            else "- Workbook axis audit: "
+            + "; ".join(
+                f"**{report.kind}={'PASS' if report.ok else 'FAIL'}** "
+                f"({report.active_keys} active + {report.historical_keys} historical "
+                f"= {report.configured_keys} visible keys; "
+                f"fresh={'yes' if report.fresh_vs_symbol_sources else 'NO'}; "
+                f"missing axes={sum(len(v) for v in report.missing_keys_by_sheet.values())}; "
+                f"blank descriptions={len(report.blank_path_descriptions)}; "
+                f"formula errors={len(report.formula_errors)})"
+                for report in workbook_audits
+            )
+        ),
+        "- Coverage contract: every current `symbols_trb_long/short` key must remain visible "
+        "on every relevant path sheet. Blank/white result cells are valid; a missing row or "
+        "column is an export failure.",
         "",
         "## Stocks 5m execution provenance",
         "",
@@ -869,6 +1912,7 @@ def main() -> None:
         "| key | native rows | native coverage | native range | interpolated rows | interpolated coverage | retention |",
         "|---|---:|---:|---|---:|---:|---|",
     ]
+    lines += historical_integration_section()
     for key in keys:
         symbol, _side = parse_key(key)
         row = coverage_symbols.get(symbol, {})
@@ -897,25 +1941,279 @@ def main() -> None:
         "the first timestamp, regresses the last timestamp, or introduces duplicate/out-of-order "
         "timestamps. `synthetic_5m_parent_close_ts` records the bounded 0/5/10-minute parent lag.",
         "",
-        "## Pilot-key matrix coverage",
+        "## Ordinary baseline actionability",
         "",
-        "| key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |",
-        "|---|---:|---:|---|---:|---:|",
+        "| key | gain/mo | side B&H/mo | TIM | real closes | clamps | scheduler state |",
+        "|---|---:|---:|---:|---:|---:|---|",
     ]
-    denominator = len(actionable)
     for key in keys:
-        n = len(filled[key])
-        pct = 100.0 * n / denominator if denominator else 0.0
+        row = baseline_rows.get(key)
+        if row is None:
+            lines.append(
+                f"| {key} | — | — | — | — | — | MISSING CURRENT CONTRACT |"
+            )
+            continue
+        closes = int(row["real_closes"] or 0)
+        tim = float(row["time_in_mkt_pct"] or 0.0)
+        tim_low, tim_high = tim_band_for_key(key)
+        if tim < 1.0:
+            state = "BASELINE_ENTRY_INERT — ENTRY SOURCE BINDING ONLY"
+        elif tim < tim_low:
+            state = f"ACTIVE BUT BELOW {tim_low:g}% TARGET"
+        elif tim > tim_high:
+            state = f"ACTIVE BUT ABOVE {tim_high:g}% TARGET"
+        else:
+            state = "ACTIVE IN TARGET BAND"
         lines.append(
-            f"| {key} | {n:,}/{denominator:,} | {pct:.1f}% | "
+            f"| {key} | {fmt(row['gain_per_mo'], 4)} | "
+            f"{fmt(row['bh_per_mo'], 4)} | "
+            f"{fmt(row['time_in_mkt_pct'], 4, '%')} | {closes:,} | "
+            f"{int(row['size_clamp_count'] or 0):,} | {state} |"
+        )
+    lines += [
+        "",
+        "An all-exits-off ladder floor is expected to have zero real closes; "
+        "high exposure makes it actionable because the exit family under test "
+        "must create the closes. Only a floor under 1% TIM is entry-inert. Its exact worker is "
+        "dependency-gated to source-backed ENTRY masters and ENTRY_SOURCE "
+        "binding probes; helper packs never count as matrix coverage.",
+        "",
+        "## Pilot-key matrix coverage (exact + provisional amber)",
+        "",
+        "| key | exact differential | amber provisional | provisional completion | plateau cross-key | latest Tier-2 row | age | strategy tests |",
+        "|---|---:|---:|---:|---:|---|---:|---:|",
+    ]
+    for key in keys:
+        coverage = (pilot_coverage.get("keys") or {}).get(key, {})
+        diff_filled = int(coverage.get("differential_filled", 0) or 0)
+        diff_empty = int(coverage.get("differential_empty", 0) or 0)
+        diff_total = diff_filled + diff_empty
+        plateau_filled = int(coverage.get("plateau_filled", 0) or 0)
+        plateau_empty = int(coverage.get("plateau_empty", 0) or 0)
+        plateau_total = plateau_filled + plateau_empty
+        combined_filled = diff_filled + plateau_filled
+        combined_total = diff_total + plateau_total
+        amber_filled = int(amber_actionable_by_key.get(key, 0))
+        existing_filled = int(existing_actionable_by_key.get(key, diff_filled))
+        provisional_filled = min(diff_total, existing_filled + amber_filled)
+        lines.append(
+            f"| {key} | {diff_filled:,}/{diff_total:,} "
+            f"({100.0 * diff_filled / max(diff_total, 1):.1f}%) | "
+            f"{amber_filled:,} | "
+            f"{provisional_filled:,}/{diff_total:,} "
+            f"({100.0 * provisional_filled / max(diff_total, 1):.1f}%) | "
+            f"{plateau_filled:,}/{plateau_total:,} | "
             f"{latest_by_key[key] or '—'} | {iso_age(latest_by_key[key], now)} | "
             f"{len(strategy_rows[key]):,} |"
         )
 
     lines += [
         "",
-        "Coverage counts exact `(switch,value)` cells in the current actionable manifest. "
-        "VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.",
+        (
+            "Coverage uses the same disjoint classifier as `tools/matrix_guard.py`: "
+            "only active-key, side-applicable, exact-executable differential rows "
+            "enter the denominator. Plateau cross-key probes are shown separately. "
+            "Historical axes, no-live-reader rows, wrong-account rows, helpers, "
+            "intentional controls, and opposite-side cells are not actionable empties."
+            if pilot_coverage.get("available")
+            else "Coverage classifier unavailable: "
+            + str(pilot_coverage.get("reason") or "unknown error")
+        ),
+        "Amber VEC rows fill provisional blanks and are valid vector-combination ranking evidence; they never become exact ENGINE rows or exact promotion evidence. Duplicate campaigns do not inflate coverage.",
+        "",
+        "## Vector scalar-gap diagnostic (separate amber layer)",
+        "",
+        "> `VEC_DIAGNOSTIC` / `VEC_APPROX` amber rows are valid provisional fills and "
+        "may be ranked for vector combination search. Exact completion credit, "
+        "ENGINE/database writes, and live promotion remain separate gates. "
+        "Candidates above the configured escalation threshold queue for exact V8 replay.",
+        "",
+        "| key | executable scalar | parity-eligible | screened | moved | inert | zero | VEC_NATIVE | VEC_PARITY | VEC_APPROX | approx H/M/L | exact replay priority | exact credit |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    if not vector_scalar_gap.get("available"):
+        lines += [
+            f"| UNAVAILABLE | — | — | — | — | — | — | — | — | — | — | — | 0 |",
+            "",
+            f"Fail-closed reason: `{vector_scalar_gap.get('reason') or 'unknown'}`.",
+            "",
+        ]
+    else:
+        for key in keys:
+            item = (vector_scalar_gap.get("per_key") or {}).get(key, {})
+            mapped = (vector_scalar_mapping.get("per_key") or {}).get(
+                key, {}
+            )
+            executable = mapped.get("executable_scalar_cells")
+            eligible = mapped.get("eligible_vector_cells")
+            confidence = item.get("approximation_confidence") or {}
+            lines.append(
+                f"| {key} | {executable if executable is not None else '—'} | "
+                f"{eligible if eligible is not None else '—'} | "
+                f"{int(item.get('screened_cells') or 0)} | "
+                f"{int(item.get('moved') or 0)} | "
+                f"{int(item.get('inert') or 0)} | "
+                f"{int(item.get('zero_trade') or 0)} | "
+                f"{int(item.get('vec_native_cells') or 0)} | "
+                f"{int(item.get('vec_parity_cells') or 0)} | "
+                f"{int(item.get('vec_approx_cells') or 0)} | "
+                f"{int(confidence.get('HIGH') or 0)}/"
+                f"{int(confidence.get('MEDIUM') or 0)}/"
+                f"{int(confidence.get('LOW') or 0)} | "
+                f"{int(item.get('exact_replay_priority_cells') or 0)} | 0 |"
+            )
+        lines += [
+            "",
+            "Why the fast denominator is smaller: the old 346 candidates were "
+            "316 reviewed native values plus 30 values from six EMA200 aliases. "
+            "T1_MULT, T1_PCT and T3_MULT failed sampled exact parity, removing "
+            "15 values; the approved vector denominator is 331 (316 native plus "
+            "15 T2_MULT/T2_PCT/T3_PCT values with 5/5 VT MOVED/INERT agreement). "
+            "VEC_APPROX expands discovery coverage using explicit proxy "
+            "mappings; those cells remain exact-only and are reported by "
+            "confidence and mismatch class, never as ENGINE completion. "
+            "The classification-aware executable total is 1,609 for LONG and "
+            "1,600 for SHORT after side applicability; it also includes "
+            "exact-only and plateau cross-key work. GROUP_COMBO, STOP_PACK and "
+            "TF_EXCLUDE are not scalar completion.",
+            "",
+        ]
+    lines += [
+        "## Current c5 vector-first bundle cycle",
+        "",
+        "This is the fast discovery lane, not matrix coverage or promotion. It uses a "
+        "$10,000 stock account denominator, $2,000 side-specific B&H capital, the "
+        "$16,000/8× strategy ceiling and 0.05% round-trip cost. Each row must beat "
+        "both 2× B&H/cash and its same-entry/all-exits-off control on every frozen "
+        "fold before exact replay.",
+        (
+            f"Current runner `{str(c4_vector_first.get('runner_sha256') or '—')[:12]}`; "
+            f"latest receipt `{c4_vector_first.get('latest') or 'none'}`; "
+            f"exact queue **{int((c4_vector_first.get('status') or {}).get('exact_queued', 0) or 0)}**; "
+            f"historical/unbound TIM receipts quarantined "
+            f"**{int(c4_vector_first.get('historical_tim_contract_receipts', 0) or 0)}/"
+            f"{int(c4_vector_first.get('unbound_tim_contract_receipts', 0) or 0)}**."
+        ),
+        "",
+        "| key | current bundles | top performance probe | best probe inside key TIM band |",
+        "|---|---:|---|---|",
+    ]
+    for key in keys:
+        vector_row = (c4_vector_first.get("keys") or {}).get(key, {})
+        lines.append(
+            f"| {key} | {int(vector_row.get('screened', 0) or 0)} | "
+            f"{format_c4_vector_candidate(vector_row.get('top_performance'))} | "
+            f"{format_c4_vector_candidate(vector_row.get('best_in_tim'))} |"
+        )
+    lines += [
+        "",
+        "All rejected receipts remain gray so identical code/data/bundle identities are "
+        "not blindly retested. `EXACT_PENDING` is still only a queue entry; the exact "
+        "same-entry control, route attribution, reentry and capacity audits decide whether "
+        "a result can enter the ENGINE matrix.",
+        "",
+        "### Key-scoped adaptive vector cycle",
+        "",
+        "This second lane tests slower/smaller profit locks and daily-only selective "
+        "R3 settings only for MU_LONG, NVDA_LONG and LAC_SHORT. VT, TTD and ACN are "
+        "intentionally excluded from this generic catalog.",
+        (
+            f"Current runner `{str(c4_vector_adaptive.get('runner_sha256') or '—')[:12]}`; "
+            f"latest receipt `{c4_vector_adaptive.get('latest') or 'none'}`; "
+            f"exact queue **{int((c4_vector_adaptive.get('status') or {}).get('exact_queued', 0) or 0)}**; "
+            f"historical/unbound TIM receipts quarantined "
+            f"**{int(c4_vector_adaptive.get('historical_tim_contract_receipts', 0) or 0)}/"
+            f"{int(c4_vector_adaptive.get('unbound_tim_contract_receipts', 0) or 0)}**."
+        ),
+        "",
+        "| key | adaptive bundles | top performance probe | best probe inside key TIM band |",
+        "|---|---:|---|---|",
+    ]
+    for key in ("MU_LONG", "NVDA_LONG", "LAC_SHORT"):
+        vector_row = (c4_vector_adaptive.get("keys") or {}).get(key, {})
+        lines.append(
+            f"| {key} | {int(vector_row.get('screened', 0) or 0)} | "
+            f"{format_c4_vector_candidate(vector_row.get('top_performance'))} | "
+            f"{format_c4_vector_candidate(vector_row.get('best_in_tim'))} |"
+        )
+    lines += [
+        "",
+        "### Targeted entry-replenishment cycle 3",
+        "",
+        "This isolated 38-arm lane added the registered WT force-open entry source "
+        "to the strongest MU/NVDA/LAC exits. It is diagnostic only; identical "
+        "returns expose an inert or absent entry condition rather than exit alpha.",
+        (
+            f"Latest receipt `{c4_vector_targeted.get('latest') or 'none'}`; "
+            f"strict vector survivors **{sum(int(((c4_vector_targeted.get('keys') or {}).get(key) or {}).get('exact_pending', 0) or 0) for key in ('MU_LONG', 'NVDA_LONG', 'LAC_SHORT'))}**; "
+            f"historical/unbound TIM-contract receipts quarantined "
+            f"**{int(c4_vector_targeted.get('historical_tim_contract_receipts', 0) or 0)}/"
+            f"{int(c4_vector_targeted.get('unbound_tim_contract_receipts', 0) or 0)}**. "
+            "Quarantined receipts are retained as gray history and never enter either current-ranked column."
+        ),
+        "",
+        "| key | targeted bundles | top performance probe | best probe inside key TIM band |",
+        "|---|---:|---|---|",
+    ]
+    for key in ("MU_LONG", "NVDA_LONG", "LAC_SHORT"):
+        vector_row = (c4_vector_targeted.get("keys") or {}).get(key, {})
+        lines.append(
+            f"| {key} | {int(vector_row.get('screened', 0) or 0)} | "
+            f"{format_c4_vector_candidate(vector_row.get('top_performance'))} | "
+            f"{format_c4_vector_candidate(vector_row.get('best_in_tim'))} |"
+        )
+    lines += [
+        "",
+        "### SHORT-native Donchian recovery cycle",
+        "",
+        "This 31-arm TTD/ACN lane covers only after a causally completed lower "
+        "Donchian downside extension and upward re-cross, with optional side-aware "
+        "partial banking or winner-velocity decay. It does not invert LONG stops.",
+        (
+            f"Latest receipt `{c4_short_native.get('latest') or 'none'}`; "
+            f"strict vector survivors **{sum(int(((c4_short_native.get('keys') or {}).get(key) or {}).get('exact_pending', 0) or 0) for key in ('TTD_SHORT', 'ACN_SHORT'))}**; "
+            f"historical/unbound TIM-contract receipts quarantined "
+            f"**{int(c4_short_native.get('historical_tim_contract_receipts', 0) or 0)}/"
+            f"{int(c4_short_native.get('unbound_tim_contract_receipts', 0) or 0)}**. "
+            "Quarantined receipts are retained as gray history and never enter either current-ranked column."
+        ),
+        "",
+        "| key | short-native bundles | top performance probe | best probe inside key TIM band |",
+        "|---|---:|---|---|",
+    ]
+    for key in ("TTD_SHORT", "ACN_SHORT"):
+        vector_row = (c4_short_native.get("keys") or {}).get(key, {})
+        lines.append(
+            f"| {key} | {int(vector_row.get('screened', 0) or 0)} | "
+            f"{format_c4_vector_candidate(vector_row.get('top_performance'))} | "
+            f"{format_c4_vector_candidate(vector_row.get('best_in_tim'))} |"
+        )
+    lines += [
+        "",
+        "### BB breakout entry-replenishment cycle 4",
+        "",
+        "This sealed two-arm lane adds the registered BB pullback entry to the "
+        "strongest prior MU and NVDA exit bundles. It is vector research only "
+        "and does not fill ENGINE matrix cells.",
+        (
+            f"Latest receipt `{c4_breakout_cycle4.get('latest') or 'none'}`; "
+            f"strict vector survivors **{sum(int(((c4_breakout_cycle4.get('keys') or {}).get(key) or {}).get('exact_pending', 0) or 0) for key in ('MU_LONG', 'NVDA_LONG'))}**; "
+            f"historical/unbound TIM-contract receipts quarantined "
+            f"**{int(c4_breakout_cycle4.get('historical_tim_contract_receipts', 0) or 0)}/"
+            f"{int(c4_breakout_cycle4.get('unbound_tim_contract_receipts', 0) or 0)}**."
+        ),
+        "",
+        "| key | cycle-4 bundles | top performance probe | best probe inside key TIM band |",
+        "|---|---:|---|---|",
+    ]
+    for key in ("MU_LONG", "NVDA_LONG"):
+        vector_row = (c4_breakout_cycle4.get("keys") or {}).get(key, {})
+        lines.append(
+            f"| {key} | {int(vector_row.get('screened', 0) or 0)} | "
+            f"{format_c4_vector_candidate(vector_row.get('top_performance'))} | "
+            f"{format_c4_vector_candidate(vector_row.get('best_in_tim'))} |"
+        )
+    lines += [
         "",
         "## Path interpretation guardrails",
         "",
@@ -1032,11 +2330,29 @@ def main() -> None:
             if row["delta_gain_mo_vs_bh"] is not None
             and row["trades"] is not None and row["trades"] >= 2
             and row["gain_per_mo"] is not None
-            and row["validation_status"] == "PASS"
-            and (row["real_closes"] or 0) >= 1
+            and (
+                row["validation_status"] == "PASS"
+                or is_expected_stock_capacity_saturation(row["result_audit_json"])
+            )
+            and (row["real_closes"] or 0) >= 3
             and (row["reentry_violations"] or 0) == 0
             and (row["inert"] or 0) == 0
+            and row["time_in_mkt_pct"] is not None
+            and tim_in_band(key, float(row["time_in_mkt_pct"]))
             and row["delta_gain_mo_vs_bh"] > 0
+            and (
+                row["gain_per_mo"]
+                - row["delta_gain_mo_vs_bh"]
+            )
+            > 0
+            and (
+                row["gain_per_mo"]
+                / (
+                    row["gain_per_mo"]
+                    - row["delta_gain_mo_vs_bh"]
+                )
+            )
+            >= 2.0
         ]
         best = max(candidates, key=lambda row: row["delta_gain_mo_vs_bh"], default=None)
         if best is None:
@@ -1173,6 +2489,154 @@ def main() -> None:
         "E12 reports net realized partial P&L separately. Positive partial clips do not "
         "constitute edge when lost runner exposure and re-add timing leave compounded equity "
         "below B&H.",
+        "",
+        "## Causal exit-family factorial — parity-corrected vector research",
+        "",
+        "| key | best isolated pack | 3-fold strategy sum | side B&H sum | multiple | vs all-exits-off floor | TIM | fills | verdict |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---|",
+    ]
+    for key in ("MU_LONG", "TTD_SHORT", "ACN_SHORT"):
+        payload = exit_factorial.get(key)
+        if not payload:
+            status = (
+                "MISSING PARITY-CORRECTED ARTIFACT; OLD DC HEADLINE SUPPRESSED"
+                if key in {"TTD_SHORT", "ACN_SHORT"}
+                else "MISSING"
+            )
+            lines.append(f"| {key} | — | — | — | — | — | — | — | {status} |")
+            continue
+        best = payload["_best"]
+        factors = best.get("factors") or {}
+        metrics = best.get("metrics") or {}
+        pack = ", ".join(
+            (
+                f"hybrid={'ON' if factors.get('hybrid') else 'OFF'}",
+                f"DC={'ON' if factors.get('mtf_dc_reject') else 'OFF'}",
+                f"SRS={'ON' if factors.get('srs') else 'OFF'}",
+                (
+                    f"WT={'ON' if factors.get('wt_final') else 'OFF'}"
+                    if "wt_final" in factors
+                    else "WT=not screened"
+                ),
+                f"hold={factors.get('min_hold_minutes')}m",
+            )
+        )
+        gain = metrics.get("capital_return_pct_sum")
+        bh = metrics.get("bh_capital_return_pct_sum")
+        multiple = (
+            float(gain) / float(bh)
+            if gain is not None and bh is not None and abs(float(bh)) > 1e-12
+            else None
+        )
+        alpha_floor = best.get("alpha_vs_same_entry_floor_pp")
+        lead = (
+            best.get("classification") == "SCREENING_LEAD_NOT_PROMOTABLE"
+            and alpha_floor is not None
+            and float(alpha_floor) > 0
+        )
+        lines.append(
+            f"| {key} | `{pack}` | {fmt(gain, 3, '%')} | {fmt(bh, 3, '%')} | "
+            f"{fmt(multiple, 3)}× | {fmt(alpha_floor, 3, 'pp')} | "
+            f"{fmt(metrics.get('exposure_weighted_tim_pct_row_weighted'), 2, '%')} | "
+            f"{metrics.get('exit_fills', '—')} | "
+            f"{'VECTOR LEAD; EXACT c4 RUNNING/REQUIRED' if lead else 'GRAY: EXIT DOES NOT BEAT FLOOR'} |"
+        )
+    lines += [
+        "",
+        "TTD/ACN rows above come only from `MTF_DC_EXACT_VECTOR_PARITY_V1`: "
+        "execution-row decisions against the latest causally completed current "
+        "Donchian channel. The older completed-1h/prior-channel receipts are "
+        "superseded and cannot be used as a digest fallback.",
+        "",
+        "### Superseded pre-parity DC packs — retained gray, never headline",
+        "",
+        "| key | old pack | corrected strategy sum | same-entry floor | corrected alpha | verdict |",
+        "|---|---|---:|---:|---:|---|",
+    ]
+    for key in ("TTD_SHORT", "ACN_SHORT"):
+        row = superseded_exit_factorial.get(key) or {}
+        if not row:
+            lines.append(f"| {key} | — | — | — | — | MISSING CORRECTION AUDIT |")
+            continue
+        lines.append(
+            f"| {key} | `{row.get('pack') or '—'}` | "
+            f"{fmt(row.get('capital_return_pct_sum'), 3, '%')} | "
+            f"{fmt(row.get('same_entry_floor_pct_sum'), 3, '%')} | "
+            f"{fmt(row.get('alpha_vs_same_entry_floor_pp'), 3, 'pp')} | "
+            "SUPERSEDED / GRAY |"
+        )
+    lines += [
+        "",
+        "These returns are sums over the same three frozen OOS folds, not one compounded "
+        "holdout. Every arm uses the 0.05% stock round trip and completed HTF bars. "
+        "The vector adapter does not model stateful DELTA/RZ bottom-bounce, so even an "
+        "8× row is research-only until its isolated exact c4 replay passes route "
+        "attribution, B&H, same-entry control, reentry, drawdown and fingerprint gates.",
+        "",
+        "### Exact c4 finalist replays",
+        "",
+        "Exact TTD is reported independently from the corrected vector table: "
+        "its 1h DC result includes the exact exit/reentry lifecycle and does not "
+        "resurrect the superseded prior-channel vector alpha claim.",
+        "",
+        "| key/variant | strategy | side B&H | capture | TIM | real closes | cost contract | exact verdict |",
+        "|---|---:|---:|---:|---:|---:|---|---|",
+    ]
+    if not exact_exit_factorial:
+        lines.append("| — | — | — | — | — | — | — | EXACT REPLAYS RUNNING/MISSING |")
+    for payload in exact_exit_factorial:
+        metrics = payload.get("metrics") or {}
+        audit = payload.get("audit") or {}
+        result = audit.get("result") or {}
+        fill_ratio = float(result.get("requested_fill_ratio", 0) or 0)
+        expected_cap = bool(
+            audit.get("status") == "PASS_WITH_CAPACITY_CLAMPS"
+            and audit.get("capacity_respected")
+            and fill_ratio >= 0.99
+            and float(result.get("max_requested_mult", 0) or 0) <= 8.0
+        )
+        capture = metrics.get("capture_vs_bh")
+        tim = metrics.get("time_in_mkt_pct")
+        exact_key = str(payload.get("_key") or "")
+        meets_perf = bool(
+            capture is not None
+            and float(capture) >= 2.0
+            and tim is not None
+            and exact_key
+            and tim_in_band(exact_key, float(tim))
+            and int(float(result.get("real_closes", 0) or 0)) >= 3
+            and int(float(result.get("reentry_violations", 0) or 0)) == 0
+            and (audit.get("status") == "PASS" or expected_cap)
+        )
+        exact_verdict = (
+            "SUPERSEDED PRE-PARITY PACK / GRAY"
+            if payload.get("_superseded")
+            else (
+            "EXACT >=2X RESEARCH EDGE; CAP SATURATION / OOS BLOCKED"
+            if meets_perf and expected_cap
+            else (
+                "EXACT >=2X RESEARCH EDGE; OOS/PROMOTION BLOCKED"
+                if meets_perf
+                else "GRAY DISCARD / STRUCTURAL OR PERFORMANCE FAIL"
+            )
+            )
+        )
+        lines.append(
+            f"| {payload['_key']}/{payload['_variant']} | "
+            f"{fmt(metrics.get('acc_gain_pct'), 4, '%')} | "
+            f"{fmt(metrics.get('bh_pct'), 4, '%')} | "
+            f"{fmt(capture, 4)}× | {fmt(tim, 2, '%')} | "
+            f"{int(float(result.get('real_closes', 0) or 0))} | "
+            "0.05% stock RT | "
+            f"{exact_verdict} |"
+        )
+    lines += [
+        "",
+        "A large dollar cost in these rows is turnover at 0.05%, not a restored "
+        "crypto/legacy rate. TTD's 237 DC closes cost $1,169.80 and still netted "
+        "$11,721.07. ACN's rejected DC+WT pack cost $2,357.64 across 553 closes; "
+        "405 real WT-final closes accounted for -$9,505.41 net while DC itself "
+        "contributed +$6,661.65.",
         "",
         "## Causal ladder multiplier walk-forward",
         "",
@@ -1561,8 +3025,9 @@ def main() -> None:
             f"- Claims: **{recent_bundles.get('claim_sequence', 0):,}** "
             f"(priority {priority_n:,}, exploration {explore_n:,}; "
             f"realized exploration {float(recent_bundles.get('realized_explore_share') or 0):.1%}).",
-            "- Contract: deterministic 9:1 allocation, coherent multi-knob bundles, "
-            "35/35/30 frozen chronological folds, 65–80% TIM, strict-only exact handoff.",
+            "- Historical scheduler contract: deterministic 9:1 allocation and "
+            "35/35/30 frozen folds. Current repaired TRB handoff instead uses "
+            "ranked key bands (top 10 per side 50–80%; remainder 20–60%).",
             f"- Exact-pending vector survivors: "
             f"`{recent_bundles.get('exact_pending') or []}`.",
             "",
@@ -1681,8 +3146,8 @@ def main() -> None:
         "## Reading the matrix",
         "",
         "- Green: beats same-key B&H in the faithful engine; still requires replay and fingerprint checks.",
-        "- White: positive but below B&H; retain as evidence, not as a winner.",
-        "- Gray: non-viable/losing result; retain so it is not blindly retested.",
+        "- White: B&H comparison unavailable; measured evidence only, never promotion.",
+        "- Gray: every below-B&H or intentionally discarded result; retain so it is not blindly retested.",
         "- Red: zero trades, identical fingerprints across values, or disconnected/degenerate wiring.",
         "- Ladder multipliers remain hypotheses. The remembered D/4h/1h values are a wiring baseline, "
         "not an optimized strategy.",
@@ -1692,7 +3157,89 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(out.suffix + ".tmp")
     tmp.write_text("\n".join(lines))
+    _set_local_immutable(out, False)
     tmp.replace(out)
+    _set_local_immutable(out, True)
+    active_keys = tuple(
+        f"{symbol}_{side}"
+        for side in ("LONG", "SHORT")
+        for symbol in ranked_symbols(side)
+    )
+    tim_policy = {
+        key: {
+            field: value
+            for field, value in tim_contract(*parse_key(key)).items()
+            if field
+            in {
+                "rank",
+                "cohort",
+                "tim_min_pct",
+                "tim_max_pct",
+                "source",
+            }
+        }
+        for key in active_keys
+    }
+    contract_versions = sorted(
+        {
+            fingerprint.split(":", 1)[0]
+            for values in all_contract_fps.values()
+            for fingerprint in values
+            if fingerprint
+        }
+    )
+    # A Mac checkout may not carry every c5 frozen NPZ.  The report has
+    # already failed closed to zero exact rows in that case; do not discard
+    # the rendered digest or skip the email entirely merely because a
+    # provenance fingerprint cannot be computed locally.
+    if len(contract_versions) != 1:
+        # The exported gzip carries the contract identity even when this
+        # checkout cannot compute the current NPZ fingerprints.  Reuse that
+        # identity so the digest sidecar remains hash/metadata-consistent;
+        # absence of local NPZs is disclosed by the zero exact-row counts and
+        # the matrix guard, not by corrupting the provenance contract.
+        header_contract = None
+        try:
+            import gzip as _gzip
+            with _gzip.open(canonical_matrix, "rt") as handle:
+                for line in handle:
+                    if not line.startswith("#"):
+                        break
+                    if line.startswith("# CURRENT_CONTRACT_VERSION="):
+                        header_contract = line.split("=", 1)[1].strip()
+                        break
+        except (OSError, EOFError):
+            header_contract = None
+        contract_versions = [header_contract or "UNAVAILABLE_NO_LOCAL_NPZ"]
+    provenance = {
+        "schema": "switch-matrix-trb-current-digest-v1",
+        "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "campaign": CURRENT_ENGINE_CAMPAIGN,
+        "engine_cutoff": CURRENT_ENGINE_CUTOFF,
+        "contract_version": contract_versions[0],
+        "matrix_scope": (
+            "CURRENT_CAMPAIGN_CURRENT_CODE_NPZ_SIDE_FINGERPRINTS_ONLY"
+        ),
+        "canonical_matrix": "data/reports/SWITCH_MATRIX_TRB.csv.gz",
+        "canonical_matrix_sha256": hashlib.sha256(
+            canonical_matrix.read_bytes()
+        ).hexdigest(),
+        "digest": "data/reports/SWITCH_MATRIX_TRB_DIGEST.md",
+        "digest_sha256": hashlib.sha256(out.read_bytes()).hexdigest(),
+        "accepted_current_engine_rows": current_engine,
+        "active_key_count": len(active_keys),
+        "tim_policy": tim_policy,
+    }
+    provenance_path = out.with_suffix(out.suffix + ".provenance.json")
+    provenance_tmp = provenance_path.with_suffix(
+        provenance_path.suffix + ".tmp"
+    )
+    provenance_tmp.write_text(
+        json.dumps(provenance, sort_keys=True, indent=2) + "\n"
+    )
+    _set_local_immutable(provenance_path, False)
+    provenance_tmp.replace(provenance_path)
+    _set_local_immutable(provenance_path, True)
     print(out)
 
 

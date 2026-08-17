@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "campaign": "MU_ALL_TF_WT_PRICE_LADDER_VEC_V2",
+  "generated_at": "2026-08-01T02:07:00Z",
+  "symbol_side": "MU_LONG",
+  "canonical_scope_snapshot": {
+    "logical_differential_denominator": 826,
+    "differential_exact_filled": 0,
+    "differential_exact_blank": 826,
+    "combined_executable_denominator": 1609,
+    "combined_executable_filled": 1,
+    "combined_executable_blank": 1608,
+    "canonical_exact_nonblank_observed": 1,
+    "snapshot_source": "data/reports/SWITCH_MATRIX_TRB_DIGEST.md",
+    "snapshot_contract": "stocks_repaired_20260730_c5"
+  },
+  "research_only": true,
+  "exact_completion_credit": false,
+  "promotion_allowed": false,
+  "matrix_written": false,
+  "database_written": false,
+  "live_written": false,
+  "capital_contract": {
+    "base_unit_usd": 2000.0,
+    "capacity_usd": 16000.0,
+    "average_deployed_per_entry_fill_required": 2000.0,
+    "required_next_stage": "EXACT_V8"
+  },
+  "source_fields": [
+    "entry_tf",
+    "exit_tf",
+    "reentry_tf"
+  ],
+  "field_mapping": [
+    {
+      "source_field": "entry_tf",
+      "matrix_main_switch": "MU_WT_PRICE_LADDER_ENTRY_TF",
+      "matrix_sub_setting": "MU_WT_PRICE_LADDER_ENTRY_TF",
+      "action_group": "ENTRY",
+      "allowed_values": ["5m", "15m", "1h", "4h", "D"],
+      "description": "Research-only completed-parent DC break/bounce/reclaim entry timeframe."
+    },
+    {
+      "source_field": "exit_tf",
+      "matrix_main_switch": "MU_WT_PRICE_LADDER_EXIT_TF",
+      "matrix_sub_setting": "MU_WT_PRICE_LADDER_EXIT_TF",
+      "action_group": "EXIT",
+      "allowed_values": ["5m", "15m", "1h", "4h", "D"],
+      "description": "Research-only WT cross value/price ladder exit timeframe."
+    },
+    {
+      "source_field": "reentry_tf",
+      "matrix_main_switch": "MU_WT_PRICE_LADDER_REENTRY_TF",
+      "matrix_sub_setting": "MU_WT_PRICE_LADDER_REENTRY_TF",
+      "action_group": "REENTRY",
+      "allowed_values": ["5m", "15m", "1h", "4h", "D"],
+      "description": "Research-only WT cross value/price ladder reentry timeframe."
+    }
+  ],
+  "combo_ownership": {
+    "logical_key": ["symbol_side", "lane", "entry_tf", "exit_tf", "reentry_tf", "lookback", "bounce_bps", "reclaim_bps", "exit_value_delta", "exit_price_confirm_bps", "reentry_value_delta", "reentry_price_confirm_bps", "target_units_requested", "ledger_sha256"],
+    "dedup_rule": "latest immutable receipt for identical logical key; exact-owned cells suppress vector display",
+    "result_fields_required": ["gain_pct_per_month", "side_bh_pct", "return_multiple_vs_bh_or_cash", "max_drawdown_pct", "trade_sharpe", "daily_sharpe", "close_actions", "avg_deployed_usd_per_entry_fill", "ledger_sha256", "source_npz_sha256", "source_code_sha256"],
+    "no_result_rows_present": true,
+    "blocker": "No authoritative S1 Sol lane result/owner receipt is present in this checkout."
+  },
+  "amber_style": {
+    "fill": "FFF2CC",
+    "font": "9A6B00",
+    "italic": true,
+    "comment_required": ["VEC_APPROX", "EXACT_V8 next", "capital contract", "owner receipt"],
+    "engine_csv_behavior": "remain blank",
+    "completion_counter_behavior": "do not increment"
+  }
+}

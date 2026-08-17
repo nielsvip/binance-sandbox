@@ -32,6 +32,7 @@ CRITICAL_PROCESSES=(
     "ez_klines.py"
     "setup_ssh_tunnels.py"
     "ez_orderbook.py"  # 2026-04-27 added — was dying silently w/o auto-restart, killing V3 OB scanner
+    "ez_indicators_merger.py"  # 2026-08-12 added — SIGTERM'd 2026-08-11 23:08:34 and stayed dead 70min+ while cron logged "All healthy"; its death is the direct cause of INDICATOR_SNAPSHOT_STALE growing linearly across ang/flz/fin/men (4520 CRITICAL/hr, age 3900s+) because it is the only publisher of the 326-symbol indicator snapshot broadcast
 )
 
 # Scripts that ALREADY have a run_with_watchdog.sh wrapper in an iTerm tab.
@@ -46,6 +47,7 @@ WATCHDOG_MANAGED=(
     "ez_klines.py"
     "ez_orderbook.py"  # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog
     "ez_manage.py"     # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog (was bare)
+    "ez_indicators_merger.py"  # 2026-08-12 added — run_with_watchdog.sh:154 already defines NO_OUTPUT_TIMEOUT=120 for it
 )
 
 MISSING=""
@@ -95,7 +97,7 @@ done
 if [ -z "$MISSING" ]; then
     # Only log heartbeat every 10 min (not every 2 min)
     MINUTE=$(date +%M)
-    if [ $((MINUTE % 10)) -eq 0 ]; then
+    if [ $((10#$MINUTE % 10)) -eq 0 ]; then
         log "HEARTBEAT: All crypto processes healthy"
     fi
 else
@@ -133,7 +135,7 @@ fi
 # assumption is exactly what let this incident go unnoticed for over two hours.
 ET_HOUR=$(TZ="America/New_York" date +"%H")
 ET_MIN=$(TZ="America/New_York" date +"%M")
-ET_MINS=$((ET_HOUR * 60 + ET_MIN))
+ET_MINS=$((10#$ET_HOUR * 60 + 10#$ET_MIN))
 DOW=$(date +%u)
 if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 420 ] && [ "$ET_MINS" -le 975 ]; then
     for tproc in "tradier_prices.py" "tradier_indicators.py" "tradier_rankings.py" "tradier_positions.py --accounts tra trb trc" "tradier_manage.py --accounts trb" "tradier_manage.py --accounts trc"; do
@@ -159,7 +161,16 @@ if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 420 ] && [ "$ET_MINS" -le 975 ]; then
         LOG_NAME=$(echo "$script_name" | sed 's/\.py//')
         nohup /bin/bash "$WORKDIR/run_with_watchdog.sh" $script_name $args >> "$LOGDIR/${LOG_NAME}_cron.log" 2>&1 &
         sleep 2
-        alert "Tradier $tproc — BOTH wrapper and process were dead — restarted under watchdog"
+        # 2026-08-06: NO-LIES. run_with_watchdog.sh's TRADIER_MARKET_GATE exits 0 without
+        # launching outside Mon-Fri 13:30-20:00 UTC, so this branch used to alert
+        # "restarted under watchdog" ~180x/hour during the 07:00-09:30 ET pre-open window
+        # while nothing had in fact been restarted. Verify the wrapper actually survived
+        # (it persists on a real launch, and is gone on a gate refusal) before claiming it.
+        if pgrep -f "run_with_watchdog.sh $tproc" >/dev/null 2>&1; then
+            alert "Tradier $tproc — BOTH wrapper and process were dead — restarted under watchdog"
+        else
+            log "TRADIER RELAUNCH NO-OP: $tproc — run_with_watchdog.sh TRADIER_MARKET_GATE refused (outside Mon-Fri 13:30-20:00 UTC); still DOWN"
+        fi
     done
 fi
 

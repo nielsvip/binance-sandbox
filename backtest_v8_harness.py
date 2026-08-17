@@ -4,7 +4,12 @@ Decodes integer-encoded string fields back to the string values
 the live trading code expects (wt_cross, wt_divergence, etc.).
 Reconstructs wt_cross from wt_cross_bull/bear binary flags when
 the encoded wt_cross array is broken (all zeros).
+
+# SHARED_CLASSIC_FORMATION_V8_PARITY_V1: IndicatorStore forwards persisted
+# formation fields and causally derives missing fields before V8 dispatch.
 """
+import os
+
 import numpy as np
 import re
 from datetime import datetime, timezone
@@ -104,7 +109,20 @@ def apply_tradier_backtest_capital_contract(
     benchmark_fraction=0.20,
     strategy_capacity_fraction=1.60,
 ):
-    """Harness-only sizing: $2k B&H unit and $16k strategy capacity at $10k capital."""
+    """Apply an explicitly labelled test-only Tradier capital contract.
+
+    ``legacy_ladder`` preserves old replay behaviour for historical artefacts.
+    ``unlevered`` gives both the strategy and B&H the same supplied capital,
+    which is the only contract valid for a direct strategy-vs-B&H comparison.
+    """
+    contract = os.environ.get("V8_BACKTEST_CAPITAL_CONTRACT", "legacy_ladder").strip().lower()
+    if contract == "unlevered":
+        benchmark_fraction = 1.0
+        strategy_capacity_fraction = 1.0
+    elif contract != "legacy_ladder":
+        raise ValueError(
+            "V8_BACKTEST_CAPITAL_CONTRACT must be 'legacy_ladder' or 'unlevered'"
+        )
     benchmark = float(capital) * float(benchmark_fraction)
     capacity = float(capital) * float(strategy_capacity_fraction)
     config.START_POSITION_SIZE = benchmark
@@ -116,6 +134,7 @@ def apply_tradier_backtest_capital_contract(
     ):
         setattr(config, name, capacity)
     return {
+        "capital_contract": contract,
         "benchmark_deployed_usd": benchmark,
         "strategy_capacity_usd": capacity,
         "max_ladder_mult": capacity / benchmark if benchmark > 0 else 0.0,
@@ -260,6 +279,80 @@ class IndicatorStore:
         self.ts_to_idx = {int(t): i for i, t in enumerate(self.timestamps)}
         self.has_5m = any(k.endswith("_5m") for k in self.arrays)
         self.has_3m = any(k.endswith("_3m") for k in self.arrays)
+
+        # Frozen NPZs are immutable inputs and predate the formation fields.
+        # Derive them vectorized in memory from their existing mapped OHLC
+        # arrays, preserving the NPZ bytes and the exact historical timeline.
+        from classic_formations import ensure_npz_formation_fields
+        # Some Tradier archives also carry synthetic/compatibility 3m fields.
+        # ``has_3m`` therefore cannot be used to classify them as crypto: doing
+        # so silently omitted every formation_* field in exact V8 while the
+        # vector selector (which derives directly from OHLC) continued to fire.
+        # The exact runner opts in explicitly so ordinary V8 runs do not pay the
+        # formation derivation cost.
+        _formation_opt_in = os.environ.get(
+            "V8_CLASSIC_FORMATION_FIELDS", "0"
+        ) == "1"
+        _derive_formations = (
+            (self.has_5m and not self.has_3m) or _formation_opt_in
+        )
+        if _derive_formations and start_idx > 0:
+            # Preserve the pre-start warmup.  Deriving after the NPZ slice
+            # would fabricate a 40-parent dead zone at every requested
+            # backtest start date.
+            _formation_source = {}
+            with np.load(path, allow_pickle=True, mmap_mode="r") as _formation_npz:
+                for _tf in ("15m", "1h", "4h", "D"):
+                    for _field in ("open", "high", "low", "close", "volume"):
+                        _key = f"{_field}_{_tf}"
+                        if _key in _formation_npz:
+                            _formation_source[_key] = np.asarray(_formation_npz[_key])
+            _formation_added = ensure_npz_formation_fields(_formation_source)
+            self.arrays.update(
+                {key: values[start_idx:].copy() for key, values in _formation_added.items()}
+            )
+        elif _derive_formations:
+            self.arrays.update(ensure_npz_formation_fields(self.arrays))
+
+        # Ordinary ladder/E02 parity fields.  Frozen NPZs predate these scalar
+        # indicator names, so derive the prior N=30 4h channel in memory from
+        # the already-stored completed-parent identity.  No NPZ bytes change.
+        _h4_ts = self.arrays.get("timestamp_4h")
+        _h4_high = self.arrays.get("high_4h")
+        _h4_low = self.arrays.get("low_4h")
+        if (
+            _h4_ts is not None
+            and _h4_high is not None
+            and _h4_low is not None
+            and len(_h4_ts) == self.n_bars
+            and len(_h4_high) == self.n_bars
+            and len(_h4_low) == self.n_bars
+        ):
+            _parent_ts = np.asarray(_h4_ts, dtype=np.int64)
+            _changed = np.ones(self.n_bars, dtype=bool)
+            if self.n_bars > 1:
+                _changed[1:] = _parent_ts[1:] != _parent_ts[:-1]
+            _changed &= _parent_ts > 0
+            _event_rows = np.flatnonzero(_changed)
+            _event_high = np.asarray(_h4_high, dtype=np.float64)[_event_rows]
+            _event_low = np.asarray(_h4_low, dtype=np.float64)[_event_rows]
+            _prior_high = np.full(self.n_bars, np.nan, dtype=np.float64)
+            _prior_low = np.full(self.n_bars, np.nan, dtype=np.float64)
+            for _event_i in range(30, len(_event_rows)):
+                _start = int(_event_rows[_event_i])
+                _stop = (
+                    int(_event_rows[_event_i + 1])
+                    if _event_i + 1 < len(_event_rows)
+                    else self.n_bars
+                )
+                _prior_high[_start:_stop] = np.nanmax(
+                    _event_high[_event_i - 30 : _event_i]
+                )
+                _prior_low[_start:_stop] = np.nanmin(
+                    _event_low[_event_i - 30 : _event_i]
+                )
+            self.arrays.setdefault("e02_prior_high_4h_n30", _prior_high)
+            self.arrays.setdefault("e02_prior_low_4h_n30", _prior_low)
 
         # ── Step 1: forward-fill genuinely missing numeric HTF values ──────
         #
@@ -577,13 +670,19 @@ class IndicatorStore:
             _short_key = f"rel_vol_{_rvol_tf}"
             if _long_key in result and _short_key not in result:
                 result[_short_key] = result[_long_key]
-        # Live Redis provides short-form k_3m/d_3m aliases that ez_manage expects
+        # Live Redis provides short-form k_{tf}/d_{tf} fields while the frozen
+        # NPZ contract stores stoch_k_{tf}/stoch_d_{tf}.  The exact Tradier path
+        # parses only the short form.  Without these aliases every NPZ row
+        # becomes the synthetic 50/50 default and process_position returns
+        # DATA_ERROR before held-position exits (including E02) can evaluate.
         # FIX 2026-04-14: compute stoch prev from PREVIOUS bar (idx-1), not current bar.
         # Without this, stoch_k_{tf}_prev == stoch_k_{tf} → SRS exit conditions impossible.
         _prev_idx = max(0, idx - 1)
         for tf in ["1m", "3m", "5m", "15m", "1h", "4h", "D"]:
             sk = f"stoch_k_{tf}"; sd = f"stoch_d_{tf}"
             if sk in result:
+                result.setdefault(f"k_{tf}", result[sk])
+                result.setdefault(f"d_{tf}", result.get(sd, 50))
                 _kp_from_arr = float(self.get(sk, _prev_idx, result[sk]))
                 _dp_from_arr = float(self.get(sd, _prev_idx, result.get(sd, 50)))
                 _kp = result.get(f"stoch_k_{tf}_prev", result.get(f"k_{tf}_prev", _kp_from_arr))

@@ -1,0 +1,55 @@
+{
+  "_meta": {
+    "source_91": "s1:/home/niels/binance-sandbox/data/sweep_results/struct_v4_tradier_safer_v3_no_stop_1779069016_per_sym.csv",
+    "summary_file_91": "struct_v4_tradier_safer_v3_no_stop_1779069016_summary.json",
+    "source_TRADIER_114": "s1:/home/niels/binance-sandbox/run_struct_v4_all_actions.py (TRADIER_114 list)",
+    "n_syms_original": 91,
+    "n_syms_backfilled": 23,
+    "n_syms_final": 114,
+    "pool_sharpe_91sym_run": 0.18846147008892164,
+    "mean_wr_pct_91sym_run": 57.6,
+    "losers_lt_1x": 0,
+    "catastrophic_lt_50pct": 0,
+    "validation_window_start": "2024-04-01",
+    "robustness_window_start": "2023-07-01",
+    "backfill_method": "yfinance 1h period=max (~2yr); 15m synthesized 4x-upsample of 1h with last 60d real 15m overlaid; D/W/M via yfinance period=max; 5m fabricated by backtest_v8_precompute.py existing path.",
+    "backfill_date_utc": "2026-05-18",
+    "backfill_script": "s1:/home/niels/binance-sandbox/backfill_23_yfinance.py",
+    "backfill_log": "s1:/home/niels/logs/backfill_23_20260518_034319.log",
+    "backfill_report": "/tmp/npz_backfill_report.md",
+    "npz_dir_s1": "/home/niels/binance-sandbox/backtest_v8/indicators/",
+    "klines_dir_s1": "/home/niels/binance-sandbox/klines_cache_backtest/tradier/",
+    "metrics_guard_note": "[DIAGNOSTIC ONLY n_syms=91 pool_sharpe=0.1885 < 1.0 from prior 91-sym run] — sub-floor per CLAUDE.md NO-LIES MANDATE. Full-114 sweep on backfilled universe must be re-run before any promotion decision. NOT auto-promotable. Live use requires STRUCT_V4_GO_LIVE=true + manual sign-off + paper days.",
+    "imposter_block_note": "Per CLAUDE.md IMPOSTER BLOCK rules: single-sym BEST promotion FORBIDDEN; this universe is multi-sym pool only. The 23 backfilled NPZs use SYNTHESIZED 15m (4x-upsample of 1h) for the pre-60d window — indicator values on these symbols may diverge slightly from real-15m equivalents. The HTF arrays (1h, 4h, D, W, M) are accurate since they are resampled from real yfinance 1h/D/W/M data. Sub-floor diagnostic until full-114 sweep validates."
+  },
+  "symbols": [
+    "ACN", "AEM", "AGCO", "AGI", "AG", "ALB", "AMD", "AMZN", "ARM", "AR",
+    "ASML", "ATI", "AU", "AVGO", "BA", "BABA", "BG", "BHP", "BK", "BKR",
+    "CAT", "CCJ", "CDE", "CENX", "CF", "CHRD", "CLF", "CLX", "CMC", "CME",
+    "COIN", "COST", "CRWD", "CSCO", "CVX", "DAL", "DE", "DIS", "DKNG", "DVN",
+    "EGLE", "EQT", "FIVN", "FCX", "FLR", "FSLR", "GD", "GE", "GILD", "GOLD",
+    "GOOG", "GS", "HAL", "HES", "IBM", "INTC", "JD", "JPM", "KGC", "KMI",
+    "LLY", "LMT", "LOW", "MAR", "MCD", "META", "MOD", "MPLX", "MRK", "MSFT",
+    "MU", "NET", "NLR", "NOC", "NOV", "NUKZ", "NVDA", "NVO", "OKE", "ORCL",
+    "OXY", "PBR", "PFE", "PG", "PLTR", "PYPL", "QCOM", "RIG", "RTX", "SHOP",
+    "SMG", "SNDK", "SNOW", "SQ", "TGT", "TMUS", "TSLA", "TSM", "TXN", "UNH",
+    "UNP", "USAR", "V", "VLO", "VZ", "WFC", "WM", "WMT", "XLE", "XOM",
+    "XOP", "ZIM", "ZM", "ZTS"
+  ],
+  "symbols_present_before_backfill_91": [
+    "ACN", "AEM", "AGCO", "AGI", "AG", "ALB", "AMD", "AMZN", "ARM", "AR",
+    "ASML", "ATI", "AU", "AVGO", "BA", "BABA", "BG", "BHP", "BK", "BKR",
+    "CAT", "CCJ", "CDE", "CENX", "CF", "CHRD", "CLF", "CLX", "CMC", "CME",
+    "COIN", "COST", "CRWD", "CVX", "DE", "DIS", "DVN", "EGLE", "EQT", "FCX",
+    "FIVN", "GD", "GE", "GILD", "GOLD", "HAL", "HES", "IBM", "INTC", "JPM",
+    "KGC", "KMI", "LLY", "LMT", "LOW", "MCD", "META", "MRK", "MSFT", "MU",
+    "NLR", "NOC", "NUKZ", "NVDA", "OKE", "ORCL", "OXY", "PFE", "PLTR", "PYPL",
+    "QCOM", "RTX", "SHOP", "SMG", "SNDK", "SNOW", "SQ", "TGT", "TSLA", "TSM",
+    "TXN", "UNH", "USAR", "V", "VLO", "VZ", "WMT", "XLE", "XOM", "XOP", "ZIM"
+  ],
+  "symbols_backfilled_23": [
+    "CSCO", "DAL", "DKNG", "FLR", "FSLR", "GOOG", "GS", "JD", "MAR", "MOD",
+    "MPLX", "NET", "NOV", "NVO", "PBR", "PG", "RIG", "TMUS", "UNP", "WFC",
+    "WM", "ZM", "ZTS"
+  ]
+}

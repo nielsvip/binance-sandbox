@@ -38,6 +38,17 @@ RTH_OPEN = (9, 30)
 RTH_CLOSE = (16, 0)
 MAX_BARS = 1800
 MIN_BARS = 1200
+# Long-term ranking guardrails.  The previous 1 + 3*|R| multiplier let
+# linearity overwhelm the signed slope and treated a bearish daily trend as
+# useful long-side confirmation.  Keep slope dominant: at most a 1.5x quality
+# adjustment, and never admit a clearly bearish/severely drawn-down stock to
+# the long candidate list.
+LT_LINEARITY_WEIGHT = 0.5
+LT_MAX_LINEARITY_MULTIPLIER = 1.5
+LONG_MAX_PEAK_DRAWDOWN_PCT = -75.0
+LT_RETURN_SCORE_WEIGHT = 5.0
+LT_RETURN_CLIP_PCT = 50.0
+SPLIT_GAP_RATIO = 3.0
 try:
     from typing import Any, Dict, List, Optional, Union
 
@@ -186,6 +197,73 @@ def _merge_news_injections(symbols: list, account: str, side: str) -> list:
         pass
     return symbols
 
+
+def _merge_ai_injections(symbols: list, account: str, side: str) -> list:
+    """Merge AI premarket picks into TRC only (TRB stays control). Reads
+    data/ai_premarket/YYYY-MM-DD/decisions.json written by tradier_ai_premarket.py
+    at 12:00 UTC. Each decision has {symbol, side, conviction, bias}.
+    Guarded by AI_PREMARKET_ENABLED_{TRB,TRC} and conviction floor."""
+    try:
+        cfg = TradierConfig()
+        enabled_trb = bool(getattr(cfg, 'AI_PREMARKET_ENABLED_TRB', False))
+        enabled_trc = bool(getattr(cfg, 'AI_PREMARKET_ENABLED_TRC', False))
+        if account == 'trb' and not enabled_trb:
+            return symbols
+        if account == 'trc' and not enabled_trc:
+            return symbols
+        # Resolve today's decisions file (UTC date)
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        decisions_dir = getattr(cfg, 'AI_PREMARKET_DECISIONS_DIR', 'data/ai_premarket')
+        decisions_file = cfg.BASE_PATH / decisions_dir / today / 'decisions.json'
+        if not decisions_file.exists():
+            # fallback: latest file under decisions_dir
+            try:
+                candidates = sorted((cfg.BASE_PATH / decisions_dir).glob('*/decisions.json'))
+                if candidates:
+                    decisions_file = candidates[-1]
+                else:
+                    return symbols
+            except Exception:
+                return symbols
+            if not decisions_file.exists():
+                return symbols
+        with open(decisions_file, 'r') as f:
+            data = json.load(f)
+        decisions = data.get('decisions', data) if isinstance(data, dict) else data
+        if not isinstance(decisions, list):
+            return symbols
+        min_conv = float(getattr(cfg, 'AI_PREMARKET_MIN_CONVICTION', 0.55))
+        max_new = int(getattr(cfg, 'AI_PREMARKET_MAX_NEW_PER_SIDE', 8))
+        added = 0
+        for dec in decisions:
+            if not isinstance(dec, dict):
+                continue
+            if dec.get('side', '').upper() != side.upper():
+                continue
+            # account filter: decision may specify target_account
+            tgt = dec.get('target_account', 'trc')
+            if tgt != account and tgt != 'all':
+                continue
+            sym = str(dec.get('symbol', '')).upper().strip()
+            if not sym or sym in symbols:
+                continue
+            try:
+                conv = float(dec.get('conviction', 0))
+            except Exception:
+                conv = 0
+            if conv < min_conv:
+                continue
+            if added >= max_new:
+                break
+            symbols.append(sym)
+            added += 1
+        if added:
+            logger.info(f"[AI_RANKINGS] Injected {added} AI symbols into {account} {side}: {[d.get('symbol') for d in decisions[:added]]}")
+    except Exception as e:
+        logger.debug(f"[AI_RANKINGS] merge skipped: {e}")
+    return symbols
+
 async def _load_news_sentiment_tradier(rm=None):
     global _news_sentiment_cache_tradier
     try:
@@ -204,6 +282,48 @@ async def _load_news_sentiment_tradier(rm=None):
             with open(fallback, 'r') as f: _news_sentiment_cache_tradier = {k: float(v) for k, v in json.load(f).items()}
     except Exception as e:
         logger.debug(f"News sentiment load: {e}")
+
+
+def calculate_lt_return_metrics(df: pd.DataFrame, num_bars: int = 45) -> Tuple[float, float]:
+    """Return cumulative LT return and full-history peak-to-current drawdown.
+
+    The old LT gain signal was a weighted average of bar-to-bar returns.  That
+    can turn a single rebound, split/repricing gap, or other discontinuity into
+    a large bullish score even when the stock remains deeply below its prior
+    peak.  Cumulative return is bounded for scoring, while peak drawdown is
+    retained as an explicit long-side eligibility guard.
+    """
+    if df is None or df.empty or "close" not in df.columns:
+        return 0.0, 0.0
+
+    work = df.copy()
+    if "timestamp" in work.columns:
+        work = work.assign(_sort_ts=pd.to_datetime(work["timestamp"], utc=True, errors="coerce"))
+        work = work.sort_values("_sort_ts")
+    closes = pd.to_numeric(work["close"], errors="coerce").dropna()
+    closes = closes[closes > 0]
+    if len(closes) < 2:
+        return 0.0, 0.0
+
+    # Tradier history can contain unadjusted reverse/forward-split gaps.  Put
+    # the post-gap series back on the pre-gap scale for return/drawdown math.
+    # This is deliberately limited to the LT return metric; live quote prices
+    # and execution data remain in the broker's current-price scale.
+    adjusted = closes.to_numpy(dtype=float, copy=True)
+    for idx in range(1, len(adjusted)):
+        ratio = adjusted[idx] / adjusted[idx - 1] if adjusted[idx - 1] > 0 else 1.0
+        if ratio >= SPLIT_GAP_RATIO or ratio <= (1.0 / SPLIT_GAP_RATIO):
+            adjusted[idx:] /= ratio
+    closes = pd.Series(adjusted, index=closes.index)
+
+    recent = closes.tail(num_bars + 1)
+    start_price = float(recent.iloc[0])
+    current_price = float(recent.iloc[-1])
+    cumulative_return_pct = ((current_price / start_price) - 1.0) * 100.0 if start_price > 0 else 0.0
+
+    peak_price = float(closes.max())
+    peak_drawdown_pct = ((current_price / peak_price) - 1.0) * 100.0 if peak_price > 0 else 0.0
+    return float(cumulative_return_pct), float(peak_drawdown_pct)
 # New global to hold the price cache manager instance
 price_cache_manager = None
 
@@ -2135,20 +2255,19 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             slopes_raw = {}
             r_values_raw = {}
             for tf, dfv in dfs_current_sym.items():
-                # Use calculate_slope_and_rvalue from ez_rankings (replaces calculate_trimmed_slope)
-                from ez_rankings import calculate_slope_and_rvalue
-                slp, rvv = calculate_slope_and_rvalue(dfv)
+                # Use the same all-close regression that plot_dfs_subplots draws.
+                # The previous tops/bottoms-only regression could flip the sign
+                # of a timeframe (notably MNTS 1h) and made the plotted slopes
+                # disagree with the ranking slopes.
+                slp, rvv, _ = calculate_regression_slope_line(dfv[["close"]].copy())
                 slopes_raw[tf] = slp
                 r_values_raw[tf] = rvv
-            has_daily = "D" in dfs_current_sym
-            if has_daily:
-                # Standard weighting with D
-                weights_lt = {"D": 200, "1h": 300, "15m": 400, "5m": 500, "1m": 600}
-            else:
-                # Fallback weighting (heavier on 4h/1h) to compensate for missing D
-                weights_lt = {"4h": 300, "1h": 500, "15m": 500, "5m": 500, "1m": 200}
+            # Keep the diagnostic trend normalization on the same weighting
+            # scheme used by the final score below, including 4h when daily
+            # data is present.  Previously these were two different LT trends.
+            weights_lt = {"D": 200, "4h": 150, "1h": 200, "15m": 200, "5m": 300, "1m": 350}
             trend_val_raw_lt = sum(slopes_raw.get(tf, 0.0) * w for tf, w in weights_lt.items())
-            trend_val_raw_st = sum(slopes_raw.get(tf, 0.0) * w for tf, w in {"1h": 200, "15m": 400, "5m": 600, "1m": 800}.items())
+            trend_val_raw_st = sum(slopes_raw.get(tf, 0.0) * w for tf, w in {"D": 80, "4h": 120, "1h": 150, "15m": 300, "5m": 500, "1m": 700}.items())
             symbol_time = (datetime.now(timezone.utc) - symbol_start).total_seconds()
             if symbol_time > 1.0:
                 logger.debug(f"⏱️ {sym} took {symbol_time:.2f}s")
@@ -2278,19 +2397,34 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
                 distance_below = min(lower_band, prox_range.get("bottom")) - current_price
                 if distance_below > (atr_1h * 0.75):
                     breakthrough_bonus = -((distance_below / atr_1h) * 75)
-        # Calculate weighted gains (same approach as ez_rankings, adapted for Tradier timeframes)
-        # Long-term: ~45 days of D data (45 bars), decay factor 0.995 for slower decay
-        weighted_gains_lt = calculate_weighted_gains(df_D, 45, decay_factor=0.995) if df_D is not None else 0.0
+        # Long-term return: use cumulative return plus an explicit full-history
+        # drawdown metric.  A weighted average of daily returns is not a
+        # meaningful drawdown-aware LT signal and can be dominated by one gap.
+        lt_return_pct, lt_peak_drawdown_pct = calculate_lt_return_metrics(df_D, 45)
+        lt_return_score = np.clip(lt_return_pct, -LT_RETURN_CLIP_PCT, LT_RETURN_CLIP_PCT) * LT_RETURN_SCORE_WEIGHT
+        daily_slope = item["slopes_raw"].get("D")
+        long_veto_reasons = []
+        if "D" not in dfs_calc:
+            long_veto_reasons.append("missing_daily")
+        elif daily_slope is None or daily_slope <= 0:
+            long_veto_reasons.append("daily_slope_not_positive")
+        if lt_peak_drawdown_pct <= LONG_MAX_PEAK_DRAWDOWN_PCT:
+            long_veto_reasons.append("severe_peak_drawdown")
+        long_eligible = not long_veto_reasons
+
+        # Short-term return remains a fast bar-level signal.
         # Short-term: 1 day of 5m data (288 bars), decay factor 0.98 for faster decay (use 5m instead of 1m for less noise)
         weighted_gains_st = calculate_weighted_gains(df_5m, 288, decay_factor=0.98) if df_5m is not None else 0.0
         # Final trend calculation - compensate for slope scale (shorter TF = smaller slopes = higher weights)
         # 4h slope included when available; weights rebalanced
         trend_val_lt = sum(item["slopes_raw"].get(tf, 0.0) * w for tf, w in {"D": 200, "4h": 150, "1h": 200, "15m": 200, "5m": 300, "1m": 350}.items())
         trend_val_st = sum(item["slopes_raw"].get(tf, 0.0) * w for tf, w in {"D": 80, "4h": 120, "1h": 150, "15m": 300, "5m": 500, "1m": 700}.items())
-        # HTF R as confidence gate: high linearity amplifies strongly (LT max 4×)
-        linearity_multiplier_lt = min(1.0 + (3.0 * htf_r), 4.0)
+        # HTF R is only a modest quality adjustment.  Slope remains the
+        # dominant directional signal; |R| must not turn bearish HTF structure
+        # into long-side confirmation.
+        linearity_multiplier_lt = min(1.0 + (LT_LINEARITY_WEIGHT * htf_r), LT_MAX_LINEARITY_MULTIPLIER)
         linearity_multiplier_st = 1.0 + (2.0 * htf_r) + (0.5 * ltf_r)
-        long_term_score_raw = (trend_val_lt * linearity_multiplier_lt) + price_vs_sma_score + band_score * 0.5 + breakthrough_bonus + (weighted_gains_lt * 50)
+        long_term_score_raw = (trend_val_lt * linearity_multiplier_lt) + price_vs_sma_score + band_score * 0.5 + breakthrough_bonus + lt_return_score
         # ST: band 0.7→0.9, proximity 0.5→0.8
         short_term_score_raw = (trend_val_st * linearity_multiplier_st) + price_vs_sma_score * 1.5 + band_score * 0.9 + breakthrough_bonus * 1.2 + mean_prox_score_raw_1m * 0.8 + (weighted_gains_st * 80)
         final_score_raw_lt = long_term_score_raw * rel_vol_tot_norm_factor
@@ -2308,7 +2442,13 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             "linearity_raw": lin_val_raw, "abs_linearity_raw": abs_lin_val_raw, "rel_vol_raw": rel_vol_tot_raw, "rel_vol_norm_factor": rel_vol_tot_norm_factor,
             "final_score_raw_lt": final_score_raw_lt, "final_score_raw_st": final_score_raw_st,
             "mean_proximity_score_raw_5m": mean_prox_score_raw_1m, "band_score": band_score,
-            "weighted_gains_lt": weighted_gains_lt, "weighted_gains_st": weighted_gains_st,
+            "weighted_gains_lt": lt_return_pct, "lt_return_pct": lt_return_pct,
+            "lt_return_score": lt_return_score, "lt_peak_drawdown_pct": lt_peak_drawdown_pct,
+            "long_eligible": long_eligible,
+            "long_veto_reason": ",".join(long_veto_reasons),
+            "linearity_multiplier_lt": linearity_multiplier_lt,
+            "trend_val_lt_raw": trend_val_lt,
+            "weighted_gains_st": weighted_gains_st,
             "dfs_for_calc": dfs_calc })
         _sym_score_elapsed = time.time() - _sym_score_start
         if _sym_score_elapsed > 5.0:
@@ -2344,7 +2484,7 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         if df_1m is not None and not df_1m.empty and "close" in df_1m.columns:
             if len(df_1m) >= 2:
                 p1 = df_1m["close"].iloc[-2]; entry["return_1m"] = float((df_1m["close"].iloc[-1] - p1) / p1 * 100.0) if p1 else 0.0
-    # Sort by final score
+    # Sort/dedup by raw score before applying the long-side eligibility guard.
     # Dedup: if symbol appears twice keep highest-scoring entry
     _seen_syms = {}
     for _entry in final_ranking_data_scalars:
@@ -2352,7 +2492,10 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         if _s not in _seen_syms or _entry.get("final_score_norm", 0.0) > _seen_syms[_s].get("final_score_norm", 0.0):
             _seen_syms[_s] = _entry
     final_ranking_data_scalars = list(_seen_syms.values())
-    final_ranking_data_scalars.sort(key=lambda x: x.get("final_score_norm", 0.0), reverse=True)
+    final_ranking_data_scalars.sort(
+        key=lambda x: (bool(x.get("long_eligible", False)), x.get("final_score_norm", 0.0)),
+        reverse=True,
+    )
     minimum_safe_coverage = max(50, int(len(symbols) * 0.50))
     if len(final_ranking_data_scalars) < minimum_safe_coverage:
         logger.critical(
@@ -2368,9 +2511,10 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             "source": "tradier_rankings_partial_preserved",
         }
     # Create leaderboard lists (winners/losers) like ez_rankings
-    top_winners_lt = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_norm", 0.0), reverse=True)
+    long_eligible_entries = [e for e in final_ranking_data_scalars if e.get("long_eligible", False)]
+    top_winners_lt = sorted(long_eligible_entries, key=lambda x: x.get("final_score_norm", 0.0), reverse=True)
     top_losers_lt = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_norm", 0.0))
-    top_winners_st = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_recent_norm", 0.0), reverse=True)
+    top_winners_st = sorted(long_eligible_entries, key=lambda x: x.get("final_score_recent_norm", 0.0), reverse=True)
     top_losers_st = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_recent_norm", 0.0))
     to_save_top20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_winners_lt[:20]]
     to_save_bottom20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_losers_lt[:20]]
@@ -2525,6 +2669,24 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             if _ms not in symbols_trb_short: symbols_trb_short.append(_ms)
         _merge_news_injections(symbols_trb_long, 'trb', 'LONG')
         _merge_news_injections(symbols_trb_short, 'trb', 'SHORT')
+        _merge_ai_injections(symbols_trb_long, 'trb', 'LONG')
+        _merge_ai_injections(symbols_trb_short, 'trb', 'SHORT')
+        _long_eligibility_by_symbol = {
+            str(item.get("symbol", "")).upper(): bool(item.get("long_eligible", False))
+            for item in final_ranking_data_scalars
+        }
+        _blocked_long_candidates = [
+            s for s in symbols_trb_long
+            if s in _long_eligibility_by_symbol and not _long_eligibility_by_symbol[s]
+        ]
+        symbols_trb_long = [
+            s for s in symbols_trb_long
+            if _long_eligibility_by_symbol.get(s, True)
+        ]
+        if _blocked_long_candidates:
+            logger.warning(
+                f"[LONG_ELIGIBILITY] Removed vetoed long candidates: {_blocked_long_candidates}"
+            )
         # symbols_tradier.json is the final trading allowlist. Optional OI,
         # mandatory, and news injections may prioritize a symbol, but may not
         # add an unapproved symbol to an account's derived trading list.
@@ -2556,8 +2718,11 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             # here, or lands atomically after publication.
             _merge_news_injections(symbols_trb_long, 'trb', 'LONG')
             _merge_news_injections(symbols_trb_short, 'trb', 'SHORT')
+            _merge_ai_injections(symbols_trb_long, 'trb', 'LONG')
+            _merge_ai_injections(symbols_trb_short, 'trb', 'SHORT')
             symbols_trb_long = list(dict.fromkeys(
-                s for s in symbols_trb_long if s in _allowed_symbols
+                s for s in symbols_trb_long
+                if s in _allowed_symbols and _long_eligibility_by_symbol.get(s, True)
             ))
             symbols_trb_short = list(dict.fromkeys(
                 s for s in symbols_trb_short if s in _allowed_symbols
@@ -2569,14 +2734,24 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
                 )
             await _save_json_async(config.BASE_PATH / "symbols_trb_long.json", symbols_trb_long)
             await _save_json_async(config.BASE_PATH / "symbols_trb_short.json", symbols_trb_short)
-            # 2026-07-20 USER: trc MUST match trb exactly — read back the file just written to
-            # disk (not the in-memory list) so trc can never desync from trb's actual saved
-            # content, no matter what caused prior drift (observed: trb/trc diverging even on
-            # freshly-completed cycles, e.g. UUUU present in trc_short but missing from trb_short).
+            # 2026-07-20 USER: trc base = trb, then AI diverges for paper A/B.
+            # TRB stays control (no AI). TRC = TRB + AI picks (when enabled) so trc
+            # can be compared to trb to measure AI lift. Mirrors 2026-07-19 trc==trb
+            # parity but deliberately diverges via _merge_ai_injections.
             with open(config.BASE_PATH / "symbols_trb_long.json") as _trb_l_fh:
                 symbols_trc_long = json.load(_trb_l_fh)
             with open(config.BASE_PATH / "symbols_trb_short.json") as _trb_s_fh:
                 symbols_trc_short = json.load(_trb_s_fh)
+            # AI injection into TRC only (TRB stays pure control)
+            _ai_before_l = len(symbols_trc_long)
+            _ai_before_s = len(symbols_trc_short)
+            _merge_ai_injections(symbols_trc_long, 'trc', 'LONG')
+            _merge_ai_injections(symbols_trc_short, 'trc', 'SHORT')
+            # Re-apply allowlist + dedupe after AI inject (AI symbols must be tradeable)
+            symbols_trc_long = list(dict.fromkeys(s for s in symbols_trc_long if s in _allowed_symbols))
+            symbols_trc_short = list(dict.fromkeys(s for s in symbols_trc_short if s in _allowed_symbols))
+            if len(symbols_trc_long) != _ai_before_l or len(symbols_trc_short) != _ai_before_s:
+                logger.info(f"[AI_RANKINGS] TRC diverged from TRB: trb {len(symbols_trb_long)}L/{len(symbols_trb_short)}S → trc {len(symbols_trc_long)}L/{len(symbols_trc_short)}S")
             await _save_json_async(config.BASE_PATH / "symbols_trc_long.json", symbols_trc_long)
             await _save_json_async(config.BASE_PATH / "symbols_trc_short.json", symbols_trc_short)
         logger.info(f"[rankings] Saved leaderboards: winners_20={len(to_save_top20)}, winners_30r={len(to_save_top30_r)}, symbols_trc_long={len(symbols_trc_long)}, symbols_trc_short={len(symbols_trc_short)}")
@@ -2854,7 +3029,9 @@ async def plot_loop():
 
             top_n = 20
             total_rankings = len(RANKING_DATA)
-            winners = RANKING_DATA[:top_n]
+            # Plot the actual long candidate set, not raw high scores that were
+            # vetoed for bearish daily direction or severe drawdown.
+            winners = [item for item in RANKING_DATA if item.get("long_eligible", False)][:top_n]
             losers = RANKING_DATA[-top_n:] if total_rankings >= top_n else []
             targets = []
 

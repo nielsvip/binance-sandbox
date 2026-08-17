@@ -1,0 +1,19 @@
+{
+  "accepted_cells": 3691,
+  "accepted_cells_per_hour": null,
+  "attempted_cells_counted": false,
+  "elapsed_seconds": 0.0,
+  "expected_cells": 20602,
+  "integrity_ok": true,
+  "key": "MU_LONG",
+  "net_new_accepted_cells": 0,
+  "observed_at_epoch": 1785798302.4034789,
+  "opening_accepted_cells": 3691,
+  "opening_observed_at_epoch": 1785798302.4034789,
+  "quarantined_cells_counted": false,
+  "schema": "matrix-vector-throughput-v1",
+  "status": "BOOTSTRAP_RATE_WINDOW",
+  "target_accepted_cells_per_hour": 2000.0,
+  "uniqueness_scope": "WITHIN_SYMBOL_SIDE_ACROSS_FOUR_PATH_SHEETS",
+  "zero_or_duplicate_cells_counted": false
+}

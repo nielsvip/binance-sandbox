@@ -1,0 +1,3006 @@
+{
+  "GDX_SHORT": {
+    "bh_per_mo_raw": 2.201320847392856,
+    "bh_per_mo_capped": 2.201320847392856,
+    "target_10x_per_mo": 22.013208473928557,
+    "total_switches": 1200,
+    "total_filters": 16,
+    "total_combos": 19200,
+    "attempted": 19200,
+    "completed": 19200,
+    "best": {
+      "switch": {
+        "param": "LR_BAND_HARVEST_ENABLED",
+        "value": true,
+        "default": false,
+        "kind": "bool",
+        "layer": "FAMILY_MASTER"
+      },
+      "filter": {
+        "param": "GR_HTF_GATE_ENABLED",
+        "value": false
+      },
+      "n_trades": 496,
+      "total_gain_pct": 240.16849362196973,
+      "per_mo_pct": 84.86101878714122,
+      "max_dd_pct": 25.21331018745275,
+      "win_rate": 86.49193548387096,
+      "years": 0.23584493117347327
+    },
+    "best_per_switch": {},
+    "ten_x_achieved": true,
+    "ten_x_combo": {
+      "switch": {
+        "param": "DC_LOW_STOP_ENABLED",
+        "value": true,
+        "default": false,
+        "kind": "bool",
+        "layer": "FAMILY_MASTER"
+      },
+      "filter": {
+        "param": "MFI_ENTRY_ENABLED",
+        "value": false
+      },
+      "n_trades": 79,
+      "total_gain_pct": 66.80311699123385,
+      "per_mo_pct": 23.604180883758147,
+      "max_dd_pct": 14.562142162739477,
+      "win_rate": 56.9620253164557,
+      "years": 0.23584493117347327
+    },
+    "last_update": "2026-08-10T06:37:04.950471+00:00",
+    "best_per_switch_count": 19200,
+    "top_50": [
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "GR_HTF_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MFI_ENTRY_ENABLED",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "PULLBACK_AUGMENT_ENABLED",
+          "value": true
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_D_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ENTRY_REQUIRE_GR_FILTER",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_GR_FILTER_ENABLED",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "CATALYST_VOLUME_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "DUP_GUARD_USE_GAIN_GATE",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "STDEV_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BREAKOUT_RETEST_ARMED_ENABLED",
+          "value": true
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "WT_W_EXIT_ENABLED",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "EXIT_BOUNCE_TOP_ENABLED",
+          "value": false
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "REENTRY_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 496,
+        "total_gain_pct": 240.16849362196973,
+        "per_mo_pct": 84.86101878714122,
+        "max_dd_pct": 25.21331018745275,
+        "win_rate": 86.49193548387096,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "GR_HTF_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MFI_ENTRY_ENABLED",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "PULLBACK_AUGMENT_ENABLED",
+          "value": true
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_D_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ENTRY_REQUIRE_GR_FILTER",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_GR_FILTER_ENABLED",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "CATALYST_VOLUME_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "DUP_GUARD_USE_GAIN_GATE",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "STDEV_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BREAKOUT_RETEST_ARMED_ENABLED",
+          "value": true
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "WT_W_EXIT_ENABLED",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "EXIT_BOUNCE_TOP_ENABLED",
+          "value": false
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "REENTRY_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 102,
+        "total_gain_pct": 98.54975324549693,
+        "per_mo_pct": 34.821521905357976,
+        "max_dd_pct": 31.32028438027318,
+        "win_rate": 57.84313725490197,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "GR_HTF_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "MFI_ENTRY_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "PULLBACK_AUGMENT_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_D_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "MTF_ENTRY_REQUIRE_GR_FILTER",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "MTF_GR_FILTER_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "CATALYST_VOLUME_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "DUP_GUARD_USE_GAIN_GATE",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "STDEV_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "BREAKOUT_RETEST_ARMED_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "WT_W_EXIT_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "EXIT_BOUNCE_TOP_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS",
+          "value": 3,
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "REENTRY_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS_ALT2",
+          "value": 4,
+          "orig_param": "EXIT_SCORER_MIN_CONDITIONS",
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "GR_HTF_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS_ALT2",
+          "value": 4,
+          "orig_param": "EXIT_SCORER_MIN_CONDITIONS",
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "MFI_ENTRY_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS_ALT2",
+          "value": 4,
+          "orig_param": "EXIT_SCORER_MIN_CONDITIONS",
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS_ALT2",
+          "value": 4,
+          "orig_param": "EXIT_SCORER_MIN_CONDITIONS",
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "PULLBACK_AUGMENT_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_MIN_CONDITIONS_ALT2",
+          "value": 4,
+          "orig_param": "EXIT_SCORER_MIN_CONDITIONS",
+          "default": 5,
+          "kind": "num",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 97,
+        "total_gain_pct": 67.99544391110304,
+        "per_mo_pct": 24.025477098018026,
+        "max_dd_pct": 12.565138040056738,
+        "win_rate": 58.76288659793815,
+        "years": 0.23584493117347327
+      }
+    ],
+    "grind_complete": true,
+    "notes": "2026-08-10 reduce-filters pass: disabled GR HTF/MFI/BB gates, enabled PULLBACK_AUGMENT+AUGMENT_WT_4H_BOUNCE; tested 600+600=1200 switches x16 filters (19200 combos) for GDX_SHORT; trades 44->143 (>100 achieved), best per_mo 18.79% (8.5x BH) close to 10x target 22.01%, ten_x not yet achieved"
+  },
+  "HAO_SHORT": {
+    "bh_per_mo_raw": 24290.399868581826,
+    "bh_per_mo_capped": 2.0,
+    "target_10x_per_mo": 20.0,
+    "total_switches": 922,
+    "total_filters": 16,
+    "total_combos": 14752,
+    "attempted": 19200,
+    "completed": 19200,
+    "best": {
+      "switch": {
+        "param": "MIN_POSITION_SIZE",
+        "value": 50,
+        "default": 100,
+        "kind": "num",
+        "layer": "SIZING"
+      },
+      "filter": {
+        "param": "BB_PULLBACK_GATE_ENABLED",
+        "value": false
+      },
+      "n_trades": 503,
+      "total_gain_pct": 576.1366279222533,
+      "per_mo_pct": 164.7984624540388,
+      "max_dd_pct": 340.9479576213623,
+      "win_rate": 59.443339960238575,
+      "years": 0.29133394174461935
+    },
+    "best_per_switch": {},
+    "ten_x_achieved": true,
+    "ten_x_combo": {
+      "switch": {
+        "param": "ABLATION_DISABLE_AGGRESSIVE_HEDGE",
+        "value": true,
+        "default": false,
+        "kind": "bool",
+        "layer": "FAMILY_MASTER"
+      },
+      "filter": {
+        "param": "BB_PULLBACK_GATE_ENABLED",
+        "value": false
+      },
+      "n_trades": 509,
+      "total_gain_pct": 274.9704750261811,
+      "per_mo_pct": 78.6527176166385,
+      "max_dd_pct": 375.793696627157,
+      "win_rate": 56.385068762278976,
+      "years": 0.29133394174461935
+    },
+    "best_per_switch_count": 19200,
+    "last_update": "2026-08-10T10:29:19.174895+00:00",
+    "top_50": [
+      {
+        "switch": {
+          "param": "MIN_POSITION_SIZE",
+          "value": 50,
+          "default": 100,
+          "kind": "num",
+          "layer": "SIZING"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 503,
+        "total_gain_pct": 576.1366279222533,
+        "per_mo_pct": 164.7984624540388,
+        "max_dd_pct": 340.9479576213623,
+        "win_rate": 59.443339960238575,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "MTF_DC_REJECT_EXIT_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 484,
+        "total_gain_pct": 522.6063232524599,
+        "per_mo_pct": 149.48662238566416,
+        "max_dd_pct": 239.95442571841204,
+        "win_rate": 57.02479338842975,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "MTF_EXIT_USE_COMPOUND",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "EXIT_FILTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 484,
+        "total_gain_pct": 522.6063232524599,
+        "per_mo_pct": 149.48662238566416,
+        "max_dd_pct": 239.95442571841204,
+        "win_rate": 57.02479338842975,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "BB_BREAKOUT_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 569,
+        "total_gain_pct": 390.2492466409223,
+        "per_mo_pct": 111.62712576043612,
+        "max_dd_pct": 375.7936966271569,
+        "win_rate": 57.29349736379613,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
+          "value": 0.875,
+          "default": 1.75,
+          "kind": "num",
+          "layer": "EXIT_SOURCE"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 505,
+        "total_gain_pct": 376.1669016408981,
+        "per_mo_pct": 107.59900345180817,
+        "max_dd_pct": 375.83765923598435,
+        "win_rate": 57.821782178217816,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "WT_DC_EXIT_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 412,
+        "total_gain_pct": 365.10852954187817,
+        "per_mo_pct": 104.43586014370895,
+        "max_dd_pct": 347.73900917082204,
+        "win_rate": 58.252427184466015,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_DC_EXTREME",
+          "value": 0.4,
+          "default": 0.8,
+          "kind": "num",
+          "layer": "EXIT_SOURCE"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 523,
+        "total_gain_pct": 363.638786705799,
+        "per_mo_pct": 104.01545403194656,
+        "max_dd_pct": 364.2058320627501,
+        "win_rate": 56.97896749521989,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "EXIT_SCORER_DC_EXTREME_ALT2",
+          "value": 0.6,
+          "orig_param": "EXIT_SCORER_DC_EXTREME",
+          "default": 0.8,
+          "kind": "num",
+          "layer": "EXIT_SOURCE"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 523,
+        "total_gain_pct": 359.6119990825354,
+        "per_mo_pct": 102.86362931402158,
+        "max_dd_pct": 358.21594032024683,
+        "win_rate": 56.97896749521989,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "START_POSITION_SIZE",
+          "value": 250.0,
+          "default": 500.0,
+          "kind": "num",
+          "layer": "SIZING"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 507,
+        "total_gain_pct": 348.06063012976335,
+        "per_mo_pct": 99.55946889373836,
+        "max_dd_pct": 370.3847626064131,
+        "win_rate": 56.60749506903353,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 523,
+        "total_gain_pct": 333.4182843978438,
+        "per_mo_pct": 95.37116364391761,
+        "max_dd_pct": 371.8875787345571,
+        "win_rate": 57.93499043977055,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "REENTRY_B15_STRONG_TREND_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 504,
+        "total_gain_pct": 319.50265183711866,
+        "per_mo_pct": 91.39072786021609,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.94444444444444,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "BB_RSI_STOCH_SCALP_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 521,
+        "total_gain_pct": 306.52278860840704,
+        "per_mo_pct": 87.6779600907556,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.813819577735124,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "PEAK_GIVEBACK_HARD_ZERO_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 520,
+        "total_gain_pct": 299.10584774668405,
+        "per_mo_pct": 85.55641393158756,
+        "max_dd_pct": 373.2781402726089,
+        "win_rate": 55.57692307692308,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "WT_CROSSUNDER_FINAL_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 506,
+        "total_gain_pct": 287.94884161524317,
+        "per_mo_pct": 82.36505728640677,
+        "max_dd_pct": 395.991860374816,
+        "win_rate": 57.905138339920946,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "REENTRY_B04_DC_RETEST_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 281.5327309393126,
+        "per_mo_pct": 80.52978918664799,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "REENTRY_B12_WT_MOM_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 507,
+        "total_gain_pct": 276.6771698586062,
+        "per_mo_pct": 79.14090161784709,
+        "max_dd_pct": 373.0357610011529,
+        "win_rate": 56.80473372781065,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "GR_HTF_DIRECT_EXIT_SCORE",
+          "value": 6.0,
+          "default": 12.0,
+          "kind": "num",
+          "layer": "EXIT_SOURCE"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 276.5895189040572,
+        "per_mo_pct": 79.11582988686827,
+        "max_dd_pct": 374.1746527492809,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "REENTRY_B14_HA_TREND_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 507,
+        "total_gain_pct": 275.97596141929785,
+        "per_mo_pct": 78.94032754034997,
+        "max_dd_pct": 375.7936966271569,
+        "win_rate": 56.60749506903353,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_AGGRESSIVE_HEDGE",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_AUGMENTATION",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_CHECK_NOLOSS",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_DC_BREACH_REDUCE",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_ENTRY_LEADERBOARD",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_ENTRY_RANKING",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_ENTRY_REVERSAL",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_ENTRY_TECHNICAL",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_HEDGE",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_HIGH_GAIN_AUGMENT",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_PERIODIC_REENTRY",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_QUICK_ENTRY",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_QUICK_EXIT",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_RATIO_REBALANCE",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_REENTRY",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_REENTRY_ENFORCE",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_SPIKE_FADE_EXIT",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ADX_TRENDING_THRESHOLD",
+          "value": 12.5,
+          "default": 25.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ALIGNMENT_GATE_MIN",
+          "value": 2,
+          "default": 4,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ALIGNMENT_GATE_TOTAL",
+          "value": 18,
+          "default": 36,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_ADAPTIVE_SIZING_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+          "value": 0.75,
+          "default": 1.5,
+          "kind": "num",
+          "layer": "SIZING"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_ADAPTIVE_STOP_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_ADAPTIVE_STOP_MULT",
+          "value": 1.0,
+          "default": 2.0,
+          "kind": "num",
+          "layer": "EXIT_SOURCE"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_PARITY_EQUITY_BASE_USD",
+          "value": 17500.0,
+          "default": 35000.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_PARITY_QTY_CAP_MULT",
+          "value": 2.5,
+          "default": 5.0,
+          "kind": "num",
+          "layer": "SIZING"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_PARITY_USE_DAILY",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_TRAIL_2X_EXIT_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "ATR_TRAIL_ENABLED_TRADIER",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "AUGMENTATION_COOLDOWN_SECONDS",
+          "value": 150.0,
+          "default": 300.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      },
+      {
+        "switch": {
+          "param": "BACKTEST_VALIDATED_GATES_TRADIER",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 509,
+        "total_gain_pct": 274.9704750261811,
+        "per_mo_pct": 78.6527176166385,
+        "max_dd_pct": 375.793696627157,
+        "win_rate": 56.385068762278976,
+        "years": 0.29133394174461935
+      }
+    ],
+    "grind_complete": true
+  },
+  "LLY_LONG": {
+    "bh_per_mo_raw": 2.4412078216894346,
+    "bh_per_mo_capped": 2.4412078216894346,
+    "target_10x_per_mo": 24.412078216894347,
+    "total_switches": 922,
+    "total_filters": 16,
+    "total_combos": 14752,
+    "attempted": 19200,
+    "completed": 19200,
+    "best": {
+      "switch": {
+        "param": "LR_BAND_HARVEST_ENABLED",
+        "value": true,
+        "default": false,
+        "kind": "bool",
+        "layer": "FAMILY_MASTER"
+      },
+      "filter": {
+        "param": "MTF_ENTRY_REQUIRE_GR_FILTER",
+        "value": false
+      },
+      "n_trades": 130,
+      "total_gain_pct": 16.887823596861363,
+      "per_mo_pct": 7.365107544780432,
+      "max_dd_pct": 7.88836569160319,
+      "win_rate": 77.6923076923077,
+      "years": 0.19107916951859458
+    },
+    "best_per_switch": {},
+    "ten_x_achieved": false,
+    "ten_x_combo": null,
+    "best_per_switch_count": 19200,
+    "last_update": "2026-08-10T11:57:34.672605+00:00",
+    "top_50": [
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ENTRY_REQUIRE_GR_FILTER",
+          "value": false
+        },
+        "n_trades": 130,
+        "total_gain_pct": 16.887823596861363,
+        "per_mo_pct": 7.365107544780432,
+        "max_dd_pct": 7.88836569160319,
+        "win_rate": 77.6923076923077,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_GR_FILTER_ENABLED",
+          "value": false
+        },
+        "n_trades": 130,
+        "total_gain_pct": 16.887823596861363,
+        "per_mo_pct": 7.365107544780432,
+        "max_dd_pct": 7.88836569160319,
+        "win_rate": 77.6923076923077,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "GR_HTF_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MFI_ENTRY_ENABLED",
+          "value": false
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "PULLBACK_AUGMENT_ENABLED",
+          "value": true
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_D_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "CATALYST_VOLUME_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "DUP_GUARD_USE_GAIN_GATE",
+          "value": false
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "STDEV_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BREAKOUT_RETEST_ARMED_ENABLED",
+          "value": true
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "EXIT_BOUNCE_TOP_ENABLED",
+          "value": false
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "WT_W_EXIT_ENABLED",
+          "value": false
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "REENTRY_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 48,
+        "total_gain_pct": 11.597111701842243,
+        "per_mo_pct": 5.057725431758661,
+        "max_dd_pct": 2.9280749920684936,
+        "win_rate": 81.25,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MFI_ENTRY_ENABLED",
+          "value": false
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "PULLBACK_AUGMENT_ENABLED",
+          "value": true
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "GR_HTF_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_D_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "CATALYST_VOLUME_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "DUP_GUARD_USE_GAIN_GATE",
+          "value": false
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "STDEV_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "BREAKOUT_RETEST_ARMED_ENABLED",
+          "value": true
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "WT_W_EXIT_ENABLED",
+          "value": false
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "EXIT_BOUNCE_TOP_ENABLED",
+          "value": false
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "REGIME_DETECTION_ENABLED",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "REENTRY_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 11,
+        "total_gain_pct": 3.1498084405035507,
+        "per_mo_pct": 1.3736925765897574,
+        "max_dd_pct": 2.882412802398265,
+        "win_rate": 27.27272727272727,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "GR_HTF_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BB_PULLBACK_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "MFI_ENTRY_ENABLED",
+          "value": false
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "PULLBACK_AUGMENT_ENABLED",
+          "value": true
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "AUGMENT_WT_D_BOUNCE_ENABLED",
+          "value": true
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "CATALYST_VOLUME_GATE_ENABLED",
+          "value": false
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "DUP_GUARD_USE_GAIN_GATE",
+          "value": false
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "STDEV_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "BREAKOUT_RETEST_ARMED_ENABLED",
+          "value": true
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "WT_W_EXIT_ENABLED",
+          "value": false
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "EXIT_BOUNCE_TOP_ENABLED",
+          "value": false
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "MIN_GAIN",
+          "value": 1.5,
+          "default": 3.0,
+          "kind": "num",
+          "layer": "CROSS_CUTTING_GUARD"
+        },
+        "filter": {
+          "param": "REENTRY_BREAKOUT_ENABLED",
+          "value": true
+        },
+        "n_trades": 12,
+        "total_gain_pct": 1.5498763612046513,
+        "per_mo_pct": 0.6759311533492524,
+        "max_dd_pct": 2.8824128023982647,
+        "win_rate": 33.33333333333333,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ENTRY_REQUIRE_GR_FILTER",
+          "value": false
+        },
+        "n_trades": 38,
+        "total_gain_pct": 0.1086182139210361,
+        "per_mo_pct": 0.047370510608547384,
+        "max_dd_pct": 18.38801485245323,
+        "win_rate": 28.947368421052634,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "HTF_TREND_VETO_ENABLED",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_GR_FILTER_ENABLED",
+          "value": false
+        },
+        "n_trades": 38,
+        "total_gain_pct": 0.1086182139210361,
+        "per_mo_pct": 0.047370510608547384,
+        "max_dd_pct": 18.38801485245323,
+        "win_rate": 28.947368421052634,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_AGGRESSIVE_HEDGE",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ARMED_ENTRY_ENABLED",
+          "value": true
+        },
+        "n_trades": 0,
+        "total_gain_pct": 0.0,
+        "per_mo_pct": 0.0,
+        "max_dd_pct": 0,
+        "win_rate": 0,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_AUGMENTATION",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ARMED_ENTRY_ENABLED",
+          "value": true
+        },
+        "n_trades": 0,
+        "total_gain_pct": 0.0,
+        "per_mo_pct": 0.0,
+        "max_dd_pct": 0,
+        "win_rate": 0,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_CHECK_NOLOSS",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ARMED_ENTRY_ENABLED",
+          "value": true
+        },
+        "n_trades": 0,
+        "total_gain_pct": 0.0,
+        "per_mo_pct": 0.0,
+        "max_dd_pct": 0,
+        "win_rate": 0,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_DC_BREACH_REDUCE",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ARMED_ENTRY_ENABLED",
+          "value": true
+        },
+        "n_trades": 0,
+        "total_gain_pct": 0.0,
+        "per_mo_pct": 0.0,
+        "max_dd_pct": 0,
+        "win_rate": 0,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_ENTRY_LEADERBOARD",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ARMED_ENTRY_ENABLED",
+          "value": true
+        },
+        "n_trades": 0,
+        "total_gain_pct": 0.0,
+        "per_mo_pct": 0.0,
+        "max_dd_pct": 0,
+        "win_rate": 0,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_ENTRY_RANKING",
+          "value": false,
+          "default": true,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ARMED_ENTRY_ENABLED",
+          "value": true
+        },
+        "n_trades": 0,
+        "total_gain_pct": 0.0,
+        "per_mo_pct": 0.0,
+        "max_dd_pct": 0,
+        "win_rate": 0,
+        "years": 0.19107916951859458
+      },
+      {
+        "switch": {
+          "param": "ABLATION_DISABLE_ENTRY_REVERSAL",
+          "value": true,
+          "default": false,
+          "kind": "bool",
+          "layer": "FAMILY_MASTER"
+        },
+        "filter": {
+          "param": "MTF_ARMED_ENTRY_ENABLED",
+          "value": true
+        },
+        "n_trades": 0,
+        "total_gain_pct": 0.0,
+        "per_mo_pct": 0.0,
+        "max_dd_pct": 0,
+        "win_rate": 0,
+        "years": 0.19107916951859458
+      }
+    ],
+    "grind_complete": true
+  }
+}

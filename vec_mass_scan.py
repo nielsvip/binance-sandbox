@@ -398,7 +398,11 @@ def main():
     ap.add_argument("--min-trades", type=int, default=100)
     ap.add_argument("--out", type=str, default="")
     ap.add_argument("--top-report", type=int, default=30)
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="vec_mass_scan.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
 
     syms = try_symbols(args.mode)
     t0 = time.time()

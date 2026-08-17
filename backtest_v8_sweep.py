@@ -45,9 +45,10 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 try:
     import psutil as _psutil
     _PSUTIL_OK = True
@@ -65,6 +66,7 @@ import metrics_guard  # noqa: E402
 import dataclasses as _dataclasses  # noqa: E402
 import config as _cfg_crypto  # noqa: E402
 import config_tradier as _cfg_stocks  # noqa: E402
+from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim  # noqa: E402
 
 # 2026-07-07 USER MANDATE ("EVERY single setting for every single symbol in
 # every single test must be recorded"): `overrides` as built in run_one_variant
@@ -693,6 +695,87 @@ def grid_crypto_sector_w_confirm():
     return [("w_confirm", {"WT_W_REQUIRED_CRYPTO": True})]
 
 
+def grid_tradier_r1_reentry_priority():
+    """Priority factorial for R1/DC_LOW4 exits and mandatory price-cross reentry.
+
+    The WT-filter arms require a fresh favorable 5m/15m flip and velocity that
+    is not slowing.  All arms are research-only overrides; no live config is
+    changed by this grid.
+    """
+    base = {
+        "MANDATORY_REENTRY_WT_FILTER_ENABLED": True,
+        "MANDATORY_REENTRY_WT_FILTER_TF_MODE": "5m_or_15m",
+        "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP": True,
+        "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED": True,
+        "REENTRY_LIVE_MONITOR_DC_BREAK_TF": "5m",
+        "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR": True,
+    }
+    arms = [
+        ("R1_REENTRY_CONTROL", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            "MANDATORY_REENTRY_WT_FILTER_ENABLED": False,
+            "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED": False,
+        }),
+        ("R1_OFF_REENTRY_WT5_OR15", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": False,
+            **base,
+        }),
+        ("R1_ON_WT5_OR15_MIN1_R090", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.90,
+        }),
+        ("R1_ON_WT5_OR15_MIN1_R075", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.75,
+        }),
+        ("R1_ON_WT5_OR15_MIN1_R050", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.50,
+        }),
+        ("R1_ON_WT5_AND15_R090", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 2,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.90,
+        }),
+        ("R1_ON_WT5_ONLY_R090", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_TF_MODE": "5m",
+            "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.90,
+        }),
+        ("R1_ON_WT15_ONLY_R090", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_TF_MODE": "15m",
+            "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.90,
+        }),
+        ("R1_ON_WT5_OR15_VMIN1_R090", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.90,
+            "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY": 1.0,
+        }),
+        ("R1_ON_WT5_OR15_BAND005_GAP5", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.90,
+            "PRICE_CROSS_BACK_BAND_PCT": 0.05,
+            "REENTRY_MIN_GAP_MINUTES": 5.0,
+        }),
+        ("R1_ON_WT5_OR15_BAND010_GAP10", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            **base, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS": 1,
+            "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO": 0.90,
+            "PRICE_CROSS_BACK_BAND_PCT": 0.10,
+            "REENTRY_MIN_GAP_MINUTES": 10.0,
+        }),
+    ]
+    return arms
+
+
 def grid_tradier_param_hunt():
     """2026-05-08: full real-engine tradier knob hunt with WT_DC_ENTRY_THRESHOLD sweep.
     Tests ACTUAL config_tradier.py parameter names (not V8Q_ dead params).
@@ -808,7 +891,10 @@ def grid_tradier_param_hunt():
     combos.append(("HAIKU_BOTH_on",     {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True}))
     combos.append(("HAIKU_BOTH_tight",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
 
-    return combos
+    # ── PRIORITY -1: R1/DC_LOW4 + WT-confirmed mandatory reentry ──
+    # Put these first so the matrix queue sees the anti-churn arms before the
+    # broad historical knob hunt. Exact engine evidence only; no promotion.
+    return grid_tradier_r1_reentry_priority() + combos
 
 
 def grid_tradier_4h_stop():
@@ -1935,6 +2021,7 @@ TIER_MAP = {
     "crypto_sector_w_confirm": grid_crypto_sector_w_confirm,
     "haiku_sweep": grid_haiku_sweep,
     "tradier_param_hunt": grid_tradier_param_hunt,
+    "tradier_r1_reentry_priority": grid_tradier_r1_reentry_priority,
     "tradier_4h_stop": grid_tradier_4h_stop,
     "tradier_stop_sweep": grid_tradier_stop_sweep,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
@@ -2002,6 +2089,22 @@ def run_one_variant(args_tuple):
         cmd += ["--npz-dir", npz_dir]
 
     env = os.environ.copy()
+    # The managed workstation may expose a read-only ~/logs.  These are
+    # backtest-child logging destinations only; production keeps its normal
+    # logging configuration.
+    # 2026-08-12: bare gettempdir() resolved to /tmp, which is ALSO the production
+    # fallback in tradier_api.py:27, so sweep children appended into the live
+    # /tmp/tradier_api.log (2201 [CONNECT] lines on 2026-08-12 02:40-03:02 swamped
+    # the live record).  Use a dedicated sweep subdirectory so the isolation the
+    # comment above promises actually holds.
+    _sweep_log_dir = os.path.join(tempfile.gettempdir(), "v8_sweep_logs")
+    try:
+        os.makedirs(_sweep_log_dir, exist_ok=True)
+    except Exception:
+        _sweep_log_dir = tempfile.gettempdir()
+    env["EZ_LOG_DIR"] = _sweep_log_dir
+    env["TRADIER_API_LOG_DIR"] = _sweep_log_dir
+    env["EZ_LOG_FALLBACK_DIR"] = _sweep_log_dir
     from stock_v8_override_contract import establish_stock_v8_override
     establish_stock_v8_override(env, override_path)
     env["V8_SWEEP_MODE"] = "1"  # suppress per-trade logs, 10-50x speedup
@@ -2345,7 +2448,15 @@ def main():
     ap.add_argument("--configs-file", default="data/_lie_audit/configs_to_retest.json", help="JSON file for configs_from_file tier")
     ap.add_argument("--max-variants", type=int, default=0, help="Cap number of variants (0=all)")
     ap.add_argument("--output", default="", help="CSV output path (default: auto-dated)")
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="backtest_v8_sweep.py")
+    print(
+        "V8_VECTOR_GROUND_RULE: "
+        f"{coverage_contract['coverage_status']} "
+        f"shortlist_sha256={coverage_contract['shortlist_sha256']}",
+        flush=True,
+    )
 
     if args.tier == "configs_from_file":
         cfg_path = Path(args.configs_file) if not Path(args.configs_file).is_absolute() else Path(args.configs_file)
@@ -2418,7 +2529,17 @@ def main():
     _faulty_pairs: list = []
     _requeue_tasks: list = []
 
-    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+    try:
+        pool = ProcessPoolExecutor(max_workers=args.workers)
+        print(f"[sweep] executor=process workers={args.workers}")
+    except (PermissionError, OSError) as _pool_err:
+        # Some sandboxed macOS environments deny POSIX semaphore creation.
+        # Each task still launches an isolated engine subprocess, so threads
+        # are a safe orchestration fallback with identical task semantics.
+        pool = ThreadPoolExecutor(max_workers=max(1, min(args.workers, len(tasks))))
+        print(f"[sweep] executor=thread fallback reason={type(_pool_err).__name__}: {_pool_err}")
+
+    with pool:
         futures = {pool.submit(run_one_variant, t): t[0] for t in tasks}
         for fut in as_completed(futures):
             label = futures[fut]

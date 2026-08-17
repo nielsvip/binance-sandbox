@@ -30,6 +30,7 @@ import pandas as pd
 import redis.asyncio as redis
 
 from config import Config
+from classic_formations import formation_fields_from_ohlcv, latest_formation_fields
 
 # wt_composite logic inlined into _inject_wt_composite() — no external dependency
 PositionsServiceClient = None  # lazy import — avoid circular dep with ez_positions_service
@@ -168,7 +169,11 @@ if not logger.handlers:
     logger.addHandler(handler)
     # Add file handler with append mode and restart separator
     from logging.handlers import RotatingFileHandler
-    logs_dir = Path.home() / "logs"
+    # Honor the standard sandbox/test log root.  V8 imports this live module
+    # before it can load an NPZ; hard-coding ~/logs made a perfectly valid
+    # local/isolated backtest fail during import rather than report its data
+    # preflight.  The default remains the live location.
+    logs_dir = Path(os.environ.get("EZ_LOG_DIR") or (Path.home() / "logs"))
     logs_dir.mkdir(parents=True, exist_ok=True)
     _wid = int(os.getenv("WORKER_INSTANCE_ID", "0"))
     _wtot = int(os.getenv("WORKER_TOTAL_INSTANCES", "1"))
@@ -780,6 +785,11 @@ class PriceCacheManager:
         best_age, best_price, best_ts, best_source = candidates[0]
         if best_age > self.max_age:
             self._warn_stale_throttled(symbol, best_age, best_source, candidates, now)
+            # A stale mark is not a usable current price.  Returning it to the
+            # calculator made the resulting indicator snapshot look fresh even
+            # though its mark-price input was hours old.  Callers can still
+            # calculate from the kline close when no fresh mark is available.
+            return None, None
         if best_source == "redis":
             await self._update_price(symbol, best_price, best_ts, "redis")
         return best_price, best_ts
@@ -2184,6 +2194,27 @@ class IndicatorCalculator:
         result[f"high_{timeframe}_prev"] = float(high_series.iloc[-2]) if len(high_series) > 1 else float(high_series.iloc[-1])
         result[f"low_{timeframe}_prev"] = float(low_series.iloc[-2]) if len(low_series) > 1 else float(low_series.iloc[-1])
         result[f"close_{timeframe}_prev"] = float(close_series.iloc[-2]) if len(close_series) > 1 else current_price
+        # Classic formations are evaluated on closed kline history, matching the
+        # frozen-NPZ backtest path.  Do not include the optional live mark-price
+        # append here: that would let an unfinished candle create a signal that
+        # the causal backtest could never have seen.
+        if timeframe in ("15m", "1h", "4h", "D"):
+            try:
+                _formation_fields = formation_fields_from_ohlcv(
+                    df["open"].to_numpy(dtype=float),
+                    df["high"].to_numpy(dtype=float),
+                    df["low"].to_numpy(dtype=float),
+                    df["close"].to_numpy(dtype=float),
+                    df["volume"].to_numpy(dtype=float),
+                    timeframe=timeframe,
+                )
+                result.update(latest_formation_fields(_formation_fields))
+            except Exception as _formation_err:
+                logger.debug(
+                    "[CLASSIC_FORMATION] %s calculation skipped: %s",
+                    timeframe,
+                    _formation_err,
+                )
         dc_window = TIMEFRAMES[timeframe]["dc_window"]
         dc_high, dc_low, dc_basis = donchian(high_series, low_series, dc_window)
         dc_high_prev, dc_low_prev, dc_basis_prev = donchian_prev(high_series, low_series, dc_window)
@@ -4760,7 +4791,12 @@ class IndicatorOrchestrator:
                 await asyncio.wait_for(self.redis_client.publish(self._signal_channel, json.dumps(signal, default=str)), timeout=0.1)
                 logger.debug(f"[SIGNAL] Published {signal.get('event_type')} for {symbol} on {signal.get('timeframe')}: {signal.get('action')}")
             except Exception as e:
-                logger.warning(f"[SIGNAL] Failed to publish signal for {symbol}: {e}")
+                logger.warning(
+                    "[SIGNAL] Failed to publish signal for %s: %s: %s",
+                    symbol,
+                    type(e).__name__,
+                    e or "no error detail",
+                )
         self._previous_indicators[symbol] = snapshot
 
     def _update_master_timestamp(self, symbol_data: Dict[str, Any]) -> None:
@@ -5297,4 +5333,3 @@ if __name__ == "__main__":
         sys.stdout.flush()
         sys.stderr.flush()
         sys.exit(1)
-

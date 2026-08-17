@@ -51,3 +51,19 @@ def test_explicit_timeframe_categories_remain_executable():
     )
     assert result["status"] == "VALID"
     assert executable_values(result) == ["None", "15m", "1h", "4h", "D"]
+
+
+def test_indicator_token_does_not_make_string_tf_a_numeric_domain():
+    result = validate_test_values(
+        "STOCH_EXIT_TF", "1h", ["5m", "1h", "4h"]
+    )
+    assert result["status"] == "VALID"
+    assert result["valid_values"] == ["5m", "1h", "4h"]
+
+
+def test_oscillator_disabled_sentinel_keeps_active_control():
+    result = validate_test_values(
+        "SATOSHIT_LONG_MFI_MAX_TRADIER", 120.0, [60.0, 90.0, 120.0]
+    )
+    assert result["status"] == "VALID"
+    assert result["valid_values"] == [60.0, 90.0, 120.0]

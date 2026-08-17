@@ -1,0 +1,67 @@
+{
+  "full_per_key_digest": "data/reports/MATRIX_SYMBOL_SIDE_ACHIEVEMENT_CURRENT.md",
+  "generated_at": "2026-08-17T13:59:24.734840Z",
+  "matrix_cell_truth": {
+    "broad_physical_audit_accepted": 19182,
+    "broad_physical_audit_unresolved": 2762088,
+    "broad_physical_complete_symbol_sides": 0,
+    "canonical_display_accepted": 42724,
+    "canonical_display_unresolved": 5460011,
+    "canonical_display_vector_unique": 42333,
+    "claimed_200k_accepted_cells_present": false,
+    "externalized_not_matrix_cells": null,
+    "staged_fixed_axis_accepted": null,
+    "staged_fixed_axis_current_mapped": null,
+    "staged_fixed_axis_historical_restored": null,
+    "staged_fixed_axis_unresolved": null,
+    "staged_only_canonical_write_performed": false
+  },
+  "matrix_display": {
+    "bh_fallback": 0,
+    "blank_display_cells": 5460011,
+    "display_cells_filled": 42724,
+    "display_cells_total": 5502735,
+    "exact_or_current_numeric": 120,
+    "preserved_v8": 93,
+    "vector_unique": 42333
+  },
+  "s1": {
+    "active": [],
+    "cold_archive_files": 116048,
+    "cold_archive_free_bytes_after": 53150756864,
+    "cold_archive_recovered_bytes": 43297333248,
+    "cold_archive_status": "PASS_TARGET_RECOVERED",
+    "cpu_busy_pct": 62.79683377308707,
+    "decision": "QUEUE_EXHAUSTED",
+    "disk_available_gib": 42.99683380126953,
+    "disk_guard_status": "PASS_NO_ACTION",
+    "memory_available_gib": 11.571304321289062,
+    "sampled_utc": "2026-08-04T23:58:11.577757Z"
+  },
+  "schema": "trb-matrix-deadline-digest-v1",
+  "status": "FAIL",
+  "symbol_sides": {
+    "beats_bh_numeric_count": 66,
+    "current_symbol_side_count": 115,
+    "live_enabled_count": 61,
+    "numeric_bh_count": 82,
+    "numeric_strategy_result_count": 67,
+    "vector_nearmiss_count": 67,
+    "vector_winner_count": 0
+  },
+  "truth": [
+    "There are not 200,000 accepted matrix cells in the current evidence artifacts.",
+    "Queued points, raw result rows, externalized measurements and registered axes are not filled matrix cells.",
+    "Matrix display completion is not exact validation completion.",
+    "V8 component PASS does not replay the selected lifecycle exit.",
+    "Only attributable numeric strategy results are counted against B&H."
+  ],
+  "v8_component": {
+    "failed": 0,
+    "hotlist_count": 7,
+    "passed": 7,
+    "remaining": 0,
+    "status": "COMPLETE"
+  },
+  "winner_rows": []
+}

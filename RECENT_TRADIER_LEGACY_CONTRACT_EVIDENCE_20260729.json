@@ -1,0 +1,107 @@
+{
+  "attempts": [
+    {
+      "attempt_id": 11,
+      "attempt_number": 1,
+      "handle_id": 167,
+      "lane": "PRIORITY",
+      "receipt_sha256": "8cdd6128399163f00de381390a0166407ba860b15a1fba590c1dca492657e92e",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 12,
+      "attempt_number": 1,
+      "handle_id": 117,
+      "lane": "PRIORITY",
+      "receipt_sha256": "542b4c33edd2b76f487bea29ad050467332907a01eea25b68bc2009f9c4aa73f",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 13,
+      "attempt_number": 1,
+      "handle_id": 317,
+      "lane": "PRIORITY",
+      "receipt_sha256": "006800e51874e033102d06df9ef42ee610c86d8adcd0d62be4538916a53e1c2f",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 14,
+      "attempt_number": 1,
+      "handle_id": 61,
+      "lane": "PRIORITY",
+      "receipt_sha256": "bb1a06209825cce49f82f9e47c53d783f47aaf1968229c3e068d228a3b123e8e",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 15,
+      "attempt_number": 1,
+      "handle_id": 251,
+      "lane": "PRIORITY",
+      "receipt_sha256": "47aef2690499c09bf0cfbdc5278750caeed50b3e4c58ae9de339e19214dc1946",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 16,
+      "attempt_number": 1,
+      "handle_id": 81,
+      "lane": "PRIORITY",
+      "receipt_sha256": "fe6c5cb049d9ff8bfea13fd1d8b7334de9060a222d9804749bacda7efd9fc247",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 17,
+      "attempt_number": 1,
+      "handle_id": 56,
+      "lane": "PRIORITY",
+      "receipt_sha256": "4eedeeab92f30d52e6947aa913a1b03adf89517804ea494b5d12e429906d3a52",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 18,
+      "attempt_number": 1,
+      "handle_id": 361,
+      "lane": "PRIORITY",
+      "receipt_sha256": "a652323adb131c80edc1815d6fd536a237441cccfb7a545392a1eed71e367e41",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 19,
+      "attempt_number": 1,
+      "handle_id": 248,
+      "lane": "PRIORITY",
+      "receipt_sha256": "b4875c44a3a70f282987bd4ff903332022d23c9cc41740d1f19d2b1c1d02c6b9",
+      "status": "VECTOR_REJECTED"
+    },
+    {
+      "attempt_id": 20,
+      "attempt_number": 1,
+      "handle_id": 209,
+      "lane": "EXPLORE",
+      "receipt_sha256": "e9081f6c9a559f16e0730b91d6622a981ae075b8429fdccf2ec272987cd6719e",
+      "status": "DATA_QUARANTINED"
+    }
+  ],
+  "binding_basis": "legacy receipts lacked code_contract; exact attempt/receipt SHA allowlist completed before the observed replacement deployment",
+  "campaign_id": "recent30_bundle_b8f5b6d9b28f",
+  "finished_before": "2026-07-29T17:24:02+00:00",
+  "old_contract": {
+    "files": {
+      "tools/recent_tradier_bundle_scheduler.py": "eece5cfc64020400330f829a187f45f601fbe48a228f13e2f5d0b875f4201098",
+      "v8_vec_sweep.py": "1e55c7e4ef81ecce8adea79824044ad278bb128be3bfe97b942ac3b189e39b41",
+      "vec_paths/live_entry_engine.py": "cf779b569a3b4129f0271e9a94f19a05be6317c7ab77bca3a3cefe93ecfc8eef",
+      "wt_dc_entry_scorer.py": "23f0d4936d7110076a67f8d7728e49dbc7c0619d466b5374634ae9439e4b4a37"
+    },
+    "note": "The legacy receipts predate per-receipt contracts. The old v8 hash is the exact repository blob deployed for the stale block; the old scalar scorer and live-entry hashes were unchanged. The vector scorer was introduced only by the replacement parity patch."
+  },
+  "replacement_contract": {
+    "files": {
+      "tools/recent_tradier_bundle_scheduler.py": "67a0381255e38f124242c2cfea18424fa55c4aea5055f9b0a15afa71a9f36bb1",
+      "v8_vec_sweep.py": "450193f2d2639e1c452888bfa577220f00f04f1266f9dfe2e66ea8ac4716cc3e",
+      "vec_paths/live_entry_engine.py": "cf779b569a3b4129f0271e9a94f19a05be6317c7ab77bca3a3cefe93ecfc8eef",
+      "wt_dc_entry_scorer.py": "23f0d4936d7110076a67f8d7728e49dbc7c0619d466b5374634ae9439e4b4a37",
+      "wt_dc_entry_scorer_vec.py": "ae0c0cbe797ccaa91fe11eb9a2a24f25cbc6ca29475f56cf2cf10f55af5b4d25"
+    },
+    "sha256": "471d832f0789fcdeb3e17e608c424dc06097d30e4cf8fec45d880c6990f01596"
+  },
+  "schema_version": 1
+}

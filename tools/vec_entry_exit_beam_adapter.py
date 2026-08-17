@@ -14,7 +14,9 @@ same schedule.  This is a research freeze, not a claim of live equivalence.
 from __future__ import annotations
 
 import argparse
+import copy
 import dataclasses
+import gzip
 import hashlib
 import json
 import math
@@ -296,6 +298,10 @@ def beam_fold_contexts(
     folds = list(source["outer_folds"])
     if fold_mode == "latest":
         folds = folds[-1:]
+    elif fold_mode == "discovery":
+        if len(folds) < 2:
+            raise ValueError("discovery mode requires a separate untouched final fold")
+        folds = folds[:-1]
     contexts = []
     slippage = float(manifest["slippage_bps_one_way"]) / 10_000.0
     family = str(manifest.get("family", "ENTRY_LADDER_GREEN"))
@@ -496,6 +502,82 @@ def beam_fold_contexts(
     return source, data, htfs, contexts
 
 
+def compact_candidate_event_ledgers(
+    payload: dict[str, Any], *, archive_path: Path | None = None
+) -> dict[str, Any]:
+    """Retain full ledgers only for reviewed winner/survivor collections."""
+    for retained_name in ("frozen_discovery_winners", "survivors"):
+        if isinstance(payload.get(retained_name), list):
+            payload[retained_name] = copy.deepcopy(payload[retained_name])
+    removed_rows = 0
+    removed_items = 0
+    archive_temp = None
+    archive_handle = None
+    if archive_path is not None:
+        archive_temp = archive_path.with_name(f".{archive_path.name}.tmp")
+        archive_handle = gzip.open(archive_temp, "wt", encoding="utf-8")
+    try:
+        for candidate_index, candidate in enumerate(payload.get("candidates") or []):
+            for fold_index, fold in enumerate(candidate.get("fold_evidence") or []):
+                if not isinstance(fold, dict):
+                    continue
+                archived = {}
+                for field in (
+                    "event_ledger",
+                    "exit_indices",
+                    "reentry_indices",
+                    "reentry_pairs",
+                ):
+                    value = fold.pop(field, None)
+                    if isinstance(value, (list, dict)):
+                        archived[field] = value
+                        removed_items += len(value)
+                if not archived:
+                    continue
+                removed_rows += 1
+                if archive_handle is not None:
+                    archive_handle.write(
+                        json.dumps(
+                            {
+                                "candidate_index": candidate_index,
+                                "fold_index": fold_index,
+                                **archived,
+                            },
+                            sort_keys=True,
+                            allow_nan=False,
+                        )
+                        + "\n"
+                    )
+    finally:
+        if archive_handle is not None:
+            archive_handle.close()
+    archive_metadata = None
+    if archive_temp is not None and archive_path is not None:
+        if removed_rows:
+            archive_temp.replace(archive_path)
+            digest = hashlib.sha256()
+            with archive_path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            archive_metadata = {
+                "path": archive_path.name,
+                "sha256": digest.hexdigest(),
+                "bytes": archive_path.stat().st_size,
+                "format": "gzip_jsonl_candidate_and_fold_indexed",
+                "lossless": True,
+            }
+        else:
+            archive_temp.unlink(missing_ok=True)
+    payload["candidate_ledger_storage"] = {
+        "contract": "FULL_LEDGERS_ONLY_FOR_FROZEN_WINNERS_AND_SURVIVORS",
+        "candidate_fold_rows_compacted": removed_rows,
+        "candidate_ledger_items_omitted": removed_items,
+        "all_candidate_metrics_params_and_path_audits_retained": True,
+        "omitted_candidate_ledgers_archive": archive_metadata,
+    }
+    return payload
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--adapter", choices=("generic", "e05", "peak"), required=True)
@@ -518,7 +600,12 @@ def main() -> int:
     )
     ap.add_argument("--exposure-min-pct", type=float, default=70.0)
     ap.add_argument("--exposure-max-pct", type=float, default=80.0)
+    ap.add_argument("--emit-event-ledger", action="store_true")
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="tools/vec_entry_exit_beam_adapter.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
 
     global ACTIVE_REGIME_POLICY, ACTIVE_STATE_POLICY, ACTIVE_ONLINE_POLICY
     ACTIVE_REGIME_POLICY = args.regime_policy
@@ -538,6 +625,7 @@ def main() -> int:
     generic._fold_contexts = beam_fold_contexts
     e05.shared._fold_contexts = beam_fold_contexts
     peak.shared._fold_contexts = beam_fold_contexts
+    generic.EMIT_EVENT_LEDGER = bool(args.emit_event_ledger)
     if args.adapter == "generic":
         payload = generic.screen_artifact(
             args.artifact.resolve(),
@@ -569,7 +657,16 @@ def main() -> int:
         "state_policy": args.state_policy,
         "online_policy": args.online_policy,
     }
+    # Candidate grids can contain thousands of rows and three folds per row.
+    # Persisting full ledgers for every rejected row made one campaign consume
+    # gigabytes.  Preserve them in a lossless gzip sidecar while the main JSON
+    # retains full ledgers only for reviewed winners and survivors.
     args.out_dir.mkdir(parents=True, exist_ok=False)
+    if args.emit_event_ledger:
+        compact_candidate_event_ledgers(
+            payload,
+            archive_path=args.out_dir / "candidate_event_ledgers.jsonl.gz",
+        )
     (args.out_dir / "result.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
     )

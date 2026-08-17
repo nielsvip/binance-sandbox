@@ -374,6 +374,82 @@ def generate_ohlc_chart(sym: str, trades: List[Dict], m: Dict, account: str, day
     plt.savefig(out, dpi=150, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"  [chart] {out.name}")
+    try:
+        _write_interactive_ohlc_html(sym, tw, m, account, days, dt_exit, pnl, cum, n_win)
+    except Exception as e:
+        print(f"  [chart html] {sym}: {e}")
+
+
+def _write_interactive_ohlc_html(sym, tw, m, account, days, dt_exit, pnl, cum, n_win):
+    try:
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+    except ImportError:
+        return
+    from datetime import datetime, timezone
+    import html as _html, time
+    CHARTS_DIR.mkdir(parents=True, exist_ok=True)
+    colors = ["#3fb950" if p > 0 else "#f85149" for p in pnl]
+    hover = []
+    for t, p in zip(tw, pnl):
+        entry_r = _html.escape(str(t.get("entry_reason") or t.get("entry_type") or ""))
+        exit_r = _html.escape(str(t.get("exit_reason") or ""))
+        side = _html.escape(str(t.get("side") or ""))
+        ep = t.get("entry_price"); xp = t.get("exit_price")
+        ets = t.get("entry_ts"); xts = t.get("exit_ts")
+        try:
+            ets_s = datetime.fromtimestamp(int(ets), tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if ets else ""
+            xts_s = datetime.fromtimestamp(int(xts), tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if xts else ""
+        except Exception:
+            ets_s = str(ets or ""); xts_s = str(xts or "")
+        dur = ""
+        try:
+            if ets and xts:
+                sec = int(xts)-int(ets)
+                dur = f"{sec//3600}h {(sec%3600)//60}m" if sec >= 60 else f"{sec}s"
+        except Exception:
+            pass
+        hover.append(f"<b>{side}</b> pnl={p:+.2f}%<br>entry: {entry_r} @ {ep} ({ets_s})<br>exit: {exit_r} @ {xp} ({xts_s})<br>duration: {dur}<br>gain/trade: {p:+.4f}%")
+    # price line
+    price_x=[]; price_y=[]
+    try:
+        import numpy as np
+        npz_path = NPZ_DIR / f"{sym}.npz"
+        if npz_path.exists():
+            z = np.load(str(npz_path)); npz={k: z[k] for k in z.files}; z.close()
+            ts_arr=npz.get("timestamps_15m"); close_arr=npz.get("close_15m")
+            if ts_arr is not None and close_arr is not None and len(ts_arr):
+                cutoff_ts=time.time()-days*86400
+                mask=ts_arr>=cutoff_ts
+                if int(mask.sum())==0:
+                    mask=np.ones(len(ts_arr),dtype=bool); mask[:-2000]=False
+                price_x=[datetime.fromtimestamp(int(v), tz=timezone.utc) for v in ts_arr[mask]]
+                price_y=close_arr[mask].tolist()
+    except Exception:
+        pass
+    has_price=len(price_x) and len(price_y)
+    rows=3 if has_price else 2; row_heights=[0.45,0.30,0.25] if has_price else [0.55,0.45]
+    fig=make_subplots(rows=rows, cols=1, shared_xaxes=True, vertical_spacing=0.04, row_heights=row_heights,
+                      subplot_titles=(["Price 15m"] if has_price else [])+["Cumulative PnL %","Per-trade PnL % (hover for reason & gain)"])
+    r=1
+    if has_price:
+        fig.add_trace(go.Scatter(x=price_x, y=price_y, mode="lines", name="close 15m", line=dict(color="#c9d1d9", width=1), hovertemplate="%{x}<br>price=%{y:.2f}<extra></extra>"), row=1, col=1)
+        r=2
+    if dt_exit and cum:
+        fig.add_trace(go.Scatter(x=dt_exit, y=cum, mode="lines", name="cum PnL", line=dict(color="#58a6ff", width=2), fill="tozeroy", fillcolor="rgba(88,166,255,0.13)", hovertemplate="%{x}<br>cum %{y:.2f}%<extra></extra>"), row=r, col=1)
+    fig.add_hline(y=0, line_dash="dash", line_color="#6e7681", line_width=0.8, row=r, col=1)
+    r2=r+1 if has_price else r
+    if dt_exit and pnl:
+        fig.add_trace(go.Bar(x=dt_exit, y=pnl, name="per-trade", marker_color=colors, hovertext=hover, hovertemplate="%{hovertext}<extra></extra>"), row=r2, col=1)
+    fig.add_hline(y=0, line_dash="dash", line_color="#6e7681", line_width=0.8, row=r2, col=1)
+    ps=float(m.get("pool_sharpe",0)); wr=float(m.get("wr_pct",0)); dd=float(m.get("max_dd_pct",0)); ntrades=int(m.get("trades",len(pnl)))
+    title=f"OPT | {account}:{sym}  pool={ps:+.4f}  wr={wr:.1f}%  dd={dd:.2f}%  trades={ntrades:,}  wins={n_win}/{len(pnl)}  ({days}d)"
+    fig.update_layout(title=dict(text=title, font=dict(color="#c9d1d9", size=11)), paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", font=dict(color="#c9d1d9"), hovermode="x unified", bargap=0.2, legend=dict(orientation="h", y=1.02, x=1, xanchor="right", bgcolor="rgba(0,0,0,0)"), margin=dict(l=60,r=20,t=60,b=40))
+    fig.update_xaxes(showgrid=True, gridcolor="#21262d", tickfont=dict(color="#6e7681", size=10), rangeslider_visible=False)
+    fig.update_yaxes(showgrid=True, gridcolor="#21262d", tickfont=dict(color="#6e7681", size=10))
+    html_path=CHARTS_DIR / f"OPT_{sym}.html"
+    fig.write_html(str(html_path), include_plotlyjs="cdn", config=dict(scrollZoom=True, displayModeBar=True, modeBarButtonsToAdd=["zoomIn2d","zoomOut2d","autoScale2d"], displaylogo=False))
+    print(f"  [chart html] {html_path.name} (hover: reason+gain, scroll to zoom)")
 
 
 # ── Phase 1: baseline from existing active_config ─────────────────────────

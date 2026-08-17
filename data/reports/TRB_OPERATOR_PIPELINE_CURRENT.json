@@ -1,0 +1,32 @@
+{
+  "afba_fixed_workbook_sha256": "afba07655500f79503805b5ae09ba9573705194c0b5e91128a66c19accc59e62",
+  "apply_live_requested": true,
+  "component_only_v8_allowed": false,
+  "detail": null,
+  "keys": [
+    "DVN_LONG",
+    "AAPL_LONG",
+    "DINO_LONG",
+    "CMC_LONG",
+    "VT_LONG",
+    "GM_LONG",
+    "EOG_LONG",
+    "OKE_LONG",
+    "FANG_LONG",
+    "FIVN_LONG",
+    "DIS_SHORT",
+    "CMC_SHORT",
+    "CLF_SHORT",
+    "FCX_SHORT",
+    "CDE_SHORT",
+    "NKE_SHORT",
+    "CLX_SHORT",
+    "FCN_SHORT",
+    "TTD_SHORT",
+    "ACN_SHORT"
+  ],
+  "raw_attempt_credit": false,
+  "schema": "trb-operator-pipeline-v1",
+  "status": "BLOCKED_MIGRATION_GENERATION_SYNC",
+  "updated_at_epoch": 1785878686.411977
+}

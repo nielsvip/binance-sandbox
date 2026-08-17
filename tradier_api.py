@@ -24,8 +24,12 @@ logger.propagate = False
 config=TradierConfig()
 
 if not logger.handlers:
-    log_dir = os.path.join(os.path.expanduser("~"), "logs")
-    os.makedirs(log_dir, exist_ok=True)
+    # UID-free: PROHIBITED to use HOME/expanduser - use EZ_LOG_DIR or /tmp only
+    log_dir = os.environ.get("EZ_LOG_DIR") or os.environ.get("TRADIER_API_LOG_DIR") or "/tmp"
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+    except Exception:
+        log_dir = "/tmp"
     api_log_file = os.path.join(log_dir, "tradier_api.log")
     file_handler = RotatingFileHandler(api_log_file, maxBytes=50*1024*1024, backupCount=30, encoding='utf-8', mode='a')
     file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')

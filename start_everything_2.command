@@ -150,7 +150,10 @@ GENERAL_TMPSCRIPT="/tmp/iterm_launch_${GENERAL_TAB_NAME}.sh"
 cat > "$GENERAL_TMPSCRIPT" << LAUNCHER
 #!/bin/bash
 printf '\\e]1;${GENERAL_TAB_NAME}\\a'
-tail -f $LOGDIR/ez_manage_*.log | grep --line-buffered -iE "ERROR|CRITICAL|EXCEPTION|EXECUTE_NOW|REDUCE|HEDGE_KILL"
+# Follow rotations and include the stderr files where Python tracebacks and
+# task warnings are written.  Keep the tab useful for both hard failures and
+# stuck/rejected order paths.
+tail -F "$LOGDIR"/ez_manage_*.log 2>/dev/null | grep --line-buffered -iE "ERROR|CRITICAL|EXCEPTION|TRACEBACK|RUNTIMEWARNING|TASK EXCEPTION|LOOP ERROR|TIMEOUT|EXECUTE_NOW|REDUCE|HEDGE_KILL|WEBHOOK_FAIL"
 LAUNCHER
 chmod +x "$GENERAL_TMPSCRIPT"
 osascript -e "

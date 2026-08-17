@@ -919,8 +919,8 @@ def main() -> None:
     ap.add_argument("--out-dir", default=str(ROOT / "data/reports/vec_research"))
     ap.add_argument("--correction-symbols", default=",".join(CORRECTION_DEFAULT))
     ap.add_argument("--bear-symbols", default=",".join(BEAR_DEFAULT))
-    ap.add_argument("--commission-bps", type=float, default=5.0)
-    ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument("--commission-bps", type=float, default=0.0)
+    ap.add_argument("--slippage-bps", type=float, default=2.5)
     ap.add_argument("--path-fleet-root")
     run(ap.parse_args())
 

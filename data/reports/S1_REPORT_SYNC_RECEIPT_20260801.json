@@ -1,0 +1,15 @@
+{
+  "authority": "S1",
+  "host": "157.180.125.52",
+  "observed_at": "2026-08-01T19:32:44Z",
+  "status": "PASS_TIMESTAMP_SIZE_MATCH",
+  "remote_digest_observed_at": "2026-08-01T19:24:28Z",
+  "files": {
+    "data/reports/SWITCH_MATRIX_TRB_DIGEST.md": {"remote_mtime": "2026-08-01T19:25:29Z", "remote_size": 53541, "local_mtime": "2026-08-01T19:25:29Z", "local_size": 53541, "local_sha256": "cd34c6439309a2dd7f0e077433dbbabe307056260c7925eede8cb9d783348291"},
+    "data/reports/SWITCH_MATRIX_TRB.xlsx": {"remote_mtime": "2026-08-01T19:23:37Z", "remote_size": 6343142, "local_mtime": "2026-08-01T19:23:37Z", "local_size": 6343142, "local_sha256": "fb85056053b518fbce9880f188e69d585e2ea5104229d7670e601e38bacc5f1c"},
+    "data/reports/SWITCH_MATRIX_TRB.csv.gz": {"remote_mtime": "2026-08-01T19:21:05Z", "remote_size": 39679, "local_mtime": "2026-08-01T19:21:05Z", "local_size": 39679, "local_sha256": "e10eabcccdb3faf76879330aa0022f0fc23c99c660404ba89433b6b43e836ace"},
+    "data/reports/persym_campaign_digest.md": {"remote_mtime": "2026-08-01T19:06:42Z", "remote_size": 5573, "local_mtime": "2026-08-01T19:06:42Z", "local_size": 5573, "local_sha256": "66fc915c59d8866a900efbfcc0e2c94d655140017455cb27d9a7fa96ca3922bd"},
+    "data/reports/MU_PROGRESS_20260731.md": {"remote_observed": "2026-08-01T01:11:01Z", "local_mtime": "2026-08-01T01:11:28Z", "local_size": 43862, "local_sha256": "0a6fb0640c32fb2216628021380f35cabc6a64c208391e787aaae9b463eddc13"}
+  },
+  "note": "Core current digest, matrix workbook, canonical CSV, and persym digest match S1 timestamp/size. The MU progress report is a local append-only report with the same S1-observed content and later local mtime."
+}

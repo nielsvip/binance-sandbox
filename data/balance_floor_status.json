@@ -1,0 +1,50 @@
+{
+  "checked_at_utc": "2026-08-14T18:36:33.876537+00:00",
+  "interval_sec": 30,
+  "min_floor_usd": 1.0,
+  "recovery_buffer_usd": 5.0,
+  "results": [
+    {
+      "account": "ang",
+      "balance": null,
+      "source": "no ang_API_KEY in env",
+      "halted": false
+    },
+    {
+      "account": "inf",
+      "balance": null,
+      "source": "no inf_API_KEY in env",
+      "halted": false
+    },
+    {
+      "account": "flz",
+      "balance": null,
+      "source": "no flz_API_KEY in env",
+      "halted": false
+    },
+    {
+      "account": "men",
+      "balance": null,
+      "source": "no men_API_KEY in env",
+      "halted": false
+    },
+    {
+      "account": "fin",
+      "balance": null,
+      "source": "no fin_API_KEY in env",
+      "halted": false
+    },
+    {
+      "account": "trb",
+      "balance": null,
+      "source": "no TRADIER_API_KEY_TRB / TRADIER_ACCOUNT_ID_TRB in env",
+      "halted": false
+    },
+    {
+      "account": "trc",
+      "balance": null,
+      "source": "no TRADIER_API_KEY_TRC / TRADIER_ACCOUNT_ID_TRC in env",
+      "halted": false
+    }
+  ]
+}

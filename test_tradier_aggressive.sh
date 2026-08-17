@@ -3,6 +3,7 @@
 # User: "5X B&H return on any stock" — current 12 trades / +0.01% = useless.
 # Goal: 500+ trades, sharpe_pt positive, gain > 5x SPY/AAPL B&H
 set -uo pipefail
+export EZ_LOG_DIR="${EZ_LOG_DIR:-/tmp}"
 OUTDIR=/tmp/tradier_aggressive
 mkdir -p "$OUTDIR"
 PY=/opt/anaconda3/envs/binance_env/bin/python

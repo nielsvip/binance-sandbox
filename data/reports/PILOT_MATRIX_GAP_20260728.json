@@ -1,0 +1,36 @@
+{
+ "rows": 3654,
+ "switches": 803,
+ "pilots": {
+  "MU_LONG": {
+   "filled": 1565,
+   "empty": 2089,
+   "not_engine_tested": 1842,
+   "degenerate": 205
+  },
+  "NVDA_LONG": {
+   "filled": 648,
+   "empty": 3006,
+   "not_engine_tested": 1842,
+   "degenerate": 984
+  },
+  "VT_LONG": {
+   "filled": 1163,
+   "empty": 2491,
+   "not_engine_tested": 1842,
+   "degenerate": 464
+  },
+  "TTD_SHORT": {
+   "filled": 567,
+   "empty": 3087,
+   "not_engine_tested": 1842,
+   "degenerate": 1007
+  },
+  "ACN_SHORT": {
+   "filled": 363,
+   "empty": 3291,
+   "not_engine_tested": 1842,
+   "degenerate": 1129
+  }
+ }
+}

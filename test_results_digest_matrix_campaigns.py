@@ -1,7 +1,49 @@
 import json
 import sqlite3
+from pathlib import Path
 
 from tools import results_digest_email as digest
+
+
+def test_matrix_guard_script_prefers_explicit_override(tmp_path, monkeypatch):
+    guard = tmp_path / "matrix_guard.py"
+    monkeypatch.setenv("MATRIX_GUARD_PATH", str(guard))
+    assert digest._matrix_guard_script() == guard
+
+
+def test_matrix_guard_script_falls_back_to_checkout(monkeypatch):
+    monkeypatch.delenv("MATRIX_GUARD_PATH", raising=False)
+    real_exists = Path.exists
+
+    def fake_exists(path):
+        if path == Path("/home/niels/binance-sandbox/tools/matrix_guard.py"):
+            return False
+        return real_exists(path)
+
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    assert digest._matrix_guard_script() == digest.MATRIX_GUARD_SCRIPT
+
+
+def test_provisional_completion_uses_guard_strict_amber_audit(monkeypatch):
+    monkeypatch.setattr(
+        digest.smd if hasattr(digest, "smd") else __import__("tools.switch_matrix_digest", fromlist=["x"]),
+        "load_classified_pilot_coverage",
+        lambda keys: {
+            "available": True,
+            "keys": {key: {"differential_filled": 0, "differential_empty": 826} for key in keys},
+        },
+        raising=False,
+    )
+    from tools import matrix_guard
+    monkeypatch.setattr(
+        matrix_guard,
+        "strict_provisional_vector_overlay",
+        lambda: {"available": True, "keys": {"MU_LONG": {"amber": 1}}},
+    )
+    body = digest._provisional_matrix_completion_section()
+    assert "MU_LONG" in body
+    assert "1/826" in body
+    assert "amber provisional" in body
 
 
 def _fleet_db(path):
@@ -193,6 +235,13 @@ def test_latest_matrix_campaign_section_is_manifest_driven_and_truthful(
 
     monkeypatch.setenv("PATH_FLEET_DB_PATH", str(db))
     monkeypatch.setenv("VEC_RESEARCH_ROOT", str(root))
+    fixture_bands = {
+        "MU_LONG": (50.0, 80.0),
+        "PBF_LONG": (50.0, 80.0),
+        "ARM_LONG": (20.0, 60.0),
+        "TTD_SHORT": (20.0, 60.0),
+    }
+    monkeypatch.setattr(digest, "tim_band_for_key", fixture_bands.__getitem__)
     section = digest._latest_matrix_filling_campaigns_section()
 
     assert "RESEARCH ONLY" in section
@@ -202,7 +251,10 @@ def test_latest_matrix_campaign_section_is_manifest_driven_and_truthful(
     assert section.index("MU_LONG") < section.index("ARM_LONG")
     assert "TTD_SHORT" in section
     assert "F1&#10003; 76.0%" in section
-    assert "F2&#10007; 35.0% (TIM&lt;70)" in section
+    assert "F1&#10007; 78.0% (TIM&gt;60)" in section
+    assert "F2&#10003; 35.0%" in section
+    assert "F1&#10003; 20.0%" in section
+    assert "F2&#10007; 72.0% (TIM&gt;60)" in section
     assert "125.00% vs B&amp;H 100.00%" in section
     assert "vs control 150.00%" in section
     assert "final &le; control" in section

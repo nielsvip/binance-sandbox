@@ -188,6 +188,8 @@ def screen_artifact(
                         "entry_capacity_breach"
                     ],
                     "insolvent": row["insolvent"],
+                    **shared.chart_event_ledger(row),
+                    **shared._causal_action_evidence(row),
                 }
             )
         discovery = execution._aggregate(folds[:-1])

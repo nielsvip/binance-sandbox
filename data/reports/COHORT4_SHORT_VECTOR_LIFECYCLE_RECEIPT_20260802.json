@@ -1,0 +1,254 @@
+{
+  "schema": "trb.cohort4_short_vector_lifecycle_receipt.v1",
+  "generated_at": "2026-08-02T01:20:00Z",
+  "scope": {
+    "keys": [
+      "USAR_SHORT",
+      "AGI_SHORT",
+      "CLF_SHORT",
+      "RBLX_SHORT",
+      "GDX_SHORT",
+      "MP_SHORT",
+      "RGLD_SHORT",
+      "NXE_SHORT",
+      "HII_SHORT",
+      "AAPL_SHORT"
+    ],
+    "window_start": "2024-04-01",
+    "window_end_exclusive": "2026-08-01",
+    "side": "SHORT",
+    "tier": "VECTOR_LIFECYCLE",
+    "cost_contract": {
+      "one_way_slippage_bps": 5,
+      "commission_bps": 0,
+      "bh_capital_usd": 2000,
+      "strategy_capacity_usd": 16000,
+      "account_drawdown_denominator_usd": 10000
+    },
+    "execution_contract": {
+      "future_htf_rows_allowed": 0,
+      "signal_execution": "FIRST_STRICTLY_LATER_THAN_COMPLETED_PARENT_AVAILABILITY",
+      "reclaim_target": "prior_notional",
+      "scalar_deltas_may_be_summed": false
+    }
+  },
+  "report": {
+    "path": "data/reports/COHORT4_SHORT_VECTOR_LIFECYCLE_20260802.md",
+    "sha256": "9d151eca58f15fea6671f3561662b1a760c7b77663b3f61e7384ad5bd1270f30"
+  },
+  "lifecycle_source": {
+    "path": "tools/run_lifecycle_combo_beam.py",
+    "sha256": "de20ce46dfefc4364cd170078aa51c16bc81840c38f0ba09cfc8eec7f0444a98"
+  },
+  "npz": {
+    "s1_root": "data/matrix_npz/cohort4_short_causal_v7_20260802",
+    "all_future_htf_zero": true,
+    "all_parent_clock_pass": true,
+    "all_native_row_parity_pass": true,
+    "limited_native_5m_bridge_disclosed_for": [
+      "AAPL",
+      "NXE",
+      "USAR"
+    ],
+    "sha256_by_symbol": {
+      "AAPL": "a45ea39c5128757dda10994a42f4885d3da667b2d07eae3eb9c8c4564db720bc",
+      "AGI": "a4161fb81793bacc4d8b2b75bce2ac9d4071af267db589f38f3c91d6cbb9f4b5",
+      "CLF": "e28c93309d587188ae4b705fa727d3ae7e75088fed40e7c97c902af7e13af378",
+      "GDX": "157eeecae65370b62bf5b2589e9dfaac70f9bbf45aaf5103152c3b130270becf",
+      "HII": "d3527d969ebe94d10e5bc80bba40ac15d9ca35d570ebc4d93a2ca4afb4212063",
+      "MP": "05ec7d6595c6352fecbcd111a06e99045722c6d1af820ffe8411825b40ce9f47",
+      "NXE": "fd742d791b4a7b7600cfb1cab21fac5a1e00ed30703695f04dbf3e1b24c44ba1",
+      "RBLX": "d24abc52af25543ec05d6d7a2ef7296ef6c684332e62ae41b6481a26127bbc53",
+      "RGLD": "90def4ed921e0a494fa25775b1ae93e73b1759c3d7fd29f4bc5a8c390a35e87a",
+      "USAR": "86d363918d4be654df382888c173f540eb483553990e35f31c0ae006f52f7a66"
+    }
+  },
+  "outcome": {
+    "vector_winners": [
+      "USAR_SHORT",
+      "CLF_SHORT",
+      "MP_SHORT",
+      "NXE_SHORT"
+    ],
+    "unresolved_use_bh": [
+      "AAPL_SHORT",
+      "AGI_SHORT",
+      "HII_SHORT",
+      "RBLX_SHORT",
+      "GDX_SHORT",
+      "RGLD_SHORT"
+    ],
+    "gray_below_two_pct_floor": [
+      "RBLX_SHORT"
+    ],
+    "top_exact_confirmation_candidates": [
+      "USAR_SHORT",
+      "CLF_SHORT"
+    ],
+    "all_selected_capacity_clamps_zero": true,
+    "all_selected_account_drawdown_below_100_pct": true,
+    "short_native_correction_bear_survivors": 0,
+    "short_native_result_sha256": "e92440eb9e623a88cd5986b45a0ecf592f00bb615cf4d6f67d4f07b5b5ecfd19"
+  },
+  "selected_results": {
+    "USAR_SHORT": {
+      "gain_pct_per_month": 24.310762011139353,
+      "bh_gain_pct_per_month": -1.8375808630603578,
+      "delta_gain_mo_vs_bh": 26.14834287419971,
+      "max_drawdown_account_pct": 26.48648460127254,
+      "time_in_market_pct": 2.4169295092789556,
+      "real_close_actions": 48,
+      "classification": "VECTOR_WINNER",
+      "selected_row_sha256": "eab9ab34b5252bc0c12bb1ec07e180d1c0d97ce16370ebd50a1e9c24176616f5",
+      "adapter_signed_receipt_sha256": "a8e58dfb090977d6a238c04bc14be069b9a2b2e6476af4a9ec8cd28f3d1c61ed"
+    },
+    "CLF_SHORT": {
+      "gain_pct_per_month": 14.026132196697509,
+      "bh_gain_pct_per_month": 1.7679348769716938,
+      "delta_gain_mo_vs_bh": 12.258197319725815,
+      "max_drawdown_account_pct": 54.00336915595159,
+      "time_in_market_pct": 99.900147607884,
+      "real_close_actions": 149,
+      "classification": "VECTOR_WINNER",
+      "selected_row_sha256": "fad896ea885e440155ce1e9e8d944c94a7ddb401cdb16cf2f210481e14a90941",
+      "adapter_signed_receipt_sha256": "d777ef321dc927c215d44acec4b5c87331f546565586e603dcdc8646bcbafa85"
+    },
+    "MP_SHORT": {
+      "gain_pct_per_month": 2.128096382669391,
+      "bh_gain_pct_per_month": -6.530156063951522,
+      "delta_gain_mo_vs_bh": 8.658252446620914,
+      "max_drawdown_account_pct": 27.348330448525164,
+      "time_in_market_pct": 6.163699522362136,
+      "real_close_actions": 182,
+      "classification": "VECTOR_WINNER",
+      "selected_row_sha256": "a5dea149327ba4601e72335d6318b264d0ede1fad70f98fa73f737755b75928c",
+      "adapter_signed_receipt_sha256": "ca460948663ddcae9c72e5f07ef84f161ceacf26ad3bf3ceec8fcd44ca349183"
+    },
+    "NXE_SHORT": {
+      "gain_pct_per_month": 2.3228093592473806,
+      "bh_gain_pct_per_month": -0.5317922760215366,
+      "delta_gain_mo_vs_bh": 2.854601635268917,
+      "max_drawdown_account_pct": 15.416845830327874,
+      "time_in_market_pct": 10.728061191135131,
+      "real_close_actions": 379,
+      "classification": "VECTOR_WINNER",
+      "selected_row_sha256": "61174e624274a9ce76a2228c14f593a94659ea322eb8ccebe2e8c70a055fb4b2",
+      "adapter_signed_receipt_sha256": "dddcf1ce9ff29809824322c4e437194da7dad93ab1f21801dabb6a4e8b9f3aea"
+    },
+    "RBLX_SHORT": {
+      "gain_pct_per_month": 1.7027479696658692,
+      "bh_gain_pct_per_month": 0.21687876065763165,
+      "delta_gain_mo_vs_bh": 1.4858692090082375,
+      "max_drawdown_account_pct": 56.11850205858067,
+      "time_in_market_pct": 33.28921674983727,
+      "real_close_actions": 235,
+      "classification": "UNRESOLVED_USE_BH",
+      "selected_row_sha256": "e878124a2ed16bed1a826efe2bbe15e991f6f34c16169e78ca4a0d3cd36bd795",
+      "adapter_signed_receipt_sha256": "be8858eb95ad0742bc63e5eb6d5d5ab288db261c1ce51af6864401dd1070f411"
+    },
+    "AGI_SHORT": {
+      "gain_pct_per_month": -0.2013044312971825,
+      "bh_gain_pct_per_month": -3.153133088294581,
+      "delta_gain_mo_vs_bh": 2.9518286569973986,
+      "max_drawdown_account_pct": 15.981888445116622,
+      "time_in_market_pct": 9.236385895109635,
+      "real_close_actions": 134,
+      "classification": "UNRESOLVED_USE_BH",
+      "selected_row_sha256": "ea145c25c58d52d0329864c8c22f08cf46f634acd588bd02902ecc19e15f5e2b",
+      "adapter_signed_receipt_sha256": "35139b1bf45e2ba452aaa1e55361681cb501602a2f468eab22c25f02f3efdabe"
+    },
+    "GDX_SHORT": {
+      "gain_pct_per_month": -0.02104573879241093,
+      "bh_gain_pct_per_month": -4.661694659129945,
+      "delta_gain_mo_vs_bh": 4.640648920337534,
+      "max_drawdown_account_pct": 0.2878214737703638,
+      "time_in_market_pct": 0.1541032708961865,
+      "real_close_actions": 7,
+      "classification": "UNRESOLVED_USE_BH",
+      "selected_row_sha256": "c8cb6ec25caca42e5aca2c90173951777d3daaed33771838785b9e59f7dab02b",
+      "adapter_signed_receipt_sha256": "69478e8dee8b5adbe80f7d21f3177c62c207818c38407b54c72454b932d6fc9a"
+    },
+    "RGLD_SHORT": {
+      "gain_pct_per_month": -1.6126604511544171,
+      "bh_gain_pct_per_month": -2.168440561727446,
+      "delta_gain_mo_vs_bh": 0.5557801105730287,
+      "max_drawdown_account_pct": 9.953779730664722,
+      "time_in_market_pct": 5.8796658835813105,
+      "real_close_actions": 257,
+      "classification": "UNRESOLVED_USE_BH",
+      "selected_row_sha256": "31ca5a7b114e5d29236ccc2d252747ad816dfc4cc35bfd9575567c53bb36eaae",
+      "adapter_signed_receipt_sha256": "2be33374b3bcc6ce85911dbca774ee85ce068c3fba6948b018282361977c3b63"
+    },
+    "HII_SHORT": {
+      "gain_pct_per_month": -1.721430357665358,
+      "bh_gain_pct_per_month": -0.4419494345921974,
+      "delta_gain_mo_vs_bh": -1.2794809230731605,
+      "max_drawdown_account_pct": 53.59137236445476,
+      "time_in_market_pct": 95.64535795157639,
+      "real_close_actions": 1195,
+      "classification": "UNRESOLVED_USE_BH",
+      "selected_row_sha256": "0f114421299e568fdfebc6aec406ac1b5d932c1b8ca45d6198dd774b6ac43fc4",
+      "adapter_signed_receipt_sha256": "79e098269186704aa22f30a48d4ce9c1ca6608894d429f5a1f14fddd8b4eed00"
+    },
+    "AAPL_SHORT": {
+      "gain_pct_per_month": -4.066085841783381,
+      "bh_gain_pct_per_month": -2.904295187922685,
+      "delta_gain_mo_vs_bh": -1.1617906538606961,
+      "max_drawdown_account_pct": 47.102406853288095,
+      "time_in_market_pct": 41.843110031239156,
+      "real_close_actions": 646,
+      "classification": "UNRESOLVED_USE_BH",
+      "selected_row_sha256": "abfb70697ea37df6b8f5d674a866beaf3ea18d7b655a5497b551af16cd3a9ce3",
+      "adapter_signed_receipt_sha256": "98f4e094f959adb0d788e934f130c039583fbad0e2f96656cb48f30e9a0bd451"
+    }
+  },
+  "portable_adapters": {
+    "root": "data/reports/cohort4_lifecycle_adapters_staging_20260802",
+    "verified": 10,
+    "failed": 0,
+    "matrix_written": false,
+    "exact_v8_cells_touched": false,
+    "promotion_decision_performed": false
+  },
+  "strict_scalar_lane": {
+    "cohort4_logical_cells": 150,
+    "cohort4_pass": 100,
+    "cohort4_quarantined": 50,
+    "exact_completion_credit": false,
+    "promotion_credit": false,
+    "scalar_broadcasting_allowed": false
+  },
+  "union_audit": {
+    "audit_path": "data/reports/TRB_ACTIVE_VECTOR_CELL_AUDIT_20260802_UNION_COHORT4.json",
+    "audit_sha256": "4f0b79632dad90b771c909e321998dee1f8b87548ffab7a5833d2646878a8059",
+    "annotated_path": "data/reports/TRB_ACTIVE_VECTOR_CELL_AUDIT_20260802_UNION_COHORT4.jsonl",
+    "annotated_sha256": "a99c574cd56f105abe4426fc6dfbc7dec2c79409846099f8e424c259577c3a18",
+    "queue_path": "data/reports/VECTOR_CAUSAL_RECALC_QUEUE_20260802_UNION_COHORT4.json",
+    "queue_sha256": "07bf05c1e941594c431d1279389bb0fe7750e7c34745f0ef07b63f3b586240d4",
+    "logical_rows": 2039,
+    "pass": 189,
+    "quarantined": 1850,
+    "allowed_isolated_two_value_plateaus": 4,
+    "prior_pilot_mstr_pass": 39,
+    "prior_accepted_cells_disappeared": 0,
+    "cohort4_snapshot_independently_valid": true,
+    "cohort4_snapshot_overlay_rows": 2039,
+    "active_largest_union_at_seal": {
+      "path": "data/reports/TRB_ACTIVE_VECTOR_CELL_AUDIT_20260802_COHORT5_LONG_UNION.json",
+      "sha256": "71f23903b1da9ad26acd30f124b5b9b751fa21438d8730678bcae2ecf686c00f",
+      "logical_rows": 2189,
+      "pass": 278,
+      "quarantined": 1911,
+      "contains_all_cohort4_ledgers": true,
+      "cohort4_pass_preserved": 100,
+      "cohort4_quarantined_preserved": 50
+    }
+  },
+  "mutation_guards": {
+    "exact_v8_discovery_used": false,
+    "current_switch_matrix_changed": false,
+    "current_param_baseline_changed": false,
+    "live_configuration_changed": false,
+    "staging_published_into_workbook_discovery": false
+  }
+}

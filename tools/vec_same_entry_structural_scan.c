@@ -31,6 +31,8 @@ typedef struct {
     int clamp_count;
     int future_htf_count;
     int bars_flat_beyond_reclaim;
+    int dc4h_entry_blocks;
+    int dc4h_safety_exit_fills;
     int rows;
 } StructuralScanMetrics;
 
@@ -42,6 +44,7 @@ int vec_same_entry_structural_scan(
     const int64_t *ts,
     const double *open_, const double *high, const double *low,
     const double *close, const double *entry_mult,
+    const double *dc4h_level, int enforce_dc4h,
     const uint8_t *arm_event, const int64_t *arm_source,
     const double *arm_high, const double *arm_low, const double *arm_close,
     const double *arm_wt, const double *arm_atr,
@@ -86,7 +89,7 @@ int vec_same_entry_structural_scan(
     double price_anchor = NAN, wt_anchor = NAN;
     double damage = NAN, rebound_price = NAN, rebound_wt = NAN;
     int confirmation_streak = 0, continued_count = 0;
-    int pending_emergency = 0;
+    int pending_emergency = 0, pending_dc4h_safety = 0;
 
     for (int i=left; i<right; i++) {
         const double op = open_[i], cp = close[i];
@@ -99,22 +102,39 @@ int vec_same_entry_structural_scan(
                 double realized = side*qty*(px-avg_entry)
                     - commission*(qty*avg_entry+notional);
                 cash += side * (notional - side * commission * notional);
-                prior_exit_notional = dmin(CAPACITY, notional);
-                last_exit = px;
-                reclaim_level = side > 0 ? dmax(px, pending_ref)
-                                         : dmin(px, pending_ref);
+                if (pending_dc4h_safety) {
+                    prior_exit_notional = 0.0;
+                    last_exit = NAN;
+                    reclaim_level = NAN;
+                } else {
+                    prior_exit_notional = dmin(CAPACITY, notional);
+                    last_exit = px;
+                    reclaim_level = side > 0 ? dmax(px, pending_ref)
+                                             : dmin(px, pending_ref);
+                }
                 qty = 0.0; avg_entry = NAN; gap_seen = 0;
                 exit_fill_row = i; out->exit_fills++;
                 if (pending_emergency) {
                     out->emergency_exit_fills++;
                     out->emergency_exit_pnl_usd += realized;
+                    if (pending_dc4h_safety)
+                        out->dc4h_safety_exit_fills++;
                 } else {
                     out->normal_exit_fills++;
                     out->normal_exit_pnl_usd += realized;
                 }
                 pending_emergency = 0;
+                pending_dc4h_safety = 0;
             } else if (pending == 1 || pending == 3) {
                 double px = op * (1.0 + side * slippage);
+                int valid_dc4h = isfinite(dc4h_level[i]) && dc4h_level[i] > 0.0;
+                int entry_breach = side > 0 ? px <= dc4h_level[i]
+                                            : px >= dc4h_level[i];
+                if (enforce_dc4h && (!valid_dc4h || entry_breach)) {
+                    out->dc4h_entry_blocks++;
+                    pending = 0;
+                    continue;
+                }
                 double current = qty * px;
                 double want = pending_abs ? dmax(0.0, pending_target-current)
                                           : pending_target;
@@ -148,6 +168,13 @@ int vec_same_entry_structural_scan(
             }
             if (isfinite(raw)) {
                 double px = raw * (1.0 + side*slippage);
+                int valid_dc4h = isfinite(dc4h_level[i]) && dc4h_level[i] > 0.0;
+                int entry_breach = side > 0 ? px <= dc4h_level[i]
+                                            : px >= dc4h_level[i];
+                if (enforce_dc4h && (!valid_dc4h || entry_breach)) {
+                    out->dc4h_entry_blocks++;
+                    goto after_mandatory_reclaim;
+                }
                 double target = dmax(BASE_UNIT, prior_exit_notional);
                 double actual = dmin(target, CAPACITY);
                 out->requested_notional_usd += target;
@@ -160,6 +187,7 @@ int vec_same_entry_structural_scan(
                 last_exit = NAN; reclaim_level = NAN;
             }
         }
+after_mandatory_reclaim:
 
         double equity = cash + side*qty*cp;
         peak_eq = dmax(peak_eq, equity); min_eq = dmin(min_eq, equity);
@@ -174,6 +202,17 @@ int vec_same_entry_structural_scan(
         int active = qty > 1e-12;
         int signal = 0;
         double signal_ref = NAN;
+
+        /* Live TRB/TRC owns this close before every selected exit path. */
+        int valid_dc4h = isfinite(dc4h_level[i]) && dc4h_level[i] > 0.0;
+        int held_breach = valid_dc4h &&
+            (side > 0 ? cp <= dc4h_level[i] : cp >= dc4h_level[i]);
+        if (enforce_dc4h && active && held_breach && i+1 < right) {
+            out->signals++;
+            pending=2; pending_signal=i; pending_ref=dc4h_level[i];
+            pending_emergency=1; pending_dc4h_safety=1;
+            continue;
+        }
 
         if (arm_event[i]) {
             if (arm_source[i] > ts[i]) out->future_htf_count++;
@@ -351,6 +390,7 @@ int vec_same_entry_structural_scan(
             double gain = side*(cp-avg_entry)/avg_entry*100.0;
             if (gain + 1e-12 >= profit_gate_pct) {
                 pending=2; pending_signal=i; pending_ref=signal_ref;
+                pending_dc4h_safety=0;
                 continue;
             }
             out->rejected_profit++;

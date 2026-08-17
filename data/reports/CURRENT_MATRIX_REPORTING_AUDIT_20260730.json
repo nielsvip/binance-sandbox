@@ -1,0 +1,299 @@
+{
+  "campaign": "stocks_repaired_20260730_c5",
+  "canonical_matrix": "data/reports/SWITCH_MATRIX_TRB.csv.gz",
+  "contract_version": "tradier-matrix-exec-c5-20260730",
+  "csv": {
+    "accepted_after_export_count": 3,
+    "accepted_current_cells_at_audit": 7,
+    "key_columns": 124,
+    "numeric_cells": 2196,
+    "numeric_mismatch_count": 2192,
+    "numeric_mismatches": [
+      {
+        "accepted_current": null,
+        "csv": "-2.8242",
+        "key": "TTD_SHORT",
+        "param": "WT_3M_FORCE_OPEN_ENABLED",
+        "value": "true"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.0106",
+        "key": "ACN_SHORT",
+        "param": "WT_3M_FORCE_OPEN_ENABLED",
+        "value": "true"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.1117",
+        "key": "LAC_SHORT",
+        "param": "WT_3M_FORCE_OPEN_ENABLED",
+        "value": "true"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.814",
+        "key": "VT_LONG",
+        "param": "WT_3M_FORCE_OPEN_ENABLED",
+        "value": "false"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.8242",
+        "key": "TTD_SHORT",
+        "param": "WT_3M_FORCE_OPEN_ENABLED",
+        "value": "false"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.0106",
+        "key": "ACN_SHORT",
+        "param": "WT_3M_FORCE_OPEN_ENABLED",
+        "value": "false"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.814",
+        "key": "VT_LONG",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER",
+        "value": "true"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.8242",
+        "key": "TTD_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER",
+        "value": "true"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.0106",
+        "key": "ACN_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER",
+        "value": "true"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.814",
+        "key": "VT_LONG",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER",
+        "value": "false"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.8242",
+        "key": "TTD_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER",
+        "value": "false"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.0106",
+        "key": "ACN_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER",
+        "value": "false"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.814",
+        "key": "VT_LONG",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "0.5"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.8242",
+        "key": "TTD_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "0.5"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.0106",
+        "key": "ACN_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "0.5"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.814",
+        "key": "VT_LONG",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "0.75"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.8242",
+        "key": "TTD_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "0.75"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.0106",
+        "key": "ACN_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "0.75"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.814",
+        "key": "VT_LONG",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "1"
+      },
+      {
+        "accepted_current": null,
+        "csv": "-2.8242",
+        "key": "TTD_SHORT",
+        "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+        "value": "1"
+      }
+    ],
+    "rows": 3503
+  },
+  "digest": {
+    "accepted_current_engine_rows": 7,
+    "current_excerpt_bytes": 10659,
+    "errors": [],
+    "full_digest_bytes": 34345,
+    "tim_policy": {
+      "active_keys": 115,
+      "errors": [],
+      "top_long": [
+        "DVN",
+        "AAPL",
+        "DINO",
+        "CMC",
+        "VT",
+        "EOG",
+        "OKE",
+        "GM",
+        "FANG",
+        "AMZN"
+      ],
+      "top_short": [
+        "AAPL",
+        "DIS",
+        "CLF",
+        "CMC",
+        "CDE",
+        "FCX",
+        "NKE",
+        "CLX",
+        "TTD",
+        "FCN"
+      ]
+    }
+  },
+  "errors": [
+    "canonical CSV has unexplained numeric cells",
+    "canonical workbook embeds historical campaign rows"
+  ],
+  "status": "FAIL",
+  "workbook": {
+    "forbidden_historical_value_count": 2163,
+    "hits": [
+      {
+        "sheet": "Baselines",
+        "token": "tradier-matrix-exec-c3-20260729",
+        "value": "tradier-matrix-exec-c3-20260729:f8626b2db12e6555303fef3cd7fc10ff324f74d3687c479f6340f911dbb24da3"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      },
+      {
+        "sheet": "Evidence Provenance",
+        "token": "tradier-matrix-c2-20260725",
+        "value": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37"
+      }
+    ]
+  }
+}

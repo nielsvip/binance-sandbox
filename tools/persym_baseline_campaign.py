@@ -48,44 +48,123 @@ sys.path.insert(0, str(SBX / "tools"))
 import metrics_guard as mg  # noqa: E402
 import param_results_store as prs  # noqa: E402
 import universe_registry as ur  # noqa: E402
+from c5_matrix_contract import (  # noqa: E402
+    C5_ADDITIONAL_CONTRACT_FILES,
+    C5_MATRIX_CAMPAIGN,
+    C5_MATRIX_CONTRACT_VERSION,
+    C5_MATRIX_RECIPE_VERSION,
+    c5_contract_fingerprint,
+)
 
 MODE = "tradier"
 ACCOUNT = "trb"
-START = "2024-01-01"
+START = os.environ.get("PSC_START", "2024-01-01")
 CAMPAIGN = os.environ.get("PSC_CAMPAIGN", "stocks_baseline_v1")
 TRADES_ROOT = Path(os.environ.get("PSC_TRADES_ROOT", str(SBX / "data" / "sweep_results" / f"persym_campaign_{CAMPAIGN}_trades")))
 RESULTS_DIR = SBX / "data" / "sweep_results"
 STAMP_FILES = ["backtest_v8_engine.py", "tradier_manage.py", "wt_dc_delta.py", "config_tradier.py"]
-MATRIX_CONTRACT_VERSION = "tradier-matrix-c2-20260725"
+MATRIX_CONTRACT_VERSION = C5_MATRIX_CONTRACT_VERSION
+MATRIX_RECIPE_VERSION = C5_MATRIX_RECIPE_VERSION
+CAPITAL_ACCOUNTING_VERSION = "avg-trade-deployed-2000-v1"
+MATRIX_RECIPE_DEPENDENCY_FILE = (
+    SBX / "data" / "reports" / "switch_lab_catalog_20260729.json  # alias: SWITCH_MATRIX_INTERDEPENDENCY_20260729.json kept for backwards compat"
+)
 MATRIX_NPZ_DIR = Path(
     os.environ.get(
         "PSC_MATRIX_NPZ_DIR",
         str(SBX / "data" / "matrix_npz" / "stocks_repaired_20260725_c2"),
     )
 )
-MATRIX_END_DATE = os.environ.get("PSC_MATRIX_END_DATE", "2026-07-25")
+MATRIX_END_DATE = os.environ.get("PSC_MATRIX_END_DATE", "2026-07-21")
+# Only code/data capable of changing an exact-engine schedule or P&L belongs in
+# the result identity.  Campaign/daemon/store code is still process-guarded
+# below, but workbook, queue, and reporting edits must never invalidate exact
+# evidence that was already computed with unchanged engine inputs.
 MATRIX_CONTRACT_FILES = STAMP_FILES + [
+    "ordinary_ladder_contract.py",
     "stock_v8_override_contract.py",
     "backtest_v8_harness.py",
     "mtf_exit_timing.py",
     "reentry_contract.py",
+    "tradier_entry_contract.py",
+    "tradier_route_contract.py",
+    "wt_dc_entry_scorer.py",
     "tools/backtest_data_contract.py",
+]
+MATRIX_ORCHESTRATION_FILES = [
     "tools/persym_baseline_campaign.py",
     "tools/param_matrix_daemon.py",
     "tools/param_results_store.py",
 ]
+MATRIX_PROCESS_GUARD_FILES = list(
+    dict.fromkeys(
+        MATRIX_CONTRACT_FILES
+        + list(C5_ADDITIONAL_CONTRACT_FILES)
+        + MATRIX_ORCHESTRATION_FILES
+    )
+)
+
+# Vetted c2 rows produced after the final override-precedence/receipt deployment.
+# They remain admissible only while every accepted exact source and the key's
+# frozen NPZ still match the forensic manifest below.  This is compatibility,
+# not a blanket fingerprint allowlist.
+_C2_ACCEPTED_SOURCE_SHA256 = {
+    "backtest_v8_engine.py": "85c49a15ce056bc0103fae57858a4f08fbfa16234672c7c105ef1b7721eea6cb",
+    "tradier_manage.py": "a049e13fa4d4dabbf1d5ac3205393a85e8d1bc9c69d668ff15c79210a9cd6475",
+    "wt_dc_delta.py": "afa4cdfd8d6b6ff77be9420a672355d98361f33661274f4e0c67789a8c039204",
+    "config_tradier.py": "57b81e71e472608a007e0c044118799abbd1df26c97a6d1c733827bdf56536aa",
+    "stock_v8_override_contract.py": "c9f89bff2dfa8938a5ed530b973028e8cb173f0e31cb925e436dbc27e716fd0d",
+    "backtest_v8_harness.py": "4d8f9e00f672ccfd661ea92adcd92857714914538ea9a7676e4518e06155aeb2",
+    "mtf_exit_timing.py": "5b7f61991b9f1f58bb2e35281e33c9195c15e783178434c37f206aa254430d6e",
+    "reentry_contract.py": "64d607cc50f92f6f59cc77fc696379e42b1d27cd9fe8b147f558b11d977a2179",
+    "wt_dc_entry_scorer.py": "23f0d4936d7110076a67f8d7728e49dbc7c0619d466b5374634ae9439e4b4a37",
+    "tools/backtest_data_contract.py": "9af01aa7c68dbdf0f14fb7298a0ed6cfc84f5dde3b88a1894a51a566913f1629",
+}
+_C2_ACCEPTED_NPZ_SHA256 = {
+    "ACN": "c38b4c82ecb1b8abb0c04693ac882f94fdfbbc6ff5ea978c5542da1d3aad5e3d",
+    "LAC": "35028cad578d9b7e92ebb6013d3f1684ec289c7a2eb46d33c8b5e68e1faac11d",
+    "MU": "f57ce885f72655026e594ce93fe883f61c20eab647568ee91ee5d7a4e9973fb3",
+    "NVDA": "7ca961e9650b41cc98bb363eaae2e58bb767a65f376cc44493c0c15ba3c45b56",
+    "TTD": "56d874e0784a1e777fd6e69d61fe3b95ae1909fad875c84afe8d0d5d39c9f217",
+    "VT": "4c7ff8d9008d8a4ad271b70a1413a7c62197ad64122c6d714fcb35b959579cce",
+}
+_C2_ACCEPTED_FINGERPRINTS = {
+    ("ACN", "SHORT"): "tradier-matrix-c2-20260725:c2c268d17c9c7f93d5a847b8a80993b722324a9916830068f4e287365eda4676",
+    ("LAC", "SHORT"): "tradier-matrix-c2-20260725:1e3944ce0db63fb24c1c89a585f2409358bfc59240f310cf38db91caa7b94de0",
+    ("MU", "LONG"): "tradier-matrix-c2-20260725:4b0d58d6475255bea62e6551ff4a52d0c5e97f3d695ace28f5af57adaf781c51",
+    ("NVDA", "LONG"): "tradier-matrix-c2-20260725:1b934d66018a2cb2ce32bd4d68fb679e4d96e84bc3c65a27be7f514d667060f3",
+    ("TTD", "SHORT"): "tradier-matrix-c2-20260725:a5ebc926259152654adb79cca58b9149da4429d05a33a0a18a41caa2dd0773a7",
+    ("VT", "LONG"): "tradier-matrix-c2-20260725:f5f784d02c008a5a43eb56bdca13a5a0ea93367f6df0754824eca73a80b58cf0",
+}
 
 
 def _matrix_process_source_signature():
-    """Identity of code loaded by this worker (NPZs are checked per symbol)."""
+    """Content identity of code loaded by this worker.
+
+    Mac and S1 are continuously synchronized.  A byte-identical rsync may
+    replace a file or normalize its mtime while an exact run is active; mtime
+    is therefore not executable identity.  Hashing bytes still fails closed on
+    every real source mutation without discarding valid work after metadata-only
+    synchronization.
+    """
     out = []
-    for rel in MATRIX_CONTRACT_FILES:
+    # Build this from the live component lists rather than the import-time
+    # convenience constant. Tests, staged cutovers, and rented workers may
+    # intentionally supply a different orchestration slice.
+    files = list(
+        dict.fromkeys(
+            MATRIX_CONTRACT_FILES
+            + list(C5_ADDITIONAL_CONTRACT_FILES)
+            + MATRIX_ORCHESTRATION_FILES
+        )
+    )
+    for rel in files:
         path = SBX / rel
         try:
-            stat = path.stat()
-            out.append((rel, stat.st_size, stat.st_mtime_ns))
+            payload = path.read_bytes()
+            out.append((rel, len(payload), hashlib.sha256(payload).hexdigest()))
         except OSError:
-            out.append((rel, -1, -1))
+            out.append((rel, -1, "ABSENT"))
     return tuple(out)
 
 
@@ -291,7 +370,13 @@ def stamp():
 
 def _matrix_contract_signature(sym):
     """Cheap cache key that changes whenever a contract input changes on disk."""
-    paths = [SBX / rel for rel in MATRIX_CONTRACT_FILES]
+    paths = [
+        SBX / rel
+        for rel in (
+            MATRIX_CONTRACT_FILES + list(C5_ADDITIONAL_CONTRACT_FILES)
+        )
+    ]
+    paths.append(MATRIX_RECIPE_DEPENDENCY_FILE)
     paths.append(MATRIX_NPZ_DIR / f"{sym.upper()}.npz")
     signature = []
     for path in paths:
@@ -303,21 +388,59 @@ def _matrix_contract_signature(sym):
     return tuple(signature)
 
 
+def _matrix_activation_dependency_contract():
+    """Canonical executable dependency slice; descriptions do not affect identity."""
+    try:
+        payload = json.loads(MATRIX_RECIPE_DEPENDENCY_FILE.read_text())
+        rows = payload.get("paths", [])
+        contract = {
+            str(row["param"]): sorted(
+                str(dep)
+                for dep in (row.get("activation_dependencies") or [])
+                if not str(dep).startswith("CONTRACT_")
+            )
+            for row in rows
+            if isinstance(row, dict) and row.get("param")
+        }
+        return json.dumps(
+            contract, sort_keys=True, separators=(",", ":")
+        ).encode()
+    except (OSError, json.JSONDecodeError, TypeError):
+        return b"<ABSENT_OR_INVALID_ACTIVATION_DEPENDENCIES>"
+
+
 @lru_cache(maxsize=256)
 def _matrix_contract_fingerprint_cached(sym, side, signature):
     """Hash a stable input snapshot; ``signature`` invalidates the process cache."""
     del signature  # used only as the lru key
+    if MATRIX_CONTRACT_VERSION == C5_MATRIX_CONTRACT_VERSION:
+        npz = MATRIX_NPZ_DIR / f"{sym.upper()}.npz"
+        if not npz.is_file():
+            raise FileNotFoundError(
+                f"c5 frozen NPZ is required for {sym.upper()}: {npz}"
+            )
+        return c5_contract_fingerprint(
+            SBX,
+            sym,
+            side,
+            MATRIX_CONTRACT_FILES,
+            npz_sha256=hashlib.sha256(npz.read_bytes()).hexdigest(),
+        )
     h = hashlib.sha256()
     h.update(
         f"{MATRIX_CONTRACT_VERSION}|{sym.upper()}|{side.upper()}|"
-        f"end_exclusive={MATRIX_END_DATE}".encode()
+        f"end_exclusive={MATRIX_END_DATE}|recipe={MATRIX_RECIPE_VERSION}".encode()
     )
+    h.update(_matrix_activation_dependency_contract())
     for rel in MATRIX_CONTRACT_FILES:
         path = SBX / rel
         h.update(rel.encode())
         h.update(path.read_bytes() if path.exists() else b"<ABSENT>")
     npz = MATRIX_NPZ_DIR / f"{sym.upper()}.npz"
-    h.update(str(npz).encode())
+    # Bind the logical artifact, not an installation-specific absolute path.
+    # The same immutable NPZ and exact code must identify the same result on a
+    # rented worker, S1, or a developer machine.
+    h.update(f"matrix_npz/{sym.upper()}.npz".encode())
     h.update(npz.read_bytes() if npz.exists() else b"<ABSENT>")
     return f"{MATRIX_CONTRACT_VERSION}:{h.hexdigest()}"
 
@@ -332,6 +455,47 @@ def matrix_contract_fingerprint(sym, side):
     return _matrix_contract_fingerprint_cached(
         sym.upper(), side.upper(), _matrix_contract_signature(sym)
     )
+
+
+@lru_cache(maxsize=256)
+def _c2_accepted_inputs_match(sym, signature):
+    """Verify that a legacy c2 receipt still names today's exact inputs."""
+    del signature
+    expected_npz = _C2_ACCEPTED_NPZ_SHA256.get(sym.upper())
+    if not expected_npz:
+        return False
+    for rel, expected in _C2_ACCEPTED_SOURCE_SHA256.items():
+        path = SBX / rel
+        if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            return False
+    npz = MATRIX_NPZ_DIR / f"{sym.upper()}.npz"
+    return (
+        npz.exists()
+        and hashlib.sha256(npz.read_bytes()).hexdigest() == expected_npz
+    )
+
+
+def matrix_contract_fingerprints(sym, side):
+    """Return every fingerprint admissible for the current exact inputs.
+
+    The first value is the portable c3 execution fingerprint used for new
+    rows.  A vetted c2 fingerprint is also returned only when its complete
+    exact source/NPZ manifest still matches.  Reporting/orchestration edits
+    therefore neither erase valid evidence nor weaken engine-drift checks.
+    """
+    sym, side = sym.upper(), side.upper()
+    out = {matrix_contract_fingerprint(sym, side)}
+    if MATRIX_CONTRACT_VERSION == C5_MATRIX_CONTRACT_VERSION:
+        return out
+    legacy = _C2_ACCEPTED_FINGERPRINTS.get((sym, side))
+    if legacy and _c2_accepted_inputs_match(sym, _matrix_contract_signature(sym)):
+        out.add(legacy)
+    return out
+
+
+def matrix_contract_matches(actual, sym, side):
+    """Whether ``actual`` is valid evidence for today's exact execution inputs."""
+    return bool(actual) and actual in matrix_contract_fingerprints(sym, side)
 
 
 def parse_v8_result(path):
@@ -354,7 +518,15 @@ def parse_v8_result(path):
     return out
 
 
-def matrix_run_audit(sym, side, trades, result, contract_fingerprint=None):
+def matrix_run_audit(
+    sym,
+    side,
+    trades,
+    result,
+    contract_fingerprint=None,
+    all_trades=None,
+    allow_no_real_close_control=False,
+):
     """Fail closed on every structural condition needed for a truthful matrix row."""
     from backtest_data_contract import audit_ladder_result, audit_npz
 
@@ -381,9 +553,20 @@ def matrix_run_audit(sym, side, trades, result, contract_fingerprint=None):
     no_real_close = int(float(result.get("real_closes", 0) or 0)) < 1
     if no_real_close:
         reasons.append("no real close: exit/re-entry lifecycle was not exercised")
-    if int(float(result.get("reentry_pending", 0) or 0)) != 0:
-        reasons.append("mandatory re-entry remains pending at end of run")
-        blocking.append("mandatory re-entry remains pending at end of run")
+    terminal_reentry_pending = int(
+        float(result.get("reentry_pending", 0) or 0)
+    )
+    terminal_reclaim_pending = int(
+        float(result.get("reclaim_pending", 0) or 0)
+    )
+    if terminal_reentry_pending:
+        reasons.append(
+            "mandatory re-entry is right-censored at the fixed end of data"
+        )
+    if terminal_reclaim_pending:
+        reasons.append(
+            "mandatory reclaim obligation is right-censored at the fixed end of data"
+        )
     if int(float(result.get("reentry_violations", 0) or 0)) != 0:
         reasons.append("mandatory re-entry crossed its permitted overshoot")
         blocking.append("mandatory re-entry crossed its permitted overshoot")
@@ -413,6 +596,26 @@ def matrix_run_audit(sym, side, trades, result, contract_fingerprint=None):
         # A clamp is a red result characteristic and often the very bug a knob must repair.
         # Preserve the row for matrix search, but never call it clean/promotable.
         reasons.append("capacity clamps or sub-90% requested/fill ratio observed")
+    if MATRIX_CONTRACT_VERSION == C5_MATRIX_CONTRACT_VERSION:
+        from c5_matrix_safety import audit_c5_matrix_safety
+
+        c5_safety = audit_c5_matrix_safety(
+            all_trades if all_trades is not None else trades,
+            result,
+            intended_side=side,
+            capacity_usd=16000.0,
+            # A fixed-window backtest can end after a valid exit but before the
+            # next permitted re-entry.  That is ordinary right censoring, not a
+            # forgotten obligation.  It remains acceptable only when the
+            # engine reports zero overshoot violations; live violations still
+            # fail immediately above and in c5_matrix_safety.
+            allow_terminal_pending=True,
+        )
+        if not c5_safety["pass"]:
+            reasons.extend(c5_safety["reasons"])
+            blocking.extend(c5_safety["reasons"])
+    else:
+        c5_safety = None
     status = (
         "FAIL"
         if not data.valid or not structural.get("valid") or blocking
@@ -422,6 +625,24 @@ def matrix_run_audit(sym, side, trades, result, contract_fingerprint=None):
             else ("INCOMPLETE_NO_REAL_CLOSE" if no_real_close else "PASS")
         )
     )
+    if MATRIX_CONTRACT_VERSION == C5_MATRIX_CONTRACT_VERSION and (
+        (no_real_close and not allow_no_real_close_control) or has_capacity_clamps
+    ):
+        status = "FAIL"
+        blocking.append(
+            "c5 requires a real close and unclamped >=90% fill lifecycle"
+        )
+    elif (
+        MATRIX_CONTRACT_VERSION == C5_MATRIX_CONTRACT_VERSION
+        and no_real_close
+        and allow_no_real_close_control
+        and not blocking
+    ):
+        # The ladder-only baseline is a comparison control, not a candidate.
+        # Requiring that control to exercise an exit is circular: it prevents
+        # the exit-search matrix from ever testing the first exit. Candidates
+        # still fail closed on zero real closes via the default argument.
+        status = "PASS_CONTROL_NO_CLOSE"
     audit = {
         "status": status,
         "contract_version": MATRIX_CONTRACT_VERSION,
@@ -442,10 +663,18 @@ def matrix_run_audit(sym, side, trades, result, contract_fingerprint=None):
         "structural_result_contract": structural,
         "capacity_respected": capacity_respected,
         "has_capacity_clamps": has_capacity_clamps,
+        "allow_no_real_close_control": bool(allow_no_real_close_control),
+        "terminal_right_censored": bool(
+            (terminal_reentry_pending or terminal_reclaim_pending)
+            and int(float(result.get("reentry_violations", 0) or 0)) == 0
+        ),
+        "c5_safety": c5_safety,
         "result": result,
         "reasons": reasons,
         "code_stamp": stamp(),
-        "trade_fingerprint": prs.trades_fingerprint(trades),
+        "trade_fingerprint": prs.trades_fingerprint(
+            trades, contract_version=MATRIX_CONTRACT_VERSION
+        ),
     }
     return audit
 
@@ -513,7 +742,7 @@ def sym_years_and_bh(sym, start):
     import numpy as np
     p = (
         MATRIX_NPZ_DIR / f"{sym}.npz"
-        if CAMPAIGN.startswith("stocks_repaired_20260725_c2")
+        if CAMPAIGN == C5_MATRIX_CAMPAIGN
         else SBX / "backtest_v8" / "indicators" / f"{sym}.npz"
     )
     try:
@@ -522,7 +751,7 @@ def sym_years_and_bh(sym, start):
         close = z["close_5m"] if "close_5m" in z.files else z["close"]
         t0 = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()
         mask = (ts >= t0) & (close > 0)
-        if CAMPAIGN.startswith("stocks_repaired_20260725_c2"):
+        if CAMPAIGN == C5_MATRIX_CAMPAIGN:
             end_ts = datetime.strptime(MATRIX_END_DATE, "%Y-%m-%d").replace(
                 tzinfo=timezone.utc
             ).timestamp()
@@ -560,6 +789,22 @@ def artifact_stamp(cell_tag, sym, fallback):
     return "cache-prestamp|" + fallback
 
 
+def cached_override_matches(cell_dir, sym, requested):
+    """True only when a cached exact run used the requested effective override.
+
+    A code+NPZ fingerprint cannot distinguish two parameter recipes executed
+    under the same tag. Reusing such a cache silently makes changed knobs
+    return identical numbers. Compare parsed mappings (not JSON formatting)
+    and fail closed on missing or malformed provenance.
+    """
+    path = Path(cell_dir) / f"override__{sym}.json"
+    try:
+        prior = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return isinstance(prior, dict) and prior == dict(requested)
+
+
 # NOT batched on purpose (measured 2026-07-21): running 4 symbols in ONE engine invocation
 # costs ~29min vs ~36.7min for 4 single-symbol runs — only ~20% saved, at 1.4GB RSS vs 632MB.
 # And it is not equivalent: one invocation shares capital, position slots and cross-symbol
@@ -573,12 +818,15 @@ def run_symbol(
     min_avail=8000,
     side=None,
     require_matrix_contract=False,
+    allow_no_real_close_control=False,
 ):
     """One faithful Tier-2 engine run.
 
     The repaired matrix lane passes ``side`` and ``require_matrix_contract=True``.  That mode
     seeds the B&H floor, prohibits the opposite side, validates current NPZ causality and
-    refuses caches/results without a complete real-close/re-entry lifecycle.
+    refuses candidate caches/results without a complete real-close/re-entry
+    lifecycle. ``allow_no_real_close_control`` is reserved for the isolated
+    ladder-only comparison baseline.
     """
     side = str(side or "").upper()
     if side and side not in ("LONG", "SHORT"):
@@ -600,11 +848,22 @@ def run_symbol(
     if require_matrix_contract and jsonl.exists():
         prior = load_matrix_run_audit(cell_tag, sym)
         expected_fp = run_contract_fp
-        if not prior or prior.get("contract_fingerprint") != expected_fp:
-            # Preserve, but never reuse, a cache from another code/NPZ contract.  The old
-            # runner reused identical tags after source repairs and silently relabelled stale
-            # trades as current.  PID+nanosecond suffix keeps concurrent evidence recoverable.
-            suffix = f".contract_mismatch.{os.getpid()}.{time.time_ns()}"
+        override_matches = cached_override_matches(cell_dir, sym, overrides)
+        if (
+            not prior
+            or prior.get("contract_fingerprint") != expected_fp
+            or not override_matches
+        ):
+            # Preserve, but never reuse, a cache from another code/NPZ/override
+            # contract. The old runner reused identical tags after source or
+            # recipe changes and silently relabelled stale trades as current.
+            # PID+nanosecond suffix keeps concurrent evidence recoverable.
+            mismatch = (
+                "contract"
+                if not prior or prior.get("contract_fingerprint") != expected_fp
+                else "override"
+            )
+            suffix = f".{mismatch}_mismatch.{os.getpid()}.{time.time_ns()}"
             for stale in (
                 jsonl,
                 result_file,
@@ -627,6 +886,7 @@ def run_symbol(
                     "V8_RESULT_FILE": str(result_file)})
         if require_matrix_contract:
             env["V8_BACKTEST_END_DATE"] = MATRIX_END_DATE
+            env["V8_MATRIX_CONTRACT_VERSION"] = MATRIX_CONTRACT_VERSION
         if side:
             env.update({
                 "V8_LADDER_ONLY_SIDE": side.lower(),
@@ -642,7 +902,19 @@ def run_symbol(
                "--start", START, "--capital", "10000.0", "--symbols", sym]
         if require_matrix_contract:
             cmd += ["--npz-dir", str(MATRIX_NPZ_DIR)]
-        rc = subprocess.run(cmd, cwd=str(SBX), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+        # Keep the engine's actual stdout/stderr beside the cell receipt.  A
+        # previous DEVNULL sink reduced every engine crash to the useless text
+        # ``rc=1 no JSONL`` and left a 24/7 fleet retrying the same fault.  The
+        # log is diagnostic only and is never accepted as result evidence.
+        engine_log = cell_dir / f"engine__{sym}.log"
+        with engine_log.open("wb") as diagnostic:
+            rc = subprocess.run(
+                cmd,
+                cwd=str(SBX),
+                env=env,
+                stdout=diagnostic,
+                stderr=subprocess.STDOUT,
+            ).returncode
         if jsonl.exists() or rc == 0:
             (cell_dir / f"stamp__{sym}.txt").write_text(stamp())
         if not jsonl.exists():
@@ -689,6 +961,8 @@ def run_symbol(
         audit = matrix_run_audit(
             sym, side, intended, parse_v8_result(result_file),
             contract_fingerprint=run_contract_fp,
+            all_trades=by_side["LONG"] + by_side["SHORT"],
+            allow_no_real_close_control=allow_no_real_close_control,
         )
         audit_path = cell_dir / f"audit__{sym}.json"
         audit_path.write_text(json.dumps(audit, sort_keys=True, indent=2) + "\n")
@@ -742,16 +1016,73 @@ def capital_key_metrics(
     capital=10000.0,
     benchmark_deployed=2000.0,
 ):
-    """Capital-weighted, side-isolated metrics for repaired campaigns.
+    """Side-isolated metrics with equal $2k strategy/B&H capital.
 
-    The legacy matrix summed per-trade percentages and compared that with a 100%-notional
-    price B&H return.  That mixed position sizes and ignored partial-close dollars.  Here the
-    engine's realised/MTM ``pnl_usd`` is divided by the same $10k accounting capital, while
-    B&H deploys exactly $2k as required by the capital contract.
+    Exact-engine fills intentionally vary from the $2k seed up to the ladder
+    capacity.  Comparing their raw dollars with a $2k B&H leg rewards leverage,
+    not path quality.  Preserve the realised dollar P&L and relative sizing, but
+    scale the complete ledger so its arithmetic mean deployed notional per
+    completed trade is exactly ``benchmark_deployed``.  B&H deploys the same
+    amount, so its percentage return is the side-aware price return less one
+    round-trip cost.
+
+    ``capital`` remains in the signature for caller compatibility; it is not a
+    performance denominator under this accounting contract.
     """
+    del capital
     months = years * 12.0
     pnl_usd = sum(float(t.get("pnl_usd", 0) or 0) for t in trades)
-    gain = pnl_usd / capital * 100.0 if capital else 0.0
+    deployed_by_trade = []
+    for trade in trades:
+        open_events = [
+            event
+            for event in (trade.get("action_events") or [])
+            if str(event.get("action") or "").upper()
+            in {
+                "OPEN",
+                "QUICK_OPEN",
+                "HEDGE_OPEN",
+                "AUGMENT",
+                "QUICK_AUGMENT",
+                "HEDGE_AUGMENT",
+                "REENTER",
+                "QUICK_REENTER",
+                "REENTRY",
+                "QUICK_REENTRY",
+            }
+        ]
+        deployed = sum(
+            abs(
+                float(event.get("executed_qty", 0) or 0)
+                * float(event.get("price", 0) or 0)
+            )
+            for event in open_events
+        )
+        if deployed <= 0:
+            deployed = abs(
+                float(trade.get("executed_open_qty", 0) or 0)
+                * float(trade.get("entry_price", 0) or 0)
+            )
+        if deployed <= 0 and abs(float(trade.get("pnl_pct", 0) or 0)) > 1e-12:
+            # Historical exact c1-c4 ledgers predate explicit quantity/action
+            # receipts but persist both dollar and percentage P&L from the same
+            # entry-value denominator. Reconstruct that denominator exactly.
+            deployed = abs(
+                float(trade.get("pnl_usd", 0) or 0)
+                / (float(trade["pnl_pct"]) / 100.0)
+            )
+        if deployed <= 0:
+            raise ValueError(
+                "capital accounting requires a positive executed entry notional "
+                "for every completed trade"
+            )
+        deployed_by_trade.append(deployed)
+    if not deployed_by_trade:
+        raise ValueError("capital accounting requires at least one completed trade")
+    average_deployed = sum(deployed_by_trade) / len(deployed_by_trade)
+    normalization_factor = benchmark_deployed / average_deployed
+    normalized_pnl_usd = pnl_usd * normalization_factor
+    gain = normalized_pnl_usd / benchmark_deployed * 100.0
     raw_bh = (
         bh_long_price_pct
         if side.upper() == "LONG"
@@ -761,31 +1092,49 @@ def capital_key_metrics(
         (float(t.get("round_trip_cost_pct")) for t in trades if t.get("round_trip_cost_pct") is not None),
         0.06,
     )
-    deployed_frac = benchmark_deployed / capital if capital else 0.0
     bh = (
-        raw_bh * deployed_frac - rt_cost_pct * deployed_frac
+        raw_bh - rt_cost_pct
         if raw_bh is not None
         else None
     )
     gain_mo = gain / months if months else 0.0
     bh_mo = bh / months if bh is not None and months else None
-    pcts = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+    normalized_returns = [
+        float(trade.get("pnl_usd", 0) or 0) / average_deployed * 100.0
+        for trade in trades
+    ]
     tim_key = f"time_in_mkt_{side.lower()}_pct"
     tim = result.get(tim_key) if result else None
+    # Keep the computed C5 metrics at native float precision all the way into
+    # ``param_cells``.  Rounding here used to collapse genuinely different
+    # action schedules onto the same 4-decimal matrix result.  Presentation
+    # layers may format these values, but the evidence store must not discard
+    # information before collision/uniqueness checks run.
     return {
-        "pool_sharpe": (mg.pool_sharpe(pcts) if len(pcts) >= 2 else 0.0),
+        "pool_sharpe": (
+            mg.pool_sharpe(normalized_returns)
+            if len(normalized_returns) >= 2
+            else 0.0
+        ),
+        "max_dd_pct": _max_dd_pct(normalized_returns),
         "trades": len(trades),
-        "acc_gain_pct": round(gain, 4),
-        "gain_per_mo": round(gain_mo, 4),
-        "bh_pct": (round(bh, 4) if bh is not None else None),
-        "bh_per_mo": (round(bh_mo, 4) if bh_mo is not None else None),
+        "acc_gain_pct": gain,
+        "gain_per_mo": gain_mo,
+        "bh_pct": bh,
+        "bh_per_mo": bh_mo,
         "delta_gain_mo_vs_bh": (
-            round(gain_mo - bh_mo, 4) if bh_mo is not None else None
+            gain_mo - bh_mo if bh_mo is not None else None
         ),
-        "time_in_mkt_pct": (round(float(tim), 4) if tim is not None else None),
+        "time_in_mkt_pct": (float(tim) if tim is not None else None),
         "capture_vs_bh": (
-            round(gain / bh, 4) if bh is not None and abs(bh) > 1e-12 else None
+            gain / bh if bh is not None and abs(bh) > 1e-12 else None
         ),
+        "capital_accounting_version": CAPITAL_ACCOUNTING_VERSION,
+        "benchmark_deployed_usd": float(benchmark_deployed),
+        "average_deployed_usd": average_deployed,
+        "capital_normalization_factor": normalization_factor,
+        "raw_pnl_usd": pnl_usd,
+        "normalized_pnl_usd": normalized_pnl_usd,
     }
 
 

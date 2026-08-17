@@ -1,0 +1,127 @@
+{
+  "date": "2026-03-16",
+  "time": "2026-03-16T21:25:56.475143+00:00",
+  "fear_greed": {
+    "value": 23,
+    "classification": "Extreme Fear",
+    "score": -0.54
+  },
+  "crypto_long": [
+    {
+      "symbol": "ZECUSDC",
+      "conviction": 0.826,
+      "direction": "LONG",
+      "avg_score": 0.826,
+      "n_sources": 1,
+      "n_mentions": 1,
+      "sources": [
+        "coingecko_trending"
+      ],
+      "reason": "Trending (score=0.88)"
+    },
+    {
+      "symbol": "PENGUUSDC",
+      "conviction": 0.686,
+      "direction": "LONG",
+      "avg_score": 0.686,
+      "n_sources": 1,
+      "n_mentions": 1,
+      "sources": [
+        "coingecko_trending"
+      ],
+      "reason": "Trending (score=0.74)"
+    },
+    {
+      "symbol": "SEIUSDT",
+      "conviction": 0.673,
+      "direction": "LONG",
+      "avg_score": 0.673,
+      "n_sources": 1,
+      "n_mentions": 1,
+      "sources": [
+        "finnhub_Cointelegraph"
+      ],
+      "reason": "Ironlight raises $21M to scale marketplace for tokenized securities"
+    },
+    {
+      "symbol": "ADAUSDC",
+      "conviction": 0.637,
+      "direction": "LONG",
+      "avg_score": 0.637,
+      "n_sources": 1,
+      "n_mentions": 1,
+      "sources": [
+        "finnhub_CoinDesk"
+      ],
+      "reason": "Bitcoin tops $74,000 as ether, sol, ada gains as much as 6% in Monday surge"
+    }
+  ],
+  "crypto_short": [
+    {
+      "symbol": "AAVEUSDC",
+      "conviction": 0.886,
+      "direction": "SHORT",
+      "avg_score": -0.886,
+      "n_sources": 1,
+      "n_mentions": 1,
+      "sources": [
+        "finnhub_Cointelegraph"
+      ],
+      "reason": "How a 2.85% price error triggered $27M in liquidations on Aave"
+    }
+  ],
+  "stock_long": [
+    {
+      "symbol": "HON",
+      "conviction": 0.584,
+      "direction": "LONG",
+      "avg_score": 0.584,
+      "n_sources": 1,
+      "n_mentions": 3,
+      "sources": [
+        "finnhub_co_HON"
+      ],
+      "reason": "Morgan Stanley Lifts Price Target on Honeywell International Inc. (HON) to $245, Reiterates Equal Weight Rating"
+    },
+    {
+      "symbol": "V",
+      "conviction": 0.581,
+      "direction": "LONG",
+      "avg_score": 0.581,
+      "n_sources": 1,
+      "n_mentions": 10,
+      "sources": [
+        "finnhub_co_V"
+      ],
+      "reason": "Visa's Token Strategy: A Quiet Shift Powering Future Payments"
+    },
+    {
+      "symbol": "USO",
+      "conviction": 0.573,
+      "direction": "LONG",
+      "avg_score": 0.573,
+      "n_sources": 1,
+      "n_mentions": 2,
+      "sources": [
+        "rss_reddit_wsb"
+      ],
+      "reason": "10K USO puts for peace"
+    }
+  ],
+  "stock_short": [],
+  "total_articles": 313,
+  "trending": [
+    "ZECUSDC",
+    "TAOUSDT",
+    "PENGUUSDC",
+    "SOLUSDC",
+    "BTCUSDC",
+    "ETHUSDC",
+    "HYPEUSDT",
+    "FETUSDT",
+    "DOTUSDT",
+    "1000PEPEUSDC"
+  ],
+  "picks_count": 8,
+  "injected": 12
+}

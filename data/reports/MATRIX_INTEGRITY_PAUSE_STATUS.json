@@ -1,0 +1,12 @@
+{
+  "discovered_processes": [],
+  "live_registered_processes_after": [],
+  "matrix_write_admission_allowed": false,
+  "new_admission_allowed": false,
+  "observed_at_epoch": 1785714895.916013,
+  "reason": "PROHIBITED_ZERO_OR_DUPLICATE_SWITCH_MATRIX_CELL",
+  "research_discovery_admission_allowed": true,
+  "schema": "matrix-integrity-pause-status-v1",
+  "status": "PASS_PAUSED",
+  "terminated_processes": []
+}

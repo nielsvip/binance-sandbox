@@ -1,0 +1,21 @@
+{
+  "schema": "S1_V8_REPLAY_QUEUE_V1",
+  "created_utc": "2026-08-04T16:00:00Z",
+  "execution_host_required": "S1",
+  "matrix_only": true,
+  "live_config_write": false,
+  "canonical_exact_write": false,
+  "queue": [
+    "USAR_LONG", "PSX_LONG", "ACN_SHORT", "TTD_SHORT", "EOG_LONG",
+    "BG_LONG", "DAR_LONG", "NVDA_LONG", "VT_LONG", "LAC_SHORT",
+    "MU_LONG", "CIBR_LONG", "A_LONG"
+  ],
+  "status": "COUPLED_RECOVERY_COMPLETE_EXACT_V8_PENDING",
+  "blocker": "Planner hash admission was repaired and the bounded recovery completed, but no fresh all-fold strict survivor exists: USAR_LONG 0 final survivors (1 TRAIN-only), ACN_SHORT 0 final survivors. Exact V8 remains correctly blocked.",
+  "recovery_results": {
+    "USAR_LONG": {"packs": 3, "train_strict_survivors": 1, "untouched_final_strict_survivors": 0, "status": "REJECTED_STRICT_FOLD"},
+    "ACN_SHORT": {"packs": 3, "train_strict_survivors": 0, "untouched_final_strict_survivors": 0, "status": "REJECTED_STRICT_FOLD"}
+  },
+  "required_runner": "tools/run_lifecycle_combo_beam.py followed by exact V8 replay adapter",
+  "source_queue": "data/reports/PATH_COMBINATION_10X_QUEUE_20260804.json"
+}

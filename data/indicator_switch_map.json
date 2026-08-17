@@ -1,0 +1,2676 @@
+{
+  "dc_high_1h": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    }
+  ],
+  "wt_velocity_15m": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    },
+    {
+      "switch": "WT_WAVE_PHASE_EXIT_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2775
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2779
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2780
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2784
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2787
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2788
+      ]
+    },
+    {
+      "switch": "WT_ALIGN_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2795
+      ]
+    }
+  ],
+  "dc_low_4h": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "CT_WT_VELOCITY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1864
+      ]
+    },
+    {
+      "switch": "CT_DC_CROSSOVER_SKIP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1868
+      ]
+    }
+  ],
+  "dc_low_15m": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    }
+  ],
+  "dc_low_1h": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    }
+  ],
+  "dc_high_15m": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    }
+  ],
+  "wt_velocity_1h": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "CT_WT_VELOCITY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1864
+      ]
+    },
+    {
+      "switch": "STDEV_BB_RZ_SUPPRESS_PCTB",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2566
+      ]
+    },
+    {
+      "switch": "WT_VEL_DECAY_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2579
+      ]
+    },
+    {
+      "switch": "WT_VEL_DECAY_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2580
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2779
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2780
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2784
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2787
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2788
+      ]
+    },
+    {
+      "switch": "WT_ALIGN_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2795
+      ]
+    },
+    {
+      "switch": "WT_ALIGN_EXIT_MIN",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2796
+      ]
+    },
+    {
+      "switch": "WT_COMP_DELTA_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2806
+      ]
+    },
+    {
+      "switch": "DC_POS_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2809
+      ]
+    },
+    {
+      "switch": "DC_POS_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2812
+      ]
+    },
+    {
+      "switch": "WT_VEL_FLOOR_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2815
+      ]
+    },
+    {
+      "switch": "WT_VEL_FLOOR_EXIT_LONG_MAX",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2817
+      ]
+    },
+    {
+      "switch": "KD_WT1H_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2820
+      ]
+    },
+    {
+      "switch": "KD_WT1H_EXIT_OVERBOUGHT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2822
+      ]
+    },
+    {
+      "switch": "K_LOWER_HIGH_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2825
+      ]
+    },
+    {
+      "switch": "K_LOWER_HIGH_LTF_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2826
+      ]
+    },
+    {
+      "switch": "HEDGE_WT_VEL_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3904
+      ]
+    },
+    {
+      "switch": "HEDGE_DETERIORATING_GAIN_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3905
+      ]
+    },
+    {
+      "switch": "HEDGE_DETERIORATING_GAIN_WINDOW_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3909
+      ]
+    }
+  ],
+  "dc_high_4h": [
+    {
+      "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1178
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "CT_WT_VELOCITY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1864
+      ]
+    },
+    {
+      "switch": "CT_DC_CROSSOVER_SKIP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1868
+      ]
+    }
+  ],
+  "wt2_4h": [
+    {
+      "switch": "REENTRY_WT15M_CROSS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1235
+      ]
+    },
+    {
+      "switch": "REENTRY_PULL1_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1284
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "STOCH_CROSS_ENTRY_TRADIER",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2031
+      ]
+    },
+    {
+      "switch": "VOLUME_CONFIRMATION_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2051
+      ]
+    },
+    {
+      "switch": "EXIT_SCORER_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2643
+      ]
+    },
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    },
+    {
+      "switch": "BTC_TREND_COOLDOWN_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2910
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4069
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4070
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4080
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4081
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4082
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_MIN_JUMP",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4083
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    }
+  ],
+  "wt1_4h": [
+    {
+      "switch": "REENTRY_WT15M_CROSS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1235
+      ]
+    },
+    {
+      "switch": "REENTRY_PULL1_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1284
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "STOCH_CROSS_ENTRY_TRADIER",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2031
+      ]
+    },
+    {
+      "switch": "VOLUME_CONFIRMATION_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2051
+      ]
+    },
+    {
+      "switch": "EXIT_SCORER_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2643
+      ]
+    },
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    },
+    {
+      "switch": "BTC_TREND_COOLDOWN_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2910
+      ]
+    },
+    {
+      "switch": "HEDGE_WT_KILL_CONFIRM_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3879
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3881
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_CONTINUE_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3885
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3887
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4069
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4070
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4080
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4081
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4082
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_MIN_JUMP",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4083
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    }
+  ],
+  "wt1_D": [
+    {
+      "switch": "REENTRY_PULL1_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1284
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "CT_WT_VELOCITY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1864
+      ]
+    },
+    {
+      "switch": "VOLUME_CONFIRMATION_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2051
+      ]
+    },
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    },
+    {
+      "switch": "BTC_TREND_COOLDOWN_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2910
+      ]
+    },
+    {
+      "switch": "HEDGE_WT_KILL_CONFIRM_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3879
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3881
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_CONTINUE_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3885
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3887
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_ABS_KILL_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3944
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4069
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4070
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4080
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4081
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4082
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_MIN_JUMP",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4083
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_INTERVAL",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4084
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    },
+    {
+      "switch": "VOL_TARGET_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4114
+      ]
+    }
+  ],
+  "wt2_D": [
+    {
+      "switch": "REENTRY_PULL1_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1284
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "CT_WT_VELOCITY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1864
+      ]
+    },
+    {
+      "switch": "VOLUME_CONFIRMATION_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2051
+      ]
+    },
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    },
+    {
+      "switch": "BTC_TREND_COOLDOWN_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2910
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_ABS_KILL_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3944
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4069
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4070
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4080
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4081
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4082
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_MIN_JUMP",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4083
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_INTERVAL",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4084
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    },
+    {
+      "switch": "VOL_TARGET_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4114
+      ]
+    }
+  ],
+  "stoch_k_4h": [
+    {
+      "switch": "REENTRY_B_KZONE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1346
+      ]
+    },
+    {
+      "switch": "K_ZONE_LONG_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1348
+      ]
+    },
+    {
+      "switch": "K_ZONE_SHORT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1350
+      ]
+    },
+    {
+      "switch": "FUNDING_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3149
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3153
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_MIN_CHANGE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3154
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_MIN_PRICE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3155
+      ]
+    }
+  ],
+  "stoch_d_4h": [
+    {
+      "switch": "REENTRY_B_KZONE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1346
+      ]
+    },
+    {
+      "switch": "K_ZONE_LONG_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1348
+      ]
+    },
+    {
+      "switch": "K_ZONE_SHORT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1350
+      ]
+    }
+  ],
+  "mfi_D": [
+    {
+      "switch": "FH_MOMENTUM_MIN_MOVE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1375
+      ]
+    },
+    {
+      "switch": "REENTRY_B_MFI_D_OVERSOLD_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1382
+      ]
+    },
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "CT_WT_VELOCITY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1864
+      ]
+    },
+    {
+      "switch": "ABLATION_DISABLE_QUICK_ENTRY",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2057
+      ]
+    },
+    {
+      "switch": "ABLATION_DISABLE_REENTRY",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2060
+      ]
+    },
+    {
+      "switch": "TRADIER_ENTRY_SCORE_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2064
+      ]
+    },
+    {
+      "switch": "ENTRY_ZONE_K_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2071
+      ]
+    }
+  ],
+  "wt2_1h": [
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "SIMPLE_WT15M_EXIT_ONLY_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2519
+      ]
+    },
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    },
+    {
+      "switch": "BTC_TREND_COOLDOWN_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2910
+      ]
+    },
+    {
+      "switch": "HEDGE_WT_KILL_CONFIRM_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3879
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3881
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_CONTINUE_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3885
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3887
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3995
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3996
+      ]
+    },
+    {
+      "switch": "WT_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4007
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4069
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4070
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4080
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4081
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4082
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    }
+  ],
+  "wt1_1h": [
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "SIMPLE_WT15M_EXIT_ONLY_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2519
+      ]
+    },
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    },
+    {
+      "switch": "BTC_TREND_COOLDOWN_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2910
+      ]
+    },
+    {
+      "switch": "HEDGE_WT_KILL_CONFIRM_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3879
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3881
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_CONTINUE_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3885
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3887
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3995
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3996
+      ]
+    },
+    {
+      "switch": "WT_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4007
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4069
+      ]
+    },
+    {
+      "switch": "WINNER_PROTECT_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4070
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4080
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4081
+      ]
+    },
+    {
+      "switch": "DYNAMIC_SCORE_AUGMENT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4082
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    }
+  ],
+  "mfi_1h": [
+    {
+      "switch": "K3M_FLOOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1862
+      ]
+    },
+    {
+      "switch": "CT_WT_VELOCITY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1864
+      ]
+    },
+    {
+      "switch": "TRADIER_MFI_ENTRY_LONG_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2020
+      ]
+    },
+    {
+      "switch": "TRADIER_MFI_ENTRY_LONG_TRADIER",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2022
+      ]
+    },
+    {
+      "switch": "RSI_ENTRY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2024
+      ]
+    },
+    {
+      "switch": "RSI_ENTRY_MAX_LONG",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2027
+      ]
+    },
+    {
+      "switch": "RSI_ENTRY_MIN_SHORT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2029
+      ]
+    },
+    {
+      "switch": "STOCH_CROSS_ENTRY_TRADIER",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2031
+      ]
+    },
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "FUNDING_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3149
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3153
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_MIN_CHANGE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3154
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_MIN_PRICE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3155
+      ]
+    }
+  ],
+  "sma_200_4h": [
+    {
+      "switch": "HLR_RALLY_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1972
+      ]
+    },
+    {
+      "switch": "HLR_SMA_BAND_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1975
+      ]
+    },
+    {
+      "switch": "HLR_OFF_SMA_PTS_FRAC",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1976
+      ]
+    }
+  ],
+  "sma_200_1h": [
+    {
+      "switch": "HLR_RALLY_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1972
+      ]
+    },
+    {
+      "switch": "HLR_SMA_BAND_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1975
+      ]
+    },
+    {
+      "switch": "HLR_OFF_SMA_PTS_FRAC",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        1976
+      ]
+    }
+  ],
+  "rsi_1h": [
+    {
+      "switch": "RSI_EXIT_LONG_TRADIER",
+      "co_occurrence_count": 2,
+      "engine_lines": [
+        2693,
+        2694
+      ]
+    },
+    {
+      "switch": "RSI_EXIT_SHORT_TRADIER",
+      "co_occurrence_count": 2,
+      "engine_lines": [
+        2695,
+        2696
+      ]
+    },
+    {
+      "switch": "TRADIER_MFI_ENTRY_LONG_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2020
+      ]
+    },
+    {
+      "switch": "TRADIER_MFI_ENTRY_LONG_TRADIER",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2022
+      ]
+    },
+    {
+      "switch": "RSI_ENTRY_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2024
+      ]
+    },
+    {
+      "switch": "RSI_ENTRY_MAX_LONG",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2027
+      ]
+    },
+    {
+      "switch": "RSI_ENTRY_MIN_SHORT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2029
+      ]
+    },
+    {
+      "switch": "STOCH_CROSS_ENTRY_TRADIER",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2031
+      ]
+    },
+    {
+      "switch": "MI_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2682
+      ]
+    },
+    {
+      "switch": "TRADIER_RSI2_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2698
+      ]
+    },
+    {
+      "switch": "TRADIER_RSI2_EXIT_THRESHOLD_LONG",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2702
+      ]
+    }
+  ],
+  "wt_velocity_up_count": [
+    {
+      "switch": "DC_MOMENT_OPPOSE_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2129
+      ]
+    },
+    {
+      "switch": "WT_MTF_VEL_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2136
+      ]
+    },
+    {
+      "switch": "REENTRY_CROSS_FRESHNESS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2146
+      ]
+    }
+  ],
+  "wt_velocity_down_count": [
+    {
+      "switch": "WT_MTF_VEL_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2136
+      ]
+    },
+    {
+      "switch": "REENTRY_CROSS_FRESHNESS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2146
+      ]
+    }
+  ],
+  "bb_pct_b_1h": [
+    {
+      "switch": "RZ_BREAKOUT_ENTRY_ENABLED",
+      "co_occurrence_count": 2,
+      "engine_lines": [
+        2452,
+        3826
+      ]
+    },
+    {
+      "switch": "RZ_TOP_BB_THRESHOLD",
+      "co_occurrence_count": 2,
+      "engine_lines": [
+        2453,
+        3837
+      ]
+    },
+    {
+      "switch": "RZ_BOT_BB_THRESHOLD",
+      "co_occurrence_count": 2,
+      "engine_lines": [
+        2454,
+        3838
+      ]
+    },
+    {
+      "switch": "BREAKOUT_MULTI_LUNG_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2463
+      ]
+    },
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "FUNDING_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3149
+      ]
+    },
+    {
+      "switch": "RZ_BREAKOUT_NOLOSS_BAR_WINDOW",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3832
+      ]
+    },
+    {
+      "switch": "RZ_BREAKOUT_NOLOSS_MODE",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3842
+      ]
+    },
+    {
+      "switch": "RZ_BREAKOUT_NOLOSS_GUARD_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3844
+      ]
+    },
+    {
+      "switch": "RZ_BREAKOUT_NOLOSS_GUARD_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3845
+      ]
+    }
+  ],
+  "wt2_15m": [
+    {
+      "switch": "HIER_SIGNAL_MODE",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2511
+      ]
+    },
+    {
+      "switch": "SIMPLE_WT15M_EXIT_ONLY_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2519
+      ]
+    },
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "HEDGE_WT_KILL_CONFIRM_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3879
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3881
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_CONTINUE_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3885
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3887
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3995
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3996
+      ]
+    },
+    {
+      "switch": "WT_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4007
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    }
+  ],
+  "wt1_15m": [
+    {
+      "switch": "HIER_SIGNAL_MODE",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2511
+      ]
+    },
+    {
+      "switch": "SIMPLE_WT15M_EXIT_ONLY_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2519
+      ]
+    },
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "HEDGE_WT_KILL_CONFIRM_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3879
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3881
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_D_CONTINUE_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3885
+      ]
+    },
+    {
+      "switch": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3887
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3927
+      ]
+    },
+    {
+      "switch": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3928
+      ]
+    },
+    {
+      "switch": "WRONG_SIDE_DIV_LOOKBACK_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3950
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3995
+      ]
+    },
+    {
+      "switch": "ADAPTIVE_EXIT_TFS_GAIN_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3996
+      ]
+    },
+    {
+      "switch": "WT_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4007
+      ]
+    },
+    {
+      "switch": "ENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "REENTRY_SYMGATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4066
+      ]
+    },
+    {
+      "switch": "DC_BREAKOUT_FAILED_STOP_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4094
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    }
+  ],
+  "stoch_k_1h": [
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "FUNDING_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3149
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3153
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_MIN_CHANGE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3154
+      ]
+    }
+  ],
+  "stoch_d_1h": [
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    }
+  ],
+  "wt_velocity_4h": [
+    {
+      "switch": "WT_EXIT_USE_CROSS_EVENTS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2538
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2779
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2780
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2784
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2787
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2788
+      ]
+    },
+    {
+      "switch": "WT_ALIGN_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2795
+      ]
+    },
+    {
+      "switch": "WT_ALIGN_EXIT_MIN",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2796
+      ]
+    },
+    {
+      "switch": "HEDGE_DETERIORATING_GAIN_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3905
+      ]
+    },
+    {
+      "switch": "HEDGE_DETERIORATING_GAIN_WINDOW_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3909
+      ]
+    }
+  ],
+  "bb_pct_b_D": [
+    {
+      "switch": "STDEV_SUPPRESS_EARLY_EXIT",
+      "co_occurrence_count": 2,
+      "engine_lines": [
+        2564,
+        2589
+      ]
+    },
+    {
+      "switch": "STDEV_BB_RZ_SUPPRESS_PCTB",
+      "co_occurrence_count": 2,
+      "engine_lines": [
+        2566,
+        2591
+      ]
+    },
+    {
+      "switch": "WT_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2561
+      ]
+    },
+    {
+      "switch": "DELTA_EXIT_VEL_MIN_DECAY",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2562
+      ]
+    },
+    {
+      "switch": "WT_VEL_DECAY_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2580
+      ]
+    },
+    {
+      "switch": "STRUCTURAL_RANGE_SHIFT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2598
+      ]
+    }
+  ],
+  "wt_velocity_3m": [
+    {
+      "switch": "WT_WAVE_PHASE_EXIT_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2775
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2779
+      ]
+    },
+    {
+      "switch": "WT_SCORE_FLIP_EXIT_TF",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2780
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2784
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2787
+      ]
+    },
+    {
+      "switch": "WT_VEL_MTF_EXIT_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2788
+      ]
+    },
+    {
+      "switch": "WT_ALIGN_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2795
+      ]
+    }
+  ],
+  "stoch_k_D": [
+    {
+      "switch": "DC_POS_EXIT_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2812
+      ]
+    },
+    {
+      "switch": "WT_VEL_FLOOR_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2815
+      ]
+    },
+    {
+      "switch": "WT_VEL_FLOOR_EXIT_LONG_MAX",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2817
+      ]
+    },
+    {
+      "switch": "KD_WT1H_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2820
+      ]
+    },
+    {
+      "switch": "KD_WT1H_EXIT_OVERBOUGHT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2822
+      ]
+    },
+    {
+      "switch": "K_LOWER_HIGH_EXIT_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2825
+      ]
+    },
+    {
+      "switch": "K_LOWER_HIGH_LTF_THRESHOLD",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2826
+      ]
+    }
+  ],
+  "dc_low_D": [
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    }
+  ],
+  "dc_high_D": [
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    }
+  ],
+  "atr_D": [
+    {
+      "switch": "BTC_TREND_ATR_MULT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2907
+      ]
+    },
+    {
+      "switch": "BTC_TREND_HARD_LOSS_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2908
+      ]
+    },
+    {
+      "switch": "BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2909
+      ]
+    },
+    {
+      "switch": "BTC_TREND_COOLDOWN_BARS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        2910
+      ]
+    }
+  ],
+  "dc_high_3m": [
+    {
+      "switch": "BTC_FOLLOW_THROUGH_MIN_MOVE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3115
+      ]
+    },
+    {
+      "switch": "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3117
+      ]
+    }
+  ],
+  "dc_low_3m": [
+    {
+      "switch": "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3117
+      ]
+    }
+  ],
+  "mfi_4h": [
+    {
+      "switch": "FUNDING_GATE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3149
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3153
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_MIN_CHANGE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3154
+      ]
+    },
+    {
+      "switch": "OI_CONFIRM_MIN_PRICE_PCT",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3155
+      ]
+    },
+    {
+      "switch": "BTC_RZ_WT_DC_MULTIFACTOR",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        3157
+      ]
+    }
+  ],
+  "wt2_W": [
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    },
+    {
+      "switch": "VOL_TARGET_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4114
+      ]
+    }
+  ],
+  "wt1_W": [
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    },
+    {
+      "switch": "VOL_TARGET_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4114
+      ]
+    }
+  ],
+  "wt1_M": [
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    },
+    {
+      "switch": "VOL_TARGET_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4114
+      ]
+    }
+  ],
+  "wt2_M": [
+    {
+      "switch": "ALL_TF_BRAKE_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4096
+      ]
+    },
+    {
+      "switch": "ALL_TF_BRAKE_MIN_TFS",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4097
+      ]
+    },
+    {
+      "switch": "VOL_TARGET_ENABLED",
+      "co_occurrence_count": 1,
+      "engine_lines": [
+        4114
+      ]
+    }
+  ]
+}

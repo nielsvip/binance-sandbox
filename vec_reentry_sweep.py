@@ -102,7 +102,11 @@ def main():
     ap.add_argument("--min-trades", type=int, default=30)
     ap.add_argument("--db", default="")
     ap.add_argument("--npz-dir", default="")
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="vec_reentry_sweep.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
 
     symbols = CRYPTO_15 if args.mode == "crypto" else TRADIER_15
     t0 = time.time()

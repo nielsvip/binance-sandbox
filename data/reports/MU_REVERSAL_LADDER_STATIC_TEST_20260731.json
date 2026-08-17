@@ -1,0 +1,20 @@
+{
+  "schema": "MU_REVERSAL_LADDER_STATIC_TEST_V1",
+  "timestamp": "2026-07-31T23:48:00Z",
+  "tool": "tools/mu_reversal_ladder_campaign.py",
+  "py_compile": "PASS",
+  "short_state_machine_smoke": "PASS",
+  "long_state_machine_smoke": "PASS",
+  "capacity_clip_smoke": {
+    "requested_x": 10,
+    "base_unit_usd": 2000,
+    "capacity_usd": 16000,
+    "filled_x": 8,
+    "clamp_count": 1
+  },
+  "performance_claim": false,
+  "mu_npz_loaded": false,
+  "reason": "No valid MU.npz is mounted in this Mac workspace; do not treat static tests as market results.",
+  "matrix_write_performed": false,
+  "promotion_allowed": false
+}

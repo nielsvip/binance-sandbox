@@ -1,0 +1,3325 @@
+{
+  "_gainmo_meta": {
+    "n_disabled": 35,
+    "n_enabled": 171,
+    "n_unknown": 220,
+    "note": "gate: pool_sharpe<0 or gain/mo<=0 -> disabled (entries only); size_mult by gain/mo rank in [0.5,2.0]",
+    "ts": "2026-07-15T01:44:10Z"
+  },
+  "conviction_note": "2026-06-01 money-based conviction size_mult staged (crypto cap 8 / stock cap 40). NOT yet wired to live sizing \u2014 needs CONVICTION_SIZING_ENABLED + risk-parity base. 8hr paper-vs-live gates default-ON.",
+  "disabled": [
+    "1000BONKUSDC_LONG",
+    "1000BONKUSDC_SHORT",
+    "1000PEPEUSDC_LONG",
+    "ADAUSDC_SHORT",
+    "ALB_SHORT",
+    "ALTUSDT_LONG",
+    "ARKMUSDT_LONG",
+    "ASTERUSDT_LONG",
+    "ATOMUSDT_LONG",
+    "ATOMUSDT_SHORT",
+    "AVAXUSDC_SHORT",
+    "BBUSDT_LONG",
+    "BLURUSDT_LONG",
+    "BNO_LONG",
+    "BTCDOMUSDT_LONG",
+    "BTCDOMUSDT_SHORT",
+    "CHRD_LONG",
+    "CHRUSDT_LONG",
+    "CHRUSDT_SHORT",
+    "COMPUSDT_LONG",
+    "COMPUSDT_SHORT",
+    "COP_LONG",
+    "COP_SHORT",
+    "DIS_SHORT",
+    "DOGEUSDC_LONG",
+    "DOGEUSDC_SHORT",
+    "DVN_LONG",
+    "DVN_SHORT",
+    "EIGENUSDT_LONG",
+    "FILUSDC_LONG",
+    "FIVN_LONG",
+    "HII_SHORT",
+    "ICPUSDT_LONG",
+    "INJUSDT_LONG",
+    "IOUSDT_LONG",
+    "LEXX_LONG",
+    "LRCUSDT_LONG",
+    "LRCUSDT_SHORT",
+    "MORPHOUSDT_LONG",
+    "MRVL_SHORT",
+    "MSTR_LONG",
+    "QNTUSDT_LONG",
+    "RBLX_LONG",
+    "RIFUSDT_LONG",
+    "RSRUSDT_SHORT",
+    "SANDUSDT_LONG",
+    "SANDUSDT_SHORT",
+    "SCHW_LONG",
+    "SNDK_SHORT",
+    "SOLUSDC_SHORT",
+    "THETAUSDT_LONG",
+    "THETAUSDT_SHORT",
+    "TONUSDT_LONG",
+    "TRUMPUSDC_SHORT",
+    "TRXUSDT_LONG",
+    "TXN_SHORT",
+    "WMB_SHORT",
+    "XMRUSDT_SHORT",
+    "XRPUSDC_SHORT",
+    "ZECUSDC_LONG",
+    "ZECUSDC_SHORT"
+  ],
+  "note": "2026-05-31 FINAL per_sym book: 96 tradeable (>=30tr & ps>0 & short-not-uptrend); disabled=tested-but-excluded. Consumed by _apply_final_book in ez_positions_quick + tradier_manage when PERSYM_FINAL_BOOK_ENABLED. | 2026-07-03 refresh from 20260629 sweeps: un-disabled 3 positive keys ['ASTS_SHORT', 'MP_SHORT', 'MSFT_SHORT'], disabled 2 fresh negatives ['COP_LONG', 'WMB_SHORT'] (user mandate: positive ws+gain => tradeable)",
+  "trade_gate_scoreboard": {
+    "awaiting_verdict": 351,
+    "benched_in_retune": 133,
+    "mandatory": 9,
+    "post_parity_cutoff": 1784054853.0,
+    "qualified_long": 0,
+    "qualified_short": 21,
+    "ts": "2026-07-15T01:44:10Z",
+    "universe": 435,
+    "verdicted": 75
+  },
+  "tradeable": {
+    "1000LUNCUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 93.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 73.9167,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1809,
+      "size_cap": null,
+      "size_mult": 1.89,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "1000SHIBUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -9.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1179,
+      "size_cap": null,
+      "size_mult": 1.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "1INCHUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -97.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 11.0703,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4238,
+      "size_cap": 1.0,
+      "size_mult": 0.99,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=85.1%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "ABT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.9161,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4238,
+      "size_cap": null,
+      "size_mult": 1.15,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=15.8%>0 but gain_vs_bh=0.0166 < 2.0 [capture:T0]"
+      }
+    },
+    "ACN_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -46.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 4.15,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6187,
+      "size_cap": 1.0,
+      "size_mult": 1.63,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=59.7%>0 but gain_vs_bh=0.0054 < 2.0 [capture:T0]"
+      }
+    },
+    "ADAUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 13.3122,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1366,
+      "size_cap": null,
+      "size_mult": 1.26,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ADBE_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 2.5886,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5815,
+      "size_cap": null,
+      "size_mult": 1.37,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=56.4%>0 but gain_vs_bh=0.0016 < 2.0 [capture:T0]"
+      }
+    },
+    "AGCO_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -1.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 2.5164,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.434,
+      "size_cap": 1.0,
+      "size_mult": 1.32,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=5.7%>0 but gain_vs_bh=-0.092 < 2.0 [capture:T0]"
+      }
+    },
+    "AGI_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 0.8333,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4578,
+      "size_cap": null,
+      "size_mult": 0.74,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.011 pool_sharpe=-0.0082 trades=71 [capture:T0]"
+      }
+    },
+    "AG_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 0.9545,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4345,
+      "size_cap": null,
+      "size_mult": 0.81,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.30>0 pool_sharpe=0.24>0 trades=48>=30 [capture:T0]"
+      }
+    },
+    "AIAUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -12.0,
+      "conviction_cap": 8.0,
+      "pct_entry": 1.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1599,
+      "size_cap": 3.0,
+      "size_mult": 1.43,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ALGOUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -55.0,
+      "conviction_cap": 8.0,
+      "pct_entry": 0.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1591,
+      "size_cap": 3.0,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ALGOUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 12.3701,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4124,
+      "size_cap": null,
+      "size_mult": 1.13,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=64.7%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "ALMU_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "AMD_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 41.3917,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.193,
+      "size_cap": null,
+      "size_mult": 1.9,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0355 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ANKRUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 11.6211,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.506,
+      "size_cap": null,
+      "size_mult": 1.04,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=88.2%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "APEUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 33.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1839,
+      "size_cap": null,
+      "size_mult": 1.54,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "APO_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "ARM_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 52.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 28.2509,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 1.5,
+      "per_pct_mult": 0.5,
+      "pool_sharpe": 0.1603,
+      "size_cap": 3.0,
+      "size_mult": 1.88,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.097 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ARM_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 3.0442,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.595,
+      "size_cap": null,
+      "size_mult": 1.47,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.189 pool_sharpe=-0.2809 trades=18 [capture:T0]"
+      }
+    },
+    "ARUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 0.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 12.5926,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 1.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1283,
+      "size_cap": 3.0,
+      "size_mult": 1.17,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "AR_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 1.2086,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0517,
+      "size_cap": null,
+      "size_mult": 0.85,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0097 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "AR_SHORT": {
+      "gain_mo": 1.3173,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4067,
+      "size_cap": null,
+      "size_mult": 0.93,
+      "strategy": "gainmo_gate"
+    },
+    "ASTS_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 2508.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 244.1429,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1343,
+      "size_cap": null,
+      "size_mult": 1.97,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0001 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ASTS_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 5.5685,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5755,
+      "size_cap": null,
+      "size_mult": 1.75,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.1283 pool_sharpe=-0.139 trades=45 [capture:T0]"
+      }
+    },
+    "AU_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 0.7648,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4396,
+      "size_cap": null,
+      "size_mult": 0.69,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.2875 pool_sharpe=-0.1229 trades=91 [capture:T0]"
+      }
+    },
+    "AVAXUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -82.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 15.1645,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 1.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1445,
+      "size_cap": 5.0,
+      "size_mult": 1.4,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "AWEUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 17.625,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1846,
+      "size_cap": null,
+      "size_mult": 1.46,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "AXON_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 3.598,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5,
+      "size_cap": null,
+      "size_mult": 1.56,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.21>0 pool_sharpe=0.12>0 trades=46>=30 [capture:T0]"
+      }
+    },
+    "AXSUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 129.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 637623.3302,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1184,
+      "size_cap": null,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "AXSUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 9.1667,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5015,
+      "size_cap": null,
+      "size_mult": 0.86,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=89.4%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "BANDUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 13.2542,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3998,
+      "size_cap": null,
+      "size_mult": 1.24,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=91.9%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "BATUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -65.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.161,
+      "size_cap": null,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "BATUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 13.0446,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.534,
+      "size_cap": null,
+      "size_mult": 1.22,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=69.7%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "BEATUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 88.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 161.5417,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 2.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1377,
+      "size_cap": 5.0,
+      "size_mult": 1.93,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "BELUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 13.3177,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4032,
+      "size_cap": null,
+      "size_mult": 1.28,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=85.8%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "BG_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 8.7437,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1254,
+      "size_cap": null,
+      "size_mult": 1.82,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0889 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "BG_SHORT": {
+      "gain_mo": 2.5251,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5383,
+      "size_cap": null,
+      "size_mult": 1.34,
+      "strategy": "gainmo_gate"
+    },
+    "BHP_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 1.6242,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6202,
+      "size_cap": null,
+      "size_mult": 1.04,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.01>0 pool_sharpe=0.02>0 trades=60>=30 [capture:T0]"
+      }
+    },
+    "BNBUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 109.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 11.6388,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.122,
+      "size_cap": null,
+      "size_mult": 1.06,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "BNBUSDC_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.318,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4705,
+      "size_cap": null,
+      "size_mult": 0.5,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "absolute rule failed: gain_mo=0.0 pool_sharpe=0.0 trades=0 [capture:T0]"
+      }
+    },
+    "BTCUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 77.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 7.3954,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1178,
+      "size_cap": null,
+      "size_mult": 0.79,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "BTCUSDC_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": 77.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 5.368,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1546,
+      "size_cap": 1.0,
+      "size_mult": 0.68,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "absolute rule failed: gain_mo=0.0 pool_sharpe=0.0 trades=0 [capture:T0]"
+      }
+    },
+    "C98USDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 16.8103,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3805,
+      "size_cap": null,
+      "size_mult": 1.44,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=95.0%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "CDE_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 2.9571,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4528,
+      "size_cap": null,
+      "size_mult": 1.46,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.46>0 pool_sharpe=0.28>0 trades=65>=30 [capture:T0]"
+      }
+    },
+    "CELRUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 15.0723,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5187,
+      "size_cap": null,
+      "size_mult": 1.35,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=92.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "CF_SHORT": {
+      "gain_mo": 0.9253,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3342,
+      "size_cap": null,
+      "size_mult": 0.79,
+      "strategy": "gainmo_gate"
+    },
+    "CIBR_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "CLF_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 3.504,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5036,
+      "size_cap": null,
+      "size_mult": 1.53,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=57.6%>0 but gain_vs_bh=0.0169 < 2.0 [capture:T0]"
+      }
+    },
+    "CMC_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 5.0096,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4234,
+      "size_cap": null,
+      "size_mult": 1.68,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0003 pool_sharpe=-0.0005 trades=38 [capture:T0]"
+      }
+    },
+    "COTIUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -97.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 18.0561,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5407,
+      "size_cap": 1.0,
+      "size_mult": 1.51,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=89.4%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "CRK_LONG": {
+      "gain_mo": 3.8907,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0669,
+      "size_cap": null,
+      "size_mult": 1.59,
+      "strategy": "gainmo_gate"
+    },
+    "CRK_SHORT": {
+      "gain_mo": 3.3223,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6339,
+      "size_cap": null,
+      "size_mult": 1.5,
+      "strategy": "gainmo_gate"
+    },
+    "CRWD_SHORT": {
+      "gain_mo": 2.1667,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5851,
+      "size_cap": null,
+      "size_mult": 1.24,
+      "strategy": "gainmo_gate"
+    },
+    "CRWV_LONG": {
+      "gain_mo": 166.879,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1995,
+      "size_cap": null,
+      "size_mult": 1.96,
+      "strategy": "gainmo_gate"
+    },
+    "CRWV_SHORT": {
+      "gain_mo": 2.2151,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.7286,
+      "size_cap": null,
+      "size_mult": 1.25,
+      "strategy": "gainmo_gate"
+    },
+    "CTRA_LONG": {
+      "gain_mo": 1.6618,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0616,
+      "size_cap": null,
+      "size_mult": 1.07,
+      "strategy": "gainmo_gate"
+    },
+    "CTRA_SHORT": {
+      "gain_mo": 2.7336,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4788,
+      "size_cap": null,
+      "size_mult": 1.38,
+      "strategy": "gainmo_gate"
+    },
+    "DAR_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 40.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 7.1275,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 1.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1249,
+      "size_cap": 5.0,
+      "size_mult": 1.79,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0285 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "DAR_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 3.7027,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4768,
+      "size_cap": null,
+      "size_mult": 1.57,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=0.0023 pool_sharpe=0.0041 trades=26 [capture:T0]"
+      }
+    },
+    "DASHUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -62.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 7.0646,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4497,
+      "size_cap": 1.0,
+      "size_mult": 0.77,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "absolute rule failed: gain_mo=0.0 pool_sharpe=0.0 trades=0 [capture:T0]"
+      }
+    },
+    "DE_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.2209,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6103,
+      "size_cap": null,
+      "size_mult": 0.88,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0911 pool_sharpe=-0.3119 trades=40 [capture:T0]"
+      }
+    },
+    "DINO_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 6.5564,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0928,
+      "size_cap": null,
+      "size_mult": 1.78,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=-0.0925 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "DINO_SHORT": {
+      "gain_mo": 2.7819,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3601,
+      "size_cap": null,
+      "size_mult": 1.41,
+      "strategy": "gainmo_gate"
+    },
+    "DOTUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -58.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 18.7409,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 2.0,
+      "per_pct_mult": 0.5,
+      "pool_sharpe": 0.1642,
+      "size_cap": 3.0,
+      "size_mult": 1.57,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "DOTUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -58.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 12.5867,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3889,
+      "size_cap": 1.0,
+      "size_mult": 1.15,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=90.2%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "EGLDUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -71.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 10.438,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4945,
+      "size_cap": 1.0,
+      "size_mult": 0.97,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=95.1%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "EGO_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 2.0435,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4522,
+      "size_cap": null,
+      "size_mult": 1.19,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.32>0 pool_sharpe=0.21>0 trades=78>=30 [capture:T0]"
+      }
+    },
+    "ENJUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 15.1015,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4948,
+      "size_cap": null,
+      "size_mult": 1.37,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=93.0%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "EOG_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 2.8238,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0965,
+      "size_cap": null,
+      "size_mult": 1.43,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=-0.029 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "EOG_SHORT": {
+      "gain_mo": 1.8497,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4425,
+      "size_cap": null,
+      "size_mult": 1.13,
+      "strategy": "gainmo_gate"
+    },
+    "EPD_SHORT": {
+      "gain_mo": 0.5705,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3735,
+      "size_cap": null,
+      "size_mult": 0.65,
+      "strategy": "gainmo_gate"
+    },
+    "EQT_SHORT": {
+      "gain_mo": 0.6906,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2009,
+      "size_cap": null,
+      "size_mult": 0.68,
+      "strategy": "gainmo_gate"
+    },
+    "ETCUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 30197.2342,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0766,
+      "size_cap": null,
+      "size_mult": 1.98,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ETCUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": 15.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 6.1053,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3085,
+      "size_cap": 1.0,
+      "size_mult": 0.7,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=69.5%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "ETHUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -6.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 16.7537,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 1.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1618,
+      "size_cap": 3.0,
+      "size_mult": 1.42,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "ETHUSDC_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -6.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 6.9373,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.388,
+      "size_cap": 1.0,
+      "size_mult": 0.75,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=21.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "FANG_SHORT": {
+      "gain_mo": 2.2849,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4335,
+      "size_cap": null,
+      "size_mult": 1.26,
+      "strategy": "gainmo_gate"
+    },
+    "FCX_SHORT": {
+      "SHORT_ENABLED": true,
+      "bh_long": 38.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 1.6148,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5533,
+      "size_cap": 1.0,
+      "size_mult": 1.03,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.31>0 pool_sharpe=0.27>0 trades=41>=30 [capture:T0]"
+      }
+    },
+    "FDX_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "FIDAUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 103.0,
+      "conviction_cap": 8.0,
+      "pct_entry": 0.5,
+      "per_pct_mult": 0.25,
+      "pool_sharpe": 0.2798,
+      "size_cap": 3.0,
+      "size_mult": 1.84,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "FNV_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 0.5721,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3434,
+      "size_cap": null,
+      "size_mult": 0.66,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.06>0 pool_sharpe=0.05>0 trades=64>=30 [capture:T0]"
+      }
+    },
+    "GDX_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 0.3664,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6962,
+      "size_cap": null,
+      "size_mult": 0.59,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.16>0 pool_sharpe=0.13>0 trades=64>=30 [capture:T0]"
+      }
+    },
+    "GLD_LONG": {
+      "bh_long": 115.0,
+      "conviction_cap": 40.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1928,
+      "size_cap": null,
+      "size_mult": 2.0,
+      "strategy": "staircase_long"
+    },
+    "GM_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 80.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 9.9629,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 2.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1145,
+      "size_cap": 5.0,
+      "size_mult": 1.84,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0024 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "GM_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 1.316,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4144,
+      "size_cap": null,
+      "size_mult": 0.91,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.10>0 pool_sharpe=0.09>0 trades=71>=30 [capture:T0]"
+      }
+    },
+    "GOOGL_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 166.0,
+      "conviction_cap": 40.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2385,
+      "size_cap": null,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0383 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "GOOGL_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 0.4467,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5122,
+      "size_cap": null,
+      "size_mult": 0.63,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0718 pool_sharpe=-0.0781 trades=61 [capture:T0]"
+      }
+    },
+    "GRASSUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 80.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 96.2083,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 2.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.2024,
+      "size_cap": 5.0,
+      "size_mult": 1.91,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "GRTUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 25.7607,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5535,
+      "size_cap": null,
+      "size_mult": 1.71,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=91.8%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "GTCUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 24.2266,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4653,
+      "size_cap": null,
+      "size_mult": 1.66,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=95.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "HL_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.1611,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4256,
+      "size_cap": null,
+      "size_mult": 0.84,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.2764 pool_sharpe=-0.5015 trades=48 [capture:T0]"
+      }
+    },
+    "HOOD_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "HOTUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 13.8519,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4105,
+      "size_cap": null,
+      "size_mult": 1.31,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=85.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "IBIT_LONG": {
+      "bh_long": 12.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 5.445,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1002,
+      "size_cap": null,
+      "size_mult": 1.74,
+      "strategy": "staircase_long"
+    },
+    "IBIT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 2.0011,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6167,
+      "size_cap": null,
+      "size_mult": 1.18,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=9.0%>0 but gain_vs_bh=-0.1127 < 2.0 [capture:T0]"
+      }
+    },
+    "INTC_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": 50.8262,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1766,
+      "size_cap": null,
+      "size_mult": 1.93,
+      "strategy": "gainmo_gate"
+    },
+    "INTC_SHORT": {
+      "gain_mo": 0.856,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5682,
+      "size_cap": null,
+      "size_mult": 0.78,
+      "strategy": "gainmo_gate"
+    },
+    "INXUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 8.0,
+      "conviction_cap": 8.0,
+      "pct_entry": 1.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1929,
+      "size_cap": 3.0,
+      "size_mult": 1.59,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "IOTAUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -82.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1823,
+      "size_cap": null,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "IOTAUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 9.5323,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5312,
+      "size_cap": null,
+      "size_mult": 0.88,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=88.2%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "IOTXUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -97.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 8.6506,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5611,
+      "size_cap": 1.0,
+      "size_mult": 0.84,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=95.4%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "JPM_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "KAVAUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 9.9093,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4599,
+      "size_cap": null,
+      "size_mult": 0.9,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=95.1%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "KGC_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 0.4001,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3605,
+      "size_cap": null,
+      "size_mult": 0.6,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.281 pool_sharpe=-0.1873 trades=69 [capture:T0]"
+      }
+    },
+    "KSMUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -84.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 17.6496,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.428,
+      "size_cap": 1.0,
+      "size_mult": 1.49,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=93.6%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "LAC_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -17.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 4.995,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3336,
+      "size_cap": 1.0,
+      "size_mult": 1.66,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=50.5%>0 but gain_vs_bh=-0.0347 < 2.0 [capture:T0]"
+      }
+    },
+    "LDOS_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.533,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3635,
+      "size_cap": null,
+      "size_mult": 1.01,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=17.9%>0 but gain_vs_bh=0.0531 < 2.0 [capture:T0]"
+      }
+    },
+    "LINKUSDC_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -53.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.7519,
+      "size_cap": 1.0,
+      "size_mult": 2.0,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=57.5%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "LNG_SHORT": {
+      "gain_mo": 0.16,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2022,
+      "size_cap": null,
+      "size_mult": 0.54,
+      "strategy": "gainmo_gate"
+    },
+    "LTCUSDC_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -46.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6382,
+      "size_cap": 1.0,
+      "size_mult": 2.0,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=56.1%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "MANAUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -92.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 12.7091,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5005,
+      "size_cap": 1.0,
+      "size_mult": 1.19,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=87.0%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "MOS_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -27.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 2.8516,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4659,
+      "size_cap": 1.0,
+      "size_mult": 1.44,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=33.0%>0 but gain_vs_bh=0.0763 < 2.0 [capture:T0]"
+      }
+    },
+    "MPC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 26.0,
+      "conviction_cap": 40.0,
+      "pct_entry": 2.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.2531,
+      "size_cap": 5.0,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.1174 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "MPC_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.3707,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2629,
+      "size_cap": null,
+      "size_mult": 0.96,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=0.0782 pool_sharpe=0.2987 trades=15 [capture:T0]"
+      }
+    },
+    "MP_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "MP_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.7126,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4082,
+      "size_cap": null,
+      "size_mult": 1.09,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.3861 pool_sharpe=-0.1263 trades=73 [capture:T0]"
+      }
+    },
+    "MRK_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "MRVL_LONG": {
+      "LONG_ENABLED": true,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "size_cap": null,
+      "size_mult": 0.5,
+      "strategy": "gainmo_gate"
+    },
+    "MSFT_LONG": {
+      "bh_long": -13.0,
+      "conviction_cap": 40.0,
+      "pct_entry": 0.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.0934,
+      "size_cap": 3.0,
+      "size_mult": 1.67,
+      "strategy": "staircase_long"
+    },
+    "MSFT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 0.7673,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5002,
+      "size_cap": null,
+      "size_mult": 0.71,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=8.8%>0 but gain_vs_bh=0.1078 < 2.0 [capture:T0]"
+      }
+    },
+    "MSTR_SHORT": {
+      "SHORT_ENABLED": true,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "size_cap": null,
+      "size_mult": 0.51,
+      "strategy": "gainmo_gate"
+    },
+    "MU_LONG": {
+      "LONG_ENABLED": true,
+      "bh_long": 536.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 133.2263,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": 1.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1936,
+      "size_cap": 5.0,
+      "size_mult": 1.94,
+      "strategy": "staircase_long"
+    },
+    "MU_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 1.2129,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.542,
+      "size_cap": null,
+      "size_mult": 0.87,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.03>0 pool_sharpe=0.01>0 trades=71>=30 [capture:T0]"
+      }
+    },
+    "NEARUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 102.0,
+      "conviction_cap": 8.0,
+      "pct_entry": 2.5,
+      "per_pct_mult": 0.5,
+      "pool_sharpe": 0.3006,
+      "size_cap": 3.0,
+      "size_mult": 1.29,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "NEM_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 0.3021,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5198,
+      "size_cap": null,
+      "size_mult": 0.57,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.20>0 pool_sharpe=0.15>0 trades=74>=30 [capture:T0]"
+      }
+    },
+    "NKE_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "NKNUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 13.8737,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4597,
+      "size_cap": null,
+      "size_mult": 1.33,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=95.2%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "NOC_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 2.1343,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.7088,
+      "size_cap": null,
+      "size_mult": 1.21,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.09>0 pool_sharpe=0.10>0 trades=46>=30 [capture:T0]"
+      }
+    },
+    "NVDA_LONG": {
+      "LONG_ENABLED": true,
+      "bh_long": 125.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 18.3517,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": 2.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1633,
+      "size_cap": 3.0,
+      "size_mult": 1.87,
+      "strategy": "staircase_long"
+    },
+    "NVDA_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.3588,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6892,
+      "size_cap": null,
+      "size_mult": 0.94,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0498 pool_sharpe=-0.1419 trades=44 [capture:T0]"
+      }
+    },
+    "OKE_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 9.0,
+      "conviction_cap": 40.0,
+      "pct_entry": 2.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1594,
+      "size_cap": 5.0,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.0837 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "OKE_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 2.5329,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4273,
+      "size_cap": null,
+      "size_mult": 1.35,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=0.013 pool_sharpe=0.0575 trades=25 [capture:T0]"
+      }
+    },
+    "OLED_LONG": {
+      "bh_long": -45.0,
+      "conviction_cap": 40.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1217,
+      "size_cap": null,
+      "size_mult": 1.51,
+      "strategy": "staircase_long"
+    },
+    "OLED_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -45.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 4.0181,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4029,
+      "size_cap": 3.0,
+      "size_mult": 1.6,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=50.9%>0 but gain_vs_bh=0.0125 < 2.0 [capture:T0]"
+      }
+    },
+    "ONDOUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 67.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 73.1667,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 1.5,
+      "per_pct_mult": 0.5,
+      "pool_sharpe": 0.2279,
+      "size_cap": 3.0,
+      "size_mult": 1.87,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "PAAS_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 1.4037,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4625,
+      "size_cap": null,
+      "size_mult": 1.0,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.19>0 pool_sharpe=0.09>0 trades=78>=30 [capture:T0]"
+      }
+    },
+    "PATH_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "PBF_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -26.0,
+      "conviction_cap": 40.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2707,
+      "size_cap": null,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "PBF_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 5.2226,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.449,
+      "size_cap": null,
+      "size_mult": 1.71,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=5.5%>0 but gain_vs_bh=-0.0029 < 2.0 [capture:T0]"
+      }
+    },
+    "PLTR_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 455.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 43.1009,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 2.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1709,
+      "size_cap": 5.0,
+      "size_mult": 1.91,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.006 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "PLTR_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 0.8532,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6029,
+      "size_cap": null,
+      "size_mult": 0.76,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.04>0 pool_sharpe=0.04>0 trades=74>=30 [capture:T0]"
+      }
+    },
+    "PR_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 15.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 1.636,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0645,
+      "size_cap": null,
+      "size_mult": 1.06,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=-0.2558 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "PR_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.8098,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2817,
+      "size_cap": null,
+      "size_mult": 1.12,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0158 pool_sharpe=-0.067 trades=19 [capture:T0]"
+      }
+    },
+    "PSX_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 6.4598,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1311,
+      "size_cap": null,
+      "size_mult": 1.76,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.124 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "PSX_SHORT": {
+      "gain_mo": 2.7768,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4367,
+      "size_cap": null,
+      "size_mult": 1.4,
+      "strategy": "gainmo_gate"
+    },
+    "PYPL_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -32.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 1.0363,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4421,
+      "size_cap": 1.0,
+      "size_mult": 0.82,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=31.3%>0 but gain_vs_bh=0.0243 < 2.0 [capture:T0]"
+      }
+    },
+    "QQQ_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "QTUMUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -63.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 7.5985,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.44,
+      "size_cap": 1.0,
+      "size_mult": 0.81,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=81.6%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "RAYSOLUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 29.0417,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1703,
+      "size_cap": null,
+      "size_mult": 1.75,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "RBLX_SHORT": {
+      "SHORT_ENABLED": true,
+      "bh_long": 19.0,
+      "conviction_cap": 40.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0785,
+      "size_cap": 1.0,
+      "size_mult": 1.23,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.15>0 pool_sharpe=0.07>0 trades=57>=30 [capture:T0]"
+      }
+    },
+    "RENDERUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 22.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3043,
+      "size_cap": null,
+      "size_mult": 1.04,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "RGLD_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 0.2372,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1487,
+      "size_cap": null,
+      "size_mult": 0.56,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.22>0 pool_sharpe=0.15>0 trades=64>=30 [capture:T0]"
+      }
+    },
+    "RIO_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.3723,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6347,
+      "size_cap": null,
+      "size_mult": 0.97,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.1139 pool_sharpe=-0.3195 trades=38 [capture:T0]"
+      }
+    },
+    "RKLB_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 1359.0,
+      "conviction_cap": 40.0,
+      "pct_entry": 2.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1191,
+      "size_cap": 3.0,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=-0.0001 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "RRC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 21.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 2.476,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 0.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.0704,
+      "size_cap": 3.0,
+      "size_mult": 1.31,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.4389 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "RRC_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.9574,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4445,
+      "size_cap": null,
+      "size_mult": 1.16,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=0.0303 pool_sharpe=0.2207 trades=15 [capture:T0]"
+      }
+    },
+    "RS_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": 10.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 2.1528,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.432,
+      "size_cap": 2.0,
+      "size_mult": 1.22,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0425 pool_sharpe=-0.206 trades=24 [capture:T0]"
+      }
+    },
+    "RVNUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 10.3569,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4272,
+      "size_cap": null,
+      "size_mult": 0.95,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=83.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "SAP_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -10.0,
+      "conviction_cap": 40.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0413,
+      "size_cap": 1.0,
+      "size_mult": 1.11,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=4.3%>0 but gain_vs_bh=-0.4877 < 2.0 [capture:T0]"
+      }
+    },
+    "SCCO_SHORT": {
+      "SHORT_ENABLED": true,
+      "bh_long": 92.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 2.3441,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5492,
+      "size_cap": 1.0,
+      "size_mult": 1.28,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.13>0 pool_sharpe=0.17>0 trades=42>=30 [capture:T0]"
+      }
+    },
+    "SKLUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 22.4666,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3177,
+      "size_cap": null,
+      "size_mult": 1.62,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=94.1%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "SLV_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 14.0077,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1278,
+      "size_cap": null,
+      "size_mult": 1.85,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=-0.001 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "SMCI_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "SMG_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 3.431,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4325,
+      "size_cap": null,
+      "size_mult": 1.51,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=11.6%>0 but gain_vs_bh=-0.1448 < 2.0 [capture:T0]"
+      }
+    },
+    "SNDK_LONG": {
+      "LONG_ENABLED": true,
+      "bh_long": 2993.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 827.7683,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": 1.5,
+      "per_pct_mult": 0.5,
+      "pool_sharpe": 0.1802,
+      "size_cap": 5.0,
+      "size_mult": 2.0,
+      "strategy": "staircase_long"
+    },
+    "SNXUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -94.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 11.5353,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4525,
+      "size_cap": 1.0,
+      "size_mult": 1.01,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=94.2%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "SOLUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": -15.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 27.0165,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 0.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.1675,
+      "size_cap": 3.0,
+      "size_mult": 1.73,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "STLD_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 1.7346,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3509,
+      "size_cap": null,
+      "size_mult": 1.1,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.06>0 pool_sharpe=0.11>0 trades=46>=30 [capture:T0]"
+      }
+    },
+    "STORJUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 18.2343,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3781,
+      "size_cap": null,
+      "size_mult": 1.55,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=89.6%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "STZ_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -45.0,
+      "conviction_cap": 40.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0212,
+      "size_cap": 3.0,
+      "size_mult": 1.0,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "short-b&h=48.8%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "SUSHIUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 35.8535,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2262,
+      "size_cap": null,
+      "size_mult": 1.82,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=87.9%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "SXPUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 22.6657,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5104,
+      "size_cap": null,
+      "size_mult": 1.64,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=100.0%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "TAOUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 16.0,
+      "conviction_cap": 8.0,
+      "pct_entry": 0.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.3754,
+      "size_cap": 3.0,
+      "size_mult": 1.24,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "TDG_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 1.4009,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3279,
+      "size_cap": null,
+      "size_mult": 0.99,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0271 pool_sharpe=-0.0559 trades=46 [capture:T0]"
+      }
+    },
+    "TECK_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 3.5203,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6109,
+      "size_cap": null,
+      "size_mult": 1.54,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.03>0 pool_sharpe=0.03>0 trades=44>=30 [capture:T0]"
+      }
+    },
+    "TIAUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 23.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 32.875,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1704,
+      "size_cap": null,
+      "size_mult": 1.8,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "TRGP_SHORT": {
+      "gain_mo": 0.4263,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.2539,
+      "size_cap": null,
+      "size_mult": 0.62,
+      "strategy": "gainmo_gate"
+    },
+    "TTD_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "UAN_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 67.0,
+      "conviction_cap": 40.0,
+      "pct_entry": 2.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.2008,
+      "size_cap": 12.0,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=0.1103 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "UEC_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 3.2044,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4264,
+      "size_cap": null,
+      "size_mult": 1.49,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.0149 pool_sharpe=-0.0141 trades=53 [capture:T0]"
+      }
+    },
+    "UNIUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 19.4391,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.189,
+      "size_cap": null,
+      "size_mult": 1.6,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "UNIUSDC_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -57.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 2.6596,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5241,
+      "size_cap": 1.0,
+      "size_mult": 0.54,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=50.6%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "USAR_LONG": {
+      "gain_mo": 260.9994,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1916,
+      "size_cap": null,
+      "size_mult": 1.99,
+      "strategy": "gainmo_gate"
+    },
+    "USAR_SHORT": {
+      "gain_mo": 5.4167,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6846,
+      "size_cap": null,
+      "size_mult": 1.72,
+      "strategy": "gainmo_gate"
+    },
+    "USO_LONG": {
+      "bh_long": 72.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 7.7458,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 2.5,
+      "per_pct_mult": 0.5,
+      "pool_sharpe": 0.1038,
+      "size_cap": 3.0,
+      "size_mult": 1.81,
+      "strategy": "staircase_long"
+    },
+    "UUUU_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 4.1255,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5141,
+      "size_cap": null,
+      "size_mult": 1.62,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.19>0 pool_sharpe=0.09>0 trades=48>=30 [capture:T0]"
+      }
+    },
+    "VALE_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": 0.7963,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5132,
+      "size_cap": null,
+      "size_mult": 0.72,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "qualified",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule: gain_mo=0.08>0 pool_sharpe=0.14>0 trades=43>=30 [capture:T0]"
+      }
+    },
+    "VETUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -15.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 11.9017,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5045,
+      "size_cap": 1.0,
+      "size_mult": 1.1,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=86.7%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "VIRTUALUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 12.0,
+      "conviction_cap": 8.0,
+      "pct_entry": 1.0,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.2583,
+      "size_cap": 3.0,
+      "size_mult": 1.2,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "VLO_LONG": {
+      "LONG_ENABLED": true,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "size_cap": null,
+      "size_mult": 0.53,
+      "strategy": "gainmo_gate"
+    },
+    "VLO_SHORT": {
+      "gain_mo": 2.414,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5161,
+      "size_cap": null,
+      "size_mult": 1.29,
+      "strategy": "gainmo_gate"
+    },
+    "VT_LONG": {
+      "LONG_ENABLED": true,
+      "mandatory_user_20260711": true
+    },
+    "WDAY_LONG": {
+      "bh_long": -54.0,
+      "conviction_cap": 40.0,
+      "pct_entry": 1.5,
+      "per_pct_mult": 1.0,
+      "pool_sharpe": 0.2372,
+      "size_cap": 5.0,
+      "size_mult": 2.0,
+      "strategy": "staircase_long"
+    },
+    "WDAY_SHORT": {
+      "SHORT_ENABLED": true,
+      "bh_long": -54.0,
+      "conviction_cap": 40.0,
+      "gain_mo": 4.3328,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "mandatory_user_20260710": true,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.6477,
+      "size_cap": 1.0,
+      "size_mult": 1.65,
+      "strategy": "elevator_short"
+    },
+    "WLDUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 26.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 18.125,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1557,
+      "size_cap": null,
+      "size_mult": 1.53,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "WPM_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 0.843,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.3713,
+      "size_cap": null,
+      "size_mult": 0.75,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "absolute rule failed: gain_mo=-0.2382 pool_sharpe=-0.1095 trades=96 [capture:T0]"
+      }
+    },
+    "XLMUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 130.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 27594.7378,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.0837,
+      "size_cap": null,
+      "size_mult": 1.96,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "XLMUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "gain_mo": 3.6325,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4175,
+      "size_cap": null,
+      "size_mult": 0.59,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "absolute rule failed: gain_mo=0.0 pool_sharpe=0.0 trades=0 [capture:T0]"
+      }
+    },
+    "XMRUSDT_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 478.0,
+      "conviction_cap": 8.0,
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1309,
+      "size_cap": null,
+      "size_mult": 2.0,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "XOP_LONG": {
+      "LONG_ENABLED": false,
+      "gain_mo": 5.1103,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.1484,
+      "size_cap": null,
+      "size_mult": 1.69,
+      "strategy": "gainmo_gate",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-14T18:17:00Z",
+        "why": "gain_vs_bh=1.7285 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "XOP_SHORT": {
+      "gain_mo": 1.2794,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4008,
+      "size_cap": null,
+      "size_mult": 0.9,
+      "strategy": "gainmo_gate"
+    },
+    "XRPUSDC_LONG": {
+      "LONG_ENABLED": false,
+      "bh_long": 132.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 31.4644,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": 2.5,
+      "per_pct_mult": 0.5,
+      "pool_sharpe": 0.0893,
+      "size_cap": 3.0,
+      "size_mult": 1.78,
+      "strategy": "staircase_long",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+      }
+    },
+    "XTZUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -85.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 5.1942,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.4118,
+      "size_cap": 1.0,
+      "size_mult": 0.66,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=79.1%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    },
+    "ZENUSDT_SHORT": {
+      "SHORT_ENABLED": false,
+      "bh_long": -80.0,
+      "conviction_cap": 8.0,
+      "gain_mo": 10.3095,
+      "gate_src": "gainmo",
+      "gate_ts": "2026-07-15T01:44:10Z",
+      "pct_entry": null,
+      "per_pct_mult": null,
+      "pool_sharpe": 0.5287,
+      "size_cap": 1.0,
+      "size_mult": 0.93,
+      "strategy": "elevator_short",
+      "trade_gate": {
+        "decision": "benched",
+        "ts": "2026-07-15T01:44:10Z",
+        "why": "short-b&h=54.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
+      }
+    }
+  }
+}

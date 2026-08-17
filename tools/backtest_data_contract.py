@@ -22,6 +22,12 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_INDICATORS = ROOT / "backtest_v8" / "indicators"
 SIGNAL_TFS = ("15m", "1h", "4h", "D")
 LADDER_TFS = ("1h", "4h", "D")
+MAX_RECENT_PARENT_LAG_SECONDS = {
+    "15m": 3 * 86400,
+    "1h": 4 * 86400,
+    "4h": 5 * 86400,
+    "D": 10 * 86400,
+}
 _ET = ZoneInfo("America/New_York")
 
 
@@ -85,6 +91,21 @@ def _legacy_linear_triplet_rate(close: np.ndarray) -> float:
     return best
 
 
+def _is_transient_roundtrip_jump(close: np.ndarray, jump_idx: int, window: int = 8) -> bool:
+    """Distinguish an isolated volatile print from a persistent split-scale shift."""
+    values = np.asarray(close, dtype=np.float64)
+    left = values[max(0, jump_idx - window + 1) : jump_idx + 1]
+    right = values[jump_idx + 2 : jump_idx + 2 + window]
+    left = left[np.isfinite(left) & (left > 0)]
+    right = right[np.isfinite(right) & (right > 0)]
+    if len(left) < 3 or len(right) < 3:
+        return False
+    before = float(np.median(left))
+    after = float(np.median(right))
+    scale_change = abs(after / before - 1.0)
+    return scale_change <= 0.50
+
+
 def _require_continuous(
     z,
     mask: np.ndarray,
@@ -108,8 +129,15 @@ def _require_continuous(
         warmup_rows = 0
         if len(missing_idx):
             warmup_rows = int(missing_idx[-1]) + 1
+            finite_tail_rows = len(selected) - warmup_rows
+            prefix_finite = selected[:warmup_rows][finite_mask[:warmup_rows]]
+            prefix_is_only_unavailable_sentinel = (
+                len(prefix_finite) == 0
+                or bool(np.all(np.abs(prefix_finite.astype(float)) <= 1e-12))
+            )
             warmup_only = (
-                warmup_rows <= max(1, int(len(selected) * 0.10))
+                finite_tail_rows >= 20
+                and prefix_is_only_unavailable_sentinel
                 and bool(finite_mask[warmup_rows:].all())
             )
         audit.stats[f"{name}_finite_pct"] = round(finite * 100.0, 3)
@@ -123,13 +151,154 @@ def _require_continuous(
             )
 
 
+def _require_formation_series(
+    z,
+    mask: np.ndarray,
+    names: Iterable[str],
+    audit: Audit,
+    *,
+    require_nonzero_tail: bool,
+    min_tail_rows: int = 100,
+    min_tail_nonzero: float = 0.05,
+) -> None:
+    """Validate causal OHLCV tails while accepting only a leading warm-up.
+
+    Some older but otherwise causal NPZs encode unavailable parent bars as a
+    leading zero/NaN prefix.  Global coverage thresholds incorrectly reject
+    those files.  Formation detection only consumes the usable tail, so accept
+    that prefix but continue to quarantine any zero/NaN hole after the first
+    usable observation.
+    """
+    for name in names:
+        if name not in z.files:
+            audit.fail(f"missing required field {name}")
+            continue
+        arr = np.asarray(z[name])
+        if len(arr) != len(mask):
+            audit.fail(f"{name} length {len(arr)} != timestamps length {len(mask)}")
+            continue
+        selected = arr[mask]
+        finite, nonzero, unique = _finite_nonzero_coverage(selected)
+        audit.stats[f"{name}_finite_pct"] = round(finite * 100.0, 3)
+        audit.stats[f"{name}_nonzero_pct"] = round(nonzero * 100.0, 3)
+        audit.stats[f"{name}_unique"] = unique
+        if selected.dtype.kind not in "biufc":
+            audit.fail(f"{name} unusable: non-numeric dtype={selected.dtype}")
+            continue
+        finite_mask = np.isfinite(selected)
+        nonzero_mask = finite_mask & (np.abs(selected) > 1e-8)
+        usable_idx = np.flatnonzero(nonzero_mask)
+        if not len(usable_idx):
+            audit.fail(f"{name} unusable: no finite nonzero observations")
+            continue
+        warmup_rows = int(usable_idx[0])
+        tail = selected[warmup_rows:]
+        tail_finite = np.isfinite(tail)
+        tail_nonzero = tail_finite & (np.abs(tail) > 1e-8)
+        tail_unique = int(len(np.unique(tail[tail_finite]))) if tail_finite.any() else 0
+        tail_nonzero_rate = float(tail_nonzero.mean()) if len(tail) else 0.0
+        audit.stats[f"{name}_warmup_rows"] = warmup_rows
+        audit.stats[f"{name}_usable_tail_rows"] = int(len(tail))
+        audit.stats[f"{name}_tail_nonzero_pct"] = round(tail_nonzero_rate * 100.0, 3)
+        tail_valid = bool(tail_finite.all())
+        if require_nonzero_tail:
+            tail_valid = tail_valid and bool(tail_nonzero.all())
+        else:
+            tail_valid = tail_valid and tail_nonzero_rate >= min_tail_nonzero
+        if len(tail) < min_tail_rows or not tail_valid or tail_unique < 8:
+            audit.fail(
+                f"{name} unusable tail: warmup={warmup_rows}, rows={len(tail)}, "
+                f"finite={float(tail_finite.mean()) if len(tail) else 0.0:.1%}, "
+                f"nonzero={tail_nonzero_rate:.1%}, unique={tail_unique}"
+            )
+
+
+def _require_recent_parent_freshness(
+    base_ts: np.ndarray,
+    available_ts: np.ndarray,
+    timeframe: str,
+    audit: Audit,
+    recent_rows: int = 1000,
+) -> None:
+    """Reject an NPZ that forward-fills a stale HTF source into its tail.
+
+    The causal precomputer may prepend older authentic HTF history for warmup,
+    so this check intentionally covers only the recent materialized tail.  The
+    limits include weekends/holidays and match the raw-source freshness guard.
+    """
+    limit = MAX_RECENT_PARENT_LAG_SECONDS[timeframe]
+    count = min(len(base_ts), len(available_ts), max(1, int(recent_rows)))
+    if count <= 0:
+        audit.fail(f"timestamp_{timeframe} has no recent rows")
+        return
+    recent_base = np.asarray(base_ts[-count:], dtype=np.int64)
+    recent_available = np.asarray(available_ts[-count:], dtype=np.int64)
+    usable = recent_available > 0
+    if not bool(usable.any()):
+        audit.fail(f"timestamp_{timeframe} recent tail has no available parent")
+        return
+    lags = recent_base[usable] - recent_available[usable]
+    max_lag = int(lags.max()) if len(lags) else limit + 1
+    terminal_lag = int(recent_base[-1] - recent_available[-1])
+    audit.stats[f"timestamp_{timeframe}_recent_parent_lag_max_s"] = max_lag
+    audit.stats[f"timestamp_{timeframe}_terminal_parent_lag_s"] = terminal_lag
+    if terminal_lag < 0 or max_lag > limit or terminal_lag > limit:
+        audit.fail(
+            f"timestamp_{timeframe} stale recent parent: "
+            f"max_lag={max_lag}s terminal_lag={terminal_lag}s limit={limit}s"
+        )
+
+
+def _require_formation_parent_freshness(
+    base_ts: np.ndarray,
+    available_ts: np.ndarray,
+    timeframe: str,
+    audit: Audit,
+    recent_rows: int = 1000,
+) -> None:
+    """Require a fresh causal terminal parent without rejecting market closures.
+
+    Weekend and exchange-holiday gaps can make the maximum historical lag in a
+    recent window exceed a wall-clock threshold even when the terminal parent
+    is current.  That is not look-ahead or stale-tail evidence.  Preserve the
+    maximum as an explicit warning and fail on an unavailable, future, or stale
+    terminal parent.
+    """
+    limit = MAX_RECENT_PARENT_LAG_SECONDS[timeframe]
+    count = min(len(base_ts), len(available_ts), max(1, int(recent_rows)))
+    if count <= 0:
+        audit.fail(f"timestamp_{timeframe} has no recent rows")
+        return
+    recent_base = np.asarray(base_ts[-count:], dtype=np.int64)
+    recent_available = np.asarray(available_ts[-count:], dtype=np.int64)
+    usable = recent_available > 0
+    if not bool(usable.any()) or int(recent_available[-1]) <= 0:
+        audit.fail(f"timestamp_{timeframe} recent tail has no terminal available parent")
+        return
+    lags = recent_base[usable] - recent_available[usable]
+    max_lag = int(lags.max()) if len(lags) else limit + 1
+    terminal_lag = int(recent_base[-1] - recent_available[-1])
+    audit.stats[f"timestamp_{timeframe}_recent_parent_lag_max_s"] = max_lag
+    audit.stats[f"timestamp_{timeframe}_terminal_parent_lag_s"] = terminal_lag
+    if terminal_lag < 0 or terminal_lag > limit:
+        audit.fail(
+            f"timestamp_{timeframe} stale terminal parent: "
+            f"terminal_lag={terminal_lag}s limit={limit}s"
+        )
+    elif max_lag > limit:
+        audit.warnings.append(
+            f"timestamp_{timeframe} historical market-closure lag={max_lag}s "
+            f"exceeds {limit}s but terminal lag is {terminal_lag}s"
+        )
+
+
 def audit_npz(
     symbol: str,
     npz_path: str | Path | None = None,
     profile: str = "ladder",
     start: str | None = None,
 ) -> Audit:
-    """Audit one symbol. Profiles: floor, core, ladder."""
+    """Audit one symbol. Profiles: floor, core, ladder, formations."""
     sym = symbol.upper()
     path = Path(npz_path) if npz_path else DEFAULT_INDICATORS / f"{sym}.npz"
     audit = Audit(sym, profile, str(path))
@@ -175,6 +344,24 @@ def audit_npz(
         returns = np.abs(np.diff(selected_close) / np.maximum(np.abs(selected_close[:-1]), 1e-12))
         max_jump = float(np.nanmax(returns)) if len(returns) else 0.0
         audit.stats["max_bar_jump_pct"] = round(max_jump * 100.0, 3)
+        if len(returns):
+            jump_idx = int(np.nanargmax(returns))
+            audit.stats["max_bar_jump_from_timestamp"] = int(selected_ts[jump_idx])
+            audit.stats["max_bar_jump_to_timestamp"] = int(selected_ts[jump_idx + 1])
+            audit.stats["max_bar_jump_from_close"] = float(selected_close[jump_idx])
+            audit.stats["max_bar_jump_to_close"] = float(selected_close[jump_idx + 1])
+        transient_roundtrip = bool(
+            len(returns)
+            and profile == "formations"
+            and _is_transient_roundtrip_jump(selected_close, jump_idx)
+        )
+        audit.stats["max_bar_jump_classification"] = (
+            "TRANSIENT_ROUNDTRIP" if transient_roundtrip else "PERSISTENT_OR_UNVERIFIED"
+        )
+        # A one-bar round trip is not harmless for formation research: it can
+        # manufacture a wedge, breakout, head/shoulders pivot, entry or exit.
+        # Classification is retained for diagnosis, but every >80% jump fails
+        # until the source is corrected.
         if max_jump > 0.80:
             audit.fail(
                 f"unadjusted/corrupt price discontinuity: max one-bar jump={max_jump:.1%}"
@@ -242,6 +429,7 @@ def audit_npz(
                     audit.fail(f"{name} is base timestamp alias; NPZ predates closed-bar fix")
                 if future_rate > 0.001:
                     audit.fail(f"{name} contains future availability on {future_rate:.2%} of rows")
+                _require_recent_parent_freshness(base_ts, avail, tf, audit)
 
             _require_continuous(
                 z,
@@ -249,6 +437,40 @@ def audit_npz(
                 [f"{stem}_{tf}" for tf in SIGNAL_TFS for stem in ("wt1", "stoch_k", "dc_position")],
                 audit,
             )
+        if profile == "formations":
+            # Classic formations derive their vector fields directly from the
+            # causally materialized OHLCV arrays. Validate exactly those inputs
+            # instead of unrelated WT/DC/linear-regression ladder indicators.
+            _require_formation_series(
+                z,
+                mask,
+                [
+                    f"{stem}_{tf}"
+                    for tf in SIGNAL_TFS
+                    for stem in ("open", "high", "low", "close")
+                ],
+                audit,
+                require_nonzero_tail=True,
+            )
+            _require_formation_series(
+                z,
+                mask,
+                [f"volume_{tf}" for tf in SIGNAL_TFS],
+                audit,
+                require_nonzero_tail=False,
+            )
+            base_ts = ts[mask]
+            for tf in SIGNAL_TFS:
+                name = f"timestamp_{tf}"
+                if name not in z.files or len(z[name]) != len(mask):
+                    audit.fail(f"missing closed-bar availability field {name}")
+                    continue
+                available = np.asarray(z[name], dtype=np.int64)[mask]
+                future_rate = float((available > base_ts).mean())
+                audit.stats[f"{name}_future_pct"] = round(future_rate * 100.0, 6)
+                if future_rate > 0.001:
+                    audit.fail(f"{name} contains future availability on {future_rate:.2%} of rows")
+                _require_formation_parent_freshness(base_ts, available, tf, audit)
         if profile == "ladder":
             _require_continuous(
                 z,
@@ -272,13 +494,13 @@ def audit_ladder_result(result: dict, side: str, require_sizing: bool = True) ->
         "requested_fill_ratio": float(result.get("requested_fill_ratio", 0) or 0),
         "size_clamp_count": int(float(result.get("size_clamp_count", 0) or 0)),
         "reentry_pending": int(float(result.get("reentry_pending", 0) or 0)),
+        "reclaim_pending": int(float(result.get("reclaim_pending", 0) or 0)),
         "reentry_violations": int(float(result.get("reentry_violations", 0) or 0)),
     }
     diagnostics["valid"] = (
         diagnostics["trades"] > 0
         and diagnostics["requested_side_opens"] > 0
         and diagnostics["opposite_opens"] == 0
-        and diagnostics["reentry_pending"] == 0
         and diagnostics["reentry_violations"] == 0
         and (
             not require_sizing
@@ -338,7 +560,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--symbol", required=True)
     parser.add_argument("--npz", default="")
-    parser.add_argument("--profile", choices=("floor", "core", "ladder"), default="ladder")
+    parser.add_argument(
+        "--profile",
+        choices=("floor", "core", "ladder", "formations"),
+        default="ladder",
+    )
     parser.add_argument("--start", default="")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

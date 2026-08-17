@@ -72,6 +72,50 @@ def _candidate(family: str, role: str, **params: Any) -> Candidate:
     )
 
 
+def _requested_candidate(
+    family: str, candidates: list[Candidate], raw: str | None
+) -> list[Candidate]:
+    """Return the one explicitly requested materialization candidate.
+
+    This is deliberately not a nearest-grid lookup.  A coupled plan may bind a
+    small numeric move that was not one of the discovery-grid points; the
+    executable family implementation is still the authority.  The candidate
+    must nevertheless have the exact role and parameter *shape* implemented
+    by this family, and no parameter is filled in or altered here.
+    """
+    if not raw:
+        return candidates
+    try:
+        requested = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError("FROZEN_ENTRY_CANDIDATE_JSON_INVALID") from exc
+    if not isinstance(requested, dict):
+        raise ValueError("FROZEN_ENTRY_CANDIDATE_JSON_INVALID")
+    role = requested.get("role")
+    params = requested.get("params")
+    if not isinstance(role, str) or not isinstance(params, dict):
+        raise ValueError("FROZEN_ENTRY_CANDIDATE_JSON_INVALID")
+    # The static grid is used only as a schema/role registry.  Its numeric
+    # values are not substituted for a plan's hash-bound numeric values.
+    shapes = {
+        (candidate.role, tuple(sorted(candidate.params))) for candidate in candidates
+    }
+    if (role, tuple(sorted(params))) not in shapes:
+        raise ValueError("FROZEN_ENTRY_PARAMS_NOT_IMPLEMENTED_BY_FAMILY")
+    for value in params.values():
+        if isinstance(value, float) and not np.isfinite(value):
+            raise ValueError("FROZEN_ENTRY_PARAMS_NONFINITE")
+    return [_candidate(family, role, **params)]
+
+
+def _manifest_npz_sha256(manifest: dict[str, Any], symbol: str) -> str:
+    """Read the frozen file hash from either control-artifact generation."""
+    expected = manifest.get("npz_sha256") or manifest.get("control_npz_sha256")
+    if not isinstance(expected, str) or not expected:
+        raise ValueError(f"{symbol}: control artifact has no frozen NPZ hash")
+    return expected
+
+
 def _base_arr(data: top.ExecutionData, *keys: str, default: float = 0.0) -> np.ndarray:
     for key in keys:
         if key in data.z.files:
@@ -110,6 +154,12 @@ def _causal_npz_view(
         "dc_low_5m": _base_arr(data, "dc_low_5m"),
         "dc_high_5m_prev": _base_arr(data, "dc_high_5m_prev"),
         "dc_low_5m_prev": _base_arr(data, "dc_low_5m_prev"),
+        "dc_high4_5m": _base_arr(data, "dc_high4_5m"),
+        "dc_low4_5m": _base_arr(data, "dc_low4_5m"),
+        "dc_basis_5m": _base_arr(data, "dc_basis_5m"),
+        "wt1_5m": _base_arr(data, "wt1_5m"),
+        "wt2_5m": _base_arr(data, "wt2_5m"),
+        "ha_5m": _base_arr(data, "ha_5m", "ha_color_5m"),
         "wt_velocity_5m": _base_arr(data, "wt_velocity_5m"),
         "wt_acceleration_5m": _base_arr(data, "wt_acceleration_5m"),
     }
@@ -141,6 +191,9 @@ def _causal_npz_view(
         "wt_acceleration",
         "dc_basis_crossover",
         "dc_basis_crossunder",
+        "dc_basis",
+        "sma_200",
+        "ha",
     )
     audit: dict[str, Any] = {}
     for tf, h in htfs.items():
@@ -162,7 +215,161 @@ def _causal_npz_view(
                 key = f"{stem}_{tf}_{suffix}"
                 if key in data.z.files:
                     view[key] = _completed_arr(data, h, key)
+        # The queue counter-trend bypass compares the just-completed 1h high
+        # or low with its antecedent.  Keep that antecedent on the same
+        # completed-parent timeline; deriving it by shifting 5m rows makes it
+        # disappear after the first row of each hour.
+        for stem in ("high", "low"):
+            key = f"{stem}_{tf}_prev"
+            if key in data.z.files:
+                view[key] = _completed_arr(data, h, key)
     return view, audit
+
+
+GATE_AWARE_DIRECT_FAMILIES = frozenset({
+    "ENTRY_STOCH_HHHL",
+    "ENTRY_BB_RECOVERY",
+    "ENTRY_LONG_WAIT_ENABLED",
+    "ENTRY_BOUNCE_15M_LOW",
+    "ENTRY_BOUNCE_5M_LOW",
+    "ENTRY_4H_DEEP_VALUE",
+    "ENTRY_1H_TURN_UP",
+    "ENTRY_WT_DC",
+})
+
+
+def _counter_trend_entry_allowed(
+    view: dict[str, np.ndarray], side: str
+) -> tuple[np.ndarray, dict[str, int]]:
+    """Exact vector mirror of Tradier's ``COUNTER_TREND_ADD_BLOCK``.
+
+    Direct-entry research previously called its zone/alignment envelope
+    ``real`` while omitting this queue chokepoint.  That made a vector claim
+    look executable even though its first scalar queue call was guaranteed to
+    return ``COUNTER_TREND_ADD_BLOCK``.  The live predicate is fail-open for
+    missing/zero WT data and permits the SMA200 + confirmed 1h-structure
+    bypass; preserve both details here.
+    """
+    n = len(view["close"])
+
+    def arr(name: str, default: float = 0.0) -> np.ndarray:
+        raw = np.asarray(view.get(name, np.full(n, default)), dtype=np.float64)
+        if raw.ndim == 0:
+            return np.full(n, float(raw), dtype=np.float64)
+        return np.nan_to_num(raw, nan=0.0, posinf=0.0, neginf=0.0)
+
+    close = arr("close")
+    w1 = arr("wt1_1h")
+    w2 = arr("wt2_1h")
+    sma200 = arr("sma_200_15m")
+    nonzero = (np.abs(w1) > 1e-9) | (np.abs(w2) > 1e-9)
+    is_long = side == "LONG"
+    against = (w1 < w2) if is_long else (w1 > w2)
+    if is_long:
+        current = arr("high_1h")
+        previous = arr("high_1h_prev")
+        structure = ((current > 0) & (previous > 0) & (current > previous)) | (w1 > w2)
+        aligned = (sma200 > 0) & (close > sma200) & structure
+    else:
+        current = arr("low_1h")
+        previous = arr("low_1h_prev")
+        structure = ((current > 0) & (previous > 0) & (current < previous)) | (w1 < w2)
+        aligned = (sma200 > 0) & (close < sma200) & structure
+    blocked = nonzero & against & ~aligned
+    return ~blocked, {
+        "counter_trend_nonzero_rows": int(np.count_nonzero(nonzero)),
+        "counter_trend_against_rows": int(np.count_nonzero(nonzero & against)),
+        "counter_trend_sma200_bypass_rows": int(np.count_nonzero(nonzero & against & aligned)),
+        "counter_trend_rejected_rows": int(np.count_nonzero(blocked)),
+    }
+
+
+def _real_entry_gate_mask(
+    view: dict[str, np.ndarray], timestamps: np.ndarray, side: str
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Vectorize the real Tradier zone/alignment/DC safety envelope.
+
+    These are the post-route gates that made raw HHHL/Bounce lifecycle winners
+    collapse in faithful V8.  The mask is computed once per symbol and applied
+    before direct episode starts are materialized; ordinary ladder targets are
+    excluded because the shared runtime explicitly treats them as contract
+    targets.
+    """
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+
+    close = np.asarray(view["close"], dtype=np.float64)
+    n = len(close)
+
+    def arr(name: str, default: float = np.nan) -> np.ndarray:
+        return np.asarray(
+            view.get(name, np.full(n, default, dtype=np.float64)),
+            dtype=np.float64,
+        )
+
+    et = ZoneInfo("America/New_York")
+    wall = [_dt.fromtimestamp(float(ts), tz=et) for ts in timestamps]
+    weekday = np.fromiter((row.weekday() for row in wall), dtype=np.int8, count=n)
+    minute = np.fromiter(
+        (row.hour * 60 + row.minute for row in wall), dtype=np.int16, count=n
+    )
+    rth = (weekday < 5) & (minute >= 570) & (minute <= 960)
+    fast = ((minute >= 570) & (minute <= 600)) | (
+        (minute >= 840) & (minute <= 960)
+    )
+    zone_k = np.where(fast, arr("stoch_k_15m", 50.0), arr("stoch_k_1h", 50.0))
+    if side == "LONG":
+        zone = zone_k <= 80.0
+    else:
+        zone = zone_k >= 20.0
+
+    alignment = np.zeros(n, dtype=np.int8)
+    for tf in ("15m", "1h", "4h", "D"):
+        k = arr(f"stoch_k_{tf}", 50.0)
+        d = arr(f"stoch_d_{tf}", 50.0)
+        alignment += ((k > d) if side == "LONG" else (k < d)).astype(np.int8)
+    for tf in ("5m", "15m", "1h", "4h"):
+        ha = arr(f"ha_{tf}", 0.0)
+        alignment += ((ha > 0) if side == "LONG" else (ha < 0)).astype(np.int8)
+    for tf in ("15m", "1h", "4h"):
+        basis = arr(f"dc_basis_{tf}", 0.0)
+        agrees = (close > basis) if side == "LONG" else (close < basis)
+        alignment += ((basis > 0) & agrees).astype(np.int8)
+    for tf in ("5m", "15m", "1h"):
+        wt1 = arr(f"wt1_{tf}", 0.0)
+        wt2 = arr(f"wt2_{tf}", 0.0)
+        alignment += ((wt1 > wt2) if side == "LONG" else (wt1 < wt2)).astype(np.int8)
+    for tf in ("1h", "4h"):
+        rsi = arr(f"rsi_{tf}", 50.0)
+        alignment += ((rsi > 50.0) if side == "LONG" else (rsi < 50.0)).astype(np.int8)
+    sma = arr("sma_200_1h", 0.0)
+    alignment += ((sma > 0) & (
+        (close > sma) if side == "LONG" else (close < sma)
+    )).astype(np.int8)
+    alignment_gate = alignment >= 5
+
+    dc4_5m = arr("dc_low4_5m" if side == "LONG" else "dc_high4_5m", 0.0)
+    dc4_5m_gate = (dc4_5m <= 0) | (
+        (close >= dc4_5m) if side == "LONG" else (close <= dc4_5m)
+    )
+    dc4h = arr("dc_low_4h" if side == "LONG" else "dc_high_4h", 0.0)
+    dc4h_gate = (dc4h > 0) & (
+        (close >= dc4h) if side == "LONG" else (close <= dc4h)
+    )
+    counter_trend_allowed, counter_trend_audit = _counter_trend_entry_allowed(view, side)
+    mask = rth & zone & alignment_gate & dc4_5m_gate & dc4h_gate & counter_trend_allowed
+    return mask, {
+        "schema": "tradier-direct-entry-gate-mask-v1",
+        "rows": n,
+        "rth_rows": int(np.count_nonzero(rth)),
+        "zone_rows": int(np.count_nonzero(rth & zone)),
+        "alignment_rows": int(np.count_nonzero(rth & zone & alignment_gate)),
+        "dc4_5m_rows": int(np.count_nonzero(rth & zone & alignment_gate & dc4_5m_gate)),
+        "accepted_rows": int(np.count_nonzero(mask)),
+        "entry_min_alignment": 5,
+        "entry_zone_long": 80.0,
+        **counter_trend_audit,
+    }
 
 
 def _latest_band_mult(
@@ -493,10 +700,11 @@ def _score_reason_masks(
     return out
 
 
-def _bounce_masks(
-    view: dict[str, np.ndarray], side: str
-) -> dict[tuple[str, float, bool, str], np.ndarray]:
-    """Causal completed-channel reconstruction of the two removed bounce reasons."""
+def _bounce_mask(
+    view: dict[str, np.ndarray], side: str, tf: str, distance: float,
+    recovery_only: bool, confirmation: str,
+) -> np.ndarray:
+    """One causal bounce candidate; supports exact sealed non-grid distances."""
     n = len(view["close"])
     close = np.asarray(view["close"], dtype=np.float64)
     k5 = np.asarray(view.get("stoch_k_5m", np.full(n, 50.0)))
@@ -509,28 +717,35 @@ def _bounce_masks(
         confirms = {"stoch5": k5 < d5, "stoch15": k15 < d15}
     confirms["none"] = np.ones(n, dtype=bool)
     confirms["two-of-two"] = confirms["stoch5"] & confirms["stoch15"]
+    if tf not in {"5m", "15m"} or confirmation not in confirms:
+        raise ValueError("FROZEN_BOUNCE_PARAMS_NOT_IMPLEMENTED")
+    stem = "dc_low" if side == "LONG" else "dc_high"
+    channel = np.asarray(view.get(f"{stem}_{tf}_prev", np.zeros(n)))
+    valid = np.isfinite(channel) & (channel > 0) & np.isfinite(close)
+    if side == "LONG":
+        proximity = (close - channel) / np.maximum(channel, 1e-12)
+        mask = valid & (proximity < distance)
+        if recovery_only:
+            mask &= close >= channel
+    else:
+        proximity = (channel - close) / np.maximum(channel, 1e-12)
+        mask = valid & (proximity < distance)
+        if recovery_only:
+            mask &= close <= channel
+    return mask & confirms[confirmation]
+
+
+def _bounce_masks(
+    view: dict[str, np.ndarray], side: str
+) -> dict[tuple[str, float, bool, str], np.ndarray]:
+    """Discovery-grid bounce masks; exact materialization uses _bounce_mask."""
     out = {}
     for tf, distance, recovery_only, confirmation in itertools.product(
-        ("5m", "15m"),
-        (0.004, 0.008, 0.015, 0.025),
-        (False, True),
+        ("5m", "15m"), (0.004, 0.008, 0.015, 0.025), (False, True),
         ("none", "stoch5", "stoch15", "two-of-two"),
     ):
-        stem = "dc_low" if side == "LONG" else "dc_high"
-        channel = np.asarray(view.get(f"{stem}_{tf}_prev", np.zeros(n)))
-        valid = np.isfinite(channel) & (channel > 0) & np.isfinite(close)
-        if side == "LONG":
-            proximity = (close - channel) / np.maximum(channel, 1e-12)
-            mask = valid & (proximity < distance)
-            if recovery_only:
-                mask &= close >= channel
-        else:
-            proximity = (channel - close) / np.maximum(channel, 1e-12)
-            mask = valid & (proximity < distance)
-            if recovery_only:
-                mask &= close <= channel
-        out[(tf, distance, recovery_only, confirmation)] = (
-            mask & confirms[confirmation]
+        out[(tf, distance, recovery_only, confirmation)] = _bounce_mask(
+            view, side, tf, distance, recovery_only, confirmation
         )
     return out
 
@@ -1006,14 +1221,11 @@ def _mask(
     if candidate.family in {"ENTRY_BOUNCE_15M_LOW", "ENTRY_BOUNCE_5M_LOW"}:
         if bounce_masks is None:
             raise ValueError("bounce masks are required")
-        return bounce_masks[
-            (
-                str(p["timeframe"]),
-                float(p["distance"]),
-                bool(p["recovery_only"]),
-                str(p["confirmation"]),
-            )
-        ]
+        key = (str(p["timeframe"]), float(p["distance"]),
+               bool(p["recovery_only"]), str(p["confirmation"]))
+        return bounce_masks.get(key) if key in bounce_masks else _bounce_mask(
+            view, side, *key
+        )
     if candidate.family == "ENTRY_4H_DEEP_VALUE":
         if score_reason_masks is None:
             raise ValueError("score reason masks are required")
@@ -1204,6 +1416,9 @@ def build_frozen_overlay_signals(
         bounce_masks,
         score_reason_masks,
     )
+    if candidate.role == "direct" and candidate.family in GATE_AWARE_DIRECT_FAMILIES:
+        real_gate_mask, _ = _real_entry_gate_mask(view, data.ts, side)
+        mask = mask & real_gate_mask
     entry_mult = _candidate_entry_mult(
         candidate,
         mask,
@@ -1233,7 +1448,11 @@ def run(args: argparse.Namespace) -> Path:
     npz_path = Path(manifest["npz"])
     if not npz_path.exists():
         npz_path = Path(args.npz_dir) / f"{symbol}.npz"
-    if hashlib.sha256(npz_path.read_bytes()).hexdigest() != manifest["npz_sha256"]:
+    # An overlay is itself a sealed artifact.  Its manifest calls the inherited
+    # source hash ``control_npz_sha256``; first-generation control artifacts
+    # call it ``npz_sha256``.  Both bind the same exact frozen file.
+    expected_npz_sha256 = _manifest_npz_sha256(manifest, symbol)
+    if hashlib.sha256(npz_path.read_bytes()).hexdigest() != expected_npz_sha256:
         raise ValueError(f"{symbol}: control NPZ hash mismatch")
     data = top._load_execution(symbol, npz_path.parent, args.start, "ladder", args.end)
     htfs = {tf: top._compress_htf(data, tf) for tf in ("15m", "1h", "4h", "D")}
@@ -1251,6 +1470,7 @@ def run(args: argparse.Namespace) -> Path:
     long_wait_masks = _long_wait_masks(view, side)
     bounce_masks = _bounce_masks(view, side)
     score_reason_masks = _score_reason_masks(view, side)
+    real_gate_mask, real_gate_audit = _real_entry_gate_mask(view, data.ts, side)
     family_candidates = {
         "ENTRY_GOLDEN_RULE": _gr_candidates,
         "ENTRY_WT_DC": _wt_candidates,
@@ -1268,9 +1488,21 @@ def run(args: argparse.Namespace) -> Path:
         "ENTRY_4H_DEEP_VALUE": _deep_value_candidates,
         "ENTRY_1H_TURN_UP": _turn_1h_candidates,
     }[args.family]()
-    masks = {
-        c: _mask(
-            c,
+    family_candidates = _requested_candidate(
+        args.family, family_candidates, args.candidate_json
+    )
+    real_gate_audit = {
+        **real_gate_audit,
+        "family": args.family,
+        "applied_to_entry_signal": bool(
+            args.family in GATE_AWARE_DIRECT_FAMILIES
+            and any(candidate.role == "direct" for candidate in family_candidates)
+        ),
+    }
+    masks = {}
+    for candidate in family_candidates:
+        candidate_mask = _mask(
+            candidate,
             view,
             side,
             gr_scores,
@@ -1282,8 +1514,12 @@ def run(args: argparse.Namespace) -> Path:
             bounce_masks,
             score_reason_masks,
         )
-        for c in family_candidates
-    }
+        if (
+            candidate.role == "direct"
+            and candidate.family in GATE_AWARE_DIRECT_FAMILIES
+        ):
+            candidate_mask = candidate_mask & real_gate_mask
+        masks[candidate] = candidate_mask
     folds = []
     for source_fold in control_payload["outer_folds"]:
         curve = ladder.Curve(**source_fold["selected_curve"])
@@ -1503,7 +1739,7 @@ def run(args: argparse.Namespace) -> Path:
             "created_utc": datetime.now(timezone.utc).isoformat(),
             "control_artifact": str(artifact),
             "npz": str(npz_path.resolve()),
-            "control_npz_sha256": manifest["npz_sha256"],
+            "control_npz_sha256": expected_npz_sha256,
             "data_start": args.start,
             "frozen_exit": "E02_DONCHIAN_4h_N30",
             "frozen_reentry": "zero-buffer resting reclaim",
@@ -1513,6 +1749,12 @@ def run(args: argparse.Namespace) -> Path:
             "commission_bps_one_way": args.commission_bps,
             "slippage_bps_one_way": args.slippage_bps,
             "grid_candidates": len(family_candidates),
+            "materialized_candidate": (
+                {"family": family_candidates[0].family,
+                 "role": family_candidates[0].role,
+                 "params": family_candidates[0].params}
+                if args.candidate_json else None
+            ),
             "vector_shortlist_per_fold": args.shortlist,
             "exposure_policy": {
                 "cohort": (
@@ -1599,6 +1841,7 @@ def run(args: argparse.Namespace) -> Path:
                 ),
             },
             "causality": causality,
+            "real_entry_gate_mask": real_gate_audit,
         },
         "outer_folds": folds,
         "aggregate": aggregate,
@@ -1647,8 +1890,13 @@ def main() -> None:
     ap.add_argument("--shortlist", type=int, default=24)
     ap.add_argument("--target-tim-low", type=float, default=70.0)
     ap.add_argument("--target-tim-high", type=float, default=80.0)
-    ap.add_argument("--commission-bps", type=float, default=5.0)
-    ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument("--commission-bps", type=float, default=0.0)
+    ap.add_argument("--slippage-bps", type=float, default=2.5)
+    ap.add_argument(
+        "--candidate-json",
+        help=("one exact hash-bound family candidate to materialize; no grid "
+              "nearest-match or parameter substitution is permitted"),
+    )
     run(ap.parse_args())
 
 

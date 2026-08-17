@@ -1,0 +1,129 @@
+{
+  "contract": "native 5m JSON is append-only and durable; gaps may use disclosed containing-15m interpolation; NPZ synthetic_5m=0 means native and 1 means interpolated",
+  "errors": [],
+  "generated_at": "2026-07-26T05:28:44.998846+00:00",
+  "symbol_count": 3,
+  "symbols": {
+    "HAO": {
+      "errors": [],
+      "native_source": {
+        "bytes": 672525,
+        "duplicates": 0,
+        "end": "2026-07-24T23:55:00.000000Z",
+        "exists": true,
+        "monotonic": true,
+        "path": "/home/niels/binance-sandbox/klines_cache_backtest/tradier/HAO_5m.json",
+        "rows": 5977,
+        "start": "2026-04-09T14:20:00.000000Z",
+        "timestamp_rows": 5977,
+        "unique_timestamps": 5977
+      },
+      "npz": {
+        "end": "2026-07-24T23:55:00+00:00",
+        "exists": true,
+        "interpolated": {
+          "end": "2026-07-24T23:40:00+00:00",
+          "pct": 44.857,
+          "rows": 4862,
+          "start": "2026-04-09T14:05:00+00:00"
+        },
+        "native": {
+          "end": "2026-07-24T23:55:00+00:00",
+          "pct": 55.143,
+          "rows": 5977,
+          "start": "2026-04-09T14:20:00+00:00"
+        },
+        "parent_lag_max_s": 600,
+        "parent_lag_min_s": 0,
+        "parent_lag_valid": true,
+        "parent_provenance_present": true,
+        "path": "/home/niels/binance-sandbox/backtest_v8/indicators/HAO.npz",
+        "provenance_length_valid": true,
+        "provenance_present": true,
+        "rows": 10839,
+        "start": "2026-04-09T14:05:00+00:00"
+      }
+    },
+    "MU": {
+      "errors": [],
+      "native_source": {
+        "bytes": 1827135,
+        "duplicates": 0,
+        "end": "2026-07-24T23:55:00.000000Z",
+        "exists": true,
+        "monotonic": true,
+        "path": "/home/niels/binance-sandbox/klines_cache_backtest/tradier/MU_5m.json",
+        "rows": 15526,
+        "start": "2026-03-23T11:15:00.000000Z",
+        "timestamp_rows": 15526,
+        "unique_timestamps": 15526
+      },
+      "npz": {
+        "end": "2026-07-24T23:55:00+00:00",
+        "exists": true,
+        "interpolated": {
+          "end": "2026-07-24T03:55:00+00:00",
+          "pct": 86.457,
+          "rows": 99115,
+          "start": "2024-03-26T07:50:00+00:00"
+        },
+        "native": {
+          "end": "2026-07-24T23:55:00+00:00",
+          "pct": 13.543,
+          "rows": 15526,
+          "start": "2026-03-23T11:15:00+00:00"
+        },
+        "parent_lag_max_s": 600,
+        "parent_lag_min_s": 0,
+        "parent_lag_valid": true,
+        "parent_provenance_present": true,
+        "path": "/home/niels/binance-sandbox/backtest_v8/indicators/MU.npz",
+        "provenance_length_valid": true,
+        "provenance_present": true,
+        "rows": 114641,
+        "start": "2024-03-26T07:50:00+00:00"
+      }
+    },
+    "VT": {
+      "errors": [],
+      "native_source": {
+        "bytes": 4792167,
+        "duplicates": 0,
+        "end": "2026-07-24T22:00:00.000000Z",
+        "exists": true,
+        "monotonic": true,
+        "path": "/home/niels/binance-sandbox/klines_cache_backtest/tradier/VT_5m.json",
+        "rows": 41190,
+        "start": "2024-07-11T11:00:00.000000Z",
+        "timestamp_rows": 41190,
+        "unique_timestamps": 41190
+      },
+      "npz": {
+        "end": "2026-07-24T22:00:00+00:00",
+        "exists": true,
+        "interpolated": {
+          "end": "2026-07-24T21:55:00+00:00",
+          "pct": 1.814,
+          "rows": 761,
+          "start": "2026-06-30T07:50:00+00:00"
+        },
+        "native": {
+          "end": "2026-07-24T22:00:00+00:00",
+          "pct": 98.186,
+          "rows": 41190,
+          "start": "2024-07-11T11:00:00+00:00"
+        },
+        "parent_lag_max_s": 600,
+        "parent_lag_min_s": 0,
+        "parent_lag_valid": true,
+        "parent_provenance_present": true,
+        "path": "/home/niels/binance-sandbox/backtest_v8/indicators/VT.npz",
+        "provenance_length_valid": true,
+        "provenance_present": true,
+        "rows": 41951,
+        "start": "2024-07-11T11:00:00+00:00"
+      }
+    }
+  },
+  "valid": true
+}

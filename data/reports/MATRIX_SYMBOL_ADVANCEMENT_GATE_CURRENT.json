@@ -1,0 +1,30 @@
+{
+  "advance_to_next_symbol_allowed": false,
+  "candidate_processing_allowed": false,
+  "complete_symbol_sides": 0,
+  "current_counts": {
+    "advance_allowed": false,
+    "blank": 10938,
+    "duplicate": 0,
+    "expected": 14629,
+    "key": "MU_LONG",
+    "non_numeric": 0,
+    "valid": 3691,
+    "zero": 0
+  },
+  "current_symbol_side": "MU_LONG",
+  "generated_at_epoch": 1785757846.0652301,
+  "next_symbol_side": "NVDA_LONG",
+  "original_five": [
+    "MU_LONG",
+    "NVDA_LONG",
+    "VT_LONG",
+    "TTD_SHORT",
+    "ACN_SHORT"
+  ],
+  "priority_contract": "ORIGINAL_FIVE_THEN_MEASURED_FRONTIER_THEN_WORKBOOK_ORDER",
+  "requested_candidate": null,
+  "schema": "matrix-symbol-advancement-gate-v1",
+  "status": "HOLD_CURRENT_SYMBOL_SIDE",
+  "symbol_side_count": 135
+}

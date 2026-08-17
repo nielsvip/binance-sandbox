@@ -59,6 +59,21 @@ from vec_paths.structural_wt_retest_exit import (  # noqa: E402
     StructuralWtRetestExitBook,
 )
 
+# Normal discovery exports compact aggregate folds.  The selected-combination
+# chart lane explicitly enables this to retain the source ordered actions on
+# S1 long enough to distil paired chart trades.
+EMIT_EVENT_LEDGER = False
+
+
+def chart_event_ledger(row: dict[str, Any]) -> dict[str, Any]:
+    if not EMIT_EVENT_LEDGER:
+        return {}
+    ledger = row.get("event_ledger")
+    return {
+        "event_ledger": ledger if isinstance(ledger, list) else None,
+        "event_ledger_status": "CAUSAL_RAW" if isinstance(ledger, list) else "UNAVAILABLE",
+    }
+
 STRUCTURAL_SCAN_SOURCE = ROOT / "tools" / "vec_same_entry_structural_scan.c"
 _STRUCTURAL_SCAN_LIBRARY: ctypes.CDLL | None = None
 ACTUAL_EXIT_REQUIRED_FAMILIES = {
@@ -120,6 +135,8 @@ class _StructuralScanMetrics(ctypes.Structure):
         ("clamp_count", ctypes.c_int),
         ("future_htf_count", ctypes.c_int),
         ("bars_flat_beyond_reclaim", ctypes.c_int),
+        ("dc4h_entry_blocks", ctypes.c_int),
+        ("dc4h_safety_exit_fills", ctypes.c_int),
         ("rows", ctypes.c_int),
     ]
 
@@ -167,6 +184,8 @@ def _structural_scan_library() -> ctypes.CDLL:
         f64,  # low
         f64,  # close
         f64,  # entry_mult
+        f64,  # live 4h Donchian boundary
+        ctypes.c_int,  # enforce live Tradier 4h boundary
         u8,  # arm_event
         i64,  # arm_source
         f64,  # arm_high
@@ -1855,6 +1874,7 @@ def simulate_structural_compiled(
         }[mode]
         for mode in params.emergency_modes
     )
+    dc4h_level, dc4h_enforced = _tradier_dc4h_boundary_series(data, side)
     rc = _structural_scan_library().vec_same_entry_structural_scan(
         len(data.ts),
         left,
@@ -1867,6 +1887,8 @@ def simulate_structural_compiled(
         np.ascontiguousarray(data.low, dtype=np.float64),
         np.ascontiguousarray(data.close, dtype=np.float64),
         np.ascontiguousarray(entry_signals.entry_mult, dtype=np.float64),
+        dc4h_level,
+        int(dc4h_enforced),
         *arm,
         *confirm[:-1],
         params.rebound_atr,
@@ -1909,6 +1931,10 @@ def simulate_structural_compiled(
         "signals": int(out.signals),
         "rejected_by_profit_gate": int(out.rejected_profit),
         "exit_fills": int(out.exit_fills),
+        # The compiled structural path has no partial/runner close action:
+        # each recorded exit fill is a terminal position lifecycle close.
+        "real_close_trades": int(out.exit_fills),
+        "terminal_lifecycle_closes": int(out.exit_fills),
         "normal_exit_fills": int(out.normal_exit_fills),
         "emergency_exit_fills": int(out.emergency_exit_fills),
         "normal_exit_pnl_usd": float(out.normal_exit_pnl_usd),
@@ -1935,6 +1961,9 @@ def simulate_structural_compiled(
         "clamp_count": int(out.clamp_count),
         "future_htf_source_count": int(out.future_htf_count),
         "bars_flat_beyond_reclaim": int(out.bars_flat_beyond_reclaim),
+        "dc4h_entry_blocks": int(out.dc4h_entry_blocks),
+        "dc4h_safety_exit_fills": int(out.dc4h_safety_exit_fills),
+        "dc4h_safety_enforced": bool(dc4h_enforced),
         "mandatory_reclaim_execution": (
             "RESTING_TOUCH_LEVEL_OR_ADVERSE_GAP_OPEN"
         ),
@@ -1966,6 +1995,49 @@ def _entry_schedule_hash(
             f"{int(data.ts[row])}:{float(signals.entry_mult[row]):.12g}\n".encode()
         )
     return digest.hexdigest()
+
+
+def _tradier_dc4h_boundary_series(
+    data: Any, side: str
+) -> tuple[np.ndarray, bool]:
+    """Return the live TRB/TRC 4h boundary on the execution clock.
+
+    Production ``ExecutionData`` carries a data-contract marker and therefore
+    fails closed on a missing boundary. Small synthetic unit fixtures without
+    that marker keep the safety lane disabled unless they explicitly provide
+    the matching Donchian field.
+    """
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError("side must be LONG or SHORT")
+    key = "dc_low_4h" if side == "LONG" else "dc_high_4h"
+    z = getattr(data, "z", None)
+    files = set(getattr(z, "files", ())) if z is not None else set()
+    enforced = hasattr(data, "contract") or key in files
+    if key not in files:
+        return np.zeros(len(data.ts), dtype=np.float64), enforced
+    raw = np.asarray(z[key], dtype=np.float64)
+    indices = np.asarray(
+        getattr(data, "full_indices", np.arange(len(data.ts))),
+        dtype=np.int64,
+    )
+    if len(indices) != len(data.ts) or (len(indices) and int(indices[-1]) >= len(raw)):
+        raise ValueError(f"{key} cannot map to the execution clock")
+    return np.ascontiguousarray(raw[indices], dtype=np.float64), enforced
+
+
+def _dc4h_entry_allowed(price: float, level: float, *, is_long: bool) -> bool:
+    """Mirror ``dc_4h_boundary_breached(..., require_level=True)``."""
+    valid = math.isfinite(price) and price > 0.0 and math.isfinite(level) and level > 0.0
+    if not valid:
+        return False
+    return price > level if is_long else price < level
+
+
+def _dc4h_held_breached(price: float, level: float, *, is_long: bool) -> bool:
+    """Mirror the held-position check; missing levels never invent exits."""
+    valid = math.isfinite(price) and price > 0.0 and math.isfinite(level) and level > 0.0
+    return bool(valid and (price <= level if is_long else price >= level))
 
 
 def simulate(
@@ -2023,6 +2095,8 @@ def simulate(
     partial_exit_fills = runner_exit_fills = clip_reclaims = 0
     clip_obligations: list[dict[str, float]] = []
     ledger: list[dict[str, Any]] = []
+    dc4h_entry_blocks = dc4h_safety_exit_fills = 0
+    dc4h_level, dc4h_enforced = _tradier_dc4h_boundary_series(data, side)
 
     def active() -> bool:
         return side_sign * qty > 1e-12
@@ -2072,10 +2146,19 @@ def simulate(
                 cash += side_sign * (
                     notional - side_sign * commission_rate * notional
                 )
-                prior_exit_notional = min(ladder.CAPACITY, notional)
-                last_exit_fill = px
-                ref = float(pending["ref"])
-                reclaim_level = max(px, ref) if is_long else min(px, ref)
+                safety_exit = bool(pending.get("safety_exit", False))
+                if safety_exit:
+                    # The live hard-safety close is outside the selected exit
+                    # strategy and therefore creates no mandatory strategy
+                    # reclaim obligation.
+                    prior_exit_notional = 0.0
+                    last_exit_fill = math.nan
+                    reclaim_level = math.nan
+                else:
+                    prior_exit_notional = min(ladder.CAPACITY, notional)
+                    last_exit_fill = px
+                    ref = float(pending["ref"])
+                    reclaim_level = max(px, ref) if is_long else min(px, ref)
                 qty = 0.0
                 average_entry = math.nan
                 gap_seen = False
@@ -2084,6 +2167,7 @@ def simulate(
                 if "EMERGENCY" in str(pending["reason"]):
                     emergency_exit_fills += 1
                     emergency_exit_pnl_usd += realized_exit_pnl
+                    dc4h_safety_exit_fills += int(safety_exit)
                 else:
                     normal_exit_fills += 1
                     normal_exit_pnl_usd += realized_exit_pnl
@@ -2094,6 +2178,8 @@ def simulate(
                 ledger.append(
                     {
                         "type": "EXIT",
+                        "signal_index": int(pending["signal_index"]),
+                        "fill_index": i,
                         "reason": pending["reason"],
                         "signal_ts": int(data.ts[pending["signal_index"]]),
                         "fill_ts": int(data.ts[i]),
@@ -2118,6 +2204,7 @@ def simulate(
                     {
                         "level": max(px, ref) if is_long else min(px, ref),
                         "notional": notional,
+                        "exit_fill_index": i,
                     }
                 )
                 partial_exit_fills += 1
@@ -2125,6 +2212,8 @@ def simulate(
                 ledger.append(
                     {
                         "type": "PARTIAL_EXIT",
+                        "signal_index": int(pending["signal_index"]),
+                        "fill_index": i,
                         "reason": pending["reason"],
                         "fraction": float(pending["fraction"]),
                         "signal_ts": int(data.ts[pending["signal_index"]]),
@@ -2135,7 +2224,26 @@ def simulate(
                     }
                 )
             elif pending["kind"] == "entry":
+                was_active = active()
                 px = op * (1.0 + side_sign * slippage_rate)
+                level = float(dc4h_level[i])
+                if dc4h_enforced and not _dc4h_entry_allowed(
+                    px, level, is_long=is_long
+                ):
+                    dc4h_entry_blocks += 1
+                    ledger.append(
+                        {
+                            "type": "ENTRY_BLOCK",
+                            "signal_index": int(pending["signal_index"]),
+                            "fill_index": i,
+                            "reason": "ENTRY_DC4H_SAFETY",
+                            "fill_ts": int(data.ts[i]),
+                            "attempt_price": px,
+                            "dc4h_level": level,
+                        }
+                    )
+                    pending = None
+                    continue
                 current = abs(qty) * px
                 target = float(pending["requested_notional"])
                 want = (
@@ -2167,6 +2275,26 @@ def simulate(
                         pending["reason"] in {"ladder_lower", "ladder_higher"}
                     )
                     reclaim += int(pending["reason"] == "reclaim")
+                    ledger.append(
+                        {
+                            "type": (
+                                "ENTRY"
+                                if was_active or exit_fill_row < left
+                                else "REENTER"
+                            ),
+                            "signal_index": int(pending["signal_index"]),
+                            "fill_index": i,
+                            "reason": pending["reason"],
+                            "fill_ts": int(data.ts[i]),
+                            "fill_price": px,
+                            "filled_notional_usd": actual,
+                            "parent_exit_index": (
+                                None
+                                if was_active or exit_fill_row < left
+                                else exit_fill_row
+                            ),
+                        }
+                    )
                     if abs(qty) * px > ladder.CAPACITY + 1e-6:
                         raise RuntimeError("entry capacity breach")
             pending = None
@@ -2188,6 +2316,12 @@ def simulate(
                 slippage_bps=slippage_rate * 10_000.0,
             )
             if reclaim_px is not None:
+                level = float(dc4h_level[i])
+                if dc4h_enforced and not _dc4h_entry_allowed(
+                    reclaim_px, level, is_long=is_long
+                ):
+                    dc4h_entry_blocks += 1
+                    continue
                 target = max(ladder.BASE_UNIT, prior_exit_notional)
                 actual = min(target, ladder.CAPACITY)
                 requested += target
@@ -2201,6 +2335,18 @@ def simulate(
                 average_entry = reclaim_px
                 entry_fills += 1
                 reclaim += 1
+                ledger.append(
+                    {
+                        "type": "REENTER",
+                        "signal_index": i,
+                        "fill_index": i,
+                        "reason": "mandatory_zero_buffer_reclaim",
+                        "fill_ts": int(data.ts[i]),
+                        "fill_price": reclaim_px,
+                        "filled_notional_usd": actual,
+                        "parent_exit_index": exit_fill_row,
+                    }
+                )
                 last_exit_fill = math.nan
                 reclaim_level = math.nan
 
@@ -2208,6 +2354,9 @@ def simulate(
         # E02 runner remains open.  Reclaims are bounded by the same capacity.
         remaining_clip_obligations: list[dict[str, float]] = []
         for obligation in clip_obligations:
+            if i <= int(obligation["exit_fill_index"]):
+                remaining_clip_obligations.append(obligation)
+                continue
             reclaim_px = resting_reclaim_fill(
                 is_long=is_long,
                 reclaim_level=float(obligation["level"]),
@@ -2217,6 +2366,13 @@ def simulate(
                 slippage_bps=slippage_rate * 10_000.0,
             )
             if reclaim_px is None:
+                remaining_clip_obligations.append(obligation)
+                continue
+            level = float(dc4h_level[i])
+            if dc4h_enforced and not _dc4h_entry_allowed(
+                reclaim_px, level, is_long=is_long
+            ):
+                dc4h_entry_blocks += 1
                 remaining_clip_obligations.append(obligation)
                 continue
             current = abs(qty) * reclaim_px
@@ -2247,6 +2403,20 @@ def simulate(
                 entry_fills += 1
                 reclaim += 1
                 clip_reclaims += 1
+                ledger.append(
+                    {
+                        "type": "REENTER",
+                        "signal_index": i,
+                        "fill_index": i,
+                        "reason": "partial_clip_reclaim",
+                        "fill_ts": int(data.ts[i]),
+                        "fill_price": reclaim_px,
+                        "filled_notional_usd": actual,
+                        "parent_exit_index": int(
+                            obligation["exit_fill_index"]
+                        ),
+                    }
+                )
             # A touched but capacity-clipped obligation is complete. Keeping it
             # alive would create repeated free attempts at the same historical
             # level and violate the one-obligation/one-fill contract.
@@ -2259,6 +2429,31 @@ def simulate(
             max_dd = max(max_dd, 100.0 * (peak_equity - equity) / peak_equity)
         held += int(active())
         weighted += min(ladder.CAPACITY, abs(qty) * close) / ladder.CAPACITY
+
+        # Live owns this hard close before every configurable strategy exit.
+        # It is intentionally not subject to the selected recipe's profit gate.
+        if (
+            dc4h_enforced
+            and active()
+            and _dc4h_held_breached(
+                close, float(dc4h_level[i]), is_long=is_long
+            )
+            and i + 1 < right
+        ):
+            level = float(dc4h_level[i])
+            pending = {
+                "kind": "exit",
+                "signal_index": i,
+                "reason": (
+                    "EMERGENCY_DC4H_BREACH_"
+                    f"{'dc_low_4h' if is_long else 'dc_high_4h'}="
+                    f"{level:.8f},price={close:.8f}"
+                ),
+                "ref": level,
+                "sources": {"4h_boundary_observed_ts": int(data.ts[i])},
+                "safety_exit": True,
+            }
+            continue
 
         runner_decision = update_book(runner_exit_book, i, close)
         decision = update_book(exit_book, i, close)
@@ -2384,6 +2579,10 @@ def simulate(
         "signals": signals_seen,
         "rejected_by_profit_gate": rejected_profit,
         "exit_fills": exit_fills,
+        # Full ``exit`` is the only branch that sets qty to zero.  Partial
+        # clips deliberately remain broad action evidence and never count.
+        "real_close_trades": normal_exit_fills + emergency_exit_fills,
+        "terminal_lifecycle_closes": normal_exit_fills + emergency_exit_fills,
         "normal_exit_fills": normal_exit_fills,
         "emergency_exit_fills": emergency_exit_fills,
         "normal_exit_pnl_usd": normal_exit_pnl_usd,
@@ -2404,7 +2603,18 @@ def simulate(
         "clamp_count": clamps,
         "future_htf_source_count": future_sources,
         "bars_flat_beyond_reclaim": beyond,
+        "dc4h_entry_blocks": dc4h_entry_blocks,
+        "dc4h_safety_exit_fills": dc4h_safety_exit_fills,
+        "dc4h_safety_enforced": bool(dc4h_enforced),
         "mandatory_reclaim_execution": "RESTING_TOUCH_LEVEL_OR_ADVERSE_GAP_OPEN",
+        "open_reclaim_obligations": (
+            len(clip_obligations)
+            + int(
+                not active()
+                and exit_fill_row >= left
+                and math.isfinite(reclaim_level)
+            )
+        ),
         "frozen_entry_schedule_sha256": _entry_schedule_hash(
             data, entry_signals, curve, left, right
         ),
@@ -2774,10 +2984,25 @@ def prune_bottom_structural_v2_bases(
         raise ValueError("bottom structural v2 requires four B bases")
 
     def rank(row: dict[str, Any]) -> tuple[Any, ...]:
-        nested = row["nested"]
-        discovery = nested["discovery"]
+        nested = row.get("nested")
+        discovery = nested["discovery"] if nested else row["metrics"]
+        robust = (
+            bool(nested["robust_discovery_all_folds"])
+            if nested
+            else all(
+                evidence["alpha_vs_bh_pp"] > 0
+                and evidence["alpha_vs_same_entry_e02_pp"] > 0
+                and exposure_min_pct <= evidence["weighted_tim_pct"] <= exposure_max_pct
+                and not evidence["insolvent"]
+                and not evidence["entry_capacity_breach"]
+                and evidence["future_htf_source_count"] == 0
+                and evidence["bars_flat_beyond_reclaim"] == 0
+                and evidence["exit_fills"] > 0
+                for evidence in row["fold_evidence"]
+            )
+        )
         return (
-            not bool(nested["robust_discovery_all_folds"]),
+            not robust,
             int(discovery["exit_fills"]) <= 0,
             abs(
                 float(
@@ -2785,8 +3010,14 @@ def prune_bottom_structural_v2_bases(
                 )
                 - (exposure_min_pct + exposure_max_pct) / 2.0
             ),
-            -float(nested["discovery_alpha_vs_same_entry_e02_pp"]),
-            -float(nested["discovery_alpha_vs_bh_pp"]),
+            -float(
+                nested["discovery_alpha_vs_same_entry_e02_pp"]
+                if nested else row["alpha_vs_same_entry_e02_pp"]
+            ),
+            -float(
+                nested["discovery_alpha_vs_bh_pp"]
+                if nested else row["alpha_vs_bh_pp"]
+            ),
             float(discovery["max_drawdown_account_pct_max"]),
             hashlib.sha256(
                 json.dumps(row["params"], sort_keys=True).encode("utf-8")
@@ -2843,10 +3074,25 @@ def prune_bottom_b_extended_bases(
         raise ValueError("C_EXT contract requires exactly eight B bases")
 
     def rank(row: dict[str, Any]) -> tuple[Any, ...]:
-        nested = row["nested"]
-        discovery = nested["discovery"]
+        nested = row.get("nested")
+        discovery = nested["discovery"] if nested else row["metrics"]
+        robust = (
+            bool(nested["robust_discovery_all_folds"])
+            if nested
+            else all(
+                evidence["alpha_vs_bh_pp"] > 0
+                and evidence["alpha_vs_same_entry_e02_pp"] > 0
+                and exposure_min_pct <= evidence["weighted_tim_pct"] <= exposure_max_pct
+                and not evidence["insolvent"]
+                and not evidence["entry_capacity_breach"]
+                and evidence["future_htf_source_count"] == 0
+                and evidence["bars_flat_beyond_reclaim"] == 0
+                and evidence["exit_fills"] > 0
+                for evidence in row["fold_evidence"]
+            )
+        )
         return (
-            not bool(nested["robust_discovery_all_folds"]),
+            not robust,
             int(discovery["exit_fills"]) <= 0,
             abs(
                 float(
@@ -2854,8 +3100,14 @@ def prune_bottom_b_extended_bases(
                 )
                 - (exposure_min_pct + exposure_max_pct) / 2.0
             ),
-            -float(nested["discovery_alpha_vs_same_entry_e02_pp"]),
-            -float(nested["discovery_alpha_vs_bh_pp"]),
+            -float(
+                nested["discovery_alpha_vs_same_entry_e02_pp"]
+                if nested else row["alpha_vs_same_entry_e02_pp"]
+            ),
+            -float(
+                nested["discovery_alpha_vs_bh_pp"]
+                if nested else row["alpha_vs_bh_pp"]
+            ),
             float(discovery["max_drawdown_account_pct_max"]),
             hashlib.sha256(
                 json.dumps(row["params"], sort_keys=True).encode("utf-8")
@@ -3052,6 +3304,10 @@ def _fold_contexts(
     folds = list(source["outer_folds"])
     if fold_mode == "latest":
         folds = folds[-1:]
+    elif fold_mode == "discovery":
+        if len(folds) < 2:
+            raise ValueError("discovery mode requires a separate untouched final fold")
+        folds = folds[:-1]
     contexts: list[dict[str, Any]] = []
     for fold in folds:
         left = ladder._date_index(data, fold["validation"][0])
@@ -3112,6 +3368,8 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "clamp_count": sum(int(r["clamp_count"]) for r in rows),
         "exit_fills": sum(int(r["exit_fills"]) for r in rows),
+        "real_close_trades": sum(int(r.get("real_close_trades", 0)) for r in rows),
+        "terminal_lifecycle_closes": sum(int(r.get("terminal_lifecycle_closes", 0)) for r in rows),
         "normal_exit_fills": sum(
             int(r.get("normal_exit_fills", r["exit_fills"])) for r in rows
         ),
@@ -3158,6 +3416,108 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         else 0.0
     )
     return result
+
+
+def _causal_action_evidence(row: dict[str, Any]) -> dict[str, Any]:
+    """Publish ledger-derived action identity and strict-later pairs.
+
+    Compiled-only scanners do not expose their ordered action stream.  They
+    deliberately remain unavailable instead of synthesizing indices from
+    aggregate fill counters.
+    """
+    ledger = row.get("event_ledger")
+    unavailable = {
+        "action_evidence_status": "UNAVAILABLE_NO_CAUSAL_EVENT_LEDGER",
+        "action_fingerprint": None,
+        "ledger_sha256": None,
+        "exit_indices": [],
+        "reentry_indices": [],
+        "reentry_pairs": [],
+        "reentry_violations": 0,
+        "strictly_later_reentry_proven": False,
+        "pending_reentry_count": int(
+            row.get(
+                "open_reclaim_obligations",
+                row.get("clip_obligations_unfilled_at_end", 0),
+            )
+        ),
+        "terminal_right_censored": False,
+    }
+    if not isinstance(ledger, list):
+        return unavailable
+    required = {"type", "fill_index", "fill_ts"}
+    if any(
+        not isinstance(event, dict) or not required.issubset(event)
+        for event in ledger
+    ):
+        unavailable["action_evidence_status"] = (
+            "UNAVAILABLE_INCOMPLETE_CAUSAL_EVENT_LEDGER"
+        )
+        return unavailable
+    actions = [
+        event
+        for event in ledger
+        if event.get("type") in {"ENTRY", "REENTER", "PARTIAL_EXIT", "EXIT"}
+    ]
+    exit_indices = [
+        int(event["fill_index"])
+        for event in actions
+        if event["type"] in {"PARTIAL_EXIT", "EXIT"}
+    ]
+    expected_exits = int(
+        row.get(
+            "exit_fills",
+            row.get("technical_exit_fills", len(exit_indices)),
+        )
+    )
+    if len(exit_indices) != expected_exits:
+        unavailable["action_evidence_status"] = (
+            "UNAVAILABLE_EVENT_LEDGER_EXIT_COUNT_MISMATCH"
+        )
+        return unavailable
+    pairs = [
+        {
+            "exit_index": int(event["parent_exit_index"]),
+            "reentry_index": int(event["fill_index"]),
+        }
+        for event in actions
+        if event["type"] == "REENTER"
+        and event.get("parent_exit_index") is not None
+    ]
+    reentry_indices = [pair["reentry_index"] for pair in pairs]
+    exit_set = set(exit_indices)
+    violations = sum(
+        pair["exit_index"] not in exit_set
+        or pair["reentry_index"] <= pair["exit_index"]
+        for pair in pairs
+    )
+    pending = int(
+        row.get(
+            "open_reclaim_obligations",
+            row.get("clip_obligations_unfilled_at_end", 0),
+        )
+    )
+    fingerprint = hashlib.sha256(
+        json.dumps(
+            actions,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+    proven = bool(exit_indices and pairs and violations == 0)
+    return {
+        "action_evidence_status": "CAUSAL_EVENT_LEDGER",
+        "action_fingerprint": fingerprint,
+        "ledger_sha256": fingerprint,
+        "exit_indices": exit_indices,
+        "reentry_indices": reentry_indices,
+        "reentry_pairs": pairs,
+        "reentry_violations": violations,
+        "strictly_later_reentry_proven": proven,
+        "pending_reentry_count": pending,
+        "terminal_right_censored": bool(pending > 0 and violations == 0),
+    }
 
 
 def screen_artifact(
@@ -3246,6 +3606,8 @@ def screen_artifact(
                     candidate["entry_capacity_breach"]
                 ),
                 "exit_fills": int(candidate["exit_fills"]),
+                "real_close_trades": int(candidate.get("real_close_trades", 0)),
+                "terminal_lifecycle_closes": int(candidate.get("terminal_lifecycle_closes", 0)),
                 "normal_exit_fills": int(
                     candidate.get("normal_exit_fills", candidate["exit_fills"])
                 ),
@@ -3261,6 +3623,8 @@ def screen_artifact(
                 "emergency_exit_pnl_usd": float(
                     candidate.get("emergency_exit_pnl_usd", 0.0)
                 ),
+                **chart_event_ledger(candidate),
+                **_causal_action_evidence(candidate),
             }
             for index, candidate in enumerate(fold_rows)
         ]
@@ -4469,7 +4833,7 @@ def main() -> int:
         ),
     )
     ap.add_argument(
-        "--fold-mode", choices=("latest", "all", "nested"), default="latest"
+        "--fold-mode", choices=("latest", "all", "nested", "discovery"), default="latest"
     )
     ap.add_argument("--exposure-min-pct", type=float, default=70.0)
     ap.add_argument("--exposure-max-pct", type=float, default=80.0)

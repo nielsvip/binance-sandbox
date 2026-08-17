@@ -1,0 +1,3 @@
+config,pool_sharpe,sym_sharpe,avg_gain_trade,gain_per_yr,gain_sym_yr,max_dd_pct,trades,hedge_open_count,hedge_close_count,hedge_loss_count,hedge_loss_total_pct,hedge_avg_pnl_pct,hedge_triggers_blocked_by_grace,hedge_orphan_kills,sample_size
+same_only,0.125,0.027,0.0007272727272727273,88.59649122807018,14.76608187134503,1.75,1265,6,1,NA,NA,NA,776,88,6 syms × 4.16 days × 3m bars (2000 bars)
+dual_only,0.28,NA,0.0009446693657219973,61.38655462184874,10.231092436974789,NA,741,12,345,NA,NA,NA,NA,2008,6 syms × 4.16 days × 3m bars (2000 bars)

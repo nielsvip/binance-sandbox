@@ -65,11 +65,15 @@ def test_restored_param_baseline_sheets_are_contract_tier_isolated(tmp_path, mon
     con = _memory_store()
     common = {
         "mode": "tradier", "symbol": "MU", "side": "LONG",
-        "campaign": prs.REPAIRED_CAMPAIGN, "ts": "2026-07-26T07:00:00Z",
+        "campaign": prs.REPAIRED_CAMPAIGN, "ts": "2026-07-31T07:00:00Z",
         "tier": "ENGINE", "validation_status": "PASS",
         "contract_fingerprint": "contract-mu", "real_closes": 2,
         "reentry_violations": 0, "requested_fill_ratio": 1.0,
         "size_clamp_count": 0,
+        "capital_accounting_version": "avg-trade-deployed-2000-v1",
+        "benchmark_deployed_usd": 2000.0,
+        "average_deployed_usd": 2000.0,
+        "capital_normalization_factor": 1.0,
     }
     _insert(con, "key_baseline", {
         **common, "gain_per_mo": 6.0, "bh_per_mo": 4.0,
@@ -108,11 +112,12 @@ def test_restored_param_baseline_sheets_are_contract_tier_isolated(tmp_path, mon
     }
     per_sym = check["PerSym Results"]
     assert per_sym["A2"].value == "MU_LONG"
-    assert per_sym["V2"].value == "ENTRY:WT_DC_ENTRY"
-    assert per_sym["W2"].value == "WT_DC_ENTRY_THRESHOLD=45"
-    assert per_sym["Y2"].value == 5.0
-    assert "PROMOTABLE" in per_sym["Z2"].value
-    assert "999" not in str(per_sym["W2"].value)
+    assert per_sym["N2"].value == "ABOVE B&H BUT BELOW 2X — GRAY/NONPROMOTABLE"
+    assert per_sym["W2"].value == "ENTRY:WT_DC_ENTRY"
+    assert per_sym["X2"].value == "WT_DC_ENTRY_THRESHOLD=45"
+    assert per_sym["Z2"].value == 5.0
+    assert "PROMOTABLE" in per_sym["AA2"].value
+    assert "999" not in str(per_sym["X2"].value)
 
     entry = check["Entry Paths"]
     assert entry["F1"].value == "WT_DC_ENTRY"

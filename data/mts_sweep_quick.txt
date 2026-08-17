@@ -1,0 +1,42 @@
+MTS PARAMETER SWEEP
+Symbols: 30 | Param combos: 486 | Total: 29,160
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)

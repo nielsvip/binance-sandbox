@@ -143,12 +143,14 @@ OUT_BASE = ROOT / 'data' / 'hourly_reconfig'
 ACTIVE_CFG = OUT_BASE / 'per_sym_active_config.json'
 SWEEP_CSV_DIR = ROOT / 'data' / 'sweep_results'
 
-WINDOW_DAYS = 7.0
+WINDOW_DAYS = 30.0  # 1 month / 20 trading days EMA overlay (was 7d/21d) — all 2yr switches concentrated on last days like stocks 21d->30d
+DECAY_HEAVY = 0.80  # heavy last-days (today 1.0, 7d 0.21, 30d 0.001 — fast movers dominate) mirrors stocks TRC heavy
 PROMOTE_DELTA_WSHARPE = 0.10
 PROMOTE_WSHARPE_FLOOR = 0.7
 MIN_TRADES_FOR_OPINION = 6
 TPD_MIN = 5.0
 TPD_MAX = 15.0
+EMA_DECAY = 0.93  # EMA overlay: w = 0.93**days_ago like TRC month-back
 # 2026-06-04 SAMPLE-FLOOR GATE (CLAUDE.md IMPOSTER-BLOCK / no-lies): a per-sym
 # key may only become LIVE-ACTIVE with >=30 trades. This 7d window is < 1yr by
 # construction so anything it promotes is recency-diagnostic; the >=30-trade
@@ -168,7 +170,7 @@ def time_weighted_pool_sharpe(returns_with_ts: List[Tuple[float, int]],
     rs = np.array([r for r, _ in returns_with_ts], dtype=np.float64)
     ts = np.array([t for _, t in returns_with_ts], dtype=np.float64)
     days_ago = np.maximum(0.0, (ref_ts - ts) / 86400.0)
-    w = np.power(2.0, -days_ago)
+    w = np.power(EMA_DECAY, days_ago)  # EMA exp overlay like TRC month-back
     w_sum = float(w.sum())
     if w_sum <= 0 or len(rs) < 2:
         return 0.0, 0.0, len(rs)
@@ -237,6 +239,38 @@ def neighborhood_variants(base: SymParams) -> List[Tuple[str, SymParams]]:
     p = base.copy(); p.EXIT_STRUCT_TF = '1h'; variants.append(('struct_tf_1h', p))
     p = base.copy(); p.EXIT_STRUCT_TF = '4h'; variants.append(('struct_tf_4h', p))
     p = base.copy(); p.EXIT_STRUCT_TF = 'D'; variants.append(('struct_tf_D', p))
+    # 2026-08-15 all switches from 2yr backtest but on 21d EMA overlay (like TRC)
+    import dataclasses
+    # structural grids already above; now enumerate every SymParams field (G1..G5)
+    for f in dataclasses.fields(type(base)):
+        name=f.name
+        if name in ('USE_V8_AGGREGATORS',): continue
+        if name.startswith('_'): continue
+        val=getattr(base, name, None)
+        if isinstance(val, bool):
+            if name in ('REVERSE_ON_EXIT_ENABLED','REENTRY_MEAN_REV_ENABLED','NOLOSS_ENABLED','EXIT_STRUCT_TF'): continue
+            # already handled structural toggles above; now all remaining bools
+            try:
+                q=base.copy(); setattr(q, name, not val); variants.append((f'toggle_{name}', q))
+            except: continue
+        elif isinstance(val, (int, float)) and not isinstance(val, bool):
+            if 'PERIOD' in name or 'LEN' in name or 'CHAN' in name or 'LOOKBACK' in name: continue
+            try:
+                lo = val*0.8 if val!=0 else -0.1
+                hi = val*1.2 if val!=0 else 0.1
+                if isinstance(val, int):
+                    lo_i = max(1, int(round(lo))) if 'MIN' in name or 'BARS' in name else int(round(lo))
+                    hi_i = int(round(hi))
+                    if lo_i != val:
+                        q=base.copy(); setattr(q, name, lo_i); variants.append((f'{name}_lo', q))
+                    if hi_i != val and hi_i != lo_i:
+                        q=base.copy(); setattr(q, name, hi_i); variants.append((f'{name}_hi', q))
+                else:
+                    if lo != val:
+                        q=base.copy(); setattr(q, name, float(lo)); variants.append((f'{name}_lo', q))
+                    if hi != val:
+                        q=base.copy(); setattr(q, name, float(hi)); variants.append((f'{name}_hi', q))
+            except: continue
     return variants
 
 

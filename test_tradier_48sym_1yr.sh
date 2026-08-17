@@ -2,6 +2,7 @@
 # 48-sym × 1yr tradier matrix — runs on S2 (user said CPU available).
 # 4 tests: NOLOSS_0 vs NOLOSS_n2, ALSO with/without HTF gate.
 set -uo pipefail
+export EZ_LOG_DIR="${EZ_LOG_DIR:-/tmp}"
 OUTDIR=/home/niels/binance-sandbox/data/tradier_48sym_1yr
 mkdir -p "$OUTDIR"
 PY=/home/niels/miniconda3/envs/binance_env/bin/python

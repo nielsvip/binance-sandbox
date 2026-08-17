@@ -54,7 +54,7 @@ SWAP_EMERGENCY_GB = 8.0  # 8GB swap = system is dying
 # 36s later — the live stock stack stayed down ~15h. Tier 3 fired 8x between 19:45-20:04 UTC that day
 # (15:45-16:04 ET), i.e. it can and does fire DURING market hours. tier1_restart_hog already excludes
 # live trading workers for the same reason; tier3 was bypassing that policy via the GUI app-quit loop.
-NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari", "Python", "python3"}
+NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari", "Python", "python3", "Surfshark", "WhatsApp", "TradingView"}
 ANTIGRAVITY_APPS = {"Antigravity", "Antigravity IDE"}
 # Background language-server / indexer helpers that balloon unbounded while indexing this huge
 # repo (2026-06-03: language_server_macos_arm grew to 5.4GB → jetsam SIGKILLed live ez_manage
@@ -65,6 +65,12 @@ ANTIGRAVITY_APPS = {"Antigravity", "Antigravity IDE"}
 RUNAWAY_INDEXER_PATTERNS = ["language_server_macos_arm"]
 RUNAWAY_INDEXER_RSS_CAP_MB = 3000  # SIGTERM an indexer above this; it re-spawns small
 COOLDOWN_INDEXER = 120  # min seconds between indexer trims
+# 2026-07-30: was an inline 200MB floor in tier1_restart_hog(). free_pct sits at 17-19% on this
+# 36GB Mac, so TIER1 is permanently engaged; the top eligible hog was tradier_indicators at 206MB,
+# which cleared the old floor and got SIGKILLed every cooldown. Killing 206MB cannot relieve a ~7GB
+# shortfall, so it only churned the indicator pipeline. run_with_watchdog.sh already owns RSS
+# recycling at MAX_RSS_KB=1.5GB, so align the floor with that ceiling instead of duplicating it.
+TIER1_MIN_HOG_RSS_MB = 1000
 # Trading scripts that run in iTerm2 (matched by process command line)
 TRADING_SCRIPT_PATTERNS = ["ez_manage", "ez_positions", "ez_prices", "ez_prices_ws", "ez_klines", "ez_mark_prices", "ez_share_ind", "ez_indicators", "ez_market_data", "ez_indicators_merger", "ez_crosses", "ez_rankings", "ez_news_scanner", "ez_copilot", "ez_backup", "ez_positions_watchdog", "trade_analytics", "pa.py", "tradier_manage", "tradier_positions", "tradier_prices", "tradier_indicators", "tradier_rankings"]
 # Backtest scripts — throttle/kill these FIRST before touching anything else
@@ -73,7 +79,7 @@ BACKTEST_PATTERNS = ["backtest_v5", "backtest_v4", "backtest_v3", "backtest_abla
 BACKTEST_SERVER = "s1-int"
 BACKTEST_SERVER_PATH = "/home/niels/binance"
 # Non-essential apps to kill (browsers are NEVER killed)
-KILL_PRIORITY_APPS = ["Ollama", "Surfshark", "WhatsApp", "Slack", "Discord", "Spotify", "FileZilla", "TradingView", "Trade the Future.", "Comet", "Resilio Sync", "Google Drive", "ChatGPT", "ChatGPT Atlas", "Claude"]
+KILL_PRIORITY_APPS = ["Ollama", "Slack", "Discord", "Spotify", "FileZilla", "Trade the Future.", "Comet", "Resilio Sync", "Google Drive", "ChatGPT", "ChatGPT Atlas", "Claude"]
 # System agents to never touch
 SYSTEM_AGENT_KEYWORDS = {"Agent", "UIServer", "Server", "Manager", "Center", "Notification", "Control", "Dispatch", "Spotlight", "XProtect", "liquiddetection", "imagent", "identityservice", "sociallayer", "Keychain", "PressAndHold", "UIKit", "WiFi", "CoreServices", "CoreLocation", "BackgroundTask", "Escrow", "WindowManager", "WallpaperAgent", "UniversalControl", "IMAutomatic", "Software Update", "TextInput", "AirPlay", "AXVisual", "Screen Time", "FolderActions", "ARDAgent", "SSMenuAgent"}
 # Paths
@@ -428,8 +434,8 @@ def tier1_restart_hog(dry_run=False):
     top_pid, top_mb, top_cmd = scripts[0]
     script_name = extract_script_name(top_cmd) or "unknown"
     logger.warning(f"TIER 1: Top memory hog (eligible): {script_name} using {top_mb:.0f}MB (PID {top_pid})")
-    if top_mb < 200:
-        logger.info(f"TIER 1: Top eligible script only using {top_mb:.0f}MB — not worth restarting")
+    if top_mb < TIER1_MIN_HOG_RSS_MB:
+        logger.info(f"TIER 1: Top eligible script only using {top_mb:.0f}MB (floor {TIER1_MIN_HOG_RSS_MB}MB) — not worth restarting")
         return False
     if dry_run:
         print(f"[DRY RUN] Would restart {script_name} (PID {top_pid}, {top_mb:.0f}MB)")

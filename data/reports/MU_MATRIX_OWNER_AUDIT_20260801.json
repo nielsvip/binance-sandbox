@@ -1,0 +1,81 @@
+{
+  "as_of_utc": "2026-08-01T00:34:00Z",
+  "audit": "MU_SWITCH_MATRIX_FILL_SNAPSHOT_V2",
+  "best_visible_rows": [
+    {
+      "delta_gain_per_month_vs_bh": 31.2792,
+      "key": "STRUCTURAL_RANGE_SHIFT_TF",
+      "status": "DEGENERATE",
+      "value": "dc_4h"
+    }
+  ],
+  "counts": {
+    "distinct_effective_keys": 1,
+    "identical_output_multi_value_keys": 0,
+    "manifest_rows": 3503,
+    "mu_filled_rows": 1,
+    "multi_value_keys": 0,
+    "out_of_domain_rows": 0,
+    "positive_delta_rows": 1,
+    "status": {
+      "DEGENERATE": 1
+    },
+    "wrong_account_rows": 0
+  },
+  "current_contract_engine": {
+    "available": true,
+    "best_delta_gain_per_month_vs_bh": null,
+    "best_param": null,
+    "best_value": null,
+    "campaign": "stocks_repaired_20260725_c2",
+    "contract_prefix": "tradier-matrix-exec-c3-20260729:",
+    "cutoff_utc": "2026-07-26T04:15:00Z",
+    "distinct_params": 0,
+    "latest_utc": null,
+    "non_inert_rows": 0,
+    "positive_delta_rows": 0,
+    "rows": 0
+  },
+  "fingerprint_concentration": {
+    "dominant_delta_gain_per_month_vs_bh": 31.2792,
+    "rows": 1,
+    "share_pct": 100.0
+  },
+  "interpretation": {
+    "beats_bh_anywhere_in_wide_export": true,
+    "beats_bh_in_fresh_c3_exact_rows": false,
+    "blockers": [
+      "no fresh c3 exact row proves the explicit-cell override contract",
+      "ordinary live decision-path parity is not established",
+      "no fresh c3 MU_LONG exact cell beats the same-key B&H floor"
+    ],
+    "fresh_monitoring_export": true,
+    "historical_wide_export_caveats": [
+      "TRA_/TRC_ account-private rows are retained only as quarantined historical evidence",
+      "legacy generic out-of-domain values are retained only as quarantined historical evidence",
+      "legacy c2 rows must not be mistaken for the fresh c3 exact contract"
+    ],
+    "override_precedence_repair_observed": false,
+    "suitable_as_live_promotion_evidence": false,
+    "truthful_status_labels": false
+  },
+  "out_of_domain_examples": [],
+  "required_fix": {
+    "override_precedence": "implemented by the guarded c3 exact-cell layer; keep requiring fresh c3 resolved-value and action-fingerprint evidence",
+    "promotion_rule": "require changed decision/trade fingerprints and ordinary-live parity",
+    "range_generation": "use account-aware semantic domains, then regenerate affected cells"
+  },
+  "scope": {
+    "account": "trb",
+    "symbol_side": "MU_LONG"
+  },
+  "sources": {
+    "digest": "data/reports/SWITCH_MATRIX_TRB_DIGEST.md",
+    "digest_sha256": "340b89a4e8f11cfcd4e13f9d644b47b3bf1bcecca4eb773293fcdf99738dd612",
+    "engine_db": "data/param_results_stocks.db",
+    "matrix": "data/reports/SWITCH_MATRIX_TRB.csv.gz",
+    "matrix_age_hours": 0.0,
+    "matrix_sha256": "45b2d5d602959fcde573bbd2f262423ff04d03333eee43f915702bb27d5afc67"
+  },
+  "wrong_account_examples": []
+}

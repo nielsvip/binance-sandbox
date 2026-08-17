@@ -1,0 +1,13 @@
+[Unit]
+Description=S1 ping watchdog - reboots S1 via 10.0.0.3 if stalls/OOMs/crashes
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/s1-ping-watchdog.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

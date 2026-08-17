@@ -641,8 +641,8 @@ def main() -> None:
     parser.add_argument("--end")
     parser.add_argument("--target-tim-low", type=float, default=70.0)
     parser.add_argument("--target-tim-high", type=float, default=80.0)
-    parser.add_argument("--commission-bps", type=float, default=5.0)
-    parser.add_argument("--slippage-bps", type=float, default=2.0)
+    parser.add_argument("--commission-bps", type=float, default=0.0)
+    parser.add_argument("--slippage-bps", type=float, default=2.5)
     run(parser.parse_args())
 
 

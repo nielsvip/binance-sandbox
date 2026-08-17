@@ -1,6 +1,9 @@
 import unittest
 
 from reentry_contract import (
+    confirm_reentry_fill,
+    force_reentry_after_temporary_opposition,
+    active_reentry_violation,
     get_exit_value,
     reentry_opposition,
     resting_reclaim_fill,
@@ -51,6 +54,90 @@ class ReentryContractTests(unittest.TestCase):
         self.assertEqual(second["flat_bars"], 2)
         self.assertTrue(second["pending"])
         self.assertAlmostEqual(second["max_overshoot_pct"], 5.0)
+
+    def test_resolved_trace_starts_a_clean_next_cycle(self):
+        trace = {}
+        old = update_reentry_trace(
+            trace, "trb:MU_LONG", True, 100, 105, 1, []
+        )
+        old["pending"] = False
+        new = update_reentry_trace(
+            trace, "trb:MU_LONG", True, 110, 110.1, 2, ["1h", "4h"]
+        )
+        self.assertEqual(new["flat_bars"], 1)
+        self.assertAlmostEqual(
+            new["max_overshoot_pct"], 0.1 / 110 * 100
+        )
+
+    def test_any_real_flat_to_open_fill_resolves_the_obligation(self):
+        trace = {
+            "trb:MU_LONG": {
+                "pending": True,
+                "flat_bars": 7,
+                "max_overshoot_pct": 0.2,
+            }
+        }
+        self.assertTrue(
+            confirm_reentry_fill(
+                trace, "trb:MU_LONG", timestamp=123, price=101.25
+            )
+        )
+        self.assertFalse(trace["trb:MU_LONG"]["pending"])
+        self.assertEqual(trace["trb:MU_LONG"]["filled_ts"], 123.0)
+        self.assertEqual(trace["trb:MU_LONG"]["filled_price"], 101.25)
+
+    def test_violation_requires_an_active_unopposed_overshoot(self):
+        row = {
+            "pending": True,
+            "max_overshoot_pct": 1.0,
+            "last_opposed_tfs": ["1h", "4h"],
+        }
+        self.assertFalse(active_reentry_violation(row, 0.3))
+        row["last_opposed_tfs"] = ["1h"]
+        self.assertTrue(active_reentry_violation(row, 0.3))
+        row["pending"] = False
+        self.assertFalse(active_reentry_violation(row, 0.3))
+
+    def test_multi_tf_opposition_is_bounded_not_permanent(self):
+        row = {
+            "pending": True,
+            "flat_bars": 11,
+            "max_overshoot_pct": 12.25,
+            "last_opposed_tfs": ["1h", "4h"],
+        }
+        self.assertFalse(
+            force_reentry_after_temporary_opposition(
+                row,
+                favorable=True,
+                material_pct=0.5,
+                max_opposed_bars=12,
+            )
+        )
+        row["flat_bars"] = 12
+        self.assertTrue(
+            force_reentry_after_temporary_opposition(
+                row,
+                favorable=True,
+                material_pct=0.5,
+                max_opposed_bars=12,
+            )
+        )
+
+    def test_unopposed_favorable_reentry_is_immediate(self):
+        row = {
+            "pending": True,
+            "flat_bars": 1,
+            "max_overshoot_pct": 0.01,
+            "last_opposed_tfs": ["1h"],
+        }
+        self.assertTrue(
+            force_reentry_after_temporary_opposition(
+                row,
+                favorable=True,
+                material_pct=0.5,
+                max_opposed_bars=12,
+            )
+        )
 
     def test_resting_reclaim_touch_and_adverse_gap_fill_are_side_mirrors(self):
         # Touch fills at the stored level, with one-way adverse slippage.

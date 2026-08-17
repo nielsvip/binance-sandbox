@@ -16,6 +16,9 @@ from tools.vec_same_entry_exit_adapter import (
     ProtectiveTrailParams,
     StaticExitBook,
     WtMtfParams,
+    _causal_action_evidence,
+    _dc4h_entry_allowed,
+    _dc4h_held_breached,
     _entry_schedule_hash,
     _golden_rule_completed_votes,
     algo_structure_grid,
@@ -866,7 +869,14 @@ def test_compiled_structural_scanner_matches_python_oracle():
         low=low,
         close=close,
         full_indices=np.arange(n, dtype=np.int64),
-        z=FakeZ({"wt1_4h": wt4h, "wt1_1h": wt1h}),
+        z=FakeZ(
+            {
+                "wt1_4h": wt4h,
+                "wt1_1h": wt1h,
+                "dc_low_4h": np.full(n, 1.0),
+            }
+        ),
+        contract={"valid": True},
     )
     htfs = {
         "4h": SimpleNamespace(
@@ -1004,6 +1014,75 @@ def test_compiled_structural_scanner_matches_python_oracle():
     )
 
 
+def test_dc4h_safety_precedes_selected_exit_and_blocks_later_entry():
+    from tools.vec_band_ladder_walkforward import Curve, SignalData
+
+    n = 120
+    close = np.full(n, 10.0)
+    open_ = np.full(n, 10.0)
+    close[10:] = 8.5
+    open_[11:] = 8.5
+    data = SimpleNamespace(
+        symbol="DC4PARITY",
+        ts=np.arange(1, n + 1, dtype=np.int64) * 300,
+        open=open_,
+        high=np.maximum(open_, close) + 0.1,
+        low=np.minimum(open_, close) - 0.1,
+        close=close,
+        full_indices=np.arange(n, dtype=np.int64),
+        z=FakeZ({"dc_low_4h": np.full(n, 9.0)}),
+        contract={"valid": True},
+    )
+    curve = Curve("x", "linear", "green", "target", 30, 8, 4, 6, 3, 3, 1)
+    entry = np.zeros(n)
+    entry[0] = 4.0
+    entry[20] = 4.0
+    signals = SignalData(
+        entry_mult=entry,
+        event_tf=np.zeros((3, n), dtype=np.uint8),
+        exit_event=np.zeros(n, dtype=np.uint8),
+        exit_ref=np.full(n, np.nan),
+        causality={},
+    )
+    result = simulate(
+        data,
+        signals,
+        curve,
+        StaticExitBook(
+            "NEVER",
+            np.zeros(n, dtype=np.uint8),
+            np.full(n, np.nan),
+            {},
+        ),
+        0,
+        n,
+        0.0,
+        0.0,
+        side="LONG",
+    )
+    assert result["dc4h_safety_enforced"] is True
+    assert result["dc4h_safety_exit_fills"] == 1
+    assert result["emergency_exit_fills"] == 1
+    assert result["normal_exit_fills"] == 0
+    assert result["reclaim_reentries"] == 0
+    assert result["open_reclaim_obligations"] == 0
+    assert result["dc4h_entry_blocks"] == 1
+    reasons = [row.get("reason", "") for row in result["event_ledger"]]
+    assert any(reason.startswith("EMERGENCY_DC4H_BREACH_") for reason in reasons)
+    assert "ENTRY_DC4H_SAFETY" in reasons
+
+
+def test_dc4h_boundary_helpers_fail_closed_for_entry_and_not_for_exit():
+    assert _dc4h_entry_allowed(101.0, 100.0, is_long=True)
+    assert not _dc4h_entry_allowed(100.0, 100.0, is_long=True)
+    assert _dc4h_held_breached(100.0, 100.0, is_long=True)
+    assert _dc4h_entry_allowed(99.0, 100.0, is_long=False)
+    assert not _dc4h_entry_allowed(100.0, 100.0, is_long=False)
+    assert _dc4h_held_breached(100.0, 100.0, is_long=False)
+    assert not _dc4h_entry_allowed(100.0, math.nan, is_long=True)
+    assert not _dc4h_held_breached(100.0, math.nan, is_long=True)
+
+
 def test_partial_clip_keeps_runner_and_reclaims_clip():
     from tools.vec_band_ladder_walkforward import Curve, SignalData
 
@@ -1054,3 +1133,48 @@ def test_partial_clip_keeps_runner_and_reclaims_clip():
     assert result["insolvent"] is False
     assert result["entry_capacity_breach"] is False
     assert result["peak_post_fill_notional_usd"] <= 16_000.0
+    evidence = _causal_action_evidence(result)
+    assert evidence["action_evidence_status"] == "CAUSAL_EVENT_LEDGER"
+    assert evidence["strictly_later_reentry_proven"] is True
+    assert evidence["reentry_violations"] == 0
+    assert evidence["exit_indices"] == [11]
+    assert evidence["reentry_indices"] == [12]
+    assert evidence["reentry_pairs"] == [
+        {"exit_index": 11, "reentry_index": 12}
+    ]
+    assert len(evidence["action_fingerprint"]) == 64
+    assert evidence["action_fingerprint"] == evidence["ledger_sha256"]
+
+
+def test_action_evidence_fails_closed_without_ordered_causal_ledger():
+    evidence = _causal_action_evidence(
+        {
+            "exit_fills": 4,
+            "reclaim_reentries": 4,
+            "clip_obligations_unfilled_at_end": 0,
+        }
+    )
+    assert evidence["action_evidence_status"] == (
+        "UNAVAILABLE_NO_CAUSAL_EVENT_LEDGER"
+    )
+    assert evidence["action_fingerprint"] is None
+    assert evidence["exit_indices"] == []
+    assert evidence["reentry_indices"] == []
+    assert evidence["strictly_later_reentry_proven"] is False
+
+    mismatched = _causal_action_evidence(
+        {
+            "exit_fills": 2,
+            "event_ledger": [
+                {
+                    "type": "EXIT",
+                    "fill_index": 5,
+                    "fill_ts": 1500,
+                }
+            ],
+        }
+    )
+    assert mismatched["action_evidence_status"] == (
+        "UNAVAILABLE_EVENT_LEDGER_EXIT_COUNT_MISMATCH"
+    )
+    assert mismatched["action_fingerprint"] is None

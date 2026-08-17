@@ -1,0 +1,297 @@
+{
+  "_meta": {
+    "generated_at": "2026-04-27T00:20:00Z",
+    "purpose": "Tier-1 vectorized sweep over EVERY config knob added/changed in last 24h + 4 (actually 5) entry-engine flags",
+    "diff_baseline_crypto": "backups/before_v3_isolation_ob_fix_202604252303_config.py (Apr 25 23:03)",
+    "diff_baseline_tradier": "backups/before_sweep_observations_tradier_202604251942.py (Apr 25 19:42)",
+    "diff_summary": {
+      "crypto_new_params": 30,
+      "tradier_new_params": 108,
+      "total_new_params_24h": 138
+    },
+    "rules_followed": [
+      "CLAUDE.md §Backtest Reporting Rules — pool Sharpe, ≥48 syms (crypto) / ≥100 syms (tradier), >1yr",
+      "CLAUDE.md §Sweep Knob — NEVER prune dead toggles, change upstream",
+      "MEMORY §Sharpe>2 baseline floor",
+      "CLAUDE.md §Crypto vs Stock parameters OPPOSITE — separate matrices"
+    ],
+    "untouchables_excluded": [
+      {"name": "STRICT_NO_LOSS", "why": "CLAUDE.md states ELIMINATED 2026-04-01; live behavior frozen. Flipping breaks STATE OF AFFAIRS"},
+      {"name": "HEDGE_MODE", "why": "True is locked per Active Systems; flipping False removes all hedging — not a tunable, an architectural choice"},
+      {"name": "RATIO_MULTIPLIER", "why": "BC_160 frozen at 4.0 (was 3.0); user-frozen result"},
+      {"name": "HARD_STOP_LOSS_MAX_PAIN", "why": "DISABLED forever per CLAUDE.md §Absolute Prohibitions; $500+ losses 2026-03-24"},
+      {"name": "ATR_TRAIL_ENABLED (tradier)", "why": "False forever — #1 stock PnL destroyer (-2557%)"},
+      {"name": "OPTIONS_CSP_NAKED_CALL_ENABLED", "why": "HARD-disabled; unlimited upside risk"},
+      {"name": "MIN_GAIN_TO_BUY_AGGRESSIVELY", "why": "Cannot go below 2.5%; current 3.0 already at floor"},
+      {"name": "ENABLE_LOSS_PROTECTION", "why": "Linked to UNIVERSAL_NOLOSS — sweep covers indirectly via the bypass switches"}
+    ],
+    "must_pair_groups": [
+      {
+        "group": "MICRO_SCALP_USDC",
+        "members": ["MICRO_SCALP_USDC_MAKER_ENABLED", "MICRO_SCALP_GAIN_THRESHOLD_PCT", "MICRO_SCALP_USDC_ACCOUNTS"],
+        "rule": "If MAKER_ENABLED=False, GAIN_THRESHOLD/ACCOUNTS are dead — skip those rows"
+      },
+      {
+        "group": "MICRO_SCALP_STOCKS",
+        "members": ["MICRO_SCALP_STOCKS_MAKER_ENABLED", "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT", "MICRO_SCALP_STOCKS_ACCOUNTS"],
+        "rule": "If MAKER_ENABLED=False, GAIN_THRESHOLD/ACCOUNTS are dead"
+      },
+      {
+        "group": "THROUGHPUT_SAFETY_CRYPTO",
+        "members": ["THROUGHPUT_SAFETY_ENABLED", "THROUGHPUT_MAX_DAILY_LOSS_PCT", "THROUGHPUT_MAX_CONCURRENT_POSITIONS", "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD", "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL", "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT", "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR"],
+        "rule": "All sub-knobs gated by MASTER=ENABLED. Sweep ENABLED=True separately, then sweep sub-knobs only under True"
+      },
+      {
+        "group": "THROUGHPUT_SAFETY_TRADIER",
+        "members": ["THROUGHPUT_SAFETY_ENABLED_TRADIER", "THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER", "THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER", "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER", "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER", "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER", "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER", "THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER"],
+        "rule": "Same as crypto"
+      },
+      {
+        "group": "HEDGE_DC_GATE",
+        "members": ["HEDGE_DC_RESISTANCE_GATE_ENABLED", "HEDGE_DC_LONG_REJECT_DCP", "HEDGE_DC_SHORT_REJECT_DCP"],
+        "rule": "Thresholds are dead when ENABLED=False"
+      },
+      {
+        "group": "HEDGE_DETERIORATING",
+        "members": ["HEDGE_DETERIORATING_GAIN_ENABLED", "HEDGE_DETERIORATING_GAIN_DELTA_PP"],
+        "rule": "Delta_pp dead when ENABLED=False"
+      },
+      {
+        "group": "HEDGE_STRICT_WT",
+        "members": ["HEDGE_STRICT_WT_ALL_TFS_ENABLED", "HEDGE_STRICT_WT_MIN_TFS_AGAINST"],
+        "rule": "MIN_TFS dead when ENABLED=False"
+      },
+      {
+        "group": "HEDGE_SIZING",
+        "members": ["HEDGE_MAX_PCT_OF_LOSER", "HEDGE_MAX_ABSOLUTE_USD", "HEDGE_ALREADY_COVERED_THRESHOLD"],
+        "rule": "Three independent caps; sweep all combos but small grid (2×2×2)"
+      },
+      {
+        "group": "WRONG_SIDE_KILL",
+        "members": ["WRONG_SIDE_ABS_KILL_ENABLED", "WRONG_SIDE_WT_TFS_REQUIRED", "WRONG_SIDE_K_TFS_REQUIRED", "WRONG_SIDE_DIV_TFS_REQUIRED", "WRONG_SIDE_MIN_AGE_MIN"],
+        "rule": "Sub-knobs dead when KILL_ENABLED=False"
+      },
+      {
+        "group": "SWING_BUDGET",
+        "members": ["SWING_LONG_BUDGET", "SWING_SHORT_BUDGET"],
+        "rule": "Sweep symmetric and asymmetric pairs; do not break $200k account total"
+      },
+      {
+        "group": "ENTRY_ENGINES",
+        "members": ["SCALP_V3_ENTRY_TREND_ENABLED", "SCALP_V3_ENTRY_PULLBACK_ENABLED", "SCALP_V3_ENTRY_DC_BREAK_ENABLED", "SCALP_V3_ENTRY_WT_CROSS_ENABLED", "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED"],
+        "rule": "User said \"4 entry engines\" but config defines 5 paths. AT LEAST ONE must be True (zero engines = no entries). Sweep all 31 non-zero combinations"
+      },
+      {
+        "group": "PARTIAL_PROFIT_LOCK_TRADIER",
+        "members": ["PARTIAL_PROFIT_LOCK_ENABLED", "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER", "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER", "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER", "PARTIAL_PROFIT_LOCK_FRAC_TRADIER", "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER"],
+        "rule": "All sub-knobs dead when ENABLED=False; ARM_PCT must be > GAIN_PCT"
+      },
+      {
+        "group": "VIX_VOLATILITY_REGIME",
+        "members": ["VIX_VOLATILITY_REGIME_ENABLED", "VIX_PANIC_THRESHOLD", "VIX_EXTREME_THRESHOLD", "VIX_REGIME_SIZE_MULT_HIGH_VOL", "VIX_REGIME_SIZE_MULT_PANIC", "VIX_SMA_LOOKBACK_DAYS"],
+        "rule": "PANIC < EXTREME ordering required"
+      },
+      {
+        "group": "EARNINGS_AVOIDANCE",
+        "members": ["EARNINGS_AVOIDANCE_ENABLED", "EARNINGS_BLACKOUT_DAYS_BEFORE", "EARNINGS_BLACKOUT_DAYS_AFTER", "EARNINGS_FORCE_TRIM_PCT", "EARNINGS_PEAD_BOOST_ENABLED", "EARNINGS_PEAD_BOOST_MULT", "EARNINGS_PEAD_MIN_SURPRISE_PCT"],
+        "rule": "PEAD_BOOST requires AVOIDANCE_ENABLED=True"
+      },
+      {
+        "group": "MACRO_BLACKOUT",
+        "members": ["MACRO_BLACKOUT_ENABLED", "MACRO_BLACKOUT_SIZE_MULT"],
+        "rule": "Mult dead when ENABLED=False"
+      },
+      {
+        "group": "PYRAMID",
+        "members": ["PYRAMID_ENABLED", "PYRAMID_MIN_GAIN_PCT", "PYRAMID_SIZE_MULT", "DELTA_PYRAMID_ENABLED"],
+        "rule": "Sub-knobs dead when ENABLED=False"
+      },
+      {
+        "group": "SECTOR_LS_RATIO",
+        "members": ["SECTOR_LS_RATIO_ENABLED", "SECTOR_LS_RATIO_MIN", "SECTOR_LS_RATIO_MAX", "SECTOR_LS_MIN_POSITIONS", "SECTOR_LS_RATIO_BYPASS_HEDGE"],
+        "rule": "MIN < MAX strictly"
+      },
+      {
+        "group": "TSMOM",
+        "members": ["TSMOM_BOOK_SCALAR_ENABLED", "TSMOM_LOOKBACK_BARS", "TSMOM_HIGH_CAP", "TSMOM_LOW_CAP", "TSMOM_MIN_AGREEMENT"],
+        "rule": "LOW_CAP < HIGH_CAP; sub-knobs dead when ENABLED=False"
+      },
+      {
+        "group": "VOL_TARGET",
+        "members": ["VOL_TARGET_ENABLED", "VOL_TARGET_FIELD", "VOL_TARGET_PCT", "VOL_TARGET_HIGH_CAP", "VOL_TARGET_LOW_CAP"],
+        "rule": "LOW_CAP < HIGH_CAP; sub-knobs dead when ENABLED=False"
+      },
+      {
+        "group": "SQUEEZE_FIRE",
+        "members": ["SQUEEZE_FIRE_ENABLED", "SQUEEZE_FIRE_ENTRY_ENABLED", "SQUEEZE_FIRE_BONUS_SCORE", "SQUEEZE_FIRE_SCORE_BONUS", "SQUEEZE_FIRE_TF", "SQUEEZE_FIRE_TFS"],
+        "rule": "Sub-knobs dead when both ENABLED flags False"
+      },
+      {
+        "group": "OPTIONS_HEDGE_PUT",
+        "members": ["OPTIONS_HEDGE_PUT_DELTA_MIN", "OPTIONS_HEDGE_PUT_DELTA_MAX", "OPTIONS_HEDGE_PUT_DTE_MIN", "OPTIONS_HEDGE_PUT_DTE_MAX", "OPTIONS_HEDGE_PUT_MAX_IV_RANK", "OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT", "OPTIONS_HEDGE_LADDER_ENABLED", "OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS", "OPTIONS_HEDGE_K_OVERSOLD_PCT", "OPTIONS_HEDGE_DC_REL_TOL_PCT"],
+        "rule": "DELTA_MIN < DELTA_MAX; DTE_MIN < DTE_MAX"
+      },
+      {
+        "group": "TRB_LIMITS",
+        "members": ["TRB_MAX_LONG_VALUE", "TRB_MAX_SHORT_VALUE", "TRB_MAX_CALL_VALUE", "TRB_MAX_PUT_VALUE"],
+        "rule": "All four are independent caps; sweep grid"
+      },
+      {
+        "group": "BOUNCE_REENTRY_TRADIER",
+        "members": ["BOUNCE_REENTRY_K_RESET_LONG_TRADIER", "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER", "BOUNCE_TOP_REENTRY_MULT", "BOUNCE_TOP_RISING_CROSS_MULT"],
+        "rule": "LONG K-reset typically <50; SHORT >50 (mirror)"
+      }
+    ]
+  },
+  "crypto_matrix": [
+    {"name": "HEDGE_DC_RESISTANCE_GATE_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "HEDGE_DC_LONG_REJECT_DCP", "type": "float", "current_default": 0.85, "sweep_values": [0.75, 0.80, 0.85, 0.90, 0.95]},
+    {"name": "HEDGE_DC_SHORT_REJECT_DCP", "type": "float", "current_default": 0.15, "sweep_values": [0.05, 0.10, 0.15, 0.20, 0.25]},
+    {"name": "HEDGE_WT_VEL_GATE_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "HEDGE_MAX_PCT_OF_LOSER", "type": "float", "current_default": 1.0, "sweep_values": [0.5, 0.75, 1.0, 1.25, 1.5]},
+    {"name": "HEDGE_MAX_ABSOLUTE_USD", "type": "float", "current_default": 25.0, "sweep_values": [10.0, 25.0, 50.0, 100.0, 250.0]},
+    {"name": "HEDGE_ALREADY_COVERED_THRESHOLD", "type": "float", "current_default": 0.9, "sweep_values": [0.7, 0.8, 0.9, 0.95, 1.0]},
+    {"name": "HEDGE_DETERIORATING_GAIN_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "HEDGE_DETERIORATING_GAIN_DELTA_PP", "type": "float", "current_default": 0.10, "sweep_values": [0.05, 0.10, 0.20, 0.30, 0.50]},
+    {"name": "HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "HEDGE_STRICT_WT_ALL_TFS_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "HEDGE_STRICT_WT_MIN_TFS_AGAINST", "type": "int", "current_default": 4, "sweep_values": [3, 4, 5]},
+    {"name": "MICRO_SCALP_USDC_MAKER_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "MICRO_SCALP_GAIN_THRESHOLD_PCT", "type": "float", "current_default": 0.02, "sweep_values": [0.01, 0.02, 0.05, 0.10, 0.20]},
+    {"name": "THROUGHPUT_SAFETY_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL", "type": "int", "current_default": 6, "sweep_values": [2, 4, 6, 10, 20]},
+    {"name": "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR", "type": "int", "current_default": 0, "sweep_values": [0, 6, 12, 18]},
+    {"name": "THROUGHPUT_MAX_DAILY_LOSS_PCT_global", "type": "float", "current_default": -3.0, "sweep_values": [-1.5, -3.0, -5.0, -10.0]},
+    {"name": "THROUGHPUT_MAX_CONCURRENT_POSITIONS_global", "type": "int", "current_default": 50, "sweep_values": [20, 50, 100, 200]},
+    {"name": "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_global", "type": "float", "current_default": 5000.0, "sweep_values": [2000, 5000, 10000, 25000]},
+    {"name": "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_global", "type": "int", "current_default": 30, "sweep_values": [10, 30, 60, 120]},
+    {"name": "WRONG_SIDE_ABS_KILL_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "WRONG_SIDE_WT_TFS_REQUIRED", "type": "int", "current_default": 4, "sweep_values": [3, 4, 5]},
+    {"name": "WRONG_SIDE_K_TFS_REQUIRED", "type": "int", "current_default": 3, "sweep_values": [0, 1, 2, 3]},
+    {"name": "WRONG_SIDE_MIN_AGE_MIN", "type": "float", "current_default": 30.0, "sweep_values": [10.0, 30.0, 60.0, 120.0]},
+    {"name": "QUICK_RECOVERY_WINDOW_MIN", "type": "float", "current_default": 120.0, "sweep_values": [30.0, 60.0, 120.0, 240.0, 480.0]},
+    {"name": "LEGACY_REENTRY_PSR_FULL_DC", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "LEGACY_REENTRY_PSR_DC_BOUNCE", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "LEGACY_REENTRY_PSR_QUICK_RECOVERY", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "ZERO_CONFIRMATION_THRESHOLD_API", "type": "int", "current_default": 5, "sweep_values": [2, 3, 5, 10]},
+    {"name": "SCALP_V3_ENTRY_TREND_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "SCALP_V3_ENTRY_PULLBACK_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "SCALP_V3_ENTRY_DC_BREAK_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "SCALP_V3_ENTRY_WT_CROSS_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]}
+  ],
+  "tradier_matrix": [
+    {"name": "MICRO_SCALP_STOCKS_MAKER_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT", "type": "float", "current_default": 0.05, "sweep_values": [0.02, 0.05, 0.10, 0.20, 0.50]},
+    {"name": "SWING_LONG_BUDGET", "type": "float", "current_default": 100000.0, "sweep_values": [25000, 50000, 100000, 150000]},
+    {"name": "SWING_SHORT_BUDGET", "type": "float", "current_default": 100000.0, "sweep_values": [25000, 50000, 100000, 150000]},
+    {"name": "THROUGHPUT_SAFETY_ENABLED_TRADIER", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER", "type": "int", "current_default": 4, "sweep_values": [1, 2, 4, 8, 16]},
+    {"name": "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER", "type": "int", "current_default": 13, "sweep_values": [13, 14]},
+    {"name": "THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER", "type": "int", "current_default": 30, "sweep_values": [0, 30]},
+    {"name": "THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER_global", "type": "float", "current_default": -1.0, "sweep_values": [-0.5, -1.0, -2.0, -3.0]},
+    {"name": "THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER_global", "type": "int", "current_default": 30, "sweep_values": [10, 20, 30, 50]},
+    {"name": "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER_global", "type": "float", "current_default": 75000.0, "sweep_values": [25000, 75000, 150000, 300000]},
+    {"name": "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER_global", "type": "int", "current_default": 12, "sweep_values": [4, 8, 12, 24]},
+    {"name": "WRONG_SIDE_ABS_KILL_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "WRONG_SIDE_WT_TFS_REQUIRED", "type": "int", "current_default": 4, "sweep_values": [3, 4, 5]},
+    {"name": "WRONG_SIDE_DIV_TFS_REQUIRED", "type": "int", "current_default": 1, "sweep_values": [0, 1, 2, 3]},
+    {"name": "WRONG_SIDE_K_TFS_REQUIRED", "type": "int", "current_default": 0, "sweep_values": [0, 1, 2, 3]},
+    {"name": "WRONG_SIDE_MIN_AGE_MIN", "type": "float", "current_default": 30.0, "sweep_values": [10.0, 30.0, 60.0, 120.0]},
+    {"name": "WRONG_SIDE_DIV_LOOKBACK_BARS", "type": "int", "current_default": 20, "sweep_values": [10, 20, 40, 80]},
+    {"name": "MIN_EXIT_TF_AGAINST_TRADIER", "type": "int", "current_default": 3, "sweep_values": [2, 3, 4, 5]},
+    {"name": "PEAK_GIVEBACK_DROP_PCT", "type": "float", "current_default": 5.0, "sweep_values": [2.0, 3.0, 5.0, 8.0, 12.0]},
+    {"name": "PEAK_GIVEBACK_MIN_PEAK_PCT", "type": "float", "current_default": 2.0, "sweep_values": [0.3, 1.0, 2.0, 4.0]},
+    {"name": "UNIVERSAL_NOLOSS_GATE", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "NOLOSS_MIN_PROFIT_PCT_TRADIER", "type": "float", "current_default": 0.0, "sweep_values": [0.0, 0.5, 1.0, 2.0]},
+    {"name": "REGIME_TRENDING_NOLOSS_MIN", "type": "float", "current_default": 0.0, "sweep_values": [0.0, 0.5, 1.0]},
+    {"name": "REGIME_RANGING_NOLOSS_MIN", "type": "float", "current_default": 0.0, "sweep_values": [0.0, 0.5, 1.0]},
+    {"name": "ATR_ADAPTIVE_SIZING_TARGET_PCT", "type": "float", "current_default": 12.0, "sweep_values": [4.0, 8.0, 12.0, 18.0, 25.0]},
+    {"name": "BB_BREAKOUT_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "BREAKOUT_MULTI_LUNG_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "MI_ENTRY_ENABLED_TRADIER", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "PYRAMID_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "PYRAMID_MIN_GAIN_PCT", "type": "float", "current_default": 2.0, "sweep_values": [1.0, 2.0, 3.0, 5.0]},
+    {"name": "PYRAMID_SIZE_MULT", "type": "float", "current_default": 1.5, "sweep_values": [1.0, 1.5, 2.0, 3.0]},
+    {"name": "DELTA_PYRAMID_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "TRADIER_REENTRY_HARDCOOL_MIN", "type": "float", "current_default": 30.0, "sweep_values": [5.0, 10.0, 15.0, 30.0, 60.0]},
+    {"name": "BOUNCE_REENTRY_K_RESET_LONG_TRADIER", "type": "int", "current_default": 35, "sweep_values": [25, 30, 35, 40, 50]},
+    {"name": "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER", "type": "int", "current_default": 65, "sweep_values": [50, 60, 65, 70, 75]},
+    {"name": "BOUNCE_TOP_REENTRY_MULT", "type": "float", "current_default": 1.5, "sweep_values": [1.0, 1.5, 2.0, 3.0]},
+    {"name": "BOUNCE_TOP_RISING_CROSS_MULT", "type": "float", "current_default": 2.0, "sweep_values": [1.0, 1.5, 2.0, 3.0]},
+    {"name": "VIX_VOLATILITY_REGIME_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "VIX_PANIC_THRESHOLD", "type": "float", "current_default": 30.0, "sweep_values": [25.0, 30.0, 35.0, 40.0]},
+    {"name": "VIX_EXTREME_THRESHOLD", "type": "float", "current_default": 40.0, "sweep_values": [35.0, 40.0, 50.0, 60.0]},
+    {"name": "VIX_REGIME_SIZE_MULT_HIGH_VOL", "type": "float", "current_default": 0.5, "sweep_values": [0.25, 0.5, 0.75, 1.0]},
+    {"name": "VIX_REGIME_SIZE_MULT_PANIC", "type": "float", "current_default": 0.0, "sweep_values": [0.0, 0.25, 0.5]},
+    {"name": "VIX_SMA_LOOKBACK_DAYS", "type": "int", "current_default": 200, "sweep_values": [100, 150, 200, 250]},
+    {"name": "EARNINGS_AVOIDANCE_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "EARNINGS_BLACKOUT_DAYS_BEFORE", "type": "int", "current_default": 1, "sweep_values": [0, 1, 2, 3]},
+    {"name": "EARNINGS_BLACKOUT_DAYS_AFTER", "type": "int", "current_default": 1, "sweep_values": [0, 1, 2, 3]},
+    {"name": "EARNINGS_FORCE_TRIM_PCT", "type": "float", "current_default": 0.5, "sweep_values": [0.0, 0.25, 0.5, 0.75, 1.0]},
+    {"name": "EARNINGS_PEAD_BOOST_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "EARNINGS_PEAD_BOOST_MULT", "type": "float", "current_default": 1.5, "sweep_values": [1.0, 1.25, 1.5, 2.0]},
+    {"name": "EARNINGS_PEAD_MIN_SURPRISE_PCT", "type": "float", "current_default": 4.0, "sweep_values": [2.0, 4.0, 6.0, 10.0]},
+    {"name": "MACRO_BLACKOUT_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "MACRO_BLACKOUT_SIZE_MULT", "type": "float", "current_default": 0.5, "sweep_values": [0.0, 0.25, 0.5, 0.75, 1.0]},
+    {"name": "SECTOR_LS_RATIO_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "SECTOR_LS_RATIO_MIN", "type": "float", "current_default": 0.5, "sweep_values": [0.25, 0.5, 0.75]},
+    {"name": "SECTOR_LS_RATIO_MAX", "type": "float", "current_default": 2.0, "sweep_values": [1.5, 2.0, 3.0, 4.0]},
+    {"name": "SECTOR_LS_MIN_POSITIONS", "type": "int", "current_default": 3, "sweep_values": [2, 3, 5, 8]},
+    {"name": "SECTOR_LS_RATIO_BYPASS_HEDGE", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "PROXIMITY_TOP_GATE_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "PROXIMITY_TOP_MAX_DROP_PCT", "type": "float", "current_default": 5.0, "sweep_values": [2.0, 5.0, 10.0, 15.0]},
+    {"name": "MINERVINI_GATE_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "MINERVINI_MIN_SCORE", "type": "int", "current_default": 5, "sweep_values": [3, 4, 5, 6]},
+    {"name": "CLENOW_GATE_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "CLENOW_GATE_MIN_SCORE", "type": "float", "current_default": 30.0, "sweep_values": [10.0, 20.0, 30.0, 50.0]},
+    {"name": "TSMOM_BOOK_SCALAR_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "TSMOM_LOOKBACK_BARS", "type": "int", "current_default": 252, "sweep_values": [60, 126, 252, 504]},
+    {"name": "TSMOM_HIGH_CAP", "type": "float", "current_default": 1.5, "sweep_values": [1.0, 1.5, 2.0, 3.0]},
+    {"name": "TSMOM_LOW_CAP", "type": "float", "current_default": 0.25, "sweep_values": [0.1, 0.25, 0.5]},
+    {"name": "TSMOM_MIN_AGREEMENT", "type": "float", "current_default": 0.5, "sweep_values": [0.3, 0.5, 0.7, 0.9]},
+    {"name": "VOL_TARGET_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "VOL_TARGET_PCT", "type": "float", "current_default": 20.0, "sweep_values": [10.0, 15.0, 20.0, 25.0, 30.0]},
+    {"name": "VOL_TARGET_HIGH_CAP", "type": "float", "current_default": 2.0, "sweep_values": [1.0, 1.5, 2.0, 3.0]},
+    {"name": "VOL_TARGET_LOW_CAP", "type": "float", "current_default": 0.25, "sweep_values": [0.1, 0.25, 0.5]},
+    {"name": "DD_KELLY_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "SQUEEZE_FIRE_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "SQUEEZE_FIRE_ENTRY_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "SQUEEZE_FIRE_BONUS_SCORE", "type": "float", "current_default": 15.0, "sweep_values": [5.0, 10.0, 15.0, 25.0]},
+    {"name": "SQUEEZE_FIRE_SCORE_BONUS", "type": "int", "current_default": 20, "sweep_values": [10, 20, 30, 50]},
+    {"name": "PARTIAL_PROFIT_LOCK_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER", "type": "float", "current_default": 0.5, "sweep_values": [0.25, 0.5, 1.0, 2.0]},
+    {"name": "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER", "type": "float", "current_default": 0.75, "sweep_values": [0.5, 0.75, 1.5, 3.0]},
+    {"name": "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER", "type": "float", "current_default": 0.02, "sweep_values": [0.01, 0.02, 0.05, 0.10]},
+    {"name": "PARTIAL_PROFIT_LOCK_FRAC_TRADIER", "type": "float", "current_default": 0.5, "sweep_values": [0.25, 0.5, 0.75]},
+    {"name": "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "ZERO_CONFIRMATION_THRESHOLD_API", "type": "int", "current_default": 5, "sweep_values": [2, 3, 5, 10]},
+    {"name": "TRB_MAX_LONG_VALUE", "type": "float", "current_default": 50000.0, "sweep_values": [10000, 25000, 50000, 100000]},
+    {"name": "TRB_MAX_SHORT_VALUE", "type": "float", "current_default": 50000.0, "sweep_values": [10000, 25000, 50000, 100000]},
+    {"name": "TRB_MAX_CALL_VALUE", "type": "float", "current_default": 3000.0, "sweep_values": [1000, 2000, 3000, 5000]},
+    {"name": "TRB_MAX_PUT_VALUE", "type": "float", "current_default": 3000.0, "sweep_values": [1000, 2000, 3000, 5000]},
+    {"name": "OPTIONS_BUY_WT_DC_GATE_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "OPTIONS_BUY_MIN_WT_DC_SCORE", "type": "float", "current_default": 70.0, "sweep_values": [50.0, 60.0, 70.0, 80.0, 90.0]},
+    {"name": "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD", "type": "float", "current_default": 0.85, "sweep_values": [0.70, 0.80, 0.85, 0.90, 0.95]},
+    {"name": "OPTIONS_PREMARKET_NO_FIRE", "type": "bool", "current_default": true, "sweep_values": [false, true]},
+    {"name": "OPENING_BUFFER_NO_CLOSE_MINUTES", "type": "float", "current_default": 30.0, "sweep_values": [10.0, 20.0, 30.0, 60.0]},
+    {"name": "OPTIONS_ALERT_DROP_PP", "type": "float", "current_default": 5.0, "sweep_values": [2.0, 5.0, 10.0, 15.0]},
+    {"name": "OPTIONS_ALERT_ABS_LOSS_PP", "type": "float", "current_default": 25.0, "sweep_values": [10.0, 25.0, 40.0, 60.0]},
+    {"name": "OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS", "type": "int", "current_default": 2, "sweep_values": [1, 2, 3, 4]},
+    {"name": "OPTIONS_HEDGE_K_OVERSOLD_PCT", "type": "float", "current_default": 25.0, "sweep_values": [10.0, 20.0, 25.0, 35.0]},
+    {"name": "OPTIONS_HEDGE_DC_REL_TOL_PCT", "type": "float", "current_default": 1.0, "sweep_values": [0.5, 1.0, 2.0, 3.0]},
+    {"name": "OPTIONS_HEDGE_LADDER_ENABLED", "type": "bool", "current_default": false, "sweep_values": [false, true]},
+    {"name": "OPTIONS_HEDGE_PUT_DELTA_MIN", "type": "float", "current_default": 0.30, "sweep_values": [0.20, 0.30, 0.40]},
+    {"name": "OPTIONS_HEDGE_PUT_DELTA_MAX", "type": "float", "current_default": 0.50, "sweep_values": [0.40, 0.50, 0.60]},
+    {"name": "OPTIONS_HEDGE_PUT_DTE_MIN", "type": "int", "current_default": 45, "sweep_values": [30, 45, 60]},
+    {"name": "OPTIONS_HEDGE_PUT_DTE_MAX", "type": "int", "current_default": 120, "sweep_values": [90, 120, 180]},
+    {"name": "OPTIONS_HEDGE_PUT_MAX_IV_RANK", "type": "float", "current_default": 35.0, "sweep_values": [20.0, 35.0, 50.0, 70.0]},
+    {"name": "OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT", "type": "float", "current_default": 8.0, "sweep_values": [5.0, 8.0, 12.0, 20.0]},
+    {"name": "OPTIONS_MAX_PER_SECTOR", "type": "float", "current_default": 0.35, "sweep_values": [0.20, 0.30, 0.35, 0.40, 0.50]},
+    {"name": "OPTIONS_MAX_PER_SYMBOL", "type": "float", "current_default": 0.20, "sweep_values": [0.10, 0.15, 0.20, 0.25, 0.30]},
+    {"name": "RISK_FREE_RATE", "type": "float", "current_default": 0.045, "sweep_values": [0.02, 0.03, 0.045, 0.06]}
+  ]
+}

@@ -34,6 +34,29 @@ SBX=${MATRIX_SBX:-/home/niels/binance-sandbox}
 PY=${MATRIX_PY:-/home/niels/.conda/envs/binance_env/bin/python}
 LOGDIR=${MATRIX_LOGDIR:-/home/niels/logs}
 mkdir -p "$LOGDIR"
+
+# Bible §16.22B: legacy lab/OFAT/combo launcher is fully retired. It must
+# never compete with the canonical bounded VECTOR_LIFECYCLE campaign.
+echo "$(date -u +%FT%TZ) RETIRED_IDLE — replaced by run_path_productivity_hotlist.py" \
+  >> "$LOGDIR/lab_matrix_watchdog.log"
+exit 0
+PAUSE_FILE="$SBX/data/MATRIX_WORKERS_PAUSED"
+
+# This legacy watchdog supervises the same repaired exact fleet as
+# tools/param_matrix_watchdog.sh.  It must honor the same global pause before
+# any pgrep/setsid path; otherwise the two cron entries can disagree and this
+# one can silently relaunch a deliberately stopped fleet.
+if [ -f "$PAUSE_FILE" ]; then
+  if [ -f "$SBX/tools/matrix_live_progress.py" ]; then
+    "$PY" "$SBX/tools/matrix_live_progress.py" \
+      --path "$SBX/chart_static/matrix_live_progress.json" \
+      --pause-all --pause-status PAUSED_UNIQUENESS_REPAIR \
+      >> "$LOGDIR/lab_matrix_watchdog.log" 2>&1 || true
+  fi
+  echo "$(date -u +%FT%TZ) paused by $PAUSE_FILE — no matrix workers launched" \
+    >> "$LOGDIR/lab_matrix_watchdog.log"
+  exit 0
+fi
 launch() {
   mode=$1; tag=$2
   if ! pgrep -f "lab_matrix_daemon.py --mode $mode --workers-tag $tag" >/dev/null; then
@@ -87,25 +110,32 @@ refresh_switch_matrix_reports() (
   exec 9>"$LOGDIR/switch_matrix_export.lock"
   flock -n 9 || exit 0
   cd "$SBX" || exit 1
-  timeout 300 "$PY" tools/export_switch_matrix_xls.py --account trb \
+  timeout 300 "$PY" tools/export_switch_matrix_xls.py --account trb --include-1yr \
     >> "$LOGDIR/switch_matrix_export.log" 2>&1
   timeout 120 "$PY" tools/switch_matrix_digest.py \
     >> "$LOGDIR/switch_matrix_digest.log" 2>&1
 )
 
-# REPAIRED CONTRACT LANE (2026-07-25).
+# C5 REPAIRED CONTRACT LANE (2026-07-30).
 #
 # `GRID_SUSPENDED` continues to block every historical worker below.  The separate
 # MATRIX_REPAIRED_ENABLE marker authorizes only these side-isolated, B&H-seeded workers, under
 # a new campaign namespace.  This prevents removing the old kill switch from accidentally
 # resurrecting mixed-side/pre-HTF-fix daemons.  HAO_SHORT is deliberately absent until its NPZ
 # passes tools/backtest_data_contract.py.
-REPAIRED_CAMPAIGN=stocks_repaired_20260725_c2
-REPAIRED_NPZ_DIR="$SBX/data/matrix_npz/$REPAIRED_CAMPAIGN"
-REPAIRED_END_DATE=2026-07-25
+REPAIRED_CAMPAIGN=stocks_repaired_20260730_c5
+# These values are loaded from the same immutable worker manifest immediately
+# before launch.  Hardcoding the retired July NPZ here caused this older
+# watchdog to fight param_matrix_watchdog.sh and repeatedly launch stale-data
+# workers after a causal-data cutover.
+REPAIRED_NPZ_DIR=""
+REPAIRED_END_DATE=""
 launch_repaired() {
-  symbol=$1; side=$2; tag=$3
-  needle="param_matrix_daemon.py --tag $tag --only $symbol --side $side --all-tiers --safe-contract"
+  symbol=$1; side=$2; tag=$3; slot=$4
+  # Match the stable argument prefix only: the two watchdogs historically
+  # emitted --all-tiers/--safe-contract in different orders and therefore did
+  # not recognize one another's healthy process.
+  needle="param_matrix_daemon.py --tag $tag --only $symbol --side $side"
   if ! pgrep -f "$needle" >/dev/null; then
     # `disown` is ineffective when this script is started by non-interactive cron: bash can
     # remain the daemon's parent and wait indefinitely, which prevents a clean watchdog cycle
@@ -114,19 +144,78 @@ launch_repaired() {
     cd "$SBX" && PSC_CAMPAIGN="$REPAIRED_CAMPAIGN" \
       PSC_MATRIX_NPZ_DIR="$REPAIRED_NPZ_DIR" \
       PSC_MATRIX_END_DATE="$REPAIRED_END_DATE" \
+      V8_MATRIX_CONTRACT_VERSION="tradier-matrix-exec-c5-20260730" \
       setsid -f nohup nice -n 18 "$PY" \
       tools/param_matrix_daemon.py --tag "$tag" --only "$symbol" --side "$side" \
-      --all-tiers --safe-contract --min-avail 5000 \
+      --all-tiers --safe-contract --progress-slot "$slot" --min-avail 5000 \
       >> "$LOGDIR/param_matrix_${tag}.log" 2>&1 < /dev/null
     echo "$(date -u +%FT%TZ) relaunched repaired matrix $tag (${symbol}_${side})" \
       >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
 }
 if [ -f "$SBX/data/MATRIX_REPAIRED_ENABLE" ]; then
-  # Six nice(18) workers: enough to keep progress continuous while capped below S1's 16 cores
-  # and 30GB RAM. Each worker independently waits for >=5GB available before an engine child.
-  for t in rm1 rm2 rm3; do launch_repaired MU LONG "$t"; done
-  for t in rv1 rv2 rv3; do launch_repaired VT LONG "$t"; done
+  # c5 dependency-pack workers come from one fail-closed manifest.  The daemon
+  # independently verifies campaign, contract version, symbol/side, exact
+  # fingerprint and no-live-promotion before accepting a tag's priority roots.
+  # STOP_PACK/broad OFAT workers are intentionally absent from this lane.
+  REPAIRED_WORKER_MANIFEST="$SBX/data/matrix_worker_manifest.json"
+  if ! "$PY" "$SBX/tools/matrix_resume_gate.py" check-launch \
+    --root "$SBX" --manifest "$REPAIRED_WORKER_MANIFEST" \
+    >> "$LOGDIR/lab_matrix_watchdog.log" 2>&1; then
+    echo "$(date -u +%FT%TZ) repaired matrix resume gate BLOCKED" \
+      >> "$LOGDIR/lab_matrix_watchdog.log"
+    exit 0
+  fi
+  REPAIRED_NPZ_REL=$(jq -er '.npz_dir' "$REPAIRED_WORKER_MANIFEST") || exit 1
+  REPAIRED_END_DATE=$(jq -er '.end_date' "$REPAIRED_WORKER_MANIFEST") || exit 1
+  case "$REPAIRED_NPZ_REL" in
+    /*) REPAIRED_NPZ_DIR="$REPAIRED_NPZ_REL" ;;
+    *) REPAIRED_NPZ_DIR="$SBX/$REPAIRED_NPZ_REL" ;;
+  esac
+  REPAIRED_WORKERS=$(
+    "$PY" - "$REPAIRED_WORKER_MANIFEST" "$REPAIRED_CAMPAIGN" <<'PY'
+import json
+import sys
+
+path, campaign = sys.argv[1:]
+try:
+    payload = json.load(open(path))
+except Exception as exc:
+    raise SystemExit(f"invalid repaired worker manifest {path}: {exc}")
+if payload.get("campaign") != campaign:
+    raise SystemExit(
+        f"worker manifest campaign {payload.get('campaign')!r} != {campaign!r}"
+    )
+if payload.get("matrix_contract_version") != "tradier-matrix-exec-c5-20260730":
+    raise SystemExit("worker manifest is not exact c5")
+if payload.get("no_live_promotion") is not True:
+    raise SystemExit("worker manifest must set no_live_promotion=true")
+workers = payload.get("workers") or []
+if not workers:
+    raise SystemExit("worker manifest has no workers")
+seen = set()
+for slot, row in enumerate(workers, 1):
+    tag = str(row.get("tag") or "")
+    sym = str(row.get("symbol") or "").upper()
+    side = str(row.get("side") or "").upper()
+    roots = row.get("priority_roots") or []
+    if not tag or not sym or side not in {"LONG", "SHORT"} or not roots:
+        raise SystemExit(f"invalid dependency-pack worker: {row!r}")
+    if tag in seen:
+        raise SystemExit(f"duplicate worker tag: {tag}")
+    seen.add(tag)
+    if slot > 6:
+        raise SystemExit("worker manifest exceeds six live progress slots")
+    print(f"{sym}\t{side}\t{tag}\t{slot}")
+PY
+  ) || {
+    echo "$(date -u +%FT%TZ) repaired worker manifest rejected" \
+      >> "$LOGDIR/lab_matrix_watchdog.log"
+    exit 1
+  }
+  while IFS=$'\t' read -r symbol side tag slot; do
+    [ -n "$tag" ] && launch_repaired "$symbol" "$side" "$tag" "$slot"
+  done <<< "$REPAIRED_WORKERS"
   refresh_switch_matrix_reports
   exit 0
 fi

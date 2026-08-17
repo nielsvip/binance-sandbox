@@ -13,7 +13,7 @@ def _param_db(path: Path):
         """CREATE TABLE param_cells(
         mode TEXT,symbol TEXT,side TEXT,campaign TEXT,param TEXT,value_json TEXT,
         validation_status TEXT,contract_fingerprint TEXT,ts TEXT,source_file TEXT,
-        tier TEXT)"""
+        tier TEXT,capital_accounting_version TEXT)"""
     )
     return con
 
@@ -23,16 +23,19 @@ def test_engine_coverage_separates_current_stale_and_vec(tmp_path):
     con = _param_db(db)
     rows = [
         ("tradier", "MU", "LONG", export.CURRENT_ENGINE_CAMPAIGN, "A", "true",
-         "PASS", "current", "2026-07-27T00:00:00Z", "engine", "ENGINE"),
+         "PASS", "current", "2026-07-31T00:00:00Z", "engine", "ENGINE",
+         export.CURRENT_CAPITAL_ACCOUNTING_VERSION),
         ("tradier", "MU", "LONG", export.CURRENT_ENGINE_CAMPAIGN, "B", "2",
-         "PASS", "old", "2026-07-27T00:00:01Z", "engine", "ENGINE"),
+         "PASS", "old", "2026-07-31T00:00:01Z", "engine", "ENGINE",
+         export.CURRENT_CAPITAL_ACCOUNTING_VERSION),
         ("tradier", "MU", "LONG", export.CURRENT_ENGINE_CAMPAIGN, "C", "3",
-         "FAIL", "current", "2026-07-27T00:00:02Z", "engine", "ENGINE"),
+         "FAIL", "current", "2026-07-31T00:00:02Z", "engine", "ENGINE",
+         export.CURRENT_CAPITAL_ACCOUNTING_VERSION),
         ("tradier", "VT", "LONG", "vec", "D", "4",
-         None, None, "2026-07-27T00:00:03Z", "vec", "VEC"),
+         None, None, "2026-07-31T00:00:03Z", "vec", "VEC", None),
     ]
     con.executemany(
-        "INSERT INTO param_cells VALUES(?,?,?,?,?,?,?,?,?,?,?)", rows
+        "INSERT INTO param_cells VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", rows
     )
     con.commit()
     con.close()
@@ -78,6 +81,8 @@ def test_path_fleet_exact_requires_explicit_switch_attribution(tmp_path):
              json.dumps({
                  "attributable": True, "matrix_param": "EXIT_X",
                  "matrix_value": True,
+                 "campaign": export.CURRENT_ENGINE_CAMPAIGN,
+                 "contract_fingerprint": "current",
              }), "candidate", 2.0, 1),
         ],
     )
@@ -86,13 +91,14 @@ def test_path_fleet_exact_requires_explicit_switch_attribution(tmp_path):
 
     with patch.object(export, "DB", db), patch.object(
         export, "FLEET_DB", fleet_dir / "queue.db"
+    ), patch.object(
+        campaign, "matrix_contract_fingerprints", return_value={"current"}
     ):
         audit = export.load_engine_coverage(export.CURRENT_ENGINE_CAMPAIGN)
 
-    assert len(audit["fleet_exact"]) == 2
+    assert len(audit["fleet_exact"]) == 1
     assert audit["fleet_exact_attributable"] == 1
-    assert audit["fleet_exact"][0]["attributable"] is False
-    assert audit["fleet_exact"][1]["matrix_param"] == "EXIT_X"
+    assert audit["fleet_exact"][0]["matrix_param"] == "EXIT_X"
 
 
 def test_contract_fingerprint_cache_invalidates_when_source_changes(tmp_path):
@@ -109,6 +115,46 @@ def test_contract_fingerprint_cache_invalidates_when_source_changes(tmp_path):
         second = campaign.matrix_contract_fingerprint("MU", "LONG")
     campaign._matrix_contract_fingerprint_cached.cache_clear()
     assert first != second
+
+
+def test_reporting_change_does_not_invalidate_exact_contract(tmp_path):
+    (tmp_path / "engine.py").write_text("exact=1\n")
+    (tmp_path / "reporter.py").write_text("columns=1\n")
+    npz_dir = tmp_path / "npz"
+    npz_dir.mkdir()
+    (npz_dir / "MU.npz").write_bytes(b"frozen-data")
+    campaign._matrix_contract_fingerprint_cached.cache_clear()
+    with patch.object(campaign, "SBX", tmp_path), patch.object(
+        campaign, "MATRIX_CONTRACT_FILES", ["engine.py"]
+    ), patch.object(
+        campaign, "MATRIX_ORCHESTRATION_FILES", ["reporter.py"]
+    ), patch.object(campaign, "MATRIX_NPZ_DIR", npz_dir):
+        process_before = campaign._matrix_process_source_signature()
+        first = campaign.matrix_contract_fingerprint("MU", "LONG")
+        (tmp_path / "reporter.py").write_text("columns=2-and-a-description\n")
+        second = campaign.matrix_contract_fingerprint("MU", "LONG")
+        assert first == second
+        assert campaign._matrix_process_source_signature() != process_before
+    campaign._matrix_contract_fingerprint_cached.cache_clear()
+
+
+def test_execution_contract_is_portable_across_install_paths(tmp_path):
+    first_root = tmp_path / "box-a"
+    second_root = tmp_path / "box-b"
+    for root in (first_root, second_root):
+        root.mkdir()
+        (root / "engine.py").write_text("exact=1\n")
+        (root / "npz").mkdir()
+        (root / "npz" / "MU.npz").write_bytes(b"same-frozen-data")
+    values = []
+    for root in (first_root, second_root):
+        campaign._matrix_contract_fingerprint_cached.cache_clear()
+        with patch.object(campaign, "SBX", root), patch.object(
+            campaign, "MATRIX_CONTRACT_FILES", ["engine.py"]
+        ), patch.object(campaign, "MATRIX_NPZ_DIR", root / "npz"):
+            values.append(campaign.matrix_contract_fingerprint("MU", "LONG"))
+    campaign._matrix_contract_fingerprint_cached.cache_clear()
+    assert values[0] == values[1]
 
 
 def test_current_engine_pack_rows_are_visible_but_vec_unknowns_are_not():

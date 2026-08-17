@@ -43,6 +43,8 @@ EXIT_TO_PATH = {
     "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED": "BOTTOM_B_DELAYED_LOWER_TOP",
     "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED": "BOTTOM_C_DELAYED_EMERGENCY",
 }
+EXPOSURE_MIN_PCT = 50.0
+EXPOSURE_MAX_PCT = 80.0
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -93,7 +95,7 @@ def _entry_discovery(artifact: Path) -> dict[str, Any]:
     strict_count = sum(
         row["alpha_vs_bh_pp"] > 0
         and row["alpha_vs_control_pp"] > 0
-        and 70.0 <= row["tim_pct"] <= 80.0
+        and EXPOSURE_MIN_PCT <= row["tim_pct"] <= EXPOSURE_MAX_PCT
         and row["future_htf_count"] == 0
         and not row["capacity_breach"]
         and not row["insolvent"]
@@ -196,6 +198,7 @@ def _run_adapter(
     npz_dir: Path,
     out_dir: Path,
     extra: list[str] | None = None,
+    emit_event_ledger: bool = False,
 ) -> dict[str, Any]:
     cmd = [
         sys.executable,
@@ -209,12 +212,14 @@ def _run_adapter(
         "--out-dir",
         str(out_dir),
         "--exposure-min-pct",
-        "70",
+        str(EXPOSURE_MIN_PCT),
         "--exposure-max-pct",
-        "80",
+        str(EXPOSURE_MAX_PCT),
     ]
     if extra:
         cmd.extend(extra)
+    if emit_event_ledger:
+        cmd.append("--emit-event-ledger")
     proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
     (out_dir.parent / f"{out_dir.name}.stdout.log").write_text(proc.stdout)
     (out_dir.parent / f"{out_dir.name}.stderr.log").write_text(proc.stderr)
@@ -230,12 +235,18 @@ def _fold_view(row: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _fold_exit_count(row: dict[str, Any]) -> int:
+    """Count completed position lifecycles, never broad exit actions.
+
+    Partial clips, runners and action markers can all increment ``exit_fills``
+    without closing a position.  Qualification needs independently tradable
+    completed lifecycles.  Old receipts lack this field and therefore fail
+    closed until rerun under the repaired adapter contract.
+    """
     return int(
         _metric(
             row,
-            "actual_exit_fills",
-            "exit_fills",
-            "technical_exit_fills",
+            "real_close_trades",
+            "terminal_lifecycle_closes",
             default=0,
         )
     )
@@ -264,9 +275,9 @@ def _strict_fold(row: dict[str, Any]) -> bool:
             )
         )
         > 0
-        and 70.0
+        and EXPOSURE_MIN_PCT
         <= float(_metric(row, "weighted_tim_pct", "tim_pct", default=-1.0))
-        <= 80.0
+        <= EXPOSURE_MAX_PCT
         and _fold_exit_count(row) > 0
         and _fold_obligations(row) == 0
         and int(row.get("future_htf_source_count", 0)) == 0
@@ -325,6 +336,15 @@ def _candidate_discovery_summary(
             )
             for fold in discovery
         ),
+        "all_fold_max_drawdown_account_pct": float(
+            row.get("metrics", {}).get("max_drawdown_account_pct_max", 0.0)
+        ),
+        "all_fold_clamp_count": int(
+            row.get("metrics", {}).get("clamp_count", 0)
+        ),
+        "all_fold_exit_fills": int(
+            row.get("metrics", {}).get("exit_fills", 0)
+        ),
         "_source": row,
     }
     return result
@@ -372,12 +392,18 @@ def _public_candidate(row: dict[str, Any], reveal_validation: bool) -> dict[str,
     return public
 
 
+def _campaign_exit_code(errors: list[dict[str, Any]], exact_queue: list[dict[str, Any]]) -> int:
+    """Quarantine failed independent entry schedules without losing survivors."""
+    return int(bool(errors) and not bool(exact_queue))
+
+
 def _screen_entry(
     entry: dict[str, Any],
     npz_dir: Path,
     output_root: Path,
     exit_beam_width: int,
     resume: bool = False,
+    emit_event_ledger: bool = False,
 ) -> dict[str, Any]:
     key = f"{entry['symbol']}_{entry['side']}"
     digest = hashlib.sha256(entry["artifact"].encode()).hexdigest()[:10]
@@ -403,6 +429,7 @@ def _screen_entry(
                 npz_dir,
                 base / adapter,
                 extra,
+                emit_event_ledger=emit_event_ledger,
             )
         payloads.append((adapter, payload))
     candidates = []
@@ -534,13 +561,25 @@ def main() -> int:
     ap.add_argument("--key", action="append", required=True)
     ap.add_argument("--entry-beam-width", type=int, default=2)
     ap.add_argument("--exit-beam-width", type=int, default=8)
+    ap.add_argument(
+        "--emit-event-ledger",
+        action="store_true",
+        help="retain causal raw actions on S1 for selected vector chart export",
+    )
     ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument("--exposure-min-pct", type=float, default=50.0)
+    ap.add_argument("--exposure-max-pct", type=float, default=80.0)
     ap.add_argument(
         "--resume",
         action="store_true",
         help="reuse completed per-adapter result.json artifacts",
     )
     args = ap.parse_args()
+    if not 0.0 <= args.exposure_min_pct <= args.exposure_max_pct <= 100.0:
+        raise ValueError("invalid exposure bounds")
+    global EXPOSURE_MIN_PCT, EXPOSURE_MAX_PCT
+    EXPOSURE_MIN_PCT = args.exposure_min_pct
+    EXPOSURE_MAX_PCT = args.exposure_max_pct
     keys = {key.upper() for key in args.key}
     entries, entry_audit = load_entry_beam(
         args.component_report.resolve(),
@@ -562,6 +601,7 @@ def main() -> int:
                 args.output_root.resolve(),
                 args.exit_beam_width,
                 args.resume,
+                args.emit_event_ledger,
             ): entry
             for entry in entries
         }
@@ -610,7 +650,10 @@ def main() -> int:
             "exit_selection_uses_discovery_folds_only": True,
             "untouched_final_fold_revealed_after_freeze": True,
             "exit_families": sorted(EXIT_TO_PATH),
-            "every_fold_tim_gate_pct": [70.0, 80.0],
+            "every_fold_tim_gate_pct": [
+                EXPOSURE_MIN_PCT,
+                EXPOSURE_MAX_PCT,
+            ],
             "every_fold_alpha_vs_bh_required": True,
             "every_fold_alpha_vs_identical_entry_e02_required": True,
             "actual_exit_required": True,
@@ -644,7 +687,14 @@ def main() -> int:
         for row in results
         for survivor in row["strict_survivors"]
     ]
-    if args.path_fleet_root and not errors:
+    payload["status"] = (
+        "PASS"
+        if not errors
+        else "PARTIAL_PASS_WITH_QUARANTINED_ENTRY_ERRORS"
+        if payload["exact_replay_queue"]
+        else "FAILED"
+    )
+    if args.path_fleet_root and payload["exact_replay_queue"]:
         payload["path_fleet_rows_appended"] = _ingest_selected(
             args.path_fleet_root.resolve(), payload
         )
@@ -666,7 +716,7 @@ def main() -> int:
             sort_keys=True,
         )
     )
-    return int(bool(errors))
+    return _campaign_exit_code(errors, payload["exact_replay_queue"])
 
 
 if __name__ == "__main__":

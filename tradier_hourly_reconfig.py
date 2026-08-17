@@ -132,15 +132,19 @@ def build_candidates(sym: str, can_long: bool, can_short: bool) -> List[Tuple[st
     # same-symbol hedge; DC_BB_D_BREAK_REVERSE is crypto-only).
     TRADIER_NEW_KNOB_CLUSTERS = [
         ("R1R2_strict", {
-            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
-            "R1_NEWBORN_WINDOW_MIN": 15.0,
+            # Live R1 is prohibited after the 2026-08-03 churn incident.
+            # Research sweeps may test it in isolated override files, but the
+            # hourly live writer must never resurrect it.
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": False,
+            "R1_NEWBORN_WINDOW_MIN": -1.0,
             "R1_USE_DC_4BAR": True,
             "R1_TF": "5m",
             "WT_VEL_DECEL_RATIO": 0.4,
             "WT_VEL_USE_DECEL_RATIO_ONLY": True,
         }),
         ("R1R2_loose", {
-            "R1_NEWBORN_WINDOW_MIN": 30.0,
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": False,
+            "R1_NEWBORN_WINDOW_MIN": -1.0,
             "R1_USE_DC_4BAR": False,
             "WT_VEL_DECEL_RATIO": 0.7,
             "WT_VEL_USE_DECEL_RATIO_ONLY": False,

@@ -1,0 +1,25 @@
+{
+  "artifact_contract_rejection_count": 1,
+  "artifact_contract_rejections": [
+    {
+      "blocker": "ENTRY_ARTIFACT_SCHEMA_INVALID",
+      "candidate_sha256": "1373e8ee9ed5f8e039c49aaf3a330dcb8e1ef56457d341b14ad171b9d8e131d6",
+      "entry_family": "ENTRY_LADDER_GREEN",
+      "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+      "key": "USAR_LONG",
+      "receipt": "data/reports/vec_research/capacity_frontier_20240711_20260801_v3_gate_aware_long_32c6bff24a1d/keys/USAR_LONG/key_result.json",
+      "receipt_sha256": "d45f6b95e0b093bef90b6ce90ae1f8a01bf3c0ccd446c1ff84c2e4fb8db50c31"
+    }
+  ],
+  "authority": "LATEST_RUNNER_WRITTEN_CAPACITY_FRONTIER_KEY_RESULT_PER_KEY",
+  "candidate_count_examined": 592,
+  "contract": "REPORT_ONLY_NO_EXACT_NO_MATRIX_NO_WORKBOOK_NO_DB_NO_LIVE",
+  "current_key_receipt_count": 106,
+  "generated_at": "2026-08-12T15:04:46.424180Z",
+  "qualifying_candidate_count": 0,
+  "qualifying_symbol_side_count": 0,
+  "rows": [],
+  "schema": "capacity-frontier-weekly-activity-only-audit-v1",
+  "status": "PASS",
+  "top_level_weekly_only_candidate_count": 1
+}

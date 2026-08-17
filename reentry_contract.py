@@ -36,7 +36,15 @@ def reentry_opposition(indicators, is_long, timeframes=("15m", "1h", "4h", "D"))
 
 
 def update_reentry_trace(trace, position_key, is_long, exit_price, current_price, timestamp, opposed):
-    """Persist every flat-bar observation and the worst favorable overshoot."""
+    """Persist the active flat cycle and its worst favorable overshoot.
+
+    A successful fill marks the row non-pending in the execution adapter. The
+    next exit starts a new obligation, so it must not inherit overshoot or
+    opposition evidence from an already-resolved cycle.
+    """
+    prior = trace.get(position_key)
+    if prior is not None and not prior.get("pending", False):
+        trace.pop(position_key, None)
     row = trace.setdefault(position_key, {
         "pending": True,
         "flat_bars": 0,
@@ -56,6 +64,57 @@ def update_reentry_trace(trace, position_key, is_long, exit_price, current_price
         )
         row["max_overshoot_pct"] = max(float(row["max_overshoot_pct"]), max(0.0, raw))
     return row
+
+
+def active_reentry_violation(row, material_pct):
+    """Whether an unresolved reclaim ran away without its allowed MTF veto."""
+    return bool(
+        row
+        and row.get("pending", False)
+        and float(row.get("max_overshoot_pct", 0) or 0) > float(material_pct)
+        and len(row.get("last_opposed_tfs", []) or []) <= 1
+    )
+
+
+def force_reentry_after_temporary_opposition(
+    row,
+    *,
+    favorable,
+    material_pct,
+    max_opposed_bars,
+):
+    """Turn a temporary multi-TF veto into a bounded delay.
+
+    The mandatory reclaim remains immediate with zero/one opposing TF.  With
+    stronger opposition it may wait, but never beyond both the material
+    favorable overshoot and bounded flat-bar limits.
+    """
+    if not favorable or not row or not row.get("pending", False):
+        return False
+    opposed = len(row.get("last_opposed_tfs", []) or [])
+    if opposed <= 1:
+        return True
+    return (
+        float(row.get("max_overshoot_pct", 0) or 0)
+        > float(material_pct)
+        and int(row.get("flat_bars", 0) or 0) >= int(max_opposed_bars)
+    )
+
+
+def confirm_reentry_fill(trace, position_key, timestamp, price):
+    """Resolve an obligation on any real flat-to-open fill.
+
+    The broker action reason is telemetry, not lifecycle truth.  A ladder,
+    direct-entry, or explicitly named mandatory-reentry fill all satisfy the
+    same outstanding obligation when they move the position from flat to open.
+    """
+    row = trace.get(position_key)
+    if row is None:
+        return False
+    row["pending"] = False
+    row["filled_ts"] = float(timestamp)
+    row["filled_price"] = float(price)
+    return True
 
 
 def resting_reclaim_fill(

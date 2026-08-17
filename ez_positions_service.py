@@ -435,8 +435,8 @@ base_path = config.BASE_PATH
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
 logger.addHandler(stream_handler)
-paper_logs_dir = Path.home()/'logs'
-logs_dir = Path.home()/'logs'
+paper_logs_dir = Path(os.environ.get("EZ_LOG_DIR") or (Path.home() / "logs"))
+logs_dir = Path(os.environ.get("EZ_LOG_DIR") or (Path.home() / "logs"))
 logs_dir.mkdir(parents=True, exist_ok=True)
 file_handler_path = logs_dir / "ez_positions_service.log"
 file_handler = RotatingFileHandler(file_handler_path, maxBytes=100*1024*1024, backupCount=5, encoding='utf-8', mode='a')
@@ -977,7 +977,7 @@ POSITION AFTER (attempted write):
 """
                                         logger.critical(_fg_crash_log)
                                         try:
-                                            _crash_path = Path(os.path.expanduser("~/logs")) / "FIELD_ERASURE_CRASH.log"
+                                            _crash_path = Path(os.environ.get("EZ_LOG_DIR") or "/tmp") / "FIELD_ERASURE_CRASH.log"
                                             with open(_crash_path, "a") as _crash_f:
                                                 _crash_f.write(_fg_crash_log)
                                                 try:
@@ -1661,7 +1661,7 @@ class Position:
                 _crash_msg = f"\n{'!'*80}\n🚫 ILLEGAL POSITION WRITE from {_caller_basename}:{_caller_func}: {_sym}_{_side}.{name}: {old_val} → {value}\nCaller: {_frame[-2]}\nPID={os.getpid()}\n{'!'*80}\n"
                 logger.critical(_crash_msg)
                 try:
-                    with open(os.path.expanduser("~/logs/ILLEGAL_POSITION_WRITE.log"), "a") as _ef:
+                    with open(os.path.join(os.environ.get("EZ_LOG_DIR") or "/tmp", "ILLEGAL_POSITION_WRITE.log"), "a") as _ef:
                         _ef.write(f"[{datetime.now(timezone.utc).isoformat()}] {_crash_msg}\n")
                 except Exception:
                     pass
@@ -1678,7 +1678,7 @@ class Position:
                 _crash_msg = f"\n{'!'*80}\n🚨 FIELD ERASURE IN-MEMORY: {_sym}_{_side}.{name}: {old_val} → {value}\nPID={os.getpid()}\nStack:\n{_stack}{'!'*80}\n"
                 logger.critical(_crash_msg)
                 try:
-                    with open(os.path.expanduser("~/logs/FIELD_ERASURE_CRASH.log"), "a") as _ef:
+                    with open(os.path.join(os.environ.get("EZ_LOG_DIR") or "/tmp", "FIELD_ERASURE_CRASH.log"), "a") as _ef:
                         _ef.write(_crash_msg)
                 except Exception:
                     pass
@@ -4144,7 +4144,21 @@ class PositionService:
         except RuntimeError:
             asyncio.run(coro)
             return
-        loop.create_task(coro)
+        task = loop.create_task(coro)
+
+        # These persistence calls are deliberately fire-and-forget.  Consume
+        # unexpected task failures so a transient Redis/filesystem exception
+        # cannot become ``Task exception was never retrieved`` in every
+        # account's stderr log.
+        def _consume_background_failure(done_task: asyncio.Task) -> None:
+            try:
+                done_task.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                logger.error("[BACKGROUND_TASK] persistence task failed: %s", exc, exc_info=True)
+
+        task.add_done_callback(_consume_background_failure)
 
     def _normalize_timestamp(self, ts):
         if not ts:
@@ -11153,6 +11167,13 @@ class PositionService:
                 await asyncio.sleep(save_interval)
 
     async def _ensure_full_pk_coverage(self, account_key: str) -> None:
+        # Isolated V8 replay: an explicit --symbols backtest must not scan or
+        # mutate the live account's full 200+ symbol position universe. The
+        # replay owns its clean position state and supplies only its requested
+        # symbols; coverage recovery here otherwise aborts sparse proxy runs.
+        if os.environ.get("V8_BACKTEST_ISOLATED_SYMBOLS", "0") == "1":
+            logger.info(f"[_ensure_full_pk_coverage] isolated V8 replay — skipped for {account_key}")
+            return
         acc_positions = self.positions_by_account.setdefault(account_key, {})
         try :
             symbols_file = Path(getattr(self.config, "SYMBOLS_FILE", self.config.BASE_PATH / "symbols.json"))

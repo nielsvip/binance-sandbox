@@ -6,6 +6,7 @@
 # Per CLAUDE.md rule 4b: must report on ≥100 stocks × ≥1yr pool-averaged.
 # Per user directive 2026-04-29: NO <1 sharpes acceptable anymore.
 set -uo pipefail
+export EZ_LOG_DIR="${EZ_LOG_DIR:-/tmp}"
 OUTDIR=/home/niels/logs/tier2_full_tradier_$(date +%Y%m%d_%H%M)
 mkdir -p "$OUTDIR"
 PY=/home/niels/miniconda3/envs/binance_env/bin/python

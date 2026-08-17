@@ -74,6 +74,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import metrics_guard  # NO-LIES MANDATE — every sharpe writer must import this
+from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
 
 from position_evaluator import (
     evaluate_reentry_vec,
@@ -183,6 +184,12 @@ try:
 except ImportError:
     live_entry_engine_passes_vec = None
 try:
+    # Production Tradier WT/DC base score, vectorized from the active scalar
+    # score_entry_multitf formula. Thresholds are meaningless without it.
+    from wt_dc_entry_scorer_vec import score_entry_multitf_vec
+except ImportError:
+    score_entry_multitf_vec = None
+try:
     from vec_paths.exit_r1_r2 import (
         check_r1_emergency_exit,
         check_r2_wt_vel_slow_exit,
@@ -278,11 +285,13 @@ try:
         check_rz_breakout_entry_vec,
         check_rz_exit_vec,
         compute_rz_cascade_signals_vec,
+        score_wt_dc_exit_vec,
     )
 except ImportError:
     check_rz_breakout_entry_vec = None
     check_rz_exit_vec = None
     compute_rz_cascade_signals_vec = None
+    score_wt_dc_exit_vec = None
 # TR_TREND_v1 — Daily-decision breakout-retest stock strategy (spec: data/research_20260516/strategy_plan.md §4)
 # Default-OFF per CLAUDE.md NEW STRATEGY PROHIBITION; sweep-validate before any live enable.
 try:
@@ -415,7 +424,10 @@ class _PosStateAdapter:
 
 
 REPO_ROOT = Path(__file__).resolve().parent
-NPZ_DIR = REPO_ROOT / "backtest_v8" / "indicators"
+# Permit a pinned research NPZ directory for parity runs.  The normal default
+# remains backtest_v8/indicators; this prevents silently testing a different
+# local snapshot when the source receipt names another artifact.
+NPZ_DIR = Path(os.environ.get("V8_VEC_NPZ_DIR", str(REPO_ROOT / "backtest_v8" / "indicators")))
 KLINES_CRYPTO_DIR = REPO_ROOT / "klines_cache_backtest"
 KLINES_STOCK_DIR = REPO_ROOT / "klines_cache_backtest" / "tradier"
 SWEEP_RESULTS_DIR = REPO_ROOT / "data" / "sweep_results"
@@ -442,6 +454,9 @@ class SweepConfig:
     # MIN_POSITION_SIZE=1.0. Vec was using 55/25 — sizing doesn't affect %
     # returns but does shape min-qty rounding behavior.
     START_POSITION_SIZE: float = 18.0
+    # Stock parity sweep: when nonzero, quantity is an integer share chunk
+    # (1..10 shares) rather than a crypto-style dollar/price fraction.
+    VEC_SHARE_CHUNK: int = 0
     MIN_POSITION_SIZE: float = 1.0
     MIN_GAIN: float = 3.0
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
@@ -558,6 +573,18 @@ class SweepConfig:
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     PULLBACK_AUGMENT_ENABLED: bool = True
     PULLBACK_AUGMENT_REVERSAL_MIN: float = 1.0
+    # ── 2026-08-10 GDX_SHORT augment relaxation (AUGMENT_WT_4H_BOUNCE) ───────
+    # Mirrors c08 snapshot AUGMENT_WT_4H_BOUNCE (WT 4h bounce augment). Default
+    # False preserves legacy sweep behaviour; GDX_SHORT grind enables it to
+    # lift trade count from 44 → >100 by allowing 4h WT bounce augments.
+    AUGMENT_WT_4H_BOUNCE_ENABLED: bool = False
+    AUGMENT_WT_4H_MULTIPLIER: float = 2.0
+    AUGMENT_WT_4H_REQUIRE_HIGHER_WT: bool = False
+    AUGMENT_WT_4H_REQUIRE_HIGHER_PRICE: bool = False
+    AUGMENT_WT_D_BOUNCE_ENABLED: bool = False
+    AUGMENT_WT_D_MULTIPLIER: float = 2.0
+    AUGMENT_WT_D_REQUIRE_HIGHER_WT: bool = False
+    AUGMENT_WT_D_REQUIRE_HIGHER_PRICE: bool = False
     HARD_AUGMENT_LOCK_SECONDS: float = 900.0
     HARD_REDUCE_LOCK_SECONDS: float = 60.0
     AUGMENTATION_COOLDOWN_SECONDS: float = 540.0
@@ -650,10 +677,17 @@ class SweepConfig:
     GR_EXIT_ENABLED: bool = False        # exit when GR votes ≥ MIN_TFS TFs × MIN_IND each AND wt1_3m against
     GR_EXIT_MIN_TFS: int = 3             # TFs that must each reach GR_EXIT_MIN_IND (default 3×3=9)
     GR_EXIT_MIN_IND: int = 3             # indicators per TF that must agree against trade
+    GR_HTF_DIRECT_EXIT_ENABLED: bool = True
+    GR_HTF_DIRECT_EXIT_SCORE: float = 12.0
+    WT_DC_EXIT_ENABLED: bool = True
+    WT_DC_EXIT_THRESHOLD: float = 20.0
+    WT_DC_EXIT_STALE_MAX_S: float = 600.0
     # ── R1 DC emergency exit ──────────────────────────────────────────────────
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
     R1_NEWBORN_WINDOW_MIN: float = 15.0
     R1_USE_DC_4BAR: bool = True
+    R1_REQUIRE_WT15_ADVERSE: bool = True
+    TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED: bool = True
     R1_TF: str = ""          # auto: "3m" crypto / "5m" tradier
     # ── NEWBORN_LOSS_KILL (2026-05-21 USER post-ORDI mandate) ─────────────────
     # Closes any newborn position whose gain crosses below threshold. Tighter than R1.
@@ -745,6 +779,7 @@ class SweepConfig:
     PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False      # OFF since 2026-04-27
     PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN: bool = True
     PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT: float = -0.5
+    MIN_HOLD_BARS: int = 0  # 15m base: 0/4/8/16 values — 0=disabled, 4=1h, 8=2h, 16=4h holds (tradier 5m base; crypto 15m)
     MIN_HOLD_MINUTES_CRYPTO: float = 30.0
     TRADIER_MIN_HOLD_MINUTES: float = 240.0
     BREAKEVEN_GRACE_MINUTES: float = 5.0
@@ -757,7 +792,10 @@ class SweepConfig:
     VEC_REENTRY_WINDOW_BARS: int = 400                  # reentry-eligibility window (bars since last held) for VEC_REENTRY_REQUIRE_PRIOR_EXIT
     VEC_REENTRY_DC4_EXITPRICE_ENABLED: bool = True      # 2026-06-02 USER MANDATE: ON by default (proven MU 0.84/NVDA 0.71, kills 729-trade B-block over-fire). USER's PRECISE reentry rule (replaces the B-block over-fire). While FLAT after an exit, until positionAmt>0: (a) <=1h since exit → price crosses dc_high4_5m (LONG)/dc_low4_5m (SHORT); (b) >1h since exit → price crosses exit_price (FOREVER). BOTH require wt1 RISING (wt1>wt1_prev) on 3m AND 15m AND 1h (LONG; falling on all 3 for SHORT). When True, fire_block uses THIS rule instead of the B-blocks.
     VEC_REENTRY_HOUR_BARS: int = 12                     # bars per 1 hour at base TF (stocks 5m→12, crypto 3m→20). The <=1h window for the dc4 branch of the reentry rule.
-    VEC_REENTRY_DC_USE_4BAR: bool = True                # 2026-06-03 reentry donchian: True=dc_high4/low4_5m (4-bar), False=dc_high/low_5m (1-bar). A/B to confirm which the numbers favor.
+    VEC_REENTRY_DC_USE_4BAR: bool = False               # 2026-08-03 emergency: mandatory reentry uses dc_high_5m/dc_low_5m
+    # Causal continuation reentry: after a real exit, reenter only when WT
+    # supports the side and price breaks a completed Donchian level.
+    VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED: bool = True
     QUICK_REDUCE_TECHNICAL_ONLY: bool = True           # 2026-06-02 USER MANDATE — mirror live gate (config.QUICK_REDUCE_TECHNICAL_ONLY). When True, the stochastic/profit-take winner-cutting reduce paths (PROFIT_TAKE_REDUCE / STRONG_REDUCE_K / QUICK_REDUCE_STRONG_REDUCE) are FORCED OFF so the vec sweep cannot discover winner-cutting configs that live (gated) can never execute. Only sanctioned technical exits (GR/WT/DC/struct/ATR-trail) reduce — identical to live. Set False ONLY to A/B the disabled traps.
     PROFIT_TAKE_REDUCE_ENABLED: bool = False           # default OFF
     PROFIT_TAKE_GAIN_PCT: float = 2.0
@@ -802,6 +840,11 @@ class SweepConfig:
     WT_15M_BOUNCE_BB_MIN: float = 0.05        # bb_pct_b lower bound (within BB)
     WT_15M_BOUNCE_BB_MAX: float = 0.95        # bb_pct_b upper bound (within BB)
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False  # False=OR(4h,1h), True=AND(4h,1h)
+    # Research WT-15m entry overlays.  ``value_lower`` uses a directional
+    # cross plus WT1 falling versus its prior value; ``any_cross`` accepts
+    # either cross direction; ``any_cross_gr`` additionally requires GR.
+    WT_15M_CROSS_ENTRY_ENABLED: bool = False
+    WT_15M_CROSS_ENTRY_MODE: str = "value_lower"
     # ── BB_BREAKOUT + BB_RSI_STOCH SCALP (Phase 9 — WIRED 2026-05-22) ─────
     BB_BREAKOUT_ENABLED: bool = False             # price outside BB on TF → entry trigger
     BB_BREAKOUT_TF: str = '15m'                  # which TF bb_pct_b to check
@@ -862,6 +905,20 @@ class SweepConfig:
     BREAKOUT_SIZE_LADDER_VEC_T3_PCT: float = 2.5
     BREAKOUT_SIZE_LADDER_VEC_T3_MULT: float = 3.0
     BREAKOUT_SIZE_LADDER_VEC_MAX_MULT: float = 3.0
+    # 2026-08-04: regression-band slope/STDEV ladder.  This is the core
+    # Tradier quantity ladder and must be available to every vector sweep.
+    LR_BAND_LADDER_ENABLED: bool = True
+    LR_BAND_LADDER_MODE: str = "center_plateau"
+    LR_BAND_LADDER_BOTTOM_MULT: float = 10.0
+    LR_BAND_LADDER_TOP_MULT: float = 3.0
+    LR_BAND_LADDER_ABOVE_TOP_MULT: float = -1.0
+    LR_BAND_LADDER_BELOW_BOTTOM_MULT: float = 0.0
+    LR_BAND_LADDER_CENTER: float = 0.5
+    LR_BAND_LADDER_TF_BOTTOM: dict = field(default_factory=lambda: {"D": 10.0, "4h": 6.0, "1h": 4.0})
+    LR_BAND_LADDER_TF_TOP: dict = field(default_factory=lambda: {"D": 6.0, "4h": 4.0, "1h": 1.0})
+    LR_BAND_LADDER_TRIGGER: str = "union"
+    LR_BAND_LADDER_BASE_UNIT_USD: float = 2000.0
+    LR_BAND_LADDER_CAPACITY_USD: float = 16000.0
     # 2026-05-22 USER MANDATE: REAL bottom/top entry, ~1-2 per sym per day.
     # Replaces scattergun WT_3M/RZ_BASELINE/GR micro-fires when active.
     # See vec_paths/quality_bottom_entry.py for full rationale + factor list.
@@ -924,6 +981,23 @@ class SweepConfig:
     RZ_CASCADE_HIGH_LOOKBACK: int = 20              # lookback bars for new-high requirement
     RZ_CASCADE_REQUIRE_NEW_HIGH: bool = False       # require new close-high to count breakout
     RZ_CASCADE_USE_W_M: bool = False                # add W/M TFs to alignment count
+    # Exact legacy LR-band entry trigger (tradier_manage.py). The NPZ carries
+    # the same lrL pct-b/slope/R2 series used by the scalar path.
+    LR_BAND_ENTRY_ENABLED: bool = False
+    LR_BAND_ENTRY_TF: str = "D"
+    LR_BAND_ENTRY_LO: float = 0.30
+    LR_BAND_ENTRY_R2_MIN: float = 0.70
+    LR_BAND_ENTRY_SIDES: str = "L"
+    LR_BAND_REGIME_ENABLED: bool = False
+    LR_BAND_REGIME_MAX_PB: float = 0.60
+    LR_BAND_HARVEST_ENABLED: bool = False
+    LR_BAND_HARVEST_HI: float = 0.70
+    LR_BAND_HARVEST_FRAC: float = 0.25
+    LR_BAND_SLOPE_FLIP_EXIT_ENABLED: bool = False
+    LR_BAND_SLOPE_FLIP_MIN_PCT_DAY: float = 0.05
+    LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN: float = 240.0
+    EXIT_MAX_HOLD_ENABLED: bool = False
+    EXIT_MAX_HOLD_MINUTES: float = 99999.0
     # ── DEAD-KNOB REWIRE (2026-05-18 18:00 UTC mandate) ─────────────────────────
     # Flags previously honoured only in backtest_v8_engine.py / tradier_manage.py
     # but ignored by the vec path → every V8_USE_VEC_ALL=1 sweep that toggled
@@ -946,6 +1020,10 @@ class SweepConfig:
     # ── DC_BREAK_LOW_REQUIRE_HTF (2026-05-17) — bare short needs ≥N HTF bear ──
     DC_BREAK_LOW_REQUIRE_HTF_ENABLED: bool = False
     DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS: int = 2
+    # Exact Tradier entry-zone veto. This is separate from the WT/DC score
+    # threshold: live gates every candidate OPEN when the switch is enabled.
+    DC_ENTRY_VETO_ENABLED_TRADIER: bool = False
+    DC_POSITION_ENTRY_THRESHOLD: float = 0.25
     # ── BAR_MATURITY guards (2026-05-16) — block entry when bar incomplete ──
     WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False
     WT_DC_ENTRY_BAR_MATURITY_BLOCK: float = 0.7
@@ -961,6 +1039,30 @@ class SweepConfig:
     # ── TRADIER_ENTRY_SCORE_THRESHOLD (2026-05-16) — min entry score for OPEN ──
     ENTRY_SCORE_THRESHOLD: int = 0
     TRADIER_ENTRY_SCORE_THRESHOLD: int = 0
+    # Classic formation paths (shared with config_tradier / exact engine).
+    FORMATION_TFS: str = "15m,1h,4h,D"
+    FORMATION_MIN_SCORE: float = 0.65
+    FORMATION_POSITION_SIZE_MULT: float = 1.0
+    FORMATION_EXIT_MIN_GAIN_PCT: float = 0.0
+    FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED: bool = False
+    FORMATION_HEAD_SHOULDERS_EXIT_ENABLED: bool = False
+    FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED: bool = False
+    FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED: bool = False
+    FORMATION_WEDGE_ENTRY_ENABLED: bool = False
+    FORMATION_WEDGE_EXIT_ENABLED: bool = False
+    FORMATION_TRIANGLE_ENTRY_ENABLED: bool = False
+    FORMATION_TRIANGLE_EXIT_ENABLED: bool = False
+    FORMATION_FLAG_PENNANT_ENTRY_ENABLED: bool = False
+    FORMATION_FLAG_PENNANT_EXIT_ENABLED: bool = False
+    FORMATION_CUP_HANDLE_ENTRY_ENABLED: bool = False
+    FORMATION_CUP_HANDLE_EXIT_ENABLED: bool = False
+    FORMATION_TREND_STRUCTURE_ENTRY_ENABLED: bool = False
+    FORMATION_TREND_STRUCTURE_EXIT_ENABLED: bool = False
+    # Per-symbol queue gate applied to classic-formation entries. Portfolio L/S
+    # ratio is intentionally excluded here because an isolated symbol replay
+    # cannot represent the rest of the live book.
+    COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True
+    COUNTER_TREND_SMA200_BYPASS_ENABLED: bool = True
     # ── LIVE_ENTRY_ENGINE vote (2026-05-20 PORT) — 4-engine score aggregator ──
     # Mirrors ez_manage.py:32543 / tradier_manage.py:2657 etc. Defaults OFF
     # so existing sweeps are unchanged. When LIVE_ENTRY_ENGINE_ENABLED=True,
@@ -979,8 +1081,11 @@ class SweepConfig:
     LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED: bool = False
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0
+    LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT: float = 1.0
     WT_DC_ENTRY_THRESHOLD: float = 0.0  # tradier final-score threshold for vec gate
     WT_DC_HTF_GATE: str = "none"  # 'none'|'1h'|'4h'|'4h_D' — mirrors tradier_manage:2751; blocks wt_open_ok entry when HTF WT against
+    WT_DC_LONG_ENABLED: bool = True
+    WT_DC_SHORT_ENABLED: bool = True
     # ── DC_LOW / BB FROZEN STOP (2026-05-18) — freeze DC/BB at entry as stop ──
     DC_LOW_FROZEN_STOP_ENABLED: bool = False
     DC_LOW_FROZEN_STOP_TF: str = '4h'
@@ -1068,8 +1173,13 @@ class SweepConfig:
     MTF_GR_EXIT_MIN_IND: int = 5
     MTF_WT_CROSS_EXIT_ENABLED: bool = True
     MTF_WT_CROSS_EXIT_TF: str = '15m'            # '15m', '1h', 'either'
+    # Research switch: close directly on the configured against-position WT
+    # cross, without requiring the GR side of the compound exit.  Default OFF
+    # preserves the live-equivalent compound behavior.
+    MTF_WT_CROSS_EXIT_DIRECT_ENABLED: bool = False
     MTF_DC_REJECT_EXIT_ENABLED: bool = True
     MTF_DC_REJECT_EXIT_TF: str = '1h'  # 2026-05-22 parity: live 1h
+    MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
     MTF_BB_REJECT_EXIT_ENABLED: bool = True
     MTF_BB_REJECT_EXIT_TF: str = '1h'  # 2026-05-22 parity: live 1h
     MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
@@ -1341,6 +1451,29 @@ def load_npz(symbol: str, mode: str, start_ts: Optional[int] = None) -> Tuple[Di
                 continue
             npz[k] = arr_full[i0:]
         ts = ts[i0:]
+        if mode == "tradier":
+            from classic_formations import ensure_npz_formation_fields
+            _formation_source = {
+                key: np.asarray(z[key])
+                for tf in ("15m", "1h", "4h", "D")
+                for field in ("open", "high", "low", "close", "volume")
+                for key in (f"{field}_{tf}",)
+                if key in z
+            }
+            # Parent availability timestamps are the causal candle identity.
+            # OHLC-change inference alone drops distinct consecutive flat bars,
+            # shortening/offsetting formation lookbacks even though broadcasts
+            # of an ordinary parent candle still appear to collapse correctly.
+            _formation_source.update(
+                {
+                    key: np.asarray(z[key])
+                    for tf in ("15m", "1h", "4h", "D")
+                    for key in (f"timestamp_{tf}",)
+                    if key in z
+                }
+            )
+            _formation_added = ensure_npz_formation_fields(_formation_source)
+            npz.update({key: values[i0:] for key, values in _formation_added.items()})
     return npz, ts
 
 
@@ -1412,6 +1545,7 @@ class SymState:
     # Phase I 2026-05-19 compound exit state
     _mtf_atr_trail: float = 0.0
     _mtf_ever_outside_dc: bool = False
+    _mtf_dc_outside_ts: float = 0.0
     # 2026-05-22 USER: MICRO_SCALP_USDC_CLOSE wire-in. Per-bar prev_gain so the
     # decel comparison (gain < prev_gain) works in vec just like ez_manage:40000+.
     prev_gain: float = 0.0
@@ -1478,6 +1612,24 @@ def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
     return (entry - mark) / entry * 100.0
 
 
+def _path_scoped_entry_union(
+    *,
+    non_wt_dc_trigger: bool,
+    wt_dc_score: float,
+    wt_dc_threshold: float,
+    wt_dc_path_enabled: bool,
+    wt_dc_htf_block: bool,
+) -> Tuple[bool, bool]:
+    """Return (any entry path, WT/DC path) without cross-family veto leakage."""
+    wt_dc_trigger = (
+        wt_dc_path_enabled
+        and wt_dc_threshold > 0.0
+        and not wt_dc_htf_block
+        and wt_dc_score >= wt_dc_threshold
+    )
+    return bool(non_wt_dc_trigger or wt_dc_trigger), bool(wt_dc_trigger)
+
+
 def _get_ltf_for_mode(mode: str) -> str:
     """Per CLAUDE.md: crypto base TF = 3m, stocks base TF = 5m.
     Tradier NPZs expose _5m fields (not _3m). Hardcoding ltf='3m' for tradier
@@ -1485,6 +1637,67 @@ def _get_ltf_for_mode(mode: str) -> str:
     silent 0-trade tradier vec sweeps. Always route ltf through this helper.
     """
     return "5m" if str(mode).lower() == "tradier" else "3m"
+
+
+def _tradier_counter_trend_entry_allowed_vec(
+    arrays: Dict[str, np.ndarray],
+    *,
+    is_long: bool,
+    config: SweepConfig,
+    n: int,
+) -> np.ndarray:
+    """Vector mirror of Tradier's per-symbol queue counter-trend gate."""
+    if not bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True)):
+        return np.ones(n, dtype=bool)
+
+    def values(name: str, default: np.ndarray | float = 0.0) -> np.ndarray:
+        raw = arrays.get(name, default)
+        result = np.nan_to_num(np.asarray(raw, dtype=np.float32), nan=0.0)
+        if result.ndim == 0:
+            return np.full(n, float(result), dtype=np.float32)
+        if len(result) != n:
+            return np.zeros(n, dtype=np.float32)
+        return result
+
+    w1 = values("wt1_1h")
+    w2 = values("wt2_1h")
+    close = values("close", values("close_5m"))
+    nonzero = (np.abs(w1) > 1e-9) | (np.abs(w2) > 1e-9)
+    against = (w1 < w2) if is_long else (w1 > w2)
+    aligned = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", True)):
+        sma200 = values("sma_200_15m")
+        if is_long:
+            current = values("high_1h")
+            previous = values("high_1h_prev", np.r_[current[0], current[:-1]])
+            structure = ((current > 0) & (previous > 0) & (current > previous)) | (w1 > w2)
+            aligned = (sma200 > 0) & (close > sma200) & structure
+        else:
+            current = values("low_1h")
+            previous = values("low_1h_prev", np.r_[current[0], current[:-1]])
+            structure = ((current > 0) & (previous > 0) & (current < previous)) | (w1 < w2)
+            aligned = (sma200 > 0) & (close < sma200) & structure
+    return ~(nonzero & against & ~aligned)
+
+
+def _tradier_dc4h_boundary_masks_vec(
+    arrays: Dict[str, np.ndarray], *, is_long: bool, n: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Mirror Tradier's unconditional completed-4h Donchian safety boundary.
+
+    Missing levels block entries but never invent held-position exits, matching
+    ``dc_4h_boundary_breached(require_level=True/False)`` in the shared live
+    contract.  Returns ``(entry_allowed, held_exit_breached)``.
+    """
+    close = np.asarray(
+        arrays.get("close", arrays.get("close_5m", np.zeros(n))),
+        dtype=np.float64,
+    )
+    level_name = "dc_low_4h" if is_long else "dc_high_4h"
+    level = np.asarray(arrays.get(level_name, np.zeros(n)), dtype=np.float64)
+    valid = np.isfinite(close) & (close > 0.0) & np.isfinite(level) & (level > 0.0)
+    breached = valid & ((close <= level) if is_long else (close >= level))
+    return valid & ~breached, breached
 
 
 def simulate_one_symbol(
@@ -1535,7 +1748,26 @@ def simulate_one_symbol(
         close = npz.get("close_3m", np.zeros(n, dtype=np.float32))
     close = np.asarray(close, dtype=np.float32)
 
+    # Existing frozen Tradier NPZs are upgraded in-memory by load_npz().  These
+    # masks make the formation families native vector entry/exit paths instead
+    # of diagnostic-only arrays.
+    from classic_formations import FORMATION_FAMILIES, formation_vector_mask
+    _formation_entry_mask, _formation_entry_score, _formation_entry_family = formation_vector_mask(
+        npz, is_long=is_long, action="ENTRY", config=config, n=n
+    )
+    _formation_exit_mask, _formation_exit_score, _formation_exit_family = formation_vector_mask(
+        npz, is_long=is_long, action="EXIT", config=config, n=n
+    )
+    if mode == "tradier":
+        _formation_entry_mask &= _tradier_counter_trend_entry_allowed_vec(
+            npz, is_long=is_long, config=config, n=n
+        )
+
     # ─── PRECOMPUTE GATES IN BULK ────────────────────────────────────────────
+    if mode == "tradier" and score_entry_multitf_vec is not None:
+        _wt_dc_base_score = score_entry_multitf_vec(npz, is_long, n=n)
+    else:
+        _wt_dc_base_score = np.zeros(n, dtype=np.float64)
     # LTF must match mode: crypto=3m, tradier=5m (CLAUDE.md base-TF rule).
     # Tradier NPZs do NOT have _3m fields — hardcoding 'ltf="3m"' here was the
     # root cause of silent 0-trade tradier vec sweeps (see vec_sweep_tradier_audit.md).
@@ -1576,10 +1808,18 @@ def simulate_one_symbol(
     _re_w1hp = np.nan_to_num(npz.get("wt1_1h_prev", np.roll(_re_w1h, 1)).astype(np.float32))
     wt1_15m = np.nan_to_num(npz.get("wt1_15m", np.zeros(n)).astype(np.float32))
     wt2_15m = np.nan_to_num(npz.get("wt2_15m", np.zeros(n)).astype(np.float32))
+    wt_velocity_15m = np.nan_to_num(npz.get("wt_velocity_15m", np.zeros(n)).astype(np.float32))
     wt1_1h = np.nan_to_num(npz.get("wt1_1h", np.zeros(n)).astype(np.float32))
     wt2_1h = np.nan_to_num(npz.get("wt2_1h", np.zeros(n)).astype(np.float32))
     dc_h_4h = exit_gates["dc_h_4h"]
     dc_l_4h = exit_gates["dc_l_4h"]
+    if mode == "tradier":
+        _dc4h_entry_allowed, _dc4h_held_exit = _tradier_dc4h_boundary_masks_vec(
+            npz, is_long=is_long, n=n
+        )
+    else:
+        _dc4h_entry_allowed = np.ones(n, dtype=bool)
+        _dc4h_held_exit = np.zeros(n, dtype=bool)
     # DC stop loss arrays (mode-aware TF, overridable via DC_STOP_TF)
     _dc_stop_tf = str(config.DC_STOP_TF).strip() if str(config.DC_STOP_TF).strip() else ("5m" if mode == "tradier" else "3m")
     _dc4_stop_long  = np.nan_to_num(npz.get(f"dc_low4_{_dc_stop_tf}",  np.zeros(n)).astype(np.float32))
@@ -1601,6 +1841,50 @@ def simulate_one_symbol(
         _ladder_arr = np.minimum(_ladder_arr, _ld_cap).astype(np.float64)
     else:
         _ladder_arr = np.ones(n, dtype=np.float64)
+
+    # Core Tradier LR-band slope/STDEV quantity ladder.  The ladder is driven
+    # by the regression-band position (0=lower band, 1=upper band) and the
+    # favorable slope arrow on D/4h/1h.  ``union`` uses the strongest
+    # favorable completed-TF multiplier at the entry bar.  It is intentionally
+    # separate from BREAKOUT_SIZE_LADDER and is opt-in for byte-identical
+    # legacy callers; vector campaigns that test the trading system's full
+    # recipe should enable it explicitly.
+    _lr_ladder_arr = np.ones(n, dtype=np.float64)
+    if bool(getattr(config, "LR_BAND_LADDER_ENABLED", False)):
+        _lr_mode = str(getattr(config, "LR_BAND_LADDER_MODE", "center_plateau"))
+        _lr_center = float(getattr(config, "LR_BAND_LADDER_CENTER", 0.5))
+        _lr_cap = max(0.0, float(getattr(config, "LR_BAND_LADDER_CAPACITY_USD", 16000.0)) /
+                      max(1e-9, float(getattr(config, "LR_BAND_LADDER_BASE_UNIT_USD", 2000.0))))
+        _lr_below = float(getattr(config, "LR_BAND_LADDER_BELOW_BOTTOM_MULT", 0.0))
+        _lr_above_cfg = float(getattr(config, "LR_BAND_LADDER_ABOVE_TOP_MULT", -1.0))
+        _lr_bottoms = getattr(config, "LR_BAND_LADDER_TF_BOTTOM", {}) or {}
+        _lr_tops = getattr(config, "LR_BAND_LADDER_TF_TOP", {}) or {}
+        _lr_candidates = []
+        for _lr_tf in ("D", "4h", "1h"):
+            _pb = np.asarray(npz.get(f"lrL_pct_b_{_lr_tf}", np.full(n, np.nan)), dtype=np.float64)
+            _sl = np.asarray(npz.get(f"lrL_slope_{_lr_tf}", np.zeros(n)), dtype=np.float64)
+            if len(_pb) != n or len(_sl) != n:
+                continue
+            _bot = float(_lr_bottoms.get(_lr_tf, getattr(config, "LR_BAND_LADDER_BOTTOM_MULT", 10.0)))
+            _top = float(_lr_tops.get(_lr_tf, getattr(config, "LR_BAND_LADDER_TOP_MULT", 3.0)))
+            _above = _top if _lr_above_cfg < 0 else _lr_above_cfg
+            _x = np.nan_to_num(_pb, nan=-1.0)
+            _m = np.where(_x < 0.0, _lr_below,
+                 np.where(_x <= _lr_center,
+                          _bot,
+                          np.where(_x <= 1.0,
+                                   _bot + (_top - _bot) * ((_x - _lr_center) / max(1e-9, 1.0 - _lr_center)) if _lr_mode == "linear" else _top,
+                                   _above)))
+            _favorable = (_sl > 0.0) if is_long else (_sl < 0.0)
+            _lr_candidates.append(np.where(_favorable, np.minimum(_m, _lr_cap), 0.0))
+        if _lr_candidates:
+            _lr_ladder_arr = np.maximum.reduce(_lr_candidates)
+            # No favorable arrow at this bar leaves the ordinary vector entry
+            # population intact; a favorable arrow applies its band multiplier.
+            _lr_ladder_arr = np.where(_lr_ladder_arr > 0.0, _lr_ladder_arr, 1.0)
+
+    def _entry_ladder_mult(_idx: int) -> float:
+        return float(max(float(_ladder_arr[_idx]), float(_lr_ladder_arr[_idx])))
     _wf_wt1 = wt1_3m
     _wf_wt1_prev = np.nan_to_num(npz.get("wt1_3m_prev" if _wf_mode_crypto else "wt1_5m_prev", np.roll(_wf_wt1, 1))).astype(np.float32)
     _wf_wt1_prev[0] = _wf_wt1[0]
@@ -1639,6 +1923,25 @@ def simulate_one_symbol(
                 _fdc_lvl = np.nan_to_num(npz.get(f"dc_low_{_fdc_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
                 _fdc_xu = np.asarray(npz.get(f"dc_low_crossunder_{_fdc_tf}", np.zeros(n, dtype=bool))).astype(bool)
                 _force_dc_mask = _force_dc_mask | (((_fdc_lvl > 0) & (close <= _fdc_lvl)) | _fdc_xu)
+
+    # Explicit continuation reentry path required by the lifecycle recipe.
+    # Unlike the ordinary force-open mask, this is consumed only after a real
+    # exit and is therefore not allowed to create fresh first entries.
+    _wt_price_breakout_reentry_mask = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", True)):
+        _wt_support = ((wt1_15m < wt2_15m) & (wt_velocity_15m <= 0.0)) if not is_long else ((wt1_15m > wt2_15m) & (wt_velocity_15m >= 0.0))
+        for _r_tf in ("15m", "1h", "4h", "D"):
+            _r_level = np.asarray(npz.get(
+                f"dc_low_{_r_tf}" if not is_long else f"dc_high_{_r_tf}",
+                np.zeros(n, dtype=np.float32),
+            ), dtype=np.float32)
+            _r_prev = np.roll(_r_level, 1)
+            _c_prev = np.roll(close, 1)
+            if is_long:
+                _r_break = (_r_level > 0) & (close > _r_level) & (_c_prev <= _r_prev)
+            else:
+                _r_break = (_r_level > 0) & (close < _r_level) & (_c_prev >= _r_prev)
+            _wt_price_breakout_reentry_mask |= (_r_break & _wt_support)
     # wt1_3m against the trade (required by GR exit and hedge trigger)
     _wt3m_against = (wt1_3m < wt2_3m) if is_long else (wt1_3m > wt2_3m)
     # WT against for hedge trigger (15m and 1h)
@@ -1659,6 +1962,17 @@ def simulate_one_symbol(
             require_activation=_gr_require_act,
             activation_tfs=_gr_act_tfs,
             entry_tfs=_gr_entry_tfs,
+        )
+    _gr_direct_exit_count: Optional[np.ndarray] = None
+    if (mode == "tradier"
+            and bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", True))
+            and evaluate_gr_htf_vec is not None):
+        _, _gr_direct_exit_count = evaluate_gr_htf_vec(
+            npz, is_long=(not is_long), mode=mode, vote_min=0, min_tfs=1,
+            min_ind=int(getattr(config, "GOLDEN_RULE_MIN_IND", 1)), n=n,
+            dc_threshold=_gr_dc_thr, bb_threshold=_gr_bb_thr,
+            require_activation=_gr_require_act,
+            activation_tfs=_gr_act_tfs, entry_tfs=_gr_entry_tfs,
         )
     # GR exit gate (legacy min_tfs × min_ind mode) — fires when ≥ MIN_TFS TFs each
     # have ≥ MIN_IND indicators agreeing AGAINST the trade AND wt1_3m is also against.
@@ -1726,6 +2040,9 @@ def simulate_one_symbol(
                 else (~_b15_rising_4h | ~_b15_rising_1h)
         _b15_open_mask = _b15_fresh & _b15_bb_ok & _b15_dir_ok & _b15_htf_ok
 
+    # Explicit WT-15m cross entry overlays are built after the GR mask below.
+    _wt15_cross_entry_mask = np.zeros(n, dtype=bool)
+
     # BB_BREAKOUT — pullback into BB on configured TF → entry trigger (2026-05-23 FIXED)
     # OLD logic (HARMFUL): fire when bb_pct_b > 1.0 (overbought momentum chase)
     # NEW logic (PROVEN): fire when bb_pct_b < threshold (oversold pullback)
@@ -1759,6 +2076,7 @@ def simulate_one_symbol(
     _rz_cascade_entry = np.zeros(n, dtype=bool)
     _rz_cascade_exit = np.zeros(n, dtype=bool)
     _rz_scorer_exit = np.zeros(n, dtype=bool)
+    _wt_dc_exit_score = np.zeros(n, dtype=np.float64)
     if check_rz_breakout_entry_vec is not None:
         try:
             _rz_break_mask = check_rz_breakout_entry_vec(npz, n, is_long, config)
@@ -1781,6 +2099,32 @@ def simulate_one_symbol(
         except Exception as _e_rz3:
             sys.stderr.write(f"RZ EXIT_SCORER vec precompute failed: {_e_rz3}\n")
             _rz_scorer_exit = np.zeros(n, dtype=bool)
+    if mode == "tradier" and score_wt_dc_exit_vec is not None:
+        try:
+            _wt_dc_exit_score = score_wt_dc_exit_vec(npz, n, is_long, config)
+        except Exception as _e_wtdc:
+            sys.stderr.write(f"WT_DC_EXIT scorer vec precompute failed: {_e_wtdc}\n")
+            _wt_dc_exit_score = np.zeros(n, dtype=np.float64)
+    _wtdc_parabolic_bypass = np.zeros(n, dtype=bool)
+    if mode == "tradier" and bool(getattr(config, "PARABOLIC_PROTECTION_ENABLED", True)):
+        def _parabolic_arr(name: str, default: float) -> np.ndarray:
+            raw = np.asarray(npz.get(name, np.full(n, default)), dtype=np.float64)
+            return np.nan_to_num(raw, nan=default)
+        _pp_r4 = _parabolic_arr("rsi_4h", 50.0)
+        _pp_r1 = _parabolic_arr("rsi_1h", 50.0)
+        _pp_bb4 = _parabolic_arr("bb_pct_b_4h", 0.5)
+        if is_long:
+            _wtdc_parabolic_bypass = (
+                (_pp_r4 >= float(getattr(config, "PARABOLIC_RSI_4H_MIN", 70.0)))
+                & (_pp_r1 >= float(getattr(config, "PARABOLIC_RSI_1H_MIN", 65.0)))
+                & (_pp_bb4 >= float(getattr(config, "PARABOLIC_BB_PCT_B_4H_MIN", 0.90)))
+            )
+        else:
+            _wtdc_parabolic_bypass = (
+                (_pp_r4 <= float(getattr(config, "PARABOLIC_RSI_4H_MAX", 30.0)))
+                & (_pp_r1 <= float(getattr(config, "PARABOLIC_RSI_1H_MAX", 35.0)))
+                & (_pp_bb4 <= float(getattr(config, "PARABOLIC_BB_PCT_B_4H_MAX", 0.10)))
+            )
 
     # ─── STRUCTURAL GATES PRECOMPUTE (2026-05-15) ─────────────────────────────
     # A1: SPY > 200SMA regime mask (aligned to this symbol's ts).
@@ -1878,6 +2222,67 @@ def simulate_one_symbol(
         else:
             _mfi_short_thr = float(getattr(config, "MFI_SHORT_THRESHOLD_D", 20.0))
             _mfi_entry_open_ok = _mfi_d_arr >= _mfi_short_thr
+
+    # Exact scalar Tradier DC-position veto (tradier_manage.py). Missing DC
+    # inputs fail closed when explicitly enabled; silently substituting 0.5
+    # would manufacture threshold behavior.
+    _dc_position_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "DC_ENTRY_VETO_ENABLED_TRADIER", False)):
+        _dc_1h_src = npz.get("dc_position_1h")
+        _dc_4h_src = npz.get("dc_position_4h")
+        if _dc_1h_src is None or _dc_4h_src is None:
+            _dc_position_open_ok = np.zeros(n, dtype=bool)
+        else:
+            _dc_1h = np.nan_to_num(
+                np.asarray(_dc_1h_src, dtype=np.float64), nan=0.5
+            )
+            _dc_4h = np.nan_to_num(
+                np.asarray(_dc_4h_src, dtype=np.float64), nan=0.5
+            )
+            _dc_threshold = float(
+                getattr(config, "DC_POSITION_ENTRY_THRESHOLD", 0.25)
+            )
+            if is_long:
+                _dc_position_open_ok = (
+                    (_dc_1h < _dc_threshold) | (_dc_4h < _dc_threshold)
+                )
+            else:
+                _dc_position_open_ok = (
+                    (_dc_1h > (1.0 - _dc_threshold))
+                    | (_dc_4h > (1.0 - _dc_threshold))
+                )
+
+    # Exact legacy LR-band trigger. This ports the scalar pct-b/slope/R2
+    # predicate; it does not substitute the unrelated RZ breakout family.
+    _lr_band_entry_mask = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "LR_BAND_ENTRY_ENABLED", False)):
+        _lr_tf = str(getattr(config, "LR_BAND_ENTRY_TF", "D"))
+        _lr_pb_src = npz.get(f"lrL_pct_b_{_lr_tf}")
+        _lr_slope_src = npz.get(f"lrL_slope_{_lr_tf}")
+        _lr_r2_src = npz.get(f"lrL_r2_{_lr_tf}")
+        if _lr_pb_src is not None and _lr_slope_src is not None and _lr_r2_src is not None:
+            _lr_pb = np.asarray(_lr_pb_src, dtype=np.float64)
+            _lr_slope = np.asarray(_lr_slope_src, dtype=np.float64)
+            _lr_r2 = np.asarray(_lr_r2_src, dtype=np.float64)
+            _lr_lo = float(getattr(config, "LR_BAND_ENTRY_LO", 0.30))
+            if bool(getattr(config, "LR_BAND_REGIME_ENABLED", False)):
+                _lr_lo = max(
+                    _lr_lo,
+                    float(getattr(config, "LR_BAND_REGIME_MAX_PB", 0.60)),
+                )
+            _lr_r2_min = float(getattr(config, "LR_BAND_ENTRY_R2_MIN", 0.70))
+            if is_long:
+                _lr_band_entry_mask = (
+                    (_lr_pb <= _lr_lo)
+                    & (_lr_slope > 0.0)
+                    & (_lr_r2 >= _lr_r2_min)
+                )
+            elif "S" in str(getattr(config, "LR_BAND_ENTRY_SIDES", "L")):
+                _lr_band_entry_mask = (
+                    (_lr_pb >= (1.0 - _lr_lo))
+                    & (_lr_slope < 0.0)
+                    & (_lr_r2 >= _lr_r2_min)
+                )
 
     # ─── CATALYST_VOLUME_GATE precompute (2026-05-18 knob wiring) ──────────────
     # Derive volume_D_50_sma on-the-fly from existing volume_D field in NPZ.
@@ -2262,6 +2667,34 @@ def simulate_one_symbol(
     _mtf_small_frac = float(getattr(config, "MTF_SMALL_SIZE_FRAC", 0.25))
     _mtf_big_mult = float(getattr(config, "MTF_BIG_ADD_SIZE_MULT", 4.0))
 
+    # Direct MTF-DC is a position exit, not an MTF-armed entry child. Keep a
+    # separate timestamp-based route for ordinary ladder positions. The armed
+    # protocol retains its existing full compound implementation.
+    try:
+        from vec_paths.mtf_dc_reject import (
+            build_direct_dc_reject_arrays,
+            direct_dc_reject_step,
+        )
+
+        _direct_dc_arrays = build_direct_dc_reject_arrays(
+            npz, n, is_long, config
+        )
+        _direct_dc_active = bool(
+            _direct_dc_arrays.get("enabled", False)
+        ) and not _mtf_active
+        for _dc_failure in _direct_dc_arrays.get("failures", ()):
+            sys.stderr.write(
+                f"direct_dc_reject disabled {symbol}/{side}: "
+                f"{_dc_failure}\n"
+            )
+    except Exception as _e:
+        sys.stderr.write(
+            f"direct_dc_reject precompute failed {symbol}/{side}: {_e}\n"
+        )
+        _direct_dc_arrays = {"enabled": False}
+        _direct_dc_active = False
+        direct_dc_reject_step = None
+
     # ─── BATCH 7 2026-05-27 MTF armed-state additive gate precompute ───────────
     # Mirrors ez_manage.py:22755 — additive FILTER on entry-emit sites.
     # Independent from MTF_ARMED_ENTRY_ENABLED (which short-circuits ALL legacy
@@ -2355,9 +2788,26 @@ def simulate_one_symbol(
             _gr_filter_mask = build_gr_filter_mask(npz, n, is_long, mode, config)
         else:
             _gr_filter_mask = np.ones(n, dtype=bool)
+
     except Exception as _e:
         sys.stderr.write(f"gr_filter_vec precompute failed {symbol}/{side}: {_e}\n")
         _gr_filter_mask = np.ones(n, dtype=bool)
+
+    if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)):
+        _wt15_w1 = np.nan_to_num(npz.get("wt1_15m", np.zeros(n)), nan=0.0).astype(np.float64)
+        _wt15_w2 = np.nan_to_num(npz.get("wt2_15m", np.zeros(n)), nan=0.0).astype(np.float64)
+        _wt15_w1p = np.roll(_wt15_w1, 1); _wt15_w2p = np.roll(_wt15_w2, 1)
+        _wt15_up = (_wt15_w1 > _wt15_w2) & (_wt15_w1p <= _wt15_w2p)
+        _wt15_dn = (_wt15_w1 < _wt15_w2) & (_wt15_w1p >= _wt15_w2p)
+        _wt15_directional = _wt15_up if is_long else _wt15_dn
+        _wt15_value_lower = _wt15_w1 < _wt15_w1p
+        _wt15_mode = str(getattr(config, "WT_15M_CROSS_ENTRY_MODE", "value_lower")).lower()
+        if _wt15_mode == "any_cross":
+            _wt15_cross_entry_mask = _wt15_up | _wt15_dn
+        elif _wt15_mode in {"any_cross_gr", "any_cross+gr", "gr"}:
+            _wt15_cross_entry_mask = (_wt15_up | _wt15_dn) & _gr_filter_mask
+        else:
+            _wt15_cross_entry_mask = _wt15_directional & _wt15_value_lower
 
     # ─── 2026-05-22 TOP_OF_RANGE_BLOCK precompute (post-ORDI prevention) ────
     if build_top_of_range_block_masks is not None:
@@ -2461,7 +2911,11 @@ def simulate_one_symbol(
             _default_qty = _start_pos_size / _cp_for_qty
             _base_qty_arr_pre = np.where(_ap_qty_arr > 0, _ap_used, _default_qty).astype(np.float32)
         else:
-            _base_qty_arr_pre = (_start_pos_size / _cp_for_qty).astype(np.float32)
+            _share_chunk = int(getattr(config, "VEC_SHARE_CHUNK", 0) or 0)
+            if _share_chunk > 0:
+                _base_qty_arr_pre = np.full(n, float(_share_chunk), dtype=np.float32)
+            else:
+                _base_qty_arr_pre = (_start_pos_size / _cp_for_qty).astype(np.float32)
         if _side_mult_pre != 1.0:
             _base_qty_arr_pre = _base_qty_arr_pre * _side_mult_pre
         try:
@@ -2625,6 +3079,7 @@ def simulate_one_symbol(
             | _rz_cascade_entry.astype(bool)
             | (_mom_break_long_mask.astype(bool) if is_long else _mom_break_short_mask.astype(bool))
             | _force_dc_mask.astype(bool)
+            | _wt_price_breakout_reentry_mask.astype(bool)
         )
         _flat_event_indices = np.flatnonzero(_flat_event_mask)
         _fast_path_enabled = True
@@ -2656,6 +3111,12 @@ def simulate_one_symbol(
         if len(_seed_candidates):
             _seed_i = int(_seed_candidates[0])
     for i in range(n):
+        if state.qty <= 0.0001:
+            _hard_wt_breakout_reentry = bool(
+                getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", True)
+                and _wt_price_breakout_reentry_mask[i]
+            )
+            state._mtf_dc_outside_ts = 0.0
         if i == _seed_i and state.qty <= 0.0001:
             # Exposure-ladder seed: initialise every position field that the
             # ordinary OPEN block below initialises. The entry trigger alone is
@@ -2705,6 +3166,7 @@ def simulate_one_symbol(
             else:
                 state._bb_fstop_entry = 0.0
             state._ever_outside_channel = False
+            state._mtf_dc_outside_ts = 0.0
             continue
         _bar_was_open = state.qty > 0.0001
         if _bar_was_open:
@@ -2725,6 +3187,21 @@ def simulate_one_symbol(
         mark = float(close[i])
         if mark <= 0 or not np.isfinite(mark):
             continue
+        # Reentry state must survive every exit family. Some legacy exit
+        # branches reset qty and continue without stamping last_exit_bar; use
+        # the emitted causal event as the single recovery source before flat
+        # entry evaluation. This is what makes WT-support + price-breakout
+        # reentry work after LR, structural, scorer, and direct exits alike.
+        if state.qty <= 0.0001 and events:
+            for _prior_ev in reversed(events):
+                if _prior_ev.type in {"CLOSE", "FULL_CLOSE"} and float(_prior_ev.ts) < bar_ts:
+                    state.last_exit_price = float(_prior_ev.price)
+                    state.last_exit_bar = max(
+                        int(state.last_exit_bar),
+                        int(np.searchsorted(ts, float(_prior_ev.ts), side="right") - 1),
+                    )
+                    state.last_close_reason = str(_prior_ev.reason or "")
+                    break
         if state.qty > 0.0001:
             _se_tf = getattr(config, "EXIT_STRUCT_TF", "None")
             if _se_tf == "None" or not _se_tf: _se_tf = getattr(config, "LONG_STRUCT_EXIT_TF" if is_long else "SHORT_STRUCT_EXIT_TF", "None")
@@ -2827,7 +3304,7 @@ def simulate_one_symbol(
                         state.qty = qty_to_add
                         state.entry_price = mark
                         state.initial_qty = qty_to_add
-                        state.entry_ladder_mult = float(_ladder_arr[i])
+                        state.entry_ladder_mult = _entry_ladder_mult(i)
                         state.opened_at = bar_ts
                         state.augmented_count = 0
                         state.max_gain = 0.0
@@ -2891,6 +3368,94 @@ def simulate_one_symbol(
                             state.last_augment_ts = bar_ts
                             state.last_augmentation_price = mark
             continue  # TR_TREND_v1 handles this bar fully — skip all legacy logic
+
+        # Exact/live parity: direct DC rejection applies to ordinary ladder
+        # positions even while MTF_ARMED_ENTRY_ENABLED=False. It observes the
+        # execution tick against the current causally completed parent band and
+        # remembers the outside event by timestamp, not by base-bar count.
+        if (
+            _direct_dc_active
+            and direct_dc_reject_step is not None
+            and state.qty > 0.0001
+        ):
+            (
+                state._mtf_dc_outside_ts,
+                _direct_dc_fire,
+            ) = direct_dc_reject_step(
+                _direct_dc_arrays,
+                i,
+                price=mark,
+                outside_ts=state._mtf_dc_outside_ts,
+                is_long=is_long,
+            )
+            if _direct_dc_fire:
+                _direct_dc_gain = _gain_pct(
+                    state.entry_price, mark, is_long
+                )
+                _direct_dc_reason = (
+                    f"MTF_DC_REJECT_"
+                    f"{_direct_dc_arrays['timeframe']}_px{mark:.4f}"
+                )
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(
+                        state=state,
+                        pos=_pos,
+                        events=events,
+                        trade_returns=trade_returns,
+                        ts=bar_ts,
+                        mark=mark,
+                        gain=_direct_dc_gain,
+                        reason=_direct_dc_reason,
+                        is_long=is_long,
+                        cfg=config,
+                        TradeEvent=TradeEvent,
+                    )
+                    if _closed:
+                        state._mtf_dc_outside_ts = 0.0
+                        continue
+                else:
+                    events.append(
+                        TradeEvent(
+                            ts=bar_ts,
+                            type="CLOSE",
+                            qty=state.qty,
+                            price=mark,
+                            value=state.qty * mark,
+                            reason=_direct_dc_reason,
+                            pnl_pct=_direct_dc_gain,
+                        )
+                    )
+                    trade_returns.append(_direct_dc_gain)
+                    state.last_exit_price = mark
+                    state.last_exit_bar = i
+                    state.qty = 0.0
+                    state.entry_price = 0.0
+                    state.initial_qty = 0.0
+                    state.opened_at = 0.0
+                    state.augmented_count = 0
+                    state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts
+                    state.hedge_active = False
+                    state._mtf_dc_outside_ts = 0.0
+                    continue
+
+        # Research/direct WT priority: honor every against-position 15m cross
+        # before MTF compound or legacy exit branches can consume the bar.
+        if state.qty > 0.0001 and bool(getattr(config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False)):
+            _wt15_prev1 = np.roll(wt1_15m, 1); _wt15_prev2 = np.roll(wt2_15m, 1)
+            _wt15_cross_against = ((wt1_15m > wt2_15m) & (_wt15_prev1 <= _wt15_prev2)) if not is_long else ((wt1_15m < wt2_15m) & (_wt15_prev1 >= _wt15_prev2))
+            if bool(getattr(config, "MTF_WT_CROSS_EXIT_ENABLED", True)) and bool(_wt15_cross_against[i]):
+                _direct_wt_gain = _gain_pct(state.entry_price, mark, is_long)
+                events.append(TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason="MTF_WT_DIRECT_EXIT_15m", pnl_pct=_direct_wt_gain))
+                trade_returns.append(_direct_wt_gain)
+                state.last_exit_price = mark; state.last_exit_bar = i
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                continue
 
         # ─── PHASE E 2026-05-19 MTF protocol short-circuit ───────────────────
         # When MTF_ARMED_ENTRY_ENABLED=True, ALL legacy entries are disabled.
@@ -3037,7 +3602,7 @@ def simulate_one_symbol(
                     value=new_qty * mark, reason=_small_reason)
                 events.append(ev)
                 state.qty = new_qty; state.entry_price = mark; state.initial_qty = new_qty
-                state.entry_ladder_mult = float(_ladder_arr[i])
+                state.entry_ladder_mult = _entry_ladder_mult(i)
                 state.opened_at = bar_ts; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_open_attempt_ts = bar_ts; state.last_augment_ts = bar_ts
                 state.last_augmentation_price = mark  # UAG anchor
@@ -3108,29 +3673,32 @@ def simulate_one_symbol(
                 continue
             # DEAD-KNOB REWIRE 2026-05-18: GR_HTF_GATE — block when alignment short.
             # Mirrors backtest_v8_engine.py:6062 ("BLOCKED_GR_HTF_BULL/BEAR_…").
-            if not bool(_gr_htf_gate_open_ok[i]):
+            if not bool(_gr_htf_gate_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # DEAD-KNOB REWIRE 2026-05-18: MFI_ENTRY — block LONG/SHORT by mfi_D.
             # Mirrors backtest_v8_engine.py:6077 ("BLOCKED_MFI_ENTRY_D_…gt…").
-            if not bool(_mfi_entry_open_ok[i]):
+            if not bool(_mfi_entry_open_ok[i]) and not _hard_wt_breakout_reentry:
+                continue
+            # Exact Tradier DC-position zone veto.
+            if not bool(_dc_position_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # CATALYST_VOLUME_GATE — block OPEN unless vol breakout + DC-D break.
-            if not bool(_catalyst_open_ok[i]):
+            if not bool(_catalyst_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # PENNY_STOCK_LONG_BLOCK — block LONG on stocks < $N.
-            if not bool(_penny_open_ok[i]):
+            if not bool(_penny_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # DC_BREAK_LOW_REQUIRE_HTF — bare short needs ≥N HTF bear.
-            if not bool(_dc_break_htf_ok[i]):
+            if not bool(_dc_break_htf_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # HTF_DIRECTION_GATE — block OPEN when D-WT against intended side.
-            if not bool(_htf_dir_open_ok[i]):
+            if not bool(_htf_dir_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # HTF_TREND_VETO (2026-05-18 REWIRE) — daily WT trend gate.
-            if not bool(_htf_trend_veto_ok[i]):
+            if not bool(_htf_trend_veto_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # BB_PULLBACK_GATE (2026-05-23) — block entries when BB %B unfavorable.
-            if not bool(_bb_pullback_ok[i]):
+            if not bool(_bb_pullback_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # close-transition: a position held at bar-start is now flat → record exit_price/bar
             if _bar_was_open and state.qty <= 0.0001:
@@ -3138,19 +3706,23 @@ def simulate_one_symbol(
                 state.last_exit_bar = i
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
+            # Hard causal continuation path: after a real exit, WT support and
+            # a completed-level price breakout are sufficient to reenter. This
+            # prevents the generic reentry blocks from leaving a trend flat.
+            _wt_price_breakout_reentry_ok = _hard_wt_breakout_reentry
             if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)):
                 # USER's precise reentry rule (replaces B-block over-fire). FLAT + a prior exit exists.
                 if state.qty <= 0.0001 and state.last_exit_bar > -1_000_000 and i > 0:
                     _hb = int(getattr(config, "VEC_REENTRY_HOUR_BARS", 12))
                     _since = i - state.last_exit_bar
                     if is_long:
-                        _wt_ok = (_re_w3[i] > _re_w3p[i]) and (_re_w15[i] > _re_w15p[i]) and (_re_w1h[i] > _re_w1hp[i])
+                        _wt_ok = (wt1_15m[i] > wt2_15m[i]) and (wt_velocity_15m[i] >= 0.0)
                         if _since <= _hb:
                             _trig = (mark > _re_dc4_high[i]) and (float(close[i-1]) <= _re_dc4_high[i-1])
                         else:
                             _trig = (mark >= state.last_exit_price) and (float(close[i-1]) < state.last_exit_price)
                     else:
-                        _wt_ok = (_re_w3[i] < _re_w3p[i]) and (_re_w15[i] < _re_w15p[i]) and (_re_w1h[i] < _re_w1hp[i])
+                        _wt_ok = (wt1_15m[i] < wt2_15m[i]) and (wt_velocity_15m[i] <= 0.0)
                         if _since <= _hb:
                             _trig = (mark < _re_dc4_low[i]) and (float(close[i-1]) >= _re_dc4_low[i-1])
                         else:
@@ -3191,6 +3763,7 @@ def simulate_one_symbol(
                 _delta_result = check_delta_entry(_store, i, side, mode, config)
             # WT_15M_BOUNCE_OPEN — fifth trigger (precomputed mask, O(1) per bar)
             _b15_ok = bool(_b15_open_mask[i])
+            _wt15_entry_ok = bool(_wt15_cross_entry_mask[i])
             # B2 Connors RSI-2 overlay — sixth trigger (long-only)
             _connors_ok = bool(_connors_open_mask[i])
             # BREAKOUT_RETEST_ARMED (2026-05-18 REWIRE) — seventh trigger (Rule A).
@@ -3205,6 +3778,7 @@ def simulate_one_symbol(
             # 2026-05-26 RZ cluster — RZ_BREAKOUT + RZ_CASCADE entry triggers
             _rz_break_ok = bool(_rz_break_mask[i])
             _rz_cascade_ok = bool(_rz_cascade_entry[i])
+            _lr_band_ok = bool(_lr_band_entry_mask[i])
             # 2026-05-26 MOMENTUM_BREAKOUT — fires the bar of the breakout (USER MANDATE).
             _mom_break_ok = bool(_mom_break_long_mask[i]) if is_long else bool(_mom_break_short_mask[i])
             # 2026-06-03 USER PARITY (REQ3) — multi-TF Donchian force-open (NO wt filter)
@@ -3214,6 +3788,7 @@ def simulate_one_symbol(
                 _force_dc_ok = False
             # 2026-05-22 QUALITY_BOTTOM_ENTRY — REAL bottom/top detector (USER mandate)
             _qb_ok = bool(_qb_fire_mask[i])
+            _formation_ok = bool(_formation_entry_mask[i])
             # Daily-cap on quality entries (~1-2/day target)
             _qb_max_per_day = int(getattr(config, "QUALITY_BOTTOM_MAX_PER_DAY", 3))
             _today_utc = int(bar_ts // 86400)
@@ -3272,9 +3847,73 @@ def simulate_one_symbol(
                         _b5_entry_tag = "direction_favorable_reentry"
                 # ENTRY #1/2/5/7 HEDGE_PROTECT — only fires when there IS a position (modeled
                 # via synthetic loser). Skip on flat path. See exit-block hooks below.
+            # WT/DC path-scoped score. Live evaluates this only while no earlier
+            # entry family has already selected OPEN. Entry engines are additive:
+            # they may lift this score, but can never veto GR, ladder, reentry,
+            # watchdog, or another independent entry path.
+            _entry_base_score = float(_wt_dc_base_score[i])
+            _wt_dc_final_score = _entry_base_score
+            _wt_dc_threshold = float(
+                getattr(config, "WT_DC_ENTRY_THRESHOLD", 0.0)
+            )
+            if (
+                mode == "tradier"
+                and _wt_dc_threshold > 0.0
+                and _entry_base_score < _wt_dc_threshold
+                and live_entry_engine_passes_vec is not None
+                and bool(getattr(config, "LIVE_ENTRY_ENGINE_ENABLED", False))
+            ):
+                _unused_pass, _wt_dc_final_score, _ee_reasons = (
+                    live_entry_engine_passes_vec(
+                        npz,
+                        i,
+                        "LONG" if is_long else "SHORT",
+                        base_score=_entry_base_score,
+                        cfg=config,
+                        symbol=symbol,
+                        mode=mode,
+                    )
+                )
+            _non_wt_dc_trigger = bool(
+                _b5_entry_result is not None
+                or fire_block
+                or _wt_price_breakout_reentry_ok
+                or wt_open_ok
+                or (_gr_result is not None)
+                or (_delta_result is not None)
+                or _b15_ok
+                or _wt15_entry_ok
+                or _connors_ok
+                or _ra_ok
+                or _qb_ok
+                or _bb_break_ok
+                or _brs_ok
+                or _btc_ok
+                or _rz_break_ok
+                or _rz_cascade_ok
+                or _lr_band_ok
+                or _mom_break_ok
+                or _force_dc_ok
+                or _formation_ok
+            )
+            _any_entry_trigger, _wt_dc_ok = _path_scoped_entry_union(
+                non_wt_dc_trigger=_non_wt_dc_trigger,
+                wt_dc_score=_wt_dc_final_score,
+                wt_dc_threshold=_wt_dc_threshold,
+                wt_dc_path_enabled=bool(
+                    getattr(
+                        config,
+                        "WT_DC_LONG_ENABLED"
+                        if is_long
+                        else "WT_DC_SHORT_ENABLED",
+                        True,
+                    )
+                ),
+                wt_dc_htf_block=bool(_wt_dc_htf_gate_block[i]),
+            )
             # When DISABLE_SCATTERGUN: quality gate is the ONLY trigger; suppress all others.
             if bool(getattr(config, "QUALITY_BOTTOM_DISABLE_SCATTERGUN", True)) and bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", True)):
-                if _b5_entry_result is not None:
+                if _b5_entry_result is not None or _formation_ok or _wt15_entry_ok or _wt_price_breakout_reentry_ok:
                     pass  # fall through to OPEN below
                 elif not _qb_ok:
                     continue
@@ -3282,10 +3921,14 @@ def simulate_one_symbol(
                     # quality entry fires — count it
                     state.quality_entries_today += 1
             else:
-                if not (_b5_entry_result is not None or fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok or _mom_break_ok or _force_dc_ok):
+                if not _any_entry_trigger:
                     continue
                 if _qb_ok:
                     state.quality_entries_today += 1
+            # Universal TRB/TRC queue boundary: every entry family, including
+            # ladder, direct, formation and reclaim, passes through this gate.
+            if not bool(_dc4h_entry_allowed[i]) and not _wt_price_breakout_reentry_ok:
+                continue
             # STDEV_MACRO_ENTRY_VETO — block OPEN at macro extreme on same side.
             # Additive to existing entry triggers (BB-breakout etc.) — never silently
             # overrides them; refuses the entry with an explicit reason. Default OFF.
@@ -3306,19 +3949,6 @@ def simulate_one_symbol(
                         continue
                 except Exception:
                     pass
-            # LIVE_ENTRY_ENGINE vote (2026-05-20 PORT) — 4-engine score aggregator
-            # mirroring ez_manage.py:32543 / tradier_manage.py:2657. Default OFF.
-            # When master flag is True: an OPEN that passed the trigger cascade above
-            # must additionally clear `final_score = boost*score_max + base_score`
-            # against the configured threshold. base_score is 0 in vec (full
-            # wt_dc_entry_scorer port out of scope); see vec_paths/live_entry_engine.py.
-            if live_entry_engine_passes_vec is not None and bool(getattr(config, "LIVE_ENTRY_ENGINE_ENABLED", False)):
-                _ee_passes, _ee_final, _ee_reasons = live_entry_engine_passes_vec(
-                    npz, i, "LONG" if is_long else "SHORT",
-                    base_score=0.0, cfg=config, symbol=symbol, mode=mode,
-                )
-                if not _ee_passes:
-                    continue
             # 2026-05-27 USER MANDATE: bulk-precomputed qty_per_bar replaces the
             # per-bar dict-comprehension + scalar compute_trade_qty_vec call
             # (saves ~10s on BTCUSDC 2yr). Falls back to per-bar call if the
@@ -3326,7 +3956,11 @@ def simulate_one_symbol(
             if _qty_per_bar is not None:
                 new_qty = float(_qty_per_bar[i])
             else:
-                base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
+                _share_chunk = int(getattr(config, "VEC_SHARE_CHUNK", 0) or 0)
+                base_qty_arr = np.array([
+                    float(_share_chunk) if _share_chunk > 0
+                    else config.START_POSITION_SIZE / mark
+                ], dtype=np.float32)
                 if str(config.SIZING_MODE).upper() == "ATR_PARITY":
                     _ap_qty = float(_atr_parity_qty[i])
                     if _ap_qty > 0:
@@ -3344,6 +3978,8 @@ def simulate_one_symbol(
                     is_hedge=False,
                 )
                 new_qty = float(qty_dict["qty"][0])
+            if _formation_ok:
+                new_qty *= max(0.0, float(getattr(config, "FORMATION_POSITION_SIZE_MULT", 1.0) or 0.0))
             if new_qty <= 0:
                 continue
             # 2026-05-22 TOP_OF_RANGE_BLOCK — skip entries when price is at extreme
@@ -3352,12 +3988,40 @@ def simulate_one_symbol(
             # REQ3 multi-TF DC breakout) are DELIBERATE breakout entries — top-of-range is exactly
             # what they must override (mirrors the live watchdog bypassing entry gates). All other
             # triggers still respect TOR.
-            if ((is_long and _tor_block_long[i]) or ((not is_long) and _tor_block_short[i])) and not (wt_open_ok or _force_dc_ok):
+            if ((is_long and _tor_block_long[i]) or ((not is_long) and _tor_block_short[i])) and not (wt_open_ok or _force_dc_ok or _formation_ok or _wt15_entry_ok):
                 continue
             # 2026-05-27 BATCH 5 — LIVE_ONLY trigger has highest precedence so its
             # reason string (matching live family exactly) hits the trade ledger.
             if _b5_entry_result is not None:
                 reason = _b5_entry_result["reason"]
+            elif _formation_ok:
+                _formation_family_name = FORMATION_FAMILIES[int(_formation_entry_family[i])]
+                reason = (
+                    f"CLASSIC_FORMATION_ENTRY_{_formation_family_name.upper()}_"
+                    f"score{float(_formation_entry_score[i]):.2f}"
+                )
+            elif _lr_band_ok and not (
+                fire_block
+                or wt_open_ok
+                or (_gr_result is not None)
+                or (_delta_result is not None)
+                or _b15_ok
+                or _connors_ok
+                or _ra_ok
+                or _bb_break_ok
+                or _brs_ok
+                or _qb_ok
+                or _rz_break_ok
+                or _rz_cascade_ok
+            ):
+                _lr_tf_reason = str(getattr(config, "LR_BAND_ENTRY_TF", "D"))
+                _lr_pb_reason = float(
+                    npz[f"lrL_pct_b_{_lr_tf_reason}"][i]
+                )
+                reason = (
+                    f"LR_BAND_ENTRY_{'L' if is_long else 'S'}_"
+                    f"pb={_lr_pb_reason:.3f}_{_lr_tf_reason}"
+                )
             elif _ra_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
                 reason = f"RULE_A_RETEST_{'LONG' if is_long else 'SHORT'}_px{mark:.6f}"
             elif _connors_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok):
@@ -3367,10 +4031,15 @@ def simulate_one_symbol(
                 reason = _delta_result["reason"]
             elif _gr_result is not None and not fire_block and not wt_open_ok and not _b15_ok:
                 reason = _gr_result["reason"]
+            elif _wt15_entry_ok and not fire_block:
+                reason = f"WT_15M_CROSS_ENTRY_{getattr(config, 'WT_15M_CROSS_ENTRY_MODE', 'value_lower')}"
             elif _b15_ok and not fire_block and not wt_open_ok and _gr_result is None and _delta_result is None:
                 _b15_bars_val = int(_b15_bars_ago[i]) if config.WT_15M_BOUNCE_OPEN_ENABLED else 0
                 _b15_bb_val = float(_b15_bb[i]) if config.WT_15M_BOUNCE_OPEN_ENABLED else 0.0
                 reason = f"WT_15M_BOUNCE_OPEN_bars={_b15_bars_val}_bb={_b15_bb_val:.2f}"
+            elif _wt_price_breakout_reentry_ok:
+                _re_tag = "REENTRY" if state.last_exit_bar > -1_000_000 and i > state.last_exit_bar else "ENTRY"
+                reason = f"WT_PRICE_BREAKOUT_{_re_tag}_{'LONG' if is_long else 'SHORT'}"
             elif fire_block:
                 block_id = int(reentry["block_id"][i])
                 # 2026-05-27 BATCH 6 NAMING ALIGNMENT — vec block emit was bare
@@ -3418,6 +4087,11 @@ def simulate_one_symbol(
                         if (_fdc_l2 > 0 and mark <= _fdc_l2) or bool(npz.get(f"dc_low_crossunder_{_fdc_tf2}", np.zeros(n, dtype=bool))[i]):
                             _fdc_hit = _fdc_tf2
                 reason = f"MOMENTUM_WATCHDOG_DC_{_fdc_hit or '15m'}_BREAKOUT_{'LONG' if is_long else 'SHORT'}_px{mark:.6f}"
+            elif _wt_dc_ok and not _non_wt_dc_trigger:
+                reason = (
+                    f"WT_DC_ENTRY_{_wt_dc_final_score:.0f}_"
+                    f"VEC_BASE_{_entry_base_score:.0f}"
+                )
             else:
                 # 2026-05-27 BATCH 6 NAMING ALIGNMENT — emit live's exact format
                 # (ez_manage.py:19969+: WT_3M_FORCE_OPEN_{LONG|SHORT}_wt1=N_wt2=N_pxN).
@@ -3456,7 +4130,7 @@ def simulate_one_symbol(
             state.qty = new_qty
             state.entry_price = mark
             state.initial_qty = new_qty
-            state.entry_ladder_mult = float(_ladder_arr[i])
+            state.entry_ladder_mult = _entry_ladder_mult(i)
             state.opened_at = bar_ts
             state.augmented_count = 0
             state.max_gain = 0.0
@@ -3502,6 +4176,7 @@ def simulate_one_symbol(
             else:
                 state._bb_fstop_entry = 0.0
             state._ever_outside_channel = False
+            state._mtf_dc_outside_ts = 0.0
             continue
 
         # ─── HOLDING: compute gain + age ────────────────────────────────
@@ -3511,10 +4186,59 @@ def simulate_one_symbol(
         _pos.gain_pct = gain
         age_s = bar_ts - state.opened_at
 
+        # Live owns this safety close before every configurable strategy exit.
+        # Omitting it made Bottom-A recipes with repeated DC4h stop-outs appear
+        # profitable in vector while losing in the faithful engine.
+        if bool(_dc4h_held_exit[i]):
+            pnl_pct = gain
+            level = float(dc_l_4h[i] if is_long else dc_h_4h[i])
+            reason = (
+                f"EMERGENCY_DC4H_BREACH_"
+                f"{'dc_low_4h' if is_long else 'dc_high_4h'}={level:.8f},"
+                f"price={mark:.8f}"
+            )
+            events.append(TradeEvent(
+                ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                value=state.qty * mark, reason=reason, pnl_pct=pnl_pct,
+            ))
+            trade_returns.append(pnl_pct)
+            state.last_exit_price = mark
+            state.last_exit_bar = i
+            state.last_close_price = mark
+            state.last_close_ts = bar_ts
+            state.last_close_reason = reason
+            state.qty = 0.0
+            state.entry_price = 0.0
+            state.initial_qty = 0.0
+            state.opened_at = 0.0
+            state.augmented_count = 0
+            state.max_gain = 0.0
+            state.last_reduce_ts = bar_ts
+            state.hedge_active = False
+            state.hedge_qty = 0.0
+            state.hedge_entry_price = 0.0
+            state.hedge_completed_ts = bar_ts
+            state.r1_stop_price = 0.0
+            _pos.gain_pct = 0.0
+            continue
+
         # ─── 2026-05-27 BATCH 5 — LIVE_ONLY EXIT signals (top 10) ────────
         # Check live-parity exits FIRST so their reason strings hit ledger.
         # All knobs default OFF → no-op (Arm A bit-exact baseline).
         _b5_exit_result: Optional[Dict[str, Any]] = None
+        if (
+            bool(_formation_exit_mask[i])
+            and gain >= float(getattr(config, "FORMATION_EXIT_MIN_GAIN_PCT", 0.0) or 0.0)
+        ):
+            _formation_exit_name = FORMATION_FAMILIES[int(_formation_exit_family[i])]
+            _b5_exit_result = {
+                "action": "CLOSE",
+                "qty_pct": 1.0,
+                "reason": (
+                    f"CLASSIC_FORMATION_EXIT_{_formation_exit_name.upper()}_"
+                    f"score{float(_formation_exit_score[i]):.2f}_gain{gain:.2f}%"
+                ),
+            }
         # EXIT #1 RIDICULOUS_HOLD
         if _vec_check_ridiculous_hold is not None and bool(getattr(config, "RIDICULOUS_HOLD_VEC_ENABLED", False)):
             _b5_exit_result = _vec_check_ridiculous_hold(_store, i, _pos, mode, config)
@@ -3647,6 +4371,135 @@ def simulate_one_symbol(
                         continue
 
         # ─── PROFIT_TAKE REDUCE (partial close at profit target) ────────
+        # Production WT/DC scorer exit, including live stale-indicator guard.
+        if (mode == "tradier" and state.qty > 0.0001
+                and bool(getattr(config, "WT_DC_EXIT_ENABLED", True))):
+            _wtdc_age = float(_store.f("age_5m", i, 0.0))
+            _wtdc_stale_max = float(getattr(config, "WT_DC_EXIT_STALE_MAX_S", 600.0))
+            _wtdc_score = float(_wt_dc_exit_score[i])
+            if (_wtdc_age <= _wtdc_stale_max
+                    and not bool(_wtdc_parabolic_bypass[i])
+                    and _wtdc_score >= float(getattr(config, "WT_DC_EXIT_THRESHOLD", 20.0))):
+                events.append(TradeEvent(
+                    ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark,
+                    reason=f"WT_DC_EXIT_{_wtdc_score:.0f}_g{gain:.2f}%",
+                    pnl_pct=gain,
+                ))
+                trade_returns.append(gain)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts
+                _pos.gain_pct = 0.0; _pos.reset_ppl()
+                continue
+
+        # Direct opposite-direction GR HTF exit. The scalar score is
+        # confirmed_TFs * GOLDEN_RULE_MIN_IND; evaluate_gr_htf_vec above uses
+        # the same legacy per-TF confirmation mode.
+        if (mode == "tradier" and state.qty > 0.0001
+                and bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", True))
+                and _gr_direct_exit_count is not None):
+            _grde_min_ind = int(getattr(config, "GOLDEN_RULE_MIN_IND", 1))
+            _grde_score = float(_gr_direct_exit_count[i]) * float(_grde_min_ind)
+            if _grde_score >= float(getattr(config, "GR_HTF_DIRECT_EXIT_SCORE", 12.0)):
+                events.append(TradeEvent(
+                    ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark,
+                    reason=f"GR_HTF_DIRECT_EXIT_{_grde_score:.0f}_g{gain:.2f}%",
+                    pnl_pct=gain,
+                ))
+                trade_returns.append(gain)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts
+                _pos.gain_pct = 0.0; _pos.reset_ppl()
+                continue
+
+        # Tradier LR-band profit harvest. Live nests the full slope-flip close
+        # under LR_BAND_HARVEST_ENABLED, so the vector path deliberately does too.
+        if (mode == "tradier" and state.qty > 0.0001 and gain > 0.0
+                and bool(getattr(config, "LR_BAND_HARVEST_ENABLED", False))):
+            _lbh_tf = str(getattr(config, "LR_BAND_ENTRY_TF", "D"))
+            _lbh_pb_arr = npz.get(f"lrL_pct_b_{_lbh_tf}")
+            _lbh_sl_arr = npz.get(f"lrL_slope_{_lbh_tf}")
+            if _lbh_pb_arr is not None and i < len(_lbh_pb_arr):
+                _lbh_pb = float(_lbh_pb_arr[i])
+                _lbh_hi = float(getattr(config, "LR_BAND_HARVEST_HI", 0.70))
+                _lbh_top = (_lbh_pb >= _lbh_hi) if is_long else (_lbh_pb <= 1.0 - _lbh_hi)
+                _lbh_flip = False
+                if (bool(getattr(config, "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", False))
+                        and _lbh_sl_arr is not None and i < len(_lbh_sl_arr)):
+                    _lbh_slope_day = float(_lbh_sl_arr[i]) * {
+                        "1h": 6.5, "4h": 1.625, "D": 1.0
+                    }.get(_lbh_tf, 1.0)
+                    _lbh_dead = abs(float(getattr(
+                        config, "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY", 0.05
+                    )))
+                    _lbh_min_hold = float(getattr(
+                        config, "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN", 240.0
+                    ))
+                    _lbh_hold_min = max(0.0, (bar_ts - state.opened_at) / 60.0)
+                    _lbh_flip = _lbh_hold_min >= _lbh_min_hold and (
+                        (_lbh_slope_day < -_lbh_dead) if is_long
+                        else (_lbh_slope_day > _lbh_dead)
+                    )
+                if _lbh_flip:
+                    _lbh_reason = f"LR_BAND_SLOPE_FLIP_{_lbh_tf}_g{gain:.2f}%"
+                    events.append(TradeEvent(
+                        ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_lbh_reason, pnl_pct=gain,
+                    ))
+                    trade_returns.append(gain)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts
+                    _pos.gain_pct = 0.0; _pos.reset_ppl()
+                    continue
+                if _lbh_top:
+                    _lbh_frac = max(0.05, min(1.0, float(getattr(
+                        config, "LR_BAND_HARVEST_FRAC", 0.25
+                    ))))
+                    _lbh_qty = state.qty if _lbh_frac >= 1.0 else state.qty * _lbh_frac
+                    # Stock parity: broker fills are whole shares.  A repeated
+                    # 50% trim must become 5→3→1→close, not 5→2.5→1.25...
+                    # fractional shares that the actual V8 route cannot fill.
+                    if int(getattr(config, "VEC_SHARE_CHUNK", 0) or 0) > 0:
+                        _lbh_qty = min(state.qty, float(max(1, round(_lbh_qty))))
+                    if _lbh_qty > 0.0:
+                        _lbh_reason = f"LR_BAND_HARVEST_{_lbh_tf}_pb{_lbh_pb:.2f}_g{gain:.2f}%"
+                        _lbh_type = "CLOSE" if _lbh_qty >= state.qty else "REDUCE"
+                        events.append(TradeEvent(
+                            ts=bar_ts, type=_lbh_type, qty=_lbh_qty, price=mark,
+                            value=_lbh_qty * mark, reason=_lbh_reason, pnl_pct=gain,
+                        ))
+                        trade_returns.append(gain * _lbh_frac)
+                        state.qty -= _lbh_qty
+                        state.last_reduce_ts = bar_ts
+                        if state.qty <= 0.0001:
+                            state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                            state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                            _pos.gain_pct = 0.0; _pos.reset_ppl()
+                            continue
+
+        # Live scorer-HOLD fallback: optional absolute max-hold timeout.
+        if (mode == "tradier" and state.qty > 0.0001
+                and bool(getattr(config, "EXIT_MAX_HOLD_ENABLED", False))
+                and (bar_ts - state.opened_at) / 60.0
+                > float(getattr(config, "EXIT_MAX_HOLD_MINUTES", 99999.0))):
+            _max_hold_min = (bar_ts - state.opened_at) / 60.0
+            events.append(TradeEvent(
+                ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                value=state.qty * mark,
+                reason=f"MAX_HOLD_TIMEOUT_{_max_hold_min:.0f}min",
+                pnl_pct=gain,
+            ))
+            trade_returns.append(gain)
+            state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+            state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+            state.last_reduce_ts = bar_ts
+            _pos.gain_pct = 0.0; _pos.reset_ppl()
+            continue
+
         if check_profit_take_reduce is not None and config.PROFIT_TAKE_REDUCE_ENABLED and not bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)) and state.qty > 0.0001:
             _ptr = check_profit_take_reduce(_store, i, _pos, mode, config)
             if _ptr is not None:
@@ -3722,6 +4575,26 @@ def simulate_one_symbol(
         # ─── EXIT GATES (indicator-only first, then state-aware) ────────
         exit_id = EXIT_NONE
         exit_reason = ""
+
+        # Research/direct WT exit applies to every vector entry family, not
+        # only the MTF-armed protocol. For SHORT, an against-position exit is
+        # WT1 crossing up through WT2 on 15m; LONG is the mirrored cross down.
+        if state.qty > 0.0001 and bool(getattr(config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False)):
+            _wt15_prev1 = np.roll(wt1_15m, 1); _wt15_prev2 = np.roll(wt2_15m, 1)
+            _wt15_cross_against = ((wt1_15m > wt2_15m) & (_wt15_prev1 <= _wt15_prev2)) if not is_long else ((wt1_15m < wt2_15m) & (_wt15_prev1 >= _wt15_prev2))
+            if bool(getattr(config, "MTF_WT_CROSS_EXIT_ENABLED", True)) and bool(_wt15_cross_against[i]):
+                pnl_pct = _gain_pct(state.entry_price, mark, is_long)
+                _direct_wt_reason = "MTF_WT_DIRECT_EXIT_15m"
+                events.append(TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_direct_wt_reason, pnl_pct=pnl_pct))
+                trade_returns.append(pnl_pct)
+                state.last_exit_price = mark; state.last_exit_bar = i
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                continue
 
         # ─── QUALITY_TOP_EXIT (2026-05-23 USER MANDATE "in at bottom, out at top") ────
         # Symmetric partner to QUALITY_BOTTOM_ENTRY. Closes full position when the
@@ -4880,6 +5753,12 @@ def _max_dd_pct(trade_returns: List[float]) -> float:
     return float(min(100.0, dd.max() * 100.0)) if len(dd) else 0.0
 
 
+# Hard risk ceiling: a result at or above this level is never eligible for
+# promotion or live sizing.  This is deliberately separate from the legacy
+# diagnostic DD calculation so a bad diagnostic cannot silently pass through.
+MAX_ALLOWED_DRAWDOWN_PCT = 50.0
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 # Per-account active_config.json override loader (2026-05-26 grind-orchestrator)
 # ════════════════════════════════════════════════════════════════════════════════
@@ -4975,8 +5854,8 @@ def _apply_per_task_overrides(
             setattr(cfg, k, v)
             applied += 1
             if not hasattr(type(cfg), k) and k not in {f.name for f in __import__("dataclasses").fields(cfg)}:
-                # Track dynamic-attr knobs separately for visibility (they still WORK via getattr)
-                unknown_keys.append(k)
+                # FIX 2026-08-10 per user: no UNKNOWN — dynamic attrs from ez_system/tradier live configs DO work via getattr, do not count as unknown
+                pass
         except Exception:
             unknown_keys.append(k)
     # USER MANDATE 2026-05-20 + 2026-05-26: hedge + no_loss are DEAD. Force locks
@@ -4984,6 +5863,13 @@ def _apply_per_task_overrides(
     for locked in _VEC_LOCKED_FALSE_KNOBS:
         if hasattr(cfg, locked):
             setattr(cfg, locked, False)
+    if bool(getattr(cfg, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", False)):
+        # Incident-scoped master: per-symbol active_config cannot turn the
+        # coupled R1 WT15 contract back off during the emergency recalculation.
+        cfg.R1_DC_LOW4_3M_EMERGENCY_ENABLED = True
+        cfg.R1_REQUIRE_WT15_ADVERSE = True
+        cfg.VEC_REENTRY_DC4_EXITPRICE_ENABLED = True
+        cfg.VEC_REENTRY_DC_USE_4BAR = False
     return cfg, applied, len(unknown_keys), unknown_keys
 
 
@@ -5159,9 +6045,18 @@ def run_sweep(
         if n_workers <= 1 or n_tasks <= 1:
             iterator = (_run_sweep_worker(t) for t in tasks)
         else:
-            pool = ProcessPoolExecutor(max_workers=n_workers)
-            futures = [pool.submit(_run_sweep_worker, t) for t in tasks]
-            iterator = (fut.result() for fut in as_completed(futures))
+            try:
+                pool = ProcessPoolExecutor(max_workers=n_workers)
+                futures = [pool.submit(_run_sweep_worker, t) for t in tasks]
+                iterator = (fut.result() for fut in as_completed(futures))
+            except PermissionError as _sandbox_sem_e:
+                # SANDBOX_MILLION_FIX: Mac Seatbelt blocks SemLock -> ProcessPoolExecutor fails.
+                # Fall back to ThreadPoolExecutor (no SemLock, numpy releases GIL) so 10 workers still run in sandbox.
+                from concurrent.futures import ThreadPoolExecutor as _TPE
+                print(f"V8_VEC_SANDBOX_FALLBACK: ProcessPoolExecutor blocked ({_sandbox_sem_e}) -> ThreadPoolExecutor({n_workers}) for {n_tasks} tasks", flush=True)
+                pool = _TPE(max_workers=n_workers)
+                futures = [pool.submit(_run_sweep_worker, t) for t in tasks]
+                iterator = (fut.result() for fut in as_completed(futures))
         completed = 0
         for sym, side, n_bars, elapsed, status, payload in iterator:
             completed += 1
@@ -5305,6 +6200,7 @@ def run_sweep(
         "gain_sym_yr": float(std.get("gain_sym_yr", 0.0)),
         "trades": int(std.get("trades", 0) or 0),
         "max_dd_pct": float(std.get("max_dd_pct", 0.0)),
+        "risk_ceiling_pass": float(std.get("max_dd_pct", 0.0)) < MAX_ALLOWED_DRAWDOWN_PCT,
         "n_syms": int(std.get("n_syms", 0) or 0),
         "years": float(std.get("years", 0.0) or 0.0),
         "engine": "v8_vec_sweep",
@@ -5418,6 +6314,7 @@ def run_sweep(
         "gain_per_yr": std["gain_per_yr"],
         "gain_sym_yr": std["gain_sym_yr"],
         "max_dd_pct": std["max_dd_pct"],
+        "risk_ceiling_pass": float(std["max_dd_pct"]) < MAX_ALLOWED_DRAWDOWN_PCT,
         "total_bars": total_bars,
         "canonical_line": canonical_line,
         "summary_path": str(summary_path),
@@ -5564,7 +6461,13 @@ def run_gr_dcbb_sweep(
         for side in sides
     ]
     completed = 0
-    with ProcessPoolExecutor(max_workers=workers) as pool:
+    try:
+        _pool_ctx = ProcessPoolExecutor(max_workers=workers)
+    except PermissionError as _sandbox_sem_e2:
+        from concurrent.futures import ThreadPoolExecutor as _TPE2
+        print(f"V8_VEC_SANDBOX_FALLBACK gr_dcbb: ProcessPoolExecutor blocked ({_sandbox_sem_e2}) -> ThreadPoolExecutor({workers})", flush=True)
+        _pool_ctx = _TPE2(max_workers=workers)
+    with _pool_ctx as pool:
         futures = {pool.submit(_dcbb_worker, t): (t[0], t[1]) for t in tasks}
         for fut in as_completed(futures):
             sym_key, side_key = futures[fut]
@@ -5697,7 +6600,10 @@ def _parse_overrides(items: List[str]) -> Dict[str, Any]:
                 try:
                     out[k.strip()] = float(vs)
                 except ValueError:
-                    out[k.strip()] = vs
+                    try:
+                        out[k.strip()] = json.loads(vs)
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        out[k.strip()] = vs
     return out
 
 
@@ -5868,7 +6774,15 @@ def main():
     ap.add_argument("--no-history", action="store_true", help="Skip /history/<acct>/ JSONL writes")
     ap.add_argument("--override", action="append", default=[], help="KEY=VAL config overrides (repeatable)")
     ap.add_argument("--tier", default="", help="Sweep tier: 'gr_dcbb_threshold' for fast DC/BB threshold sweep")
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="v8_vec_sweep.py")
+    print(
+        "V8_VECTOR_GROUND_RULE: "
+        f"{coverage_contract['coverage_status']} "
+        f"shortlist_sha256={coverage_contract['shortlist_sha256']}",
+        flush=True,
+    )
 
     # NO-LIES MANDATE / IMPOSTER BLOCK retrofit banner (CLAUDE.md 2026-04-30).
     # Every Sharpe row this engine emits to data/sweep_results/ is now routed
@@ -5894,6 +6808,23 @@ def main():
         vec_refuses_knob = lambda _: False
         vec_engine_only_reason = lambda _: ""
     _parsed_overrides = _parse_overrides(args.override)
+    # V8_OVERRIDE_FILE support (2026-08-10 GR WT_DC 2/5 sweep task): JSON dict merged
+    # before the engine-only gate. CLI --override wins over file on key collision.
+    _v8_override_path = os.environ.get("V8_OVERRIDE_FILE", "").strip()
+    if _v8_override_path and Path(_v8_override_path).exists():
+        try:
+            with open(_v8_override_path) as _ov_f:
+                _ov_json = json.load(_ov_f)
+            if isinstance(_ov_json, dict):
+                for _ov_k, _ov_v in _ov_json.items():
+                    if _ov_k not in _parsed_overrides:
+                        _parsed_overrides[_ov_k] = _ov_v
+                sys.stderr.write(f"V8_OVERRIDE_FILE: loaded {len(_ov_json)} knobs from {_v8_override_path}\n")
+            else:
+                sys.stderr.write(f"V8_OVERRIDE_FILE: WARN { _v8_override_path} not a dict — ignored\n")
+        except Exception as _ov_e:
+            sys.stderr.write(f"V8_OVERRIDE_FILE: ERROR loading {_v8_override_path}: {type(_ov_e).__name__}: {_ov_e}\n")
+            sys.exit(5)
     _engine_only_violations = [k for k in _parsed_overrides if vec_refuses_knob(k)]
     if _engine_only_violations:
         sys.stderr.write(
@@ -5909,10 +6840,11 @@ def main():
         )
         sys.exit(4)
     for k, v in _parsed_overrides.items():
-        if hasattr(cfg, k):
-            setattr(cfg, k, v)
-        else:
-            sys.stderr.write(f"WARN: unknown SweepConfig knob {k} — ignored\n")
+        # Allow dynamic knobs (via getattr default) — _apply_per_task_overrides does
+        # the same so active_config per-sym overrides work. Still warn for visibility.
+        setattr(cfg, k, v)
+        if not hasattr(type(cfg), k) and k not in {f.name for f in __import__("dataclasses").fields(cfg)}:
+            sys.stderr.write(f"WARN: unknown SweepConfig knob {k} — applied as dynamic attr (getattr fallback)\n")
 
     if args.tier == "gr_dcbb_threshold":
         run_gr_dcbb_sweep(

@@ -38,6 +38,25 @@ RESCUES = BASE_PATH / "data" / "reopt_loop" / "rescues.jsonl"
 ACTIVE_CONFIG = {"crypto": BASE_PATH / "data" / "hourly_reconfig" / "per_sym_active_config.json",
                   "stock": BASE_PATH / "data" / "hourly_reconfig" / "trb" / "active_config.json"}
 REMOTE_REOPT_LOG = "/home/niels/logs/reopt_loop.log"
+CURRENT_STOCK_CAMPAIGNS = frozenset(
+    {
+        "stocks_repaired_20260730_c5",
+    }
+)
+try:
+    try:
+        from tools import persym_baseline_campaign as _stock_psc
+    except ModuleNotFoundError:
+        import persym_baseline_campaign as _stock_psc
+    CURRENT_STOCK_CONTRACTS = frozenset(
+        {_stock_psc.MATRIX_CONTRACT_VERSION}
+    )
+except Exception:
+    # Reporting must fail closed when the exact contract cannot be resolved;
+    # never fall back to a remembered c4/c5 label.
+    CURRENT_STOCK_CONTRACTS = frozenset()
+MIN_BH_MULTIPLE = 2.0
+ROUND_TRIP_COST_PCT = {"stock": 0.05, "crypto": 0.08}
 
 
 def _is_crypto_sym(sym):
@@ -97,6 +116,76 @@ def _latest_by_key(records, key_field="key", ts_field="ts"):
     return latest
 
 
+def _record_campaign(record):
+    return str(
+        record.get("campaign")
+        or record.get("campaign_id")
+        or record.get("psc_campaign")
+        or ""
+    )
+
+
+def _record_contract(record):
+    return str(
+        record.get("matrix_contract_version")
+        or record.get("exact_contract")
+        or record.get("contract_version")
+        or record.get("engine_contract_version")
+        or ""
+    )
+
+
+def _current_mode_record(record, mode):
+    """Stock rankings fail closed unless repaired campaign and c5 are explicit."""
+    if record.get("mode") != mode:
+        return False
+    if mode != "stock":
+        return True
+    return (
+        _record_campaign(record) in CURRENT_STOCK_CAMPAIGNS
+        and _record_contract(record) in CURRENT_STOCK_CONTRACTS
+    )
+
+
+def _bh_multiple(record):
+    """Return a real strategy/B&H ratio; never reinterpret pp as a multiple."""
+    for name in (
+        "bh_multiple",
+        "capture_vs_bh",
+        "strategy_bh_multiple",
+        "gain_vs_bh_multiple",
+    ):
+        try:
+            value = float(record.get(name))
+        except (TypeError, ValueError):
+            continue
+        if value >= 0:
+            return value
+    for strategy_name, bh_name in (
+        ("real_gain_pct", "bh_gain_pct"),
+        ("new_gain_pct", "bh_gain_pct"),
+        ("gain_pct", "bh_pct"),
+    ):
+        try:
+            strategy = float(record.get(strategy_name))
+            bh = float(record.get(bh_name))
+        except (TypeError, ValueError):
+            continue
+        if bh > 0:
+            return strategy / bh
+    return None
+
+
+def _winner_floor(record, mode):
+    """A result is a winner only with Sharpe and an actual >=2x B&H ratio."""
+    del mode
+    sharpe = record.get("real_sharpe")
+    if (sharpe if sharpe is not None else -99) <= 0.5:
+        return False
+    multiple = _bh_multiple(record)
+    return multiple is not None and multiple >= MIN_BH_MULTIPLE
+
+
 def file_mtime_iso(path):
     try:
         ts = Path(path).stat().st_mtime
@@ -128,9 +217,34 @@ def build_report(mode):
     """mode: 'crypto' or 'stock'. Returns headline counts + winners/gated/
     rescued tables + coverage stats. See module docstring re: DIAGNOSTIC
     labeling — this is a monitoring view, not a promotion decision."""
-    vec = {k: v for k, v in _load_json(VEC_BASELINES[mode]).items() if mode_for_key(k) == mode}
-    gating_all = [r for r in _load_jsonl(GATING_CORRECTIONS) if r.get("mode") == mode]
-    rescues_all = [r for r in _load_jsonl(RESCUES) if r.get("mode") == mode]
+    vec_raw = {
+        k: v
+        for k, v in _load_json(VEC_BASELINES[mode]).items()
+        if mode_for_key(k) == mode
+    }
+    if mode == "stock":
+        # The old stock vec baseline has no repaired campaign identity. It is
+        # preserved on disk but cannot contribute current coverage/rankings.
+        vec = {
+            k: v
+            for k, v in vec_raw.items()
+            if isinstance(v, dict)
+            and _record_campaign(v) in CURRENT_STOCK_CAMPAIGNS
+            and _record_contract(v) in CURRENT_STOCK_CONTRACTS
+        }
+    else:
+        vec = vec_raw
+    gating_raw = _load_jsonl(GATING_CORRECTIONS)
+    rescues_raw = _load_jsonl(RESCUES)
+    gating_all = [r for r in gating_raw if _current_mode_record(r, mode)]
+    rescues_all = [r for r in rescues_raw if _current_mode_record(r, mode)]
+    excluded_legacy_records = (
+        sum(r.get("mode") == "stock" for r in gating_raw + rescues_raw)
+        - len(gating_all)
+        - len(rescues_all)
+        if mode == "stock"
+        else 0
+    )
     gating_latest = _latest_by_key(gating_all)
     rescues_latest = _latest_by_key(rescues_all)
     active = _active_state(mode)
@@ -138,6 +252,7 @@ def build_report(mode):
     for k, r in gating_latest.items():
         real_state[k] = {"key": k, "real_sharpe": cap_sharpe(r.get("real_baseline_sharpe")),
                           "trades": r.get("real_trades"), "gain_vs_bh": r.get("real_gain_vs_bh"),
+                          "bh_multiple": _bh_multiple(r),
                           "action": r.get("action"), "date": r.get("date"), "ts": r.get("ts") or 0,
                           "source": "gate"}
     for k, r in rescues_latest.items():
@@ -149,15 +264,22 @@ def build_report(mode):
         else:
             sharpe, trades, gvb = r.get("real_baseline_sharpe", r.get("best_search_sharpe")), r.get("real_trades"), None
         real_state[k] = {"key": k, "real_sharpe": cap_sharpe(sharpe), "trades": trades, "gain_vs_bh": gvb,
+                          "bh_multiple": _bh_multiple(r),
                           "action": r.get("status"), "date": r.get("date"), "ts": ts, "source": "rescue",
                           "winning_tag": r.get("winning_tag"), "changed": r.get("changed"),
                           "before_sharpe": cap_sharpe(r.get("real_baseline_sharpe")) if r.get("status") == "RESCUED" else None}
     total_keys = len(active) if active else len(vec)
     enabled_keys = sum(1 for v in active.values() if v)
     gated = [v for v in real_state.values() if v.get("action") == "KEPT_GATED_REAL_NEGATIVE"]
-    winners = [v for v in real_state.values() if (v.get("real_sharpe") if v.get("real_sharpe") is not None else -99) > 0.5]
+    winners = [v for v in real_state.values() if _winner_floor(v, mode)]
     mid = [v for v in real_state.values() if 0 <= (v.get("real_sharpe") if v.get("real_sharpe") is not None else -99) <= 0.5]
-    rescued_this_run = [v for v in real_state.values() if v.get("source") == "rescue" and v.get("action") == "RESCUED"]
+    rescued_this_run = [
+        v
+        for v in real_state.values()
+        if v.get("source") == "rescue"
+        and v.get("action") == "RESCUED"
+        and _winner_floor(v, mode)
+    ]
     winners.sort(key=lambda v: v.get("real_sharpe") or -99, reverse=True)
     gated.sort(key=lambda v: v.get("real_sharpe") if v.get("real_sharpe") is not None else -99)
     rescued_sorted = sorted(rescued_this_run, key=lambda v: v.get("ts") or 0, reverse=True)
@@ -168,6 +290,17 @@ def build_report(mode):
             "real_engine_confirmed_keys": n_confirmed, "vec_only_keys": max(0, len(vec) - n_confirmed),
             "winners": winners, "gated": gated, "rescued": rescued_sorted, "mid": mid,
             "all_confirmed": list(real_state.values()),
+            "campaign_scope": (
+                {
+                    "campaigns": sorted(CURRENT_STOCK_CAMPAIGNS),
+                    "exact_contracts": sorted(CURRENT_STOCK_CONTRACTS),
+                }
+                if mode == "stock"
+                else ["legacy crypto reopt monitor"]
+            ),
+            "minimum_bh_multiple": MIN_BH_MULTIPLE,
+            "round_trip_cost_pct": ROUND_TRIP_COST_PCT[mode],
+            "excluded_legacy_records": excluded_legacy_records,
             "vec_mtime": file_mtime_iso(VEC_BASELINES[mode]), "gating_mtime": file_mtime_iso(GATING_CORRECTIONS),
             "rescues_mtime": file_mtime_iso(RESCUES)}
 

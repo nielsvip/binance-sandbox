@@ -1,0 +1,63 @@
+{
+  "passed": 6,
+  "required_path_count": 6,
+  "rows": [
+    {
+      "adapters": [
+        "tools/vec_band_ladder_walkforward.py",
+        "ordinary_ladder_contract.py"
+      ],
+      "missing": [],
+      "path": "ladder_sizing",
+      "status": "PASS"
+    },
+    {
+      "adapters": [
+        "tools/vec_entry_overlay_walkforward.py",
+        "vec_paths/wt_dc_entry.py"
+      ],
+      "missing": [],
+      "path": "dc5m_bounce_reclaim",
+      "status": "PASS"
+    },
+    {
+      "adapters": [
+        "tools/mu_all_tf_wt_price_ladder_vector.py",
+        "tools/vec_entry_overlay_walkforward.py"
+      ],
+      "missing": [],
+      "path": "wt_cross_exit",
+      "status": "PASS"
+    },
+    {
+      "adapters": [
+        "ordinary_ladder_contract.py",
+        "tools/vec_band_ladder_walkforward.py"
+      ],
+      "missing": [],
+      "path": "reentry_reclaim",
+      "status": "PASS"
+    },
+    {
+      "adapters": [
+        "tools/vec_entry_overlay_walkforward.py",
+        "vec_paths/gr_filter_vec.py"
+      ],
+      "missing": [],
+      "path": "filters",
+      "status": "PASS"
+    },
+    {
+      "adapters": [
+        "tools/vec_band_ladder_walkforward.py",
+        "tools/mu_all_tf_wt_price_ladder_vector.py"
+      ],
+      "missing": [],
+      "path": "long_short_accounting",
+      "status": "PASS"
+    }
+  ],
+  "scalar_fallback_allowed": false,
+  "schema_version": 1,
+  "vector_first_required": true
+}

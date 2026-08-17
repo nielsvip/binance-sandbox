@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.niels.options-paper-email-afternoon</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/anaconda3/envs/binance_env/bin/python</string>
+        <string>/Users/niels/Documents/binance/options_paper_email.py</string>
+        <string>--session</string><string>afternoon</string>
+    </array>
+    <key>WorkingDirectory</key><string>/Users/niels/Documents/binance</string>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    </array>
+    <key>RunAtLoad</key><false/>
+    <key>StandardOutPath</key><string>/Users/niels/Documents/binance/data/options_supervisor/email_afternoon_launchd.log</string>
+    <key>StandardErrorPath</key><string>/Users/niels/Documents/binance/data/options_supervisor/email_afternoon_launchd.err</string>
+    <key>EnvironmentVariables</key>
+    <dict><key>HOME</key><string>/Users/niels</string><key>PATH</key><string>/opt/anaconda3/envs/binance_env/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+</dict>
+</plist>

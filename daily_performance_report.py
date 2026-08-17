@@ -18,6 +18,7 @@ REPORT_DIR.mkdir(parents=True, exist_ok=True)
 # re-implemented here as a second/competing count.
 SANDBOX_MATRIX_GUARD = Path(os.environ.get("MATRIX_GUARD_PATH", "/home/niels/binance-sandbox/tools/matrix_guard.py"))
 SANDBOX_ROOT = SANDBOX_MATRIX_GUARD.parent.parent if SANDBOX_MATRIX_GUARD.exists() else Path("/home/niels/binance-sandbox")
+MATRIX_GUARD_TIMEOUT_SECONDS = 180
 
 def matrix_fill_progress_text():
     import subprocess
@@ -25,7 +26,8 @@ def matrix_fill_progress_text():
         return "MATRIX FILL PROGRESS: unavailable -- %s not found on this host." % SANDBOX_MATRIX_GUARD
     try:
         proc = subprocess.run([sys.executable, str(SANDBOX_MATRIX_GUARD)], cwd=str(SANDBOX_ROOT),
-                               capture_output=True, text=True, timeout=60)
+                               capture_output=True, text=True,
+                               timeout=MATRIX_GUARD_TIMEOUT_SECONDS)
         body = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
         return body.strip() or "MATRIX FILL PROGRESS: matrix_guard.py produced no output (exit=%s)" % proc.returncode
     except Exception as e:

@@ -1,0 +1,88 @@
+{
+  "chart_page": "/parity_chart",
+  "generated_at": "2026-08-12T15:05:09.832418Z",
+  "important": "These overlays replay the entry component with source E02 exit, not the selected lifecycle exit.",
+  "published_keys": 7,
+  "published_trades": 76,
+  "rows": [
+    {
+      "chart_run": "v8_component_NVDA_LONG",
+      "key": "NVDA_LONG",
+      "published": "data/chart_backtest_trades/trb_path_combinations/v8_component_NVDA_LONG__NVDA.jsonl",
+      "published_sha256": "3cec9da6e2764255937bd4c9fcae38199e6c9e7fa306c328bd602b1eeda11be0",
+      "selected_lifecycle_exit_replayed": false,
+      "source": "data/reports/vec_research/hotlist_v8_components/v8_exact_ladder_replay_20260802T175325Z_NVDA_LONG/chart_trades/research_ladder_20260802T175325Z__NVDA.jsonl",
+      "source_sha256": "e544b76f34b87354f89086f4d0da80a3c3eedb46d347007df2b54807b4a75e66",
+      "status": "PASS",
+      "trade_count": 4
+    },
+    {
+      "chart_run": "v8_component_USAR_LONG",
+      "key": "USAR_LONG",
+      "published": "data/chart_backtest_trades/trb_path_combinations/v8_component_USAR_LONG__USAR.jsonl",
+      "published_sha256": "3f66ccbc0bd68626d09f10107bb9f69f38a775a94e59365a18c490833ae28095",
+      "selected_lifecycle_exit_replayed": false,
+      "source": "data/reports/vec_research/hotlist_v8_components/v8_exact_ladder_replay_20260802T175534Z_USAR_LONG/chart_trades/research_ladder_20260802T175534Z__USAR.jsonl",
+      "source_sha256": "e280c1e0937e192f6397b2311c98f86ad54839c01ec3009c88213fb7ad110e93",
+      "status": "PASS",
+      "trade_count": 11
+    },
+    {
+      "chart_run": "v8_component_CLF_SHORT",
+      "key": "CLF_SHORT",
+      "published": "data/chart_backtest_trades/trb_path_combinations/v8_component_CLF_SHORT__CLF.jsonl",
+      "published_sha256": "c07fc71afdd7a424bf5b6e10cb5ab2eb5a311b42c24934b532780b6a15bbdb5f",
+      "selected_lifecycle_exit_replayed": false,
+      "source": "data/reports/vec_research/hotlist_v8_components/v8_exact_ladder_replay_20260802T175606Z_CLF_SHORT/chart_trades/research_ladder_20260802T175606Z__CLF.jsonl",
+      "source_sha256": "c0a9beb800244e438a6f213dd521f160217950cf6794f86a37146386423fb657",
+      "status": "PASS",
+      "trade_count": 25
+    },
+    {
+      "chart_run": "v8_component_RDDT_SHORT",
+      "key": "RDDT_SHORT",
+      "published": "data/chart_backtest_trades/trb_path_combinations/v8_component_RDDT_SHORT__RDDT.jsonl",
+      "published_sha256": "df2d7cc9fb146e488725901781f900a2fbc8dc82d0703db368d0403a98e757ee",
+      "selected_lifecycle_exit_replayed": false,
+      "source": "data/reports/vec_research/hotlist_v8_components/v8_exact_ladder_replay_20260802T175643Z_RDDT_SHORT/chart_trades/research_ladder_20260802T175643Z__RDDT.jsonl",
+      "source_sha256": "85d2d9d686703c2386222e4953cc1f3a6fcb47db34464bc022ea17326152596a",
+      "status": "PASS",
+      "trade_count": 8
+    },
+    {
+      "chart_run": "v8_component_ACN_SHORT",
+      "key": "ACN_SHORT",
+      "published": "data/chart_backtest_trades/trb_path_combinations/v8_component_ACN_SHORT__ACN.jsonl",
+      "published_sha256": "bbc326b0a06d692c4ab663908a53b88219a52c75d3b55b9cf68789af014d479c",
+      "selected_lifecycle_exit_replayed": false,
+      "source": "data/reports/vec_research/hotlist_v8_components/v8_exact_ladder_replay_20260802T175717Z_ACN_SHORT/chart_trades/research_ladder_20260802T175717Z__ACN.jsonl",
+      "source_sha256": "1396df3b753a21956d7398bd5db1696f6f3414fe4c02efb2a53703a63d81d197",
+      "status": "PASS",
+      "trade_count": 6
+    },
+    {
+      "chart_run": "v8_component_AAPL_LONG",
+      "key": "AAPL_LONG",
+      "published": "data/chart_backtest_trades/trb_path_combinations/v8_component_AAPL_LONG__AAPL.jsonl",
+      "published_sha256": "cb05738b9d44cd18774611cb5de41c6178e6185b8aef707d3d95d63874731bb0",
+      "selected_lifecycle_exit_replayed": false,
+      "source": "data/reports/vec_research/hotlist_v8_components/v8_exact_ladder_replay_20260802T175750Z_AAPL_LONG/chart_trades/research_ladder_20260802T175750Z__AAPL.jsonl",
+      "source_sha256": "09f55b0f604f2df6aa9410e250361d537735ae18ff400ae43f21f5d01c826471",
+      "status": "PASS",
+      "trade_count": 8
+    },
+    {
+      "chart_run": "v8_component_GOOGL_LONG",
+      "key": "GOOGL_LONG",
+      "published": "data/chart_backtest_trades/trb_path_combinations/v8_component_GOOGL_LONG__GOOGL.jsonl",
+      "published_sha256": "ece9537853ea524ffedd2d870836001d23c09a256726c93ca7bde8c9eccd4724",
+      "selected_lifecycle_exit_replayed": false,
+      "source": "data/reports/vec_research/hotlist_v8_components/v8_exact_ladder_replay_20260802T175828Z_GOOGL_LONG/chart_trades/research_ladder_20260802T175828Z__GOOGL.jsonl",
+      "source_sha256": "3eb9abbc5d4fc266a113de53fbfdc6804406f278c486f373007d01df01f093ad",
+      "status": "PASS",
+      "trade_count": 14
+    }
+  ],
+  "schema": "hotlist-v8-chart-trades-v1",
+  "status": "PASS"
+}

@@ -1,0 +1,47 @@
+{
+  "data/hourly_reconfig/trb/active_config.json": {
+    "mtime": "Mon Aug 17 00:00:37 2026",
+    "entries": 148,
+    "sample": [
+      "AAPL_LONG",
+      "AAPL_SHORT",
+      "ABT_LONG"
+    ],
+    "sample_overrides": [
+      "WT_DC_HTF_GATE",
+      "HTF_ALIGN_REQUIRED_TRADIER",
+      "MIN_HOLD_MINUTES_TRADIER",
+      "MIN_HOLD_BARS_BEFORE_EXIT",
+      "COOLDOWN_BARS_TRADIER"
+    ]
+  },
+  "data/hourly_reconfig/per_sym_active_config.json": {
+    "mtime": "Mon Aug 17 00:00:07 2026",
+    "entries": 258,
+    "sample": [
+      "BTCUSDC_LONG",
+      "BTCUSDC_SHORT",
+      "ETHUSDC_LONG"
+    ],
+    "sample_overrides": [
+      "DC_RECOVERY_EXIT_TOLERANCE_PCT",
+      "MIN_POSITION_SIZE",
+      "RZ_BREAKOUT_ENTRY_ENABLED",
+      "SATOSHIT_ENABLED",
+      "K_ZONE_SHORT_THRESHOLD"
+    ]
+  },
+  "live_trb_stale_hold": "9162",
+  "live_trb_trades_aug15_16": "0",
+  "live_trc_stale_hold": "140",
+  "live_trc_trades_aug15_16": "0",
+  "live_tra_stale_hold": "1378",
+  "live_tra_trades_aug15_16": "0",
+  "backtest_v8_last_log": "backtest_v8/logs/v8_tradier_trb_20260814_031404.jsonl",
+  "backtest_v8_last_mtime": "Fri Aug 14 03:14:04 2026",
+  "data/tradier/tradier_indicators_latest.json_exists": true,
+  "data/tradier/tradier_indicators_latest.json_mtime": "Sat Aug 15 00:15:23 2026",
+  "data/tradier/tradier_indicators_latest.json_sample_ts": "2026-08-14T20:00:44.173659Z",
+  "/tmp/tradier_indicators_mac.log_exists": true,
+  "/tmp/tradier_indicators_mac.log_mtime": "Mon Aug 17 00:02:22 2026"
+}

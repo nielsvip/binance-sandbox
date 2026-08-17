@@ -43,6 +43,17 @@ def test_center_plateau_matches_live_function_shape():
     assert ladder.ladder_mult(1.0, 6.0, 4.0, "center_plateau") == 4.0
 
 
+def test_strategy_arm_is_distinct_from_clean_bh_comparator():
+    assert ladder.VECTOR_STRATEGY_ARM == {
+        "ordinary_ladder": True,
+        "e02_donchian_4h_n30": True,
+        "band_regime_structure_union": True,
+        "breakout_size_ladder": True,
+    }
+    assert ladder.BREAKOUT_SIZE_LADDER_THRESHOLDS == (1.0, 1.5, 2.5)
+    assert ladder.BREAKOUT_SIZE_LADDER_MULTIPLIERS == (1.5, 2.0, 3.0)
+
+
 def test_block_generator_preserves_valid_pairs():
     curves = ladder._curves(17, 30)
     assert len(curves) >= 30

@@ -18,6 +18,7 @@ Hosts to keep alive (defined in ~/.ssh/config):
 After MacBook sleep/wake, connections drop — the keeper reconnects within 30s.
 """
 import os
+import fcntl
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -27,6 +28,7 @@ HOSTS = ["gateway-internal", "s1-int", "s1-sftp"]  # 2026-05-28 S2 DEAD permanen
 CHECK_INTERVAL = 30  # seconds
 LOG_FILE = Path.home() / "ssh_tunnel_keeper.log"
 STATUS_FILE = Path.home() / "ssh_tunnel_keeper.status"
+TRANSPORT_LOCK = Path("/Users/niels/Documents/binance/data/sync/.s1_transport.lock")
 
 
 def log(msg):
@@ -41,11 +43,21 @@ def log(msg):
 
 
 def is_alive(host):
-    """Returns True if multiplex socket exists and master is responding."""
+    """Return True only when the master and its required forward both work."""
     try:
+        if host == "s1-sftp":
+            target = ["-p", "2201", "niels@127.0.0.1"]
+        else:
+            target = [host]
+        # A control socket being alive is not sufficient: ChatGPT sessions
+        # need a real end-to-end command path.  Bypass multiplexing here so a
+        # stale socket cannot produce a false healthy status.
         result = subprocess.run(
-            ["ssh", "-O", "check", host],
-            capture_output=True, text=True, timeout=10,
+            ["ssh", "-4", "-i", str(Path.home() / ".ssh/id_ed25519"),
+             "-o", "BatchMode=yes", "-o", "ControlMaster=no",
+             "-o", "ControlPath=none", "-o", "ConnectTimeout=12",
+             *target, "true"],
+            capture_output=True, text=True, timeout=18,
         )
         return result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -57,6 +69,17 @@ def is_alive(host):
 def connect(host):
     """Establish a backgrounded persistent SSH master to host. Idempotent."""
     try:
+        if host == "s1-sftp":
+            subprocess.run(
+                ["ssh", "-O", "cancel", "-L", "2201:127.0.0.1:22", "s1-int"],
+                capture_output=True, text=True, timeout=10,
+            )
+            forwarded = subprocess.run(
+                ["ssh", "-O", "forward", "-L", "2201:127.0.0.1:22", "s1-int"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if forwarded.returncode == 0:
+                return True, "s1-int-control-master"
         result = subprocess.run(
             ["ssh", "-fN", "-o", "ControlMaster=auto", "-o", "ControlPersist=yes",
              "-o", "ConnectTimeout=15", "-o", "ServerAliveInterval=30",
@@ -71,17 +94,43 @@ def connect(host):
         return False, str(e)
 
 
+def disconnect(host):
+    """Close a stale master so ControlMaster=auto cannot reuse a dead forward."""
+    try:
+        subprocess.run(
+            ["ssh", "-O", "exit", host],
+            capture_output=True, text=True, timeout=10,
+        )
+    except Exception:
+        pass
+
+
 def main():
+    singleton_path = Path("/tmp/ssh_tunnel_keeper.singleton")
+    singleton_path.parent.mkdir(parents=True, exist_ok=True)
+    singleton = open(singleton_path, "w")
+    try:
+        fcntl.flock(singleton.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        log("another tunnel keeper is already running; exiting")
+        return
     state = {h: {"alive": False, "last_reconnect": None, "consecutive_fails": 0} for h in HOSTS}
     log(f"Tunnel keeper started, hosts: {HOSTS}")
     while True:
         try:
             status = {}
             for host in HOSTS:
+                if host == "s1-sftp" and TRANSPORT_LOCK.is_dir():
+                    # A verified source/result transaction owns the tunnel and
+                    # has its own bounded recycle/retry logic. Never tear its
+                    # master down from the concurrent keeper health loop.
+                    status[host] = state[host]
+                    continue
                 alive = is_alive(host)
                 if not alive:
                     state[host]["consecutive_fails"] += 1
                     log(f"{host}: DOWN (fail #{state[host]['consecutive_fails']}) — reconnecting")
+                    disconnect(host)
                     ok, err = connect(host)
                     if ok:
                         state[host]["last_reconnect"] = time.time()

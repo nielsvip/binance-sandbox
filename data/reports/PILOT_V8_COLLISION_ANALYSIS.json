@@ -1,0 +1,1461 @@
+{
+  "by_key": {
+    "ACN_SHORT": {
+      "different_schedule_metric_collisions": 0,
+      "duplicate_numeric_rows": 190,
+      "exact_schedule_duplicate_rows": 190,
+      "legacy_missing_fingerprint_rows": 0
+    },
+    "MU_LONG": {
+      "different_schedule_metric_collisions": 0,
+      "duplicate_numeric_rows": 1122,
+      "exact_schedule_duplicate_rows": 933,
+      "legacy_missing_fingerprint_rows": 202
+    },
+    "NVDA_LONG": {
+      "different_schedule_metric_collisions": 1,
+      "duplicate_numeric_rows": 73,
+      "exact_schedule_duplicate_rows": 26,
+      "legacy_missing_fingerprint_rows": 55
+    },
+    "TTD_SHORT": {
+      "different_schedule_metric_collisions": 1,
+      "duplicate_numeric_rows": 151,
+      "exact_schedule_duplicate_rows": 150,
+      "legacy_missing_fingerprint_rows": 0
+    },
+    "VT_LONG": {
+      "different_schedule_metric_collisions": 4,
+      "duplicate_numeric_rows": 1856,
+      "exact_schedule_duplicate_rows": 1852,
+      "legacy_missing_fingerprint_rows": 0
+    }
+  },
+  "classification": {
+    "different_schedule_metric_collision": "same symbol/side and numeric metric but different exact action fingerprint",
+    "exact_schedule_duplicate": "same symbol/side, numeric metric, and exact action fingerprint",
+    "legacy_missing_fingerprint": "cannot prove schedule identity"
+  },
+  "full_precision_rerun_families": [
+    {
+      "distinct_action_fingerprints": 2,
+      "fingerprint_buckets": [
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c5-20260730:8fbf84fcb140cb2aa413417243fdf2ff10ad737fe55ed3d2f13f7749e5476603",
+            "param": "GROUP_COMBO",
+            "value_json": "{\"members\":[{\"arm_id\":\"arm-cbd239b1a8a7715c\",\"family\":\"STRUCTURAL_RANGE_SHIFT\",\"group\":\"EXIT\",\"param\":\"STRUCTURAL_RANGE_SHIFT_EXIT\",\"timeframe\":\"\",\"value_json\":\"true\"},{\"arm_id\":\"arm-c5f64c36ecbfc618\",\"family\":\"EXIT_BOUNCE_TOP\",\"group\":\"EXIT\",\"param\":\"EXIT_BOUNCE_TOP_ENABLED\",\"timeframe\":\"\",\"value_json\":\"true\"}],\"omitted_arm\":null,\"parents\":[],\"recipe_id\":\"gcr-1875cdf6d6b3b753f0dabe5c\",\"schema\":\"trb-grouped-combo-v1\",\"stage\":\"WITHIN_EXIT\"}"
+          },
+          "trades_fingerprint": "13:exact-actions-v2:6032f5293f238c0770792e71"
+        },
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c5-20260730:b4d9fd9d90e5b8fedd41957b361b590aa1e34075bbb988158fc629c897a574a8",
+            "param": "GROUP_COMBO",
+            "value_json": "{\"members\":[{\"arm_id\":\"arm-cbd239b1a8a7715c\",\"family\":\"STRUCTURAL_RANGE_SHIFT\",\"group\":\"EXIT\",\"param\":\"STRUCTURAL_RANGE_SHIFT_EXIT\",\"timeframe\":\"\",\"value_json\":\"true\"},{\"arm_id\":\"arm-3db63b5023832c70\",\"family\":\"LR_PCTB_D\",\"group\":\"ENTRY\",\"param\":\"LR_PCTB_D_LONG_ENTRY_ENABLED\",\"timeframe\":\"\",\"value_json\":\"true\"}],\"omitted_arm\":null,\"parents\":[],\"recipe_id\":\"gcr-51d8c52947826d788252eb99\",\"schema\":\"trb-grouped-combo-v1\",\"stage\":\"CROSS_GROUP_CHAMPION\"}"
+          },
+          "trades_fingerprint": "13:exact-actions-v2:affc27e71844ff33399dd225"
+        }
+      ],
+      "key": "NVDA_LONG",
+      "metric": -3.2532,
+      "minimum_cells_recoverable_by_full_precision_rerun": 1,
+      "params": 1,
+      "rows": 2,
+      "values": 2
+    },
+    {
+      "distinct_action_fingerprints": 2,
+      "fingerprint_buckets": [
+        {
+          "rows": 121,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c3-20260729:27d023e4c838b7d024c8628a0fb2bca79bea9b9112d9f2a75d8539e55b2627ca",
+            "param": "BB_PULLBACK_GATE_SHORT_MIN",
+            "value_json": "0.35"
+          },
+          "trades_fingerprint": "1:1b66543da3656ec4"
+        },
+        {
+          "rows": 3,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c3-20260729:a4d6e1c259ddc9087a36ec46c6eddeea8e329e2a386dd7500b6734a767ea9e4e",
+            "param": "ENTRY_ZONE_SHORT",
+            "value_json": "30.0"
+          },
+          "trades_fingerprint": "1:44692dce824387f8"
+        }
+      ],
+      "key": "TTD_SHORT",
+      "metric": -2.8242,
+      "minimum_cells_recoverable_by_full_precision_rerun": 1,
+      "params": 20,
+      "rows": 124,
+      "values": 102
+    },
+    {
+      "distinct_action_fingerprints": 2,
+      "fingerprint_buckets": [
+        {
+          "rows": 2,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37",
+            "param": "RZ_MFI_EXIT",
+            "value_json": "42.5"
+          },
+          "trades_fingerprint": "497:8d4051eae2567928"
+        },
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37",
+            "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+            "value_json": "1.125"
+          },
+          "trades_fingerprint": "497:aad7f455c033b95c"
+        }
+      ],
+      "key": "VT_LONG",
+      "metric": -2.8147,
+      "minimum_cells_recoverable_by_full_precision_rerun": 1,
+      "params": 2,
+      "rows": 3,
+      "values": 3
+    },
+    {
+      "distinct_action_fingerprints": 2,
+      "fingerprint_buckets": [
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37",
+            "param": "GOLDEN_RULE_EXIT_MIN_TFS",
+            "value_json": "2"
+          },
+          "trades_fingerprint": "497:65816492d82d5a24"
+        },
+        {
+          "rows": 1723,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-c2-20260725:c3455697d5283405aa76dd1edccb65e31a02289a9b6528440fe7372ecab0ca37",
+            "param": "ABLATION_DISABLE_AGGRESSIVE_HEDGE",
+            "value_json": "False"
+          },
+          "trades_fingerprint": "497:aad7f455c033b95c"
+        }
+      ],
+      "key": "VT_LONG",
+      "metric": -2.814,
+      "minimum_cells_recoverable_by_full_precision_rerun": 1,
+      "params": 500,
+      "rows": 1724,
+      "values": 305
+    },
+    {
+      "distinct_action_fingerprints": 2,
+      "fingerprint_buckets": [
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c5-20260730:53c6a44f6e37b4806b3811f7f0f91e279811d0acee421581b2baf8f0c6ec1d11",
+            "param": "STRUCTURAL_RANGE_SHIFT_TF",
+            "value_json": "\"dc_1h\""
+          },
+          "trades_fingerprint": "4:exact-actions-v2:1ecf1dbe96ad4134b41b5012"
+        },
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c5-20260730:53c6a44f6e37b4806b3811f7f0f91e279811d0acee421581b2baf8f0c6ec1d11",
+            "param": "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS",
+            "value_json": "75.0"
+          },
+          "trades_fingerprint": "4:exact-actions-v2:55ad0a7ccbddb14a4af359a7"
+        }
+      ],
+      "key": "VT_LONG",
+      "metric": 0.9442,
+      "minimum_cells_recoverable_by_full_precision_rerun": 1,
+      "params": 2,
+      "rows": 2,
+      "values": 2
+    },
+    {
+      "distinct_action_fingerprints": 2,
+      "fingerprint_buckets": [
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c5-20260730:53c6a44f6e37b4806b3811f7f0f91e279811d0acee421581b2baf8f0c6ec1d11",
+            "param": "STRUCTURAL_RANGE_SHIFT_TF",
+            "value_json": "\"dc_4h\""
+          },
+          "trades_fingerprint": "2:exact-actions-v2:b3b88b43b866a830812f6d50"
+        },
+        {
+          "rows": 1,
+          "sample": {
+            "contract_fingerprint": "tradier-matrix-exec-c5-20260730:53c6a44f6e37b4806b3811f7f0f91e279811d0acee421581b2baf8f0c6ec1d11",
+            "param": "STRUCTURAL_RANGE_SHIFT_TF",
+            "value_json": "\"bb_4h\""
+          },
+          "trades_fingerprint": "2:exact-actions-v2:db9823faf67b5215eb6d4267"
+        }
+      ],
+      "key": "VT_LONG",
+      "metric": 1.0089,
+      "minimum_cells_recoverable_by_full_precision_rerun": 1,
+      "params": 1,
+      "rows": 2,
+      "values": 2
+    }
+  ],
+  "highest_volume_exact_schedule_families": [
+    {
+      "identical_schedule_rows": 1723,
+      "key": "VT_LONG",
+      "metric": -2.814,
+      "params": 500,
+      "params_in_family": 500,
+      "rows": 1724,
+      "top_params": [
+        {
+          "param": "LOCAL_EXTREMES_MIN_SCORE",
+          "rows": 9
+        },
+        {
+          "param": "CT_WT_VELOCITY_1H_MIN",
+          "rows": 8
+        },
+        {
+          "param": "ADX_TRENDING_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "ALIGNMENT_GATE_MIN",
+          "rows": 5
+        },
+        {
+          "param": "ALIGNMENT_GATE_TOTAL",
+          "rows": 5
+        },
+        {
+          "param": "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+          "rows": 5
+        },
+        {
+          "param": "ATR_ADAPTIVE_STOP_MULT",
+          "rows": 5
+        },
+        {
+          "param": "BAND_SLOPE_SIZING_V2_DEPTH_GAIN",
+          "rows": 5
+        },
+        {
+          "param": "BAND_SLOPE_SIZING_V2_MAX",
+          "rows": 5
+        },
+        {
+          "param": "BAND_SLOPE_SIZING_V2_MIN",
+          "rows": 5
+        },
+        {
+          "param": "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY",
+          "rows": 5
+        },
+        {
+          "param": "BB_BREAKOUT_SCORE",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "497:aad7f455c033b95c",
+      "values": 305
+    },
+    {
+      "identical_schedule_rows": 358,
+      "key": "MU_LONG",
+      "metric": -3.3471,
+      "params": 89,
+      "params_in_family": 89,
+      "rows": 358,
+      "top_params": [
+        {
+          "param": "ATR_ADAPTIVE_STOP_MULT",
+          "rows": 5
+        },
+        {
+          "param": "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "BOUNCE_REENTRY_K_RESET_LONG_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "CONNORS_RSI_EXIT_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "CT_MFI_15M_LONG_MIN",
+          "rows": 5
+        },
+        {
+          "param": "CT_STOCH_K_15M_LONG_MIN",
+          "rows": 5
+        },
+        {
+          "param": "CYCLE_TP_CONDITIONAL_EXIT",
+          "rows": 5
+        },
+        {
+          "param": "DC4_STOP_GR_SCORE_MIN_IND",
+          "rows": 5
+        },
+        {
+          "param": "DC4_STOP_GR_SCORE_MIN_TFS",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_K_EXHAUSTED_LONG",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_LONG_BUDGET",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_STOP_PCT",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "3181:231cd76dec942f7a",
+      "values": 180
+    },
+    {
+      "identical_schedule_rows": 313,
+      "key": "MU_LONG",
+      "metric": -3.3475,
+      "params": 109,
+      "params_in_family": 109,
+      "rows": 313,
+      "top_params": [
+        {
+          "param": "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE",
+          "rows": 5
+        },
+        {
+          "param": "DC_BREAK_GR_MULT_BREAKOUT",
+          "rows": 5
+        },
+        {
+          "param": "DC_BREAK_GR_MULT_RETEST",
+          "rows": 5
+        },
+        {
+          "param": "DC_BREAK_GR_RETEST_TOLERANCE_PCT",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_BUFFER",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_MAX_HOLD_MINUTES",
+          "rows": 5
+        },
+        {
+          "param": "DD_KELLY_TIER1_PCT",
+          "rows": 5
+        },
+        {
+          "param": "DD_KELLY_TIER2_PCT",
+          "rows": 5
+        },
+        {
+          "param": "DELTA_EXIT_ACCEL_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "DELTA_EXIT_DECAY_RATIO",
+          "rows": 5
+        },
+        {
+          "param": "DELTA_EXIT_MIN_HOLD",
+          "rows": 5
+        },
+        {
+          "param": "DELTA_EXIT_MIN_TF_LOST",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "3180:650d7abb906dc712",
+      "values": 130
+    },
+    {
+      "identical_schedule_rows": 233,
+      "key": "MU_LONG",
+      "metric": -22.7282,
+      "params": 63,
+      "params_in_family": 61,
+      "rows": 249,
+      "top_params": [
+        {
+          "param": "ENTRY_ZONE_SHORT",
+          "rows": 7
+        },
+        {
+          "param": "BB_PULLBACK_GATE_SHORT_MIN",
+          "rows": 5
+        },
+        {
+          "param": "CT_STOCH_K_15M_SHORT_MAX",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_K_EXHAUSTED_SHORT",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_MAX_PER_SIDE",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_MAX_POSITION_SIZE",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_PRE_CLOSE_MINUTES",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_SHORT_BUDGET",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_START_SIZE",
+          "rows": 5
+        },
+        {
+          "param": "DC_DAYTRADE_TARGET_PCT",
+          "rows": 5
+        },
+        {
+          "param": "DC_EDGE_SIZING_MAX_MULT",
+          "rows": 5
+        },
+        {
+          "param": "DC_EDGE_SIZING_MIN_MULT",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "17:f532f292b261a274",
+      "values": 123
+    },
+    {
+      "identical_schedule_rows": 142,
+      "key": "ACN_SHORT",
+      "metric": -2.0106,
+      "params": 27,
+      "params_in_family": 27,
+      "rows": 142,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 31
+        },
+        {
+          "param": "ENTRY_ZONE_SHORT",
+          "rows": 7
+        },
+        {
+          "param": "EMA_DIST_SHORT_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "K_ZONE_SHORT_THRESHOLD_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "MOM3_SHORT_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "MOM5_SHORT_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "ORB_SHORT_BUDGET",
+          "rows": 5
+        },
+        {
+          "param": "RSI_ENTRY_MIN_SHORT",
+          "rows": 5
+        },
+        {
+          "param": "RSI_ENTRY_SHORT_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "RSI_EXIT_SHORT_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "1:f542759334b2bcc7",
+      "values": 110
+    },
+    {
+      "identical_schedule_rows": 121,
+      "key": "TTD_SHORT",
+      "metric": -2.8242,
+      "params": 20,
+      "params_in_family": 20,
+      "rows": 124,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 42
+        },
+        {
+          "param": "EMA_DIST_SHORT_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "ENTRY_ZONE_SHORT",
+          "rows": 5
+        },
+        {
+          "param": "K_ZONE_SHORT_THRESHOLD_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "MOM3_SHORT_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "MOM5_SHORT_THRESHOLD",
+          "rows": 5
+        },
+        {
+          "param": "ORB_SHORT_BUDGET",
+          "rows": 5
+        },
+        {
+          "param": "RSI_ENTRY_MIN_SHORT",
+          "rows": 5
+        },
+        {
+          "param": "RSI_ENTRY_SHORT_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "RSI_EXIT_SHORT_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER",
+          "rows": 5
+        },
+        {
+          "param": "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "1:1b66543da3656ec4",
+      "values": 102
+    },
+    {
+      "identical_schedule_rows": 55,
+      "key": "VT_LONG",
+      "metric": 1.3398,
+      "params": 4,
+      "params_in_family": 4,
+      "rows": 55,
+      "top_params": [
+        {
+          "param": "GROUP_COMBO",
+          "rows": 48
+        },
+        {
+          "param": "WT_DC_EXIT_STALE_MAX_S",
+          "rows": 5
+        },
+        {
+          "param": "WT_DC_EXIT_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "WT_DC_EXIT_THRESHOLD",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "39:exact-actions-v2:9adc087388d6314555fb82f2",
+      "values": 55
+    },
+    {
+      "identical_schedule_rows": 25,
+      "key": "ACN_SHORT",
+      "metric": 0.0016,
+      "params": 16,
+      "params_in_family": 16,
+      "rows": 25,
+      "top_params": [
+        {
+          "param": "DELTA_EXIT_ACCEL_THRESHOLD",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_DECAY_RATIO",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_MIN_HOLD",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_MIN_TF_LOST",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_OPPOSING_RATIO",
+          "rows": 2
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_RETURN",
+          "rows": 2
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_ZONE",
+          "rows": 2
+        },
+        {
+          "param": "STOP_PACK",
+          "rows": 2
+        },
+        {
+          "param": "TF_EXCLUDE",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_DC_FLOOR",
+          "rows": 1
+        },
+        {
+          "param": "DELTA_EXIT_OVERRIDE_NOLOSS",
+          "rows": 1
+        },
+        {
+          "param": "DELTA_EXIT_REQUIRE_NONZERO_SCORE",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "1:e851be4f30234bfe",
+      "values": 20
+    },
+    {
+      "identical_schedule_rows": 16,
+      "key": "TTD_SHORT",
+      "metric": 0.0014,
+      "params": 11,
+      "params_in_family": 11,
+      "rows": 16,
+      "top_params": [
+        {
+          "param": "DELTA_EXIT_ACCEL_THRESHOLD",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_DECAY_RATIO",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_OPPOSING_RATIO",
+          "rows": 2
+        },
+        {
+          "param": "MTF_BB_REJECT_EXIT_ENABLED",
+          "rows": 2
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_RETURN",
+          "rows": 2
+        },
+        {
+          "param": "DELTA_EXIT_DC_FLOOR",
+          "rows": 1
+        },
+        {
+          "param": "DELTA_EXIT_MIN_HOLD",
+          "rows": 1
+        },
+        {
+          "param": "EXIT_TREND_REVERSAL_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_ZONE",
+          "rows": 1
+        },
+        {
+          "param": "STOP_PACK",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "1:1e6e216da713e9c4",
+      "values": 13
+    },
+    {
+      "identical_schedule_rows": 14,
+      "key": "VT_LONG",
+      "metric": -0.8936,
+      "params": 5,
+      "params_in_family": 5,
+      "rows": 14,
+      "top_params": [
+        {
+          "param": "GROUP_COMBO",
+          "rows": 4
+        },
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT",
+          "rows": 3
+        },
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT",
+          "rows": 3
+        },
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT",
+          "rows": 3
+        },
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "10:exact-actions-v2:6d088bbe3415835caaba9a16",
+      "values": 14
+    },
+    {
+      "identical_schedule_rows": 13,
+      "key": "MU_LONG",
+      "metric": -0.0874,
+      "params": 11,
+      "params_in_family": 11,
+      "rows": 13,
+      "top_params": [
+        {
+          "param": "GR_HTF_DIRECT_EXIT_SCORE",
+          "rows": 2
+        },
+        {
+          "param": "TF_EXCLUDE",
+          "rows": 2
+        },
+        {
+          "param": "BB_PULLBACK_GATE_LONG_MAX",
+          "rows": 1
+        },
+        {
+          "param": "EXIT_TREND_REVERSAL_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "GR_HTF_DIRECT_EXIT_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "STOP_PACK",
+          "rows": 1
+        },
+        {
+          "param": "WT_3M_FORCE_OPEN_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "WT_3M_FORCE_OPEN_TF_LADDER",
+          "rows": 1
+        },
+        {
+          "param": "WT_3M_FORCE_OPEN_TF_LADDER_MULT",
+          "rows": 1
+        },
+        {
+          "param": "WT_DC_EXIT_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "1:9daef02c32fe0c23",
+      "values": 9
+    },
+    {
+      "identical_schedule_rows": 13,
+      "key": "VT_LONG",
+      "metric": -2.8169,
+      "params": 7,
+      "params_in_family": 7,
+      "rows": 13,
+      "top_params": [
+        {
+          "param": "BB_PULLBACK_GATE_LONG_MAX",
+          "rows": 2
+        },
+        {
+          "param": "CT_MFI_15M_LONG_MIN",
+          "rows": 2
+        },
+        {
+          "param": "CT_STOCH_K_15M_LONG_MIN",
+          "rows": 2
+        },
+        {
+          "param": "DC_DAYTRADE_K_EXHAUSTED_LONG",
+          "rows": 2
+        },
+        {
+          "param": "DC_DAYTRADE_LONG_BUDGET",
+          "rows": 2
+        },
+        {
+          "param": "DG_DAILY_LOSS_BLOCK_LONG_PCT",
+          "rows": 2
+        },
+        {
+          "param": "TF_EXCLUDE",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "498:65afb3082da9302a",
+      "values": 12
+    },
+    {
+      "identical_schedule_rows": 11,
+      "key": "ACN_SHORT",
+      "metric": 3.0955,
+      "params": 2,
+      "params_in_family": 2,
+      "rows": 11,
+      "top_params": [
+        {
+          "param": "GROUP_COMBO",
+          "rows": 10
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_EXIT",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "2:exact-actions-v2:35a7d5e5205a8be2c4a2091b",
+      "values": 11
+    },
+    {
+      "identical_schedule_rows": 9,
+      "key": "TTD_SHORT",
+      "metric": 1.4468,
+      "params": 2,
+      "params_in_family": 2,
+      "rows": 9,
+      "top_params": [
+        {
+          "param": "GROUP_COMBO",
+          "rows": 7
+        },
+        {
+          "param": "WT_DC_EXIT_STALE_MAX_S",
+          "rows": 2
+        }
+      ],
+      "trades_fingerprint": "19:exact-actions-v2:bfc972bd95b242c2168202be",
+      "values": 9
+    },
+    {
+      "identical_schedule_rows": 8,
+      "key": "ACN_SHORT",
+      "metric": -2.0176,
+      "params": 1,
+      "params_in_family": 1,
+      "rows": 8,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 8
+        }
+      ],
+      "trades_fingerprint": "1:9ce3f506d3fb7101",
+      "values": 8
+    },
+    {
+      "identical_schedule_rows": 8,
+      "key": "VT_LONG",
+      "metric": -1.9473,
+      "params": 1,
+      "params_in_family": 1,
+      "rows": 8,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 8
+        }
+      ],
+      "trades_fingerprint": "378:04d5fa60177358d3",
+      "values": 8
+    },
+    {
+      "identical_schedule_rows": 7,
+      "key": "ACN_SHORT",
+      "metric": -1.6868,
+      "params": 4,
+      "params_in_family": 4,
+      "rows": 7,
+      "top_params": [
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT",
+          "rows": 2
+        },
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT",
+          "rows": 2
+        },
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT",
+          "rows": 2
+        },
+        {
+          "param": "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "2:exact-actions-v2:875355d4a69209d43d8471d2",
+      "values": 7
+    },
+    {
+      "identical_schedule_rows": 7,
+      "key": "NVDA_LONG",
+      "metric": -0.0008,
+      "params": 5,
+      "params_in_family": 5,
+      "rows": 7,
+      "top_params": [
+        {
+          "param": "GR_HTF_DIRECT_EXIT_SCORE",
+          "rows": 2
+        },
+        {
+          "param": "TF_EXCLUDE",
+          "rows": 2
+        },
+        {
+          "param": "STOP_PACK",
+          "rows": 1
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_TF",
+          "rows": 1
+        },
+        {
+          "param": "WT_3M_FORCE_OPEN_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "1:5ab3c29f87aabfd5",
+      "values": 7
+    },
+    {
+      "identical_schedule_rows": 6,
+      "key": "NVDA_LONG",
+      "metric": -4.4266,
+      "params": 3,
+      "params_in_family": 3,
+      "rows": 6,
+      "top_params": [
+        {
+          "param": "BB_PULLBACK_GATE_LONG_MAX",
+          "rows": 2
+        },
+        {
+          "param": "CT_MFI_15M_LONG_MIN",
+          "rows": 2
+        },
+        {
+          "param": "TF_EXCLUDE",
+          "rows": 2
+        }
+      ],
+      "trades_fingerprint": "216:fcf579271e0f5e98",
+      "values": 6
+    },
+    {
+      "identical_schedule_rows": 6,
+      "key": "TTD_SHORT",
+      "metric": -2.0584,
+      "params": 3,
+      "params_in_family": 3,
+      "rows": 6,
+      "top_params": [
+        {
+          "param": "WT_DC_EXIT_STALE_MAX_S",
+          "rows": 3
+        },
+        {
+          "param": "WT_DC_EXIT_THRESHOLD",
+          "rows": 2
+        },
+        {
+          "param": "WT_DC_EXIT_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "43:exact-actions-v2:f2ffd28431e850ca89947589",
+      "values": 6
+    },
+    {
+      "identical_schedule_rows": 6,
+      "key": "VT_LONG",
+      "metric": -2.6996,
+      "params": 2,
+      "params_in_family": 2,
+      "rows": 6,
+      "top_params": [
+        {
+          "param": "GR_HTF_DIRECT_ENTRY_SCORE_MIN",
+          "rows": 5
+        },
+        {
+          "param": "GR_HTF_DIRECT_ENTRY_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "480:1c4d93c4456b451b",
+      "values": 6
+    },
+    {
+      "identical_schedule_rows": 5,
+      "key": "MU_LONG",
+      "metric": -22.7453,
+      "params": 2,
+      "params_in_family": 1,
+      "rows": 6,
+      "top_params": [
+        {
+          "param": "K_ZONE_SHORT_THRESHOLD_TRADIER",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "7:8186506a7875b69a",
+      "values": 6
+    },
+    {
+      "identical_schedule_rows": 5,
+      "key": "MU_LONG",
+      "metric": -3.7886,
+      "params": 1,
+      "params_in_family": 1,
+      "rows": 5,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "2060:2dcf2f0f024a3bba",
+      "values": 5
+    },
+    {
+      "identical_schedule_rows": 5,
+      "key": "NVDA_LONG",
+      "metric": -4.7421,
+      "params": 1,
+      "params_in_family": 1,
+      "rows": 5,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 5
+        }
+      ],
+      "trades_fingerprint": "766:8775794225ff9948",
+      "values": 5
+    },
+    {
+      "identical_schedule_rows": 5,
+      "key": "VT_LONG",
+      "metric": -1.8305,
+      "params": 3,
+      "params_in_family": 3,
+      "rows": 5,
+      "top_params": [
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_K_LOW",
+          "rows": 2
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS",
+          "rows": 2
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_EXIT",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "19:exact-actions-v2:1b16ea96eed055cd1b68846d",
+      "values": 5
+    },
+    {
+      "identical_schedule_rows": 5,
+      "key": "VT_LONG",
+      "metric": 0.9352,
+      "params": 4,
+      "params_in_family": 4,
+      "rows": 5,
+      "top_params": [
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS",
+          "rows": 2
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_K_HIGH",
+          "rows": 1
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_K_LOW",
+          "rows": 1
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_TF",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "5:exact-actions-v2:31c1f002a56d5364bcad2b0a",
+      "values": 5
+    },
+    {
+      "identical_schedule_rows": 4,
+      "key": "VT_LONG",
+      "metric": -1.8155,
+      "params": 4,
+      "params_in_family": 4,
+      "rows": 4,
+      "top_params": [
+        {
+          "param": "GR_HTF_DIRECT_EXIT_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "PEAK_GIVEBACK_PROTECTION_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "14:exact-actions-v2:680152b0b47c16dd0a750b53",
+      "values": 1
+    },
+    {
+      "identical_schedule_rows": 4,
+      "key": "VT_LONG",
+      "metric": -0.0058,
+      "params": 4,
+      "params_in_family": 4,
+      "rows": 4,
+      "top_params": [
+        {
+          "param": "LR_BAND_HARVEST_HI",
+          "rows": 1
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_RETURN",
+          "rows": 1
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_ZONE",
+          "rows": 1
+        },
+        {
+          "param": "WT_3M_FORCE_OPEN_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "1:f7db255db5e9a07d",
+      "values": 4
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "ACN_SHORT",
+      "metric": -1.9425,
+      "params": 3,
+      "params_in_family": 3,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "EXIT_GAIN_EROSION_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "EXIT_TREND_REVERSAL_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "MTF_BB_REJECT_EXIT_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "10:exact-actions-v2:4e3c3984963472dc2db92044",
+      "values": 1
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "MU_LONG",
+      "metric": -22.7645,
+      "params": 5,
+      "params_in_family": 2,
+      "rows": 21,
+      "top_params": [
+        {
+          "param": "WT_3M_FORCE_OPEN_BUILD_TO_TARGET",
+          "rows": 2
+        },
+        {
+          "param": "WT_3M_FORCE_OPEN_DIST_PCT",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "19:82427cf12f56b24b",
+      "values": 21
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "MU_LONG",
+      "metric": -4.716,
+      "params": 2,
+      "params_in_family": 2,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "LR_BAND_HARVEST_FRAC",
+          "rows": 2
+        },
+        {
+          "param": "LR_BAND_HARVEST_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "12:4e2510f0dc97ad03",
+      "values": 3
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "MU_LONG",
+      "metric": -0.5217,
+      "params": 1,
+      "params_in_family": 1,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 3
+        }
+      ],
+      "trades_fingerprint": "1640:25591cd34b6a85a7",
+      "values": 3
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "NVDA_LONG",
+      "metric": -1.5699,
+      "params": 2,
+      "params_in_family": 2,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_K_LOW",
+          "rows": 2
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_EXIT",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "34:exact-actions-v2:9fe6f24fdb89ad22e18e3836",
+      "values": 3
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "NVDA_LONG",
+      "metric": -0.6082,
+      "params": 3,
+      "params_in_family": 3,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "GR_HTF_DIRECT_EXIT_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "STDEV_REJECT_EXIT_ENABLED",
+          "rows": 1
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_TF",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "34:exact-actions-v2:0d4abe0c4689db774329f74f",
+      "values": 2
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "NVDA_LONG",
+      "metric": 4.9178,
+      "params": 3,
+      "params_in_family": 3,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_K_HIGH",
+          "rows": 1
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_K_LOW",
+          "rows": 1
+        },
+        {
+          "param": "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "2:exact-actions-v2:f289cc11467af609073e1c67",
+      "values": 3
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "TTD_SHORT",
+      "metric": -2.8242,
+      "params": 20,
+      "params_in_family": 2,
+      "rows": 124,
+      "top_params": [
+        {
+          "param": "ENTRY_ZONE_SHORT",
+          "rows": 2
+        },
+        {
+          "param": "WT_3M_FORCE_OPEN_ENABLED",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "1:44692dce824387f8",
+      "values": 102
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "VT_LONG",
+      "metric": -2.8123,
+      "params": 2,
+      "params_in_family": 2,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "rows": 2
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "497:aad7f455c033b95c",
+      "values": 3
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "VT_LONG",
+      "metric": -1.7942,
+      "params": 1,
+      "params_in_family": 1,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 3
+        }
+      ],
+      "trades_fingerprint": "378:cec70010f403f4d4",
+      "values": 3
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "VT_LONG",
+      "metric": -1.7128,
+      "params": 3,
+      "params_in_family": 3,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "DC_ENTRY_VETO_ENABLED_TRADIER",
+          "rows": 1
+        },
+        {
+          "param": "DC_POSITION_ENTRY_THRESHOLD",
+          "rows": 1
+        },
+        {
+          "param": "TRADIER_DC_POSITION_ENTRY_THRESHOLD",
+          "rows": 1
+        }
+      ],
+      "trades_fingerprint": "108:2e9746e6414ac943",
+      "values": 2
+    },
+    {
+      "identical_schedule_rows": 3,
+      "key": "VT_LONG",
+      "metric": -1.4921,
+      "params": 1,
+      "params_in_family": 1,
+      "rows": 3,
+      "top_params": [
+        {
+          "param": "STOP_PACK",
+          "rows": 3
+        }
+      ],
+      "trades_fingerprint": "226:de8675929d260acd",
+      "values": 3
+    }
+  ],
+  "immutable_evidence_rewrite_allowed": false,
+  "metric": "delta_gain_mo_vs_bh",
+  "schema": "pilot-v8-collision-analysis-v1",
+  "source_rows": 3744,
+  "status": "PASS_DIAGNOSTIC_ONLY",
+  "synthetic_uniqueness_allowed": false,
+  "totals": {
+    "different_schedule_metric_collisions": 6,
+    "duplicate_numeric_rows": 3392,
+    "exact_schedule_duplicate_rows": 3151,
+    "legacy_missing_fingerprint_rows": 257
+  }
+}

@@ -3,6 +3,7 @@
 import json
 import logging
 import logging.handlers
+import os
 
 
 class _NoFileRotatingHandler(logging.NullHandler):
@@ -108,3 +109,24 @@ def test_empty_guarded_override_preserves_accepted_baseline_overlay(
     assert tm._cfg(
         "WT_3M_FORCE_OPEN_ENABLED", False, "trb", "MU", "LONG"
     ) is True
+
+
+def test_per_sym_overlay_cache_is_scoped_to_account_path(monkeypatch, tmp_path):
+    """TRB and TRC files must not share an mtime-only cache entry."""
+    trb_path = tmp_path / "trb.json"
+    trc_path = tmp_path / "trc.json"
+    payload = {"wsharpe": 1.0, "overrides": {"LONG_ENABLED": True}}
+    trb_path.write_text(json.dumps({"AAA_LONG": payload}))
+    trc_path.write_text(json.dumps({"AAA_LONG": {"wsharpe": -1.0, "overrides": {"LONG_ENABLED": False}}}))
+    same_mtime = 1_700_000_000
+    os.utime(trb_path, (same_mtime, same_mtime))
+    os.utime(trc_path, (same_mtime, same_mtime))
+
+    monkeypatch.setattr(tm, "_tradier_per_sym_cfgs_cache", {})
+    monkeypatch.setattr(tm, "_tradier_per_sym_raw_cache", {})
+    monkeypatch.setattr(tm, "_global_per_sym_cfgs_path", tmp_path / "missing-baseline.json")
+
+    trb = tm._load_tradier_per_sym_cfgs(trb_path)
+    trc = tm._load_tradier_per_sym_cfgs(trc_path)
+    assert trb["AAA_LONG"]["LONG_ENABLED"] is True
+    assert trc["AAA_LONG"]["LONG_ENABLED"] is False

@@ -1,0 +1,36 @@
+{
+  "blocked_or_incomplete": {
+    "ENTRY_ARTIFACT_UNAVAILABLE": 36
+  },
+  "contract": "VECTOR_DISCOVERY_ONLY_NO_V8_NO_EXACT_NO_EXPORT_NO_LIVE",
+  "generated_at": "2026-08-03T03:50:01.108465+00:00",
+  "not_authorized": [
+    "exact V8",
+    "matrix write",
+    "live write",
+    "Cartesian enumeration",
+    "worker launch"
+  ],
+  "pending_component_keys_without_completed_lifecycle_receipt": [
+    "CDE_SHORT",
+    "CLF_SHORT",
+    "AAPL_LONG",
+    "ACN_SHORT",
+    "ARM_LONG",
+    "BG_LONG",
+    "BK_LONG",
+    "DAR_LONG",
+    "LAC_SHORT",
+    "MRVL_LONG",
+    "MSTR_SHORT",
+    "TRGP_LONG",
+    "TTD_SHORT"
+  ],
+  "priority_keys": [
+    "CLF_SHORT",
+    "CDE_SHORT"
+  ],
+  "schema": "gate-aware-nearmiss-refinement-plan-v1",
+  "selected": [],
+  "stage": "GATE_AWARE_V3_ADAPTIVE_NEARMISS_REFINEMENT_V1"
+}

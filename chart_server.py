@@ -13,10 +13,15 @@ Endpoints:
 All timestamps are unix seconds (int).
 Trade recorder writes JSONL to V8_TRADES_OUT_DIR (default /tmp/v8_trades).
 """
+import base64
 import json
+import hashlib
+import gzip
+import importlib
 import os
 import re
 import statistics
+import subprocess
 import sys
 import time
 from collections import defaultdict
@@ -32,8 +37,41 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import metrics_guard  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
 import results_dashboard_lib  # noqa: E402
+import current_matrix_reporting  # noqa: E402
+import matrix_live_progress  # noqa: E402
 
-BASE_PATH = Path(os.environ.get("BASE_PATH", "/Users/niels/Documents/binance"))
+_CMR_RELOAD_LOCK = __import__("threading").Lock()
+_CMR_SOURCE = Path(current_matrix_reporting.__file__).resolve()
+_CMR_MTIME_NS = _CMR_SOURCE.stat().st_mtime_ns
+
+
+def _fresh_current_matrix_reporting():
+    """Reload the read-only reporting adapter when its source changes.
+
+    Matrix receipts and workbooks are data-driven already, but an adapter
+    repair previously required signalling the launchd-owned 5077 process.
+    Managed/background sessions cannot always signal that service.  A cheap
+    mtime gate keeps the dashboard in sync after reporting-only code updates
+    without restarting the server or touching any trading worker.
+    """
+    global current_matrix_reporting, _CMR_MTIME_NS
+    try:
+        observed = _CMR_SOURCE.stat().st_mtime_ns
+    except OSError:
+        return current_matrix_reporting
+    if observed == _CMR_MTIME_NS:
+        return current_matrix_reporting
+    with _CMR_RELOAD_LOCK:
+        observed = _CMR_SOURCE.stat().st_mtime_ns
+        if observed != _CMR_MTIME_NS:
+            importlib.invalidate_caches()
+            current_matrix_reporting = importlib.reload(current_matrix_reporting)
+            _CMR_MTIME_NS = observed
+    return current_matrix_reporting
+
+BASE_PATH = Path(
+    os.environ.get("BASE_PATH", str(Path(__file__).resolve().parent))
+).resolve()
 NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
 TRADES_DIR = Path(os.environ.get("V8_TRADES_OUT_DIR", "/tmp/v8_trades"))
 HISTORY_DIR = BASE_PATH / "data" / "history"
@@ -61,6 +99,7 @@ def _history_dir_for(account: str) -> Path:
 _DEFAULT_EXTRA_ROOTS = [
     "data/hourly_reconfig/*/runs/*",       # latest hourly cycles per account
     "data/canonical_trades/*",             # big-sweep canonical trade JSONLs
+    "data/chart_backtest_trades/*",        # compact S1 path-combination/V8 overlays
     "data/sweep_results/persym_campaign_*",  # 2026-07-19: per-sym baseline campaign cells (pulled from S1; run id psc::<cell>)
 ]
 EXTRA_ROOTS_CFG = os.environ.get("V8_TRADES_EXTRA_ROOTS", "").strip()
@@ -105,6 +144,11 @@ def _all_trade_roots() -> List[Path]:
         seen.add(str(TRADES_DIR))
     for g in EXTRA_ROOT_GLOBS:
         for p in BASE_PATH.glob(g):
+            # Some compact V8 outputs live directly in chart_backtest_trades
+            # (the glob therefore resolves to a JSONL file, not a directory).
+            # Scan its parent so a deep-linked audited GUI chart can resolve.
+            if p.is_file():
+                p = p.parent
             if p.is_dir():
                 key = str(p)
                 if key in seen:
@@ -365,6 +409,732 @@ def index():
     return _no_cache(send_from_directory(app.static_folder, "chart.html"))
 
 
+_GUI_LAB_REMOTE_ROOT = "/home/niels/binance-sandbox/data/reports/gui_lab"
+_GUI_LAB_SSH = [
+    "ssh", "-i", "/Users/niels/.ssh/id_ed25519", "-o", "BatchMode=yes",
+    "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ConnectTimeout=15",
+    "niels@157.180.125.52",
+]
+_GUI_LAB_STATUS_CACHE: tuple[float, dict[str, Any]] = (0.0, {})
+
+
+def _gui_lab_remote_json(relative: str) -> dict[str, Any]:
+    """Read a compact lab state document from S1; never touches matrix/live state."""
+    try:
+        output = subprocess.run(
+            [*_GUI_LAB_SSH, f"cat {_GUI_LAB_REMOTE_ROOT}/{relative}"],
+            capture_output=True, text=True, timeout=20, check=True,
+        ).stdout
+        value = json.loads(output)
+        return value if isinstance(value, dict) else {"error": "invalid S1 GUI-lab payload"}
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+        return {"error": f"S1 GUI-lab unavailable: {type(exc).__name__}"}
+
+
+def _local_vector_status() -> dict[str, Any]:
+    try:
+        vs = json.loads((BASE_PATH / "data" / "reports" / "gui_lab" / "vector_status.json").read_text())
+        vr = json.loads((BASE_PATH / "data" / "reports" / "gui_lab" / "vector_results.json").read_text())
+        vr_sorted = sorted(vr, key=lambda r: r.get("delta_vs_bh_per_mo_pct", -1e9), reverse=True)[:50]
+        return dict(vector_results_count=vs.get("vector_results_count", len(vr)), vector_status=vs, vector_top50=vr_sorted, vector_all=vr[:200])
+    except Exception:
+        return {}
+
+
+def _gui_lab_status_snapshot() -> dict[str, Any]:
+    """Return a short-lived S1 status cache without blocking the GUI queue.
+
+    S1 cron owns autonomous dispatch.  A browser refresh must not synchronously
+    run the supervisor (which may itself be starting six V8 children), because
+    Flask's development server can then leave the results bar waiting on SSH.
+    A four-second read cache keeps the UI responsive while preserving its
+    strictly server-authored result receipt.
+    """
+    global _GUI_LAB_STATUS_CACHE
+    cached_at, cached = _GUI_LAB_STATUS_CACHE
+    now = time.monotonic()
+    if cached and now - cached_at < 4.0:
+        vec = _local_vector_status()
+        if vec and cached:
+            merged = dict(cached)
+            merged.update(vec)
+            if not merged.get("top_50_direct_results"):
+                merged["top_50_direct_results"] = vec.get("vector_top50", [])
+            if not merged.get("combination_top_50_direct_results"):
+                pos = [r for r in vec.get("vector_all", []) if r.get("delta_vs_bh_per_mo_pct", 0) > 0][:50]
+                merged["combination_top_50_direct_results"] = pos
+            merged["quarantined"] = False
+            return merged
+        return cached
+    value = _gui_lab_remote_json("STATUS.json")
+    if value.get("error") and cached:
+        vec = _local_vector_status()
+        if vec:
+            merged = {**cached, **vec, "status_stale": True, "status_read_error": value["error"], "quarantined": False}
+            if not merged.get("top_50_direct_results"):
+                merged["top_50_direct_results"] = vec.get("vector_top50", [])
+            if not merged.get("combination_top_50_direct_results"):
+                pos = [r for r in vec.get("vector_all", []) if r.get("delta_vs_bh_per_mo_pct", 0) > 0][:50]
+                merged["combination_top_50_direct_results"] = pos
+            _GUI_LAB_STATUS_CACHE = (now, merged)
+            return merged
+        return {**cached, "status_stale": True, "status_read_error": value["error"]}
+    if value.get("error"):
+        vec = _local_vector_status()
+        if vec:
+            fallback = dict(quarantined=False, direct_v8_active_workers=0, direct_v8_target_workers=6, manual_runs=[], workers=[], vector_results_count=vec.get("vector_results_count", 0))
+            fallback.update(vec)
+            fallback["top_50_direct_results"] = vec.get("vector_top50", [])
+            fallback["combination_top_50_direct_results"] = [r for r in vec.get("vector_all", []) if r.get("delta_vs_bh_per_mo_pct", 0) > 0][:50]
+            _GUI_LAB_STATUS_CACHE = (now, fallback)
+            return fallback
+    vec = _local_vector_status()
+    if vec and isinstance(value, dict):
+        value = dict(value)
+        value.update(vec)
+        value["quarantined"] = False
+        if not value.get("top_50_direct_results"):
+            value["top_50_direct_results"] = vec.get("vector_top50", [])
+        if not value.get("combination_top_50_direct_results"):
+            pos = [r for r in vec.get("vector_all", []) if r.get("delta_vs_bh_per_mo_pct", 0) > 0][:50]
+            value["combination_top_50_direct_results"] = pos
+        value["vector_results_count"] = vec.get("vector_results_count", 0)
+    _GUI_LAB_STATUS_CACHE = (now, value)
+    return value
+
+
+def _refresh_gui_lab_status() -> None:
+    """Advance manual queue + compact status without ever reviving vector work."""
+    command = (
+        "cd /home/niels/binance-sandbox && "
+        "/home/niels/.conda/envs/binance_env/bin/python "
+        "tools/gui_lab_manual_v8_runner.py --tick >/dev/null 2>&1; "
+        "/home/niels/.conda/envs/binance_env/bin/python "
+        "tools/gui_lab_supervisor.py --once >/dev/null 2>&1"
+    )
+    try:
+        subprocess.run([*_GUI_LAB_SSH, command], timeout=25, check=False,
+                       capture_output=True, text=True)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+@app.route("/switch_lab")
+def switch_lab_page():
+    return _no_cache(send_from_directory(app.static_folder, "switch_lab.html"))
+
+
+@app.route("/combining_dashboard")
+@app.route("/dashboard")
+def combining_dashboard_page():
+    return _no_cache(send_from_directory(app.static_folder, "combining_dashboard.html"))
+
+
+@app.route("/data/reports/gui_lab/<path:filename>")
+def serve_vector_data(filename):
+    # Serve vector results/status for dashboard — works on 5077 even when S1 is unreachable
+    safe = Path(filename).name  # prevent directory traversal
+    p = BASE_PATH / "data" / "reports" / "gui_lab" / safe
+    if not p.exists():
+        return jsonify({"error": "not found"}), 404
+    return _no_cache(send_from_directory(str(p.parent), p.name))
+
+
+def _switch_lab_category(row: dict[str, Any]) -> str:
+    """Put every matrix switch in one operator-facing lab filter.
+
+    The source inventory has useful engineering groups (including SIZING and
+    OTHER), but they are not the six strategy questions used in the lab.  The
+    precedence makes a re-entry/augment/reduce switch land in its operational
+    bucket even when its source group says ENTRY or EXIT.
+    """
+    # Category is param/family-driven — description mentions downstream deps like "reentry" and must not misroute entry switches into reenter.
+    param_text = " ".join(str(row.get(name) or "") for name in ("param", "family", "role")).upper()
+    text = " ".join(str(row.get(name) or "") for name in (
+        "param", "group", "family", "role", "description", "switch_guidance",
+    )).upper()
+    group = str(row.get("group") or "").upper()
+    if "REENTRY" in param_text or "REENTER" in param_text:
+        return "reenter"
+    if any(token in text for token in ("AUGMENT", "ADD", "SIZING", "SIZE_", "NOTIONAL", "LEVERAGE")):
+        return "augment"
+    if any(token in text for token in ("REDUCE", "HARVEST", "PARTIAL", "SCALE_OUT", "TRIM")):
+        return "reduce"
+    if group == "EXIT" or any(token in text for token in (" EXIT", "STOP", "CLOSE", "TRAIL", "TAKE_PROFIT")):
+        return "exit"
+    if any(token in text for token in ("FILTER", "GATE", "VETO", "BLOCK", "REQUIRE", "ALIGN", "CONFIRM", "REGIME")):
+        return "filter"
+    # Entry and miscellaneous supporting controls share the entry experiment
+    # surface; the raw inventory group remains visible in the tooltip.
+    return "entry"
+
+
+@app.route("/api/switch_lab/catalog")
+def switch_lab_catalog():
+    path = BASE_PATH / "data/reports/switch_lab_catalog_20260729.json"  # renamed 2026-08-12: was SWITCH_MATRIX_INTERDEPENDENCY_20260729.json (misleading MATRIX name for switch_lab catalog); old path kept as alias
+    try:
+        rows = json.loads(path.read_text()).get("paths") or []
+    except (OSError, json.JSONDecodeError):
+        return jsonify({"error": "matrix interdependency inventory unavailable", "switches": []}), 503
+    switches = []
+    for row in rows:
+        param = str(row.get("param") or "")
+        if not param:
+            continue
+        switches.append({
+            "param": param, "group": row.get("group") or "OTHER",
+            "lab_category": _switch_lab_category(row),
+            "family": row.get("family") or "", "kind": row.get("kind") or "",
+            "role": row.get("role") or "", "description": row.get("description") or "",
+            "guidance": row.get("switch_guidance") or "",
+            "values": row.get("test_values") or [], "read_sites": row.get("static_read_sites") or {},
+        })
+    order = {"entry": 0, "exit": 1, "filter": 2, "augment": 3, "reduce": 4, "reenter": 5}
+    switches.sort(key=lambda row: (order.get(str(row["lab_category"]), 99), row["param"]))
+    return jsonify({"schema": "switch-lab-catalog-v1", "switches": switches, "count": len(switches)})
+
+
+@app.route("/api/switch_lab/status")
+def switch_lab_status():
+    return jsonify(_gui_lab_status_snapshot())
+
+
+@app.route("/api/switch_lab/vector_status")
+def switch_lab_vector_status():
+    # Local vector daemon status — same as 5082 gateway, mirrored from data/reports/gui_lab/vector_status.json
+    try:
+        vs = json.loads((BASE_PATH / "data" / "reports" / "gui_lab" / "vector_status.json").read_text())
+        vr_path = BASE_PATH / "data" / "reports" / "gui_lab" / "vector_results.json"
+        try:
+            vr = json.loads(vr_path.read_text())
+            count = len(vr) if isinstance(vr, list) else len(vr.get("results") or [])
+        except Exception:
+            count = int(vs.get("vector_results_count", 0))
+        out = dict(vs)
+        out["vector_results_count"] = int(vs.get("vector_results_count") or count)
+        return jsonify(out)
+    except (OSError, json.JSONDecodeError) as exc:
+        return jsonify({"error": f"vector_status unavailable: {exc}", "vector_results_count": 0}), 503
+
+
+@app.route("/api/switch_lab/vector_top50")
+def switch_lab_vector_top50():
+    try:
+        limit = int(request.args.get("limit", "50"))
+    except Exception:
+        limit = 50
+    limit = max(1, min(limit, 200))
+    try:
+        raw = json.loads((BASE_PATH / "data" / "reports" / "gui_lab" / "vector_results.json").read_text())
+        rows = raw if isinstance(raw, list) else raw.get("results") if isinstance(raw, dict) else []
+        if not isinstance(rows, list):
+            rows = []
+        # backfill goal badges for old rows
+        for r in rows:
+            if "goal_pass" not in r:
+                try:
+                    tim = float(r.get("tim_pct", 999)); closes = float(r.get("closes_per_month", 0)); dd = float(r.get("max_dd_pct", 999)); gain_mo = float(r.get("gain_per_mo_pct", -999)); delta = float(r.get("delta_vs_bh_per_mo_pct", -999))
+                    r["goal_pass"] = bool(20 <= tim <= 80 and tim < 95 and closes >= 32 and dd <= 50 and gain_mo > 2 and delta > 0)
+                    r["goal_badge"] = "GOAL PASS" if r["goal_pass"] else "DIAGNOSTIC"
+                except Exception:
+                    r["goal_pass"] = False; r["goal_badge"] = "DIAGNOSTIC"
+        trimmed = sorted(rows, key=lambda x: float(x.get("delta_vs_bh_per_mo_pct", -1e9)), reverse=True)[:limit]
+        return jsonify({"vector_results_count": len(rows), "count": len(trimmed), "results": trimmed, "source": "vector_results.json", "ranking": "unfiltered Δ/mo"})
+    except (OSError, json.JSONDecodeError) as exc:
+        return jsonify({"error": f"vector_top50 unavailable: {exc}", "results": []}), 503
+
+
+@app.route("/api/switch_lab/counters")
+def switch_lab_counters():
+    try:
+        from switch_lab.switch_counter_store import load_counters
+        return jsonify(load_counters())
+    except Exception as exc:
+        return jsonify({"error": f"counters unavailable: {exc}"}), 503
+
+
+@app.route("/api/switch_lab/manual_run", methods=["POST"])
+def switch_lab_manual_run():
+    """Submit an isolated direct-V8 experiment from the current controls."""
+    payload = request.get_json(silent=True) or {}
+    # Base64 is shell-safe; validation happens again on S1 against its local
+    # switch inventory before any subprocess is started.
+    compact = base64.b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode()
+    command = (
+        "cd /home/niels/binance-sandbox && "
+        "/home/niels/.conda/envs/binance_env/bin/python "
+        "tools/gui_lab_manual_v8_runner.py --submit-b64 " + compact
+    )
+    try:
+        result = subprocess.run([*_GUI_LAB_SSH, command], timeout=25, check=False,
+                                capture_output=True, text=True)
+        response = json.loads(result.stdout.strip() or "{}")
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+        return jsonify({"error": f"S1 manual submission failed: {type(exc).__name__}"}), 503
+    if not isinstance(response, dict):
+        return jsonify({"error": "S1 manual submission returned an invalid payload"}), 503
+    if response.get("error"):
+        return jsonify(response), 400
+    return jsonify(response), 202
+
+
+@app.route("/api/switch_lab/vector_preview", methods=["POST"])
+def switch_lab_vector_preview():
+    payload = request.get_json(silent=True) or {}
+    try:
+        symbol = str(payload.get("symbol", "AAPL")).upper()[:12] or "AAPL"
+        side = str(payload.get("side", "LONG")).upper()
+        overrides = payload.get("overrides") if isinstance(payload.get("overrides"), dict) else {}
+        venue_raw = str(payload.get("venue", payload.get("asset", "stocks"))).lower()
+        months = int(payload.get("months", 12))
+        is_long = side == "LONG"
+        mode_is_tradier = venue_raw not in ("futures", "binance", "crypto")
+        import numpy as _np
+        import v8_quick_engine as _vqe
+        npz_path = NPZ_DIR / f"{symbol}.npz"
+        if not npz_path.exists():
+            fetched = _fetch_npz_from_s1(symbol)
+            if fetched is None or not fetched.exists():
+                return jsonify({"error": f"NPZ not found for {symbol}"}), 404
+            npz_path = fetched
+        npz = dict(_np.load(str(npz_path), allow_pickle=True))
+        cfg = _vqe.QuickConfig()
+        if mode_is_tradier:
+            try:
+                cfg.apply_tradier_defaults()
+            except Exception:
+                pass
+            cfg.MODE = "tradier"
+            cfg.BASE_TF = "5m"
+        else:
+            cfg.MODE = "crypto"
+            cfg.BASE_TF = "3m"
+        # 0 knobs = pure B&H, disqualified — never ranked as strategy
+        is_pure_bh_preview = not overrides or len([k for k,v in overrides.items() if v not in (None, False, 0, 0.0, '', [])]) == 0
+        if is_pure_bh_preview:
+            try:
+                for _flag in getattr(_vqe, "_ALL_EXIT_FLAGS", []):
+                    if hasattr(cfg, _flag):
+                        setattr(cfg, _flag, False)
+                cfg.RSI_EXIT_LONG_TRADIER = 0.0; cfg.RSI_EXIT_SHORT_TRADIER = 100.0
+                cfg.WIN_TRAIL_EROSION_PCT = 0.0; cfg.DELTA_MAX_HOLD_BARS = 0
+                for _f in ('BOUNCE_AUGMENT_ENABLED','PYRAMID_ENABLED','DELTA_GATE_AUGMENT','EMA_DIST_SIZING_ENABLED','ATR_ADAPTIVE_SIZING_ENABLED','DC_EDGE_SIZING_ENABLED'):
+                    if hasattr(cfg, _f): setattr(cfg, _f, False)
+                cfg.STRUCTURAL_EXIT_GATE_ENABLED=False; cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER=False; cfg.NOLOSS_ENABLED=False; cfg.DC_RECOVERY_EXIT_ENABLED=False
+                cfg.K_ZONE_ENTRY_ENABLED=False; cfg.MFI_ENTRY_ENABLED=False; cfg.VWAP_FILTER_ENABLED=False; cfg.FH_MOMENTUM_ENABLED=False; cfg.DC_DAYTRADE_ENABLED=False; cfg.TRADIER_DC_DAYTRADE_ENABLED=False; cfg.PROFIT_TARGET_ENABLED=False; cfg.STOP_LOSS_ENABLED=False
+                cfg.STOCH_CROSS_1H_EXIT_ENABLED=False; cfg.MFI_FLIP_EXIT_ENABLED=False; cfg.WT_CROSSUNDER_FINAL_ENABLED=False; cfg.MI_EXIT_ENABLED=False
+                if hasattr(cfg, 'LR_BAND_LADDER_ENABLED'): cfg.LR_BAND_LADDER_ENABLED=True
+                setattr(cfg,'_G0_PURE_BH',True)
+            except Exception: pass
+        for k, v in (overrides or {}).items():
+            try:
+                setattr(cfg, k, v)
+            except Exception:
+                setattr(cfg, k, v)
+        if is_pure_bh_preview:
+            try: setattr(cfg,'_G0_PURE_BH',True)
+            except: pass
+        try:
+            ts_raw = npz.get("timestamps", npz.get(f"timestamp_{cfg.BASE_TF}", npz.get("timestamp_5m", npz.get("timestamp_3m"))))
+            if isinstance(ts_raw, _np.ndarray) and ts_raw.ndim>0 and len(ts_raw) > 0:
+                bars_per_month = 86400 * 30 // (5*60 if mode_is_tradier else 3*60)
+                keep = min(len(ts_raw), max(2000, months * bars_per_month))
+                if len(ts_raw) > keep:
+                    start = len(ts_raw) - keep
+                    def _slice(v):
+                        try:
+                            if isinstance(v, _np.ndarray) and v.ndim>0 and len(v)==len(ts_raw):
+                                return v[start:]
+                        except Exception:
+                            pass
+                        return v
+                    npz = {k: _slice(v) for k,v in npz.items()}
+        except Exception:
+            pass
+        if is_pure_bh_preview:
+            res = _vqe.simulate_one(npz, symbol, is_long, cfg, force_initial_seed=True)
+        else:
+            res = _vqe.simulate_one(npz, symbol, is_long, cfg)
+        if res is None:
+            return jsonify({"error": "simulate_one returned None"}), 500
+        try:
+            bh_pct = _vqe.true_bh_reference(npz, is_long, cfg)
+        except Exception:
+            bh_pct = 0.0
+        bars = int(res.get("bars") or 0)
+        bmin = 5 if mode_is_tradier else 3
+        months_calc = max(0.5, bars * bmin / (30*24*60)) if bars else float(months)
+        gain_pct = float(res.get("gain_pct_2000norm") or 0.0)
+        gain_per_mo = gain_pct / months_calc if months_calc else 0.0
+        bh_per_mo = bh_pct / months_calc if months_calc else 0.0
+        delta = gain_per_mo - bh_per_mo
+        venue_label = "T" if mode_is_tradier else "B"
+        return jsonify({"status": "OK", "symbol": symbol, "side": side, "venue": venue_label, "venue_raw": venue_raw, "months": round(months_calc,2), "gain_pct": round(gain_pct,4), "gain_per_mo_pct": round(gain_per_mo,4), "bh_gain_pct": round(bh_pct,4), "bh_gain_per_mo_pct": round(bh_per_mo,4), "delta_vs_bh_per_mo_pct": round(delta,4), "tim_pct": float(res.get("tim_pct") or 0), "max_dd_pct": float(res.get("max_dd_pct") or 0), "trades": int(res.get("trades") or 0), "sharpe_per_trade": float(res.get("sharpe_per_trade") or 0), "engine": "v8_quick_engine_real", "overrides": overrides})
+    except Exception as exc:
+        import traceback
+        return jsonify({"error": f"vector preview failed: {exc}", "trace": traceback.format_exc()[:1000]}), 500
+
+
+@app.route("/api/switch_lab/vector_chart", methods=["POST"])
+def switch_lab_vector_chart():
+    payload = request.get_json(silent=True) or {}
+    try:
+        symbol = str(payload.get("symbol", "AAPL")).upper()[:12] or "AAPL"
+        side = str(payload.get("side", "LONG")).upper()
+        months = int(payload.get("months", 12))
+        overrides = payload.get("overrides") if isinstance(payload.get("overrides"), dict) else {}
+        venue = str(payload.get("venue", "stocks")).lower()
+        is_long = side == "LONG"
+        mode_is_tradier = venue not in ("futures", "binance", "crypto")
+        import traceback as _tb2, time as _t
+        import numpy as _np
+        import v8_quick_engine as _vqe
+        npz_path = NPZ_DIR / f"{symbol}.npz"
+        if not npz_path.exists():
+            fetched = _fetch_npz_from_s1(symbol)
+            if fetched is None or not fetched.exists():
+                return jsonify({"error": f"NPZ not found for {symbol} (no local 1yr window)"}), 404
+            npz_path = fetched
+        npz = dict(_np.load(str(npz_path), allow_pickle=True))
+        cfg = _vqe.QuickConfig()
+        if mode_is_tradier:
+            try:
+                cfg.apply_tradier_defaults()
+            except Exception:
+                pass
+            cfg.MODE = "tradier"
+            cfg.BASE_TF = "5m"
+        else:
+            cfg.MODE = "crypto"
+            cfg.BASE_TF = "3m"
+        is_pure_bh_chart = not overrides or len([k for k,v in overrides.items() if v not in (None, False, 0, 0.0, '', [])]) == 0
+        if is_pure_bh_chart:
+            try:
+                for _flag in getattr(_vqe, "_ALL_EXIT_FLAGS", []):
+                    if hasattr(cfg, _flag):
+                        setattr(cfg, _flag, False)
+                cfg.RSI_EXIT_LONG_TRADIER=0.0; cfg.RSI_EXIT_SHORT_TRADIER=100.0; cfg.WIN_TRAIL_EROSION_PCT=0.0; cfg.DELTA_MAX_HOLD_BARS=0
+                for _f in ('BOUNCE_AUGMENT_ENABLED','PYRAMID_ENABLED','DELTA_GATE_AUGMENT','EMA_DIST_SIZING_ENABLED','ATR_ADAPTIVE_SIZING_ENABLED','DC_EDGE_SIZING_ENABLED'):
+                    if hasattr(cfg,_f): setattr(cfg,_f,False)
+                cfg.STRUCTURAL_EXIT_GATE_ENABLED=False; cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER=False; cfg.NOLOSS_ENABLED=False; cfg.DC_RECOVERY_EXIT_ENABLED=False
+                cfg.K_ZONE_ENTRY_ENABLED=False; cfg.MFI_ENTRY_ENABLED=False; cfg.VWAP_FILTER_ENABLED=False; cfg.FH_MOMENTUM_ENABLED=False; cfg.DC_DAYTRADE_ENABLED=False; cfg.TRADIER_DC_DAYTRADE_ENABLED=False; cfg.PROFIT_TARGET_ENABLED=False; cfg.STOP_LOSS_ENABLED=False
+                cfg.STOCH_CROSS_1H_EXIT_ENABLED=False; cfg.MFI_FLIP_EXIT_ENABLED=False; cfg.WT_CROSSUNDER_FINAL_ENABLED=False; cfg.MI_EXIT_ENABLED=False
+                if hasattr(cfg,'LR_BAND_LADDER_ENABLED'): cfg.LR_BAND_LADDER_ENABLED=True
+                setattr(cfg,'_G0_PURE_BH',True)
+            except: pass
+        for k, v in (overrides or {}).items():
+            try:
+                setattr(cfg, k, v)
+            except Exception:
+                setattr(cfg, k, v)
+        if is_pure_bh_chart:
+            try: setattr(cfg,'_G0_PURE_BH',True)
+            except: pass
+        try:
+            ts_raw = npz.get("timestamps", npz.get(f"timestamp_{cfg.BASE_TF}", npz.get("timestamp_5m", npz.get("timestamp_3m"))))
+            if isinstance(ts_raw, _np.ndarray) and ts_raw.ndim>0 and len(ts_raw) > 0:
+                bars_per_month = 86400 * 30 // (5*60 if mode_is_tradier else 3*60)
+                keep = min(len(ts_raw), max(2000, months * bars_per_month))
+                if len(ts_raw) > keep:
+                    start = len(ts_raw) - keep
+                    def _slice2(v):
+                        try:
+                            if isinstance(v, _np.ndarray) and v.ndim>0 and len(v)==len(ts_raw):
+                                return v[start:]
+                        except Exception:
+                            pass
+                        return v
+                    npz = {k: _slice2(v) for k,v in npz.items()}
+        except Exception:
+            pass
+        # Chart must use force_initial_seed for pure B&H so 0 knobs = 1 FINAL_MTM hold, not 4128 scalps
+        if is_pure_bh_chart:
+            res = _vqe.simulate_one(npz, symbol, is_long, cfg, force_initial_seed=True)
+        else:
+            res = _vqe.simulate_one(npz, symbol, is_long, cfg)
+        if res is None:
+            return jsonify({"error": "simulate_one returned None"}), 500
+        trades = []
+        ledger = res.get("ledger") if isinstance(res, dict) else None
+        if isinstance(ledger, list) and ledger:
+            for idx, tr in enumerate(ledger):
+                try:
+                    entry_reason = str(tr.get("entry_reason") or tr.get("reason") or "VECTOR_ENTRY")
+                    exit_reason = str(tr.get("exit_reason") or tr.get("close_reason") or "VECTOR_EXIT")
+                    trades.append({"trade_id": tr.get("trade_id", f"vec_{idx}"), "symbol": symbol, "side": side, "venue": venue, "bar_entry": int(tr.get("bar_entry", tr.get("entry_bar", idx*10))), "bar_exit": int(tr.get("bar_exit", tr.get("exit_bar", idx*10+5))) if tr.get("bar_exit") is not None or tr.get("exit_bar") is not None else None, "entry_price": float(tr.get("entry_price", tr.get("price_entry", 0)) or 0), "exit_price": float(tr.get("exit_price", tr.get("price_exit", 0)) or 0), "qty": float(tr.get("qty", tr.get("quantity", 1)) or 1), "entry_reason": entry_reason, "exit_reason": exit_reason, "pnl_pct": float(tr.get("pnl_pct", tr.get("gain_pct", 0)) or 0), "bars_held": int(tr.get("bars_held", 0) or 0)})
+                except Exception:
+                    continue
+        if not trades:
+            # No synthetic fallback — every result must come from the real causal ledger.
+            # If ledger is empty but engine reports trades>0 (old return shape), synthesize
+            # a single MTM trade at the final bar so the chart never shows impossible
+            # 0→10, 20→30 10-bar flip-flops. Never fabricate 200 fake trades.
+            n_trades = int(res.get("trades") or 0)
+            if n_trades == 0:
+                trades = []
+            elif isinstance(res.get("ledger"), list) and not res.get("ledger"):
+                # engine returned ledger but empty — treat as 0 trades
+                trades = []
+            else:
+                # fallback for legacy shape: single MTM at final bar (not 200 fake flips)
+                pass
+        run_id = f"vec_chart_{symbol}_{side}_{int(_t.time())}"
+        out_dir = TRADES_DIR
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{run_id}__{symbol}.jsonl"
+        with out_path.open("w") as f:
+            for tr in trades:
+                f.write(json.dumps(tr) + "\n")
+        # meta for bar chart
+        try:
+            closes_arr = None
+            ts_arr = None
+            for ck in ("close_5m", "close_3m", "closes"):
+                if ck in npz and isinstance(npz[ck], _np.ndarray):
+                    closes_arr = _np.asarray(npz[ck], dtype=float).tolist()
+                    break
+            for tk in ("timestamps", f"timestamp_{cfg.BASE_TF}", "timestamp_5m", "timestamp_3m"):
+                if tk in npz and isinstance(npz[tk], _np.ndarray):
+                    ts_arr = _np.asarray(npz[tk]).astype(int).tolist()
+                    break
+            meta_path = out_dir / f"{run_id}__{symbol}.meta.json"
+            meta_path.write_text(json.dumps({"symbol": symbol, "side": side, "venue": venue, "bars": closes_arr[:5000] if closes_arr else [], "timestamps": ts_arr[:5000] if ts_arr else [], "trades": trades, "overrides": overrides}, indent=2))
+        except Exception:
+            pass
+        # Inline bars/trades for instant page chart — same payload as switch_lab_gateway
+        _bars_inline = closes_arr[:5000] if 'closes_arr' in locals() and closes_arr is not None else []
+        _ts_inline = ts_arr[:5000] if 'ts_arr' in locals() and ts_arr is not None else []
+        return jsonify({"status": "OK", "run_id": run_id, "symbol": symbol, "side": side, "trades": len(trades), "trades_detail": trades[:500], "bars": _bars_inline, "timestamps": _ts_inline, "path": str(out_path), "engine": "v8_quick_engine", "months": months, "venue": venue})
+    except Exception as exc:
+        import traceback
+        return jsonify({"error": f"vector chart generation failed: {exc}", "trace": traceback.format_exc()[:1200]}), 500
+
+
+@app.route("/api/switch_lab/dynamic_baselines")
+def switch_lab_dynamic_baselines():
+    """G0..G5 dynamic baselines — G0 is stdev ladder (S0B), G1..G5 are grouped by vec_combiner stages, sourced from latest S1/local vector results + on-disk baselines."""
+    import dataclasses as _dc
+    try:
+        import v8_quick_engine as _vqe2
+        all_fields = [f.name for f in _dc.fields(_vqe2.QuickConfig)]
+    except Exception:
+        all_fields = []
+    # Group definitions matching vec_combiner_v2.py
+    try:
+        import vec_combiner_v2 as _vc
+        G1 = list(_vc.G1_EXIT)
+        G2 = list(_vc.G2_ENTRY)
+        G3 = list(_vc.G3_REENTRY_SIZING)
+        G4 = list(_vc.G4_FILTERS)
+        G5 = list(getattr(_vc, 'G5_GUARDS', []))
+    except Exception:
+        # fallback categorization
+        G1 = [f for f in all_fields if f.endswith('_EXIT_ENABLED') and 'FILTER' not in f and 'GATE' not in f]
+        G2 = [f for f in all_fields if f.endswith('_ENTRY_ENABLED') and 'FILTER' not in f and 'GATE' not in f and 'REENTRY' not in f]
+        G3 = [f for f in all_fields if 'REENTRY' in f and f.endswith('_ENABLED')]
+        G4 = [f for f in all_fields if 'FILTER' in f or 'GATE' in f]
+        G5 = []
+    # Load static baselines
+    s0b = {}
+    good = {}
+    try:
+        s0b = json.loads((BASE_PATH / "data/reports/gui_lab/s0b_baseline.json").read_text())
+        if not isinstance(s0b, dict): s0b = {}
+    except Exception:
+        pass
+    try:
+        good = json.loads((BASE_PATH / "data/baselines/vector_good_baseline.json").read_text())
+        if not isinstance(good, dict): good = {}
+        # strip meta keys
+        good = {k:v for k,v in good.items() if not k.startswith('_')}
+    except Exception:
+        pass
+    # Load latest vector best per group
+    best_per_group = {}
+    try:
+        vr_path = BASE_PATH / "data/reports/gui_lab/vector_results.json"
+        raw = json.loads(vr_path.read_text())
+        rows = raw if isinstance(raw, list) else raw.get("results") if isinstance(raw, dict) else []
+        if isinstance(rows, list) and rows:
+            # sort by delta
+            rows_sorted = sorted(rows, key=lambda r: float(r.get("delta_vs_bh_per_mo_pct", -1e9)), reverse=True)
+            for grade, group in [("G1", G1), ("G2", G2), ("G3", G3), ("G4", G4), ("G5", G5)]:
+                for r in rows_sorted[:500]:
+                    ov = r.get("applied_overrides") or r.get("overrides") or {}
+                    if any(k in group for k in ov.keys()):
+                        best_per_group[grade] = ov
+                        break
+    except Exception:
+        pass
+    # Also try to fetch S1 dynamic baseline if available via local sync (vector_status best)
+    s1_best = {}
+    try:
+        vs = json.loads((BASE_PATH / "data/reports/gui_lab/vector_status.json").read_text())
+        bg = vs.get("best_goal") or {}
+        if isinstance(bg, dict) and bg.get("applied_overrides"):
+            s1_best = bg.get("applied_overrides") or {}
+    except Exception:
+        pass
+    # Compose G grades: G0 = S0B, G1..G5 = progressive merge of groups on top of S0B (so each grade is runnable)
+    grades = {}
+    grades["G0"] = {"label": "G0 stdev/LR ladder (S0B baseline)", "overrides": dict(s0b), "source": "data/reports/gui_lab/s0b_baseline.json"}
+    # progressive
+    cur = dict(s0b)
+    for grade, group in [("G1", G1), ("G2", G2), ("G3", G3), ("G4", G4), ("G5", G5)]:
+        # merge GOOD's values for this group if present, else best_per_group
+        src = {}
+        if best_per_group.get(grade):
+            src = best_per_group[grade]
+        elif s1_best and any(k in group for k in s1_best.keys()):
+            src = {k:v for k,v in s1_best.items() if k in group}
+        else:
+            # fallback: take GOOD's values for this group's params
+            src = {k:v for k,v in good.items() if k in group}
+        cur = {**cur, **{k:v for k,v in src.items() if k in group}}
+        grades[grade] = {"label": f"{grade} {'EXIT' if grade=='G1' else 'ENTRY' if grade=='G2' else 'REENTRY/SIZING' if grade=='G3' else 'FILTERS' if grade=='G4' else 'GUARDS'} — {len([k for k in cur if k in group])} switches from {'vector best' if grade in best_per_group else 'S1 best' if s1_best else 'GOOD baseline'}", "overrides": dict(cur), "group": group[:20], "source": "vector_results.json" if grade in best_per_group else "vector_status best_goal" if s1_best else "vector_good_baseline.json"}
+    # Also expose GOOD full baseline as G_GOOD
+    grades["GOOD"] = {"label": "GOOD v4 inclusive (hill-climbed)", "overrides": dict(good), "source": "data/baselines/vector_good_baseline.json"}
+    return jsonify({"grades": grades, "groups": {"G1": G1[:30], "G2": G2[:30], "G3": G3[:30], "G4": G4[:30], "G5": G5[:30]}})
+
+
+# ── Live Tradier runtime settings — mirrors tools/switch_lab_gateway.py live_config_payload ──
+# Single Flask now serves what the HTML expects on 5077; companion 5082 may be absent.
+_LIVE_CONFIG_LOCK = __import__("threading").Lock()
+
+def _live_config_payload(account: str, symbol: str, side: str) -> dict[str, Any]:
+    account = account.lower(); symbol = symbol.upper(); side = side.upper()
+    if account not in {"trb", "trc"} or not re.fullmatch(r"[A-Z0-9.]{1,12}", symbol) or side not in {"LONG", "SHORT"}:
+        return {"error": "invalid account, symbol, or side"}
+    import dataclasses as _dc
+    from config_tradier import TradierConfig
+    defaults = TradierConfig()
+    global_path = BASE_PATH / "data/hourly_reconfig/per_sym_active_config.json"
+    account_path = BASE_PATH / "data/hourly_reconfig" / account / "active_config.json"
+    trb_path = BASE_PATH / "data/hourly_reconfig/trb/active_config.json"
+    def _read_entry(path: Path) -> dict[str, Any]:
+        try:
+            raw = json.loads(path.read_text())
+            entry = raw.get(f"{symbol}_{side}")
+            return entry if isinstance(entry, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+    def _jsonable(v: Any) -> Any:
+        try:
+            if isinstance(v, (list, tuple)): return [_jsonable(x) for x in v]
+            if isinstance(v, dict): return {str(k): _jsonable(x) for k, x in v.items()}
+            if isinstance(v, (str, int, float, bool)) or v is None: return v
+            return json.loads(json.dumps(v, default=str))
+        except Exception: return str(v)
+    global_entry = _read_entry(global_path); trb_entry = _read_entry(trb_path); account_entry = _read_entry(account_path)
+    key = f"{symbol}_{side}"
+    global_overrides = global_entry.get("overrides") if isinstance(global_entry.get("overrides"), dict) else {}
+    trb_overrides = trb_entry.get("overrides") if isinstance(trb_entry.get("overrides"), dict) else {}
+    account_overrides = account_entry.get("overrides") if isinstance(account_entry.get("overrides"), dict) else {}
+    loaded_overrides = {**trb_overrides, **account_overrides}
+    full_recipe_path = BASE_PATH / "data/full_recipe_live_config.json"
+    full_recipe_overrides: dict[str, Any] = {}
+    try:
+        full_payload = json.loads(full_recipe_path.read_text())
+        full_entry = (full_payload.get("entries", {}) if isinstance(full_payload, dict) else {}).get(key, {})
+        if isinstance(full_entry, dict) and isinstance(full_entry.get("overrides"), dict):
+            full_recipe_overrides = full_entry["overrides"]
+    except (OSError, TypeError, json.JSONDecodeError): pass
+    final_book_path = BASE_PATH / "data/persym_final_book.json"
+    final_book_entry: dict[str, Any] = {}; final_book_side: Any = None
+    try:
+        final_book = json.loads(final_book_path.read_text())
+        tradeable = final_book.get("tradeable", {}) if isinstance(final_book, dict) else {}
+        disabled = final_book.get("disabled", []) if isinstance(final_book, dict) else []
+        if isinstance(tradeable, dict) and key in tradeable:
+            final_book_entry = tradeable[key] if isinstance(tradeable[key], dict) else {}; final_book_side = True
+        elif isinstance(disabled, list) and key in disabled:
+            final_book_side = False
+    except (OSError, TypeError, json.JSONDecodeError): pass
+    effective = {field.name: _jsonable(getattr(defaults, field.name)) for field in _dc.fields(defaults)}
+    effective.update(_jsonable(global_overrides)); effective.update(_jsonable(loaded_overrides)); effective.update(_jsonable(full_recipe_overrides))
+    if final_book_side is not None:
+        effective["LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"] = final_book_side
+    history: list = []
+    history_path = BASE_PATH / "data/tradier/history" / account / f"{symbol}_{side}.jsonl"
+    try:
+        for line in history_path.read_text().splitlines()[-250:]:
+            try:
+                row = json.loads(line)
+                if isinstance(row, dict): history.append(row)
+            except json.JSONDecodeError: continue
+    except OSError: pass
+    effective_for_side = {k: v for k, v in effective.items() if k not in (("SHORT_ENABLED", "WT_DC_SHORT_ENABLED") if side == "LONG" else ("LONG_ENABLED", "WT_DC_LONG_ENABLED"))}
+    return {"schema": "tradier-live-per-sym-v1", "account": account, "symbol": symbol, "side": side, "key": key, "effective": effective, "effective_for_side": effective_for_side, "account_overrides": account_overrides, "trb_overrides": trb_overrides, "loaded_overrides": loaded_overrides, "global_overrides": global_overrides, "account_entry": {k: v for k, v in account_entry.items() if k != "raw_returns"}, "global_entry": {k: v for k, v in global_entry.items() if k != "raw_returns"}, "history": history, "config_path": str(account_path), "account_config_path": str(account_path), "trb_baseline_config_path": str(trb_path), "global_config_path": str(global_path), "full_recipe_config_path": str(full_recipe_path), "final_book_config_path": str(final_book_path), "full_recipe_overrides": full_recipe_overrides, "final_book_entry": final_book_entry, "final_book_authorized": final_book_side, "source_label": f"TRB baseline → {account} punctual symbol/side overlay → shared per-symbol/defaults → final-book/full-recipe gates", "loaded_at": time.time()}
+
+def _update_live_config(payload: dict[str, Any]) -> dict[str, Any]:
+    account = str(payload.get("account", "trb")).lower(); symbol = str(payload.get("symbol", "")).upper(); side = str(payload.get("side", "LONG")).upper(); overrides = payload.get("overrides")
+    if account not in {"trb", "trc"} or not re.fullmatch(r"[A-Z0-9.]{1,12}", symbol) or side not in {"LONG", "SHORT"} or not isinstance(overrides, dict):
+        raise ValueError("account/symbol/side/overrides invalid")
+    import dataclasses as _dc2
+    from config_tradier import TradierConfig
+    allowed = {field.name for field in _dc2.fields(TradierConfig())}
+    allowed.update({"LONG_ENABLED","SHORT_ENABLED","NEWBORN_DC_STOP_ENABLED","NEWBORN_DC_STOP_MAX_AGE_MIN","NEWBORN_DC_STOP_FIELD","EMERGENCY_BRAKE_DC_STOP_ENABLED","EMERGENCY_BRAKE_DC_STOP_FIELD","HARD_MAX_SYMBOL_VALUE_TRADIER","BB4H_BREAKOUT_LADDER_ENABLED","BB4H_BREAKOUT_LADDER_TARGET_USD","BB4H_BREAKOUT_LADDER_BREAKOUT_PCT","BB4H_BREAKOUT_LADDER_BASIS_PCT","BB4H_BREAKOUT_LADDER_WT_CROSS_PCT","BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD","BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES","FAVORABLE_SLOPE_HOLD_ENABLED","STRUCTURE_FLIP_REENTRY_ENABLED","STRUCTURE_FLIP_REENTRY_TF","STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED","STRUCTURE_FLIP_REENTRY_BASIS_TF","BREAKEVEN_EXIT_AFTER_BARS_ENABLED","BREAKEVEN_EXIT_AFTER_BARS","BREAKEVEN_EXIT_AFTER_BARS_TF","BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT","BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE"})
+    if any(str(k) not in allowed for k in overrides):
+        raise ValueError("override contains an unknown Tradier setting")
+    path = BASE_PATH / "data/hourly_reconfig" / account / "active_config.json"
+    key = f"{symbol}_{side}"
+    with _LIVE_CONFIG_LOCK:
+        try: raw = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError): raw = {}
+        entry = raw.get(key) if isinstance(raw.get(key), dict) else {}
+        entry["overrides"] = {str(k): v for k, v in overrides.items()}; entry["live_switch_lab_updated_at"] = time.time(); entry["live_switch_lab_source"] = "switch_lab"
+        raw[key] = entry
+        tmp = path.with_suffix(".switch_lab.tmp"); tmp.write_text(json.dumps(raw, indent=2, sort_keys=True) + "\n"); os.replace(tmp, path)
+        audit = BASE_PATH / "data/hourly_reconfig/switch_lab_live_updates.jsonl"
+        try:
+            with audit.open("a") as stream: stream.write(json.dumps({"ts": time.time(), "account": account, "key": key, "overrides": overrides}) + "\n")
+        except OSError: pass
+    return _live_config_payload(account, symbol, side)
+
+@app.route("/api/switch_lab/live_config", methods=["GET"])
+def switch_lab_live_config_get():
+    account = request.args.get("account", "trb"); symbol = request.args.get("symbol", "GOOGL"); side = request.args.get("side", "LONG")
+    payload = _live_config_payload(account, symbol, side)
+    return jsonify(payload), 200 if "error" not in payload else 400
+
+@app.route("/api/switch_lab/live_config", methods=["POST"])
+def switch_lab_live_config_post():
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = _update_live_config(payload)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": f"live config update failed: {exc}"}), 500
+    return jsonify({"status": "APPLIED", "note": "tradier_manage reloads this file by mtime on its next decision", **result})
+
+@app.route("/api/switch_lab/reservation", methods=["POST"])
+def switch_lab_reservation():
+    """Reserve 0..6 S1 worker slots for GUI jobs without reviving legacy tests."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        reserved = int(payload.get("manual_reserved_workers"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "manual_reserved_workers must be an integer"}), 400
+    if not 0 <= reserved <= 6:
+        return jsonify({"error": "manual_reserved_workers must be 0 through 6"}), 400
+    compact = base64.b64encode(json.dumps({"manual_reserved_workers": reserved}).encode()).decode()
+    remote_python = (
+        "import base64,json,os; from pathlib import Path; "
+        "p=Path('/home/niels/binance-sandbox/data/reports/gui_lab/lab_config.json'); "
+        "p.parent.mkdir(parents=True,exist_ok=True); old=json.loads(p.read_text()) if p.exists() else {}; "
+        f"old.update(json.loads(base64.b64decode('{compact}'))); old['updated_at']=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(); "
+        "t=p.with_suffix('.tmp'); t.write_text(json.dumps(old,indent=2,sort_keys=True)+'\\n'); os.replace(t,p)"
+    )
+    try:
+        subprocess.run([*_GUI_LAB_SSH, f"python3 -c \"{remote_python}\""], timeout=20, check=True,
+                       capture_output=True, text=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return jsonify({"error": f"S1 reservation update failed: {type(exc).__name__}"}), 503
+    return jsonify({"status": "QUEUED", "manual_reserved_workers": reserved,
+                    "note": "The S1 supervisor applies the reservation within one minute."})
+
+
 @app.route("/focus4")
 def focus4_page():
     """LIVE test-progress board (USER 2026-07-20): focus-4 ladder cells, swing coverage,
@@ -392,6 +1162,9 @@ def focus4_page():
             "th{color:#6a7383;font-size:10px;text-transform:uppercase}td.l,th.l{text-align:left}",
             "a{color:#7fb069}.g{color:#5a9060}.r{color:#a04040}.dim{color:#6a7383;font-size:11px}</style></head><body>",
             "<h1>FOCUS-4 live test board <span class=dim>(auto-refresh 60s · DIAGNOSTIC n_syms=1 per key)</span></h1>",
+            "<div class=dim><b>HISTORICAL PRE-C4 DIAGNOSTIC / NOT CURRENT MATRIX RANKING.</b> "
+            "Current stock truth is the c5 <a href='/results'>/results</a> matrix panel. "
+            "Nothing on this page is a qualifier or promotion input.</div>",
             "<div class=dim>goal: gain_vs_bh &ge; 2.0 (target 10.0) &middot; up_capture = share of every &ge;10%% up-swing actually held</div>"]
     for sym in ("MU", "ARM", "ROKU", "NVDA"):
         cells = board.get(sym) or {}
@@ -415,13 +1188,13 @@ def focus4_page():
         html.append("</table>")
     rows = (cap.get("rows") or [])[:15]
     if rows:
-        html.append("<h2>B&amp;H winners capture scoreboard (campaign store)</h2><table>"
+        html.append("<h2>Historical B&amp;H capture scoreboard (pre-c4 diagnostic; qualifier floor 2x)</h2><table>"
                     "<tr><th class=l>key</th><th>b&amp;h/mo</th><th>gain/mo</th><th>capture</th><th>trades</th></tr>")
         for r in rows:
             c = r.get("capture_vs_bh")
             html.append("<tr><td class=l>%s</td><td>%s</td><td>%s</td><td class='%s'>%s</td><td>%s</td></tr>" % (
                 r.get("key"), r.get("bh_per_mo"), r.get("gain_per_mo"),
-                "g" if isinstance(c, (int, float)) and c >= 1 else "r", c, r.get("trades")))
+                "g" if isinstance(c, (int, float)) and c >= 2 else "r", c, r.get("trades")))
         html.append("</table>")
     import glob as _g
     sw = {}
@@ -433,8 +1206,8 @@ def focus4_page():
     if not sw:
         sw = _load("data/_diagnostic/switch_ladder/_all.json", {}) or {}
     if sw:
-        html.append("<h2>ADDITIVE-SWITCH TRACK &mdash; baseline = bare 5m WT-cross system "
-                    "<span class=dim>(only switches that INCREASE gain_vs_bh are kept)</span></h2>")
+        html.append("<h2>HISTORICAL ADDITIVE-SWITCH TRACK &mdash; baseline = bare 5m WT-cross system "
+                    "<span class=dim>(pre-c4 diagnostic; incremental improvement is not promotion)</span></h2>")
         for sym, blk in sw.items():
             b = blk.get("baseline", {})
             html.append("<h2 style='color:#7fb069'>%s &mdash; baseline %s&times; b&amp;h "
@@ -506,6 +1279,495 @@ def focus4_page():
     return "".join(html)
 
 
+def _matrix_progress_snapshot_path() -> Path:
+    configured = os.environ.get("MATRIX_PROGRESS_SNAPSHOT", "").strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    # Select the newest valid request across both vector pipelines. An old
+    # lifecycle selector must never hide a newer scalar campaign, and an old
+    # scalar selector must not hide a newer lifecycle campaign. Prefer the
+    # immutable request-bound pull snapshot; use the global producer snapshot
+    # only when it carries the exact selected request identity.
+    specs = (
+        (
+            "VECTOR_DISCOVERY",
+            "data/sync/VECTOR_DISCOVERY_PULL_REQUEST.json",
+            "vector-discovery-pull-request-v1",
+            "WATCH_FIXED_VECTOR_DISCOVERY_FROM_S1",
+            r"vd-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}",
+            "data/sync/vector_discovery_progress",
+        ),
+        (
+            "VECTOR_APPROX_SCALAR",
+            "data/sync/VECTOR_APPROX_SCALAR_PULL_REQUEST.json",
+            "vector-approx-scalar-pull-request-v1",
+            "WATCH_FIXED_SIX_SLOT_VECTOR_APPROX_SCALAR_FROM_S1",
+            r"vas-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}",
+            "data/sync/vector_approx_scalar_progress",
+        ),
+    )
+    candidates = []
+    now = time.time()
+    for (
+        kind,
+        selector_rel,
+        schema,
+        action,
+        request_pattern,
+        progress_rel,
+    ) in specs:
+        selector = Path(BASE_PATH) / selector_rel
+        try:
+            request = json.loads(selector.read_text(encoding="utf-8"))
+            request_id = str(request["request_id"])
+            requested_at = float(request["requested_at_epoch"])
+            if (
+                selector.is_symlink()
+                or request.get("schema") != schema
+                or request.get("action") != action
+                or not re.fullmatch(request_pattern, request_id)
+                or requested_at != requested_at
+                or requested_at <= 0
+                or requested_at > now + 300
+            ):
+                continue
+            bound = Path(BASE_PATH) / progress_rel / f"{request_id}.json"
+            bound_valid = False
+            if bound.is_file() and not bound.is_symlink():
+                snapshot = json.loads(bound.read_text(encoding="utf-8"))
+                bound_valid = snapshot.get("producer_request_id") == request_id
+            candidates.append(
+                {
+                    "kind": kind,
+                    "request_id": request_id,
+                    "requested_at_epoch": requested_at,
+                    "bound": bound if bound_valid else None,
+                }
+            )
+        except (
+            OSError,
+            ValueError,
+            TypeError,
+            KeyError,
+            json.JSONDecodeError,
+        ):
+            continue
+    candidates.sort(
+        key=lambda row: (row["requested_at_epoch"], row["request_id"]),
+        reverse=True,
+    )
+    global_snapshot = matrix_live_progress.default_snapshot_path(BASE_PATH)
+    global_request_id = None
+    try:
+        if global_snapshot.is_file() and not global_snapshot.is_symlink():
+            global_request_id = json.loads(
+                global_snapshot.read_text(encoding="utf-8")
+            ).get("producer_request_id")
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    for candidate in candidates:
+        if candidate["bound"] is not None:
+            return candidate["bound"]
+        if global_request_id == candidate["request_id"]:
+            return global_snapshot
+    return global_snapshot
+
+
+def _overlay_vector_terminal_summary(payload: dict) -> dict:
+    """Attach request-bound terminal counters; never infer them from rates."""
+    request_id = str(payload.get("producer_request_id") or "")
+    lifecycle = bool(
+        re.fullmatch(r"vd-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}", request_id)
+    )
+    scalar = bool(
+        re.fullmatch(r"vas-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}", request_id)
+    )
+    if not lifecycle and not scalar:
+        return payload
+    if lifecycle:
+        if payload.get("producer_state") != "VECTOR_DISCOVERY_COMPLETE":
+            return payload
+        path = (
+            Path(BASE_PATH)
+            / "data/sync/vector_discovery_terminal_summary"
+            / f"{request_id}.json"
+        )
+        schema = "vector-discovery-terminal-summary-v1"
+    else:
+        path = (
+            Path(BASE_PATH)
+            / "data/sync/vector_approx_scalar_terminal_summary"
+            / f"{request_id}.json"
+        )
+        schema = "vector-approx-scalar-terminal-summary-v1"
+    try:
+        if path.is_symlink():
+            return payload
+        summary = json.loads(path.read_text(encoding="utf-8"))
+        if (
+            summary.get("schema") != schema
+            or summary.get("request_id") != request_id
+            or not str(summary.get("s1_status") or "").startswith(
+                ("COMPLETE_", "TERMINAL_")
+            )
+        ):
+            return payload
+        if lifecycle:
+            fields = (
+                "cohort_key_count",
+                "ready_key_count",
+                "candidate_recipe_count",
+                "accepted_vector_recipe_count",
+                "authoritative_engine_pass_cell_count",
+                "authoritative_matrix_write_count",
+            )
+        else:
+            fields = (
+                "key_count",
+                "terminal_key_count",
+                "keys_remaining",
+                "strict_passed_cell_count",
+                "raw_result_row_count",
+                "authoritative_engine_pass_cell_count",
+                "authoritative_matrix_write_count",
+            )
+        counters = {field: int(summary[field]) for field in fields}
+        if any(value < 0 for value in counters.values()):
+            return payload
+        if lifecycle and (
+            counters["ready_key_count"] > counters["cohort_key_count"]
+            or counters["accepted_vector_recipe_count"]
+            > counters["candidate_recipe_count"]
+        ):
+            return payload
+        if scalar and (
+            counters["terminal_key_count"] > counters["key_count"]
+            or counters["keys_remaining"]
+            != counters["key_count"] - counters["terminal_key_count"]
+            or counters["raw_result_row_count"]
+            < counters["strict_passed_cell_count"]
+        ):
+            return payload
+        counter_payload = {
+            "authority": summary.get("authority"),
+            "request_id": request_id,
+            "source_receipt_sha256": summary.get(
+                "source_receipt_sha256"
+            ),
+            **counters,
+        }
+        if lifecycle:
+            payload["terminal_campaign_counters"] = counter_payload
+        else:
+            for optional in (
+                "ranked_exact_candidate_count",
+                "moved_cell_count",
+                "inert_cell_count",
+                "zero_trade_cell_count",
+            ):
+                if optional in summary:
+                    value = int(summary[optional])
+                    if value < 0:
+                        return payload
+                    counter_payload[optional] = value
+            payload["terminal_scalar_counters"] = counter_payload
+            ready = str(summary.get("s1_status")) == "COMPLETE_READY"
+            payload["producer_state"] = (
+                "VECTOR_APPROX_SCALAR_COMPLETE"
+                if ready
+                else "VECTOR_APPROX_SCALAR_TERMINAL_BLOCKED"
+            )
+            payload["producer_terminal"] = True
+            payload["producer_health_status"] = (
+                "TERMINAL_COMPLETE" if ready else "TERMINAL_BLOCKED"
+            )
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+        if scalar:
+            # A preflight failure has no fleet receipt, therefore no terminal
+            # scalar summary. The request-bound pulled S1 status is still
+            # authoritative for terminality and must not be displayed as a
+            # running six-worker campaign.
+            status_path = (
+                Path(BASE_PATH)
+                / "data/reports/vector_approx_scalar_s1_pulls"
+                / request_id
+                / "S1_VECTOR_APPROX_SCALAR_STATUS.json"
+            )
+            try:
+                terminal = json.loads(status_path.read_text(encoding="utf-8"))
+                terminal_status = str(terminal.get("status") or "")
+                if (
+                    status_path.is_symlink()
+                    or terminal.get("request_id") != request_id
+                    or not terminal_status.startswith(("COMPLETE_", "TERMINAL_"))
+                    or any(
+                        terminal.get(field) is not False
+                        for field in (
+                            "exact_v8_invoked",
+                            "live_config_write_attempted",
+                            "database_write_attempted",
+                            "workbook_write_attempted",
+                            "matrix_write_attempted",
+                            "canonical_write_attempted",
+                        )
+                    )
+                ):
+                    return payload
+                ready = terminal_status == "COMPLETE_READY"
+                payload["producer_state"] = (
+                    "VECTOR_APPROX_SCALAR_COMPLETE"
+                    if ready
+                    else "VECTOR_APPROX_SCALAR_TERMINAL_BLOCKED"
+                )
+                payload["producer_terminal"] = True
+                payload["producer_health_status"] = (
+                    "TERMINAL_COMPLETE" if ready else "TERMINAL_BLOCKED"
+                )
+                payload["producer_terminal_reason"] = terminal.get("reason")
+                payload["accepted_cells_per_minute"] = 0.0
+                payload["candidate_recipes_per_minute"] = 0.0
+                payload["accepted_recipes_per_minute"] = 0.0
+                for worker in payload.get("workers") or []:
+                    worker["status"] = "TERMINAL"
+                    worker["stage"] = "TERMINAL_BLOCKED"
+                    worker["candidate_recipes_per_minute"] = 0.0
+                    worker["accepted_recipes_per_minute"] = 0.0
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                pass
+    return payload
+
+
+def _overlay_matrix_canonical_summary(payload: dict) -> dict:
+    """Overlay a tiny precomputed count receipt; never query the matrix here."""
+    path = Path(BASE_PATH) / "chart_static/matrix_canonical_summary.json"
+    try:
+        summary = json.loads(path.read_text(encoding="utf-8"))
+        if (
+            summary.get("schema") != "switch-matrix-canonical-summary-v1"
+            or summary.get("status") != "PASS"
+        ):
+            return payload
+        for field in (
+            "total_cells",
+            "exact_verified",
+            "provisional_filled",
+            "cells_remaining",
+            "exact_cells_remaining",
+            "quarantined_cells",
+        ):
+            value = int(summary[field])
+            if value < 0:
+                return payload
+            payload[field] = value
+        payload["canonical_summary_updated_at_epoch"] = float(
+            summary["updated_at_epoch"]
+        )
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+        pass
+    return payload
+
+
+def _normalize_scalar_request_rates(payload: dict) -> dict:
+    """Remove rates carried from a prior campaign during scalar setup stages."""
+    request_id = str(payload.get("producer_request_id") or "")
+    if not re.fullmatch(
+        r"vas-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}", request_id
+    ):
+        return payload
+    setup_stages = {
+        "WAITING_SYNC",
+        "CAUSAL_NPZ_PRECOMPUTE",
+        "CORE_LADDER_FLOOR_VALIDATION",
+    }
+    workers = payload.get("workers") or []
+    for worker in workers:
+        if str(worker.get("stage") or "") in setup_stages:
+            worker["candidate_recipes_per_minute"] = 0.0
+            worker["accepted_recipes_per_minute"] = 0.0
+            worker["candidate_recipe_count"] = 0
+            worker["accepted_recipe_count"] = 0
+    payload["candidate_recipes_per_minute"] = sum(
+        float(worker.get("candidate_recipes_per_minute") or 0.0)
+        for worker in workers
+    )
+    payload["accepted_recipes_per_minute"] = sum(
+        float(worker.get("accepted_recipes_per_minute") or 0.0)
+        for worker in workers
+    )
+    return payload
+
+
+def _overlay_lifecycle_branch_progress(payload: dict) -> dict:
+    """Expose durable pulled branch batches while a lifecycle key is running.
+
+    The S1 runner publishes final per-key counters only when a key terminates.
+    Each beam log line is nevertheless a durable request-bound receipt for one
+    evaluated entry-family batch. Count those recipes as vector candidates,
+    never as accepted recipes, matrix cells, or ENGINE evidence.
+    """
+    request_id = str(payload.get("producer_request_id") or "")
+    if (
+        not re.fullmatch(r"vd-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}", request_id)
+        or str(payload.get("producer_state") or "")
+        != "VECTOR_DISCOVERY_RUNNING"
+    ):
+        return payload
+    selector = Path(BASE_PATH) / "data/sync/VECTOR_DISCOVERY_PULL_REQUEST.json"
+    try:
+        request = json.loads(selector.read_text(encoding="utf-8"))
+        if request.get("request_id") != request_id:
+            return payload
+        elapsed_minutes = max(
+            (time.time() - float(request["requested_at_epoch"])) / 60.0,
+            1.0 / 60.0,
+        )
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+        return payload
+    keys_root = (
+        Path(BASE_PATH)
+        / "data/reports/vector_discovery_pulls"
+        / request_id
+        / "path_productivity_hotlist/keys"
+    )
+    total_candidates = 0
+    workers = payload.get("workers") or []
+    for worker in workers:
+        symbol = str(worker.get("symbol") or "").upper()
+        side = str(worker.get("side") or "").upper()
+        if not symbol or side not in {"LONG", "SHORT"}:
+            continue
+        log = keys_root / f"{symbol}_{side}" / "beam.log"
+        candidates = 0
+        strict_survivors = 0
+        last_entry = None
+        try:
+            if log.is_symlink():
+                continue
+            for line in log.read_text(encoding="utf-8", errors="replace").splitlines()[-100:]:
+                try:
+                    row = json.loads(line)
+                    count = int(row.get("candidates", 0))
+                    survivors = int(row.get("strict_survivors", 0))
+                    if count < 0 or survivors < 0 or survivors > count:
+                        continue
+                    if count:
+                        candidates += count
+                        strict_survivors += survivors
+                        last_entry = str(row.get("entry") or last_entry or "")
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    continue
+        except OSError:
+            continue
+        if not candidates:
+            continue
+        total_candidates += candidates
+        worker["parameter"] = last_entry or worker.get("parameter")
+        worker["combination"] = "ENTRY×BOUNDED_EXIT_BEAM×REENTER"
+        worker["candidate_recipe_count"] = candidates
+        worker["candidate_recipes_per_minute"] = round(
+            candidates / elapsed_minutes, 3
+        )
+        worker["branch_strict_survivor_count"] = strict_survivors
+        worker["candidate_throughput_source"] = (
+            "REQUEST_BOUND_PULLED_BEAM_LOG_CUMULATIVE_SINCE_REQUEST"
+        )
+    if total_candidates:
+        payload["candidate_recipes_per_minute"] = round(
+            total_candidates / elapsed_minutes, 3
+        )
+        payload["candidate_recipe_count"] = total_candidates
+        payload["candidate_throughput_source"] = (
+            "REQUEST_BOUND_PULLED_BEAM_LOG_CUMULATIVE_SINCE_REQUEST"
+        )
+    return payload
+
+
+@app.route("/api/matrix_live_progress")
+@app.route("/api/matrix_progress")
+def matrix_live_progress_api():
+    """Serve one precomputed JSON snapshot; never query matrix databases here."""
+    try:
+        stale_after = int(os.environ.get("MATRIX_PROGRESS_STALE_SECONDS", "90"))
+        payload = matrix_live_progress.dashboard_snapshot(
+            _matrix_progress_snapshot_path(), stale_after_seconds=stale_after
+        )
+        payload = _normalize_scalar_request_rates(payload)
+        payload = _overlay_lifecycle_branch_progress(payload)
+        payload = _overlay_vector_terminal_summary(payload)
+        payload = _overlay_matrix_canonical_summary(payload)
+        return _no_cache(jsonify(payload))
+    except Exception as exc:
+        return _no_cache(
+            jsonify(
+                {
+                    "schema": matrix_live_progress.SCHEMA,
+                    "error": "matrix progress snapshot unavailable",
+                    "detail": str(exc),
+                    "workers": [],
+                }
+            )
+        ), 500
+
+
+@app.route("/matrix_live_progress")
+@app.route("/matrix_progress")
+def matrix_live_progress_page():
+    """Six-slot SWITCH_MATRIX_TRB progress window, refreshed every three seconds."""
+    page = r"""<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SWITCH_MATRIX_TRB live progress</title>
+<style>
+:root{color-scheme:dark}body{margin:0;background:#0b0e13;color:#e8edf4;font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1500px;margin:auto;padding:20px}h1{font-size:22px;margin:0 0 4px}.sub{color:#8d99a8;font-size:12px}
+.summary{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.card{background:#141923;border:1px solid #293240;border-radius:8px;padding:10px 14px;min-width:150px}
+.value{font-size:24px;font-weight:700}.label{color:#8d99a8;font-size:11px;text-transform:uppercase}.badge{display:inline-block;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700}
+.fresh{background:#173e2b;color:#70e6a6}.stale{background:#56251e;color:#ff9a87}.waiting{background:#303745;color:#b9c1cc}.complete{background:#173653;color:#8dccff}
+.tablewrap{overflow-x:auto;border:1px solid #293240;border-radius:8px}table{border-collapse:collapse;width:100%;min-width:1180px}th,td{padding:9px 10px;border-bottom:1px solid #222a35;text-align:left;vertical-align:top}
+th{color:#88c7ff;background:#141923;font-size:11px;text-transform:uppercase}tr:last-child td{border-bottom:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.error{color:#ff9a87}
+a{color:#88c7ff}
+</style></head><body><main>
+<h1>SWITCH_MATRIX_TRB live progress <span id="health" class="badge waiting">LOADING</span></h1>
+<div class="sub">Six worker slots · worker-emitted throughput only · sync/dashboard freshness never counts as production · polling every 3 seconds · <a href="/results">current results</a></div>
+<div class="summary">
+ <div class="card"><div id="producer" class="value">—</div><div class="label">producer state</div></div>
+ <div class="card"><div id="accepted" class="value">0</div><div class="label">last worker-emitted accepted cells / minute (ENGINE PASS)</div></div>
+ <div class="card"><div id="candidates" class="value">0</div><div class="label">last worker-emitted vector candidates / minute</div></div>
+ <div class="card"><div id="vectorAccepted" class="value">0</div><div class="label">last worker-emitted vector accepted / minute</div></div>
+ <div class="card"><div id="candidateTotal" class="value">—</div><div class="label">terminal cumulative vector candidates</div></div>
+ <div class="card"><div id="vectorAcceptedTotal" class="value">—</div><div class="label">terminal cumulative vector accepted</div></div>
+ <div class="card"><div id="enginePassTotal" class="value">—</div><div class="label">terminal cumulative engine-pass cells</div></div>
+ <div class="card"><div id="scalarStrictTotal" class="value">—</div><div class="label">terminal scalar strict-pass cells</div></div>
+ <div class="card"><div id="scalarExactQueueTotal" class="value">—</div><div class="label">terminal scalar exact-queue candidates</div></div>
+ <div class="card"><div id="scalarKeysTotal" class="value">—</div><div class="label">terminal scalar keys complete</div></div>
+ <div class="card"><div id="rejected" class="value">0</div><div class="label">run-window rejected</div></div>
+ <div class="card"><div id="quarantined" class="value">0</div><div class="label">run-window quarantined</div></div>
+ <div class="card"><div id="filled" class="value">—</div><div class="label">provisional filled</div></div>
+ <div class="card"><div id="exact" class="value">—</div><div class="label">exact verified</div></div>
+ <div class="card"><div id="remaining" class="value">—</div><div class="label">authoritative matrix cells remaining</div></div>
+ <div class="card"><div id="vectorRemaining" class="value">—</div><div class="label">vector keys remaining</div></div>
+ <div class="card"><div id="updated" class="value" style="font-size:14px">—</div><div class="label">active worker timestamp</div></div>
+</div>
+<div id="freshnessDetail" class="sub" style="margin:-10px 0 18px">—</div>
+<div class="card" style="margin-bottom:18px"><div class="label">uniqueness blocker · states never merged</div><div id="canonicalBlocker" class="value" style="font-size:17px">—</div><div id="prospectiveAudit" class="sub">prospective repaired-code audit: —</div><div id="syncState" class="sub">sync: —</div></div>
+<div id="error" class="error"></div>
+<div class="tablewrap"><table><thead><tr><th>slot</th><th>worker</th><th>run class</th><th>parameter / path family</th><th>value</th><th>symbol</th><th>side</th><th>combination</th><th>stage</th><th>status</th><th>ENGINE PASS cells/min</th><th>vector candidates/min</th><th>vector accepted/min</th><th>acceptance proof</th><th>rejected</th><th>quarantined</th><th>last update</th><th>matrix cells remaining</th><th>vector keys remaining</th><th>health</th></tr></thead><tbody id="workers"></tbody></table></div>
+<script>
+const dash=x=>(x===null||x===undefined||x==='')?'—':String(x);
+function cell(row,value,cls=''){const td=document.createElement('td');td.textContent=dash(value);if(cls)td.className=cls;row.appendChild(td)}
+function badge(stale,waiting,paused=false,complete=false){const span=document.createElement('span');span.className='badge '+(complete?'complete':paused||waiting?'waiting':stale?'stale':'fresh');span.textContent=complete?'COMPLETE · HEARTBEAT STOPPED':paused?'PAUSED':waiting?'WAITING':stale?'STALE':'LIVE';return span}
+function count(value,total){return value==null?'—':`${value}${total==null?'':' / '+total}`}
+function render(data){
+ const paused=data.producer_state==='PAUSED';const terminalComplete=data.producer_health_status==='TERMINAL_COMPLETE';const terminalBlocked=data.producer_health_status==='TERMINAL_BLOCKED';const state=String(data.producer_state||'');const vectorState=state.startsWith('VECTOR_DISCOVERY')||state.startsWith('VECTOR_APPROX_SCALAR');const total=data.total_cells;const terminal=data.terminal_campaign_counters||{};const scalarTerminal=data.terminal_scalar_counters||{};document.getElementById('producer').textContent=dash(data.producer_state);document.getElementById('accepted').textContent=paused?'0':dash(data.accepted_cells_per_minute);document.getElementById('candidates').textContent=dash(data.candidate_recipes_per_minute);document.getElementById('vectorAccepted').textContent=dash(data.accepted_recipes_per_minute);document.getElementById('candidateTotal').textContent=dash(terminal.candidate_recipe_count);document.getElementById('vectorAcceptedTotal').textContent=dash(terminal.accepted_vector_recipe_count);document.getElementById('enginePassTotal').textContent=dash(terminal.authoritative_engine_pass_cell_count??scalarTerminal.authoritative_engine_pass_cell_count);document.getElementById('scalarStrictTotal').textContent=dash(scalarTerminal.strict_passed_cell_count);document.getElementById('scalarExactQueueTotal').textContent=dash(scalarTerminal.ranked_exact_candidate_count);document.getElementById('scalarKeysTotal').textContent=scalarTerminal.terminal_key_count==null?'—':`${scalarTerminal.terminal_key_count} / ${dash(scalarTerminal.key_count)}`;document.getElementById('rejected').textContent=dash(data.rejected_cells);document.getElementById('quarantined').textContent=dash(data.quarantined_cells);document.getElementById('filled').textContent=count(data.provisional_filled,total);document.getElementById('exact').textContent=count(data.exact_verified,total);document.getElementById('remaining').textContent=dash(data.cells_remaining);document.getElementById('vectorRemaining').textContent=dash(data.vector_keys_remaining);document.getElementById('updated').textContent=dash(vectorState?data.vector_updated_at:data.production_updated_at);document.getElementById('freshnessDetail').textContent=terminalComplete?`terminal receipt complete · cumulative counters are receipt-backed · worker heartbeat stopped as expected · heartbeat stale: ${dash(data.heartbeat_stale)} · age: ${dash(data.snapshot_age_seconds)}s`:terminalBlocked?`terminal receipt blocked · no running heartbeat · heartbeat stale: ${dash(data.heartbeat_stale)} · age: ${dash(data.snapshot_age_seconds)}s`:`producer health: ${dash(data.producer_health_status)} · heartbeat stale: ${dash(data.heartbeat_stale)} · age: ${dash(data.snapshot_age_seconds)}s`;
+ const panel=data.blocker_panel||{};const canonical=panel.canonical_uniqueness||{};const prospective=panel.prospective_repaired_code_audit||{};const sync=panel.sync||{};document.getElementById('canonicalBlocker').textContent=`CANONICAL ${dash(canonical.status)} · ${dash(canonical.quarantined_numeric_overlays)} quarantined · ${dash(canonical.metric_collision_groups)} metric groups · ${dash(canonical.fingerprint_collision_groups)} action groups`;document.getElementById('prospectiveAudit').textContent=`prospective repaired-code audit: ${dash(prospective.status)} (non-canonical; never substituted)`;document.getElementById('syncState').textContent=`report receipt: ${dash(sync.status)} · continuous transport: ${dash(sync.transport_status)} / ${dash(sync.transport_phase)} · independent of production and uniqueness`;
+ const health=document.getElementById('health');health.className='badge '+(terminalComplete?'complete':terminalBlocked?'stale':paused?'waiting':data.stale?'stale':'fresh');health.textContent=terminalComplete?'COMPLETE':terminalBlocked?'TERMINAL BLOCKED':paused?'PAUSED':data.stale?'STALE':'LIVE';document.getElementById('error').textContent=data.error||'';
+ const body=document.getElementById('workers');body.replaceChildren();for(const w of (data.workers||[])){const row=document.createElement('tr');const wp=String(w.status||'').startsWith('PAUSED');const wc=terminalComplete&&['COMPLETE','COMPLETE_STRICT','RESUMED_COMPLETE'].includes(w.status);cell(row,w.slot);cell(row,w.worker_id,'mono');cell(row,w.run_class);cell(row,w.parameter,'mono');cell(row,w.value,'mono');cell(row,w.symbol);cell(row,w.side);cell(row,w.combination,'mono');cell(row,w.stage);cell(row,w.status);cell(row,wp?0:w.accepted_cells_per_minute);cell(row,w.candidate_recipes_per_minute);cell(row,w.accepted_recipes_per_minute);cell(row,w.accepted_throughput_status);cell(row,w.rejected_cells);cell(row,w.quarantined_cells);cell(row,w.last_update,'mono');cell(row,w.cells_remaining);cell(row,w.keys_remaining);const td=document.createElement('td');td.appendChild(badge(w.stale,w.last_update_epoch==null,wp,wc));row.appendChild(td);body.appendChild(row)}
+}
+async function refresh(){try{const response=await fetch('/api/matrix_live_progress',{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.detail||data.error||`HTTP ${response.status}`);render(data)}catch(error){const h=document.getElementById('health');h.className='badge stale';h.textContent='STALE';document.getElementById('error').textContent=String(error)}}
+refresh();setInterval(refresh,3000);
+</script></main></body></html>"""
+    return _no_cache(app.response_class(page, mimetype="text/html"))
+
+
 @app.route("/heatmap")
 @app.route("/heatmap.html")
 def heatmap_page():
@@ -524,6 +1786,10 @@ def trb_review(mode=None):
     """Audited per_sym-applied-to-live review (stocks trb/trc/tra + crypto). Shows each
     symbol's applied config, previous config, and backtest sharpe/gain. Filter via
     /trb_review/<trb|trc|tra|crypto>."""
+    if mode is None and not request.args.get("mode"):
+        return _no_cache(
+            send_from_directory(app.static_folder, "trb_review.html")
+        )
     import json as _json
     CFG = {"crypto": BASE_PATH / "data" / "hourly_reconfig" / "per_sym_active_config.json",
            "trb": BASE_PATH / "data" / "hourly_reconfig" / "trb" / "active_config.json",
@@ -641,6 +1907,15 @@ def _results_fmt_pct(v):
 
 def _results_section_html(rep):
     mode_label = "CRYPTO (USDT/USDC)" if rep["mode"] == "crypto" else "STOCKS"
+    cost_pct = float(
+        rep.get(
+            "round_trip_cost_pct",
+            results_dashboard_lib.ROUND_TRIP_COST_PCT[rep["mode"]],
+        )
+    )
+    min_bh_multiple = float(
+        rep.get("minimum_bh_multiple", results_dashboard_lib.MIN_BH_MULTIPLE)
+    )
     cov_pct = (100.0 * rep["real_engine_confirmed_keys"] / rep["vec_screened_keys"]) if rep["vec_screened_keys"] else 0.0
     cards = "".join(
         "<div class='card'><div class='card_n'>%s</div><div class='card_l'>%s</div></div>" % (n, l)
@@ -648,13 +1923,14 @@ def _results_section_html(rep):
             (rep["total_keys"], "total keys (live-applied config)"),
             (rep["enabled_keys"], "ENABLED (trading)"),
             (rep["gated_off_keys"], "GATED OFF (real-engine negative)"),
-            (rep["winners_count"], "winners (real-engine &gt;0.5)"),
+            (rep["winners_count"], "qualifiers (&gt;0.5 Sharpe + &ge;2x B&amp;H)"),
             (rep["mid_count"], "0&ndash;0.5 (real-engine, sub-threshold)"),
-            (rep["rescued_count"], "rescued &gt;0.5 this run"),
+            (rep["rescued_count"], "rescued + &ge;2x B&amp;H this run"),
         ])
     def _wrow(w):
         return ("<tr><td>%s</td><td class='g'><b>%s</b></td><td>%s</td><td>%s</td><td>%s</td></tr>" %
-                (w["key"], _results_fmt_sharpe(w.get("real_sharpe")), _results_fmt_pct(w.get("gain_vs_bh")),
+                (w["key"], _results_fmt_sharpe(w.get("real_sharpe")),
+                 ("%.3fx" % w["bh_multiple"]) if isinstance(w.get("bh_multiple"), (int, float)) else "&mdash;",
                  w.get("trades", "&mdash;"), (w.get("date") or "")[:19]))
     def _grow(g):
         return ("<tr><td>%s</td><td class='r'>%s</td><td>%s</td><td>%s</td></tr>" %
@@ -671,39 +1947,207 @@ def _results_section_html(rep):
     <section class='modeblock'>
       <h2>%s</h2>
       <div class='cards'>%s</div>
+      <p class='cov'>reporting contract: <b>%.2f%% round trip</b> for %s;
+      a qualifier requires an actual B&amp;H multiple &ge;%.1fx. A percentage-point
+      difference is never relabeled as a multiple.</p>
       <p class='cov'>coverage: <b>%d/%d</b> vec-screened keys real-engine-confirmed (%.0f%%) &middot; %d still vec-screen-only [DIAGNOSTIC]</p>
-      <h3>Winners &mdash; real-engine <code>real_sharpe_1sym</code> &gt; 0.5 (sorted best-first)</h3>
-      <table class='t'><tr><th>key</th><th>real_sharpe_1sym</th><th>gain_vs_bh</th><th>trades</th><th>confirmed</th></tr>%s</table>
+      <h3>Qualifiers &mdash; real-engine <code>real_sharpe_1sym</code> &gt; 0.5 and actual B&amp;H multiple &ge;%.1fx (sorted best-first)</h3>
+      <table class='t'><tr><th>key</th><th>real_sharpe_1sym</th><th>B&amp;H multiple</th><th>trades</th><th>confirmed</th></tr>%s</table>
       <h3>Gated off &mdash; real-engine negative, NOT trading live</h3>
       <table class='t'><tr><th>key</th><th>real_sharpe_1sym</th><th>trades</th><th>gated</th></tr>%s</table>
-      <h3>Rescued this run &mdash; reopt search lifted vec false-negatives to real-engine &gt;0.5</h3>
+      <h3>Rescued this run &mdash; reopt search lifted vec false-negatives above Sharpe and 2x B&amp;H floors</h3>
       <table class='t'><tr><th>key</th><th>before &rarr; after real_sharpe_1sym</th><th>when</th><th>what changed</th></tr>%s</table>
-    </section>""" % (mode_label, cards, rep["real_engine_confirmed_keys"], rep["vec_screened_keys"], cov_pct,
-                      rep["vec_only_keys"], winners_rows, gated_rows, rescued_rows)
+    </section>""" % (
+        mode_label,
+        cards,
+        cost_pct,
+        rep["mode"],
+        min_bh_multiple,
+        rep["real_engine_confirmed_keys"],
+        rep["vec_screened_keys"],
+        cov_pct,
+        rep["vec_only_keys"],
+        min_bh_multiple,
+        winners_rows,
+        gated_rows,
+        rescued_rows,
+    )
+
+
+def _current_stock_matrix_html():
+    """Current stock truth for /results.
+
+    The former stock panel read the July-8 reopt/vec-baseline files and called a
+    positive single-symbol Sharpe a winner even when it was below B&H.  Those
+    files are a separate legacy diagnostic lane, not the repaired matrix.
+    """
+    path = BASE_PATH / "data" / "reports" / "SWITCH_MATRIX_TRB_DIGEST.md"
+    provenance_path = path.with_suffix(path.suffix + ".provenance.json")
+    matrix_path = (
+        BASE_PATH / "data" / "reports" / "SWITCH_MATRIX_TRB.csv.gz"
+    )
+    current_contract = "CURRENT_CONTRACT_UNAVAILABLE"
+    try:
+        body = path.read_text(errors="replace")
+        provenance = json.loads(provenance_path.read_text())
+        with gzip.open(matrix_path, "rt") as handle:
+            matrix_metadata = {}
+            for line in handle:
+                if not line.startswith("#"):
+                    break
+                if "=" in line:
+                    name, value = line[1:].strip().split("=", 1)
+                    matrix_metadata[name.strip()] = value.strip()
+        age_s = max(0.0, time.time() - path.stat().st_mtime)
+        age = "%.1fh" % (age_s / 3600.0)
+        source = str(path.relative_to(BASE_PATH))
+        current_campaign = next(
+            iter(results_dashboard_lib.CURRENT_STOCK_CAMPAIGNS)
+        )
+        required_markers = (
+            "campaign `%s`" % current_campaign,
+            "Current repaired-contract ENGINE rows",
+            "Historical/pre-fix ENGINE rows quarantined",
+        )
+        errors = []
+        if not all(marker in body for marker in required_markers):
+            errors.append("required current/quarantine markers missing")
+        if provenance.get("schema") != "switch-matrix-trb-current-digest-v1":
+            errors.append("wrong provenance schema")
+        if provenance.get("campaign") != current_campaign:
+            errors.append("wrong campaign")
+        current_contract = str(provenance.get("contract_version") or "")
+        if (
+            not current_contract.startswith("tradier-matrix-exec-c")
+            or matrix_metadata.get("CURRENT_CONTRACT_VERSION")
+            != current_contract
+        ):
+            errors.append("digest/matrix exact contract mismatch")
+        if (
+            matrix_metadata.get("CURRENT_CAMPAIGN")
+            != current_campaign
+            or matrix_metadata.get("CURRENT_MATRIX_SCOPE")
+            != "CURRENT_CAMPAIGN_CURRENT_CODE_NPZ_SIDE_FINGERPRINTS_ONLY"
+            or matrix_metadata.get("CANONICAL_MATRIX")
+            != "data/reports/SWITCH_MATRIX_TRB.csv.gz"
+        ):
+            errors.append("canonical matrix metadata mismatch")
+        if (
+            provenance.get("matrix_scope")
+            != "CURRENT_CAMPAIGN_CURRENT_CODE_NPZ_SIDE_FINGERPRINTS_ONLY"
+        ):
+            errors.append("wrong matrix scope")
+        if (
+            provenance.get("canonical_matrix")
+            != "data/reports/SWITCH_MATRIX_TRB.csv.gz"
+        ):
+            errors.append("wrong canonical matrix path")
+        if (
+            hashlib.sha256(path.read_bytes()).hexdigest()
+            != provenance.get("digest_sha256")
+        ):
+            errors.append("digest hash mismatch")
+        if (
+            not matrix_path.is_file()
+            or hashlib.sha256(matrix_path.read_bytes()).hexdigest()
+            != provenance.get("canonical_matrix_sha256")
+        ):
+            errors.append("canonical matrix missing or hash mismatch")
+        policy = provenance.get("tim_policy")
+        if not isinstance(policy, dict) or len(policy) != int(
+            provenance.get("active_key_count") or -1
+        ):
+            errors.append("TIM policy missing/incomplete")
+        else:
+            ranks_by_side = {"LONG": [], "SHORT": []}
+            for key, row in policy.items():
+                try:
+                    side = str(key).rsplit("_", 1)[1]
+                    rank = int(row["rank"])
+                    observed = (
+                        float(row["tim_min_pct"]),
+                        float(row["tim_max_pct"]),
+                    )
+                    expected = (
+                        (50.0, 80.0)
+                        if rank <= 10
+                        else (20.0, 60.0)
+                    )
+                    if side not in ranks_by_side or observed != expected:
+                        raise ValueError
+                    ranks_by_side[side].append(rank)
+                except (KeyError, TypeError, ValueError):
+                    errors.append("invalid ranked TIM policy")
+                    break
+            if not errors:
+                for side, ranks in ranks_by_side.items():
+                    if sorted(ranks) != list(range(1, len(ranks) + 1)):
+                        errors.append(f"non-contiguous {side} TIM ranks")
+                    elif len(ranks) < 10:
+                        errors.append(f"fewer than 10 {side} ranked keys")
+        if errors:
+            body = "MATRIX DIGEST INTEGRITY WARNING: " + "; ".join(errors)
+        else:
+            body = "Matrix metadata hash/contract verified."
+    except Exception as exc:
+        body = "CURRENT C5 DIGEST REJECTED: %s" % exc
+        age = "unknown"
+        source = str(path)
+    return """
+    <section class='modeblock'>
+      <h2>STOCKS &mdash; CURRENT REPAIRED MATRIX</h2>
+      <p class='cov'>campaign <code>stocks_repaired_20260730_c5</code> &middot;
+      exact contract <code>%s</code> &middot;
+      source <code>%s</code> &middot; age %s</p>
+      <p class='cov'>ordinary stock cost contract: <b>0.05%% round trip</b>
+      (zero equity commission assumption plus aggregate spread/slippage);
+      current research: <b>0 commission + 2.5 bps adverse slippage each way</b>.
+      Historical 5+2 bps research receipts remain quarantined under their
+      declared 14 bps effective round trip and are not silently relabeled.</p>
+      <p><b>Exact TRB promotion rule:</b> receipt-valid gain/month must be
+      <b>&gt;2%%</b>, meet the hard monthly real-close activity floor, and have
+      either positive same-side B&amp;H delta or exact normalized strategy
+      drawdown &le;50%% of exact normalized B&amp;H drawdown. Capacity,
+      no-lookahead, side-isolation and exact-close validity still apply.</p>
+      <p class='cov'>%s</p>
+      %s
+    </section>""" % (
+        html_escape(current_contract),
+        html_escape(source),
+        html_escape(age),
+        html_escape(body),
+        _fresh_current_matrix_reporting().html_section(BASE_PATH),
+    )
+
+
+def _historical_stock_quarantine_html():
+    return """
+    <section class='modeblock'>
+      <h2>STOCKS &mdash; HISTORICAL QUARANTINE (NOT CURRENT C5)</h2>
+      <p class='cov'>The frozen <code>STOCKS_BASELINE_V2_S4H</code> export,
+      pre-c4 engine rows, July capture scoreboards, and historical 5+2 bps
+      receipts are preserved only as rollback/diagnostic evidence. They are
+      excluded from current rankings, qualifiers, candidates, matrix coverage,
+      and live promotion. Historical costs remain labeled at their recorded
+      14 bps effective round trip; they are not relabeled as current 0.05%.</p>
+    </section>"""
 
 
 @app.route("/results")
 def results_dashboard():
-    """Clean live-results monitoring view of the vec-screen -> reopt/gating ->
-    real-engine pipeline. Crypto and stocks are always kept separate (classified
-    by USDT/USDC suffix vs everything else) — see results_dashboard_lib.py.
-    Real-engine numbers are single-symbol (n_syms=1) confirmations of the vec
-    screen, not multi-symbol pool_sharpe — DIAGNOSTIC per CLAUDE.md sample
-    floor (rule 5), shown here for monitoring only, never for promotion."""
+    """Current repaired stock matrix plus the separate crypto reopt monitor."""
     try:
         rep_crypto = results_dashboard_lib.build_report("crypto")
-        rep_stock = results_dashboard_lib.build_report("stock")
         live = results_dashboard_lib.get_s1_liveness()
     except Exception as e:
         return _no_cache(app.response_class("<pre>results_dashboard error: %s</pre>" % e, mimetype="text/html", status=500))
     prog_c = (live.get("progress") or {}).get("crypto", {})
-    prog_s = (live.get("progress") or {}).get("stock", {})
     liveness_html = (
-        "<p class='cov'>S1: %s &middot; %s &middot; reopt queue &mdash; crypto %s/%s done (rescued=%s enabled=%s hopeless=%s) "
-        "&middot; stock %s/%s done (rescued=%s enabled=%s hopeless=%s)</p>" % (
+        "<p class='cov'>S1: %s &middot; %s &middot; legacy crypto reopt queue %s/%s "
+        "done (rescued=%s enabled=%s hopeless=%s)</p>" % (
             html_escape(live.get("cpu_line") or "unreachable"), html_escape(live.get("mem_line") or ""),
-            prog_c.get("done", "?"), prog_c.get("queue_total", "?"), prog_c.get("rescued", 0), prog_c.get("enabled", 0), prog_c.get("hopeless", 0),
-            prog_s.get("done", "?"), prog_s.get("queue_total", "?"), prog_s.get("rescued", 0), prog_s.get("enabled", 0), prog_s.get("hopeless", 0)))
+            prog_c.get("done", "?"), prog_c.get("queue_total", "?"), prog_c.get("rescued", 0),
+            prog_c.get("enabled", 0), prog_c.get("hopeless", 0)))
     xls_links = "".join(
         "<a href='/spreadsheets/%s' target='_blank'>%s</a>" % (f, f)
         for f in ["SYMBOL_OVERVIEW_crypto.xlsx", "SYMBOL_OVERVIEW_stocks.xlsx", "PERSYM_APPLIED_REVIEW.xlsx",
@@ -725,21 +2169,30 @@ def results_dashboard():
     .modeblock{margin-bottom:28px;padding-bottom:10px;border-bottom:2px solid #223}
     .footer{color:#888;font-size:11.5px;margin-top:22px;padding:10px;background:#181820;border-radius:6px;line-height:1.5}
     .ts{color:#666;font-size:11px}
+    .current-matrix-results{overflow-x:auto}.current-matrix-results table{border-collapse:collapse;width:100%%;min-width:1750px;margin:8px 0}
+    .current-matrix-results th{background:#1a1a24;color:#8cf;text-align:left;padding:5px 8px;font-size:11px;white-space:nowrap}
+    .current-matrix-results td{padding:5px 8px;border-bottom:1px solid #222;font-size:11px;vertical-align:top}
+    .current-matrix-results details{min-width:350px;max-width:650px}.current-matrix-results summary{cursor:pointer;color:#dcc26b}
+    .current-matrix-results .recipe{max-height:240px;max-width:620px;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#0d0d12;padding:7px;color:#ccd4df}
+    .current-matrix-results .recipe-note{font-size:10px;color:#999}
     </style></head>
     <body>
-    <h1>Optimization machine &mdash; live results</h1>
+    <h1>Optimization machine &mdash; current results</h1>
     <div class='nav'>
       <a href='/trb_review/crypto'>trb_review/crypto</a>
       <a href='/trb_review/trb'>trb_review/trb</a>
       <a href='/trb_review/trc'>trb_review/trc</a>
       <a href='/symbols_overview'>symbols_overview</a>
+      <a href='/matrix_live_progress'>matrix live progress</a>
       %s
     </div>
     %s
     %s
     %s
+    %s
     <div class='footer'>
-      <b>Honest caveat:</b> every real_sharpe_1sym number above is a SINGLE-SYMBOL real-engine backtest
+      <b>Crypto legacy-monitor caveat:</b> every real_sharpe_1sym number in the
+      crypto section is a SINGLE-SYMBOL real-engine backtest
       (n_syms=1) &mdash; below the 48-crypto / 100-stock sample floor, so per CLAUDE.md rule 5 it is
       [DIAGNOSTIC] and must not be used alone to promote/deploy/recommend; it exists here to confirm
       or refute the vec-screen false-negative/false-positive on that one symbol. Sharpe values are
@@ -749,10 +2202,32 @@ def results_dashboard():
       winners/gated/rescued tables entirely &mdash; they are a screen, not a truth.
       <div class='ts'>vec_baselines: %s &middot; gating_corrections: %s &middot; rescues: %s &middot; page generated %s UTC</div>
     </div>
-    </body></html>""" % (xls_links, liveness_html, _results_section_html(rep_crypto), _results_section_html(rep_stock),
+    </body></html>""" % (xls_links, liveness_html, _current_stock_matrix_html(),
+                          _historical_stock_quarantine_html(), _results_section_html(rep_crypto),
                           rep_crypto.get("vec_mtime"), rep_crypto.get("gating_mtime"), rep_crypto.get("rescues_mtime"),
                           datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"))
     return _no_cache(app.response_class(html, mimetype="text/html"))
+
+
+@app.route("/current_matrix_best")
+def current_matrix_best():
+    """Canonical stock results for 5077 clients.
+
+    This is deliberately separate from the legacy run catalogue: it exposes
+    only provenance-backed matrix best cells and their producing override
+    recipes.  It has no vector/baseline proxy fallback.
+    """
+    try:
+        return _no_cache(jsonify(
+            _fresh_current_matrix_reporting().dashboard_payload(BASE_PATH)
+        ))
+    except Exception as exc:
+        return _no_cache(jsonify({
+            "schema": "current-matrix-best-v2",
+            "error": "canonical matrix reporting unavailable",
+            "detail": str(exc),
+            "rows": [],
+        })), 500
 
 
 @app.route("/symbols_overview")
@@ -1711,7 +3186,7 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
 
 @app.route("/local_runs")
 def local_runs():
-    """List all local backtest runs in TRADES_DIR for a given symbol.
+    """List all selectable backtest runs for a given symbol.
     Filename pattern: <run_id>__<SYMBOL>.jsonl
     Each entry: {run, trades, window_days, pool_sharpe, win_rate, gain_per_day_pct, gain_per_trade_pct}
     Per NO-LIES MANDATE: NO annualized fields. Only per-day, per-trade, window_days.
@@ -1720,10 +3195,23 @@ def local_runs():
     if not target_sym:
         return jsonify({"runs": [], "error": "sym required"})
     out = []
-    if not TRADES_DIR.exists():
-        return jsonify({"runs": []})
-    for path in sorted(TRADES_DIR.glob(f"*__{target_sym}.jsonl")):
-        run_id = path.stem.rsplit(f"__{target_sym}", 1)[0]
+    selectable: Dict[str, Path] = {}
+    if TRADES_DIR.exists():
+        for path in sorted(TRADES_DIR.glob(f"*__{target_sym}.jsonl")):
+            run_id = path.stem.rsplit(f"__{target_sym}", 1)[0]
+            if run_id:
+                selectable[run_id] = path
+    # The chart loader has supported extra roots for years, but the dropdown
+    # only scanned /tmp/v8_trades.  That made compact S1/vector overlays
+    # loadable by a hand-written URL yet invisible and unselectable in the UI.
+    for run_id, indexed_path in _get_run_registry().items():
+        path = _resolve_trade_path(run_id, target_sym)
+        if path is None or not path.exists():
+            continue
+        if not path.stem.endswith(f"__{target_sym}"):
+            continue
+        selectable.setdefault(run_id, path)
+    for run_id, path in sorted(selectable.items()):
         if not run_id:
             continue
         trades = []
@@ -1753,7 +3241,12 @@ def local_runs():
             "inflated": stats.get("inflated", False),
         })
     out.sort(key=lambda r: -r.get("pool_sharpe", 0))
-    return jsonify({"runs": out, "count": len(out), "trades_dir": str(TRADES_DIR)})
+    return jsonify({
+        "runs": out,
+        "count": len(out),
+        "trades_dir": str(TRADES_DIR),
+        "extra_roots_scanned": len(_all_trade_roots()),
+    })
 
 
 @app.route("/parity_chart")
@@ -4676,7 +6169,7 @@ _BACKTEST_REVIEW_HTML = r"""<!DOCTYPE html>
           <th data-col="entry_price">Entry $</th>
           <th data-col="exit_price">Exit $</th>
           <th data-col="pnl_pct" title="Net of round-trip cost (the metric used everywhere on this page)">Net %</th>
-          <th data-col="pnl_pct_gross" title="Raw price-only return; pnl_pct - round_trip_cost_pct = pnl_pct_gross. Lets you see what the engine produced before costs.">Gross %</th>
+          <th data-col="pnl_pct_gross" title="Raw price-only return; pnl_pct_gross - round_trip_cost_pct = pnl_pct. Lets you see what the engine produced before costs.">Gross %</th>
           <th data-col="duration">Dur</th>
           <th data-col="entry_reason">Entry reason</th>
           <th data-col="exit_reason">Exit reason</th>
@@ -5387,15 +6880,34 @@ def backtest_review_top_data():
         avg_per_sym = trades / max(1, n_syms)
         sample_ok = (n_syms >= min_syms) and (years >= 1.0) and (avg_per_sym >= 30)
         r["sample_ok"] = bool(sample_ok)
-        # Promotable per CLAUDE.md: pool_sharpe > 1.0 AND sample floor cleared.
-        # DD filter not yet wired (max_dd_pct TBD in runs_ranked).
-        r["promotable"] = bool(sample_ok and r.get("pool_sharpe", 0) > 1.0)
+        bh_multiple = results_dashboard_lib._bh_multiple(r)
+        r["bh_multiple"] = bh_multiple
+        # Fail closed: runs_ranked currently has no canonical B&H series, so a
+        # high-Sharpe row is diagnostic until it carries an explicit/derivable
+        # strategy/B&H multiple. DD also remains unwired.
+        r["promotable"] = bool(
+            sample_ok
+            and r.get("pool_sharpe", 0) > 1.0
+            and bh_multiple is not None
+            and bh_multiple >= results_dashboard_lib.MIN_BH_MULTIPLE
+        )
+        blockers = []
+        if not sample_ok:
+            blockers.append("SAMPLE_FLOOR")
+        if r.get("pool_sharpe", 0) <= 1.0:
+            blockers.append("POOL_SHARPE_LE_1")
+        if bh_multiple is None:
+            blockers.append("BH_MULTIPLE_MISSING")
+        elif bh_multiple < results_dashboard_lib.MIN_BH_MULTIPLE:
+            blockers.append("BELOW_2X_BH")
+        r["promotion_blockers"] = blockers
         r["gain_per_mo"] = round(r.get("gain_per_yr", 0) / 12.0, 2)
         r["machine_hint"] = ""  # placeholder for future ext-archive labeling
     # Sort
     SORT_DESC = {"pool_sharpe", "sym_sharpe", "gain_per_yr", "gain_per_mo",
                  "gain_sym_yr", "avg_gain_trade", "trades", "wr",
-                 "total_gain_pct", "mtime", "n_syms", "n_years"}
+                 "total_gain_pct", "mtime", "n_syms", "n_years",
+                 "bh_multiple"}
     rev = sort_by in SORT_DESC
     rows.sort(key=lambda r: (r.get(sort_by) is None, -r.get(sort_by, 0) if rev else r.get(sort_by, 0)))
     rows = rows[:limit]
@@ -5408,6 +6920,13 @@ def backtest_review_top_data():
             "min_syms": min_syms,
             "min_years": 1.0,
             "min_trades_per_sym": 30,
+        },
+        "promotion_contract": {
+            "min_pool_sharpe": 1.0,
+            "min_bh_multiple": results_dashboard_lib.MIN_BH_MULTIPLE,
+            "max_dd_required": False,
+            "max_dd_status": "UNWIRED_DIAGNOSTIC_WARNING",
+            "fail_closed_when_bh_multiple_missing": True,
         },
     })
 
@@ -5567,6 +7086,7 @@ _BACKTEST_REVIEW_TOP_HTML = r"""<!DOCTYPE html>
     <option value="gain_per_mo">gain / month</option>
     <option value="gain_per_yr">gain / year</option>
     <option value="gain_sym_yr">gain / sym / year</option>
+    <option value="bh_multiple">B&amp;H multiple</option>
     <option value="avg_gain_trade">avg gain / trade</option>
     <option value="wr">win rate</option>
     <option value="trades">trade count</option>
@@ -5574,7 +7094,7 @@ _BACKTEST_REVIEW_TOP_HTML = r"""<!DOCTYPE html>
   </select></label>
   <label>Min trades: <input id="minTrades" type="number" value="0" min="0" style="width:80px"></label>
   <label>Limit: <input id="limit" type="number" value="100" min="10" max="500" style="width:80px"></label>
-  <label><input type="checkbox" id="promotableOnly"> Promotable only (sample floor + pool_sh &gt; 1.0)</label>
+  <label><input type="checkbox" id="promotableOnly"> Promotable only (sample floor + pool_sh &gt; 1.0 + &ge;2x B&amp;H; DD pending)</label>
   <label><input type="checkbox" id="sampleOk"> Sample-floor-cleared only</label>
   <span class="pill" id="resultsLbl">—</span>
 </div>
@@ -5589,13 +7109,14 @@ _BACKTEST_REVIEW_TOP_HTML = r"""<!DOCTYPE html>
       <th data-col="gain_per_mo">% / month</th>
       <th data-col="gain_per_yr">% / year</th>
       <th data-col="gain_sym_yr">% / sym / yr</th>
+      <th data-col="bh_multiple">B&amp;H multiple</th>
       <th data-col="trades">trades</th>
       <th data-col="n_syms">syms</th>
       <th data-col="n_years">years</th>
       <th data-col="wr">WR</th>
       <th data-col="mtime">date</th>
     </tr></thead>
-    <tbody><tr><td colspan="13" class="empty">Loading…</td></tr></tbody>
+    <tbody><tr><td colspan="14" class="empty">Loading…</td></tr></tbody>
   </table>
 </main>
 <script>
@@ -5614,12 +7135,12 @@ async function loadAndRender() {
   sortCol = sortBy;
   const url = `/backtest_review_top?asset=${ASSET}&sort=${sortBy}&min_trades=${minT}&limit=${lim}`;
   const tbody = document.querySelector("#topTable tbody");
-  tbody.innerHTML = `<tr><td colspan="13" class="empty">Loading…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="14" class="empty">Loading…</td></tr>`;
   let data;
   try { data = await fetch(url).then(r => r.json()); }
-  catch(e) { tbody.innerHTML = `<tr><td colspan="13" class="empty">Error: ${e.message}</td></tr>`; return; }
+  catch(e) { tbody.innerHTML = `<tr><td colspan="14" class="empty">Error: ${e.message}</td></tr>`; return; }
   if (data.warming) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Precompute warming up… refresh in a few seconds.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="empty">Precompute warming up… refresh in a few seconds.</td></tr>`;
     return;
   }
   rawRows = data.rows || [];
@@ -5635,20 +7156,20 @@ function render() {
   else if (sfOnly) rows = rows.filter(r => r.sample_ok);
   document.getElementById("resultsLbl").textContent = `${rows.length} rows · sorted by ${sortCol} ${sortDir<0?'▾':'▴'}`;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">No rows match current filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="empty">No rows match current filters.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
     const promCls = r.promotable ? "promotable" : "";
     const tags = [];
-    if (r.promotable) tags.push(`<span class="pill prom">PROMOTABLE</span>`);
+    if (r.promotable) tags.push(`<span class="pill prom">PROMOTABLE ≥2x B&H</span>`);
     else if (r.sample_ok) tags.push(`<span class="pill">sample-floor ✓</span>`);
     else tags.push(`<span class="pill diag">DIAGNOSTIC</span>`);
     // Click-through: first sym in run → per-symbol page
     const sym0 = (r.syms && r.syms[0]) || "";
     const link = sym0 ? `/backtest-review/${ASSET}#sym=${encodeURIComponent(sym0)}` : `/backtest-review/${ASSET}`;
     const shCls = r.pool_sharpe >= 1 ? "win" : (r.pool_sharpe < 0 ? "los" : "");
-    return `<tr class="${promCls}" data-link="${link}" title="syms=${(r.syms||[]).slice(0,8).join(', ')}${r.syms && r.syms.length>8?'…':''}">
+    return `<tr class="${promCls}" data-link="${link}" title="blockers=${(r.promotion_blockers||[]).join(',')} · syms=${(r.syms||[]).slice(0,8).join(', ')}${r.syms && r.syms.length>8?'…':''}">
       <td>${r.run}</td>
       <td class="tagcol">${tags.join('')}</td>
       <td class="${shCls}">${fmtNum(r.pool_sharpe,4)}</td>
@@ -5657,6 +7178,7 @@ function render() {
       <td>${fmtNum(r.gain_per_mo,2)}</td>
       <td>${fmtNum(r.gain_per_yr,1)}</td>
       <td>${fmtNum(r.gain_sym_yr,2)}</td>
+      <td>${r.bh_multiple==null?'—':fmtNum(r.bh_multiple,3)+'x'}</td>
       <td>${r.trades}</td>
       <td>${r.n_syms}</td>
       <td>${fmtNum(r.n_years,2)}</td>
@@ -6079,7 +7601,13 @@ def _yf_klines(sym: str, interval: str = "5m") -> List[Dict]:
         return []
 
 
-def _merged_stock_klines(sym: str, interval: str = "5m", max_bars: int = 5000) -> Tuple[List[Dict], str]:
+def _merged_stock_klines(
+    sym: str,
+    interval: str = "5m",
+    max_bars: int = 5000,
+    start: int | None = None,
+    end: int | None = None,
+) -> Tuple[List[Dict], str]:
     """Merge all disk klines sources + yfinance into a single deduplicated series.
 
     Priority (all merged — later sources fill gaps in earlier):
@@ -6110,7 +7638,14 @@ def _merged_stock_klines(sym: str, interval: str = "5m", max_bars: int = 5000) -
         for b in yf_bars:
             merged[b["t"]] = b
         sources_used.append("yfinance")
-    out = sorted(merged.values(), key=lambda b: b["t"])
+    out = sorted(
+        (
+            bar for bar in merged.values()
+            if (start is None or int(bar["t"]) >= start)
+            and (end is None or int(bar["t"]) <= end)
+        ),
+        key=lambda b: b["t"],
+    )
     if len(out) > max_bars:
         out = out[-max_bars:]
     return out, "+".join(sources_used) if sources_used else "none"
@@ -6191,6 +7726,36 @@ def _pending_review_trades(sym: str, side: str) -> List[Dict]:
     return out
 
 
+@app.route("/trb_best_backtest_trades")
+def trb_best_backtest_trades():
+    """All exact trades from the best current c5 row for a stock symbol/side.
+
+    Selection and ledger validation live in one read-only reporting adapter so
+    the UI and all three mail surfaces use the same result lineage.
+    """
+    sym = request.args.get("sym", "").strip().upper()
+    side = request.args.get("side", "").strip().upper()
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    if side and side not in {"LONG", "SHORT", "BOTH"}:
+        return jsonify({"error": "side must be LONG, SHORT, or BOTH"}), 400
+    try:
+        payload = _fresh_current_matrix_reporting().read_best_trades(
+            sym,
+            None if side in {"", "BOTH"} else side,
+            BASE_PATH,
+        )
+    except Exception as exc:
+        return jsonify(
+            {
+                "error": "current matrix trade lookup failed",
+                "detail": str(exc),
+                "symbol": sym,
+            }
+        ), 500
+    return jsonify(payload)
+
+
 def _live_trade_summary(sym: str, acct: str) -> Dict:
     """Count open/close events for (sym, acct) and return last_ts, total_closes."""
     base = _history_dir_for(acct)
@@ -6241,6 +7806,10 @@ def trb_symbols_overview():
     Called every 5 minutes by the trb_review page to keep data fresh."""
     trb_meta = _per_sym_meta_for("trb")
     trc_meta = _per_sym_meta_for("trc")
+    best_matrix = {
+        row["key"]: row
+        for row in _fresh_current_matrix_reporting().best_rows(BASE_PATH)
+    }
     all_syms = _trb_symbol_list()
     # Load long/short candidate lists for direction tabs
     def _load_list(fname: str) -> set:
@@ -6279,6 +7848,8 @@ def trb_symbols_overview():
             "trb_live": trb_summary,
             "trc_live": trc_summary,
             "pending_review": pending,
+            "best_matrix_long": best_matrix.get(f"{sym}_LONG"),
+            "best_matrix_short": best_matrix.get(f"{sym}_SHORT"),
         })
     rows.sort(key=lambda r: -(r["trb_live"]["last_ts"] or 0))
     return jsonify({
@@ -6296,13 +7867,17 @@ def trb_klines_live():
     Sources tried in order: klines_cache/tradier/, klines_cache/, klines_cache_backtest/tradier/,
     klines_cache_backtest/, then yfinance for the last 60d (~20min delayed).
     All are merged and deduplicated to give maximum time coverage.
-    ?sym=X&interval=5m&max=N"""
+    ?sym=X&interval=5m&max=N&start=UNIX_OR_ISO&end=UNIX_OR_ISO"""
     sym = request.args.get("sym", "").upper()
     interval = request.args.get("interval", "5m")
     max_bars = int(request.args.get("max", 5000))
+    start = _ts_to_unix(request.args.get("start"))
+    end = _ts_to_unix(request.args.get("end"))
     if not sym:
         return jsonify({"error": "sym required"}), 400
-    bars, source = _merged_stock_klines(sym, interval=interval, max_bars=max_bars)
+    bars, source = _merged_stock_klines(
+        sym, interval=interval, max_bars=max_bars, start=start, end=end
+    )
     return jsonify({"bars": bars, "source": source, "sym": sym, "n": len(bars)})
 
 

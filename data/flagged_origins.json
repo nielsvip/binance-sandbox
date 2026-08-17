@@ -1,0 +1,784 @@
+{
+  "flz:BTCDOMUSDT_LONG": {
+    "count": 6,
+    "reasons": [
+      "QUICK_HEDGE_ELECTED_BNBUSDC_SHORT"
+    ],
+    "last_ts": 1776382568.970689,
+    "last_price": 5162.79568225
+  },
+  "flz:BTCUSDC_LONG": {
+    "count": 2,
+    "reasons": [
+      "QUICK_HEDGE_ELECTED_BTCDOMUSDT_SHORT",
+      "FORCE_REDUCE_OVERSIZE_391>$155"
+    ],
+    "last_ts": 1776911835.891998,
+    "last_price": 78010.0
+  },
+  "men:TRUMPUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "AUGMENT@3.0608"
+    ],
+    "last_ts": 1776543754.455411,
+    "last_price": 2.86112375
+  },
+  "ang:SANDUSDT_LONG": {
+    "count": 2,
+    "reasons": [],
+    "last_ts": 1641012480.0,
+    "last_price": 5.95658016204834
+  },
+  "ang:DOTUSDT_LONG": {
+    "count": 8,
+    "reasons": [],
+    "last_ts": 1725157800.0,
+    "last_price": 4.198999881744385
+  },
+  "ang:RVNUSDT_LONG": {
+    "count": 2,
+    "reasons": [],
+    "last_ts": 1641004560.0,
+    "last_price": 0.10338400304317474
+  },
+  "ang:SANDUSDT_SHORT": {
+    "count": 5,
+    "reasons": [],
+    "last_ts": 1767225780.0,
+    "last_price": 0.10971599817276001
+  },
+  "ang:RVNUSDT_SHORT": {
+    "count": 2,
+    "reasons": [],
+    "last_ts": 1641103560.0,
+    "last_price": 0.10403399914503098
+  },
+  "ang:DOTUSDT_SHORT": {
+    "count": 2,
+    "reasons": [],
+    "last_ts": 1641268620.0,
+    "last_price": 29.829599380493164
+  },
+  "ang:ETCUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1641013560.0,
+    "last_price": 34.345001220703125
+  },
+  "flz:BNBUSDC_LONG": {
+    "count": 2,
+    "reasons": [
+      "QUICK_HEDGE_ELECTED_BTCDOMUSDT_SHORT",
+      "QUICK_HEDGE_PROTECT_SHORT_LOSS"
+    ],
+    "last_ts": 1776636921.155138,
+    "last_price": 618.63
+  },
+  "flz:BNBUSDC_SHORT": {
+    "count": 8,
+    "reasons": [
+      "QUICK_HEDGE_SAME_SYM_LAST_RESORT",
+      "QUICK_HEDGE_PROTECT_LONG_LOSS"
+    ],
+    "last_ts": 1776865980.411485,
+    "last_price": 645.31
+  },
+  "ang:XMRUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1662544440.0,
+    "last_price": 355.0220936
+  },
+  "men:1000PEPEUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_SAME_SYM_LAST_RESORT"
+    ],
+    "last_ts": 1776576273.926191,
+    "last_price": 0.0037643
+  },
+  "inf:MANAUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_SHORT_LOSS"
+    ],
+    "last_ts": 1776578830.6897368,
+    "last_price": 0.0915
+  },
+  "fin:THETAUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "GUARANTEED_REENTRY_PF_FAVORABLE_SPIKE_htf2_move1.19%_K15M_OVERHEAT_0.50x(k15=98)_k3m60_exit0.2138_px0.2163_mult0.50_elapsed230s_attempt1"
+    ],
+    "last_ts": 1776579384.665129,
+    "last_price": 0.21401844
+  },
+  "fin:CHRUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "GUARANTEED_REENTRY_PF_FAVORABLE_DROP_htf2_move-2.78%_k3m0_exit0.0194_px0.0189_mult1.00_elapsed130149s_attempt1"
+    ],
+    "last_ts": 1776579885.998294,
+    "last_price": 0.01896934
+  },
+  "ang:ARKMUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "WT15M_CROSS_REENTRY_WT15M_CROSS\u00d71.50_wt15m=-5.2/-7.1_wt1h=1.4/20.1_wt4h=6.9/-14.5_k15m=17_mult=1.50"
+    ],
+    "last_ts": 1776633078.4449449,
+    "last_price": 0.1350387
+  },
+  "ang:GRIFFAINUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_SHORT_LOSS"
+    ],
+    "last_ts": 1776646021.042009,
+    "last_price": 0.016608
+  },
+  "men:COMPUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_OPEN_STRONG_SELL_k1:26/d114/k3:86.58/d3:87.66_@17.8882_DC_BREAKOUT_DC4H_x3.0@17.91"
+    ],
+    "last_ts": 1776648464.3119738,
+    "last_price": 24.53
+  },
+  "inf:1000LUNCUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "GUARANTEED_REENTRY_PF_FAVORABLE_SPIKE_htf2_move15.70%_k3m36_exit0.0368_px0.0425_mult1.00_elapsed1262009s_attempt1"
+    ],
+    "last_ts": 1776661945.000322,
+    "last_price": 0.04206
+  },
+  "inf:STXUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_SHORT_LOSS"
+    ],
+    "last_ts": 1776730312.2487109,
+    "last_price": 0.22358663
+  },
+  "fin:UNIUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age27252m_gain-0.33%"
+    ],
+    "last_ts": 1776745408.0057468,
+    "last_price": 3.22850853
+  },
+  "fin:1000BONKUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_SHORT_LOSS"
+    ],
+    "last_ts": 1776745533.2943208,
+    "last_price": 0.00609556
+  },
+  "ang:CAKEUSDT_SHORT": {
+    "count": 5,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_LONG_LOSS",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age55669m_gain-0.51%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age55808m_gain-0.47%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age55858m_gain-0.47%"
+    ],
+    "last_ts": 1777324854.2895901,
+    "last_price": 1.5012
+  },
+  "ang:ILVUSDT_SHORT": {
+    "count": 2,
+    "reasons": [
+      "QUICK_BANDAID_OFF_wt_favor_3of5_hgain-0.28%",
+      "HEDGE_PROTECT_LONG_LOSS"
+    ],
+    "last_ts": 1777191324.056096,
+    "last_price": 5.26969069
+  },
+  "fin:BTCDOMUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_SHORT_LOSS"
+    ],
+    "last_ts": 1776780727.660196,
+    "last_price": 5298.6
+  },
+  "ang:BTCUSDT_SHORT": {
+    "count": 3,
+    "reasons": [],
+    "last_ts": 1725164100.0,
+    "last_price": 58520.1015625
+  },
+  "ang:BTCUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1767348900.0,
+    "last_price": 88642.1015625
+  },
+  "ang:AVAXUSDT_SHORT": {
+    "count": 9,
+    "reasons": [],
+    "last_ts": 1767228120.0,
+    "last_price": 12.328200340270996
+  },
+  "ang:BNBUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1725174900.0,
+    "last_price": 518.1599731445312
+  },
+  "ang:ETHUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1725175800.0,
+    "last_price": 2478.080078125
+  },
+  "ang:ATOMUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1725157800.0,
+    "last_price": 4.508999824523926
+  },
+  "ang:TRXUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1725165000.0,
+    "last_price": 0.1561100035905838
+  },
+  "ang:TRXUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1725261300.0,
+    "last_price": 0.15567000210285187
+  },
+  "ang:ATOMUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1726662600.0,
+    "last_price": 4.168000221252441
+  },
+  "ang:CHILLGUYUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_LONG_LOSS"
+    ],
+    "last_ts": 1776813988.7703428,
+    "last_price": 0.01315943
+  },
+  "fin:XLMUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age45203m_gain-1.33%"
+    ],
+    "last_ts": 1776817479.907941,
+    "last_price": 0.17974385
+  },
+  "ang:GRASSUSDT_SHORT": {
+    "count": 2,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_LONG_LOSS",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age67139m_gain-1.09%"
+    ],
+    "last_ts": 1776863792.467639,
+    "last_price": 0.40638833
+  },
+  "men:VETUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age49834m_gain-2.09%"
+    ],
+    "last_ts": 1776830653.36339,
+    "last_price": 0.00721751
+  },
+  "inf:GRASSUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1776830840.616491,
+    "last_price": 0.4179
+  },
+  "ang:AIUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age54690m_gain-2.60%"
+    ],
+    "last_ts": 1776834458.431055,
+    "last_price": 0.02234
+  },
+  "men:ETHFIUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age66961m_gain-1.58%"
+    ],
+    "last_ts": 1776836345.911672,
+    "last_price": 0.47621734
+  },
+  "inf:JASMYUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age48939m_gain-2.72%"
+    ],
+    "last_ts": 1776856645.978296,
+    "last_price": 0.005747
+  },
+  "fin:BNBUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age31727m_gain-0.54%"
+    ],
+    "last_ts": 1777030784.878172,
+    "last_price": 622.92
+  },
+  "fin:1000FLOKIUSDT_LONG": {
+    "count": 2,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age56274m_gain-2.04%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age58798m_gain-5.12%"
+    ],
+    "last_ts": 1777172421.578132,
+    "last_price": 0.0321
+  },
+  "inf:NOTUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age37777m_gain-0.76%"
+    ],
+    "last_ts": 1777073840.890733,
+    "last_price": 0.00043085
+  },
+  "ang:CELOUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age71009m_gain-0.02%"
+    ],
+    "last_ts": 1777077263.9529119,
+    "last_price": 0.09408825
+  },
+  "inf:MEMEUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age39009m_gain-0.16%"
+    ],
+    "last_ts": 1777094921.336138,
+    "last_price": 0.0005807
+  },
+  "men:OPUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age56602m_gain-5.55%"
+    ],
+    "last_ts": 1777096899.973791,
+    "last_price": 0.12957849
+  },
+  "men:SKYUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age56887m_gain-0.93%"
+    ],
+    "last_ts": 1777098481.613533,
+    "last_price": 0.08340218
+  },
+  "inf:SKYUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age56677m_gain-0.44%"
+    ],
+    "last_ts": 1777100451.971422,
+    "last_price": 0.08337304
+  },
+  "inf:CAKEUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_WT_CROSS_EXIT_1h_bull_wt1=17.1_wt2=8.0_15m6.0/2.6_g0.04%"
+    ],
+    "last_ts": 1777104320.055797,
+    "last_price": 1.5054
+  },
+  "inf:MOVRUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age2093m_gain-14.21%"
+    ],
+    "last_ts": 1777110328.502367,
+    "last_price": 2.2929375
+  },
+  "inf:1000SATSUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age415m_gain-0.52%"
+    ],
+    "last_ts": 1777112186.1509209,
+    "last_price": 1.485e-05
+  },
+  "ang:IDUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age40778m_gain-2.61%"
+    ],
+    "last_ts": 1777114845.4347,
+    "last_price": 0.03239
+  },
+  "inf:IDUSDT_SHORT": {
+    "count": 3,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age59529m_gain-3.84%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age59643m_gain-2.72%"
+    ],
+    "last_ts": 1777117851.182282,
+    "last_price": 0.03241
+  },
+  "ang:AAVEUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age74432m_gain-1.62%"
+    ],
+    "last_ts": 1777128413.9229372,
+    "last_price": 95.69177228
+  },
+  "inf:THETAUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age45616m_gain-0.69%"
+    ],
+    "last_ts": 1777150296.7204611,
+    "last_price": 0.21896907
+  },
+  "men:SANDUSDT_SHORT": {
+    "count": 3,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age54475m_gain-12.57%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age54788m_gain-12.05%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age57289m_gain-9.92%"
+    ],
+    "last_ts": 1777317739.467634,
+    "last_price": 0.07803932
+  },
+  "inf:IMXUSDT_SHORT": {
+    "count": 4,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age55462m_gain-4.17%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age55742m_gain-4.05%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age55856m_gain-2.18%"
+    ],
+    "last_ts": 1777176139.213265,
+    "last_price": 0.17461637
+  },
+  "inf:LTCUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_DC_HIGH4_3M_GAIN_EROSION_STOP_p55.982399>dc455.972084_g0.18%"
+    ],
+    "last_ts": 1777160647.85836,
+    "last_price": 56.0
+  },
+  "inf:ALTUSDT_SHORT": {
+    "count": 2,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age74840m_gain-2.57%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age75064m_gain-2.10%"
+    ],
+    "last_ts": 1777175639.236056,
+    "last_price": 0.007917
+  },
+  "men:RSRUSDT_LONG": {
+    "count": 3,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age72297m_gain-3.60%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age72648m_gain-3.60%"
+    ],
+    "last_ts": 1777178062.074334,
+    "last_price": 0.001721
+  },
+  "ang:DOGEUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_OPEN_STRONG_SELL_k1:45/d140/k3:9.73/d3:11.52_@0.0901_DC_BREAKOUT_DC1H_x2.0@0.09027"
+    ],
+    "last_ts": 1777170722.042167,
+    "last_price": 0.0979436
+  },
+  "ang:EIGENUSDT_SHORT": {
+    "count": 5,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age64819m_gain-0.80%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age65059m_gain-2.97%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age66292m_gain-5.65%"
+    ],
+    "last_ts": 1777286568.8471522,
+    "last_price": 0.1813
+  },
+  "ang:TONUSDT_SHORT": {
+    "count": 2,
+    "reasons": [
+      "DIRECTION_FAVORABLE_REENTRY_k3m82_k15m11_wt-19.3/-12.4_min86"
+    ],
+    "last_ts": 1777188985.273188,
+    "last_price": 1.3217
+  },
+  "men:DASHUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age55540m_gain-0.55%"
+    ],
+    "last_ts": 1777179468.6750772,
+    "last_price": 36.79
+  },
+  "fin:CHRUSDT_LONG": {
+    "count": 2,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age27081m_gain-5.58%",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age28025m_gain-5.94%"
+    ],
+    "last_ts": 1777240531.856166,
+    "last_price": 0.02186
+  },
+  "men:NOTUSDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age53157m_gain-4.24%"
+    ],
+    "last_ts": 1777202529.784109,
+    "last_price": 0.000425
+  },
+  "ang:WIFUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age68318m_gain-1.34%"
+    ],
+    "last_ts": 1777215285.6765811,
+    "last_price": 0.17851726
+  },
+  "fin:MASKUSDT_LONG": {
+    "count": 3,
+    "reasons": [
+      "QUICK_AUGMENT_BUY_k1:95/d197/k3:99.16/d3:99.03_@0.4431_RZ_AUGMENT_BASELINE_BASELINE_BOUNCE_LONG_touched=3m_bull=0.00_bear=0.00_v3m=11.2_v15m=8.6_v1h=-4.4_htf_mom4h=0_k=22_bb=0.49_dc=0.45_gain=3.2%_leg",
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age29500m_gain-3.20%"
+    ],
+    "last_ts": 1777296274.391222,
+    "last_price": 0.5231
+  },
+  "fin:IOTXUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age53966m_gain-0.21%"
+    ],
+    "last_ts": 1777276472.2850401,
+    "last_price": 0.00472
+  },
+  "ang:BTCUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_OPEN_STRONG_BUY_k1:81/d178/k3:39.407313954621735/d3:39.11868575688268_@66813.7287_DC_BREAKOUT_DC15M_x1.5@66737.3"
+    ],
+    "last_ts": 1777294383.207659,
+    "last_price": 77708.64663694
+  },
+  "men:BCHUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age57758m_gain-0.83%"
+    ],
+    "last_ts": 1777298615.417147,
+    "last_price": 452.67007855
+  },
+  "ang:ZECUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "GUARANTEED_REENTRY_k1m69_k3m64_exit339.2500_px329.8100_crossedFalse_attempt1"
+    ],
+    "last_ts": 1777298922.986832,
+    "last_price": 356.6
+  },
+  "inf:LTCUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_PROTECT_SHORT_LOSS"
+    ],
+    "last_ts": 1777306166.029026,
+    "last_price": 55.61402225
+  },
+  "fin:B3USDT_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age20093m_gain-0.73%"
+    ],
+    "last_ts": 1777309419.9908102,
+    "last_price": 0.00027358
+  },
+  "inf:1INCHUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771188300.0,
+    "last_price": 0.09430000185966492
+  },
+  "inf:LTCUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771194420.0,
+    "last_price": 54.81999969482422
+  },
+  "inf:LINKUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771202520.0,
+    "last_price": 8.709600448608398
+  },
+  "inf:LINKUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771213140.0,
+    "last_price": 8.741999626159668
+  },
+  "inf:LTCUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771213860.0,
+    "last_price": 54.486000061035156
+  },
+  "inf:ALGOUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771217100.0,
+    "last_price": 0.09656000137329102
+  },
+  "inf:BNBUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771217100.0,
+    "last_price": 618.0700073242188
+  },
+  "inf:BNBUSDT_LONG": {
+    "count": 10,
+    "reasons": [],
+    "last_ts": 1759290300.0,
+    "last_price": 1005.0900268554688
+  },
+  "inf:ALGOUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771228620.0,
+    "last_price": 0.09538000077009201
+  },
+  "inf:PHBUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age77798m_gain-13.22%"
+    ],
+    "last_ts": 1777311538.423497,
+    "last_price": 0.1115
+  },
+  "inf:ETHUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771373700.0,
+    "last_price": 1990.7099609375
+  },
+  "inf:ETHUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771387200.0,
+    "last_price": 1996.43994140625
+  },
+  "inf:1INCHUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1771414200.0,
+    "last_price": 0.09489999711513519
+  },
+  "fin:BTCUSDT_SHORT": {
+    "count": 2,
+    "reasons": [],
+    "last_ts": 1775116800.0,
+    "last_price": 66743.8984375
+  },
+  "fin:BNBUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1775089800.0,
+    "last_price": 613.3200073242188
+  },
+  "fin:BTCUSDT_LONG": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1775178540.0,
+    "last_price": 66819.8203125
+  },
+  "inf:DOTUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1759767480.0,
+    "last_price": 1.22815116
+  },
+  "men:MASKUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_PARABOLIC_EXIT_LONG_k15=94_px>0.525880_low3m=0.523100<prev0.525445"
+    ],
+    "last_ts": 1777317175.8890262,
+    "last_price": 0.52508337
+  },
+  "men:LUNA2USDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age288m_gain-2.30%"
+    ],
+    "last_ts": 1777317334.54208,
+    "last_price": 0.06382
+  },
+  "inf:ADAUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age58682m_gain-3.02%"
+    ],
+    "last_ts": 1777321996.939129,
+    "last_price": 0.24717172
+  },
+  "inf:ATOMUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_MAX_AGE_KILL_722.1h_g-0.55"
+    ],
+    "last_ts": 1777323554.1110752,
+    "last_price": 1.97635276
+  },
+  "inf:GRIFFAINUSDT_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age77980m_gain-23.51%"
+    ],
+    "last_ts": 1777323640.406681,
+    "last_price": 0.01789514
+  },
+  "inf:ADAUSDT_SHORT": {
+    "count": 1,
+    "reasons": [],
+    "last_ts": 1759899600.0,
+    "last_price": 0.8148999810218811
+  },
+  "fin:XRPUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_OPEN_STRONG_SELL_k1:72/d163/k3:66.67/d3:55.88_@1.4337_RZ_BASELINE_BASELINE_BOUNCE_SHORT_touched=3m_bear=0.02_bull=0.00_v3m=-12.4_v15m=0.4_v1h=-50.6_htf_mom4h=0_k=45_bb=0.29_dc=0.32_dcxu=1_zs1h=-"
+    ],
+    "last_ts": 1777324801.7880352,
+    "last_price": 1.4026
+  },
+  "inf:1000BONKUSDC_SHORT": {
+    "count": 1,
+    "reasons": [
+      "QUICK_BREAKEVEN_GAIN_EROSION_STOP_age61932m_gain-1.76%"
+    ],
+    "last_ts": 1777325360.59963,
+    "last_price": 0.006252
+  },
+  "inf:1000BONKUSDC_LONG": {
+    "count": 1,
+    "reasons": [
+      "QUICK_HEDGE_SAME_SYM_LAST_RESORT"
+    ],
+    "last_ts": 1777329362.1127,
+    "last_price": 0.00615391
+  }
+}

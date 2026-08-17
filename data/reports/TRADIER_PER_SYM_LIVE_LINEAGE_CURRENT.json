@@ -1,0 +1,4746 @@
+{
+  "generated_at": "2026-08-04T20:08:20.682743Z",
+  "purpose": "live per-symbol lineage; not a backtest or promotion receipt",
+  "recovered_baseline": {
+    "historical_final_book_note": "2026-05-31 FINAL per_sym book: 96 tradeable (>=30tr & ps>0 & short-not-uptrend); disabled=tested-but-excluded. Consumed by _apply_final_book in ez_positions_quick + tradier_manage when PERSYM_FINAL_BOOK_ENABLED. | 2026-07-03 refresh from 20260629 sweeps: un-disabled 3 positive keys ['ASTS_SHORT', 'MP_SHORT', 'MSFT_SHORT'], disabled 2 fresh negatives ['COP_LONG', 'WMB_SHORT'] (user mandate: positive ws+gain => tradeable)",
+    "legacy_source": "global per_sym_active_config plus optional TRB account overlay",
+    "selection_rule": "full recipe > final-book enable/size fields > account overlay > global per-symbol baseline > config/regime fallback",
+    "warning": "legacy per-symbol metrics are lineage only; they are not current V8 promotion evidence"
+  },
+  "root": "/Users/niels/Documents/binance",
+  "rows": [
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "TECK_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CIEN_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 78,
+            "wsharpe": 0.1245
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "A_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 17,
+            "wsharpe": -0.0169
+          },
+          "override_count": 10,
+          "overrides_sha256": "3a187c17f462bbb3af9c6a64963fded53835482a4bdf7ae682a8b55ecd8999b7",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": true,
+          "bh_long": 536.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 133.2263,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": 1.5,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.1936,
+          "size_cap": 5.0,
+          "size_mult": 1.94,
+          "strategy": "staircase_long"
+        },
+        "tradeable": true
+      },
+      "key": "MU_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 27,
+            "wsharpe": 0.2995
+          },
+          "override_count": 8,
+          "overrides_sha256": "d709784af916a3a927491945375c8d9244e6e53b88a92de0ff097c4be324d822",
+          "present": true,
+          "sample_tag": "USER_MANUAL",
+          "verdict": null,
+          "winning_tag": "manual_user_20260722_wt5m_3share"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "DELL_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 60,
+            "wsharpe": 0.3001
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 15.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 1.636,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.0645,
+          "size_cap": null,
+          "size_mult": 1.06,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=-0.2558 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "PR_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 19,
+            "wsharpe": 0.2491
+          },
+          "override_count": 6,
+          "overrides_sha256": "d5f6461273caee4a5ef9904a0e44f867dde2d4f422a6532019257c6a9dc4d4ae",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": -26.0,
+          "conviction_cap": 40.0,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.2707,
+          "size_cap": null,
+          "size_mult": 2.0,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=None < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "PBF_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 46,
+            "wsharpe": 0.0856
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "gain_mo": 2.8238,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.0965,
+          "size_cap": null,
+          "size_mult": 1.43,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=-0.029 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "EOG_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 35,
+            "wsharpe": 0.4171
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "gain_mo": 6.5564,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.0928,
+          "size_cap": null,
+          "size_mult": 1.78,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=-0.0925 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "DINO_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 35,
+            "wsharpe": 0.5176
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": true,
+          "bh_long": 125.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 18.3517,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": 2.0,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.1633,
+          "size_cap": 3.0,
+          "size_mult": 1.87,
+          "strategy": "staircase_long"
+        },
+        "tradeable": true
+      },
+      "key": "NVDA_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": true,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "size_cap": null,
+          "size_mult": 0.5,
+          "strategy": "gainmo_gate"
+        },
+        "tradeable": true
+      },
+      "key": "MRVL_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 47,
+            "wsharpe": 0.0563
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "gain_mo": 6.4598,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.1311,
+          "size_cap": null,
+          "size_mult": 1.76,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.124 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "PSX_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 26,
+            "wsharpe": 0.6102
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "gain_mo": 260.9994,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.1916,
+          "size_cap": null,
+          "size_mult": 1.99,
+          "strategy": "gainmo_gate"
+        },
+        "tradeable": true
+      },
+      "key": "USAR_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 30,
+            "wsharpe": 0.587053772158145
+          },
+          "override_count": 5,
+          "overrides_sha256": "e8a86f4969ae2885e641fcbac6df5d6c317c613f59b57f1c58b612cd57433b77",
+          "present": true,
+          "sample_tag": "BELOW_THRESHOLD",
+          "verdict": null,
+          "winning_tag": "BEST_PPL_v2_tight"
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 30,
+            "wsharpe": 0.587053772158145
+          },
+          "override_count": 5,
+          "overrides_sha256": "e8a86f4969ae2885e641fcbac6df5d6c317c613f59b57f1c58b612cd57433b77",
+          "present": true,
+          "sample_tag": "BELOW_THRESHOLD",
+          "verdict": null,
+          "winning_tag": "BEST_PPL_v2_tight"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": true,
+          "gain_mo": 50.8262,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.1766,
+          "size_cap": null,
+          "size_mult": 1.93,
+          "strategy": "gainmo_gate"
+        },
+        "tradeable": true
+      },
+      "key": "INTC_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 78,
+            "wsharpe": 0.5616
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "LNG_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 34,
+            "wsharpe": 0.414
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "EXEL_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 22,
+            "wsharpe": -0.2442
+          },
+          "override_count": 9,
+          "overrides_sha256": "af5fa8d63c3bdf4499663b1454820a709f5f62a84ff617dfcbfcfd01de93ca06",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 26.0,
+          "conviction_cap": 40.0,
+          "pct_entry": 2.5,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.2531,
+          "size_cap": 5.0,
+          "size_mult": 2.0,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.1174 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "MPC_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 17,
+            "wsharpe": 0.4905
+          },
+          "override_count": 6,
+          "overrides_sha256": "d5f6461273caee4a5ef9904a0e44f867dde2d4f422a6532019257c6a9dc4d4ae",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "FANG_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 22,
+            "wsharpe": 0.641
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 21.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 2.476,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": 0.5,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.0704,
+          "size_cap": 3.0,
+          "size_mult": 1.31,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.4389 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "RRC_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 14,
+            "wsharpe": 0.7774
+          },
+          "override_count": 6,
+          "overrides_sha256": "d5f6461273caee4a5ef9904a0e44f867dde2d4f422a6532019257c6a9dc4d4ae",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 52.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 28.2509,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": 1.5,
+          "per_pct_mult": 0.5,
+          "pool_sharpe": 0.1603,
+          "size_cap": 3.0,
+          "size_mult": 1.88,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.097 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "ARM_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 76,
+            "wsharpe": 0.5301
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 76,
+            "wsharpe": 0.5301
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "AAPL_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "ROBO_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 28,
+            "wsharpe": 0.5489
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "LLY_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 13,
+            "wsharpe": 0.1143
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "gain_mo": 41.3917,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.193,
+          "size_cap": null,
+          "size_mult": 1.9,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.0355 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "AMD_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 57,
+            "wsharpe": 0.2688
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 57,
+            "wsharpe": 0.2688
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 80.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 9.9629,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": 2.0,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.1145,
+          "size_cap": 5.0,
+          "size_mult": 1.84,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.0024 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "GM_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "XLE_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "LEXX_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 25,
+            "wsharpe": 0.0897
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "gain_mo": 5.1103,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.1484,
+          "size_cap": null,
+          "size_mult": 1.69,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=1.7285 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "XOP_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 43,
+            "wsharpe": 0.4766
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "LRCX_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 34,
+            "wsharpe": 0.0364
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CDW_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "TXN_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 40,
+            "wsharpe": 0.4343
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CAT_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 37,
+            "wsharpe": 0.0116
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "LSCC_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 21,
+            "wsharpe": 0.1462
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "TRGP_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 27,
+            "wsharpe": 0.4772
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "ROKU_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 16,
+            "wsharpe": -0.3477
+          },
+          "override_count": 9,
+          "overrides_sha256": "af5fa8d63c3bdf4499663b1454820a709f5f62a84ff617dfcbfcfd01de93ca06",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "BK_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": true,
+          "bh_long": 2993.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 827.7683,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": 1.5,
+          "per_pct_mult": 0.5,
+          "pool_sharpe": 0.1802,
+          "size_cap": 5.0,
+          "size_mult": 2.0,
+          "strategy": "staircase_long"
+        },
+        "tradeable": true
+      },
+      "key": "SNDK_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 10,
+            "wsharpe": 0.9655
+          },
+          "override_count": 7,
+          "overrides_sha256": "0c787862884bc8fc643e45a00f5aaa09426a667f736221866a229197a536717a",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "RULE_A_on_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": true,
+          "mandatory_user_20260711": true
+        },
+        "tradeable": true
+      },
+      "key": "VT_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 39,
+            "wsharpe": 0.1906895724259652
+          },
+          "override_count": 176,
+          "overrides_sha256": "739f274d1844b861946e392768b86301669e1a26f688616739849fabb955ddf8",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "MATRIX_C5_1YR_WT_DC_EXIT_ENABLED_true"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "MNTS_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 70,
+            "wsharpe": 0.3104
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "gain_mo": 8.7437,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.1254,
+          "size_cap": null,
+          "size_mult": 1.82,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.0889 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "BG_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 24,
+            "wsharpe": 0.0178
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "COP_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 36,
+            "wsharpe": 0.1126
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 166.0,
+          "conviction_cap": 40.0,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.2385,
+          "size_cap": null,
+          "size_mult": 2.0,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.0383 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "GOOGL_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 35,
+            "wsharpe": 0.1996
+          },
+          "override_count": 6,
+          "overrides_sha256": "d5f6461273caee4a5ef9904a0e44f867dde2d4f422a6532019257c6a9dc4d4ae",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CMC_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "BNO_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 12,
+            "wsharpe": 0.7729
+          },
+          "override_count": 7,
+          "overrides_sha256": "0c787862884bc8fc643e45a00f5aaa09426a667f736221866a229197a536717a",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "RULE_A_on_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "DVN_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 17,
+            "wsharpe": -0.8615422947325867
+          },
+          "override_count": 7,
+          "overrides_sha256": "d0bdee49de356ae75ab876df978d105eb843955ffc4f552dd84e86f2afcc0036",
+          "present": true,
+          "sample_tag": "DISCARD",
+          "verdict": null,
+          "winning_tag": "BEST_PPL_v2_tight"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "bh_long": -45.0,
+          "conviction_cap": 40.0,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.1217,
+          "size_cap": null,
+          "size_mult": 1.51,
+          "strategy": "staircase_long"
+        },
+        "tradeable": true
+      },
+      "key": "OLED_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 44,
+            "wsharpe": 0.7997
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 44,
+            "wsharpe": 0.7997
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CHRD_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 21,
+            "wsharpe": 0.3989
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "AMZN_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 1,
+            "wsharpe": 0.0
+          },
+          "override_count": 0,
+          "overrides_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "present": true,
+          "sample_tag": "BELOW_THRESHOLD",
+          "verdict": null,
+          "winning_tag": "baseline"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": true,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "size_cap": null,
+          "size_mult": 0.53,
+          "strategy": "gainmo_gate"
+        },
+        "tradeable": true
+      },
+      "key": "VLO_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 41,
+            "wsharpe": 0.4376
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CF_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 30,
+            "wsharpe": 0.0935
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "gain_mo": 1.2086,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.0517,
+          "size_cap": null,
+          "size_mult": 0.85,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.0097 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "AR_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 10,
+            "wsharpe": 0.3298
+          },
+          "override_count": 7,
+          "overrides_sha256": "0c787862884bc8fc643e45a00f5aaa09426a667f736221866a229197a536717a",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "RULE_A_on_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "SNOW_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 1359.0,
+          "conviction_cap": 40.0,
+          "pct_entry": 2.0,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.1191,
+          "size_cap": 3.0,
+          "size_mult": 2.0,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=-0.0001 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "RKLB_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 56,
+            "wsharpe": 0.2409
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "FULL_RECIPE_EXACT",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "FIVN_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": {
+          "metrics": {},
+          "override_count": 20,
+          "overrides_sha256": "2328b2f56cdbb8b470c19e1ad557076e793aa3f03c954f88b783de0cf3e1dd92",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": null
+        },
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "QRVO_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CIBR_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 41,
+            "wsharpe": 0.5804
+          },
+          "override_count": 9,
+          "overrides_sha256": "71152935d38cc272abd43273f1f2cf130404a7e0ab0ddc64962a99657d59af4e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "FULL_RECIPE_EXACT",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 9.0,
+          "conviction_cap": 40.0,
+          "pct_entry": 2.5,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.1594,
+          "size_cap": 5.0,
+          "size_mult": 2.0,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.0837 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "OKE_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 31,
+            "wsharpe": 0.7929
+          },
+          "override_count": 9,
+          "overrides_sha256": "e6312db41c0d9a6f904d6e9b3be7d02d5f48ffb3d7c44b64345382913f95eece",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_LONG"
+        },
+        "full_recipe": {
+          "metrics": {},
+          "override_count": 20,
+          "overrides_sha256": "7cb8c7b11534c70d4661b71acdcab7b3279a6bb254a087f334e76cd116fc987e",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": null
+        },
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "LONG_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "LONG_ENABLED": false,
+          "bh_long": 40.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 7.1275,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": 1.0,
+          "per_pct_mult": 1.0,
+          "pool_sharpe": 0.1249,
+          "size_cap": 5.0,
+          "size_mult": 1.79,
+          "strategy": "staircase_long",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "gain_vs_bh=0.0285 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "DAR_LONG",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 23,
+            "wsharpe": 0.1141
+          },
+          "override_count": 10,
+          "overrides_sha256": "9e20ef3b99050fd680ba6c0f6849b5bb222e5899359809875596487a2fbcb5b5",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_LONG"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 3.5203,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.6109,
+          "size_cap": null,
+          "size_mult": 1.54,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.03>0 pool_sharpe=0.03>0 trades=44>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "TECK_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 39,
+            "wsharpe": 0.8422
+          },
+          "override_count": 9,
+          "overrides_sha256": "3d370eb51b3700604e94ca88abf11f07e9b535c91cae44556e45b3ea93a66030",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "ALB_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 46,
+            "wsharpe": 0.4597
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 46,
+            "wsharpe": 0.4597
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 0.843,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.3713,
+          "size_cap": null,
+          "size_mult": 0.75,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.2382 pool_sharpe=-0.1095 trades=96 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "WPM_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 44,
+            "wsharpe": 0.5714
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 1.7346,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.3509,
+          "size_cap": null,
+          "size_mult": 1.1,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.06>0 pool_sharpe=0.11>0 trades=46>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "STLD_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 16,
+            "wsharpe": 0.1456
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "PWR_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 1.533,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.3635,
+          "size_cap": null,
+          "size_mult": 1.01,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=17.9%>0 but gain_vs_bh=0.0531 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "LDOS_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 16,
+            "wsharpe": -0.0485
+          },
+          "override_count": 10,
+          "overrides_sha256": "3a187c17f462bbb3af9c6a64963fded53835482a4bdf7ae682a8b55ecd8999b7",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 0.7648,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4396,
+          "size_cap": null,
+          "size_mult": 0.69,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.2875 pool_sharpe=-0.1229 trades=91 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "AU_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 52,
+            "wsharpe": 0.0081
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 52,
+            "wsharpe": 0.0081
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 0.7963,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5132,
+          "size_cap": null,
+          "size_mult": 0.72,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.08>0 pool_sharpe=0.14>0 trades=43>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "VALE_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 40,
+            "wsharpe": 0.5159
+          },
+          "override_count": 9,
+          "overrides_sha256": "3d370eb51b3700604e94ca88abf11f07e9b535c91cae44556e45b3ea93a66030",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 2.5329,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4273,
+          "size_cap": null,
+          "size_mult": 1.35,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=0.013 pool_sharpe=0.0575 trades=25 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "OKE_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 0
+          },
+          "override_count": 1,
+          "overrides_sha256": "3e34d3f84668dba86279f165d58c2b1a2a2fc44987fa233bc67b619dff807346",
+          "present": true,
+          "sample_tag": "NO_TRADES",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "bh_long": -46.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 4.15,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.6187,
+          "size_cap": 1.0,
+          "size_mult": 1.63,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=59.7%>0 but gain_vs_bh=0.0054 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "ACN_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 46,
+            "wsharpe": 0.3006
+          },
+          "override_count": 9,
+          "overrides_sha256": "3d370eb51b3700604e94ca88abf11f07e9b535c91cae44556e45b3ea93a66030",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 2.0011,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.6167,
+          "size_cap": null,
+          "size_mult": 1.18,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=9.0%>0 but gain_vs_bh=-0.1127 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "IBIT_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 30,
+            "wsharpe": -0.0664
+          },
+          "override_count": 9,
+          "overrides_sha256": "af5fa8d63c3bdf4499663b1454820a709f5f62a84ff617dfcbfcfd01de93ca06",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 0.8333,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4578,
+          "size_cap": null,
+          "size_mult": 0.74,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.011 pool_sharpe=-0.0082 trades=71 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "AGI_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 52,
+            "wsharpe": 0.1663
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": {
+          "metrics": {
+            "trades": 52,
+            "wsharpe": 0.1663
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        }
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "FCN_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 27,
+            "wsharpe": 0.1383
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "bh_long": -54.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 4.3328,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.6477,
+          "size_cap": 1.0,
+          "size_mult": 1.65,
+          "strategy": "elevator_short"
+        },
+        "tradeable": true
+      },
+      "key": "WDAY_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 12,
+            "wsharpe": 0.6337
+          },
+          "override_count": 7,
+          "overrides_sha256": "e58d076e381ffb14a2d9a2fdcc8f8641e487d42d28f033680fb9da4699626928",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "RULE_A_on_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "VICR_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "bh_long": -1.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 2.5164,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.434,
+          "size_cap": 1.0,
+          "size_mult": 1.32,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=5.7%>0 but gain_vs_bh=-0.092 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "AGCO_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 10,
+            "wsharpe": -0.1632
+          },
+          "override_count": 10,
+          "overrides_sha256": "3a187c17f462bbb3af9c6a64963fded53835482a4bdf7ae682a8b55ecd8999b7",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 0.4001,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.3605,
+          "size_cap": null,
+          "size_mult": 0.6,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.281 pool_sharpe=-0.1873 trades=69 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "KGC_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 29,
+            "wsharpe": 0.3909
+          },
+          "override_count": 9,
+          "overrides_sha256": "3d370eb51b3700604e94ca88abf11f07e9b535c91cae44556e45b3ea93a66030",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "LLY_SHORT",
+      "layers": {
+        "account_overlay": null,
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 1.4037,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4625,
+          "size_cap": null,
+          "size_mult": 1.0,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.19>0 pool_sharpe=0.09>0 trades=78>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "PAAS_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 62,
+            "wsharpe": 0.3402
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "NLR_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 4,
+            "wsharpe": 1.3549745843633643
+          },
+          "override_count": 5,
+          "overrides_sha256": "f87ccbc08dee6b91c72ed17d96638283152d2c5cf65cc18f431768b6942be5a6",
+          "present": true,
+          "sample_tag": "LOW_SAMPLE",
+          "verdict": null,
+          "winning_tag": "BEST_PPL_v2_loose"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "DIS_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 38,
+            "wsharpe": 0.0463
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "FULL_RECIPE_EXACT",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 0.9545,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4345,
+          "size_cap": null,
+          "size_mult": 0.81,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.30>0 pool_sharpe=0.24>0 trades=48>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "AG_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 56,
+            "wsharpe": -0.0236
+          },
+          "override_count": 10,
+          "overrides_sha256": "3a187c17f462bbb3af9c6a64963fded53835482a4bdf7ae682a8b55ecd8999b7",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": {
+          "metrics": {},
+          "override_count": 20,
+          "overrides_sha256": "b8ee23922ecb98218ba6ffd9864258a2ea1ff35328792231ab492119ffa58558",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": null
+        },
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "AMAT_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "NXE_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "bh_long": -27.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 2.8516,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4659,
+          "size_cap": 1.0,
+          "size_mult": 1.44,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=33.0%>0 but gain_vs_bh=0.0763 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "MOS_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 33,
+            "wsharpe": 0.4692
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 0.2372,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.1487,
+          "size_cap": null,
+          "size_mult": 0.56,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.22>0 pool_sharpe=0.15>0 trades=64>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "RGLD_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 24,
+            "wsharpe": 0.7844
+          },
+          "override_count": 9,
+          "overrides_sha256": "3d370eb51b3700604e94ca88abf11f07e9b535c91cae44556e45b3ea93a66030",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "bh_long": 19.0,
+          "conviction_cap": 40.0,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.0785,
+          "size_cap": 1.0,
+          "size_mult": 1.23,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.15>0 pool_sharpe=0.07>0 trades=57>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "RBLX_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 27,
+            "wsharpe": -0.099
+          },
+          "override_count": 9,
+          "overrides_sha256": "af5fa8d63c3bdf4499663b1454820a709f5f62a84ff617dfcbfcfd01de93ca06",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "HAO_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 103,
+            "wsharpe": 0.0845
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 3.598,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5,
+          "size_cap": null,
+          "size_mult": 1.56,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.21>0 pool_sharpe=0.12>0 trades=46>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "AXON_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 32,
+            "wsharpe": 0.2092
+          },
+          "override_count": 6,
+          "overrides_sha256": "a8353f26ae8ff03b56caf7e52469a8f1b23bffcdc0df00f0a1dd02de1da1cdcd",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "MNTS_SHORT",
+      "layers": {
+        "account_overlay": null,
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 1.7126,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4082,
+          "size_cap": null,
+          "size_mult": 1.09,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.3861 pool_sharpe=-0.1263 trades=73 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "MP_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 33,
+            "wsharpe": 0.194
+          },
+          "override_count": 6,
+          "overrides_sha256": "a8353f26ae8ff03b56caf7e52469a8f1b23bffcdc0df00f0a1dd02de1da1cdcd",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "TTD_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 27,
+            "wsharpe": 0.2154
+          },
+          "override_count": 6,
+          "overrides_sha256": "a8353f26ae8ff03b56caf7e52469a8f1b23bffcdc0df00f0a1dd02de1da1cdcd",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "COE_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 1.4009,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.3279,
+          "size_cap": null,
+          "size_mult": 0.99,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.0271 pool_sharpe=-0.0559 trades=46 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "TDG_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 38,
+            "wsharpe": 0.5804
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 0.3021,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5198,
+          "size_cap": null,
+          "size_mult": 0.57,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.20>0 pool_sharpe=0.15>0 trades=74>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "NEM_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 46,
+            "wsharpe": 0.0737
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 3.504,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5036,
+          "size_cap": null,
+          "size_mult": 1.53,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=57.6%>0 but gain_vs_bh=0.0169 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "CLF_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 39,
+            "wsharpe": 0.0224
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 5.0096,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4234,
+          "size_cap": null,
+          "size_mult": 1.68,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.0003 pool_sharpe=-0.0005 trades=38 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "CMC_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 19,
+            "wsharpe": 0.1172
+          },
+          "override_count": 9,
+          "overrides_sha256": "3d370eb51b3700604e94ca88abf11f07e9b535c91cae44556e45b3ea93a66030",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "CLX_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_SAFETY_OVERRIDE_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "AEM_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 12,
+            "wsharpe": 0.4966
+          },
+          "override_count": 7,
+          "overrides_sha256": "e58d076e381ffb14a2d9a2fdcc8f8641e487d42d28f033680fb9da4699626928",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "RULE_A_on_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "bh_long": -45.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 4.0181,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4029,
+          "size_cap": 3.0,
+          "size_mult": 1.6,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=50.9%>0 but gain_vs_bh=0.0125 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "OLED_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 35,
+            "wsharpe": 0.3587
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "bh_long": -17.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 4.995,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.3336,
+          "size_cap": 1.0,
+          "size_mult": 1.66,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "short-b&h=50.5%>0 but gain_vs_bh=-0.0347 < 2.0 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "LAC_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 57,
+            "wsharpe": 0.29137627062504656
+          },
+          "override_count": 177,
+          "overrides_sha256": "f374755aedf20c4d54ef1e8142df1493a946483afcd5ca0abea483dacdcc93ed",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "MATRIX_HIST_C4_VALIDATED_FULL_DELTA_EXIT_ENABLED_true"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 2.9571,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4528,
+          "size_cap": null,
+          "size_mult": 1.46,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.46>0 pool_sharpe=0.28>0 trades=65>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "CDE_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 52,
+            "wsharpe": 0.4041
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "bh_long": 38.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 1.6148,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5533,
+          "size_cap": 1.0,
+          "size_mult": 1.03,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.31>0 pool_sharpe=0.27>0 trades=41>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "FCX_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 66,
+            "wsharpe": 0.5351
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 4.1255,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5141,
+          "size_cap": null,
+          "size_mult": 1.62,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.19>0 pool_sharpe=0.09>0 trades=48>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "UUUU_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 52,
+            "wsharpe": 0.1394
+          },
+          "override_count": 9,
+          "overrides_sha256": "3d370eb51b3700604e94ca88abf11f07e9b535c91cae44556e45b3ea93a66030",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_loose_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": false,
+          "gain_mo": 1.1611,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.4256,
+          "size_cap": null,
+          "size_mult": 0.84,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "benched",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule failed: gain_mo=-0.2764 pool_sharpe=-0.5015 trades=48 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "HL_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 45,
+            "wsharpe": 0.1911
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "NKE_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "MCD_SHORT",
+      "layers": {
+        "account_overlay": null,
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": false,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_DISABLED",
+      "final_book": {
+        "disabled": true,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "HII_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 22,
+            "wsharpe": 0.6222
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "gain_mo": 2.1667,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5851,
+          "size_cap": null,
+          "size_mult": 1.24,
+          "strategy": "gainmo_gate"
+        },
+        "tradeable": true
+      },
+      "key": "CRWD_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 0,
+            "wsharpe": 0.0
+          },
+          "override_count": 3,
+          "overrides_sha256": "19f06505f75413517d747e75dcd5a0b92da940e4a939f5eaa8435558d84ae0aa",
+          "present": true,
+          "sample_tag": "BELOW_THRESHOLD",
+          "verdict": null,
+          "winning_tag": "BEST_RULE_A_on"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": null,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "UNMANAGED_FALLS_THROUGH_TO_OVERLAYS_AND_GLOBAL_CONFIG",
+      "final_book": {
+        "disabled": false,
+        "entry": null,
+        "tradeable": false
+      },
+      "key": "ORCL_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {},
+          "override_count": 2,
+          "overrides_sha256": "524ae48814b774318408763671757c7a723937adf79eefeb771a0019cc66d303",
+          "present": true,
+          "sample_tag": "LIVE_R1_MASTER_OFF_20260803",
+          "verdict": null,
+          "winning_tag": null
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "mandatory_user_20260710": true,
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "size_cap": null,
+          "size_mult": 0.51,
+          "strategy": "gainmo_gate"
+        },
+        "tradeable": true
+      },
+      "key": "MSTR_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 19,
+            "wsharpe": -0.7187
+          },
+          "override_count": 6,
+          "overrides_sha256": "cf37bff5b7ea9669ee141e76e1bf74a44c21b6aebdcd6846e8be6abe21209509",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "NOLOSS_WT5of5_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 0.5721,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.3434,
+          "size_cap": null,
+          "size_mult": 0.66,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.06>0 pool_sharpe=0.05>0 trades=64>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "FNV_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 24,
+            "wsharpe": 0.3045
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "bh_long": 92.0,
+          "conviction_cap": 40.0,
+          "gain_mo": 2.3441,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.5492,
+          "size_cap": 1.0,
+          "size_mult": 1.28,
+          "strategy": "elevator_short",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.13>0 pool_sharpe=0.17>0 trades=42>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "SCCO_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 25,
+            "wsharpe": 1.0461
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 0.3664,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.6962,
+          "size_cap": null,
+          "size_mult": 0.59,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.16>0 pool_sharpe=0.13>0 trades=64>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "GDX_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 54,
+            "wsharpe": 0.2492
+          },
+          "override_count": 9,
+          "overrides_sha256": "2fa33f7a2551e0bbdb174cefb3a5517dcbe1f1d7a9fd36326ee71641aab8ece6",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "PPL_v2_tight_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    },
+    {
+      "effective_enable": true,
+      "enable_field": "SHORT_ENABLED",
+      "enable_precedence_source": "PERSYM_FINAL_BOOK_TRADEABLE",
+      "final_book": {
+        "disabled": false,
+        "entry": {
+          "SHORT_ENABLED": true,
+          "gain_mo": 2.1343,
+          "gate_src": "gainmo",
+          "gate_ts": "2026-07-15T01:44:10Z",
+          "pct_entry": null,
+          "per_pct_mult": null,
+          "pool_sharpe": 0.7088,
+          "size_cap": null,
+          "size_mult": 1.21,
+          "strategy": "gainmo_gate",
+          "trade_gate": {
+            "decision": "qualified",
+            "ts": "2026-07-14T18:17:00Z",
+            "why": "absolute rule: gain_mo=0.09>0 pool_sharpe=0.10>0 trades=46>=30 [capture:T0]"
+          }
+        },
+        "tradeable": true
+      },
+      "key": "NOC_SHORT",
+      "layers": {
+        "account_overlay": {
+          "metrics": {
+            "trades": 20,
+            "wsharpe": 0.1742
+          },
+          "override_count": 10,
+          "overrides_sha256": "aeab731967229c6c552e9fc65e063df3cf2400265690c44c28e80c97e5473ba2",
+          "present": true,
+          "sample_tag": null,
+          "verdict": null,
+          "winning_tag": "R1R2_strict_SHORT"
+        },
+        "full_recipe": null,
+        "global_baseline": null
+      },
+      "strategy_override_precedence": [
+        "FULL_RECIPE_EXACT",
+        "TRB_ACCOUNT_OVERLAY",
+        "GLOBAL_PER_SYM_BASELINE",
+        "REGIME_OR_CONFIG_DEFAULT"
+      ]
+    }
+  ],
+  "schema": "tradier-per-sym-live-lineage-v1",
+  "source_files": {
+    "data/full_recipe_live_config.json": {
+      "age_seconds": 159510.56631469727,
+      "sha256": "b0c8601c3c3e08574b2a0b1f26867c19f25a3fffef9c6f3a8be947c20c78c3de"
+    },
+    "data/hourly_reconfig/per_sym_active_config.json": {
+      "age_seconds": 494.75834107398987,
+      "sha256": "3df2c3bf41bd93cae371f7dbb1f0ba73d7bd5d7f3b25cb28cdf8a2283e243db9"
+    },
+    "data/hourly_reconfig/trb/active_config.json": {
+      "age_seconds": 95842.46838974953,
+      "sha256": "33bcb2ab38cbddbab0fd6b954d62703302c89194f530aba25ddb0ceca3e01525"
+    },
+    "data/persym_final_book.json": {
+      "age_seconds": 1794247.6827430725,
+      "sha256": "98f50e3e6d2d9e0aedda8e412dcd3e8e5ad5702b84eb19bdd4c8b2953708bee3"
+    }
+  },
+  "summary": {
+    "allowlist_book_disabled": 11,
+    "allowlist_book_tradeable": 62,
+    "allowlist_exact_entries": 3,
+    "allowlist_rows_with_diagnostic_layer": 0,
+    "allowlist_unmanaged": 40,
+    "exact_full_recipe_entries_total": 3,
+    "final_book_disabled_keys_total": 63,
+    "final_book_tradeable_keys_total": 192,
+    "trb_allowlist_symbol_sides": 113
+  }
+}

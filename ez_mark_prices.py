@@ -864,7 +864,12 @@ class MarkPriceStreamer:
     
     async def _broadcast_mark_prices_direct(self, mark_prices: Dict[str, float]) -> int:
         """Broadcast mark prices using self.redis directly - matching ez_prices_ws.py pattern"""
-        if not self.redis or not mark_prices:
+        if not mark_prices:
+            return 0
+        # Count a received WS payload as healthy independently of Redis.  The
+        # health monitor is measuring the upstream feed, not cache availability.
+        self.last_websocket_message_time = time.time()
+        if not self.redis:
             return 0
         try:
             timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')

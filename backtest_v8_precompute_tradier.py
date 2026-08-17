@@ -22,6 +22,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from classic_formations import ensure_npz_formation_fields, formation_fields_from_ohlcv
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("v4_precompute_tradier")
 
@@ -325,6 +327,48 @@ def compute_wt_intelligence(wt1, wt2, close, tf):
     out[f"wt_trough_structure_{tf}"] = trough_struct
     return out
 
+
+def compute_long_regression_channel(close, length):
+    """Causal long regression channel used by the gray-band ladder.
+
+    Short-history stocks still receive a measured channel: the requested
+    window is reduced to half the available completed bars, with a hard
+    20-bar minimum.  The effective window is emitted beside the indicators so
+    every result discloses the adaptation instead of silently returning zeros.
+    """
+    values = np.asarray(close, dtype=np.float64)
+    n = len(values)
+    effective = min(int(length), max(20, n // 2))
+    pb = np.full(n, 0.5, dtype=np.float32)
+    slope_pct = np.zeros(n, dtype=np.float32)
+    r2 = np.zeros(n, dtype=np.float32)
+    if n < effective or effective < 2:
+        return pb, slope_pct, r2, effective
+    windows = np.lib.stride_tricks.sliding_window_view(values, effective)
+    x = np.arange(effective, dtype=np.float64)
+    xm = x.mean()
+    denom = np.sum((x - xm) ** 2)
+    ym = windows.mean(axis=1)
+    slope = ((windows - ym[:, None]) * (x - xm)).sum(axis=1) / denom
+    fit = ym[:, None] + slope[:, None] * (x - xm)
+    resid_std = np.sqrt(np.mean((windows - fit) ** 2, axis=1))
+    fit_end = fit[:, -1]
+    width = 5.0 * resid_std
+    price = windows[:, -1]
+    pct_b = np.clip(
+        np.where(width > 0, (price - (fit_end - 2.5 * resid_std)) / width, 0.5),
+        0.0,
+        1.0,
+    )
+    ss_res = (resid_std ** 2) * effective
+    ss_tot = ((windows - ym[:, None]) ** 2).sum(axis=1)
+    fit_r2 = np.where(ss_tot > 0, 1.0 - ss_res / ss_tot, 0.0)
+    normalized_slope = slope / np.maximum(np.abs(price), 1e-9) * 100.0
+    pb[effective - 1:] = pct_b.astype(np.float32)
+    slope_pct[effective - 1:] = normalized_slope.astype(np.float32)
+    r2[effective - 1:] = fit_r2.astype(np.float32)
+    return pb, slope_pct, r2, effective
+
 # Pre-v7 helper: compute_crossovers
 def compute_crossovers(current, reference):
     """Return (crossover, crossunder) boolean arrays."""
@@ -438,6 +482,20 @@ def compute_tf_indicators_stock(df, tf):
     out[f"low_{tf}"] = low.values.astype(np.float32)
     out[f"close_{tf}"] = close.values.astype(np.float32)
     out[f"volume_{tf}"] = volume.values.astype(np.float32)
+    # Classic formations are computed from the same causal OHLC arrays used by
+    # live Tradier klines.  Existing frozen NPZs are upgraded in memory by the
+    # loaders; new precomputes persist these arrays directly.
+    if tf in ("15m", "1h", "4h", "D"):
+        out.update(
+            formation_fields_from_ohlcv(
+                open_.values,
+                high.values,
+                low.values,
+                close.values,
+                volume.values,
+                tf,
+            )
+        )
     out[f"rsi_{tf}"] = compute_rsi(close, 14)
     if tf in ("1h", "4h"):
         out[f"rsi_2_{tf}"] = compute_rsi(close, 2)
@@ -521,6 +579,14 @@ def compute_tf_indicators_stock(df, tf):
             vwap_d = ((high.values + low.values + close.values) / 3.0).astype(np.float32)
             out["vwap_D"] = vwap_d
     out[f"lr_trend_{tf}"] = compute_linreg_slope(close, 50)
+    requested_lrl = {"5m": 200, "15m": 200, "1h": 200, "4h": 400, "D": 200}.get(tf, 200)
+    lrl_pb, lrl_slope, lrl_r2, lrl_window = compute_long_regression_channel(
+        close.values, requested_lrl
+    )
+    out[f"lrL_pct_b_{tf}"] = lrl_pb
+    out[f"lrL_slope_{tf}"] = lrl_slope
+    out[f"lrL_r2_{tf}"] = lrl_r2
+    out[f"lrL_window_{tf}"] = np.full(len(close), lrl_window, dtype=np.int16)
     if tf in ("5m", "15m"):
         t_up, tco, tcu = compute_hull_trend(close)
         out[f"t_up_{tf}"] = t_up
@@ -667,19 +733,36 @@ def process_symbol(args):
     ind_D = compute_tf_indicators_stock(df_D, "D")
     ts_15m = df_15m.index.values
     ts_15m_epoch = (ts_15m - np.datetime64("1970-01-01T00:00:00")) // np.timedelta64(1, "s")
-    merged = {"timestamps": ts_15m_epoch.astype(np.int64), "close": df_15m["close"].values.astype(np.float32)}
+    # Retain the actual source-parent identity for every mapped timeframe.
+    # Consumers must distinguish a completed HTF event from a standing HTF
+    # state; without these arrays an adapter cannot audit causality or consume
+    # each parent exactly once.  The base 15m identity is its own timestamp.
+    merged = {"timestamps": ts_15m_epoch.astype(np.int64),
+              "timestamp_15m": ts_15m_epoch.astype(np.int64),
+              "close": df_15m["close"].values.astype(np.float32)}
     for key, arr in ind_15m.items():
         if len(arr) == len(ts_15m):
             merged[key] = arr
-    for ind_data, df_source in [(ind_5m, df_5m), (ind_1h, df_1h), (ind_4h, df_4h), (ind_D, df_D)]:
+    for ind_data, df_source, tf in [(ind_5m, df_5m, "5m"), (ind_1h, df_1h, "1h"),
+                                    (ind_4h, df_4h, "4h"), (ind_D, df_D, "D")]:
         if ind_data and df_source is not None:
             ts_src = df_source.index.values
             ts_src_epoch = (ts_src - np.datetime64("1970-01-01T00:00:00")) // np.timedelta64(1, "s")
             mapped = map_htf_to_15m(ind_data, ts_src_epoch, ts_15m_epoch)
+            # This timestamp is the source candle already selected by the
+            # same causal mapping as the indicators, not the simulation tick.
+            mapped.update(map_htf_to_15m({f"timestamp_{tf}": ts_src_epoch.astype(np.int64)},
+                                          ts_src_epoch, ts_15m_epoch))
             for key, arr in mapped.items():
                 merged[key] = arr
     comp = compute_wt_composite_stock(merged, ts_15m_epoch)
     merged.update(comp)
+    # map_htf_to_15m broadcasts every parent value.  Formation outputs are
+    # breakout events, so rebuild them from mapped OHLC as one-bar causal pulses
+    # (the same in-memory upgrade used for frozen NPZs).
+    for _formation_key in [key for key in merged if key.startswith("formation_")]:
+        merged.pop(_formation_key, None)
+    merged.update(ensure_npz_formation_fields(merged))
     np.savez_compressed(str(npz_path), **merged)
     elapsed = time.time() - t0
     n_ind = len([k for k in merged if k not in ("timestamps", "close")])
@@ -847,23 +930,46 @@ def inspect_symbol(symbol, at_time=None, fields=None):
 def main():
     parser = argparse.ArgumentParser(description="Backtest V4 — Tradier (Stock) Indicator Precompute")
     parser.add_argument("--symbols", type=int, default=0, help="Number of symbols (0=all)")
+    parser.add_argument(
+        "--only", default="",
+        help="Comma-separated exact stock symbols to precompute (for example MSTR).",
+    )
     parser.add_argument("--workers", type=int, default=0, help="Parallel workers (0=auto)")
     parser.add_argument("--start", type=str, default="2022-01-01", help="Start date")
     parser.add_argument("--resume", action="store_true", help="Skip completed symbols")
     parser.add_argument("--klines-dir", type=str, default=None, help="Override klines directory")
+    parser.add_argument(
+        "--output-dir", type=str, default=None,
+        help="Output root. Use backtest_v8 to make NPZ files directly visible to V8.",
+    )
     parser.add_argument("--inspect", type=str, default=None, metavar="SYMBOL")
     parser.add_argument("--at", type=str, default=None)
     parser.add_argument("--fields", type=str, default=None)
     parser.add_argument("--rankings", action="store_true")
     args = parser.parse_args()
-    global INDICATORS_DIR
+    global OUT_DIR, INDICATORS_DIR, DB_PATH
     if args.inspect:
         inspect_symbol(args.inspect, args.at, args.fields)
         return
+    if args.output_dir:
+        OUT_DIR = Path(args.output_dir).expanduser().resolve()
+        INDICATORS_DIR = OUT_DIR / "indicators"
+        DB_PATH = OUT_DIR / "backtest.db"
     start_ts = pd.Timestamp(args.start, tz="UTC").to_pydatetime()
     klines_dir = Path(args.klines_dir) if args.klines_dir else KLINES_DIR
     symbols = get_stock_symbols(klines_dir)
-    if args.symbols > 0:
+    if args.only:
+        requested = {s.strip().upper() for s in args.only.split(",") if s.strip()}
+        available = set(symbols)
+        missing = sorted(requested - available)
+        if missing:
+            parser.error(
+                "requested symbol source data is missing from "
+                f"{klines_dir}: {', '.join(missing)}. "
+                "Fetch/cache its 15m bars before precomputing."
+            )
+        symbols = [s for s in symbols if s in requested]
+    elif args.symbols > 0:
         symbols = symbols[:args.symbols]
     log.info(f"Backtest V4 Tradier Precompute: {len(symbols)} stock symbols, start={args.start}")
     conn = setup_db()

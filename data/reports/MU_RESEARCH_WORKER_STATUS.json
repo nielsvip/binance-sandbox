@@ -1,0 +1,26 @@
+{
+  "cpu_count": 12,
+  "jobs": [
+    {
+      "name": "mu_pure_wt_ladder",
+      "state": "PROCESS_ENUMERATION_UNAVAILABLE",
+      "timestamp": "2026-08-01T17:07:15.865599Z"
+    },
+    {
+      "name": "mu_dc_fast_cycle",
+      "state": "PROCESS_ENUMERATION_UNAVAILABLE",
+      "timestamp": "2026-08-01T17:07:15.870428Z"
+    },
+    {
+      "name": "mu_dc_wt_interaction",
+      "state": "PROCESS_ENUMERATION_UNAVAILABLE",
+      "timestamp": "2026-08-01T17:07:15.872682Z"
+    }
+  ],
+  "load_1m": 34.8291015625,
+  "load_pct_of_cores": 290.24,
+  "manifest": "data/research_campaign_watchdog_manifest.json",
+  "memory_available_pct": null,
+  "swap_used_pct": null,
+  "timestamp": "2026-08-01T17:07:15.865069Z"
+}

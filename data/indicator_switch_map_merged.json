@@ -1,0 +1,288 @@
+{
+  "atr_4h": {
+    "switch": "BTC_RZ_PROXIMITY_PCT",
+    "tighten_value": 0.3,
+    "loosen_value": 0.8,
+    "default": 0.5
+  },
+  "atr_1h": {
+    "switch": "BTC_RZ_PROXIMITY_PCT",
+    "tighten_value": 0.3,
+    "loosen_value": 0.8,
+    "default": 0.5
+  },
+  "atr_15m": {
+    "switch": "BTC_RZ_PROXIMITY_PCT",
+    "tighten_value": 0.3,
+    "loosen_value": 0.8,
+    "default": 0.5
+  },
+  "wt_velocity_D": {
+    "switch": "BTC_ACCEL_RAMP_MIN_TFS",
+    "tighten_value": 5,
+    "loosen_value": 1,
+    "default": 2
+  },
+  "wt_velocity_4h": {
+    "switch": "BTC_ACCEL_RAMP_MIN_TFS",
+    "tighten_value": 5,
+    "loosen_value": 1,
+    "default": 2
+  },
+  "wt_velocity_1h": {
+    "switch": "BTC_ACCEL_RAMP_MIN_TFS",
+    "tighten_value": 5,
+    "loosen_value": 1,
+    "default": 2
+  },
+  "wt1_4h": {
+    "switch": "BTC_BREAKOUT_HTF_MIN_ALIGNED",
+    "tighten_value": 3,
+    "loosen_value": 0,
+    "default": 1
+  },
+  "wt1_1h": {
+    "switch": "BTC_BREAKOUT_HTF_MIN_ALIGNED",
+    "tighten_value": 3,
+    "loosen_value": 0,
+    "default": 1
+  },
+  "wt1_D": {
+    "switch": "BTC_BREAKOUT_HTF_MIN_ALIGNED",
+    "tighten_value": 3,
+    "loosen_value": 0,
+    "default": 1
+  },
+  "stoch_k_1h": {
+    "switch": "BTC_TECH_EXIT_WT_MIN_TFS",
+    "tighten_value": 5,
+    "loosen_value": 1,
+    "default": 3
+  },
+  "stoch_k_4h": {
+    "switch": "BTC_TECH_EXIT_WT_MIN_TFS",
+    "tighten_value": 5,
+    "loosen_value": 1,
+    "default": 3
+  },
+  "mfi_1h": {
+    "switch": "BTC_DIVERGENCE_BEAR_MIN_INDS",
+    "tighten_value": 3,
+    "loosen_value": 1,
+    "default": 1
+  },
+  "mfi_4h": {
+    "switch": "BTC_DIVERGENCE_BULL_MIN_INDS",
+    "tighten_value": 3,
+    "loosen_value": 1,
+    "default": 1
+  },
+  "div_reg_bear_wt_15m": {
+    "switch": "BTC_DIVERGENCE_BLOCK_AGAINST",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "div_reg_bear_wt_1h": {
+    "switch": "BTC_DIVERGENCE_BLOCK_AGAINST",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "div_reg_bear_wt_4h": {
+    "switch": "BTC_DIVERGENCE_BLOCK_AGAINST",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "div_reg_bull_wt_15m": {
+    "switch": "BTC_DIVERGENCE_BLOCK_AGAINST",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "div_reg_bull_wt_1h": {
+    "switch": "BTC_DIVERGENCE_BLOCK_AGAINST",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "div_reg_bull_wt_4h": {
+    "switch": "BTC_DIVERGENCE_BLOCK_AGAINST",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "funding_rate_3m": {
+    "switch": "FUNDING_GATE_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "oi_change_1h_3m": {
+    "switch": "OI_CONFIRM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "oi_change_15m_3m": {
+    "switch": "OI_CONFIRM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true
+  },
+  "dc_high_1h": {
+    "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "wt_velocity_15m": {
+    "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "dc_low_4h": {
+    "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "dc_low_15m": {
+    "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "dc_low_1h": {
+    "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "dc_high_15m": {
+    "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "dc_high_4h": {
+    "switch": "REENTRY_B02_BC156_BOTTOM_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "wt2_4h": {
+    "switch": "REENTRY_WT15M_CROSS_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "wt2_D": {
+    "switch": "REENTRY_PULL1_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "stoch_d_4h": {
+    "switch": "REENTRY_B_KZONE_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "mfi_D": {
+    "switch": "FH_MOMENTUM_MIN_MOVE_PCT",
+    "tighten_value": 0.3,
+    "loosen_value": 1.0,
+    "default": 0.5,
+    "auto": true
+  },
+  "sma_200_4h": {
+    "switch": "HLR_RALLY_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "sma_200_1h": {
+    "switch": "HLR_RALLY_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "wt_velocity_up_count": {
+    "switch": "DC_MOMENT_OPPOSE_THRESHOLD",
+    "tighten_value": 0.3,
+    "loosen_value": 1.0,
+    "default": 0.5,
+    "auto": true
+  },
+  "wt_velocity_down_count": {
+    "switch": "WT_MTF_VEL_GATE_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "bb_pct_b_1h": {
+    "switch": "RZ_BREAKOUT_ENTRY_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "stoch_k_D": {
+    "switch": "DC_POS_EXIT_THRESHOLD",
+    "tighten_value": 0.3,
+    "loosen_value": 1.0,
+    "default": 0.5,
+    "auto": true
+  },
+  "dc_high_3m": {
+    "switch": "BTC_FOLLOW_THROUGH_MIN_MOVE_PCT",
+    "tighten_value": 0.3,
+    "loosen_value": 1.0,
+    "default": 0.5,
+    "auto": true
+  },
+  "wt2_W": {
+    "switch": "ALL_TF_BRAKE_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "wt1_W": {
+    "switch": "ALL_TF_BRAKE_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "wt1_M": {
+    "switch": "ALL_TF_BRAKE_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  },
+  "wt2_M": {
+    "switch": "ALL_TF_BRAKE_ENABLED",
+    "tighten_value": true,
+    "loosen_value": false,
+    "default": true,
+    "auto": true
+  }
+}

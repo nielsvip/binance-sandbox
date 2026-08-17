@@ -11,9 +11,10 @@ import sqlite3
 import sys
 
 
-CAMPAIGN = "stocks_repaired_20260725_c2"
+CAMPAIGN = "stocks_repaired_20260730_c5"
 EXPECTED_SHEETS = [
     "Engine Coverage",
+    "Universe Audit",
     "Entry",
     "Exit",
     "Sizing",
@@ -26,6 +27,13 @@ EXPECTED_SHEETS = [
     "Baselines",
     "Inventory",
 ]
+# These sheets were added by the current provenance/vector reporting contract.
+# Keep the core ordering contract above, but permit additive diagnostic sheets
+# so a valid newer workbook does not fail the fleet health check.
+ALLOWED_ADDITIONAL_SHEETS = {
+    "Evidence Provenance",
+    "VEC Scalar Diagnostics",
+}
 
 
 def _processes() -> dict[int, dict]:
@@ -70,6 +78,35 @@ def _manifest(sbx: Path) -> tuple[dict[str, tuple[str, str]], dict]:
     if not path.exists():
         raise FileNotFoundError(path)
     payload = json.loads(path.read_text())
+    if payload.get("campaign") != CAMPAIGN:
+        raise ValueError(
+            f"matrix worker manifest campaign is not {CAMPAIGN}"
+        )
+    if (
+        payload.get("matrix_contract_version")
+        != "tradier-matrix-exec-c5-20260730"
+    ):
+        raise ValueError("matrix worker manifest is not exact c5")
+    if payload.get("no_live_promotion") is not True:
+        raise ValueError(
+            "matrix worker manifest must set no_live_promotion=true"
+        )
+    for row in payload.get("workers", []):
+        if not isinstance(row, dict):
+            raise ValueError("matrix worker manifest has a malformed worker")
+        roots = row.get("priority_roots") or []
+        if not roots:
+            raise ValueError(
+                f"{row.get('tag')}: no dependency-pack priority roots"
+            )
+        if "STOP_PACK" in roots or row.get("only_param") == "STOP_PACK":
+            raise ValueError(
+                f"{row.get('tag')}: STOP_PACK helper worker is forbidden"
+            )
+        if row.get("selection_mode") != "DEPENDENCY_PACKS_ONLY":
+            raise ValueError(
+                f"{row.get('tag')}: selection_mode is not dependency-pack-only"
+            )
     expected = {
         str(row["tag"]): (
             str(row["symbol"]).upper(),
@@ -213,10 +250,13 @@ def audit(sbx: Path) -> dict:
             book.close()
         except Exception as exc:
             failures.append(f"cannot read canonical workbook: {exc}")
-        if sheets != EXPECTED_SHEETS:
+        missing = [name for name in EXPECTED_SHEETS if name not in sheets]
+        additions = [name for name in sheets if name not in EXPECTED_SHEETS]
+        if missing or any(name not in ALLOWED_ADDITIONAL_SHEETS for name in additions):
             failures.append(
                 f"canonical workbook sheet contract changed: "
-                f"expected {EXPECTED_SHEETS}, observed {sheets}"
+                f"required {EXPECTED_SHEETS}, allowed_additions "
+                f"{sorted(ALLOWED_ADDITIONAL_SHEETS)}, observed {sheets}"
             )
 
     return {
@@ -230,6 +270,11 @@ def audit(sbx: Path) -> dict:
             tag: {"symbol": value[0], "side": value[1]}
             for tag, value in expected.items()
         },
+        "manifest_priority_packs": {
+            str(row.get("tag")): list(row.get("priority_roots") or [])
+            for row in manifest.get("workers", [])
+        },
+        "no_live_promotion": manifest.get("no_live_promotion") is True,
         "workers": workers,
         "unmanifested_workers": extras,
         "repaired_engines": repaired_engines,

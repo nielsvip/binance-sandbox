@@ -265,7 +265,7 @@ async def stale_key_watchdog():
         
         # Optional: Print a summary line if multiple keys are stale
         if len(stale_items) > 3:
-            print(f"{C.WARNING}⚠️  {len(stale_items)} keys are currently stale (>120s). Check processes.{C.CYAN}")
+            print(f"{C.WARN}⚠️  {len(stale_items)} keys are currently stale (>120s). Check processes.{C.CYAN}")
 
 # --- MAIN ---
 

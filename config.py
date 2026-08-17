@@ -75,7 +75,7 @@ class Config:
     SERVICE_STOP = True
     SERVICE_REDUCE = True
     MANAGE_REDUCE = True
-    HEDGE_MODE: bool = False  # 2026-05-20 USER MANDATE: hedge OFF, replaced by MTF compound exit (2x ATR15m trail + GR/WT/DC/BB rejection). All hedge code paths gated by config.HEDGE_MODE → False short-circuits them. ROLLBACK: True restores hedge protection.
+    HEDGE_MODE: bool = False  # 2026-08-14 REVERTED per user: hedgeengine too faulty, first round this weekend WITHOUT hedging, hedge fix via dedicated agent 900*900*160: hedge was dead and missing from >2000 sweep, retesting all HEDGE_* combos, replaced by MTF compound exit (2x ATR15m trail + GR/WT/DC/BB rejection). All hedge code paths gated by config.HEDGE_MODE → False short-circuits them. ROLLBACK: True restores hedge protection.
     SANDBOX_MODE: bool = False
     SANDBOX_ACCOUNTS: List[str] = field(default_factory=lambda: ["sbx"])
 
@@ -368,7 +368,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = []  # 2026-05-05: ADDED flz per user — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
+    HEDGE_ACCOUNTS = []  # 2026-08-14 REVERTED: hedge OFF for first round weekend, fixes via agent: re-enable all crypto for 900*900*160 — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 60.0  # USER 2026-05-10: lowered 3600→60 to match HEDGE_COMPLETED_LOCKOUT_SECONDS — re-hedge cycles must be allowed.
     # REVERTED 2026-05-18 18:30: 3600 had no sample-floor evidence (violates 2026-05-16 mandate). Restoring 2026-05-10 root-cause fix value 60. Isolated vec sweep queued.
     HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 60  # REVERTED 2026-05-18 18:30 (was 3600 since 2026-05-17, was 60 since 2026-05-10)
@@ -1142,6 +1142,10 @@ class Config:
     # so wt_dc_exit_scorer.py was using its hardcoded fallbacks (5/75/0.80). Now explicit + sweep-testable.
     # Test C v8_quick verdict (12sym×2yr crypto NOLOSS=off): 5/5 K=85 wins pool_sharpe 0.1695 vs simple_mtf 0.105 vs delta3 0.135 vs loose 3/5 K75 0.142.
     WT_DC_EXIT_THRESHOLD: float = 25.0          # ez_manage.py read with default 25 — surfaced for sweep
+    WT_DC_LONG_ENABLED: bool = False          # REVERTED 2026-08-11 per audit M3 — cross-connect unvalidated, re-enable only via 1yr Tier-2 per param
+    WT_DC_SHORT_ENABLED: bool = False         # REVERTED 2026-08-11
+    WT_DC_ENTRY_ENABLED: bool = False         # REVERTED 2026-08-11
+    STOCH_CROSS_ENTRY_ENABLED: bool = False   # REVERTED 2026-08-11
     EXIT_SCORER_MIN_CONDITIONS: int = 5         # was implicit default 5; Test C confirms strict 5/5 wins on crypto too. Sweep 3,4,5.
     EXIT_SCORER_K_EXTREME: float = 75.0         # was implicit default 75. Sweep 70,75,80,85.
     EXIT_SCORER_DC_EXTREME: float = 0.80        # was implicit default 0.80. Sweep 0.70-0.90.
@@ -1575,8 +1579,8 @@ class Config:
     # AND current 3m close has recovered to within tolerance of entry_price,
     # AND current 3m bar shows reversal, ALLOW close at loss (bypass UNIVERSAL_NOLOSS_GATE).
     # Replaces UNIVERSAL_NOLOSS for "bad-entry escape near breakeven". Defaults OFF — sweep first.
-    DC_RECOVERY_EXIT_ENABLED: bool = False
-    DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25  # crypto pct tolerance around entry_price
+    DC_RECOVERY_EXIT_ENABLED: bool = True  # STRUCTURAL — was False, now True per tradier parity (user 2026-08-14: DC 5m/15m/1h/4h/D reject)
+    DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.10  # structural 0.05-0.20 sweep, was 0.25
     DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT: float = 0.0  # if >0, uses 0.0..N * atr_3m instead of pct
     # === LOSS-EXIT SWITCH GATES (2026-04-15) — default OFF, sweep-only ===
     # Each wraps an existing close/reduce-at-loss path so it stays disabled in live unless sweep enables.
@@ -1849,7 +1853,7 @@ class Config:
     MOMENTUM_SMA_WATCHDOG_ENABLED: bool = True
     MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
     MOMENTUM_SMA_WATCHDOG_PCT: float = 1.0          # 2026-05-31 USER: 2.0->1.0 (global per_sym sweep: 1% median pool_sharpe 0.155 > 2% 0.150). Per-sym pct_entry from FINAL book overrides this. price must be > this % above sma_200_15m
-    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True     # 2026-06-04 USER: unblockable obligatory open in momentum_sma_watchdog_loop — runs BEFORE the cooldown/per-tick gates (was missing 24h tumbles: 4800 SKIP cooldown). SHORT when price >OBLIGATORY_SMA200_PCT% BELOW sma_200_15m AND wt1_3m falling; LONG when >PCT% ABOVE AND wt1_3m rising. reason OBLIGATORY_OPEN bypasses COUNTER_TREND (+ shorts bypass MTF); flood rate-breaker/cold-start still apply. ROLLBACK: False.
+    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True     # 2026-06-04 USER: unblockable obligatory open in momentum_sma_watchdog_loop — runs BEFORE the cooldown/per-tick gates (was missing 24h tumbles: 4800 SKIP cooldown). SHORT when price >OBLIGATORY_SMA200_PCT% BELOW sma_200_15m AND wt1_3m falling; LONG when >PCT% ABOVE AND wt1_3m rising. reason OBLIGATORY_OPEN bypasses COUNTER_TREND (+ shorts bypass MTF); flood rate-breaker/cold-start still apply. OBLIGATORY_OPEN positions receive a frozen tight dc_low4_3m/dc_high4_3m leash (20-bar fallback). ROLLBACK: False.
     OBLIGATORY_SMA200_PCT: float = 1.0              # distance beyond sma_200_15m (%) that triggers the obligatory open
     OBLIGATORY_OPEN_USD: float = 400.0              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
     PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-05-31 USER "put all new per_sym settings live + block negative-sharpe keys". data/persym_final_book.json: 96 tradeable (>=30tr & ps>0 & not-short-uptrend) enabled + per-sym pct_entry/size_cap; 54 tested-but-excluded -> side disabled (PER_SYM_SIDE_DISABLED gate blocks entries, never exits). ROLLBACK: False.
@@ -1866,10 +1870,32 @@ class Config:
     # Consistent positives — median sym_sharpe 0.41-0.56, 76-100% of central-DB runs positive,
     # n=52-136 runs each; source GAINMO_MAXIMIZATION_20260708.md. All 12 are legacy-USDT syms
     # (no USDC perp exists for any of them — USDC-over-USDT policy respected).
-    INF_DEDICATED_WINNERS: set = field(default_factory=lambda: {"SKLUSDT", "NKNUSDT", "COTIUSDT", "CELRUSDT", "SXPUSDT", "BATUSDT", "STORJUSDT", "RVNUSDT", "KNCUSDT", "YFIUSDT", "ZENUSDT", "GTCUSDT"})
+    INF_DEDICATED_WINNERS: set = field(default_factory=lambda: {})
     INF_7D_BEAT_SIZE_MULT: float = 2.0              # winner-set keys whose per_sym 7D-agent winner beats baseline (delta_wsharpe from data/hourly_reconfig/inf/active_config_7d.json) get this x entry size on inf; downstream MAX_ORDER_VALUE caps still clamp
     INF_7D_BEAT_MIN_DELTA: float = 0.0              # delta_wsharpe must EXCEED this for the 7D boost to fire
     MOMENTUM_SMA_WATCHDOG_WT_CAP: float = 80.0      # wt1_15m must be BELOW this (not yet overbought)
+
+    # Classic chart formations.  The detector is shared with the causal NPZ
+    # vector path; individual action switches stay independently controllable
+    # so only full-universe holdout-supported families are promoted live.
+    FORMATION_TFS: str = "15m,1h,4h,D"
+    FORMATION_MIN_SCORE: float = 0.65
+    FORMATION_POSITION_SIZE_MULT: float = 1.0
+    FORMATION_EXIT_MIN_GAIN_PCT: float = 0.0
+    FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED: bool = False
+    FORMATION_HEAD_SHOULDERS_EXIT_ENABLED: bool = False
+    FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED: bool = False
+    FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED: bool = False
+    FORMATION_WEDGE_ENTRY_ENABLED: bool = False
+    FORMATION_WEDGE_EXIT_ENABLED: bool = False
+    FORMATION_TRIANGLE_ENTRY_ENABLED: bool = False
+    FORMATION_TRIANGLE_EXIT_ENABLED: bool = False
+    FORMATION_FLAG_PENNANT_ENTRY_ENABLED: bool = False
+    FORMATION_FLAG_PENNANT_EXIT_ENABLED: bool = False
+    FORMATION_CUP_HANDLE_ENTRY_ENABLED: bool = False
+    FORMATION_CUP_HANDLE_EXIT_ENABLED: bool = False
+    FORMATION_TREND_STRUCTURE_ENTRY_ENABLED: bool = False
+    FORMATION_TREND_STRUCTURE_EXIT_ENABLED: bool = False
     MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0 # per-key re-fire cooldown
     # ═══════════════════════════════════════════════════════════════════
     # 2026-06-03 USER MANDATE — MULTI-TF DONCHIAN FORCE-OPEN + ESCALATING AUGMENT.
@@ -1995,7 +2021,7 @@ class Config:
     RZ_K_ENTRY_MAX: float = 50.0  # Entry LONG only when k_1h < this (sweep: 40/50/60). Proven: 50
     RZ_K_ENTRY_BOTTOM: float = 10.0  # Stoch K below this at BOTTOM = exit short (mirror)
     RZ_MFI_ENTRY_BOTTOM: float = 15.0  # MFI below this at BOTTOM = exit short (mirror)
-    BOUNCE_AUGMENT_ENABLED: bool = True  # D-low bounce augment for losing positions
+    BOUNCE_AUGMENT_ENABLED: bool = False  # 2026-08-10 USER MANDATE: NEVER augment losing positions — prohibited always, not a switch
     BOUNCE_AUGMENT_PAPER: bool = True  # Paper mode — log only, no real orders
     BOUNCE_AUGMENT_MIN_LOSS_PCT: float = -0.5  # ANY loss triggers evaluation (user: "not -10%, ANY loss")
     BOUNCE_AUGMENT_K_D_THRESHOLD: float = 20.0  # k_D must be below this (oversold on daily)
@@ -2382,7 +2408,7 @@ class Config:
     # - The real edge is NEVER selling at a loss — proven by months of live data
     # MAX_LOSS_HOLD_MINUTES and LOSS_CUT disabled permanently.
     LOSS_CUT_ENABLED: bool = False  # NEVER enable — proven to lose 20%+ weekly
-    WIN_TRAIL_EROSION_PCT: float = 0.50  # BACKTEST_CHANGE_105: Tournament v2: 50% trail slightly better than 30% (let winners run more). Was 0.30.
+    WIN_TRAIL_EROSION_PCT: float = 0.0  # STRUCTURAL ONLY — was 0.50, now disabled (user 2026-08-14: never exit on percentage, only DC reject / WT 15m cross / HH+HL)
     K_ZONE_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_109: K-zone entry — enter when K in zone (<35 LONG / >65 SHORT) + K turning + candle confirms. No crossover wait needed.
     K_ZONE_LONG_THRESHOLD: int = 35  # BACKTEST_CHANGE_101: Tournament v2 (76.8K configs): 35/50/70 identical but 35 matches original K-zone logic. Was 90 (basically no filter).
     K_ZONE_SHORT_THRESHOLD: int = 10  # BACKTEST_CHANGE_101: wide zone accepts more profitable entries (was 65)
@@ -2640,6 +2666,14 @@ class Config:
     BB_BREAKOUT_ENABLED: bool = False  # BACKTEST_CHANGE_132: BB breakout + SMA200 (trending regime only)
     BB_BREAKOUT_SCORE: int = 20  # BACKTEST_CHANGE_132: Score bonus for breakout
     BB_BREAKOUT_TF: str = "1h"  # BACKTEST_CHANGE_132: TF for BB breakout
+    # 4h BB breakout ladder: 25% at breakout, 50% at dc_basis_4h, 25% at next WT1h cross.
+    BB4H_BREAKOUT_LADDER_ENABLED: bool = True
+    BB4H_BREAKOUT_LADDER_TARGET_USD: float = 2000.0
+    BB4H_BREAKOUT_LADDER_BREAKOUT_PCT: float = 0.25
+    BB4H_BREAKOUT_LADDER_BASIS_PCT: float = 0.50
+    BB4H_BREAKOUT_LADDER_WT_CROSS_PCT: float = 0.25  # final tranche at next bullish WT 1h cross
+    BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD: float = 2000.0
+    BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES: int = 1
     TRIPLE_CONF_ENABLED: bool = False  # BACKTEST_CHANGE_125: MACD+RSI+Stoch triple confirmation entry
     TRIPLE_CONF_RSI_LONG: float = 30.0  # BACKTEST_CHANGE_125: RSI(14) below this for LONG
     TRIPLE_CONF_RSI_SHORT: float = 70.0  # BACKTEST_CHANGE_125: RSI(14) above this for SHORT
@@ -2778,7 +2812,7 @@ class Config:
             "XAGUSDT",
             "BTCDOMUSDT",
             "SKYUSDT",
-            "TRXUSDT",  # BACKTEST_CHANGE_48: worst real symbol in backtest (-63 Sharpe)
+            #"TRXUSDT",  # BACKTEST_CHANGE_48: worst real symbol in backtest (-63 Sharpe)
         ]
     )  # Go up when market goes down — invert ratio_mult
     BLACKLIST_SYMBOLS: list = field(default_factory=lambda: [])  # REVERTED: Change #46+50 removed. All symbols in symbols.json must remain tradeable
@@ -3480,7 +3514,7 @@ class Config:
     def _resolve_base_path() -> Path:
         env_base = os.environ.get("BASE_PATH")
         if env_base:
-            base = Path(env_base).expanduser()
+            base = Path(env_base.replace("~", os.environ.get("HOME") or "/tmp")) if "~" in env_base else Path(env_base)
             candidates = [base]
             if base.name.lower() != "binance": candidates.append(base / "binance")
             for candidate in candidates:
@@ -3503,7 +3537,7 @@ class Config:
     # LADDER_LEVELS: int = 6        # Number of post-exit ladder orders
     # LADDER_SPLIT: List[float] = field(default_factory=lambda: [0.33, 0.33, 0.34])
     # MIN_LADDER_POSITION_SIZE: float = 0.5 * START_POSITION_SIZE
-    LOG_DIR: Path = Path.home() / "logs"
+    LOG_DIR: Path = Path(os.environ.get("EZ_LOG_DIR") or (Path.home() / "logs"))
     LOG_FILE_EZ_MANAGE: Path = LOG_DIR / "ez_manage.log"
     LOG_FILE_EZ_PRICES: Path = LOG_DIR / "ez_prices.log"
     LOG_FILE_EZ_BACKUP: Path = LOG_DIR / "ez_backup.log"

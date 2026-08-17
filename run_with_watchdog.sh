@@ -23,7 +23,7 @@ fi
 # Timeouts and limits
 TIMEOUT=0                 # DISABLED — never kill healthy processes. NO_OUTPUT_TIMEOUT handles stuck ones.
 NO_OUTPUT_TIMEOUT=300     # 5 minutes default — overridden per-script below
-MIN_RESTART_INTERVAL=60  # 2026-04-28 user: bumped 3→60s. Workers OOM-killing every ~60s with 3s respawn = no recovery time for memory pages. 60s lets the OS reclaim before next allocation spike.
+MIN_RESTART_INTERVAL=5  # EMERGENCY 2026-08-14 tradier_indicators must be 60s; 60s gap caused STALE_HOLD sink  # 2026-04-28 user: bumped 3→60s. Workers OOM-killing every ~60s with 3s respawn = no recovery time for memory pages. 60s lets the OS reclaim before next allocation spike.
 MAX_RAPID_RESTARTS=15      # Max restarts within rapid window
 RAPID_WINDOW=300          # 5 minutes for rapid restart detection
 
@@ -39,19 +39,41 @@ shift
 ARGS=("$@")
 
 # ═══ TRADIER MARKET-HOURS GATE ═══
-# tradier_* scripts are not allowed to run outside Mon-Fri 09:30-16:00 ET.
+# tradier_* scripts are not allowed to run outside Mon-Fri 13:30-20:00 UTC.
 # Otherwise this wrapper will respawn them after we manually kill them on
-# weekends, and they consume CPU + spam supervisor with stale-log alerts.
+# weekends/after close, and they consume CPU + spam stale-log alerts.
 # Refuse to launch; exit cleanly so launchd/cron don't treat it as failure.
+tradier_market_open_utc() {
+    local dow hour minute mins
+    dow=$(date -u +%u)
+    hour=$(date -u +%H)
+    minute=$(date -u +%M)
+    mins=$((10#$hour * 60 + 10#$minute))
+    [ "$dow" -le 5 ] && [ "$mins" -ge 810 ] && [ "$mins" -lt 1200 ]
+}
+
+# ez_news_scanner: starts 30min before open (13:00 UTC) for premarket agent work
+ez_news_market_open_utc() {
+    local dow hour minute mins
+    dow=$(date -u +%u)
+    hour=$(date -u +%H)
+    minute=$(date -u +%M)
+    mins=$((10#$hour * 60 + 10#$minute))
+    [ "$dow" -le 5 ] && [ "$mins" -ge 780 ] && [ "$mins" -lt 1200 ]
+}
+
 case "$SCRIPT" in
     tradier_manage.py|tradier_positions.py|tradier_prices.py|tradier_indicators.py|tradier_rankings.py|tradier_premarket_scanner.py|tradier_options_csp_monitor.py|tradier_options_analyzer.py|tradier_options_agent.py|tradier_hourly_reconfig.py|tradier_webhook_bridge.py)
-        DOW=$(TZ="America/New_York" date +%u)
-        ET_HOUR=$(TZ="America/New_York" date +%H)
-        ET_MIN=$(TZ="America/New_York" date +%M)
-        ET_MINS=$((10#$ET_HOUR * 60 + 10#$ET_MIN))
-        if [ "$DOW" -gt 5 ] || [ "$ET_MINS" -lt 570 ] || [ "$ET_MINS" -gt 960 ]; then
+        if ! tradier_market_open_utc; then
             mkdir -p "$LOGDIR"
-            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [TRADIER_MARKET_GATE] refusing to launch $SCRIPT ${ARGS[*]} — outside Mon-Fri 09:30-16:00 ET (dow=$DOW et_mins=$ET_MINS)" >> "$LOGDIR/tradier_market_gate.log"
+            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [TRADIER_MARKET_GATE] refusing to launch $SCRIPT ${ARGS[*]} — outside Mon-Fri 13:30-20:00 UTC" >> "$LOGDIR/tradier_market_gate.log"
+            exit 0
+        fi
+        ;;
+    ez_news_scanner.py)
+        if ! ez_news_market_open_utc; then
+            mkdir -p "$LOGDIR"
+            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [EZ_NEWS_MARKET_GATE] refusing to launch $SCRIPT ${ARGS[*]} — outside Mon-Fri 13:00-20:00 UTC (30min pre-open)" >> "$LOGDIR/tradier_market_gate.log"
             exit 0
         fi
         ;;
@@ -461,7 +483,10 @@ main() {
         # Kill any duplicate python instances before launching
         kill_duplicate_python
         # ═══ S1 FAILOVER GATE (MacBook only) ═══
-        if [[ "$(uname)" == "Darwin" ]]; then
+        # Local-only launches must never SSH to S1.  start_everything_3.command
+        # and local cron recovery export TRADIER_LOCAL_ONLY=1; the legacy
+        # START_EVERYTHING_3_LOCAL_ONLY flag is kept for compatibility.
+        if [[ "$(uname)" == "Darwin" && "${TRADIER_LOCAL_ONLY:-0}" != "1" && "${START_EVERYTHING_3_LOCAL_ONLY:-0}" != "1" ]]; then
             local is_gated=0
             # 2026-07-02: ONLY gate order-placing / authoritative-position-state procs across machines.
             # Read-only DATA feeds (ez_prices/klines/mark_prices/indicators/market_data/orderbook/rankings/

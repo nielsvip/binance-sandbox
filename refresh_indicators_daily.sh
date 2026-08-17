@@ -87,6 +87,47 @@ if [ "$APPEND_ERRORS" -ne 0 ]; then
   exit 1
 fi
 
+# The all-crypto precompute can be memory-killed before the historical Step 5
+# stock rebuild.  The direct-V8 lab must not wait on that unrelated batch: build
+# its six comparable stock surfaces first, in a private versioned directory,
+# and publish the stable symlink only after every symbol passes validation.
+echo "[$(date -u +%T)] Step 3d: direct-V8 six-symbol stock precompute"
+DIRECT_V8_STOCK_LINK="$SANDBOX/data/matrix_npz/stocks_repaired_direct_v8"
+DIRECT_V8_STOCK_BUILD="$SANDBOX/data/matrix_npz/.stocks_repaired_direct_v8_${TS}"
+DIRECT_V8_STOCK_LINK_TMP="$SANDBOX/data/matrix_npz/.stocks_repaired_direct_v8_link_${TS}"
+rm -rf -- "$DIRECT_V8_STOCK_BUILD" "$DIRECT_V8_STOCK_LINK_TMP"
+$PY -u "$SANDBOX/backtest_v8_precompute.py" \
+  --symbols MU,NVDA,VT,TTD,ACN,AAPL --mode tradier --workers 1 \
+  --out-dir "$DIRECT_V8_STOCK_BUILD" \
+  >> "$LOGS/precompute_direct_v8_stocks_${TS}.log" 2>&1
+$PY - "$DIRECT_V8_STOCK_BUILD" << 'PYEOF'
+import sys
+import time
+from pathlib import Path
+import numpy as np
+
+root = Path(sys.argv[1])
+symbols = ("MU", "NVDA", "VT", "TTD", "ACN", "AAPL")
+for symbol in symbols:
+    path = root / f"{symbol}.npz"
+    if not path.is_file():
+        raise SystemExit(f"direct-V8 stock build missing {path}")
+    with np.load(path, mmap_mode="r", allow_pickle=True) as data:
+        timestamps = np.asarray(data["timestamps"], dtype=float)
+        if len(timestamps) < 2 or not np.all(np.isfinite(timestamps)):
+            raise SystemExit(f"direct-V8 stock build has invalid timestamps: {path}")
+        if not np.all(np.diff(timestamps) >= 0):
+            raise SystemExit(f"direct-V8 stock build timestamps are not sorted: {path}")
+        if len(data.files) < 1000:
+            raise SystemExit(f"direct-V8 stock build is missing indicator fields: {path}")
+        age_days = (time.time() - float(timestamps[-1])) / 86400.0
+        if age_days > 7.0:
+            raise SystemExit(f"direct-V8 stock build is stale ({age_days:.2f}d): {path}")
+    print(f"validated {symbol} rows={len(timestamps)} age_days={age_days:.3f}")
+PYEOF
+ln -s -- "$DIRECT_V8_STOCK_BUILD" "$DIRECT_V8_STOCK_LINK_TMP"
+mv -Tf -- "$DIRECT_V8_STOCK_LINK_TMP" "$DIRECT_V8_STOCK_LINK"
+
 echo "[$(date -u +%T)] Step 4: crypto precompute"
 $PY -u "$SANDBOX/backtest_v8_precompute.py" --all --mode crypto --workers 3 \
   >> "$LOGS/precompute_crypto_daily_${TS}.log" 2>&1

@@ -1,0 +1,1139 @@
+{
+  "canary_started": false,
+  "candidates": [
+    {
+      "alpha_vs_bh_pp": 32.943417490647896,
+      "blockers": [],
+      "canary_started": false,
+      "checks": {
+        "BEATS_SIDE_AWARE_BH": true,
+        "CAPACITY_NOT_BREACHED": true,
+        "ENGINE_RETURN_CODE": true,
+        "NO_REENTRY_VIOLATIONS": true,
+        "NO_UNDECLARED_COMPETING_CLOSE_PATH": true,
+        "OVER_10_REAL_CLOSES": true,
+        "REQUESTED_FILL_RATIO_GE_99PCT": true,
+        "REQUESTED_MULT_LE_8X": true,
+        "SHARED_ENTRY_ROUTE_FIRED": true,
+        "SHARED_SELECTED_EXIT_ROUTE_FIRED": true,
+        "SIDE_ISOLATED": true,
+        "STRICTLY_LATER_REENTRY_OBSERVED": true
+      },
+      "complete_recipe": {
+        "ENTRY": {
+          "artifact": "/home/niels/binance-sandbox/data/reports/vec_research/path_hotlist_20260801/full_v2/keys/FIVN_LONG/control/band_ladder_walkforward_20260802T000853Z_FIVN_LONG",
+          "family": "ENTRY_LADDER_GREEN",
+          "params": {}
+        },
+        "EXIT": {
+          "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+          "params": {
+            "arm_timeframe": "15m",
+            "break_buffer_atr": 0.25,
+            "distance_mult": 1.0,
+            "lookback": 6,
+            "mode": "STDEV",
+            "trail_timeframe": "5m"
+          }
+        },
+        "KEY": "FIVN_LONG",
+        "VALIDATION": [
+          "2025-07-01",
+          "2026-01-01"
+        ],
+        "schema": "complete-vector-lifecycle-recipe-v1"
+      },
+      "complete_recipe_sha256": "b398e86df8607000892a2692af94dd003c2ad9f28389204cd5f8a8fd55e9c696",
+      "duplicate_identical_or_alternate_exact_receipt_count": 15,
+      "entry_artifact": "/home/niels/binance-sandbox/data/reports/vec_research/path_hotlist_20260801/full_v2/keys/FIVN_LONG/control/band_ladder_walkforward_20260802T000853Z_FIVN_LONG",
+      "entry_artifact_result_sha256": "fbf714c77cf0d9eb595910042bf594086663f63f0e94fb13134eadb1d16327cd",
+      "exact_v8_queued": false,
+      "historical_exact_base_pass": true,
+      "historical_npz_dir": "/home/niels/binance-sandbox/data/matrix_npz/path_hotlist_20260801",
+      "historical_npz_sha256": "90ad0f1efd9366a437fd8718e88bbbbeee167cb2d50a6ba05f08617b5113e888",
+      "key": "FIVN_LONG",
+      "override_sha256": "1387a772a7d77ca9672441bb90910a1632a4b75f31e95c3a3e9b9235e183730a",
+      "real_closes": 110,
+      "required_pre_canary_proofs": [
+        "S1_FROZEN_NPZ_EXISTS_AND_SHA256_MATCHES_HISTORICAL",
+        "SOURCE_RECEIPT_AND_ENTRY_ARTIFACT_SHA256_MATCH",
+        "CURRENT_CODE_SHARED_ROUTE_CANARY_ONLY_NO_FULL_REPLAY"
+      ],
+      "run_id": "full_recipe_20260803T074604Z_FIVN_LONG",
+      "run_summary": "data/reports/vec_research/hotlist_v8_full_recipe/full_recipe_20260803T074604Z_FIVN_LONG/run_summary.json",
+      "run_summary_sha256": "e6845f74ec3656deaf7508912d06df4466f4e8cddc1c39343147b37461dd9aa2",
+      "runtime_hashes": {
+        "backtest_v8_engine.py": {
+          "current_sha256": "ef624fcf5a9941b413c619ab3783fe1cbbe229ff237f4e132394c86a07ef1fb1",
+          "historical_sha256": "888c199a9aa288afc6fd35bafa068dd12156babede16bd3112c4a8525a09bd8d",
+          "match": false
+        },
+        "classic_formations.py": {
+          "current_sha256": "1a5fce177a9bbf5d2c37ad5ea862d36cdaecf945a049729c1a86d564c0fd6702",
+          "historical_sha256": null,
+          "match": null
+        },
+        "protective_trail_contract.py": {
+          "current_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "historical_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "match": true
+        },
+        "tradier_manage.py": {
+          "current_sha256": "2798cfc6935f0827b24fe6c3dc0b56474f81139642ad03755018a257c15adbd3",
+          "historical_sha256": "df56d556c6591504c46c6d2728859dc430517a4faf99fcff65281730f9ac3189",
+          "match": false
+        },
+        "v8_completed_snapshot_adapter.py": {
+          "current_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "historical_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "match": true
+        }
+      },
+      "shared_route_audit": {
+        "blockers": [],
+        "entry_contract": {
+          "family": "ENTRY_LADDER_GREEN",
+          "semantics": "ordinary completed-parent absolute target",
+          "shared_live_decision_site": "tradier_manage.py:_ordinary_ladder_target",
+          "shared_v8_reason_prefix": "LR_BAND_LADDER_PARITY_TARGET"
+        },
+        "entry_family": "ENTRY_LADDER_GREEN",
+        "exit_contract": {
+          "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+          "semantics": "shared completed-parent protective state machine",
+          "shared_live_decision_site": "tradier_manage.py:_ordinary_bottom_a_exit",
+          "shared_v8_reason_prefix": "BOTTOM_A_"
+        },
+        "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "runtime_markers": [],
+        "schema": "hotlist-v8-shared-route-audit-v1",
+        "shared_route": true
+      },
+      "side": "LONG",
+      "side_aware_bh_return_pct": -24.023417490647898,
+      "source_receipt": "data/reports/vec_research/path_hotlist_20260801/full_v2/campaign_receipt.json",
+      "source_receipt_sha256": "652cebeb5f866e2462a2d11def81eb1e21fc7c9a88209010045ce400c9c43806",
+      "status": "CANARY_READY_CONDITIONAL",
+      "strategy_return_pct": 8.92,
+      "strict_positive_return": true,
+      "symbol": "FIVN",
+      "time_in_market_pct": 34.1646,
+      "validation": [
+        "2025-07-01",
+        "2026-01-01"
+      ]
+    },
+    {
+      "alpha_vs_bh_pp": 6.986713800694909,
+      "blockers": [
+        "ENTRY_ARTIFACT_UNAVAILABLE_ON_MAC"
+      ],
+      "canary_started": false,
+      "checks": {
+        "BEATS_SIDE_AWARE_BH": true,
+        "CAPACITY_NOT_BREACHED": true,
+        "ENGINE_RETURN_CODE": true,
+        "NO_REENTRY_VIOLATIONS": true,
+        "NO_UNDECLARED_COMPETING_CLOSE_PATH": true,
+        "OVER_10_REAL_CLOSES": true,
+        "REQUESTED_FILL_RATIO_GE_99PCT": true,
+        "REQUESTED_MULT_LE_8X": true,
+        "SHARED_ENTRY_ROUTE_FIRED": true,
+        "SHARED_SELECTED_EXIT_ROUTE_FIRED": true,
+        "SIDE_ISOLATED": true,
+        "STRICTLY_LATER_REENTRY_OBSERVED": true
+      },
+      "complete_recipe": {
+        "AUGMENT": {
+          "companions": {
+            "all_augment_paths_off": true
+          },
+          "family": "ALL_AUGMENT_FAMILIES_OFF_CONTROL",
+          "params": {},
+          "status": "CONTROL_OFF_EXPLICIT"
+        },
+        "ENTRY": {
+          "artifact": "/home/niels/binance-sandbox/data/reports/vec_research/capacity_cohort17_nearmiss_short_20260802/keys/AG_SHORT/control/band_ladder_walkforward_20260802T164229Z_AG_SHORT",
+          "artifact_result_sha256": "54bc5a0fd9fd3e8489e6d039463f82a24056728689d40ed6656734080ee8de26",
+          "entry_role": "UNKNOWN",
+          "family": "ENTRY_LADDER_GREEN",
+          "manifest_sha256": "e02f9dd04f53a7bb516be8e642a034f58eaa4f18284b6db1c1b7182fe1bc2256",
+          "params": {},
+          "status": "VECTOR_ADAPTER_MEASURED"
+        },
+        "EXIT": {
+          "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+          "params": {
+            "arm_timeframe": "15m",
+            "break_buffer_atr": 0.5,
+            "distance_mult": 1.0,
+            "lookback": 80,
+            "mode": "DC",
+            "trail_timeframe": "5m"
+          },
+          "status": "VECTOR_ADAPTER_MEASURED"
+        },
+        "REDUCE": {
+          "companions": {
+            "all_reduce_paths_off": true
+          },
+          "family": "ALL_REDUCE_FAMILIES_OFF_CONTROL",
+          "params": {},
+          "status": "CONTROL_OFF_EXPLICIT"
+        },
+        "REENTER": {
+          "action_evidence_status": "CAUSAL_EVENT_LEDGER",
+          "action_fingerprint": "d23dd536e1161d46c9a074905fa8551569e654773b1ef4b71de7ff61e95e98fd",
+          "exit_indices_count": 52,
+          "family": "MANDATORY_ZERO_BUFFER_RECLAIM",
+          "ledger_sha256": "d23dd536e1161d46c9a074905fa8551569e654773b1ef4b71de7ff61e95e98fd",
+          "params": {
+            "eligibility": "FIRST_STRICTLY_LATER_BAR",
+            "same_exit_bar_reentry_allowed": false,
+            "terminal_right_censoring_allowed_when_no_overshoot": true
+          },
+          "pending_reentry_count": 0,
+          "reentry_indices_count": 52,
+          "reentry_pairs": [
+            {
+              "exit_index": 34801,
+              "reentry_index": 34830
+            },
+            {
+              "exit_index": 34889,
+              "reentry_index": 34945
+            },
+            {
+              "exit_index": 34949,
+              "reentry_index": 34957
+            },
+            {
+              "exit_index": 35064,
+              "reentry_index": 35158
+            },
+            {
+              "exit_index": 35201,
+              "reentry_index": 35225
+            },
+            {
+              "exit_index": 35275,
+              "reentry_index": 35281
+            },
+            {
+              "exit_index": 35476,
+              "reentry_index": 35518
+            },
+            {
+              "exit_index": 35546,
+              "reentry_index": 35590
+            },
+            {
+              "exit_index": 35675,
+              "reentry_index": 35676
+            },
+            {
+              "exit_index": 35750,
+              "reentry_index": 35869
+            },
+            {
+              "exit_index": 35888,
+              "reentry_index": 35906
+            },
+            {
+              "exit_index": 36067,
+              "reentry_index": 36068
+            },
+            {
+              "exit_index": 36384,
+              "reentry_index": 36386
+            },
+            {
+              "exit_index": 36621,
+              "reentry_index": 36695
+            },
+            {
+              "exit_index": 36697,
+              "reentry_index": 36854
+            },
+            {
+              "exit_index": 37051,
+              "reentry_index": 37090
+            },
+            {
+              "exit_index": 37179,
+              "reentry_index": 37236
+            },
+            {
+              "exit_index": 37247,
+              "reentry_index": 37303
+            },
+            {
+              "exit_index": 37358,
+              "reentry_index": 37437
+            },
+            {
+              "exit_index": 37522,
+              "reentry_index": 37571
+            },
+            {
+              "exit_index": 37664,
+              "reentry_index": 37765
+            },
+            {
+              "exit_index": 37794,
+              "reentry_index": 37801
+            },
+            {
+              "exit_index": 37967,
+              "reentry_index": 37999
+            },
+            {
+              "exit_index": 38270,
+              "reentry_index": 38342
+            },
+            {
+              "exit_index": 38989,
+              "reentry_index": 39066
+            },
+            {
+              "exit_index": 39077,
+              "reentry_index": 39120
+            },
+            {
+              "exit_index": 39319,
+              "reentry_index": 39386
+            },
+            {
+              "exit_index": 39462,
+              "reentry_index": 39546
+            },
+            {
+              "exit_index": 39550,
+              "reentry_index": 39595
+            },
+            {
+              "exit_index": 40136,
+              "reentry_index": 40172
+            },
+            {
+              "exit_index": 40200,
+              "reentry_index": 40207
+            },
+            {
+              "exit_index": 40410,
+              "reentry_index": 40451
+            },
+            {
+              "exit_index": 40816,
+              "reentry_index": 40870
+            },
+            {
+              "exit_index": 41179,
+              "reentry_index": 41303
+            },
+            {
+              "exit_index": 41437,
+              "reentry_index": 41466
+            },
+            {
+              "exit_index": 41520,
+              "reentry_index": 41540
+            },
+            {
+              "exit_index": 41696,
+              "reentry_index": 41768
+            },
+            {
+              "exit_index": 41820,
+              "reentry_index": 41830
+            },
+            {
+              "exit_index": 41852,
+              "reentry_index": 41885
+            },
+            {
+              "exit_index": 42237,
+              "reentry_index": 42393
+            },
+            {
+              "exit_index": 42498,
+              "reentry_index": 42541
+            },
+            {
+              "exit_index": 42640,
+              "reentry_index": 42699
+            },
+            {
+              "exit_index": 42719,
+              "reentry_index": 42778
+            },
+            {
+              "exit_index": 43411,
+              "reentry_index": 43587
+            },
+            {
+              "exit_index": 43649,
+              "reentry_index": 43666
+            },
+            {
+              "exit_index": 43728,
+              "reentry_index": 43732
+            },
+            {
+              "exit_index": 44350,
+              "reentry_index": 44355
+            },
+            {
+              "exit_index": 44466,
+              "reentry_index": 44549
+            },
+            {
+              "exit_index": 44826,
+              "reentry_index": 44835
+            },
+            {
+              "exit_index": 45061,
+              "reentry_index": 45078
+            },
+            {
+              "exit_index": 45298,
+              "reentry_index": 45301
+            },
+            {
+              "exit_index": 45458,
+              "reentry_index": 45557
+            }
+          ],
+          "reentry_violations": 0,
+          "status": "VECTOR_ADAPTER_MEASURED",
+          "strictly_later_reentry_proven": true,
+          "terminal_right_censored": false
+        },
+        "SIZING": {
+          "base_unit_usd": 2000.0,
+          "capacity_usd": 16000.0,
+          "normalized_average_deployed_usd": null,
+          "raw_pnl_usd": null
+        },
+        "exact_hold_control": {
+          "clamp_count_allowed": 0,
+          "entry_floor": "all_entries_off()",
+          "exit_floor": "all_exits_off()",
+          "non_seed_entry_family_allowed": false,
+          "seed_count": 1,
+          "seed_notional_usd": 2000.0,
+          "tested_family_companions_must_reenable_explicitly": true
+        },
+        "schema": "complete-vector-lifecycle-recipe-v1"
+      },
+      "complete_recipe_sha256": "2e5e1b415d978c690c820f9c999a45f7bf546b286d9d5348625f1a40adff91db",
+      "duplicate_identical_or_alternate_exact_receipt_count": 10,
+      "entry_artifact": "/home/niels/binance-sandbox/data/reports/vec_research/capacity_cohort17_nearmiss_short_20260802/keys/AG_SHORT/control/band_ladder_walkforward_20260802T164229Z_AG_SHORT",
+      "entry_artifact_result_sha256": "54bc5a0fd9fd3e8489e6d039463f82a24056728689d40ed6656734080ee8de26",
+      "exact_v8_queued": false,
+      "historical_exact_base_pass": true,
+      "historical_npz_dir": "/home/niels/binance-sandbox/data/matrix_npz/cohort17_nearmiss_causal_v8_20260802",
+      "historical_npz_sha256": "77d8bd2f86136551eea7d598c3bcd96e5993e3efd01ebaa988ec4874c30ce766",
+      "key": "AG_SHORT",
+      "override_sha256": "c8e5c0d62b6bf416053a57e76e120c16a3f000a45054a834e595e3fd79abccb7",
+      "real_closes": 56,
+      "required_pre_canary_proofs": [
+        "S1_FROZEN_NPZ_EXISTS_AND_SHA256_MATCHES_HISTORICAL",
+        "SOURCE_RECEIPT_AND_ENTRY_ARTIFACT_SHA256_MATCH",
+        "CURRENT_CODE_SHARED_ROUTE_CANARY_ONLY_NO_FULL_REPLAY"
+      ],
+      "run_id": "full_recipe_20260803T055903Z_AG_SHORT",
+      "run_summary": "data/reports/vec_research/hotlist_v8_full_recipe/full_recipe_20260803T055903Z_AG_SHORT/run_summary.json",
+      "run_summary_sha256": "816d7ec0b11ad4bf792eb9ead14bba7dc83cb5e62990558007c93699a28d463b",
+      "runtime_hashes": {
+        "backtest_v8_engine.py": {
+          "current_sha256": "ef624fcf5a9941b413c619ab3783fe1cbbe229ff237f4e132394c86a07ef1fb1",
+          "historical_sha256": "3acb012c848ab8a2ef807687caf2c802c0ad3ed3ac03152d81c3c42339d5d19f",
+          "match": false
+        },
+        "classic_formations.py": {
+          "current_sha256": "1a5fce177a9bbf5d2c37ad5ea862d36cdaecf945a049729c1a86d564c0fd6702",
+          "historical_sha256": null,
+          "match": null
+        },
+        "protective_trail_contract.py": {
+          "current_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "historical_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "match": true
+        },
+        "tradier_manage.py": {
+          "current_sha256": "2798cfc6935f0827b24fe6c3dc0b56474f81139642ad03755018a257c15adbd3",
+          "historical_sha256": "df56d556c6591504c46c6d2728859dc430517a4faf99fcff65281730f9ac3189",
+          "match": false
+        },
+        "v8_completed_snapshot_adapter.py": {
+          "current_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "historical_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "match": true
+        }
+      },
+      "shared_route_audit": {
+        "blockers": [],
+        "entry_contract": {
+          "family": "ENTRY_LADDER_GREEN",
+          "semantics": "ordinary completed-parent absolute target",
+          "shared_live_decision_site": "tradier_manage.py:_ordinary_ladder_target",
+          "shared_v8_reason_prefix": "LR_BAND_LADDER_PARITY_TARGET"
+        },
+        "entry_family": "ENTRY_LADDER_GREEN",
+        "exit_contract": {
+          "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+          "semantics": "shared completed-parent protective state machine",
+          "shared_live_decision_site": "tradier_manage.py:_ordinary_bottom_a_exit",
+          "shared_v8_reason_prefix": "BOTTOM_A_"
+        },
+        "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "runtime_markers": [],
+        "schema": "hotlist-v8-shared-route-audit-v1",
+        "shared_route": true
+      },
+      "side": "SHORT",
+      "side_aware_bh_return_pct": 2.93328619930509,
+      "source_receipt": "data/reports/vec_research/capacity_cohort17_nearmiss_short_20260802/campaign_receipt.json",
+      "source_receipt_sha256": "13755307b220e258f4b9518801acc8af1738c3f3f9c4179a7a867e826e74dfaf",
+      "status": "CANARY_READY_CONDITIONAL",
+      "strategy_return_pct": 9.92,
+      "strict_positive_return": true,
+      "symbol": "AG",
+      "time_in_market_pct": 73.4277,
+      "validation": [
+        "2026-01-01",
+        "2026-07-25"
+      ]
+    },
+    {
+      "alpha_vs_bh_pp": 5.814498457563269,
+      "blockers": [
+        "FORMATION_REQUIRES_FULL_RECIPE_PRIORITY_CLAIM_CANARY"
+      ],
+      "canary_started": false,
+      "checks": {
+        "BEATS_SIDE_AWARE_BH": true,
+        "CAPACITY_NOT_BREACHED": true,
+        "ENGINE_RETURN_CODE": true,
+        "NO_REENTRY_VIOLATIONS": true,
+        "NO_UNDECLARED_COMPETING_CLOSE_PATH": true,
+        "OVER_10_REAL_CLOSES": true,
+        "REQUESTED_FILL_RATIO_GE_99PCT": true,
+        "REQUESTED_MULT_LE_8X": true,
+        "SHARED_ENTRY_ROUTE_FIRED": true,
+        "SHARED_SELECTED_EXIT_ROUTE_FIRED": true,
+        "SIDE_ISOLATED": true,
+        "STRICTLY_LATER_REENTRY_OBSERVED": true
+      },
+      "complete_recipe": {
+        "AUGMENT": {
+          "family": "ALL_AUGMENT_FAMILIES_OFF_CONTROL",
+          "params": {},
+          "status": "CONTROL_OFF_EXPLICIT"
+        },
+        "ENTRY": {
+          "artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/NXE_SHORT/entry",
+          "artifact_result_sha256": "4d40b81558012ec066ce13799d3aafc8d599c11432a5517c54bfb897975afaad",
+          "family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+          "params": {
+            "min_score": 0.65,
+            "position_size_mult": 1.0,
+            "timeframe": "ALL"
+          },
+          "status": "SHARED_CAUSAL_VECTOR_MEASURED"
+        },
+        "EXIT": {
+          "family": "EXIT_CLASSIC_FORMATION_WEDGE",
+          "params": {
+            "exit_min_gain_pct": 0.0,
+            "min_score": 0.65,
+            "timeframe": "ALL"
+          },
+          "status": "SHARED_CAUSAL_VECTOR_MEASURED"
+        },
+        "KEY": "NXE_SHORT",
+        "REDUCE": {
+          "family": "ALL_REDUCE_FAMILIES_OFF_CONTROL",
+          "params": {},
+          "status": "CONTROL_OFF_EXPLICIT"
+        },
+        "REENTER": {
+          "action_evidence_status": "CAUSAL_EVENT_LEDGER",
+          "exit_count": 78,
+          "family": "MANDATORY_ZERO_BUFFER_RECLAIM",
+          "params": {
+            "eligibility": "FIRST_STRICTLY_LATER_BAR",
+            "same_exit_bar_reentry_allowed": false,
+            "terminal_right_censoring_allowed_when_no_overshoot": true
+          },
+          "reentry_pair_count": 77,
+          "reentry_pairs": [
+            {
+              "exit_ts": 1765458600,
+              "reentry_ts": 1765799400
+            },
+            {
+              "exit_ts": 1765800000,
+              "reentry_ts": 1765809600
+            },
+            {
+              "exit_ts": 1765816800,
+              "reentry_ts": 1765890000
+            },
+            {
+              "exit_ts": 1765893600,
+              "reentry_ts": 1765917600
+            },
+            {
+              "exit_ts": 1765917900,
+              "reentry_ts": 1765970700
+            },
+            {
+              "exit_ts": 1765972800,
+              "reentry_ts": 1765975800
+            },
+            {
+              "exit_ts": 1765976400,
+              "reentry_ts": 1765976700
+            },
+            {
+              "exit_ts": 1765987200,
+              "reentry_ts": 1766008800
+            },
+            {
+              "exit_ts": 1766079900,
+              "reentry_ts": 1769524200
+            },
+            {
+              "exit_ts": 1769527800,
+              "reentry_ts": 1770022200
+            },
+            {
+              "exit_ts": 1770030000,
+              "reentry_ts": 1770234900
+            },
+            {
+              "exit_ts": 1770243300,
+              "reentry_ts": 1770281400
+            },
+            {
+              "exit_ts": 1770297600,
+              "reentry_ts": 1770407400
+            },
+            {
+              "exit_ts": 1770411600,
+              "reentry_ts": 1770411900
+            },
+            {
+              "exit_ts": 1770659100,
+              "reentry_ts": 1770723000
+            },
+            {
+              "exit_ts": 1770745500,
+              "reentry_ts": 1771027500
+            },
+            {
+              "exit_ts": 1771340400,
+              "reentry_ts": 1772722800
+            },
+            {
+              "exit_ts": 1772733000,
+              "reentry_ts": 1773066900
+            },
+            {
+              "exit_ts": 1773086400,
+              "reentry_ts": 1773686700
+            },
+            {
+              "exit_ts": 1773689400,
+              "reentry_ts": 1773701400
+            },
+            {
+              "exit_ts": 1773748800,
+              "reentry_ts": 1773750900
+            },
+            {
+              "exit_ts": 1773751500,
+              "reentry_ts": 1773754200
+            },
+            {
+              "exit_ts": 1773762000,
+              "reentry_ts": 1773777000
+            },
+            {
+              "exit_ts": 1773777600,
+              "reentry_ts": 1773782400
+            },
+            {
+              "exit_ts": 1773845100,
+              "reentry_ts": 1773907200
+            },
+            {
+              "exit_ts": 1773923100,
+              "reentry_ts": 1773942300
+            },
+            {
+              "exit_ts": 1774013400,
+              "reentry_ts": 1774013700
+            },
+            {
+              "exit_ts": 1774019400,
+              "reentry_ts": 1774037400
+            },
+            {
+              "exit_ts": 1774043100,
+              "reentry_ts": 1774047300
+            },
+            {
+              "exit_ts": 1774047600,
+              "reentry_ts": 1774048800
+            },
+            {
+              "exit_ts": 1774256700,
+              "reentry_ts": 1774264800
+            },
+            {
+              "exit_ts": 1774296000,
+              "reentry_ts": 1774299300
+            },
+            {
+              "exit_ts": 1774299600,
+              "reentry_ts": 1774598700
+            },
+            {
+              "exit_ts": 1774610100,
+              "reentry_ts": 1774626000
+            },
+            {
+              "exit_ts": 1774872000,
+              "reentry_ts": 1774876500
+            },
+            {
+              "exit_ts": 1774877400,
+              "reentry_ts": 1774879200
+            },
+            {
+              "exit_ts": 1774894200,
+              "reentry_ts": 1774954800
+            },
+            {
+              "exit_ts": 1774975500,
+              "reentry_ts": 1775080800
+            },
+            {
+              "exit_ts": 1775112600,
+              "reentry_ts": 1777403700
+            },
+            {
+              "exit_ts": 1777413600,
+              "reentry_ts": 1777449000
+            },
+            {
+              "exit_ts": 1777470600,
+              "reentry_ts": 1777489500
+            },
+            {
+              "exit_ts": 1777522500,
+              "reentry_ts": 1778020800
+            },
+            {
+              "exit_ts": 1778023200,
+              "reentry_ts": 1778673600
+            },
+            {
+              "exit_ts": 1778676600,
+              "reentry_ts": 1778695200
+            },
+            {
+              "exit_ts": 1778767200,
+              "reentry_ts": 1778783100
+            },
+            {
+              "exit_ts": 1778832000,
+              "reentry_ts": 1778871600
+            },
+            {
+              "exit_ts": 1778873400,
+              "reentry_ts": 1778875200
+            },
+            {
+              "exit_ts": 1778877300,
+              "reentry_ts": 1779095400
+            },
+            {
+              "exit_ts": 1779096600,
+              "reentry_ts": 1779099000
+            },
+            {
+              "exit_ts": 1779102000,
+              "reentry_ts": 1779105900
+            },
+            {
+              "exit_ts": 1779111900,
+              "reentry_ts": 1779138000
+            },
+            {
+              "exit_ts": 1779188400,
+              "reentry_ts": 1779214500
+            },
+            {
+              "exit_ts": 1779218100,
+              "reentry_ts": 1779227100
+            },
+            {
+              "exit_ts": 1779230700,
+              "reentry_ts": 1779231600
+            },
+            {
+              "exit_ts": 1779264000,
+              "reentry_ts": 1779281400
+            },
+            {
+              "exit_ts": 1779284700,
+              "reentry_ts": 1779307200
+            },
+            {
+              "exit_ts": 1779375300,
+              "reentry_ts": 1779384300
+            },
+            {
+              "exit_ts": 1779386400,
+              "reentry_ts": 1779386700
+            },
+            {
+              "exit_ts": 1779456600,
+              "reentry_ts": 1779470700
+            },
+            {
+              "exit_ts": 1779480000,
+              "reentry_ts": 1779875100
+            },
+            {
+              "exit_ts": 1779888600,
+              "reentry_ts": 1780896300
+            },
+            {
+              "exit_ts": 1780896600,
+              "reentry_ts": 1780908300
+            },
+            {
+              "exit_ts": 1780929000,
+              "reentry_ts": 1780943400
+            },
+            {
+              "exit_ts": 1780949100,
+              "reentry_ts": 1781034300
+            },
+            {
+              "exit_ts": 1781091000,
+              "reentry_ts": 1781166900
+            },
+            {
+              "exit_ts": 1781195400,
+              "reentry_ts": 1781196900
+            },
+            {
+              "exit_ts": 1781197200,
+              "reentry_ts": 1781197800
+            },
+            {
+              "exit_ts": 1781271000,
+              "reentry_ts": 1782363000
+            },
+            {
+              "exit_ts": 1782396000,
+              "reentry_ts": 1782483300
+            },
+            {
+              "exit_ts": 1782504000,
+              "reentry_ts": 1782817200
+            },
+            {
+              "exit_ts": 1782826800,
+              "reentry_ts": 1782846000
+            },
+            {
+              "exit_ts": 1782924300,
+              "reentry_ts": 1783501500
+            },
+            {
+              "exit_ts": 1783512000,
+              "reentry_ts": 1783530900
+            },
+            {
+              "exit_ts": 1783615500,
+              "reentry_ts": 1784233500
+            },
+            {
+              "exit_ts": 1784278200,
+              "reentry_ts": 1784304000
+            },
+            {
+              "exit_ts": 1784314800,
+              "reentry_ts": 1784322000
+            },
+            {
+              "exit_ts": 1784534400,
+              "reentry_ts": 1784620500
+            }
+          ],
+          "status": "SHARED_CAUSAL_VECTOR_MEASURED",
+          "strictly_later_reentry_proven": true,
+          "terminal_right_censored": true
+        },
+        "SIZING": {
+          "base_unit_usd": 2000.0,
+          "capacity_usd": 16000.0
+        },
+        "VALIDATION": [
+          "2025-12-01",
+          "2026-08-02"
+        ],
+        "lifecycle_all_folds_strict_gate": true,
+        "schema": "complete-vector-lifecycle-recipe-v1"
+      },
+      "complete_recipe_sha256": "e9e19a203a1c581546ba42354f65d1306e0f8fe622da494ceb18f8ff661086af",
+      "duplicate_identical_or_alternate_exact_receipt_count": 1,
+      "entry_artifact": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/keys/NXE_SHORT/entry",
+      "entry_artifact_result_sha256": "4d40b81558012ec066ce13799d3aafc8d599c11432a5517c54bfb897975afaad",
+      "exact_v8_queued": false,
+      "historical_exact_base_pass": true,
+      "historical_npz_dir": "/home/niels/binance-sandbox/data/reports/vec_research/classic_formations_full_universe_20260802/npz_universe_v1",
+      "historical_npz_sha256": "ddde3468cb8dc4453523e3d22dcda1e5bda3fdbf643304b85539f58fec7e2e5a",
+      "key": "NXE_SHORT",
+      "override_sha256": "3d7d209e6c0499c87238d5827e3ad0d11a914c166801d53b07f9b39f8f7033a6",
+      "real_closes": 49,
+      "required_pre_canary_proofs": [
+        "S1_FROZEN_NPZ_EXISTS_AND_SHA256_MATCHES_HISTORICAL",
+        "SOURCE_RECEIPT_AND_ENTRY_ARTIFACT_SHA256_MATCH",
+        "CURRENT_CODE_SHARED_ROUTE_CANARY_ONLY_NO_FULL_REPLAY",
+        "FULL_RECIPE_ONLY_AND_NO_HIGHER_PRIORITY_ENTRY_CLAIMER"
+      ],
+      "run_id": "full_recipe_20260803T061358Z_NXE_SHORT",
+      "run_summary": "data/reports/vec_research/hotlist_v8_full_recipe/full_recipe_20260803T061358Z_NXE_SHORT/run_summary.json",
+      "run_summary_sha256": "4671642fc00f1331e9e6aaf98c0adac0fae94864397790b022ce30b10ed16048",
+      "runtime_hashes": {
+        "backtest_v8_engine.py": {
+          "current_sha256": "ef624fcf5a9941b413c619ab3783fe1cbbe229ff237f4e132394c86a07ef1fb1",
+          "historical_sha256": "3acb012c848ab8a2ef807687caf2c802c0ad3ed3ac03152d81c3c42339d5d19f",
+          "match": false
+        },
+        "classic_formations.py": {
+          "current_sha256": "1a5fce177a9bbf5d2c37ad5ea862d36cdaecf945a049729c1a86d564c0fd6702",
+          "historical_sha256": "1a5fce177a9bbf5d2c37ad5ea862d36cdaecf945a049729c1a86d564c0fd6702",
+          "match": true
+        },
+        "protective_trail_contract.py": {
+          "current_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "historical_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "match": true
+        },
+        "tradier_manage.py": {
+          "current_sha256": "2798cfc6935f0827b24fe6c3dc0b56474f81139642ad03755018a257c15adbd3",
+          "historical_sha256": "df56d556c6591504c46c6d2728859dc430517a4faf99fcff65281730f9ac3189",
+          "match": false
+        },
+        "v8_completed_snapshot_adapter.py": {
+          "current_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "historical_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "match": true
+        }
+      },
+      "shared_route_audit": {
+        "blockers": [],
+        "entry_contract": {
+          "family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+          "params": {
+            "family": "trend_structure",
+            "min_score": 0.65,
+            "position_size_mult": 1.0,
+            "timeframe": "ALL"
+          },
+          "semantics": "causal completed-OHLC formation score, selected family and timeframe, side-following direction",
+          "shared_contract": "classic_formations.py:select_latest_formation",
+          "shared_live_decision_site": "tradier_manage.py:StrategyEvaluator.classic_formation_open_action",
+          "shared_v8_reason_prefix": "CLASSIC_FORMATION_ENTRY_"
+        },
+        "entry_family": "ENTRY_CLASSIC_FORMATION_TREND_STRUCTURE",
+        "exit_contract": {
+          "family": "EXIT_CLASSIC_FORMATION_WEDGE",
+          "params": {
+            "exit_min_gain_pct": 0.0,
+            "family": "wedge",
+            "min_score": 0.65,
+            "timeframe": "ALL"
+          },
+          "semantics": "causal completed-OHLC formation score, selected family and timeframe, direction opposite the held side, profit floor",
+          "shared_contract": "classic_formations.py:select_latest_formation",
+          "shared_live_decision_site": "tradier_manage.py:StrategyEvaluator.evaluate_stop",
+          "shared_v8_reason_prefix": "CLASSIC_FORMATION_EXIT_"
+        },
+        "exit_family": "EXIT_CLASSIC_FORMATION_WEDGE",
+        "runtime_markers": [
+          "SHARED_CLASSIC_FORMATION_V8_PARITY_V1",
+          "SHARED_CLASSIC_FORMATION_V8_PARITY_V1"
+        ],
+        "schema": "hotlist-v8-shared-route-audit-v1",
+        "shared_route": true
+      },
+      "side": "SHORT",
+      "side_aware_bh_return_pct": -2.4344984575632695,
+      "source_receipt": "data/reports/vec_research/capacity_cohort_classic_formations_gate_aware_v4_20260803/campaign_receipt.json",
+      "source_receipt_sha256": "68fbfc37e3d61a66f675cfa8d7a4c7e9bf54a2c838179403c9023f9877f17f38",
+      "status": "CANARY_READY_FULL_RECIPE_PRIORITY_REQUIRED",
+      "strategy_return_pct": 3.38,
+      "strict_positive_return": true,
+      "symbol": "NXE",
+      "time_in_market_pct": 66.6146,
+      "validation": [
+        "2025-12-01",
+        "2026-08-02"
+      ]
+    },
+    {
+      "alpha_vs_bh_pp": 9.343586055217283,
+      "blockers": [
+        "RETURN_NOT_STRICTLY_POSITIVE_PER_BIBLE_16_43"
+      ],
+      "canary_started": false,
+      "checks": {
+        "BEATS_SIDE_AWARE_BH": true,
+        "CAPACITY_NOT_BREACHED": true,
+        "ENGINE_RETURN_CODE": true,
+        "NO_REENTRY_VIOLATIONS": true,
+        "NO_UNDECLARED_COMPETING_CLOSE_PATH": true,
+        "OVER_10_REAL_CLOSES": true,
+        "REQUESTED_FILL_RATIO_GE_99PCT": true,
+        "REQUESTED_MULT_LE_8X": true,
+        "SHARED_ENTRY_ROUTE_FIRED": true,
+        "SHARED_SELECTED_EXIT_ROUTE_FIRED": true,
+        "SIDE_ISOLATED": true,
+        "STRICTLY_LATER_REENTRY_OBSERVED": true
+      },
+      "complete_recipe": {
+        "ENTRY": {
+          "artifact": "/home/niels/binance-sandbox/data/reports/vec_research/path_hotlist_20260801/full_v2/keys/OKE_LONG/control/band_ladder_walkforward_20260802T000835Z_OKE_LONG",
+          "family": "ENTRY_LADDER_GREEN",
+          "params": {}
+        },
+        "EXIT": {
+          "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+          "params": {
+            "arm_timeframe": "15m",
+            "break_buffer_atr": 0.0,
+            "distance_mult": 1.0,
+            "lookback": 40,
+            "mode": "DC",
+            "trail_timeframe": "5m"
+          }
+        },
+        "KEY": "OKE_LONG",
+        "VALIDATION": [
+          "2025-07-01",
+          "2026-01-01"
+        ],
+        "schema": "complete-vector-lifecycle-recipe-v1"
+      },
+      "complete_recipe_sha256": "b7d770e4dfeebccf0c0496a6e0cbd399afd0c5c894e97f366ce1c32e2950ef60",
+      "duplicate_identical_or_alternate_exact_receipt_count": 11,
+      "entry_artifact": "/home/niels/binance-sandbox/data/reports/vec_research/path_hotlist_20260801/full_v2/keys/OKE_LONG/control/band_ladder_walkforward_20260802T000835Z_OKE_LONG",
+      "entry_artifact_result_sha256": "501396823b211c510a52ddb30a5b1af10cf19d25481515d699ad9e49a1cb22b5",
+      "exact_v8_queued": false,
+      "historical_exact_base_pass": true,
+      "historical_npz_dir": "/home/niels/binance-sandbox/data/matrix_npz/path_hotlist_20260801",
+      "historical_npz_sha256": "1b652f3aefb186c38f5d5bdec7ea413234cbd592b0fa2dafecac484bd698a638",
+      "key": "OKE_LONG",
+      "override_sha256": "513adceff4f505e0b7105be9a85893f7b4967213774545e516f69c8436cd7282",
+      "real_closes": 71,
+      "required_pre_canary_proofs": [
+        "S1_FROZEN_NPZ_EXISTS_AND_SHA256_MATCHES_HISTORICAL",
+        "SOURCE_RECEIPT_AND_ENTRY_ARTIFACT_SHA256_MATCH",
+        "CURRENT_CODE_SHARED_ROUTE_CANARY_ONLY_NO_FULL_REPLAY"
+      ],
+      "run_id": "full_recipe_20260803T055704Z_OKE_LONG",
+      "run_summary": "data/reports/vec_research/hotlist_v8_full_recipe/full_recipe_20260803T055704Z_OKE_LONG/run_summary.json",
+      "run_summary_sha256": "baac50cf5a7a181bd33ed2f57a514c54538f892d9373d623766afeaa3ae5c47b",
+      "runtime_hashes": {
+        "backtest_v8_engine.py": {
+          "current_sha256": "ef624fcf5a9941b413c619ab3783fe1cbbe229ff237f4e132394c86a07ef1fb1",
+          "historical_sha256": "3acb012c848ab8a2ef807687caf2c802c0ad3ed3ac03152d81c3c42339d5d19f",
+          "match": false
+        },
+        "classic_formations.py": {
+          "current_sha256": "1a5fce177a9bbf5d2c37ad5ea862d36cdaecf945a049729c1a86d564c0fd6702",
+          "historical_sha256": null,
+          "match": null
+        },
+        "protective_trail_contract.py": {
+          "current_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "historical_sha256": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+          "match": true
+        },
+        "tradier_manage.py": {
+          "current_sha256": "2798cfc6935f0827b24fe6c3dc0b56474f81139642ad03755018a257c15adbd3",
+          "historical_sha256": "df56d556c6591504c46c6d2728859dc430517a4faf99fcff65281730f9ac3189",
+          "match": false
+        },
+        "v8_completed_snapshot_adapter.py": {
+          "current_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "historical_sha256": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01",
+          "match": true
+        }
+      },
+      "shared_route_audit": {
+        "blockers": [],
+        "entry_contract": {
+          "family": "ENTRY_LADDER_GREEN",
+          "semantics": "ordinary completed-parent absolute target",
+          "shared_live_decision_site": "tradier_manage.py:_ordinary_ladder_target",
+          "shared_v8_reason_prefix": "LR_BAND_LADDER_PARITY_TARGET"
+        },
+        "entry_family": "ENTRY_LADDER_GREEN",
+        "exit_contract": {
+          "family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+          "semantics": "shared completed-parent protective state machine",
+          "shared_live_decision_site": "tradier_manage.py:_ordinary_bottom_a_exit",
+          "shared_v8_reason_prefix": "BOTTOM_A_"
+        },
+        "exit_family": "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "runtime_markers": [],
+        "schema": "hotlist-v8-shared-route-audit-v1",
+        "shared_route": true
+      },
+      "side": "LONG",
+      "side_aware_bh_return_pct": -9.703586055217283,
+      "source_receipt": "data/reports/vec_research/path_hotlist_20260801/full_v2/campaign_receipt.json",
+      "source_receipt_sha256": "652cebeb5f866e2462a2d11def81eb1e21fc7c9a88209010045ce400c9c43806",
+      "status": "HISTORICAL_EXACT_ONLY_BLOCKED_CURRENT_QUALIFICATION",
+      "strategy_return_pct": -0.36,
+      "strict_positive_return": false,
+      "symbol": "OKE",
+      "time_in_market_pct": 56.3499,
+      "validation": [
+        "2025-07-01",
+        "2026-01-01"
+      ]
+    }
+  ],
+  "contract": "IMMUTABLE_HISTORICAL_RECEIPTS_ONLY_NO_CANARY_NO_EXACT_NO_MATRIX_NO_WORKBOOK_NO_DB_NO_LIVE",
+  "current_qualification_route_canary_candidate_count": 3,
+  "current_runtime_hashes": {
+    "backtest_v8_engine.py": "ef624fcf5a9941b413c619ab3783fe1cbbe229ff237f4e132394c86a07ef1fb1",
+    "classic_formations.py": "1a5fce177a9bbf5d2c37ad5ea862d36cdaecf945a049729c1a86d564c0fd6702",
+    "protective_trail_contract.py": "2f91f45c62e00d7adbf2f7f4748dca6b623aaebe63e6fb50449755dcb87ccf14",
+    "tradier_manage.py": "2798cfc6935f0827b24fe6c3dc0b56474f81139642ad03755018a257c15adbd3",
+    "v8_completed_snapshot_adapter.py": "8e5e0d7d19024f137b0a76b3da466ecc23e0b6a610b5aa800af6123a9bdd6d01"
+  },
+  "database_written": false,
+  "exact_run_receipt_count_scanned": 92,
+  "exact_v8_queued": false,
+  "generated_at": "2026-08-03T10:40:07.087284+00:00",
+  "historical_exact_bh_and_close_pass_receipt_count": 37,
+  "live_written": false,
+  "matrix_written": false,
+  "schema": "immutable-exact-qualification-recovery-audit-v1",
+  "truth": "Historical exact evidence is preserved evidence, not a current-code result. Every candidate remains blocked from promotion and requires the listed cheap route-canary proofs; no replay was started.",
+  "unique_symbol_side_inventory_count": 4,
+  "workbook_written": false
+}

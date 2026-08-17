@@ -1,0 +1,37 @@
+{
+  "_meta": {
+    "frozen_at_utc": "2026-05-10T20:35:00Z",
+    "engine_md5": "460c0a3f07756f1be6316b3bac94dade",
+    "config_py_md5_pre_freeze": "709f8194872f6604c0216195b8c647cc",
+    "config_tradier_py_md5_pre_freeze": "71aa9294590df9fbdcbf4abcd0b17498",
+    "config_tradier_py_md5_post_freeze": "00e9cdbe0c922279aca0a2e45fac0cdb",
+    "review_file": "/Users/niels/Documents/binance/canonical_baseline_review.md",
+    "rollback_dir": "/Users/niels/Documents/binance/backups/baseline_freeze_202605102029/",
+    "live_trade_snapshot": "/Users/niels/Documents/binance/backups/baseline_freeze_202605102029/live_trades_snapshot_pre.txt",
+    "ablation_csvs": [
+      "data/sweep_results/backtest_v8_sweep_gr_micro_ablation_crypto_20260510_163631.csv",
+      "data/sweep_results/backtest_v8_sweep_gr_micro_ablation_tradier_20260510_182152.csv"
+    ],
+    "monitoring_check_due_utc": "2026-05-11T20:29:00Z",
+    "decision_rule": "If 24h live PnL across 7 accounts is more negative than rollback baseline period, OR WR drops >10pp, OR trade count drops >30%, REVERT via rollback dir."
+  },
+  "tradier_changes_applied": {
+    "GOLDEN_RULE_HTF_MIN_TFS": {"prev": 0, "new": 3, "reason": "ablation winner GR_entry_ind5 +30% Sharpe", "sample": "4 sym × ~7d DIAGNOSTIC"},
+    "GOLDEN_RULE_MIN_IND": {"prev": 2, "new": 5, "reason": "paired with HTF_MIN_TFS=3", "sample": "4 sym × ~7d DIAGNOSTIC"}
+  },
+  "crypto_changes_applied": {
+    "_note": "No defaults changed. All ablation variants with higher Sharpe had catastrophic gain (-21% to -35% over 7 days). Sub-floor sample, not strong enough to override live config."
+  },
+  "tradier_baseline_metrics": {
+    "_pre_change": {"pool_sharpe": 0.4088, "trades": 11, "wr_pct": 54.5, "gain_pct": 0.01, "syms": 4, "days": 4.5, "tier": "DIAGNOSTIC"},
+    "_post_change_expected": {"pool_sharpe": 0.5353, "trades": 8, "wr_pct": 62.5, "gain_pct": 0.03, "syms": 4, "days": 4.5, "tier": "DIAGNOSTIC", "note": "from GR_entry_ind5 ablation result, not yet re-validated as default"}
+  },
+  "crypto_baseline_metrics": {
+    "_unchanged": {"pool_sharpe": 0.2329, "trades": 144, "wr_pct": 97.2, "gain_pct": -6.32, "syms": 4, "days": 6.6, "tier": "DIAGNOSTIC", "warning": "negative gain — recent BTC volatility or structural issue. Investigate before promoting."}
+  },
+  "deferred_repairs": [
+    "GR_MULT_BREAKOUT/RETEST/RETEST_BARS — Phase 1+2 retest architecture not in backtest engine",
+    "GR_MULT_APPLY/GATE_MODE — live-only knobs",
+    "GR_EXIT_MIN_TFS/IND — other exit paths fire before evaluate_stop, comprehensive exit-gate audit needed"
+  ]
+}

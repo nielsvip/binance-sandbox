@@ -1,0 +1,46 @@
+signal_name,source,last_24h_fires,last_24h_blocks,block_rate_pct
+GR_HTF_DIRECT_ENTRY,tradier,10491,N/A (blocks logged to stderr not decisions JSONL),N/A
+WT_DC_ENTRY,tradier,9942,N/A (blocks logged to stderr not decisions JSONL),N/A
+R1_DC_LOW4_3M_EMERGENCY,crypto,1395,N/A (blocks logged to stderr not decisions JSONL),N/A
+WT_CROSSUNDER_FINAL,tradier,1225,N/A (blocks logged to stderr not decisions JSONL),N/A
+SCALP_V3_PROTECTIVE_EXIT,crypto,779,N/A (blocks logged to stderr not decisions JSONL),N/A
+DELTA_EXIT_BOTTOM,tradier,243,N/A (blocks logged to stderr not decisions JSONL),N/A
+STRONG_REDUCE,crypto,196,N/A (blocks logged to stderr not decisions JSONL),N/A
+SCALP_V3_CLOSE,crypto,185,N/A (blocks logged to stderr not decisions JSONL),N/A
+DELTA_EXIT_TOP_EXIT,tradier,174,N/A (blocks logged to stderr not decisions JSONL),N/A
+DELTA_EXIT_SMART_RZ,tradier,140,N/A (blocks logged to stderr not decisions JSONL),N/A
+STRONG_BUY_OPEN,crypto,115,N/A (blocks logged to stderr not decisions JSONL),N/A
+DELTA_EXIT_BASELINE,tradier,89,N/A (blocks logged to stderr not decisions JSONL),N/A
+DAEMON_PRICE_CROSS_REENTRY,crypto,50,N/A (blocks logged to stderr not decisions JSONL),N/A
+HEDGE_BANDAID_OFF,crypto,37,N/A (blocks logged to stderr not decisions JSONL),N/A
+WT_4H_VEL_EXIT,crypto,31,N/A (blocks logged to stderr not decisions JSONL),N/A
+QUICK_HEDGE_PROTECT,crypto,29,N/A (blocks logged to stderr not decisions JSONL),N/A
+AGENT_FORCE_CLOSE,crypto,28,N/A (blocks logged to stderr not decisions JSONL),N/A
+SCALP_V3_OPEN,crypto,20,N/A (blocks logged to stderr not decisions JSONL),N/A
+DELTA_EXIT_TOP,tradier,17,N/A (blocks logged to stderr not decisions JSONL),N/A
+GOLDEN_RULE_LONG,crypto,16,N/A (blocks logged to stderr not decisions JSONL),N/A
+HEDGE_FAILED_FALLBACK_CLOSE,crypto,15,N/A (blocks logged to stderr not decisions JSONL),N/A
+K1M_EXTREME_REVERSE,crypto,10,N/A (blocks logged to stderr not decisions JSONL),N/A
+GOLDEN_RULE_SHORT,crypto,10,N/A (blocks logged to stderr not decisions JSONL),N/A
+HEDGE_CLOSE_WT,crypto,9,N/A (blocks logged to stderr not decisions JSONL),N/A
+ALL_TF_AGAINST_CLOSE,crypto,8,N/A (blocks logged to stderr not decisions JSONL),N/A
+SMA_CROSSUNDER_SIGNAL,crypto,8,N/A (blocks logged to stderr not decisions JSONL),N/A
+WT15M_AGAINST_FORCE_CLOSE,crypto,6,N/A (blocks logged to stderr not decisions JSONL),N/A
+NO_LOSS_EXIT_CRITICAL,crypto,5,N/A (blocks logged to stderr not decisions JSONL),N/A
+TRADEABLE_KEYS_MANDATORY,crypto,5,N/A (blocks logged to stderr not decisions JSONL),N/A
+FORCE_OPEN,crypto,4,N/A (blocks logged to stderr not decisions JSONL),N/A
+DC_TIER_ENTRY,tradier,3,N/A (blocks logged to stderr not decisions JSONL),N/A
+MTF_GR_WT_EXIT,crypto,3,N/A (blocks logged to stderr not decisions JSONL),N/A
+ORPHANED_HEDGE_CLOSE,crypto,3,N/A (blocks logged to stderr not decisions JSONL),N/A
+STRONG_SELL_OPEN,crypto,3,N/A (blocks logged to stderr not decisions JSONL),N/A
+NOT_A_TRADEABLE_KEY_OPEN,crypto,2,N/A (blocks logged to stderr not decisions JSONL),N/A
+DC_HOPELESS_EXIT,crypto,2,N/A (blocks logged to stderr not decisions JSONL),N/A
+WRONG_SIDE_ABS_KILL,crypto,2,N/A (blocks logged to stderr not decisions JSONL),N/A
+DELTA_EXIT_BASELINE_BOUNCE,tradier,1,N/A (blocks logged to stderr not decisions JSONL),N/A
+WT_CROSSOVER_FINAL,tradier,1,N/A (blocks logged to stderr not decisions JSONL),N/A
+Stale (Age:543s),tradier,1,N/A (blocks logged to stderr not decisions JSONL),N/A
+Stale (Age:305s),tradier,1,N/A (blocks logged to stderr not decisions JSONL),N/A
+WT_DC_EXIT,tradier,1,N/A (blocks logged to stderr not decisions JSONL),N/A
+MICRO_SCALP_USDC_CLOSE,crypto,1,N/A (blocks logged to stderr not decisions JSONL),N/A
+HEDGE_CLEANUP_R6_main_recovered_gain=0.1,crypto,1,N/A (blocks logged to stderr not decisions JSONL),N/A
+WT_EXHAUST_EXIT,crypto,1,N/A (blocks logged to stderr not decisions JSONL),N/A

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from tools import run_top_exit_reclaim_phase3 as phase3
@@ -84,3 +86,54 @@ def test_phase3_registry_size_is_frozen(monkeypatch) -> None:
     # public count through explicit assertions in production construction.
     assert phase3.CAMPAIGN == "TOP_EXIT_RECLAIM_PHASE3_V1"
     assert phase3.CAPITAL_CONTRACT["strategy_capacity_usd"] == 16_000.0
+
+
+def _source_between(source: str, start: str, end: str) -> str:
+    left = source.index(start)
+    right = source.index(end, left)
+    return source[left:right]
+
+
+def test_v8_wrapper_does_not_synthesize_a_second_wt_final_decision() -> None:
+    source = Path("backtest_v8_engine.py").read_text()
+    wrapper = _source_between(
+        source,
+        "    async def _v8_gated_evaluate_stop(",
+        "    manager.strategy.evaluate_stop = _v8_gated_evaluate_stop",
+    )
+
+    assert "await _orig_evaluate_stop(" in wrapper
+    assert "return should_exit, reason, qty" in wrapper
+    assert "WT_CROSSOVER_FINAL_V8" not in wrapper
+    assert "WT_CROSSUNDER_FINAL_V8" not in wrapper
+    assert "_xu_wt1_5m" not in wrapper
+
+
+def test_real_tradier_evaluator_owns_min_hold_and_both_wt_routes() -> None:
+    source = Path("tradier_manage.py").read_text()
+    evaluator = _source_between(
+        source,
+        "    async def evaluate_stop(",
+        "    async def evaluate_open(",
+    )
+
+    min_hold = evaluator.index('return False, f"STOCK_MIN_HOLD(')
+    delta_wt = evaluator.index("# ═══ WT CROSSUNDER FINAL RESORT", min_hold)
+    standalone_wt = evaluator.index(
+        "# WT CROSSUNDER FINAL standalone", delta_wt
+    )
+
+    assert min_hold < delta_wt < standalone_wt
+    assert evaluator.count(
+        'path_switch(config, "WT_CROSSUNDER_FINAL_ENABLED", True)'
+    ) >= 3
+    assert "_parabolic_state(" in evaluator[delta_wt:standalone_wt]
+    assert "_parabolic_state(" in evaluator[standalone_wt:]
+
+
+def test_v8_execution_layer_still_honors_the_wt_family_master() -> None:
+    source = Path("backtest_v8_engine.py").read_text()
+    exact_engine = source[source.index("async def run_simulation_tradier(") :]
+
+    assert exact_engine.count("BLOCKED_WT_CROSSOVER_FINAL_DISABLED") >= 1
+    assert exact_engine.count("BLOCKED_WT_CROSSUNDER_FINAL_DISABLED") >= 1

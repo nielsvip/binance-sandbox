@@ -6,7 +6,7 @@ def test_strict_fold_requires_both_alphas_tim_exit_and_reclaim():
         "alpha_vs_bh_pp": 3.0,
         "alpha_vs_same_entry_e02_pp": 1.0,
         "weighted_tim_pct": 75.0,
-        "actual_exit_fills": 2,
+        "real_close_trades": 2,
         "unfilled_obligations": 0,
         "future_htf_source_count": 0,
         "bars_flat_beyond_reclaim": 0,
@@ -18,7 +18,7 @@ def test_strict_fold_requires_both_alphas_tim_exit_and_reclaim():
         ("alpha_vs_bh_pp", 0.0),
         ("alpha_vs_same_entry_e02_pp", 0.0),
         ("weighted_tim_pct", 80.01),
-        ("actual_exit_fills", 0),
+        ("real_close_trades", 0),
         ("unfilled_obligations", 1),
         ("future_htf_source_count", 1),
         ("bars_flat_beyond_reclaim", 1),
@@ -75,13 +75,13 @@ def test_candidate_summary_redacts_final_until_selected():
             "alpha_vs_bh_pp": 2.0,
             "alpha_vs_same_entry_e02_pp": 1.0,
             "weighted_tim_pct": 75.0,
-            "actual_exit_fills": 1,
+            "real_close_trades": 1,
         },
         {
             "alpha_vs_bh_pp": 5.0,
             "alpha_vs_same_entry_e02_pp": 4.0,
             "weighted_tim_pct": 76.0,
-            "actual_exit_fills": 1,
+            "real_close_trades": 1,
         },
     ]
     source = {
@@ -101,6 +101,26 @@ def test_candidate_summary_redacts_final_until_selected():
     assert hidden["discovery_fold_evidence"] == folds[:-1]
     assert shown["untouched_final_validation"]["fold_evidence"] == folds[-1]
     assert shown["all_folds_strict"]
+
+
+def test_close_gate_rejects_broad_exit_actions_without_terminal_close_count():
+    row = {
+        "alpha_vs_bh_pp": 3.0,
+        "alpha_vs_same_entry_e02_pp": 1.0,
+        "weighted_tim_pct": 75.0,
+        "exit_fills": 99,
+        "partial_exit_fills": 98,
+        "unfilled_obligations": 0,
+        "future_htf_source_count": 0,
+        "bars_flat_beyond_reclaim": 0,
+        "entry_capacity_breach": False,
+        "insolvent": False,
+    }
+    assert beam._fold_exit_count(row) == 0
+    assert not beam._strict_fold(row)
+    row["terminal_lifecycle_closes"] = 11
+    assert beam._fold_exit_count(row) == 11
+    assert beam._strict_fold(row)
 
 
 def test_forced_entry_baselines_can_expand_bounded_rank_beam(monkeypatch, tmp_path):
@@ -158,3 +178,10 @@ def test_repo_root_is_importable_for_remote_script_execution():
     import sys
 
     assert str(beam.ROOT) in sys.path
+
+
+def test_independent_entry_errors_do_not_discard_strict_survivors():
+    error = [{"entry_family": "ENTRY_BROKEN"}]
+    survivor = [{"entry_family": "ENTRY_PROVEN", "exit_family": "EXIT_PROVEN"}]
+    assert beam._campaign_exit_code(error, survivor) == 0
+    assert beam._campaign_exit_code(error, []) == 1

@@ -1,0 +1,88 @@
+{
+  "after_native_precision_overlay": {
+    "exclusive_row_classification_counts": {
+      "DISTINCT_ACTIONS_EQUAL_STORED_METRIC": 1853,
+      "LEGITIMATE_IDENTICAL_BACKTEST_OUTCOME": 1370,
+      "UNIQUE_NONZERO_RESULT_ROW": 264,
+      "UNRESOLVED_MISSING_ACTION_FINGERPRINT": 257,
+      "ZERO_NONFINITE_OR_MISSING_RESULT": 0
+    },
+    "logical_identity_audit": {
+      "duplicate_logical_identity_groups": 0,
+      "logical_identities": 3744,
+      "rows_in_duplicate_logical_identities": 0,
+      "selected_archive_overwrite_detected": false
+    },
+    "rows_sharing_metric_with_another_setting": 3480,
+    "source_rows": 3744,
+    "unique_nonzero_result_rows": 264
+  },
+  "before_native_precision_overlay": {
+    "exclusive_row_classification_counts": {
+      "DISTINCT_ACTIONS_EQUAL_STORED_METRIC": 1857,
+      "LEGITIMATE_IDENTICAL_BACKTEST_OUTCOME": 1368,
+      "UNIQUE_NONZERO_RESULT_ROW": 262,
+      "UNRESOLVED_MISSING_ACTION_FINGERPRINT": 257,
+      "ZERO_NONFINITE_OR_MISSING_RESULT": 0
+    },
+    "logical_identity_audit": {
+      "duplicate_logical_identity_groups": 0,
+      "logical_identities": 3744,
+      "rows_in_duplicate_logical_identities": 0,
+      "selected_archive_overwrite_detected": false
+    },
+    "rows_sharing_metric_with_another_setting": 3482,
+    "source_rows": 3744,
+    "unique_nonzero_result_rows": 262
+  },
+  "change": {
+    "rows_sharing_metric": -2,
+    "unique_nonzero_result_rows": 2
+  },
+  "integrity_contract": {
+    "copying_a_result_to_make_a_cell_unique_allowed": false,
+    "duplicate_or_unresolved_physical_cells_are_withheld": true,
+    "equal_genuine_outcomes_remain_equal_evidence": true,
+    "physical_uniqueness_requires_a_real_native_precision_rerun": true,
+    "synthetic_epsilon_or_jitter_allowed": false
+  },
+  "native_precision_reruns": {
+    "accepted_pass_rows": 6,
+    "available": true,
+    "deployment_sha256": "e5932a8bfab260e7d36437114c87de1ebd7b3e888202baa066d37115c6836a08",
+    "duplicate_authoritative_logical_pass_rows": 0,
+    "ledger_rows_preserved": 56,
+    "non_authoritative_deployment_rows": 0,
+    "out_of_selection_pass_rows": 5,
+    "pass_ledger_rows": 11,
+    "results_sha256": "f6c65d209608ac56dd0048761aa356110f11be4583bafd5b67fddfd317b863d2",
+    "status": "FAIL_PARTIAL",
+    "verified_cross_deployment_pass_rows": 0
+  },
+  "reported_count_reconciliation": {
+    "finding": "reported count was stale or not bound to this archive hash",
+    "reported_minus_authoritative": 30,
+    "reported_rows_sharing_result": 3512,
+    "source_hash_authoritative_rows_sharing_result": 3482
+  },
+  "schema": "pilot-v8-collision-repair-receipt-v1",
+  "scope": "five recovered pilot symbol/sides",
+  "source_binding": {
+    "archive": "data/reports/PILOT_V8_CELLS_IMMUTABLE.jsonl",
+    "archive_sha256": "775727650cb84bd54948351f6d673f32c12928d921bb43185703f1e28750804e",
+    "receipt": "data/reports/PILOT_V8_CELLS_IMMUTABLE_RECEIPT.json",
+    "receipt_archive_sha256_matches": true,
+    "rerun_results_sha256": "f6c65d209608ac56dd0048761aa356110f11be4583bafd5b67fddfd317b863d2",
+    "rerun_status_sha256": "852b03f9a036495eb078dfe0c9685a597082cb7d5183550ee3b047f7c3b23969"
+  },
+  "source_observation_preservation": {
+    "logical_identity_overwrite_prevented": true,
+    "query_order_used_as_authority": false,
+    "raw_source_db_observations": 5121,
+    "repaired_recovery_writes_separate_raw_history": true,
+    "selected_archive_is_raw_history": false,
+    "selected_logical_archive_rows": 3744,
+    "superseded_observations_retained_in_source_db": 1377
+  },
+  "status": "PASS_FAIL_CLOSED_NO_SYNTHETIC_UNIQUENESS"
+}

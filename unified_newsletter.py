@@ -1,12 +1,11 @@
 #!/opt/anaconda3/envs/binance_env/bin/python
 # metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 # pylint: disable=W,C,R,I
-"""Unified Newsletter — delta-only digest combining copy-trader research + backtest sweeps.
+"""Unified Newsletter — delta-only digest combining copy-trader research + direct-V8 receipts.
 
 Only reports what's NEW since the last newsletter:
   - New copy-trader patterns/indicators/health changes
-  - Server 1 (157.180) backtest sweep progress + results
-  - Server 2 (204.168) backtest sweep progress + results
+  - Audited direct-V8 results and combiner progress (the active result source)
   - Local MacBook pre-testing status
   - What was concluded and applied to live
 
@@ -37,7 +36,9 @@ else:
     BASE_PATH = Path("/home/niels/binance")
     LOG_DIR = Path("/home/niels/logs")
 sys.path.insert(0, str(BASE_PATH))
+sys.path.insert(0, str(BASE_PATH / "tools"))
 from config import Config
+import direct_v8_digest as direct_results
 config = Config()
 DATA_DIR = config.DATA_DIR
 REPORT_DIR = DATA_DIR / "trader_research_reports"
@@ -502,7 +503,7 @@ def _zec_section_html(zec: dict) -> list:
     return parts
 
 
-def build_newsletter_html(trader_delta: dict, s1_status: dict, s2_status: dict, local_status: dict, applied: list, eod: dict = None, zec_delta: dict = None) -> str:
+def build_newsletter_html(trader_delta: dict, s1_status: dict, s2_status: dict, local_status: dict, applied: list, eod: dict = None, zec_delta: dict = None, direct_snapshot: dict = None) -> str:
     """Build the unified newsletter HTML."""
     now = datetime.now(timezone.utc)
     css = """
@@ -574,65 +575,12 @@ code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; font-size: 11p
             parts.append("</p>")
     else:
         parts.append("<p class='unchanged'>No copy-trader data available</p>")
-    # ── Section 2: Backtest Sweeps ──
-    parts.append("<h2>Backtest Sweeps</h2>")
-    for status in [s1_status, s2_status]:
-        label = status["label"]
-        if not status["reachable"]:
-            parts.append(f"<div class='box sweep-idle'><h3>{label}</h3><p class='r'>Unreachable</p></div>")
-            continue
-        is_active = bool(status.get("active_sweeps"))
-        cls = "sweep-active" if is_active else "sweep-idle"
-        parts.append(f"<div class='box {cls}'><h3>{label}</h3>")
-        # Screen sessions
-        if status.get("screen_sessions"):
-            parts.append(f"<p>Screens: {', '.join(s.split('(')[0].strip() for s in status['screen_sessions'])}</p>")
-        # Active sweeps with progress
-        if is_active:
-            for sw in status.get("active_sweeps", []):
-                mode = sw.get("mode", "")
-                n_syms = sw.get("n_syms", "")
-                out_dir = sw.get("out_dir", "")
-                label_parts = []
-                if mode:
-                    label_parts.append(f"mode={mode}")
-                if n_syms:
-                    label_parts.append(f"{n_syms} syms")
-                if out_dir:
-                    label_parts.append(out_dir)
-                desc = " &bull; ".join(label_parts) if label_parts else sw.get("cmd_short", "")[-80:]
-                parts.append(f"<p class='g'>&#9654; autonomous_search running: <code>{desc}</code></p>")
-        elif status.get("log_snippets"):
-            parts.append("<p><b>Active progress:</b></p><pre style='font-size:11px;background:#f0f0f0;padding:6px;overflow-x:auto;'>")
-            for snippet in status["log_snippets"]:
-                parts.append(f"{snippet}\n")
-            parts.append("</pre>")
-        else:
-            parts.append("<p class='unchanged'>No active sweeps</p>")
-        # Latest results
-        if status.get("latest_results"):
-            src = status["latest_results"][0].get("file", "")
-            src_label = "autonomous_search" if "autonomous" in src else "v8_sweep"
-            parts.append(f"<p><b>Top configs ({src_label} — {src}):</b></p>")
-            parts.append("<table><tr><th>#</th><th>Iter</th><th>Sharpe</th><th>AccGain%</th><th>Trades</th><th>WR</th></tr>")
-            for i, r in enumerate(status["latest_results"][:5]):
-                sharpe_cls = "g" if r["sharpe"] >= 2.0 else "o" if r["sharpe"] >= 1.0 else "r"
-                pnl_pct = r.get("pnl_pct", 0)
-                pnl_cls = "g" if pnl_pct > 0 else "r"
-                name_short = r["name"][:20] if r["name"] else "?"
-                parts.append(f"<tr><td>{i+1}</td><td><code>{name_short}</code></td><td class='{sharpe_cls} b'>{r['sharpe']:.4f}</td><td class='{pnl_cls}'>{pnl_pct:+.1f}%</td><td>{r['trades']}</td><td>{r.get('wr','?')}</td></tr>")
-            parts.append("</table>")
-        parts.append("</div>")
-    # Local MacBook
-    if local_status.get("active") or local_status.get("recent_results"):
-        parts.append("<div class='box sweep-active'><h3>MacBook (local)</h3>")
-        if local_status.get("active"):
-            parts.append(f"<p class='g'>Active backtests running</p>")
-            for proc in local_status.get("processes", []):
-                parts.append(f"<p><code>{proc[-80:]}</code></p>")
-        for r in local_status.get("recent_results", []):
-            parts.append(f"<p>{r['file']} ({r['age_hours']:.0f}h ago, {r['size']/1024:.0f}KB)</p>")
-        parts.append("</div>")
+    # ── Section 2: direct-V8 audited results ──
+    # The old server-sweep CSVs remain available to forensic helpers below, but
+    # must never be presented as current research results in this newsletter.
+    if direct_snapshot is None:
+        direct_snapshot = direct_results.snapshot()
+    parts.append(direct_results.render_section(direct_snapshot, title="DIRECT-V8 RESULTS — UNIFIED NEWSLETTER"))
     # ── Section 2.5: EOD Scoreboard + Forgotten ──
     if eod:
         parts.append("<h2>EOD Scoreboard</h2>")
@@ -704,6 +652,11 @@ def run(dry_run: bool = False, force: bool = False):
     logger.info("=" * 60)
     state = load_state()
     logger.info(f"Last newsletter: {state.get('last_sent', 'never')}")
+    # Keep a newsletter-local cursor so this digest reports only direct-V8
+    # receipts completed since the previous unified newsletter.  It is
+    # intentionally separate from results_digest_email.py's cursor.
+    direct_cursor_state = {"direct_v8": {"last_sent_ts": state.get("direct_v8_last_sent_ts", 0)}}
+    direct_snapshot = direct_results.snapshot(state=direct_cursor_state)
     # 1. Copy trader delta
     logger.info("Computing copy-trader delta...")
     trader_delta = compute_trader_delta(state)
@@ -723,7 +676,10 @@ def run(dry_run: bool = False, force: bool = False):
     # 6. ZEC custom research delta (USER MANDATE 2026-05-21: always pair 7D+4yr)
     zec_delta = get_zec_research_delta(state)
     # Check if there's anything new
-    has_new_sweep = bool(s1_status.get("active_sweeps") or s2_status.get("active_sweeps") or s1_status.get("latest_results") or s2_status.get("latest_results"))
+    # Result-bearing email logic is driven by audited direct-V8 receipts, not
+    # obsolete SWITCH_MATRIX/server-sweep CSV activity.
+    has_new_direct = bool(direct_snapshot.get("since"))
+    has_new_sweep = has_new_direct
     has_eod = bool(eod.get("balances") or eod.get("held_outperformers"))
     has_zec = bool(zec_delta.get("iters") or zec_delta.get("promotions"))
     has_anything = trader_delta.get("has_new") or has_new_sweep or applied or has_eod or has_zec
@@ -732,7 +688,7 @@ def run(dry_run: bool = False, force: bool = False):
         print("No new findings. Use --force to send anyway.")
         return
     # Build HTML
-    html = build_newsletter_html(trader_delta, s1_status, s2_status, local_status, applied, eod=eod, zec_delta=zec_delta)
+    html = build_newsletter_html(trader_delta, s1_status, s2_status, local_status, applied, eod=eod, zec_delta=zec_delta, direct_snapshot=direct_snapshot)
     # Count what's new for subject line
     new_parts = []
     if trader_delta.get("new_indicators"):
@@ -744,6 +700,9 @@ def run(dry_run: bool = False, force: bool = False):
     n_active = len(s1_status.get("active_sweeps", [])) + len(s2_status.get("active_sweeps", []))
     if n_active:
         new_parts.append(f"{n_active} sweeps running")
+    n_direct = len(direct_snapshot.get("since", []))
+    if n_direct:
+        new_parts.append(f"{n_direct} direct-V8 receipts")
     subject = f"Research Digest — {', '.join(new_parts) if new_parts else 'status update'}"
     if dry_run:
         # Save to file instead of sending
@@ -768,6 +727,10 @@ def run(dry_run: bool = False, force: bool = False):
         state.update(trader_delta["_state_update"])
     state["last_sweep_s1"] = {"timestamp": now, "active": bool(s1_status.get("active_sweeps")), "n_results": len(s1_status.get("latest_results", []))}
     state["last_sweep_s2"] = {"timestamp": now, "active": bool(s2_status.get("active_sweeps")), "n_results": len(s2_status.get("latest_results", []))}
+    # HTML previews must not consume the production cursor.  A successful send
+    # marks the exact boundary for the next unified-newsletter delta.
+    if not dry_run:
+        state["direct_v8_last_sent_ts"] = now
     if zec_delta.get("_state_update"):
         state.update(zec_delta["_state_update"])
     save_state(state)

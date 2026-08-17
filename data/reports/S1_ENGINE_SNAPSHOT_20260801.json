@@ -1,0 +1,36 @@
+{
+  "authority": "S1",
+  "host": "157.180.125.52",
+  "root": "/home/niels/binance-sandbox",
+  "observed_at": "2026-08-01T19:24:28Z",
+  "db_mtime": "2026-08-01T19:18:39Z",
+  "counts": {
+    "key_baseline": 1194,
+    "param_cells": 93639,
+    "stage_results": 92024,
+    "param_matrix": 518321,
+    "current_repaired_contract_engine_rows": 2082,
+    "current_repaired_contract_rows_24h": 12,
+    "historical_engine_rows_quarantined": 10022,
+    "historical_engine_rows_total": 10034,
+    "vec_diagnostic_rows": 83604,
+    "amber_provisional_rows": 3791
+  },
+  "contract": {
+    "campaign": "stocks_repaired_20260730_c5",
+    "cutoff": "2026-07-30T03:30:10Z",
+    "exact_credit": 0,
+    "canonical_csv_rows": 3503,
+    "workbook_active_keys": 117,
+    "workbook_historical_keys": 7
+  },
+  "pilots": {
+    "MU_LONG": {"exact_differential": 0, "exact_denominator": 824, "amber": 824, "plateau": 1, "plateau_denominator": 785, "tests": 1},
+    "NVDA_LONG": {"exact_differential": 8, "exact_denominator": 824, "amber": 576, "plateau": 2, "plateau_denominator": 785, "tests": 15},
+    "VT_LONG": {"exact_differential": 115, "exact_denominator": 824, "amber": 493, "plateau": 782, "plateau_denominator": 785, "tests": 1861},
+    "TTD_SHORT": {"exact_differential": 1, "exact_denominator": 874, "amber": 633, "plateau": 25, "plateau_denominator": 726, "tests": 81},
+    "ACN_SHORT": {"exact_differential": 0, "exact_denominator": 874, "amber": 634, "plateau": 37, "plateau_denominator": 726, "tests": 110},
+    "LAC_SHORT": {"exact_differential": 3, "exact_denominator": 874, "amber": 631, "plateau": 9, "plateau_denominator": 726, "tests": 14}
+  },
+  "source_note": "Read-only S1 query and S1 SWITCH_MATRIX_TRB_DIGEST.md observed 2026-08-01. Exact differential counts are current-contract counts; amber rows are provisional and never exact credit."
+}

@@ -1,0 +1,76 @@
+{
+  "cache_dir": "/Users/niels/Documents/binance/klines_cache/tradier",
+  "calculation_allowed": false,
+  "data_contract_status": "DATA_UNAVAILABLE",
+  "endpoints": {
+    "15m": {
+      "bars": 1680,
+      "end_ts": 1785527100.0,
+      "end_utc": "2026-07-31T19:45:00+00:00",
+      "freshness_status": "FRESH",
+      "lag_vs_15m_seconds": 0.0,
+      "path": "/Users/niels/Documents/binance/klines_cache/tradier/MSTR_15m.json",
+      "start_ts": 1778589000.0,
+      "start_utc": "2026-05-12T12:30:00+00:00",
+      "status": "PRESENT"
+    },
+    "1h": {
+      "bars": 165,
+      "end_ts": 1775583000.0,
+      "end_utc": "2026-04-07T17:30:00+00:00",
+      "freshness_status": "STALE",
+      "lag_vs_15m_seconds": 9944100.0,
+      "path": "/Users/niels/Documents/binance/klines_cache/tradier/MSTR_1h.json",
+      "start_ts": 1773059400.0,
+      "start_utc": "2026-03-09T12:30:00+00:00",
+      "status": "PRESENT"
+    },
+    "4h": {
+      "bars": 63,
+      "end_ts": 1775580300.0,
+      "end_utc": "2026-04-07T16:45:00+00:00",
+      "freshness_status": "STALE",
+      "lag_vs_15m_seconds": 9946800.0,
+      "path": "/Users/niels/Documents/binance/klines_cache/tradier/MSTR_4h.json",
+      "start_ts": 1772830800.0,
+      "start_utc": "2026-03-06T21:00:00+00:00",
+      "status": "PRESENT"
+    },
+    "5m": {
+      "bars": 3821,
+      "end_ts": 1785527700.0,
+      "end_utc": "2026-07-31T19:55:00+00:00",
+      "freshness_status": "FRESH",
+      "lag_vs_15m_seconds": 0.0,
+      "path": "/Users/niels/Documents/binance/klines_cache/tradier/MSTR_5m.json",
+      "start_ts": 1780325700.0,
+      "start_utc": "2026-06-01T14:55:00+00:00",
+      "status": "PRESENT"
+    },
+    "D": {
+      "bars": 2144,
+      "end_ts": 1785504600.0,
+      "end_utc": "2026-07-31T13:30:00+00:00",
+      "freshness_status": "FRESH",
+      "lag_vs_15m_seconds": 22500.0,
+      "path": "/Users/niels/Documents/binance/klines_cache/tradier/MSTR_D.json",
+      "start_ts": 1516372200.0,
+      "start_utc": "2018-01-19T14:30:00+00:00",
+      "status": "PRESENT"
+    }
+  },
+  "failures": [
+    "1h_STALE",
+    "4h_STALE"
+  ],
+  "reference_timeframe": "15m",
+  "required_timeframes": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "schema_version": 1,
+  "symbol": "MSTR"
+}

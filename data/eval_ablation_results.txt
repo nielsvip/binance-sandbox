@@ -1,0 +1,150 @@
+EVALUATE FUNCTION ABLATION TEST
+Symbols: 30 | Ablation configs: 26 | Total: 1,560
+Functions: ['tech', 'ranking', 'reentry', 'augment']
+MTS params: 5 combos
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:269: RuntimeWarning: invalid value encountered in divide
+  bb_pctb = np.where(bb_upper > bb_lower, (close.values - bb_lower) / (bb_upper - bb_lower), 0.5)
+/Users/niels/Documents/binance/backtest_engine.py:280: RuntimeWarning: invalid value encountered in divide
+  dc_position = np.where(dc_range > 0, (close.values - dc_low) / dc_range, 0.5)
+  5/30 (5 with data) 18s
+  10/30 (9 with data) 27s
+  15/30 (14 with data) 40s
+  20/30 (19 with data) 50s
+  25/30 (23 with data) 71s
+  30/30 (28 with data) 83s
+
+Done: 85s — 28 symbols
+
+========================================================================================================================
+ABLATION RESULTS — What happens when each evaluate function is disabled?
+========================================================================================================================
+
+Config                                              Sharpe    WR  AvgRet Trades   N   Delta
+------------------------------------------------------------------------------------------
+
+--- LONG ---
+  ALL_ON (baseline)                                 +5.346 76.4% +0.855%    53  28       ---
+  NO_TECH                                           +5.328 76.4% +0.854%    52  28  -0.018
+  NO_RANKING                                        +5.346 76.4% +0.855%    53  28  +0.000
+  NO_REENTRY                                        +4.116 76.0% +0.723%    38  28  -1.230 ⚠️
+  NO_AUGMENT                                        +5.072 77.1% +0.884%    48  28  -0.274
+  ONLY_TECH                                         +2.026 72.5% +0.528%    14  28  -3.321 ⚠️
+  ONLY_REENTRY                                      +5.361 78.6% +0.949%    49  28  +0.015
+  ONLY_AUGMENT                                      +4.010 76.6% +0.729%    37  28  -1.336 ⚠️
+  ALL+MTS_b15_eq5                                   +6.175 76.4% +1.230%    18  20  +0.829 ⭐
+  ALL+MTS_b20_eq10                                  +4.878 75.1% +1.169%     7   7  -0.468 ⚠️
+  NO_TECH+MTS_b15                                   +6.166 76.4% +1.229%    18  20  +0.820 ⭐
+  NO_TECH+MTS_b20                                   +4.816 73.7% +1.163%     7   7  -0.530 ⚠️
+  NO_RANKING+MTS_b15                                +6.175 76.4% +1.230%    18  20  +0.829 ⭐
+  NO_RANKING+MTS_b20                                +4.878 75.1% +1.169%     7   7  -0.468 ⚠️
+  NO_REENTRY+MTS_b15                                +4.901 80.1% +1.233%    13  19  -0.445 ⚠️
+  NO_REENTRY+MTS_b20                                +1.671 72.6% +0.623%     6   6  -3.675 ⚠️
+  NO_AUGMENT+MTS_b15                                +5.627 77.4% +1.293%    15  20  +0.280
+
+--- SHORT ---
+  ALL_ON (baseline)                                 +4.611 73.0% +0.293%    54  28       ---
+  NO_TECH                                           +4.650 73.1% +0.291%    54  28  +0.039
+  NO_RANKING                                        +4.611 73.0% +0.293%    54  28  +0.000
+  NO_REENTRY                                        +2.696 71.1% +0.223%    30  28  -1.915 ⚠️
+  NO_AUGMENT                                        +4.289 72.9% +0.290%    50  28  -0.322 ⚠️
+  ONLY_TECH                                         +1.243 68.0% +0.033%    14  28  -3.368 ⚠️
+  ONLY_REENTRY                                      +4.300 73.0% +0.305%    49  28  -0.311 ⚠️
+  ONLY_AUGMENT                                      +4.111 74.6% +0.378%    39  28  -0.500 ⚠️
+  ALL+MTS_b15_eq5                                   +3.998 86.2% +0.518%    10  15  -0.613 ⚠️
+  NO_TECH+MTS_b15                                   +4.062 86.4% +0.527%    10  15  -0.549 ⚠️
+  NO_RANKING+MTS_b15                                +3.998 86.2% +0.518%    10  15  -0.613 ⚠️
+  NO_REENTRY+MTS_b15                                +4.058 83.2% +0.401%     9   9  -0.553 ⚠️
+  NO_AUGMENT+MTS_b15                                +3.200 80.2% +0.471%    10  12  -1.411 ⚠️
+
+========================================================================================================================
+TOP 30 OVERALL (by Sharpe)
+========================================================================================================================
+Combo                                                         Sharpe    WR  AvgRet Trades   N
+LONG|ALL+MTS_b15_eq5                                          +6.175 76.4% +1.230%    18  20
+LONG|NO_RANKING+MTS_b15                                       +6.175 76.4% +1.230%    18  20
+LONG|NO_TECH+MTS_b15                                          +6.166 76.4% +1.229%    18  20
+LONG|NO_AUGMENT+MTS_b15                                       +5.627 77.4% +1.293%    15  20
+LONG|ONLY_REENTRY                                             +5.361 78.6% +0.949%    49  28
+LONG|ALL_ON                                                   +5.346 76.4% +0.855%    53  28
+LONG|NO_RANKING                                               +5.346 76.4% +0.855%    53  28
+LONG|NO_TECH                                                  +5.328 76.4% +0.854%    52  28
+LONG|NO_AUGMENT                                               +5.072 77.1% +0.884%    48  28
+LONG|NO_REENTRY+MTS_b15                                       +4.901 80.1% +1.233%    13  19
+LONG|ALL+MTS_b20_eq10                                         +4.878 75.1% +1.169%     7   7
+LONG|NO_RANKING+MTS_b20                                       +4.878 75.1% +1.169%     7   7
+LONG|NO_TECH+MTS_b20                                          +4.816 73.7% +1.163%     7   7
+SHORT|NO_TECH                                                 +4.650 73.1% +0.291%    54  28
+SHORT|ALL_ON                                                  +4.611 73.0% +0.293%    54  28
+SHORT|NO_RANKING                                              +4.611 73.0% +0.293%    54  28
+SHORT|ONLY_REENTRY                                            +4.300 73.0% +0.305%    49  28
+SHORT|NO_AUGMENT                                              +4.289 72.9% +0.290%    50  28
+LONG|NO_REENTRY                                               +4.116 76.0% +0.723%    38  28
+SHORT|ONLY_AUGMENT                                            +4.111 74.6% +0.378%    39  28
+SHORT|NO_TECH+MTS_b15                                         +4.062 86.4% +0.527%    10  15
+SHORT|NO_REENTRY+MTS_b15                                      +4.058 83.2% +0.401%     9   9
+LONG|ONLY_AUGMENT                                             +4.010 76.6% +0.729%    37  28
+SHORT|ALL+MTS_b15_eq5                                         +3.998 86.2% +0.518%    10  15
+SHORT|NO_RANKING+MTS_b15                                      +3.998 86.2% +0.518%    10  15
+SHORT|NO_AUGMENT+MTS_b15                                      +3.200 80.2% +0.471%    10  12
+SHORT|NO_REENTRY                                              +2.696 71.1% +0.223%    30  28
+LONG|ONLY_TECH                                                +2.026 72.5% +0.528%    14  28
+LONG|NO_REENTRY+MTS_b20                                       +1.671 72.6% +0.623%     6   6
+SHORT|ONLY_TECH                                               +1.243 68.0% +0.033%    14  28
+
+========================================================================================================================
+FUNCTION IMPACT SUMMARY
+========================================================================================================================
+
+--- TECH ---
+  LONG: ALL=+5.346 → NO_TECH=+5.328 (delta=-0.018 = NEUTRAL) | ONLY=+2.026
+  SHORT: ALL=+4.611 → NO_TECH=+4.650 (delta=+0.039 = NEUTRAL) | ONLY=+1.243
+
+--- RANKING ---
+  LONG: ALL=+5.346 → NO_RANKING=+5.346 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+  SHORT: ALL=+4.611 → NO_RANKING=+4.611 (delta=+0.000 = NEUTRAL) | ONLY=+0.000
+
+--- REENTRY ---
+  LONG: ALL=+5.346 → NO_REENTRY=+4.116 (delta=-1.230 = HELPS) | ONLY=+5.361
+  SHORT: ALL=+4.611 → NO_REENTRY=+2.696 (delta=-1.915 = HELPS) | ONLY=+4.300
+
+--- AUGMENT ---
+  LONG: ALL=+5.346 → NO_AUGMENT=+5.072 (delta=-0.274 = HELPS) | ONLY=+4.010
+  SHORT: ALL=+4.611 → NO_AUGMENT=+4.289 (delta=-0.322 = HELPS) | ONLY=+4.111
+
+Saved: data/eval_ablation_20260325_2025.json

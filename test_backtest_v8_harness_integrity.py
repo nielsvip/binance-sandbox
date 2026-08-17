@@ -74,6 +74,21 @@ class IndicatorStoreIntegrityTests(unittest.TestCase):
         self.assertEqual(second["timestamp_1h"], "1970-01-01T02:00:00.000Z")
         self.assertEqual(second["age_1h"], 300.0)
 
+    def test_stoch_npz_fields_publish_live_short_form_aliases(self):
+        store = self._store(
+            timestamps=np.array([1000, 1300], dtype=np.int64),
+            stoch_k_5m=np.array([17.0, 23.0], dtype=np.float32),
+            stoch_d_5m=np.array([19.0, 21.0], dtype=np.float32),
+        )
+        row = store.build_indicator_dict(1)
+        self.assertEqual(row["k_5m"], 23.0)
+        self.assertEqual(row["d_5m"], 21.0)
+        # Frozen stock NPZs have no native 1m. The exact harness intentionally
+        # aliases 1m from its 5m/3m source, and must expose both naming schemes.
+        self.assertEqual(row["k_1m"], 23.0)
+        self.assertEqual(row["d_1m"], 21.0)
+        self.assertEqual(row["k_5m_prev"], 17.0)
+
 
 class TradierSessionIntegrityTests(unittest.TestCase):
     @staticmethod

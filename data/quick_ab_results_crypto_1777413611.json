@@ -1,0 +1,24 @@
+[
+  {
+    "switch": "STDEV_SUPPRESS_EARLY_EXIT",
+    "val_a": true,
+    "sharpe_a": 0.0048,
+    "trades_a": 898,
+    "val_b": false,
+    "sharpe_b": 0.0048,
+    "trades_b": 898,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "STDEV_BB_RZ_EXIT_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0048,
+    "trades_a": 898,
+    "val_b": false,
+    "sharpe_b": 0.0048,
+    "trades_b": 898,
+    "delta": 0.0,
+    "winner": false
+  }
+]

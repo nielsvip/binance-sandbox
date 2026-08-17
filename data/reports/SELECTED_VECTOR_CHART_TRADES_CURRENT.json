@@ -1,0 +1,476 @@
+{
+  "generated_at": "2026-08-03T07:40:16.209266Z",
+  "published_keys": 41,
+  "published_trades": 1418,
+  "rows": [
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "AAPL_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_DIS_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "DIS_SHORT",
+      "pair_count": 2,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_DIS_SHORT__DIS.jsonl",
+      "published_sha256": "c8e3422cd54dcc050a5d34a40cc175de41ee344b1bc0959a39a8310b4aa1f6b3",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_FNV_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "FNV_SHORT",
+      "pair_count": 108,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_FNV_SHORT__FNV.jsonl",
+      "published_sha256": "a7f1cc1a2263502c25df370b3a70013c29e0ef2bbf5d1d3e7fb1d71a4e482c96",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "ORCL_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_RDDT_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "RDDT_SHORT",
+      "pair_count": 30,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_RDDT_SHORT__RDDT.jsonl",
+      "published_sha256": "d3e01ec430c2880b35b0f00bee937443aae612eb765b327e039c0e42979d5d97",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_USAR_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "USAR_SHORT",
+      "pair_count": 63,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_USAR_SHORT__USAR.jsonl",
+      "published_sha256": "b3ee426ffc43d52ab3f7bf5c70bae0a799c334878ab727405a669f3ba8aa11a9",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_UUUU_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "UUUU_SHORT",
+      "pair_count": 15,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_UUUU_SHORT__UUUU.jsonl",
+      "published_sha256": "1e171c5a9006945a589ebedc5c95f2de700a12899002f8cdefa08ef6dc812e64",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_AAPL_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "AAPL_LONG",
+      "pair_count": 9,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_AAPL_LONG__AAPL.jsonl",
+      "published_sha256": "32c2bc66a13dc074b84ab18949fedc65e96a8290e0b8771c4cb99590b703b845",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "ACN_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_AEM_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "AEM_SHORT",
+      "pair_count": 204,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_AEM_SHORT__AEM.jsonl",
+      "published_sha256": "48dacee40715d8ab0f8e71cf646d9ba485ab91ccce82cf21ffbda44b6751dabb",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_AGCO_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "AGCO_SHORT",
+      "pair_count": 19,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_AGCO_SHORT__AGCO.jsonl",
+      "published_sha256": "f415b8ceb562dae83ae68169cb92d440771717a14f84eb67fabc1aec711b0e46",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_AGI_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "AGI_SHORT",
+      "pair_count": 51,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_AGI_SHORT__AGI.jsonl",
+      "published_sha256": "bc5d383076ebebcb4ccfc0bd12bd27a3bf00d7b84b0198e2c8e3210bd5f5ffcb",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_AMZN_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "AMZN_LONG",
+      "pair_count": 3,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_AMZN_LONG__AMZN.jsonl",
+      "published_sha256": "0dc6d99d3261f709feb8b3c04a879e2e4b8ea7c0ab841732cfacfe5bbe7dea16",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_ARM_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "ARM_LONG",
+      "pair_count": 31,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_ARM_LONG__ARM.jsonl",
+      "published_sha256": "e71a9ad8374acf802988c5d8b16ee3cdcecf57c182b7864df6694c88961d6ae1",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_BG_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "BG_LONG",
+      "pair_count": 33,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_BG_LONG__BG.jsonl",
+      "published_sha256": "c9e731a259a06da8ef8300ecbbf9faf57c21192ce1bd6695b453f8cb4f89b7ba",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_BK_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "BK_LONG",
+      "pair_count": 3,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_BK_LONG__BK.jsonl",
+      "published_sha256": "d9f149da79d9b8c832990ca1611701eae6079be44b3ceef15b23b9a87f0add39",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_CDE_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "CDE_SHORT",
+      "pair_count": 1,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_CDE_SHORT__CDE.jsonl",
+      "published_sha256": "c43087de6c575ccb25e3029659adb41c47ed94ac3e901fa771324f82b6ad2dee",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_CF_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "CF_LONG",
+      "pair_count": 53,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_CF_LONG__CF.jsonl",
+      "published_sha256": "78b7846d589bf43fd5ce5a5528334ab1311ff633a231cac46653fa550e351b9e",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_CLF_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "CLF_SHORT",
+      "pair_count": 7,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_CLF_SHORT__CLF.jsonl",
+      "published_sha256": "3799445b16e3b5e297691107ca4c95066f5285766116fdb1907656d0167bae3e",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "CLX_SHORT",
+      "pair_count": 0,
+      "status": "LEDGER_MISSING"
+    },
+    {
+      "chart_run": "vector_selected_CMC_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "CMC_SHORT",
+      "pair_count": 9,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_CMC_SHORT__CMC.jsonl",
+      "published_sha256": "5d3f6e2696fb628ae8395bfdc636501748f5f9a9fbc593d1d29c1c2a74424760",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_DAR_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "DAR_LONG",
+      "pair_count": 7,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_DAR_LONG__DAR.jsonl",
+      "published_sha256": "9e415165be891dc8536c45b6595c64ac55ea1d44de538a206e53878ee05cd51c",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_DIS_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "DIS_SHORT",
+      "pair_count": 9,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_DIS_SHORT__DIS.jsonl",
+      "published_sha256": "af43f8d146d75f1bd6e34204bffdbec0b5c97aa06ba3455e8b56d579fb41b82e",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_EOG_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "EOG_LONG",
+      "pair_count": 6,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_EOG_LONG__EOG.jsonl",
+      "published_sha256": "a5b8bdb1032206b76d653b85d44262855a3408b630120a41f1129d17b54b7197",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_GDX_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "GDX_SHORT",
+      "pair_count": 76,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_GDX_SHORT__GDX.jsonl",
+      "published_sha256": "2c2eb5bc4e35b8f406efb478a3b818bc758ab0c91004de92bb92cb1a9fd1dc71",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_GOOGL_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "GOOGL_LONG",
+      "pair_count": 28,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_GOOGL_LONG__GOOGL.jsonl",
+      "published_sha256": "604c7d96fbaea597c946ba70aa95b2213d3778ae7e6bbbfad3720031af5e4bd2",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "INTC_LONG",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "KGC_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "LDOS_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_LNG_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "LNG_LONG",
+      "pair_count": 14,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_LNG_LONG__LNG.jsonl",
+      "published_sha256": "e5dc51f8225f173550bc08384b879a735ebd92a42e6fe11a999594ccd3eab0b5",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "MOS_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "MPC_LONG",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_MP_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "MP_SHORT",
+      "pair_count": 93,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_MP_SHORT__MP.jsonl",
+      "published_sha256": "6385b1ab50f2c4b99ba97c6be2124a6ca042aa7e0f398e6cc0f0787a44b8a3bc",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_MRVL_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "MRVL_LONG",
+      "pair_count": 4,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_MRVL_LONG__MRVL.jsonl",
+      "published_sha256": "b50ddc688f6de172c9e09e103d42044237da3ab73ebbca9c06ea8af497bbf0b0",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_MU_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "MU_LONG",
+      "pair_count": 53,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_MU_LONG__MU.jsonl",
+      "published_sha256": "b79b965ef16406a8c5b70c8396ac1caffe98e4e91dabd71b22d8617048c32b35",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_NKE_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "NKE_SHORT",
+      "pair_count": 16,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_NKE_SHORT__NKE.jsonl",
+      "published_sha256": "680e769c08c5fa4be98b237ce8a0263ed564517013ea768fef6e4f7d2efe70dc",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_NOC_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "NOC_SHORT",
+      "pair_count": 21,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_NOC_SHORT__NOC.jsonl",
+      "published_sha256": "7d3358b690c2d049f0f5b34c029193ca637f4ea91551beb6234d72865b0315c1",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "OLED_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_ORCL_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "ORCL_SHORT",
+      "pair_count": 9,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_ORCL_SHORT__ORCL.jsonl",
+      "published_sha256": "2e0628461335bfc6559bca8bacbddb78fda8d3d42247d01a9dcbef69dc397621",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "PSX_LONG",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_RBLX_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "RBLX_SHORT",
+      "pair_count": 43,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_RBLX_SHORT__RBLX.jsonl",
+      "published_sha256": "fe8ee6032fc77e3b1ee4e5db56681568a5f521088569bc30e19f97d7db59c94b",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "RGLD_SHORT",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_ROKU_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "ROKU_LONG",
+      "pair_count": 11,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_ROKU_LONG__ROKU.jsonl",
+      "published_sha256": "84cd884d1fced268c338b8ae8e5fb567f1c95cab012de81021a99bde70d6cb74",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_RRC_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "RRC_LONG",
+      "pair_count": 6,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_RRC_LONG__RRC.jsonl",
+      "published_sha256": "dbf25edc69352f125726b264a10fedae88308437010cf8c183866027838af546",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_SCCO_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "SCCO_SHORT",
+      "pair_count": 85,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_SCCO_SHORT__SCCO.jsonl",
+      "published_sha256": "dff1461ce9b03d790cfb75f7168bd9929add69bedd0ec14823bf29ec52e3987a",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_SNDK_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "SNDK_LONG",
+      "pair_count": 4,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_SNDK_LONG__SNDK.jsonl",
+      "published_sha256": "fe79d5f63fbc6717d00573dee95e7f85f24fec01b2f7d634fa91e7ea2823aa89",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_STLD_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "STLD_SHORT",
+      "pair_count": 47,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_STLD_SHORT__STLD.jsonl",
+      "published_sha256": "084c16727eb0d8ddccc41a709af06189b52ac5299af6290ced3adc1cc3f63344",
+      "status": "PASS"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "TECK_LONG",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": null,
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "TRGP_LONG",
+      "pair_count": 0,
+      "status": "NO_PAIRED_CLOSES"
+    },
+    {
+      "chart_run": "vector_selected_USAR_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "USAR_LONG",
+      "pair_count": 49,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_USAR_LONG__USAR.jsonl",
+      "published_sha256": "c7f7c1a8c8c9adfab871792796d0165a2b9aba74d98262514b8948e37f6ff377",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_USAR_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "USAR_SHORT",
+      "pair_count": 105,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_USAR_SHORT__USAR.jsonl",
+      "published_sha256": "f801b4033fe617559850fd24c2728c167f05e2052255687f261e66fdd7e1fbb4",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_UUUU_SHORT",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "UUUU_SHORT",
+      "pair_count": 52,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_UUUU_SHORT__UUUU.jsonl",
+      "published_sha256": "4f3600c3ab87e5a66da035b2b037f1b766e202651ca6c9990a5238d93400bc51",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_VALE_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "VALE_LONG",
+      "pair_count": 10,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_VALE_LONG__VALE.jsonl",
+      "published_sha256": "d3ffb5274d1e3d5c970cdd10ed0bf901473162fe1eb734b6a29c06ad7b8fe22b",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_VT_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "VT_LONG",
+      "pair_count": 1,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_VT_LONG__VT.jsonl",
+      "published_sha256": "9f610f2a2812f0f66d94a0e986bed4e17918f44af36e32409d25139b83b92add",
+      "status": "PASS"
+    },
+    {
+      "chart_run": "vector_selected_XLE_LONG",
+      "evidence_class": "VECTOR_LIFECYCLE_NOT_ENGINE",
+      "key": "XLE_LONG",
+      "pair_count": 28,
+      "published": "data/chart_backtest_trades/trb_path_combinations/vector_selected_XLE_LONG__XLE.jsonl",
+      "published_sha256": "26c1204ccd5c1152f823d84afda22107ddcf0672a9bee8f266a39f9ea9f1aa25",
+      "status": "PASS"
+    }
+  ],
+  "schema": "selected-vector-chart-trades-v1",
+  "status": "PASS"
+}

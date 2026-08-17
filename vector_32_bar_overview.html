@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>32 1yr Bar Charts — All Trades In/Out Augment Reduce with Reasons — Paginated Stable</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:16px;background:#0b0e14;color:#e6e8eb}
+h1{font-size:20px;margin:0 0 4px} .sub{color:#8a9099;font-size:12px;margin-bottom:8px}
+.legend{font-size:11px;color:#8a9099;margin:6px 0;line-height:1.5}
+.controls{display:flex;align-items:center;gap:8px;margin:12px 0;flex-wrap:wrap}
+.controls button{background:#1a2332;color:#cbd5e0;border:1px solid #2a3a52;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px}
+.controls button:disabled{opacity:0.4;cursor:default}
+.controls select{background:#151a23;color:#cbd5e0;border:1px solid #243041;border-radius:6px;padding:5px 8px;font-size:12px}
+.info{font-size:12px;color:#cbd5e0;min-width:160px}
+.search{margin-left:auto;display:flex;gap:6px;align-items:center}
+.search input{background:#151a23;color:#e6e8eb;border:1px solid #243041;border-radius:6px;padding:6px 8px;font-size:12px;width:180px}
+.status{font-size:11px;color:#8a9099;margin:6px 0}
+.grid32{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:900px){.grid32{grid-template-columns:1fr}}
+.card{background:#151a23;border:1px solid #243041;border-radius:10px;padding:10px;min-height:180px}
+.card h3{font-size:11px;margin:0 0 6px;color:#cbd5e0;line-height:1.4;word-break:break-word}
+.card canvas{display:block;width:100% !important;height:150px !important}
+.meta{font-size:10px;color:#8a9099;line-height:1.4;margin-top:6px;word-break:break-word}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.open{background:#5be49b} .aug{background:#5ea1ff} .red{background:#e4c15b} .close{background:#ff6b6b}
+.loading{padding:20px;text-align:center;color:#8a9099}
+.error{padding:12px;background:#2a1a1a;border:1px solid #5a2a2a;border-radius:8px;color:#ffb3b3;font-size:12px}
+</style>
+</head>
+<body>
+<h1>32 × 1yr Bar Charts — All Trades In / Out / Augment / Reduce with Reasons</h1>
+<div class="sub">Source: <code>vector_32_1yr_data.json</code> (252 daily bars per sym, 1yr) + <code>vector_results.json</code> best per 32 + <code>*_trades.jsonl</code> reasons — trades markers: <span class="dot open"></span>OPEN <span class="dot aug"></span>AUGMENT <span class="dot red"></span>REDUCE <span class="dot close"></span>CLOSE — hover for reason. Paginated &amp; lazy-loaded to prevent crash (was 32× Chart.js at once with 347K inline).</div>
+<div class="legend">6 NO_TRADE (HAO_SHORT etc) show flat 252-bar price but 0 markers until S1 regen / full-bars sweep completes — see <code>switch_lab</code> fix log. File is standalone, not served on <code>:5077</code> (5077 serves live STATUS, never vector trades).</div>
+
+<div class="controls">
+  <button id="prevBtn" disabled>Prev</button>
+  <span id="pageInfo" class="info">Loading…</span>
+  <button id="nextBtn" disabled>Next</button>
+  <label style="font-size:11px;color:#8a9099">per page <select id="perPageSel"><option value="4">4</option><option value="8" selected>8</option><option value="16">16</option></select></label>
+  <div class="search"><input id="filterInput" placeholder="filter symbol e.g. AAPL" /><button id="clearFilter">Clear</button></div>
+</div>
+<div id="status" class="status"></div>
+<div id="grid" class="grid32"></div>
+
+<script>
+// Stable, paginated, lazy-loaded 32-chart overview.
+// - No inline 347K data: fetches vector_32_1yr_data.json asynchronously
+// - Only renders current page (default 8) and destroys Charts on page change
+// - Staggers chart creation via rAF to avoid main-thread freeze
+// - Lazy via IntersectionObserver: chart init deferred until card visible
+// - Preserves all trade reasons in tooltip
+
+const DATA_URL_CANDIDATES = [
+  'vector_32_1yr_data.json',
+  './vector_32_1yr_data.json',
+  'data/reports/gui_lab/vector_32_1yr_data.json',
+  '/data/reports/gui_lab/vector_32_1yr_data.json'
+];
+
+let DATA = null;
+let KEYS = [];
+let FILTERED_KEYS = [];
+let page = 0;
+let perPage = 8;
+let charts = new Map(); // canvas id -> Chart instance
+let observer = null;
+let pendingCharts = []; // queue for staggered init
+
+function setStatus(msg){ document.getElementById('status').textContent = msg; }
+
+async function fetchData(){
+  let lastErr = null;
+  for(const url of DATA_URL_CANDIDATES){
+    try{
+      const r = await fetch(url, {cache:'no-store'});
+      if(!r.ok) throw new Error(r.status+' '+r.statusText);
+      const j = await r.json();
+      // validate shape
+      if(!j || typeof j !== 'object' || Object.keys(j).length===0) throw new Error('empty json');
+      return {data:j, url};
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error('fetch failed');
+}
+
+function destroyCharts(){
+  for(const c of charts.values()){
+    try{ c.destroy(); }catch(e){}
+  }
+  charts.clear();
+  pendingCharts = [];
+  if(observer){ observer.disconnect(); observer = null; }
+}
+
+function applyFilter(){
+  const q = document.getElementById('filterInput').value.trim().toUpperCase();
+  if(!q){ FILTERED_KEYS = [...KEYS]; }
+  else { FILTERED_KEYS = KEYS.filter(k=> k.toUpperCase().includes(q)); }
+  page = 0;
+}
+
+function renderControls(){
+  const total = FILTERED_KEYS.length;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  if(page >= totalPages) page = totalPages-1;
+  if(page < 0) page = 0;
+  document.getElementById('pageInfo').textContent = `${total} total — Page ${page+1}/${totalPages} — ${perPage} per page — showing ${Math.min(perPage, Math.max(0, total - page*perPage))} on this page`;
+  document.getElementById('prevBtn').disabled = page===0;
+  document.getElementById('nextBtn').disabled = page >= totalPages-1;
+  setStatus(DATA ? `Loaded ${KEYS.length} symbols from vector_32_1yr_data.json` + (FILTERED_KEYS.length!==KEYS.length? ` (filtered to ${FILTERED_KEYS.length})`: '') : '');
+}
+
+function buildCard(key){
+  const d = DATA[key];
+  const best = d.best;
+  const title = best
+    ? `${key} — trades ${best.trades||0} gain/mo ${Number(best.gain_per_mo_pct||0).toFixed(2)}% delta ${Number(best.delta_vs_bh_per_mo_pct||0).toFixed(2)}% tim ${best.tim_pct||0}% wr ${best.win_rate_pct||0}% sharpe ${Number(best.sharpe_per_trade||0).toFixed(3)} ${best.goal_pass?'PASS':'DIAG'}`
+    : `${key} — NO TRADE vector (0 trades)`;
+  const overrides = best && best.applied_overrides ? Object.keys(best.applied_overrides).slice(0,3).join(', ') : '';
+  const lastReasons = (d.trades||[]).slice(0,3).map(t=> `${t.type} ${t.reason}`).join(' | ');
+  const metaLine = best
+    ? `overrides: ${overrides}<br>last reasons: ${lastReasons || '(none)'}`
+    : 'Unfixed HAO_SHORT etc — same NPZ as LONG, full-bars 5203→85 trades proven, SLV regen pending via S1 idle_npz_regen';
+  const card = document.createElement('div');
+  card.className='card';
+  card.dataset.key = key;
+  card.innerHTML = `<h3>${escapeHtml(title)}</h3><canvas id="c_${cssEscape(key)}"></canvas><div class="meta">${metaLine}</div>`;
+  return card;
+}
+
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function cssEscape(s){ return s.replace(/[^a-zA-Z0-9_-]/g,'_'); }
+
+function createChartForKey(key){
+  const d = DATA[key];
+  if(!d || !d.bars || d.bars.length===0) return;
+  const canvas = document.getElementById(`c_${cssEscape(key)}`);
+  if(!canvas) return;
+  if(charts.has(canvas.id)) return;
+  const tradesOpen = (d.trades||[]).filter(t=>t.type==='OPEN').map(t=> ({x:t.bar, y:t.price}));
+  const tradesAug = (d.trades||[]).filter(t=>t.type==='AUGMENT').map(t=> ({x:t.bar, y:t.price}));
+  const tradesRed = (d.trades||[]).filter(t=>t.type==='REDUCE').map(t=> ({x:t.bar, y:t.price}));
+  const tradesClose = (d.trades||[]).filter(t=>t.type==='CLOSE').map(t=> ({x:t.bar, y:t.price}));
+  const labels = d.bars.map((_,i)=> i);
+  try{
+    const ch = new Chart(canvas, {
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {label:'1yr daily close', data: d.bars, borderColor:'#8a9099', backgroundColor:'transparent', pointRadius:0, borderWidth:1, tension:0.2},
+          {label:'OPEN', data: tradesOpen, type:'scatter', backgroundColor:'#5be49b', borderColor:'#5be49b', pointRadius:5, showLine:false},
+          {label:'AUGMENT', data: tradesAug, type:'scatter', backgroundColor:'#5ea1ff', borderColor:'#5ea1ff', pointRadius:5, showLine:false},
+          {label:'REDUCE', data: tradesRed, type:'scatter', backgroundColor:'#e4c15b', borderColor:'#e4c15b', pointRadius:5, showLine:false},
+          {label:'CLOSE', data: tradesClose, type:'scatter', backgroundColor:'#ff6b6b', borderColor:'#ff6b6b', pointRadius:5, showLine:false},
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        animation:false, normalized:true,
+        interaction:{mode:'nearest', intersect:false},
+        plugins:{
+          legend:{display:true, labels:{color:'#8a9099', font:{size:10}}},
+          tooltip:{
+            callbacks:{
+              title:(items)=> {
+                const it=items[0];
+                if(!it) return '';
+                if(it.dataset.label==='1yr daily close') return `bar ${it.dataIndex} price ${Number(it.parsed.y).toFixed(2)}`;
+                const t=(DATA[key].trades||[]).find(tr=> tr.bar===it.parsed.x && tr.price===it.parsed.y);
+                return t ? `${t.type} bar ${t.bar} price ${Number(t.price).toFixed(2)} — ${t.reason}` : `${it.dataset.label} bar ${it.parsed.x} price ${Number(it.parsed.y).toFixed(2)}`;
+              },
+              label:(ctx)=> {
+                if(ctx.dataset.label==='1yr daily close') return '';
+                return ctx.dataset.label;
+              }
+            }
+          }
+        },
+        scales:{
+          x:{ticks:{color:'#5a6577', maxTicksLimit:8}, grid:{color:'#1a212e'}},
+          y:{ticks:{color:'#8a9099'}, grid:{color:'#1a212e'}}
+        }
+      }
+    });
+    charts.set(canvas.id, ch);
+  }catch(e){
+    console.error('chart fail', key, e);
+  }
+}
+
+function renderGrid(){
+  destroyCharts();
+  renderControls();
+  const grid = document.getElementById('grid');
+  grid.innerHTML='';
+  if(FILTERED_KEYS.length===0){
+    grid.innerHTML='<div class="loading">No symbols match filter.</div>';
+    return;
+  }
+  const slice = FILTERED_KEYS.slice(page*perPage, (page+1)*perPage);
+  for(const key of slice){
+    grid.appendChild(buildCard(key));
+  }
+  // IntersectionObserver lazy-load: only init chart when card enters viewport.
+  // Fallback: if no IO support, stagger via rAF.
+  const cards = grid.querySelectorAll('.card');
+  if('IntersectionObserver' in window){
+    observer = new IntersectionObserver((entries)=>{
+      for(const e of entries){
+        if(e.isIntersecting){
+          const k = e.target.dataset.key;
+          observer.unobserve(e.target);
+          // stagger via rAF to avoid 8-at-once jank
+          requestAnimationFrame(()=> createChartForKey(k));
+        }
+      }
+    }, {rootMargin:'100px', threshold:0.01});
+    cards.forEach(c=> observer.observe(c));
+    // Also ensure first page visible cards render promptly even if IO delayed
+    // create 2 immediately via rAF queue
+    let idx=0;
+    function pump(){
+      if(idx>=slice.length) return;
+      const key = slice[idx++];
+      const card = grid.querySelector(`.card[data-key="${CSS.escape(key)}"]`) || grid.querySelector(`[data-key="${key}"]`);
+      // if already observed and not yet intersected, still queue
+      if(card && isElementInViewport(card)){
+        createChartForKey(key);
+      }
+      if(idx < slice.length) requestAnimationFrame(pump);
+    }
+    // fallback pump after small delay for cards already in viewport but IO hasn't fired
+    setTimeout(pump, 120);
+  } else {
+    // stagger without IO
+    let i=0;
+    function step(){
+      if(i>=slice.length) return;
+      createChartForKey(slice[i++]);
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+}
+
+function isElementInViewport(el){
+  const r = el.getBoundingClientRect();
+  return r.top < window.innerHeight && r.bottom > 0;
+}
+
+async function init(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '<div class="loading">Loading 32 symbols… (fetching vector_32_1yr_data.json)</div>';
+  try{
+    const res = await fetchData();
+    DATA = res.data;
+    KEYS = Object.keys(DATA);
+    // Keep original order as in file; ensure 32
+    FILTERED_KEYS = [...KEYS];
+    if(KEYS.length!==32){
+      setStatus(`Loaded ${KEYS.length} symbols (expected 32) from ${res.url}`);
+    }
+    renderGrid();
+  }catch(e){
+    console.error(e);
+    grid.innerHTML = `<div class="error">Failed to load <code>vector_32_1yr_data.json</code>: ${escapeHtml(e.message)}<br>
+    Tried: ${DATA_URL_CANDIDATES.join(', ')}<br>
+    If opening via <code>file://</code>, serve via HTTP: <code>python3 -m http.server --directory data/reports/gui_lab 8000</code> then open <code>http://localhost:8000/vector_32_bar_overview.html</code><br>
+    Or place this HTML next to <code>vector_32_1yr_data.json</code>.</div>`;
+    document.getElementById('pageInfo').textContent = 'Load failed';
+  }
+}
+
+document.getElementById('prevBtn').onclick = ()=>{ if(page>0){ page--; renderGrid(); window.scrollTo({top:0, behavior:'smooth'}); } };
+document.getElementById('nextBtn').onclick = ()=>{ const tp=Math.ceil(FILTERED_KEYS.length/perPage); if(page<tp-1){ page++; renderGrid(); window.scrollTo({top:0, behavior:'smooth'}); } };
+document.getElementById('perPageSel').onchange = (e)=>{ perPage=parseInt(e.target.value,10)||8; page=0; renderGrid(); };
+document.getElementById('filterInput').oninput = ()=>{ applyFilter(); renderGrid(); };
+document.getElementById('clearFilter').onclick = ()=>{ document.getElementById('filterInput').value=''; applyFilter(); renderGrid(); };
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='ArrowLeft' && page>0){ page--; renderGrid(); }
+  if(e.key==='ArrowRight' && page < Math.ceil(FILTERED_KEYS.length/perPage)-1){ page++; renderGrid(); }
+});
+
+init();
+</script>
+</body>
+</html>

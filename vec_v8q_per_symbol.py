@@ -58,7 +58,11 @@ def main():
     ap.add_argument("--min-trades", type=int, default=10)
     ap.add_argument("--symbols", type=str, default="48",
                     help="'48' for CRYPTO_48 list, 'fast' for the 11/12 fast list, or comma-separated symbol list")
+    from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
+    add_coverage_claim_arguments(ap)
     args = ap.parse_args()
+    coverage_contract = enforce_coverage_claim(args, runner="vec_v8q_per_symbol.py")
+    print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
 
     if args.symbols == "48":
         symbols = CRYPTO_48 if args.mode == "crypto" else FAST_SYMBOLS_TRADIER.split(",")

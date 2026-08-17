@@ -1,0 +1,97 @@
+{
+  "active_agents": [
+    {
+      "name": "sol_mu_optimizer",
+      "source_age_seconds": 54268.1,
+      "source_path": "tools/run_mu_all_tf_campaign.py",
+      "source_sha256": "5fd8b9cdd7649dd465b7cac9469a5fdf16eeba5e48595a239839f75a2eee5982",
+      "state": "ACTIVE_AGENT_NO_REMOTE_PID"
+    },
+    {
+      "name": "vector_fill",
+      "source_age_seconds": 58448.9,
+      "source_path": "tools/run_target_cohort_combo_vec.py",
+      "source_sha256": "1f73613d297890172c004ce514acb8b08bab5d3d2392621cd727f85c6d5d4eaf",
+      "state": "ACTIVE_AGENT_NO_REMOTE_PID"
+    }
+  ],
+  "artifacts": [
+    {
+      "best_metric": null,
+      "name": "mu_pure_ladder",
+      "patterns": [
+        "data/reports/vec_research/mu_pure_ladder/attempts/*/result.json",
+        "data/reports/vec_research/mu_pure_ladder/campaign_completion_receipt.json"
+      ],
+      "state": "ABSENT"
+    },
+    {
+      "best_metric": null,
+      "name": "mu_dc_fast",
+      "patterns": [
+        "data/reports/vec_research/mu_dc_fast/attempts/*/result.json",
+        "data/reports/vec_research/mu_dc_fast/campaign_completion_receipt.json"
+      ],
+      "state": "ABSENT"
+    },
+    {
+      "best_metric": null,
+      "name": "mu_combined",
+      "patterns": [
+        "data/reports/vec_research/mu_combined/attempts/*/result.json",
+        "data/reports/vec_research/mu_combined/campaign_completion_receipt.json"
+      ],
+      "state": "ABSENT"
+    },
+    {
+      "age_seconds": 49520.1,
+      "best_metric": null,
+      "name": "mu_826_fill",
+      "path": "data/reports/full_trb_blank_matrix_vec_approx_20260801/MU_LONG.jsonl",
+      "patterns": [
+        "data/reports/full_trb_blank_matrix_vec_approx_20260801/ownership_receipt.json",
+        "data/reports/full_trb_blank_matrix_vec_approx_20260801/MU_LONG*.jsonl"
+      ],
+      "state": "STALE_ARTIFACT"
+    }
+  ],
+  "interval_seconds": 300,
+  "mode": "report-only",
+  "no_live_config_db_matrix_writes": true,
+  "rebias": {
+    "automatic_expansion": false,
+    "best_valid_metric": null,
+    "configured_rounds": 3,
+    "metric_history": [],
+    "proposed_neighbors": [],
+    "state": "NO_REBIAS_EVIDENCE"
+  },
+  "schema_version": 1,
+  "timestamp": "2026-08-01T17:07:15.886746Z",
+  "worker_watchdog": {
+    "cpu_count": 12,
+    "jobs": [
+      {
+        "name": "mu_pure_wt_ladder",
+        "state": "PROCESS_ENUMERATION_UNAVAILABLE",
+        "timestamp": "2026-08-01T17:07:15.865599Z"
+      },
+      {
+        "name": "mu_dc_fast_cycle",
+        "state": "PROCESS_ENUMERATION_UNAVAILABLE",
+        "timestamp": "2026-08-01T17:07:15.870428Z"
+      },
+      {
+        "name": "mu_dc_wt_interaction",
+        "state": "PROCESS_ENUMERATION_UNAVAILABLE",
+        "timestamp": "2026-08-01T17:07:15.872682Z"
+      }
+    ],
+    "load_1m": 34.8291015625,
+    "load_pct_of_cores": 290.24,
+    "manifest": "data/research_campaign_watchdog_manifest.json",
+    "memory_available_pct": null,
+    "swap_used_pct": null,
+    "timestamp": "2026-08-01T17:07:15.865069Z"
+  }
+}

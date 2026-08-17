@@ -40,6 +40,20 @@ def test_bundle_catalog_only_uses_vectorized_knobs():
     scheduler.validate_catalog()
 
 
+def test_artifact_parser_ignores_progress_trade_count(tmp_path):
+    summary = tmp_path / "summary.jsonl"
+    trades = tmp_path / "trades.jsonl"
+    output = "\n".join(
+        [
+            "V8_VEC_PROGRESS: sym=ACN side=SHORT trades=34 elapsed_s=1.65",
+            f"  summary={summary}",
+            f"  trades ={trades}",
+            "V8_RESULT: trades=34",
+        ]
+    )
+    assert scheduler._artifact_paths(output) == (summary, trades)
+
+
 def test_claim_sequence_is_deterministic_nine_to_one(tmp_path):
     con = scheduler.connect(tmp_path)
     scheduler.meta_set(con, "campaign_id", "test")
@@ -246,3 +260,176 @@ def test_strict_fold_rejects_hedges_and_invalid_fill_ledger():
     assert not strict
     assert "hedge_events_out_of_scope" in failures
     assert "committed_fill_ledger_invalid" in failures
+
+
+def test_parser_failure_recovery_archives_and_rewinds_whole_campaign(tmp_path):
+    con = scheduler.connect(tmp_path)
+    scheduler.meta_set(con, "campaign_id", "test")
+    scheduler.meta_set(con, "claim_sequence", 0)
+    for index in range(9):
+        _insert_handle(
+            con,
+            symbol=f"P{index}",
+            bundle_id=f"PRIORITY_{index}",
+            promising=True,
+        )
+    _insert_handle(
+        con,
+        symbol="E0",
+        bundle_id="EXPLORE_0",
+        promising=False,
+    )
+    con.commit()
+
+    failure = (
+        "RUNNER:FileNotFoundError:[Errno 2] "
+        "No such file or directory: '34'"
+    )
+    for _ in range(10):
+        handle, lane = scheduler.claim(con, "canary")
+        receipt = {
+            "status": "VECTOR_REJECTED",
+            "failures": [failure],
+            "folds": [],
+            "exact_invoked": False,
+            "started_at": scheduler.now_iso(),
+            "lane": lane,
+            "elapsed_s": 0.1,
+        }
+        scheduler.finish_attempt(con, tmp_path, handle, receipt)
+
+    preview = scheduler.recover_artifact_parser_failures(
+        con, tmp_path, expected_count=10
+    )
+    assert preview["recoverable_count"] == 10
+    assert preview["applied"] is False
+    assert con.execute("SELECT COUNT(*) FROM attempts").fetchone()[0] == 10
+
+    applied = scheduler.recover_artifact_parser_failures(
+        con, tmp_path, expected_count=10, apply=True
+    )
+    assert applied["applied"] is True
+    assert con.execute("SELECT COUNT(*) FROM attempts").fetchone()[0] == 0
+    assert scheduler.meta_get(con, "claim_sequence") == "0"
+    handles = con.execute(
+        "SELECT status,attempts,fail_streak FROM handles"
+    ).fetchall()
+    assert all(tuple(row) == ("PENDING", 0, 0) for row in handles)
+    archive = scheduler.Path(applied["archive"])
+    assert len(list(archive.glob("h*_a*.json"))) == 10
+    manifest = json.loads((archive / "recovery_manifest.json").read_text())
+    assert manifest["applied"] is True
+    con.close()
+
+
+def test_legacy_contract_invalidation_is_exact_and_archival(
+    tmp_path, monkeypatch
+):
+    con = scheduler.connect(tmp_path)
+    scheduler.meta_set(con, "campaign_id", "test")
+    scheduler.meta_set(con, "claim_sequence", 0)
+    replacement = {
+        "sha256": "f" * 64,
+        "files": {
+            "v8_vec_sweep.py": "1" * 64,
+            "wt_dc_entry_scorer.py": "2" * 64,
+            "wt_dc_entry_scorer_vec.py": "3" * 64,
+            "vec_paths/live_entry_engine.py": "4" * 64,
+            "tools/recent_tradier_bundle_scheduler.py": "5" * 64,
+        },
+    }
+    monkeypatch.setattr(
+        scheduler, "current_code_contract", lambda: replacement
+    )
+    for index in range(2):
+        _insert_handle(
+            con,
+            symbol=f"P{index}",
+            bundle_id=f"PRIORITY_{index}",
+            promising=True,
+        )
+    con.commit()
+
+    attempts = []
+    for _ in range(2):
+        handle, lane = scheduler.claim(con, "legacy")
+        receipt = {
+            "status": "VECTOR_REJECTED",
+            "failures": ["legacy"],
+            "folds": [],
+            "exact_invoked": False,
+            "started_at": scheduler.now_iso(),
+            "lane": lane,
+            "elapsed_s": 0.1,
+        }
+        path = scheduler.finish_attempt(con, tmp_path, handle, receipt)
+        row = con.execute(
+            "SELECT * FROM attempts WHERE handle_id=? ORDER BY id DESC LIMIT 1",
+            (handle["id"],),
+        ).fetchone()
+        attempts.append(
+            {
+                "attempt_id": row["id"],
+                "handle_id": row["handle_id"],
+                "attempt_number": row["attempt_number"],
+                "lane": row["lane"],
+                "status": row["status"],
+                "receipt_sha256": scheduler.sha256(path),
+            }
+        )
+
+    control_receipt = tmp_path / "control.json"
+    scheduler.atomic_json(control_receipt, {"legacy": True})
+    con.execute(
+        """INSERT INTO controls
+           (campaign_id,symbol,side,fold,npz_sha256,metrics_json,receipt_path)
+           VALUES('test','P0','LONG','D1',?,'{}',?)""",
+        ("a" * 64, str(control_receipt)),
+    )
+    con.commit()
+    evidence = {
+        "schema_version": 1,
+        "campaign_id": "test",
+        "binding_basis": (
+            "legacy receipts lacked code_contract; exact attempt/receipt SHA "
+            "allowlist completed before the observed replacement deployment"
+        ),
+        "old_contract": {
+            "files": {
+                "v8_vec_sweep.py": "a" * 64,
+                "wt_dc_entry_scorer.py": "b" * 64,
+                "tools/recent_tradier_bundle_scheduler.py": "c" * 64,
+            }
+        },
+        "replacement_contract": replacement,
+        "finished_before": "2999-01-01T00:00:00+00:00",
+        "attempts": attempts,
+    }
+    evidence_path = tmp_path / "evidence.json"
+    scheduler.atomic_json(evidence_path, evidence)
+
+    preview = scheduler.invalidate_legacy_code_contract(
+        con, tmp_path, evidence_path=evidence_path
+    )
+    assert preview["attempt_count"] == 2
+    assert preview["control_count"] == 1
+    assert con.execute("SELECT COUNT(*) FROM attempts").fetchone()[0] == 2
+
+    applied = scheduler.invalidate_legacy_code_contract(
+        con, tmp_path, evidence_path=evidence_path, apply=True
+    )
+    assert applied["applied"] is True
+    assert con.execute("SELECT COUNT(*) FROM attempts").fetchone()[0] == 0
+    assert con.execute("SELECT COUNT(*) FROM controls").fetchone()[0] == 0
+    assert scheduler.meta_get(con, "claim_sequence") == "0"
+    assert json.loads(scheduler.meta_get(con, "code_contract_json")) == replacement
+    handles = con.execute(
+        "SELECT status,attempts,fail_streak FROM handles"
+    ).fetchall()
+    assert all(tuple(row) == ("PENDING", 0, 0) for row in handles)
+    archive = scheduler.Path(applied["archive"])
+    assert len(list(archive.glob("attempt_*.json"))) == 2
+    assert len(list(archive.glob("control_*.json"))) == 1
+    manifest = json.loads((archive / "invalidation_manifest.json").read_text())
+    assert manifest["applied"] is True
+    con.close()

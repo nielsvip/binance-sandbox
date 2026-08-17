@@ -1,0 +1,1074 @@
+{
+  "generated_at": "2026-07-31T02:03:17.609755Z",
+  "matrix": "data/reports/SWITCH_MATRIX_TRB.csv.gz",
+  "matrix_campaign": "stocks_repaired_20260730_c5",
+  "no_exact_completion_credit": true,
+  "notes": [
+    "Counts are current classifier cells, not a remembered/approximate 734.",
+    "Only explicit reviewed adapters are eligible; fuzzy name similarity is rejected.",
+    "Vector evidence remains VEC_DIAGNOSTIC and requires exact V8 replay."
+  ],
+  "per_key": {
+    "ACN_SHORT": {
+      "by_action_group": {
+        "ENTRY": 149,
+        "EXIT": 90,
+        "OTHER": 278,
+        "SIZING": 94
+      },
+      "exact_only_cells": 611,
+      "reviewed_vector_adapter_by_action_group": {
+        "ENTRY": 12
+      },
+      "reviewed_vector_adapter_cells": 12,
+      "reviewed_vector_adapter_cells_detail": [
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "0.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        }
+      ]
+    },
+    "LAC_SHORT": {
+      "by_action_group": {
+        "ENTRY": 149,
+        "EXIT": 90,
+        "OTHER": 278,
+        "SIZING": 94
+      },
+      "exact_only_cells": 611,
+      "reviewed_vector_adapter_by_action_group": {
+        "ENTRY": 12
+      },
+      "reviewed_vector_adapter_cells": 12,
+      "reviewed_vector_adapter_cells_detail": [
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "0.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        }
+      ]
+    },
+    "MU_LONG": {
+      "by_action_group": {
+        "ENTRY": 154,
+        "EXIT": 84,
+        "OTHER": 245,
+        "SIZING": 85
+      },
+      "exact_only_cells": 568,
+      "reviewed_vector_adapter_by_action_group": {
+        "ENTRY": 12
+      },
+      "reviewed_vector_adapter_cells": 12,
+      "reviewed_vector_adapter_cells_detail": [
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "0.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        }
+      ]
+    },
+    "NVDA_LONG": {
+      "by_action_group": {
+        "ENTRY": 154,
+        "EXIT": 84,
+        "OTHER": 245,
+        "SIZING": 85
+      },
+      "exact_only_cells": 568,
+      "reviewed_vector_adapter_by_action_group": {
+        "ENTRY": 12
+      },
+      "reviewed_vector_adapter_cells": 12,
+      "reviewed_vector_adapter_cells_detail": [
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "0.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        }
+      ]
+    },
+    "TTD_SHORT": {
+      "by_action_group": {
+        "ENTRY": 149,
+        "EXIT": 90,
+        "OTHER": 278,
+        "SIZING": 94
+      },
+      "exact_only_cells": 611,
+      "reviewed_vector_adapter_by_action_group": {
+        "ENTRY": 12
+      },
+      "reviewed_vector_adapter_cells": 12,
+      "reviewed_vector_adapter_cells_detail": [
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "0.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        }
+      ]
+    },
+    "VT_LONG": {
+      "by_action_group": {
+        "ENTRY": 154,
+        "EXIT": 84,
+        "OTHER": 245,
+        "SIZING": 85
+      },
+      "exact_only_cells": 568,
+      "reviewed_vector_adapter_by_action_group": {
+        "ENTRY": 12
+      },
+      "reviewed_vector_adapter_cells": 12,
+      "reviewed_vector_adapter_cells_detail": [
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.5",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "0.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "2.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.25",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "1.875",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.125",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        },
+        {
+          "action_group": "ENTRY",
+          "group": "ENTRY",
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+          "sampled_exact_parity": {
+            "agreement": "5/5",
+            "exact_campaign": "stocks_repaired_20260725_c2",
+            "key": "VT_LONG"
+          },
+          "value": "3.75",
+          "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+        }
+      ]
+    }
+  },
+  "quarantined_authority_gaps": 29,
+  "reviewed_adapters": {
+    "BREAKOUT_SIZE_EMA200_T2_MULT": {
+      "action_group": "ENTRY",
+      "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+      "sampled_exact_parity": {
+        "agreement": "5/5",
+        "exact_campaign": "stocks_repaired_20260725_c2",
+        "key": "VT_LONG"
+      },
+      "vector_field": "BREAKOUT_SIZE_SMA200_T2_MULT"
+    },
+    "BREAKOUT_SIZE_EMA200_T2_PCT": {
+      "action_group": "ENTRY",
+      "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+      "sampled_exact_parity": {
+        "agreement": "5/5",
+        "exact_campaign": "stocks_repaired_20260725_c2",
+        "key": "VT_LONG"
+      },
+      "vector_field": "BREAKOUT_SIZE_SMA200_T2_PCT"
+    },
+    "BREAKOUT_SIZE_EMA200_T3_PCT": {
+      "action_group": "ENTRY",
+      "proof": "tradier_manage BREAKOUT_SIZE_LADDER and v8_vec_sweep _ladder_arr both use ema_200_15m for Tradier with identical tier ordering; VT_LONG protected-exact replay agreed MOVED/INERT on 5/5 values",
+      "sampled_exact_parity": {
+        "agreement": "5/5",
+        "exact_campaign": "stocks_repaired_20260725_c2",
+        "key": "VT_LONG"
+      },
+      "vector_field": "BREAKOUT_SIZE_SMA200_T3_PCT"
+    }
+  },
+  "schema_version": 1,
+  "scope": "PILOT_EXECUTABLE_EXACT_ONLY_CELLS"
+}

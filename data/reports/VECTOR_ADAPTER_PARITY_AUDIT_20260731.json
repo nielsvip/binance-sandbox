@@ -1,0 +1,317 @@
+{
+  "approved_params": [
+    "BREAKOUT_SIZE_EMA200_T2_MULT",
+    "BREAKOUT_SIZE_EMA200_T2_PCT",
+    "BREAKOUT_SIZE_EMA200_T3_PCT"
+  ],
+  "detail": [
+    {
+      "agreed": false,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92704,
+      "param": "BREAKOUT_SIZE_EMA200_T1_MULT",
+      "value": "0.75",
+      "vector_moved": true
+    },
+    {
+      "agreed": false,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92703,
+      "param": "BREAKOUT_SIZE_EMA200_T1_MULT",
+      "value": "1.125",
+      "vector_moved": true
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92705,
+      "param": "BREAKOUT_SIZE_EMA200_T1_MULT",
+      "value": "1.5",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": true,
+      "exact_result_rowid": 92706,
+      "param": "BREAKOUT_SIZE_EMA200_T1_MULT",
+      "value": "1.875",
+      "vector_moved": true
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": true,
+      "exact_result_rowid": 92707,
+      "param": "BREAKOUT_SIZE_EMA200_T1_MULT",
+      "value": "2.25",
+      "vector_moved": true
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": true,
+      "exact_result_rowid": 92708,
+      "param": "BREAKOUT_SIZE_EMA200_T1_PCT",
+      "value": "0.5",
+      "vector_moved": true
+    },
+    {
+      "agreed": false,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92713,
+      "param": "BREAKOUT_SIZE_EMA200_T1_PCT",
+      "value": "0.75",
+      "vector_moved": true
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92714,
+      "param": "BREAKOUT_SIZE_EMA200_T1_PCT",
+      "value": "1",
+      "vector_moved": false
+    },
+    {
+      "agreed": false,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92712,
+      "param": "BREAKOUT_SIZE_EMA200_T1_PCT",
+      "value": "1.25",
+      "vector_moved": true
+    },
+    {
+      "agreed": false,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92715,
+      "param": "BREAKOUT_SIZE_EMA200_T1_PCT",
+      "value": "1.5",
+      "vector_moved": true
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92717,
+      "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+      "value": "1",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92716,
+      "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+      "value": "1.5",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92719,
+      "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+      "value": "2",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92720,
+      "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+      "value": "2.5",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92721,
+      "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+      "value": "3",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": true,
+      "exact_result_rowid": 92725,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "value": "0.75",
+      "vector_moved": true
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92726,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "value": "1.125",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92724,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "value": "1.5",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92727,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "value": "1.875",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92728,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "value": "2.25",
+      "vector_moved": false
+    },
+    {
+      "agreed": false,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92729,
+      "param": "BREAKOUT_SIZE_EMA200_T3_MULT",
+      "value": "1.5",
+      "vector_moved": true
+    },
+    {
+      "agreed": false,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92733,
+      "param": "BREAKOUT_SIZE_EMA200_T3_MULT",
+      "value": "2.25",
+      "vector_moved": true
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92735,
+      "param": "BREAKOUT_SIZE_EMA200_T3_MULT",
+      "value": "3",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92734,
+      "param": "BREAKOUT_SIZE_EMA200_T3_MULT",
+      "value": "3.75",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92738,
+      "param": "BREAKOUT_SIZE_EMA200_T3_MULT",
+      "value": "4.5",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92736,
+      "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+      "value": "1.25",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92737,
+      "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+      "value": "1.875",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92739,
+      "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+      "value": "2.5",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92740,
+      "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+      "value": "3.125",
+      "vector_moved": false
+    },
+    {
+      "agreed": true,
+      "exact_campaign": "stocks_repaired_20260725_c2",
+      "exact_moved": false,
+      "exact_result_rowid": 92742,
+      "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+      "value": "3.75",
+      "vector_moved": false
+    }
+  ],
+  "exact_completion_credit": false,
+  "generated_at": "2026-07-31T02:03:15.942301Z",
+  "key": "VT_LONG",
+  "per_param": {
+    "BREAKOUT_SIZE_EMA200_T1_MULT": {
+      "agreed": 3,
+      "compared": 5
+    },
+    "BREAKOUT_SIZE_EMA200_T1_PCT": {
+      "agreed": 2,
+      "compared": 5
+    },
+    "BREAKOUT_SIZE_EMA200_T2_MULT": {
+      "agreed": 5,
+      "compared": 5
+    },
+    "BREAKOUT_SIZE_EMA200_T2_PCT": {
+      "agreed": 5,
+      "compared": 5
+    },
+    "BREAKOUT_SIZE_EMA200_T3_MULT": {
+      "agreed": 3,
+      "compared": 5
+    },
+    "BREAKOUT_SIZE_EMA200_T3_PCT": {
+      "agreed": 5,
+      "compared": 5
+    }
+  },
+  "promotion_allowed": false,
+  "rejected_params": [
+    "BREAKOUT_SIZE_EMA200_T1_MULT",
+    "BREAKOUT_SIZE_EMA200_T1_PCT",
+    "BREAKOUT_SIZE_EMA200_T3_MULT"
+  ],
+  "schema_version": 1,
+  "tier": "VEC_DIAGNOSTIC",
+  "vector_path": "/home/niels/binance-sandbox/data/reports/vectorized_scalar_gap_parity/VT_LONG.jsonl"
+}

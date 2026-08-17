@@ -1,0 +1,161 @@
+{
+  "schema": "TRB_EXACT_FINALIST_ADAPTER_AUDIT_V1",
+  "generated_at": "2026-08-02T02:25:13Z",
+  "run_class": "REPORT_ONLY",
+  "bible_section": "16.22B-C",
+  "status": "FAIL_CLOSED_ADAPTER_REQUIRED_AND_OOS_REQUIRED",
+  "report": {
+    "path": "data/reports/EXACT_FINALIST_ADAPTER_AUDIT_20260802.md",
+    "sha256": "a80cc33dbeeabc9c064ceb4b32ccf4fe7cb7d1e4c3f4d49e95237f2554137edf"
+  },
+  "v8_run": false,
+  "v8_sweep_run": false,
+  "v8_engine_run": false,
+  "queue_mutated": false,
+  "live_config_mutated": false,
+  "database_mutated": false,
+  "matrix_mutated": false,
+  "worker_manifest_mutated": false,
+  "oos_contract": {
+    "status": "MISSING_UNTOUCHED_VALIDATION_RECEIPT",
+    "detail": "Both manifests contain one full discovery window and no train/untouched-validation split; reported deltas are causal full-window discovery metrics, not untouched OOS metrics."
+  },
+  "finalists": [
+    {
+      "priority": 1,
+      "key": "USAR_LONG",
+      "symbol": "USAR",
+      "side": "LONG",
+      "recipe_id": "lcb-03f7eb1dcfc58544c9fc",
+      "selected_result_sha256": "fcea875ae0c3b3a712f3a9fdcd383d27b3fd4b98c47603f9114be9b171fbafdf",
+      "behavior_fingerprint": "ee138ff316ee42fecf3ab1f74a743816ecc36da395a91aafe62ca9c90774e2e9",
+      "metrics": {
+        "gain_pct_per_month": 145.47480504229648,
+        "bh_gain_pct_per_month": 1.8218495506055499,
+        "delta_gain_mo_vs_bh": 143.65295549169093,
+        "multiple_vs_positive_bh": 79.85006500341551,
+        "max_drawdown_account_pct": 35.01782616602495,
+        "time_in_market_pct": 95.74928482358982,
+        "real_close_actions": 104,
+        "closes_per_month": 6.277380706465606,
+        "capacity_clamps": 0,
+        "future_htf_count": 0
+      },
+      "recipe": {
+        "ladder": {
+          "mode": "center_plateau",
+          "trigger": "union",
+          "semantics": "target",
+          "stoch_low": 30.0,
+          "D": [10.0, 6.0],
+          "4h": [6.0, 4.0],
+          "1h": [4.0, 1.0],
+          "base_unit_usd": 2000.0,
+          "capacity_usd": 16000.0
+        },
+        "entry": {"family": "DC_BREAK_BOUNCE_RECLAIM", "tf": "5m", "lookback": 10, "bounce_bps": 100, "reclaim_bps": 40, "entry_units": 8},
+        "augment": {"family": "DC_BREAK_BOUNCE_RECLAIM", "tf": "5m", "lookback": 10, "bounce_bps": 100, "reclaim_bps": 40, "augment_units": 1},
+        "reduce": {"family": "WT_CROSS_VALUE_PRICE_LADDER_OUT", "tf": "4h", "value_delta": 3.0, "price_confirm_bps": 75, "reduce_fraction": 0.75},
+        "exit": {"family": "WT_CROSS_FULL_EXIT", "tf": "1h", "value_delta": 16.0, "price_confirm_bps": 30},
+        "reenter": {"family": "WT_CROSS_VALUE_PRICE_LADDER_IN", "tf": "15m", "value_delta": 8.0, "price_confirm_bps": 0, "mandatory_fallback": "prior_notional_exit_price_reclaim"}
+      },
+      "source": {
+        "manifest_sha256": "344b96f37dd8465f6af2f5ba1883d0c28d8685dcbdb99302694dabed6bd0cbbf",
+        "source_result_receipt_sha256": "184b8375177355c8774f1bcd24bbeed14cc6b9141b8ecb6ddb1538472a24814d",
+        "raw_results_sha256": "6ddbe4e9d516ef62e19738819c16220cf8e253e7b08109a7486f27e10ff32609",
+        "npz_path": "/home/niels/binance-sandbox/data/matrix_npz/cohort3_causal_v7_20260802/USAR.npz",
+        "npz_sha256": "86d363918d4be654df382888c173f540eb483553990e35f31c0ae006f52f7a66",
+        "window_start": "2024-04-01",
+        "window_end_exclusive": "2026-08-01"
+      },
+      "path_status": {
+        "ordinary_ladder": "CONNECTED_LIVE_AND_V8",
+        "entry": "ADAPTER_REQUIRED",
+        "augment": "ADAPTER_REQUIRED",
+        "reduce": "ADAPTER_REQUIRED",
+        "exit": "ADAPTER_REQUIRED",
+        "optional_reenter": "ADAPTER_REQUIRED",
+        "mandatory_reclaim": "CONNECTED_LIVE_AND_V8",
+        "entry_augment_units": "ADAPTER_REQUIRED"
+      },
+      "exact_queue_status": "NOT_QUEUED_FAIL_CLOSED_ADAPTER_REQUIRED_AND_OOS_REQUIRED"
+    },
+    {
+      "priority": 2,
+      "key": "ROKU_LONG",
+      "symbol": "ROKU",
+      "side": "LONG",
+      "recipe_id": "lcb-31cb52e31ac1fdfb5638",
+      "selected_result_sha256": "f9d0af69b2dd7ef87acb16c71e1f38a6048b8754f70433abe778b2d88910e93e",
+      "behavior_fingerprint": "6a0c153d1059d83322c9ed85b7d7fd0b410e5d54c683f5e2e898bf30dfb6e0e4",
+      "metrics": {
+        "gain_pct_per_month": 59.869222715096605,
+        "bh_gain_pct_per_month": 4.360273695150559,
+        "delta_gain_mo_vs_bh": 55.508949019946044,
+        "multiple_vs_positive_bh": 13.730611172799174,
+        "max_drawdown_account_pct": 32.193981338741594,
+        "time_in_market_pct": 93.19800260529743,
+        "real_close_actions": 396,
+        "closes_per_month": 14.159124837864955,
+        "capacity_clamps": 0,
+        "future_htf_count": 0
+      },
+      "recipe": {
+        "ladder": {
+          "mode": "center_plateau",
+          "trigger": "union",
+          "semantics": "target",
+          "stoch_low": 30.0,
+          "D": [10.0, 6.0],
+          "4h": [6.0, 4.0],
+          "1h": [4.0, 1.0],
+          "base_unit_usd": 2000.0,
+          "capacity_usd": 16000.0
+        },
+        "entry": {"family": "DC_BREAK_BOUNCE_RECLAIM", "tf": "5m", "lookback": 5, "bounce_bps": 40, "reclaim_bps": 0, "entry_units": 4},
+        "augment": {"family": "WT_CROSS_VALUE_PRICE_LADDER_IN", "tf": "5m", "value_delta": 16.0, "price_confirm_bps": 0, "augment_units": 2},
+        "reduce": {"family": "WT_CROSS_VALUE_PRICE_LADDER_OUT", "tf": "4h", "value_delta": 0.0, "price_confirm_bps": 10, "reduce_fraction": 0.25},
+        "exit": {"family": "WT_CROSS_FULL_EXIT", "tf": "15m", "value_delta": 8.0, "price_confirm_bps": 30},
+        "reenter": {"family": "WT_CROSS_VALUE_PRICE_LADDER_IN", "tf": "5m", "value_delta": 8.0, "price_confirm_bps": 0, "mandatory_fallback": "prior_notional_exit_price_reclaim"}
+      },
+      "source": {
+        "manifest_sha256": "ab66dc29e3c6b84dfeb9d94014ec02a2ac8ac0afd3ce674d052d635edde4b4b7",
+        "source_result_receipt_sha256": "3372dfec2bd79169e982c306f2d002ea9255b8b819201dc51562b50f93bdf68b",
+        "raw_results_sha256": "9b91ea49993b3defe87ccd7784e4fd01d47f28eb6739d50d381d1ee1f8370170",
+        "uniqueness_receipt_sha256": "69685a5dcc51b9681d8742ccfe6af36d1629b889ddc1c0e97e7c84f54e3a338f",
+        "npz_path": "/home/niels/binance-sandbox/data/matrix_npz/cohort5_long_causal_v7_20260802/ROKU.npz",
+        "npz_sha256": "c7966fc880ad7a534ed59fb2f1709d9b85854acabd18ed9ea2182fa7b0378a82",
+        "window_start": "2024-04-01",
+        "window_end_exclusive": "2026-08-01"
+      },
+      "path_status": {
+        "ordinary_ladder": "CONNECTED_LIVE_AND_V8",
+        "entry": "ADAPTER_REQUIRED",
+        "augment": "ADAPTER_REQUIRED",
+        "reduce": "ADAPTER_REQUIRED",
+        "exit": "ADAPTER_REQUIRED",
+        "optional_reenter": "ADAPTER_REQUIRED",
+        "mandatory_reclaim": "CONNECTED_LIVE_AND_V8",
+        "entry_augment_units": "ADAPTER_REQUIRED"
+      },
+      "exact_queue_status": "NOT_QUEUED_FAIL_CLOSED_ADAPTER_REQUIRED_AND_OOS_REQUIRED"
+    }
+  ],
+  "code_snapshot": {
+    "BACKTEST_BIBLE.md": "31ba6718cbd9393d693d53f7f35a0ef8772e6efa703b417d22f61f31b0eab97a",
+    "tradier_manage.py": "60de127e25ae53b852719415b1a485364e7857ba04f5ef2ff340b8494040ebe4",
+    "backtest_v8_engine.py": "f1e7b3c3aedb64a21b439fdd5d3631ac2d343341e08b08b6842c70b664e6058b",
+    "backtest_v8_sweep.py": "73053c986ad1e9ca196cc6e84e7f993e1f5f388b784c1927698689e4c3b9fdc7",
+    "ordinary_ladder_contract.py": "4869905c54fbf68fa72ffc703ac5822f42023695ebacade0f6f0c63eefb6647b",
+    "tools/run_lifecycle_combo_beam.py": "de20ce46dfefc4364cd170078aa51c16bc81840c38f0ba09cfc8eec7f0444a98",
+    "data/matrix_worker_manifest.json": "32d658b7949baf1b57434ae7542752a51268296f7e730d81f8bd8cd682df061f"
+  },
+  "exact_queue": {
+    "manifest_launch_scope": "EXACT_ENGINE_PARITY_AND_FINALIST_CONFIRMATION",
+    "manifest_workers": ["MU_LONG", "NVDA_LONG", "VT_LONG", "TTD_SHORT", "ACN_SHORT", "LAC_SHORT"],
+    "selected_finalists_present": false,
+    "matrix_workers_paused_file_present": false,
+    "dispatch_count": 0
+  },
+  "required_next_stage": "IMPLEMENT_SHARED_LIVE_V8_ADAPTER_THEN_UNTOUCHED_VECTOR_VALIDATION_THEN_EXACT_COMPLETE_RECIPE"
+}

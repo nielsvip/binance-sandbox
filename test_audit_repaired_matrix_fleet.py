@@ -1,4 +1,7 @@
 from tools import audit_repaired_matrix_fleet as fleet
+import json
+
+import pytest
 
 
 def _proc(pid, ppid, sid, argv):
@@ -93,3 +96,42 @@ def test_user_systemd_supervised_safe_worker_is_independently_owned():
     assert owners == {30}
     assert extras[0]["tag"] == "smoke"
     assert failures == ["rm1: expected one worker, observed 0"]
+
+
+def test_worker_manifest_rejects_stop_pack_and_requires_no_promotion(
+    tmp_path,
+):
+    data = tmp_path / "data"
+    data.mkdir()
+    path = data / "matrix_worker_manifest.json"
+    base = {
+        "campaign": fleet.CAMPAIGN,
+        "matrix_contract_version": "tradier-matrix-exec-c5-20260730",
+        "no_live_promotion": True,
+        "workers": [
+            {
+                "tag": "wm_exit",
+                "symbol": "MU",
+                "side": "LONG",
+                "selection_mode": "DEPENDENCY_PACKS_ONLY",
+                "priority_roots": ["DYNAMIC_SCORE_COUNTER_EXIT_ENABLED"],
+            }
+        ],
+    }
+    path.write_text(json.dumps(base))
+    expected, payload = fleet._manifest(tmp_path)
+    assert expected == {"wm_exit": ("MU", "LONG")}
+    assert payload["no_live_promotion"] is True
+
+    base["workers"][0]["priority_roots"] = ["STOP_PACK"]
+    path.write_text(json.dumps(base))
+    with pytest.raises(ValueError, match="STOP_PACK"):
+        fleet._manifest(tmp_path)
+
+    base["workers"][0]["priority_roots"] = [
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED"
+    ]
+    base["no_live_promotion"] = False
+    path.write_text(json.dumps(base))
+    with pytest.raises(ValueError, match="no_live_promotion"):
+        fleet._manifest(tmp_path)

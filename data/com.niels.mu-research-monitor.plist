@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.niels.mu-research-monitor</string>
+  <key>ProgramArguments</key><array><string>/bin/zsh</string><string>/Users/niels/Documents/binance/tools/run_mu_research_monitor_5m.sh</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/niels/Documents/binance/data/reports/MU_RESEARCH_MONITOR.launchd.log</string>
+  <key>StandardErrorPath</key><string>/Users/niels/Documents/binance/data/reports/MU_RESEARCH_MONITOR.launchd.err.log</string>
+</dict></plist>

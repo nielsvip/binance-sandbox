@@ -28,12 +28,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sweep_value_semantics import executable_values, validate_test_values
+from tradier_sweep_grid_contract import grid_contract
 
 BASE = Path(__file__).resolve().parent
 TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 VEC_SRC = ["v8_vec_sweep.py"]
-TIER2_SRC = ["backtest_v8_engine.py", "v8_quick_engine.py"]
+TIER2_SRC = ["backtest_v8_engine.py", "v8_quick_engine.py", "classic_formations.py"]
 # 2026-07-20: tradier list was missing the SHARED decision modules its stack imports
 # (utils, wt_composite via tradier_indicators, wt_dc_* scorers + local_extremes via
 # tradier_manage) -> params consumed there were falsely classified DEAD for stocks.
@@ -41,12 +42,16 @@ LIVE_SRC_TRADIER = ["tradier_manage.py", "tradier_indicators.py", "tradier_posit
                     "tradier_prices.py", "tradier_rankings.py", "tradier_api.py",
                     "tradier_hourly_reconfig.py", "utils.py", "wt_composite.py",
                     "wt_dc_delta.py", "wt_dc_entry_scorer.py", "wt_dc_exit_scorer.py",
-                    "local_extremes_scorer.py"]
+                    "local_extremes_scorer.py", "classic_formations.py"]
 LIVE_SRC_CRYPTO = ["ez_manage.py", "ez_positions_quick.py", "ez_positions_service.py",
                    "ez_indicators.py", "ez_prices.py", "ez_rankings.py", "ez_reentry.py",
                    "ez_klines.py", "ez_market_data.py", "wt_composite.py", "utils.py",
-                   "wt_dc_delta.py"]
+                   "wt_dc_delta.py", "classic_formations.py"]
 LIVE_SRC = LIVE_SRC_TRADIER
+
+RUNTIME_FENCE_PAT = re.compile(
+    r"(?:^|_)(?:MIN_OPEN_TS|START_TS|END_TS)(?:_|$)"
+)
 
 
 def _load_tokens(files):
@@ -78,10 +83,14 @@ def _config_fields(mode="tradier"):
 def _jsonable(x):
     if isinstance(x, bool) or x is None:
         return x
-    try:
-        return int(x) if x == int(x) else float(x)
-    except (TypeError, ValueError):
-        return str(x)
+    # Preserve the declared numeric type.  Collapsing ``1.0`` to JSON ``1``
+    # made the Tier-2 expander treat float grids as integer grids and reject
+    # their fractional controls.
+    if isinstance(x, int):
+        return x
+    if isinstance(x, float):
+        return float(x)
+    return str(x)
 
 
 def _derive_range(name, default):
@@ -97,6 +106,23 @@ def _derive_range(name, default):
         grid = [int(x) if isinstance(d, int) and float(x).is_integer() else x for x in grid]
         return grid, "default_band"
     return None, "non_numeric_no_range"
+
+
+def _same_typed_value(a, b):
+    """Strict equality for controls (``True`` is never numeric ``1``)."""
+    if isinstance(a, bool) or isinstance(b, bool):
+        return type(a) is type(b) and a == b
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return float(a) == float(b)
+    return type(a) is type(b) and a == b
+
+
+def _include_default_control(default, values):
+    """Every executable alpha grid must contain the active typed control."""
+    rows = list(values or [])
+    if not any(_same_typed_value(default, value) for value in rows):
+        rows.append(default)
+    return rows
 
 
 def main():
@@ -131,7 +157,10 @@ def main():
     for name in sorted(fields):
         default = fields[name]["default"]
         in_vec, in_t2, in_live = name in vec_tok, name in tier2_tok, name in live_tok
-        if in_vec:
+        runtime_control = bool(RUNTIME_FENCE_PAT.search(name))
+        if runtime_control:
+            tier = "RUNTIME_CONTROL"
+        elif in_vec:
             tier = "VEC_SCREEN"
         elif in_t2:
             tier = "ENGINE_SCREEN"
@@ -139,6 +168,7 @@ def main():
             tier = "LIVE_ONLY"
         else:
             tier = "DEAD"
+        counts.setdefault(tier, 0)
         counts[tier] += 1
         # range + provenance
         rng, method, swept, best_val, best_sh, obs = None, None, False, None, None, 0
@@ -151,21 +181,48 @@ def main():
             rng, method = pr["test_values"], pr["method"]
         else:
             rng, method = _derive_range(name, default)
+        contract = grid_contract(name) if mode == "tradier" else None
+        if contract:
+            rng = contract["values"]
+            method = "live_consumer_contract"
+            # These grids are explicitly documented against the real Tradier
+            # evaluator used by the exact engine.  Source-token scanning cannot
+            # see every dynamically imported live consumer, so the contract is
+            # the stronger evidence and keeps the grid executable.
+            in_t2 = True
+            if not in_vec:
+                if tier != "ENGINE_SCREEN":
+                    counts[tier] -= 1
+                    counts["ENGINE_SCREEN"] += 1
+                tier = "ENGINE_SCREEN"
+        if runtime_control:
+            rng = None
+            method = "runtime_fence_excluded_from_alpha"
+        else:
+            rng = _include_default_control(default, rng)
         range_validation = validate_test_values(name, default, rng)
         rng = executable_values(range_validation)
-        sweepable = tier in ("VEC_SCREEN", "ENGINE_SCREEN") and rng is not None
+        sweepable = (
+            not runtime_control
+            and tier in ("VEC_SCREEN", "ENGINE_SCREEN")
+            and rng is not None
+        )
         manifest[name] = {
             "default": _jsonable(default), "type": fields[name]["type"],
             "consumed_by": {"vec": in_vec, "tier2": in_t2, "live": in_live},
             "sweep_tier": tier, "sweepable": sweepable,
             "test_values": [_jsonable(x) for x in rng] if rng else None, "range_method": method,
             "range_validation": range_validation,
+            "grid_contract_evidence": contract["evidence"] if contract else None,
+            "runtime_control_not_alpha": runtime_control,
             "swept_in_history": swept, "best_value_seen": _jsonable(best_val) if best_val is not None else None,
             "best_mean_pool_sharpe": best_sh, "support_obs": obs,
         }
         # annotation remark
         if swept:
             prov = f"swept(hist): best={best_val}@pool_sharpe {best_sh} over {obs} obs"
+        elif runtime_control:
+            prov = "RUNTIME CONTROL; excluded from alpha sweeps"
         elif tier == "DEAD":
             prov = "NEVER swept; referenced in NO engine/live source -> dead knob"
         elif tier == "LIVE_ONLY":
@@ -180,7 +237,8 @@ def main():
         "mode": mode, "generated_at": datetime.now(timezone.utc).isoformat(),
         "n_params": len(fields), "tier_counts": counts,
         "screen_note": "VEC_SCREEN -> fast Tier-1 OFAT all syms; ENGINE_SCREEN -> Tier-2 OFAT 40 syms; "
-                       "LIVE_ONLY/DEAD -> not swept (annotated). Classification by source-token presence.",
+                       "LIVE_ONLY/DEAD -> not swept (annotated); RUNTIME_CONTROL -> operational fence, "
+                       "never alpha-swept. Classification by source-token presence.",
         "params": manifest,
     }
     op = BASE / args.out

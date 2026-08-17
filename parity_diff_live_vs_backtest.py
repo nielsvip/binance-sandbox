@@ -140,11 +140,16 @@ def parse_history_jsonl(path: Path, cutoff: float) -> List[Dict]:
 
 
 def latest_hourly_runs_dir(account: str) -> Optional[Path]:
-    base = HOURLY_RECONFIG / account / "runs"
-    if not base.exists():
-        return None
-    cycles = sorted([p for p in base.iterdir() if p.is_dir()])
-    return cycles[-1] if cycles else None
+    # Live/reconfigured exports have used both names over time.  Prefer the
+    # current private engine-run store, then fall back to the older public name.
+    for dirname in ("_engine_runs", "runs"):
+        base = HOURLY_RECONFIG / account / dirname
+        if not base.exists():
+            continue
+        cycles = sorted([p for p in base.iterdir() if p.is_dir()])
+        if cycles:
+            return cycles[-1]
+    return None
 
 
 def parse_backtest_jsonl(path: Path, cutoff: float) -> List[Dict]:
@@ -177,7 +182,14 @@ def diff_one(account: str, sym: str, side: str, cutoff: float, run_dir: Path,
     live = parse_history_jsonl(live_path, cutoff)
     # Backtest: walk all candidate JSONLs in run_dir for this sym/side and pool the trades.
     bt: List[Dict] = []
-    for p in run_dir.glob(f"*__{side}__*__{sym}.jsonl"):
+    # Older files encode side/symbol in the filename with double underscores;
+    # newer `_engine_runs` files use `reconf_<sym>_<recipe>_<side>_<n>__<sym>`.
+    # Read only files carrying both identifiers, then let the JSON side fields
+    # provide the final filter when present.
+    for p in run_dir.rglob("*.jsonl"):
+        name = p.name.upper()
+        if sym.upper() not in name or side.upper() not in name:
+            continue
         bt.extend(parse_backtest_jsonl(p, cutoff))
     # Build a list of backtest entry/exit timestamps for fast lookup
     bt_times: List[int] = []
@@ -187,6 +199,17 @@ def diff_one(account: str, sym: str, side: str, cutoff: float, run_dir: Path,
         if e: bt_times.append(e)
         if x: bt_times.append(x)
     bt_times.sort()
+    if not bt_times:
+        return {
+            "sym": sym,
+            "side": side,
+            "n_live": len(live),
+            "n_backtest_events": 0,
+            "n_missed": 0,
+            "n_caught": 0,
+            "comparison_status": "NO_RECENT_BACKTEST_WINDOW",
+            "missed_records": [],
+        }
     # For each live record, did the backtest produce a trade event within window_s?
     missed: List[Dict] = []
     caught: List[Dict] = []
@@ -208,6 +231,7 @@ def diff_one(account: str, sym: str, side: str, cutoff: float, run_dir: Path,
         "n_backtest_events": len(bt_times),
         "n_missed": len(missed),
         "n_caught": len(caught),
+        "comparison_status": "COMPARED",
         "missed_records": missed,
     }
 
@@ -225,6 +249,7 @@ def run_account(account: str, days: int = 7, window_s: int = 1800) -> Dict:
     by_reason_caught: Counter = Counter()
     by_sym: Dict[str, Dict] = {}
     missed_samples: List[Dict] = []
+    n_no_recent_backtest = 0
 
     # Discover sym/side from history files
     hist_dir = HISTORY / account
@@ -243,6 +268,8 @@ def run_account(account: str, days: int = 7, window_s: int = 1800) -> Dict:
             continue
         sym_key = f"{sym}_{side}"
         by_sym[sym_key] = {k: v for k, v in d.items() if k != "missed_records"}
+        if d.get("comparison_status") == "NO_RECENT_BACKTEST_WINDOW":
+            n_no_recent_backtest += 1
         for r in d["missed_records"]:
             fam = r.get("_reason_family", "UNKNOWN")
             by_reason[fam] += 1
@@ -294,6 +321,7 @@ def run_account(account: str, days: int = 7, window_s: int = 1800) -> Dict:
         "n_sym_sides": len(by_sym),
         "n_total_live_events": int(sum(n_total_live.values())),
         "n_total_missed": int(sum(by_reason.values())),
+        "n_no_recent_backtest": n_no_recent_backtest,
         "missed_pct": round(100.0 * sum(by_reason.values()) / max(1, sum(n_total_live.values())), 1),
         "by_reason_family": family_report,
         "by_sym": by_sym,
@@ -308,6 +336,8 @@ def run_account(account: str, days: int = 7, window_s: int = 1800) -> Dict:
     print(f"=== PARITY DIFF: {account} (last {days}d) ===")
     print(f"  total live events: {summary['n_total_live_events']}")
     print(f"  missed by 7d backtest: {summary['n_total_missed']} ({summary['missed_pct']}%)")
+    if n_no_recent_backtest:
+        print(f"  no recent backtest window for {n_no_recent_backtest} symbol-sides; excluded from miss rate")
     print(f"  reason families to wire (top 15):")
     for fr in family_report[:15]:
         print(f"    {fr['missed_pct']:>5.1f}% missed  {fr['missed_by_engine']:>4d}/{fr['total_live']:<4d}  {fr['reason_family']}")

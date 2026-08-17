@@ -33,10 +33,15 @@ set -u
 BASE=/Users/niels/Documents/binance
 LOG=/tmp/s1_s2_autosync.log
 # ControlMaster=no + ControlPath=none → bypass interactive-session sockets that launchd can't reach.
-SSH_OPTS="-o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ControlMaster=no -o ControlPath=none"
+SSH_OPTS="-4 -i /Users/niels/.ssh/id_ed25519 -p 2201 -o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ControlMaster=no -o ControlPath=none"
+S1_HOST=niels@127.0.0.1
 DEST_PATH=/home/niels/binance-sandbox/
-SLEEP_SEC=2  # user directive 2026-04-18: "rsync should probably take place at least every second"
+SLEEP_SEC=30  # serialized with the verified result transaction; avoids SSH banner floods
 PAUSE_FILE="$BASE/.s1_s2_autosync.pause"
+TRANSPORT_LOCK="$BASE/data/sync/.s1_transport.lock"
+VERIFIED_SYNC_REQUEST="$BASE/data/sync/ALWAYS_CONNECTED_SYNC_REQUEST"
+mkdir -p "$BASE/data/sync"
+trap 'rmdir "$TRANSPORT_LOCK" 2>/dev/null || true' EXIT TERM INT
 
 cd "$BASE" || { echo "$(date -u +%FT%TZ) CANNOT_CD $BASE" >>"$LOG"; exit 1; }
 shopt -s nullglob
@@ -90,10 +95,10 @@ push_to() {
     return 0
 }
 
-PER_SYM_CFG_S1="s1-int:/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_active_config.json"
+PER_SYM_CFG_S1="$S1_HOST:/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_active_config.json"
 PER_SYM_CFG_S2="s2-int:/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_active_config.json"
 PER_SYM_CFG_MAC="$BASE/data/hourly_reconfig/per_sym_active_config.json"
-S1_PLOTS="s1-int:/home/niels/binance-sandbox/plots/"
+S1_PLOTS="$S1_HOST:/home/niels/binance-sandbox/plots/"
 MAC_PLOTS="$BASE/plots/"
 
 _merge_persym() {
@@ -120,6 +125,29 @@ echo "$(date -u +%FT%TZ) autosync_start pid=$$ mode=checksum_macbook_authoritati
 _pull_tick=0
 _chart_tick=0
 while true; do
+    # A verified transaction clears its edge-trigger request on PASS. Repairs
+    # discovered while that transaction is already frozen are queued under a
+    # distinct name; after launchd reloads this loop, promote that request and
+    # execute one more complete verified transaction instead of losing it.
+    if [[ ! -e "$VERIFIED_SYNC_REQUEST" \
+          && -e "$BASE/data/sync/ALWAYS_CONNECTED_SYNC_REQUEST_NEXT" ]]; then
+        mv "$BASE/data/sync/ALWAYS_CONNECTED_SYNC_REQUEST_NEXT" "$VERIFIED_SYNC_REQUEST"
+    fi
+    # Bible §16.22 verified source/result synchronization supersedes this
+    # legacy narrow script/config pusher. This already-loaded launchd daemon
+    # owns the handoff so a request is not stranded when the optional
+    # mac-live-heartbeat agent is unavailable.
+    if [[ -e "$VERIFIED_SYNC_REQUEST" ]]; then
+        rmdir "$TRANSPORT_LOCK" 2>/dev/null || true
+        echo "$(date -u +%FT%TZ) VERIFIED_SYNC_HANDOFF request=$VERIFIED_SYNC_REQUEST" >>"$LOG"
+        /bin/bash "$BASE/tools/always_connected_sync.sh" >>"$LOG" 2>&1 || true
+        sleep 5
+        continue
+    fi
+    if ! mkdir "$TRANSPORT_LOCK" 2>/dev/null; then
+        sleep "$SLEEP_SEC"
+        continue
+    fi
     if [[ -f "$PAUSE_FILE" ]]; then
         if [[ "${_push_pause_logged:-0}" -eq 0 ]]; then
             echo "$(date -u +%FT%TZ) CODE_PUSH_PAUSED flag=$PAUSE_FILE" >>"$LOG"
@@ -127,8 +155,25 @@ while true; do
         fi
     else
         _push_pause_logged=0
-        push_to s1-int S1
+        push_to "$S1_HOST" S1
     fi
+    # Release the push lane before either puller acquires its own transport
+    # lock.  Holding this lock here used to make pull_r5_vector_results.sh
+    # return TRANSPORT_BUSY on every tick, leaving a stale Mac view.
+    rmdir "$TRANSPORT_LOCK" 2>/dev/null || true
+    # Pull the compact coupled-vector truth every tick.  Raw receipts, NPZs,
+    # databases and event ledgers remain on S1; these two small files are the
+    # operator surface on Mac and must never present an old campaign view.
+    # Public S1 is an operator-authorized fallback when localhost:2201 stalls.
+    # This helper transfers only the compact JSON/Markdown pair and validates
+    # the campaign/schema before atomically replacing the Mac view.
+    /bin/bash "$BASE/tools/pull_r5_vector_results.sh" --once >>"$LOG" 2>&1 || true
+    # Pull one immutable S1 snapshot of the operator truth surface.  The
+    # helper allowlists compact reports and SWITCH_MATRIX_TRB.xlsx only, then
+    # hash-verifies before atomic Mac promotion; NPZ/DB/archive payloads stay
+    # on S1.  Its 30-minute digest is the commit marker and counts accepted
+    # canonical cells only, never raw result rows.
+    /bin/bash "$BASE/tools/pull_s1_compact_truth_surface.sh" --once >>"$LOG" 2>&1 || true
     # 2026-05-28 S2 DEAD permanently — push_to s2-int removed
     # Sync per_sym_active_config.json from S1 every ~60 s (S2 DEAD permanently 2026-05-28)
     _pull_tick=$(( (_pull_tick + 1) % 30 ))
@@ -142,7 +187,7 @@ while true; do
         for _acct in trb trc; do
             mkdir -p "$BASE/data/hourly_reconfig/$_acct/_trade_lists"
             rsync -az --timeout=20 -e "ssh $SSH_OPTS" \
-                "s1-int:/home/niels/binance/data/hourly_reconfig/$_acct/_trade_lists/" \
+                "$S1_HOST:/home/niels/binance/data/hourly_reconfig/$_acct/_trade_lists/" \
                 "$BASE/data/hourly_reconfig/$_acct/_trade_lists/" 2>>"$LOG"
         done
     fi
@@ -154,5 +199,10 @@ while true; do
             "$S1_PLOTS" "$MAC_PLOTS" 2>>"$LOG" \
             && echo "$(date -u +%FT%TZ) OPT_charts pulled from S1" >>"$LOG"
     fi
+    # Token-free TRB operator supervision. This only checks a PID/queue and
+    # launches the sealed pipeline when the prior key/batch is terminal; the
+    # hourly digest is local and compact. It never invokes an agent/model.
+    /bin/bash "$BASE/tools/trb_operator_watchdog.sh" >>"$LOG" 2>&1 || true
+    rmdir "$TRANSPORT_LOCK" 2>/dev/null || true
     sleep "$SLEEP_SEC"
 done

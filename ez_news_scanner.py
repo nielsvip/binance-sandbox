@@ -101,6 +101,20 @@ CRYPTO_ALIASES = {
 STOCK_TICKERS_PATTERN = re.compile(r'\$([A-Z]{1,5})\b')
 CRYPTO_TICKER_PATTERN = re.compile(r'(?:\$|#)([A-Z]{2,10})\b')
 HTML_TAG_RE = re.compile(r'<[^>]+>')
+# Company name -> ticker fallback for headlines like "Apple beats" without $AAPL
+STOCK_COMPANY_MAP = {
+    'APPLE': 'AAPL', 'MICROSOFT': 'MSFT', 'NVIDIA': 'NVDA', 'TESLA': 'TSLA', 'AMAZON': 'AMZN',
+    'META': 'META', 'FACEBOOK': 'META', 'GOOGLE': 'GOOGL', 'ALPHABET': 'GOOGL', 'NETFLIX': 'NFLX',
+    'AMD': 'AMD', 'INTEL': 'INTC', 'BOEING': 'BA', 'CATERPILLAR': 'CAT', 'JPMORGAN': 'JPM',
+    'GOLDMAN': 'GS', 'MORGAN STANLEY': 'MS', 'BANK OF AMERICA': 'BAC', 'WALMART': 'WMT',
+    'COCA COLA': 'KO', 'PEPSI': 'PEP', 'PFIZER': 'PFE', 'JOHNSON': 'JNJ', 'EXXON': 'XOM',
+    'CHEVRON': 'CVX', 'DISNEY': 'DIS', 'NIKE': 'NKE', 'COSTCO': 'COST', 'ORACLE': 'ORCL',
+    'ADOBE': 'ADBE', 'SALESFORCE': 'CRM', 'IBM': 'IBM', 'CISCO': 'CSCO', 'QUALCOMM': 'QCOM',
+    'TEXAS INSTRUMENTS': 'TXN', 'BROADCOM': 'AVGO', 'MICRON': 'MU', 'APPLIED MATERIALS': 'AMAT',
+    'PALANTIR': 'PLTR', 'COINBASE': 'COIN', 'ROBINHOOD': 'HOOD', 'BLOCK': 'SQ', 'PAYPAL': 'PYPL',
+    'ALIBABA': 'BABA', 'BAIDU': 'BIDU', 'ELI LILLY': 'LLY', 'ABBVIE': 'ABBV', 'UNITEDHEALTH': 'UNH',
+    'BERKSHIRE': 'BRK.B', 'VISA': 'V', 'MASTERCARD': 'MA', 'HOME DEPOT': 'HD', 'MCDONALD': 'MCD',
+}
 COMMON_WORDS = frozenset({
     'AI','GAS','KEY','PAX','PAR','ACE','ACT','ADD','AGE','AID','AIM','AIR',
     'ALL','ARM','ART','ASK','BAD','BAG','BAN','BAR','BASE','BAY','BID',
@@ -157,6 +171,12 @@ STOCK_RSS_FEEDS = [
     ('https://www.reddit.com/r/stocks/.rss', 'reddit_stocks'),
     ('https://www.reddit.com/r/investing/.rss', 'reddit_investing'),
     ('https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US', 'yahoo_finance'),
+    ('https://feeds.finance.yahoo.com/rss/2.0/headline?s=AAPL&region=US&lang=en-US', 'yahoo_aapl'),
+    ('https://feeds.finance.yahoo.com/rss/2.0/headline?s=NVDA&region=US&lang=en-US', 'yahoo_nvda'),
+    ('https://www.benzinga.com/feed', 'benzinga'),
+    ('https://www.investing.com/rss/news_25.rss', 'investing_stocks'),
+    ('https://seekingalpha.com/feed.xml', 'seekingalpha'),
+    ('https://www.marketwatch.com/rss/marketpulse', 'marketwatch_pulse'),
 ]
 WORLD_NEWS_RSS_FEEDS = [
     ('https://feeds.bbci.co.uk/news/world/rss.xml', 'bbc_world'),
@@ -283,10 +303,14 @@ def extract_stock_tickers(text: str, stock_set: set) -> List[str]:
         ticker = m.group(1)
         if ticker in stock_set:
             found.add(ticker)
-    for word in text.upper().split():
+    text_upper = text.upper()
+    for word in text_upper.split():
         word_clean = re.sub(r'[^A-Z]', '', word)
         if 1 < len(word_clean) <= 5 and word_clean in stock_set:
             found.add(word_clean)
+    for company, ticker in STOCK_COMPANY_MAP.items():
+        if company in text_upper and ticker in stock_set:
+            found.add(ticker)
     return list(found)
 
 def parse_rss_date(date_str: str) -> Optional[datetime]:
@@ -598,14 +622,23 @@ async def poll_rss_feeds(session: aiohttp.ClientSession, feeds: List[Tuple[str, 
     logger.info(f"[RSS {'crypto' if is_crypto else 'stocks'}] {len(articles)} mentions from {len(feeds)} feeds")
     return articles
 
-async def poll_finnhub_stocks(session: aiohttp.ClientSession, stock_set: set, max_symbols: int = 15) -> List[dict]:
+_finnhub_stocks_shard = 0
+
+async def poll_finnhub_stocks(session: aiohttp.ClientSession, stock_set: set, max_symbols: int = 60) -> List[dict]:
+    global _finnhub_stocks_shard
     api_key = os.getenv('FINNHUB_API_KEY', '')
     if not api_key or not stock_set:
         return []
     articles = []
     from_date = (datetime.now(timezone.utc) - timedelta(days=3)).strftime('%Y-%m-%d')
     to_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-    targets = [s for s in stock_set if s.isalpha() and len(s) <= 5][:max_symbols]
+    all_syms = sorted(s for s in stock_set if s.isalpha() and len(s) <= 5)
+    if not all_syms:
+        return []
+    shard_count = max(1, (len(all_syms) + max_symbols - 1) // max_symbols)
+    start = (_finnhub_stocks_shard % shard_count) * max_symbols
+    targets = all_syms[start:start + max_symbols]
+    _finnhub_stocks_shard += 1
     for sym in targets:
         try:
             params = {'symbol': sym, 'from': from_date, 'to': to_date, 'token': api_key}
@@ -623,7 +656,92 @@ async def poll_finnhub_stocks(session: aiohttp.ClientSession, stock_set: set, ma
                         articles.append({'symbol': sym, 'text': title[:200], 'score': sentiment_val, 'engagement': 7, 'source': f'finnhub_co_{sym}', 'published': published, '_is_stock': True})
         except Exception as e:
             logger.debug(f"[FINNHUB_STOCKS:{sym}] Error: {e}")
-    logger.info(f"[FINNHUB_STOCKS] {len(articles)} mentions for {len(targets)} tickers")
+    logger.info(f"[FINNHUB_STOCKS] {len(articles)} mentions for {len(targets)} tickers (shard {_finnhub_stocks_shard-1})")
+    return articles
+
+async def poll_stocktwits(session: aiohttp.ClientSession, stock_set: set, max_symbols: int = 30) -> List[dict]:
+    articles = []
+    all_syms = sorted(s for s in stock_set if s.isalpha() and len(s) <= 5)
+    if not all_syms:
+        return []
+    import random
+    batch = random.sample(all_syms, min(max_symbols, len(all_syms)))
+    for sym in batch:
+        try:
+            url = f"https://api.stocktwits.com/api/2/streams/symbol/{sym}.json"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=8), headers={'User-Agent': 'ez_news_scanner/6.0'}) as resp:
+                if resp.status != 200:
+                    continue
+                data = await resp.json()
+                for msg in data.get('messages', [])[:15]:
+                    body = msg.get('body', '')[:300]
+                    created = msg.get('created_at', '')
+                    try:
+                        pub = datetime.fromisoformat(created.replace('Z', '+00:00')).isoformat() if created else ''
+                    except Exception:
+                        pub = ''
+                    sentiment = vader_score(body)
+                    articles.append({'symbol': sym, 'text': body[:200], 'score': sentiment, 'engagement': 6, 'source': f'stocktwits_{sym}', 'published': pub, '_is_stock': True})
+        except Exception as e:
+            logger.debug(f"[STOCKTWITS:{sym}] Error: {e}")
+    logger.info(f"[STOCKTWITS] {len(articles)} mentions for {len(batch)} tickers")
+    return articles
+
+async def poll_reddit_search(session: aiohttp.ClientSession, stock_set: set, max_symbols: int = 20) -> List[dict]:
+    articles = []
+    all_syms = sorted(s for s in stock_set if s.isalpha() and len(s) <= 5)
+    if not all_syms:
+        return []
+    import random
+    batch = random.sample(all_syms, min(max_symbols, len(all_syms)))
+    for sym in batch:
+        try:
+            url = f"https://www.reddit.com/r/wallstreetbets/search.json"
+            params = {'q': sym, 'restrict_sr': '1', 'sort': 'new', 't': 'day', 'limit': '8'}
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=8), headers={'User-Agent': 'ez_news_scanner/6.0'}, params=params) as resp:
+                if resp.status != 200:
+                    continue
+                data = await resp.json()
+                for child in data.get('data', {}).get('children', [])[:8]:
+                    d = child.get('data', {})
+                    title = d.get('title', '')[:200]
+                    selftext = d.get('selftext', '')[:300]
+                    combined = f"{title} {selftext}"
+                    created = d.get('created_utc', 0)
+                    pub = datetime.fromtimestamp(created, tz=timezone.utc).isoformat() if created else ''
+                    sentiment = vader_score(combined)
+                    articles.append({'symbol': sym, 'text': title[:200], 'score': sentiment, 'engagement': 5, 'source': f'reddit_search_{sym}', 'published': pub, '_is_stock': True})
+            await asyncio.sleep(0.4)
+        except Exception as e:
+            logger.debug(f"[REDDIT_SEARCH:{sym}] Error: {e}")
+    logger.info(f"[REDDIT_SEARCH] {len(articles)} mentions for {len(batch)} tickers")
+    return articles
+
+async def poll_tradingview_ideas(session: aiohttp.ClientSession, stock_set: set, max_symbols: int = 15) -> List[dict]:
+    articles = []
+    all_syms = sorted(s for s in stock_set if s.isalpha() and len(s) <= 5)
+    if not all_syms:
+        return []
+    import random
+    batch = random.sample(all_syms, min(max_symbols, len(all_syms)))
+    for sym in batch:
+        try:
+            url = f"https://www.tradingview.com/symbols/{sym}/ideas/?sort=recent"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=8), headers={'User-Agent': 'Mozilla/5.0 (compatible; ez_news_scanner/6.0)'}) as resp:
+                if resp.status != 200:
+                    continue
+                text = await resp.text()
+                titles = re.findall(r'class="[^"]*tv-widget-idea__title[^"]*"[^>]*>([^<]{10,120})<', text)[:8]
+                for title in titles:
+                    clean = strip_html(title).strip()
+                    if len(clean) < 10:
+                        continue
+                    score = vader_score(clean)
+                    articles.append({'symbol': sym, 'text': clean[:200], 'score': score, 'engagement': 4, 'source': f'tv_ideas_{sym}', 'published': datetime.now(timezone.utc).isoformat(), '_is_stock': True})
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            logger.debug(f"[TV_IDEAS:{sym}] Error: {e}")
+    logger.info(f"[TV_IDEAS] {len(articles)} ideas for {len(batch)} tickers")
     return articles
 
 # ============================================================
@@ -820,7 +938,7 @@ def aggregate_scores(articles: List[dict], trending_coins: Dict[str, float], coi
         crypto_scores[sym] = max(-1.0, min(1.0, raw))
     stock_scores: Dict[str, float] = {}
     for sym, weighted in stock_per_sym.items():
-        if len(weighted) < min_articles:
+        if len(weighted) < 1:
             continue
         total_weight = sum(w for _, w in weighted)
         if total_weight <= 0:
@@ -1302,15 +1420,18 @@ async def fetch_all_sources(session: aiohttp.ClientSession, coin_map: Dict[str, 
         poll_finnhub_stocks(session, stock_set),
         poll_alphavantage(session, coin_map),
         poll_world_news(session),
+        poll_stocktwits(session, stock_set, max_symbols=30),
+        poll_reddit_search(session, stock_set, max_symbols=20),
+        poll_tradingview_ideas(session, stock_set, max_symbols=15),
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     fg = results[0] if not isinstance(results[0], Exception) else None
     trending = results[1] if not isinstance(results[1], Exception) else {}
     all_articles = []
-    for r in results[2:9]:
+    for r in results[2:12]:
         if isinstance(r, list):
             all_articles.extend(r)
-    world_articles = results[9] if isinstance(results[9], list) else []
+    world_articles = results[12] if isinstance(results[12], list) else []
     return fg, trending, all_articles, world_articles
 
 # ============================================================
@@ -1458,6 +1579,159 @@ async def report_mode():
     print(f"\n{'=' * 70}")
 
 # ============================================================
+# AGENT-ASSISTED EXIT MONITOR (stocks intraday)
+# ============================================================
+
+EXIT_ADVISORY_INTERVAL = 90
+EXIT_ADVISORY_TTL = 600
+DAILY_INJECT_HOUR_UTC = 13
+DAILY_INJECT_MINUTE_UTC = 5
+STOCK_BEAR_EXIT_THRESHOLD = -0.45
+STOCK_BULL_EXIT_THRESHOLD = 0.45
+_last_daily_inject_date = ""
+_last_exit_advisory_time = 0.0
+_last_exit_advisory_sig = ""
+
+
+def _is_tradier_market_open_utc() -> bool:
+    now = datetime.now(timezone.utc)
+    if now.weekday() >= 5:
+        return False
+    mins = now.hour * 60 + now.minute
+    return 780 <= mins < 1200
+
+
+async def _load_open_tradier_positions(redis_mgr) -> Dict[str, str]:
+    result: Dict[str, str] = {}
+    if redis_mgr and hasattr(redis_mgr, 'connections'):
+        for name, conn in redis_mgr.connections.items():
+            if conn is None:
+                continue
+            for acct in ('tra', 'trb', 'trc'):
+                try:
+                    raw = await conn.get(f'tradier:positions:{acct}')
+                    if not raw:
+                        continue
+                    data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+                    positions = data.get('positions', data) if isinstance(data, dict) else {}
+                    if not isinstance(positions, dict):
+                        continue
+                    for pk, pdata in positions.items():
+                        if not isinstance(pdata, dict):
+                            continue
+                        sym = str(pdata.get('symbol') or pk.split(':')[0] if ':' in pk else pk).upper()
+                        side = str(pdata.get('side') or pdata.get('position_side') or '').upper()
+                        if not side:
+                            qty = float(pdata.get('qty', pdata.get('quantity', 0)) or 0)
+                            if qty != 0:
+                                side = 'LONG' if qty > 0 else 'SHORT'
+                        if sym and side in ('LONG', 'SHORT'):
+                            result[sym] = side
+                except Exception:
+                    continue
+            if result:
+                break
+    if not result:
+        for acct in ('tra', 'trb', 'trc'):
+            for side_file in ('long_positions.json', 'short_positions.json'):
+                p = BASE_PATH / 'data' / 'tradier' / acct / side_file
+                alt = BASE_PATH / acct / side_file
+                for cand in (p, alt):
+                    if not cand.exists():
+                        continue
+                    try:
+                        raw = json.loads(cand.read_text())
+                        positions = raw if isinstance(raw, dict) else {}
+                        for k, v in positions.items():
+                            sym = str(v.get('symbol', k)).upper() if isinstance(v, dict) else str(k).upper()
+                            side = 'LONG' if 'long' in side_file else 'SHORT'
+                            if sym:
+                                result[sym] = side
+                    except Exception:
+                        pass
+    return result
+
+
+async def publish_exit_advisories(stock_scores: Dict[str, float], crypto_scores: Dict[str, float], redis_mgr):
+    global _last_exit_advisory_time, _last_exit_advisory_sig
+    now = time.time()
+    if (now - _last_exit_advisory_time) < EXIT_ADVISORY_INTERVAL:
+        return
+    if not _is_tradier_market_open_utc():
+        return
+    if not stock_scores and not crypto_scores:
+        return
+    open_positions = await _load_open_tradier_positions(redis_mgr)
+    if not open_positions:
+        return
+    advisories = []
+    for sym, side in open_positions.items():
+        score = stock_scores.get(sym, crypto_scores.get(sym, 0.0))
+        if side == 'LONG' and score <= STOCK_BEAR_EXIT_THRESHOLD:
+            advisories.append({'symbol': sym, 'side': side, 'action': 'CONSIDER_EXIT', 'reason': f'bearish_news_score={score:.2f} threshold={STOCK_BEAR_EXIT_THRESHOLD}', 'score': round(score, 3), 'ts': datetime.now(timezone.utc).isoformat()})
+        elif side == 'SHORT' and score >= STOCK_BULL_EXIT_THRESHOLD:
+            advisories.append({'symbol': sym, 'side': side, 'action': 'CONSIDER_EXIT', 'reason': f'bullish_news_score={score:.2f} threshold={STOCK_BULL_EXIT_THRESHOLD}', 'score': round(score, 3), 'ts': datetime.now(timezone.utc).isoformat()})
+    if not advisories:
+        return
+    sig = json.dumps(sorted((a['symbol'], a['side'], round(a['score'], 2)) for a in advisories), sort_keys=True)
+    if sig == _last_exit_advisory_sig:
+        return
+    _last_exit_advisory_sig = sig
+    _last_exit_advisory_time = now
+    payload = {'generated_at': datetime.now(timezone.utc).isoformat(), 'count': len(advisories), 'advisories': advisories}
+    payload_json = json.dumps(payload)
+    advisory_file = DATA_DIR / 'news_exit_advisories.json'
+    try:
+        with open(advisory_file, 'w') as f:
+            json.dump(payload, f, indent=2)
+    except Exception as e:
+        logger.debug(f"[EXIT_ADVISORY] file write failed: {e}")
+    if redis_mgr and hasattr(redis_mgr, 'connections'):
+        for name, conn in redis_mgr.connections.items():
+            if conn is None:
+                continue
+            try:
+                await conn.setex('news_exit_advisories', EXIT_ADVISORY_TTL, payload_json)
+                await conn.publish('news_exit_advisory', payload_json)
+            except Exception as e:
+                logger.debug(f"Redis {name} exit advisory publish failed: {e}")
+    logger.warning(f"[EXIT_ADVISORY] {len(advisories)} open positions flagged: {[(a['symbol'], a['side'], a['score']) for a in advisories[:8]]}")
+
+
+async def maybe_daily_inject(session: aiohttp.ClientSession, coin_map: Dict[str, str], stock_set: set, redis_mgr, fear_greed_data, trending_coins: Dict[str, float]):
+    global _last_daily_inject_date
+    now = datetime.now(timezone.utc)
+    today = now.strftime('%Y-%m-%d')
+    if _last_daily_inject_date == today:
+        return
+    if now.hour != DAILY_INJECT_HOUR_UTC or now.minute < DAILY_INJECT_MINUTE_UTC or now.minute >= DAILY_INJECT_MINUTE_UTC + 8:
+        return
+    if now.weekday() >= 5:
+        return
+    logger.info(f"[DAILY_INJECT] Triggering scheduled daily injection for {today} at {now.strftime('%H:%M UTC')}")
+    try:
+        fg, trending, all_articles, world_articles = await fetch_all_sources(session, coin_map, stock_set)
+        if fg:
+            fear_greed_data = fg
+        if trending:
+            trending_coins.update(trending)
+        macro_events = detect_macro_events(world_articles)
+        if macro_events:
+            await trigger_extreme_mode_from_news(macro_events, redis_mgr)
+        eff_fg = fear_greed_data
+        crypto_long, crypto_short, stock_long, stock_short = score_picks(all_articles, trending_coins, coin_map, eff_fg)
+        if crypto_long or crypto_short or stock_long or stock_short:
+            new_inj = inject_symbols(crypto_long, crypto_short, stock_long, stock_short)
+            await boost_sentiment_redis(crypto_long, crypto_short, stock_long, stock_short, redis_mgr)
+            logger.info(f"[DAILY_INJECT] Complete: {len(crypto_long)}CL {len(crypto_short)}CS {len(stock_long)}SL {len(stock_short)}SS, {len(new_inj)} injected")
+        else:
+            logger.info("[DAILY_INJECT] No high-conviction picks met threshold")
+        _last_daily_inject_date = today
+    except Exception as e:
+        logger.error(f"[DAILY_INJECT] Failed: {e}", exc_info=True)
+
+
+# ============================================================
 # DAEMON MODE (systemd service)
 # ============================================================
 
@@ -1475,7 +1749,10 @@ async def main_loop():
     finnhub_interval = 300
     fg_interval = 1800
     world_news_interval = 120
-    last = {'rss': 0.0, 'coingecko': 0.0, 'movers': 0.0, 'alphavantage': 0.0, 'finnhub': 0.0, 'fh_stocks': 0.0, 'fg': 0.0, 'reinject': 0.0, 'track_snap': 0.0, 'world_news': 0.0}
+    stocktwits_interval = 300
+    reddit_interval = 300
+    tv_ideas_interval = 600
+    last = {'rss': 0.0, 'coingecko': 0.0, 'movers': 0.0, 'alphavantage': 0.0, 'finnhub': 0.0, 'fh_stocks': 0.0, 'fg': 0.0, 'reinject': 0.0, 'track_snap': 0.0, 'world_news': 0.0, 'stocktwits': 0.0, 'reddit': 0.0, 'tv_ideas': 0.0}
     fear_greed_data = None
     trending_coins: Dict[str, float] = {}
     async with aiohttp.ClientSession() as session:
@@ -1503,9 +1780,18 @@ async def main_loop():
                     all_articles.extend(await poll_finnhub(session, coin_map, stock_set, category='crypto'))
                     all_articles.extend(await poll_finnhub(session, coin_map, stock_set, category='general'))
                     last['finnhub'] = now
-                if (now - last['fh_stocks']) >= 3600 and stock_set:
+                if (now - last['fh_stocks']) >= 900 and stock_set:
                     all_articles.extend(await poll_finnhub_stocks(session, stock_set))
                     last['fh_stocks'] = now
+                if (now - last['stocktwits']) >= stocktwits_interval and stock_set:
+                    all_articles.extend(await poll_stocktwits(session, stock_set))
+                    last['stocktwits'] = now
+                if (now - last['reddit']) >= reddit_interval and stock_set:
+                    all_articles.extend(await poll_reddit_search(session, stock_set))
+                    last['reddit'] = now
+                if (now - last['tv_ideas']) >= tv_ideas_interval and stock_set:
+                    all_articles.extend(await poll_tradingview_ideas(session, stock_set))
+                    last['tv_ideas'] = now
                 if (now - last['world_news']) >= world_news_interval:
                     world_articles = await poll_world_news(session)
                     if world_articles:
@@ -1516,6 +1802,8 @@ async def main_loop():
                                 logger.warning(f"[SCANNER] EXTREME_MODE triggered: {extreme_reason}")
                     await check_extreme_mode_expiry(redis_mgr)
                     last['world_news'] = now
+                crypto_scores = {}
+                stock_scores = {}
                 if all_articles or trending_coins:
                     crypto_scores, stock_scores = aggregate_scores(all_articles, trending_coins, coin_map, decay_hours=config.NEWS_SENTIMENT_DECAY_HOURS, min_articles=config.NEWS_SENTIMENT_MIN_ARTICLES, fear_greed=fear_greed_data)
                     await publish_to_redis(crypto_scores, stock_scores, fear_greed_data, redis_mgr)
@@ -1525,6 +1813,9 @@ async def main_loop():
                     fg_str = f"fg={fear_greed_data['value']}" if fear_greed_data else 'fg=?'
                     mode_str = f"mode={Config._CURRENT_MARKET_MODE}"
                     logger.info(f"[SCANNER] {len(all_articles)} articles -> crypto:{len(crypto_scores)} ({pos_c}u{neg_c}d) stocks:{len(stock_scores)} trending:{len(trending_coins)} {fg_str} {mode_str}")
+                await maybe_daily_inject(session, coin_map, stock_set, redis_mgr, fear_greed_data, trending_coins)
+                if stock_scores or crypto_scores:
+                    await publish_exit_advisories(stock_scores, crypto_scores, redis_mgr)
                 if (now - last['reinject']) >= RE_INJECT_INTERVAL:
                     re_inject_active()
                     cleanup_expired()

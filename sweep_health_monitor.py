@@ -81,7 +81,11 @@ def collect_state() -> dict:
         "echo '---'; "
         "free -m | awk '/^Mem:/ {print $2,$3,$4,$7}'; "
         "echo '---'; "
-        f"tail -{WINDOW} {LEDGER_REMOTE}"
+        f"tail -{WINDOW} {LEDGER_REMOTE}; "
+        "echo '---'; "
+        f"tail -{WINDOW} /home/niels/binance-sandbox/switch_lab/logs/monitor.log 2>/dev/null | head -{WINDOW}; "
+        "echo '---'; "
+        "cat /home/niels/binance-sandbox/switch_lab/vector_status.json 2>/dev/null | head -30"
     )
     if rc != 0:
         state["checks"]["ssh"] = {"ok": False, "rc": rc, "stderr": err.strip()[:200]}
@@ -96,6 +100,18 @@ def collect_state() -> dict:
     tradier_workers = int(parts[3].strip() or 0) if len(parts) > 3 else 0
     mem_fields = (parts[4].strip().split() if len(parts) > 4 else ["0", "0", "0", "0"])
     ledger_block = parts[5] if len(parts) > 5 else ""
+    switch_lab_monitor_block = parts[6] if len(parts) > 6 else ""
+    switch_lab_vector_status_block = parts[7] if len(parts) > 7 else ""
+    # witch_lab/switch_lab lives on S1 — local switch_lab/ is reporting mirror only; prefer S1 blocks when present
+    state["checks"]["switch_lab_monitor_lines"] = len([l for l in switch_lab_monitor_block.strip().splitlines() if l.strip()])
+    state["checks"]["switch_lab_vector_status_present"] = bool(switch_lab_vector_status_block.strip())
+    if switch_lab_vector_status_block.strip():
+        try:
+            _sw = json.loads("\n".join([l for l in switch_lab_vector_status_block.splitlines() if l.strip().startswith("{")][-1:]) or "{}")
+            state["checks"]["switch_lab_vec_stored"] = _sw.get("vec_stored_count")
+            state["checks"]["switch_lab_workers_claimed"] = _sw.get("gui_workers_claimed")
+        except Exception:
+            pass
 
     state["checks"]["crypto_coord_alive"] = bool(crypto_coord)
     state["checks"]["tradier_coord_alive"] = bool(tradier_coord)

@@ -1,0 +1,134 @@
+[
+  {
+    "switch": "LH_HL_FILTER_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": false,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "STDEV_BREAKOUT_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0199,
+    "trades_a": 906,
+    "val_b": false,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0177,
+    "winner": true
+  },
+  {
+    "switch": "MI_ENTRY_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0024,
+    "trades_a": 857,
+    "val_b": false,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.00019999999999999966,
+    "winner": true
+  },
+  {
+    "switch": "HLR_RALLY_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": false,
+    "sharpe_b": 0.0103,
+    "trades_b": 876,
+    "delta": -0.0081,
+    "winner": false
+  },
+  {
+    "switch": "DELTA_ENGINE_ENABLED",
+    "val_a": false,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": true,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": true
+  },
+  {
+    "switch": "WT_COMP_DELTA_EXIT_ENABLED",
+    "val_a": false,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": true,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": true
+  },
+  {
+    "switch": "EXIT_GAIN_EROSION_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": false,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "EXIT_TREND_REVERSAL_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": false,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "AUGMENT_WT_CROSS_ENABLED",
+    "val_a": false,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": true,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": true
+  },
+  {
+    "switch": "SYMBOL_PERF_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": false,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": false
+  },
+  {
+    "switch": "PEAK_GIVEBACK_PROTECTION_ENABLED",
+    "val_a": false,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": true,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": true
+  },
+  {
+    "switch": "WT_COMPOSITE_SCORING_ENABLED",
+    "val_a": false,
+    "sharpe_a": 0.0022,
+    "trades_a": 856,
+    "val_b": true,
+    "sharpe_b": 0.0022,
+    "trades_b": 856,
+    "delta": 0.0,
+    "winner": true
+  }
+]

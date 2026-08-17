@@ -66,8 +66,15 @@ def main() -> int:
     spec_path = out / "research_ladder_spec.json"
     spec_path.write_text(json.dumps(spec, sort_keys=True, indent=2) + "\n")
     override_path = out / "backtest_only_override.json"
+    commission_round_trip_pct = (
+        2.0 * float(spec["commission_bps_one_way"]) / 100.0
+    )
     override_path.write_text(
-        json.dumps({"ROUND_TRIP_COST_PCT": 0.10}, sort_keys=True, indent=2)
+        json.dumps(
+            {"ROUND_TRIP_COST_PCT": commission_round_trip_pct},
+            sort_keys=True,
+            indent=2,
+        )
         + "\n"
     )
     audit_path = out / "exact_engine_audit.json"

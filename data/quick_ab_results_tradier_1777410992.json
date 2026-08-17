@@ -1,0 +1,24 @@
+[
+  {
+    "switch": "STDEV_BREAKOUT_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0785,
+    "trades_a": 11826,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.010900000000000007,
+    "winner": true
+  },
+  {
+    "switch": "EXIT_STDEV_BREAKOUT_FAIL_ENABLED",
+    "val_a": true,
+    "sharpe_a": 0.0676,
+    "trades_a": 6544,
+    "val_b": false,
+    "sharpe_b": 0.0676,
+    "trades_b": 6544,
+    "delta": 0.0,
+    "winner": false
+  }
+]

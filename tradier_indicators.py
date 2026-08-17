@@ -25,6 +25,7 @@ import aiohttp
 import numpy as np
 import orjson
 import pandas as pd
+from classic_formations import formation_fields_from_ohlcv, latest_formation_fields
 import pytz
 from dateutil.parser import isoparse
 
@@ -91,11 +92,29 @@ logger.setLevel(logging.DEBUG)
 ET = pytz.timezone("America/New_York")
 
 def _to_utc(series_or_val, errors="coerce"):
-    """Parse timestamps to UTC, handling mixed timezone formats (Z, -04:00, -05:00, naive)."""
+    """UTC system-wide: naive Tradier ET strings -> ET localize -> UTC. Z/-04:00 preserved."""
     try:
-        return pd.to_datetime(series_or_val, utc=True, errors=errors)
-    except (ValueError, TypeError):
-        return pd.to_datetime(series_or_val, format="mixed", utc=True, errors=errors)
+        # First parse without forcing utc, so we can detect naive
+        parsed = pd.to_datetime(series_or_val, errors=errors)
+        # If it's a Series/Index
+        if hasattr(parsed, 'dt'):
+            # Series case
+            if parsed.dt.tz is None:
+                # Naive -> assume ET (Tradier) -> UTC
+                return parsed.dt.tz_localize(ET, ambiguous='infer', nonexistent='shift_forward').dt.tz_convert(pytz.UTC)
+            else:
+                return parsed.dt.tz_convert(pytz.UTC)
+        else:
+            # Scalar case
+            if parsed.tzinfo is None:
+                return parsed.tz_localize(ET).tz_convert(pytz.UTC) if hasattr(parsed, 'tz_localize') else pd.Timestamp(parsed).tz_localize(ET).tz_convert(pytz.UTC)
+            else:
+                return parsed.tz_convert(pytz.UTC)
+    except Exception:
+        try:
+            return pd.to_datetime(series_or_val, utc=True, errors=errors)
+        except Exception:
+            return pd.to_datetime(series_or_val, format="mixed", utc=True, errors=errors)
 
 def filter_strict_market_hours(df: pd.DataFrame, is_fast_tf: bool) -> pd.DataFrame:
     if df.empty: return df
@@ -208,6 +227,41 @@ def resample_tf(df, tf):
     out["close_time"] = _to_utc(out["close_time"])
     out["timestamp"] = out["close_time"].dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     return out
+
+
+def _ordinary_parent_available_at(label_dt: datetime, timeframe: str) -> datetime:
+    """Return the conservative stock-session completion for a parent label."""
+    label = pd.Timestamp(label_dt)
+    if label.tzinfo is None:
+        label = label.tz_localize(timezone.utc)
+    label_et = label.tz_convert(ET)
+    session_date = label_et.date()
+    if timeframe == "D":
+        available_et = ET.localize(
+            datetime.combine(session_date, dt_time(16, 0))
+        )
+    elif timeframe == "4h":
+        if label_et.time() < dt_time(12, 45):
+            available_et = ET.localize(
+                datetime.combine(session_date, dt_time(12, 45))
+            )
+        elif label_et.time() < dt_time(16, 0):
+            available_et = ET.localize(
+                datetime.combine(session_date, dt_time(16, 0))
+            )
+        else:
+            # Any retained after-hours parent is deliberately delayed rather
+            # than treated as a completed RTH parent at its opening label.
+            available_et = label_et + pd.Timedelta(hours=4)
+    else:
+        available_et = min(
+            label_et + pd.Timedelta(hours=1),
+            pd.Timestamp(
+                ET.localize(datetime.combine(session_date, dt_time(16, 0)))
+            ),
+        )
+    return pd.Timestamp(available_et).tz_convert(timezone.utc).to_pydatetime()
+
 
 def apply_session_compression(df): 
     if df.empty: return df
@@ -947,6 +1001,215 @@ TIMEFRAMES = {
     "D":   {"sec": 86400,"half": 43200, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]}
 }
 
+# Prepared direct routes must never consume the mark-adjusted dataframe used by
+# legacy display/scoring fields.  This producer is deliberately separate from
+# that path: it returns only the last candle whose *completion availability*
+# is no later than the caller's as-of clock.  No order path reads these fields
+# until a separately reviewed adapter is installed.
+COMPLETED_SNAPSHOT_TIMEFRAMES = frozenset({"5m", "15m", "1h", "4h", "D"})
+COMPLETED_SNAPSHOT_DEMAND_SWITCHES = (
+    "ENTRY_STOCH_HHHL_DIRECT_ENABLED",
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED",
+    "ENTRY_STOCH_PARENT_DIRECT_ENABLED",
+    "WT_DC_DIRECT_COMPLETED_ENABLED",
+    "BB_RECOVERY_DIRECT_ENABLED",
+    "LONG_WAIT_DIRECT_ENABLED",
+    "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED",
+    "MTF_ATR_MULTITF_DIRECT_ENABLED",
+)
+
+
+def completed_snapshot_demanded(cfg: Any = None) -> bool:
+    """Keep completed-feature calculation off the ordinary live hot path."""
+    cfg = config if cfg is None else cfg
+    return bool(
+        getattr(cfg, "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False)
+        or any(bool(getattr(cfg, name, False)) for name in COMPLETED_SNAPSHOT_DEMAND_SWITCHES)
+    )
+
+
+@dataclass(frozen=True)
+class CompletedCandleSnapshot:
+    timeframe: str
+    source_ts: int
+    previous_source_ts: Optional[int]
+    open: float
+    high: float
+    low: float
+    close: float
+    high_prev: Optional[float]
+    low_prev: Optional[float]
+    stoch_k: Optional[float]
+    stoch_d: Optional[float]
+    stoch_k_prev: Optional[float]
+    stoch_d_prev: Optional[float]
+    wt1: Optional[float]
+    wt2: Optional[float]
+    wt1_prev: Optional[float]
+    wt2_prev: Optional[float]
+    wt_cross: str
+    dc_high: Optional[float]
+    dc_low: Optional[float]
+    dc_high_prev: Optional[float]
+    dc_low_prev: Optional[float]
+    bb_upper: Optional[float]
+    bb_lower: Optional[float]
+    atr: Optional[float]
+
+    def as_indicator_fields(self) -> Dict[str, Any]:
+        """Flatten under an explicit completed namespace for future adapters."""
+        tf = self.timeframe
+        return {
+            f"_completed_source_ts_{tf}": self.source_ts,
+            f"_completed_source_ts_{tf}_prev": self.previous_source_ts,
+            f"_completed_open_{tf}": self.open,
+            f"_completed_high_{tf}": self.high,
+            f"_completed_low_{tf}": self.low,
+            f"_completed_close_{tf}": self.close,
+            f"_completed_high_{tf}_prev": self.high_prev,
+            f"_completed_low_{tf}_prev": self.low_prev,
+            f"_completed_stoch_k_{tf}": self.stoch_k,
+            f"_completed_stoch_d_{tf}": self.stoch_d,
+            f"_completed_stoch_k_{tf}_prev": self.stoch_k_prev,
+            f"_completed_stoch_d_{tf}_prev": self.stoch_d_prev,
+            f"_completed_wt1_{tf}": self.wt1,
+            f"_completed_wt2_{tf}": self.wt2,
+            f"_completed_wt1_{tf}_prev": self.wt1_prev,
+            f"_completed_wt2_{tf}_prev": self.wt2_prev,
+            f"_completed_wt_cross_{tf}": self.wt_cross,
+            f"_completed_dc_high_{tf}": self.dc_high,
+            f"_completed_dc_low_{tf}": self.dc_low,
+            f"_completed_dc_high_{tf}_prev": self.dc_high_prev,
+            f"_completed_dc_low_{tf}_prev": self.dc_low_prev,
+            f"_completed_bb_upper_{tf}": self.bb_upper,
+            f"_completed_bb_lower_{tf}": self.bb_lower,
+            f"_completed_atr_{tf}": self.atr,
+        }
+
+
+def _snapshot_asof(asof_ts: Any) -> pd.Timestamp:
+    value = pd.to_datetime(asof_ts, utc=True, errors="coerce")
+    if pd.isna(value):
+        raise ValueError("asof_ts must be a valid UTC timestamp")
+    return pd.Timestamp(value)
+
+
+def _snapshot_available_at(label: Any, timeframe: str) -> pd.Timestamp:
+    label_ts = pd.Timestamp(pd.to_datetime(label, utc=True, errors="raise"))
+    if timeframe in {"1h", "4h", "D"}:
+        return pd.Timestamp(_ordinary_parent_available_at(label_ts.to_pydatetime(), timeframe))
+    return label_ts + pd.Timedelta(seconds=TIMEFRAMES[timeframe]["sec"])
+
+
+def completed_candle_frame(
+    df: pd.DataFrame, timeframe: str, asof_ts: Any
+) -> pd.DataFrame:
+    """Return a copied raw frame truncated before its current/in-progress bar.
+
+    The input is never mutated and no mark price is accepted.  Callers that
+    have a live mark must pass their original kline frame, not the result of
+    :func:`with_mark_price`; ``IndicatorCalculator`` does this explicitly.
+    """
+    tf = str(timeframe)
+    if tf not in COMPLETED_SNAPSHOT_TIMEFRAMES:
+        raise ValueError(f"unsupported completed snapshot timeframe: {tf}")
+    if df is None or df.empty:
+        return pd.DataFrame()
+    timestamp_col = next((name for name in ("timestamp_dt", "close_time", "timestamp", "time") if name in df.columns), None)
+    if timestamp_col is None or any(name not in df.columns for name in ("open", "high", "low", "close")):
+        return pd.DataFrame()
+    raw = df.copy(deep=True)
+    raw["_completed_snapshot_label"] = _to_utc(raw[timestamp_col])
+    for name in ("open", "high", "low", "close"):
+        raw[name] = pd.to_numeric(raw[name], errors="coerce")
+    raw = raw.dropna(subset=["_completed_snapshot_label", "open", "high", "low", "close"])
+    if raw.empty:
+        return raw
+    raw = raw.sort_values("_completed_snapshot_label").drop_duplicates(
+        subset=["_completed_snapshot_label"], keep="last"
+    )
+    asof = _snapshot_asof(asof_ts)
+    raw["_completed_snapshot_available"] = raw["_completed_snapshot_label"].map(
+        lambda label: _snapshot_available_at(label, tf)
+    )
+    return raw.loc[raw["_completed_snapshot_available"] <= asof].reset_index(drop=True)
+
+
+def produce_completed_candle_snapshot(
+    df: pd.DataFrame, timeframe: str, asof_ts: Any
+) -> Optional[CompletedCandleSnapshot]:
+    """Produce one completed-only feature snapshot for a prepared direct route."""
+    tf = str(timeframe)
+    completed = completed_candle_frame(df, tf, asof_ts)
+    if completed.empty:
+        return None
+    source_ts = int(pd.Timestamp(completed["_completed_snapshot_available"].iloc[-1]).timestamp())
+    previous_source_ts = (
+        int(pd.Timestamp(completed["_completed_snapshot_available"].iloc[-2]).timestamp())
+        if len(completed) > 1 else None
+    )
+    close = completed["close"].astype(float)
+    high = completed["high"].astype(float)
+    low = completed["low"].astype(float)
+    k, d, k_prev, d_prev, _, _ = stoch_result(close)
+    wt1, wt2 = wavetrend(completed, timeframe=tf)
+    wt1_value = float(wt1.iloc[-1]) if wt1 is not None and pd.notna(wt1.iloc[-1]) else None
+    wt2_value = float(wt2.iloc[-1]) if wt2 is not None and pd.notna(wt2.iloc[-1]) else None
+    wt1_prev = float(wt1.iloc[-2]) if wt1 is not None and len(wt1) > 1 and pd.notna(wt1.iloc[-2]) else None
+    wt2_prev = float(wt2.iloc[-2]) if wt2 is not None and len(wt2) > 1 and pd.notna(wt2.iloc[-2]) else None
+    if wt1_prev is not None and wt2_prev is not None and wt1_value is not None and wt2_value is not None:
+        wt_cross = "BULL" if wt1_prev <= wt2_prev and wt1_value > wt2_value else (
+            "BEAR" if wt1_prev >= wt2_prev and wt1_value < wt2_value else "NONE"
+        )
+    else:
+        wt_cross = "NONE"
+    dc_high, dc_low, _ = donchian(high, low, TIMEFRAMES[tf]["dc_window"])
+    dc_high_prev, dc_low_prev, _ = donchian_prev(
+        high, low, TIMEFRAMES[tf]["dc_window"]
+    )
+    bb_upper, bb_lower, _ = bb_features(close)
+    atr, _, _ = atr_values(completed, TIMEFRAMES[tf]["atr"], ATR_LONG_LENGTH)
+    return CompletedCandleSnapshot(
+        timeframe=tf,
+        source_ts=source_ts,
+        previous_source_ts=previous_source_ts,
+        open=float(completed["open"].iloc[-1]),
+        high=float(high.iloc[-1]),
+        low=float(low.iloc[-1]),
+        close=float(close.iloc[-1]),
+        high_prev=(float(high.iloc[-2]) if len(high) > 1 else None),
+        low_prev=(float(low.iloc[-2]) if len(low) > 1 else None),
+        stoch_k=k,
+        stoch_d=d,
+        stoch_k_prev=k_prev,
+        stoch_d_prev=d_prev,
+        wt1=wt1_value,
+        wt2=wt2_value,
+        wt1_prev=wt1_prev,
+        wt2_prev=wt2_prev,
+        wt_cross=wt_cross,
+        dc_high=dc_high,
+        dc_low=dc_low,
+        dc_high_prev=dc_high_prev,
+        dc_low_prev=dc_low_prev,
+        bb_upper=bb_upper,
+        bb_lower=bb_lower,
+        atr=atr,
+    )
+
+
+def produce_completed_candle_snapshots(
+    frames: Dict[str, pd.DataFrame], asof_ts: Any
+) -> Dict[str, CompletedCandleSnapshot]:
+    """Build snapshots for 5m/15m/1h/4h/D without mixing availability clocks."""
+    return {
+        tf: snapshot
+        for tf, frame in (frames or {}).items()
+        if str(tf) in COMPLETED_SNAPSHOT_TIMEFRAMES
+        for snapshot in [produce_completed_candle_snapshot(frame, str(tf), asof_ts)]
+        if snapshot is not None
+    }
+
 ATR_LONG_LENGTH = 100
 REL_VOL_LENGTH = 20
 LINREG_LENGTH = 50
@@ -1140,10 +1403,127 @@ class IndicatorCalculator:
                 # else: mark_price, mark_ts = price_cacheman.get_price(symbol)
             except Exception:
                 pass 
+        # Preserve an immutable raw copy before legacy mark adjustment mutates
+        # its dataframe in place.  Completed snapshots below must never see
+        # that adjusted current row.
+        raw_snapshot_df = df.copy(deep=True)
         if use_mark:
             adjusted_df = with_mark_price(df, best_price, final_timestamp)
         else:
             adjusted_df = df
+
+        # Published only for future prepared direct adapters.  This is built
+        # from ``df`` before the optional mark adjustment above, so its OHLC,
+        # stochastic, WT, prior-Donchian, BB and ATR inputs are never derived
+        # from a current/in-progress candle or an external mark.
+        if completed_snapshot_demanded(config):
+            try:
+                completed_snapshot = produce_completed_candle_snapshot(
+                    raw_snapshot_df, timeframe, mark_ts or utc_now()
+                )
+                if completed_snapshot is not None:
+                    result.update(completed_snapshot.as_indicator_fields())
+            except (TypeError, ValueError):
+                # Absence is intentional fail-closed behavior; no action path
+                # may substitute generic/current indicators for this snapshot.
+                pass
+
+        # Shared ordinary ladder inputs are calculated from the last completed
+        # parent dataframe, never from the optional live mark appended above.
+        # The ordinary adapter prefers these fields over generic indicators.
+        if timeframe in ("D", "4h", "1h"):
+            try:
+                _completed_df = df
+                _asof = pd.Timestamp(mark_ts or utc_now())
+                if _asof.tzinfo is None:
+                    _asof = _asof.tz_localize(timezone.utc)
+                else:
+                    _asof = _asof.tz_convert(timezone.utc)
+                _last_available = _ordinary_parent_available_at(
+                    last_bar_dt, timeframe
+                )
+                if pd.Timestamp(_last_available) > _asof:
+                    _completed_df = df.iloc[:-1]
+                if len(_completed_df) < 2:
+                    raise ValueError("not enough completed parents")
+                _completed_label = pd.to_datetime(
+                    _completed_df["timestamp_dt"].iloc[-1], utc=True
+                ).to_pydatetime()
+                _completed_available = _ordinary_parent_available_at(
+                    _completed_label, timeframe
+                )
+                _completed_close = _completed_df["close"].astype(float)
+                _completed_high = _completed_df["high"].astype(float)
+                _completed_low = _completed_df["low"].astype(float)
+                result[f"_completed_source_ts_{timeframe}"] = int(
+                    _completed_available.timestamp()
+                )
+                result[f"_ladder_high_{timeframe}"] = float(
+                    _completed_high.iloc[-1]
+                )
+                result[f"_ladder_low_{timeframe}"] = float(
+                    _completed_low.iloc[-1]
+                )
+                result[f"_ladder_high_{timeframe}_prev"] = float(
+                    _completed_high.iloc[-2]
+                )
+                result[f"_ladder_low_{timeframe}_prev"] = float(
+                    _completed_low.iloc[-2]
+                )
+                _completed_stoch = stoch_result(_completed_close)
+                result[f"_ladder_stoch_k_{timeframe}"] = float(
+                    _completed_stoch[0]
+                )
+                result[f"_ladder_stoch_k_{timeframe}_prev"] = float(
+                    _completed_stoch[2]
+                )
+                _completed_wt1, _completed_wt2 = wavetrend(
+                    _completed_df, timeframe
+                )
+                _completed_cross = "NONE"
+                if (
+                    _completed_wt1 is not None
+                    and _completed_wt2 is not None
+                    and len(_completed_wt1) >= 2
+                ):
+                    if (
+                        _completed_wt1.iloc[-2] <= _completed_wt2.iloc[-2]
+                        and _completed_wt1.iloc[-1] > _completed_wt2.iloc[-1]
+                    ):
+                        _completed_cross = "BULL"
+                    elif (
+                        _completed_wt1.iloc[-2] >= _completed_wt2.iloc[-2]
+                        and _completed_wt1.iloc[-1] < _completed_wt2.iloc[-1]
+                    ):
+                        _completed_cross = "BEAR"
+                result[f"_ladder_wt_cross_{timeframe}"] = _completed_cross
+                _lr_length = (
+                    getattr(config, "LR_CHANNEL_LONG_LENGTHS", None) or {}
+                ).get(timeframe)
+                if _lr_length and len(_completed_close) >= int(_lr_length):
+                    _, _, _completed_pb = linreg_channel(
+                        _completed_close,
+                        int(_lr_length),
+                        std_mult=2.5,
+                    )
+                    if _completed_pb is not None:
+                        result[f"_ladder_lrL_pct_b_{timeframe}"] = float(
+                            _completed_pb
+                        )
+                if timeframe == "4h" and len(_completed_high) >= 31:
+                    result["e02_completed_close_4h"] = float(
+                        _completed_close.iloc[-1]
+                    )
+                    result["e02_prior_high_4h_n30"] = float(
+                        _completed_high.iloc[-31:-1].max()
+                    )
+                    result["e02_prior_low_4h_n30"] = float(
+                        _completed_low.iloc[-31:-1].min()
+                    )
+            except Exception:
+                # Generic completed indicators remain available as a fail-closed
+                # fallback; the adapter will reject missing source identity.
+                pass
         
         # --- 4. OUTPUT THE GUARANTEED BEST PRICE ---
         result["current_price"] = best_price
@@ -1180,6 +1560,21 @@ class IndicatorCalculator:
         # so the below-sma200 bypass could never fire.
         result[f"open_{timeframe}"] = float(open_series.iloc[-1]) if len(open_series) > 0 else current_price
         result[f"close_{timeframe}"] = float(close_series.iloc[-1]) if len(close_series) > 0 else current_price
+        if (
+            timeframe == "4h"
+            and "e02_prior_high_4h_n30" not in result
+            and len(high_series) >= 31
+            and len(low_series) >= 31
+        ):
+            # E02/N30 uses the thirty parents strictly preceding the newly
+            # completed 4h close.  Excluding iloc[-1] prevents the signal bar
+            # from moving its own Donchian threshold.
+            result["e02_prior_high_4h_n30"] = float(
+                high_series.iloc[-31:-1].max()
+            )
+            result["e02_prior_low_4h_n30"] = float(
+                low_series.iloc[-31:-1].min()
+            )
         if timeframe == "15m" and len(close_series) >= 200:
             result["sma_200_15m"] = float(close_series.iloc[-200:].mean())
 
@@ -1356,6 +1751,19 @@ class IndicatorCalculator:
             result[f"candle_body_{timeframe}"] = round(_cb_body, 8)
             result[f"candle_body_prev_{timeframe}"] = round(_cb_body_prev, 8)
             result[f"candle_body_ratio_{timeframe}"] = round(_cb_body / _cb_body_prev, 3) if _cb_body_prev > 0 else 1.0
+        if timeframe in ("15m", "1h", "4h", "D"):
+            # Use kline bars only (not the optional mark-price append) so the
+            # same causal detector and breakout timestamp are shared with NPZ
+            # backtests.  Only the latest scalars are published to live JSON.
+            _formation_fields = formation_fields_from_ohlcv(
+                df["open"].astype(float).values,
+                df["high"].astype(float).values,
+                df["low"].astype(float).values,
+                df["close"].astype(float).values,
+                df["volume"].astype(float).values,
+                timeframe,
+            )
+            result.update(latest_formation_fields(_formation_fields))
         t_up, tco, tcu = hull_trend_indicators(close_series, length_short=9, length_long=21)
         if t_up is not None: result[f"t_up_{timeframe}"] = t_up
         if tco is not None: result[f"tco_{timeframe}"] = tco
@@ -1629,7 +2037,7 @@ class TradierBarManager:
                         if not is_intraday_data(df_new, tf):
                             logger.warning(f"REJECTED {symbol} {tf}: timesales returned daily bars")
                         elif 'time' in df_new.columns:
-                            df_new['timestamp_dt'] = pd.to_datetime(df_new['time'], utc=True, errors='coerce')
+                            df_new['timestamp_dt'] = _to_utc(df_new['time'])
                                 
                             df_new = df_new.dropna(subset=['timestamp_dt'])
                             # df_new['timestamp'] = df_new['timestamp_dt'].dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -1786,8 +2194,9 @@ class TradierIndicatorOrchestrator:
         self._dirty = False
         self._save_due = False
         self._last_payload_hash: Optional[str] = None
-        self._schedule_order =["D", "4h", "1h", "15m", "5m", "3m", "1m"]
+        self._schedule_order =["D", "4h", "1h", "15m", "5m", "1m"]
         self._shutdown = asyncio.Event()
+        self._last_symbol_refresh = utc_now()
         self.executor = ThreadPoolExecutor(max_workers=4)
         # 2026-04-27 user rule: indicators max 1 min stale. Bumped from 4→24.
         # If we hit Tradier 429s we back off via _http_semaphore (which still throttles total in-flight).
@@ -1916,14 +2325,58 @@ class TradierIndicatorOrchestrator:
                     raise e
                     
             _atomic_write_sync(latest_file, json_bytes)
-            # Also write timestamped file so tradier_manage can read the freshest one (latest gets stuck in OS cache)
+            # Also write timestamped file so tradier_manage SAFE-PATH reads freshest (latest gets stuck in OS cache) — DO NOT USE _latest EVER for trading
             ts_file = self.config.DATA_DIR / f"tradier_indicators_{int(time.time())}.json"
             _atomic_write_sync(ts_file, json_bytes)
-            # Clean old timestamped files (keep last 5)
-            ts_files = sorted(self.config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
-            for old_f in ts_files[5:]:
-                try: old_f.unlink()
-                except Exception: pass
+            # Hierarchical retention: last 5 (~3min at 39s), then 1 per 15m until 1h, 1 per hour until 4h, 1 per day — tossed rest
+            try:
+                now_ts = time.time()
+                all_ts = sorted(self.config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+                keep = set(all_ts[:5])
+                # 15m buckets until 1h
+                cutoff_1h = now_ts - 3600
+                by_15m = {}
+                for p in all_ts[5:]:
+                    mtime = p.stat().st_mtime
+                    if mtime < cutoff_1h:
+                        continue
+                    if mtime >= now_ts - 3*60:
+                        continue
+                    bucket = int(mtime // 900)
+                    by_15m.setdefault(bucket, []).append(p)
+                for bucket, lst in by_15m.items():
+                    keep.add(max(lst, key=lambda p: p.stat().st_mtime))
+                # 1h buckets until 4h
+                cutoff_4h = now_ts - 4*3600
+                by_hour = {}
+                for p in all_ts:
+                    if p in keep:
+                        continue
+                    mtime = p.stat().st_mtime
+                    if mtime < cutoff_4h or mtime >= cutoff_1h:
+                        continue
+                    bucket = int(mtime // 3600)
+                    by_hour.setdefault(bucket, []).append(p)
+                for bucket, lst in by_hour.items():
+                    keep.add(max(lst, key=lambda p: p.stat().st_mtime))
+                # Daily beyond 4h
+                by_day = {}
+                for p in all_ts:
+                    if p in keep:
+                        continue
+                    mtime = p.stat().st_mtime
+                    if mtime >= cutoff_4h:
+                        continue
+                    bucket = int(mtime // 86400)
+                    by_day.setdefault(bucket, []).append(p)
+                for bucket, lst in by_day.items():
+                    keep.add(max(lst, key=lambda p: p.stat().st_mtime))
+                for p in all_ts:
+                    if p not in keep:
+                        try: p.unlink()
+                        except Exception: pass
+            except Exception as _e:
+                logger.debug(f"timestamp retention error: {_e}")
             logger.info(f"✅ Saved indicators for {len(indicators)} symbols to latest + timestamped JSON")
         except Exception as e:
             logger.error(f"❌ Error saving indicators to JSON: {e}", exc_info=True)
@@ -2065,6 +2518,20 @@ class TradierIndicatorOrchestrator:
                 except Exception as e:
                     logger.error(f"Error processing {symbol} {timeframe}: {e}")
 
+        # QUICK OPEN FIX 2026-08-17 13:17 UTC 17m before open: skip D/4h/1h/15m unless at correct ET window, otherwise 115 symbols D/1h hangs 60s+ and blocks 1m/5m fresh needed for open. Market open needs 1m/5m <40s, not D.
+        now_et = utc_now().astimezone(ET)
+        if timeframe == "D" and not (now_et.hour == 16 and now_et.minute == 0):
+            logger.info(f"[{timeframe}] Skipped (not 16:00 ET, now {now_et.hour:02d}:{now_et.minute:02d} ET) for quick open")
+            return
+        if timeframe == "4h" and not ((now_et.hour == 9 and now_et.minute == 30) or (now_et.hour == 13 and now_et.minute == 0) or (now_et.hour == 16 and now_et.minute == 0)):
+            logger.info(f"[{timeframe}] Skipped (not 9:30/13:00/16:00 ET) for quick open")
+            return
+        if timeframe == "1h" and not (now_et.minute == 0):
+            logger.info(f"[{timeframe}] Skipped (not :00, now {now_et.hour:02d}:{now_et.minute:02d} ET) for quick open")
+            return
+        if timeframe == "15m" and now_et.minute not in (0, 15, 30, 45):
+            logger.info(f"[{timeframe}] Skipped (not :00/:15/:30/:45, now {now_et.hour:02d}:{now_et.minute:02d} ET) for quick open")
+            return
         logger.info(f"[{timeframe}] Starting concurrent update for {len(self.symbols)} symbols...")
         tasks =[asyncio.create_task(process_symbol(sym)) for sym in self.symbols]
         if tasks:
@@ -2073,18 +2540,65 @@ class TradierIndicatorOrchestrator:
         if timeframe == self._schedule_order[-1]:
             self._save_due = True
             
+    async def _refresh_symbols_if_needed(self) -> None:
+        if (utc_now() - self._last_symbol_refresh).total_seconds() < 360:
+            return
+        new_symbols = self._load_symbols()
+        if not new_symbols:
+            self._last_symbol_refresh = utc_now()
+            return
+        new_set = set(new_symbols)
+        current_set = set(self.symbols)
+        if new_set == current_set:
+            self._last_symbol_refresh = utc_now()
+            return
+        for symbol in new_symbols:
+            if symbol not in self.data:
+                self.data[symbol] = {}
+            if symbol not in self.state:
+                self.state[symbol] = {tf: SymbolTimeframeState(timeframe=tf) for tf in TIMEFRAMES.keys()}
+                self.pending_mid[symbol] = []
+                self.pending_trivial[symbol] = False
+        for symbol in current_set - new_set:
+            self.pending_mid.pop(symbol, None)
+            self.pending_trivial.pop(symbol, None)
+            self.state.pop(symbol, None)
+        self.symbols = new_symbols
+        self.symbol_set = set(new_symbols)
+        self._last_symbol_refresh = utc_now()
+
     async def _schedule_loop(self) -> None:
-        # 2026-04-27 user rule: indicators max 1 min stale. Sleep between cycles
-        # cut from 15s to a configurable value (default 1s). The cycle itself is the
-        # rate-limit bound; this just removes the idle gap.
-        _idle = float(getattr(self.config, 'TRADIER_INDICATORS_IDLE_SLEEP_SEC', 1.0))
+        # 2026-08-14 FIX: Tradier market hours ET 9:30-16:00: 4h=9:30/13:00/16:00, 1h=9:00-16:00, D=16:00 ET. Was run_cycle bundle 30min ABSURD -> <40s like ez + ET clocks.
+        interval = 39.0
         while not self._shutdown.is_set():
+            now = utc_now()
+            midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            elapsed = (now - midnight).total_seconds()
+            wait = interval - (elapsed % interval)
+            if wait <= 0.1:
+                wait += interval
             try:
-                await self.run_cycle()
-                await asyncio.sleep(_idle)
-            except Exception as e:
-                logger.error(f"Schedule Loop Error: {e}")
-                await asyncio.sleep(_idle)
+                await asyncio.wait_for(self._shutdown.wait(), timeout=wait)
+                break
+            except asyncio.TimeoutError:
+                pass
+            await self._refresh_symbols_if_needed()
+            now_et = now.astimezone(ET)
+            et_h = now_et.hour
+            et_m = now_et.minute
+            for tf in self._schedule_order:
+                if self._shutdown.is_set():
+                    break
+                if tf == "15m" and now_et.minute not in (0, 15, 30, 45):
+                    continue
+                if tf == "1h" and not (9 <= et_h <= 16 and et_m == 0):
+                    continue
+                if tf == "4h" and not ((et_h == 9 and et_m == 30) or (et_h == 13 and et_m == 0) or (et_h == 16 and et_m == 0)):
+                    continue
+                if tf == "D" and not (et_h == 16 and et_m == 0):
+                    continue
+                await self._process_timeframe(tf, force=False)
+            self._save_due = True
 
     def _required_by_timeframe(self, timeframe: str) -> List[str]:
         base_indicators =[f"timestamp_{timeframe}", f"dc_high_{timeframe}", f"dc_low_{timeframe}", f"dc_basis_{timeframe}",
@@ -2713,7 +3227,11 @@ class TradierIndicatorOrchestrator:
             logger.info(f"Found {indicator_files_count} indicator files, running cleanup...")
             self.cleanup_old_indicator_files()
         
-        await self.run_cycle()
+        # 2026-08-14 FIX: initial <40s like ez — per-TF not bundle clip 30min. Was await run_cycle() (106 bundles ~30min)
+        for tf in self._schedule_order:
+            await self._process_timeframe(tf, force=False)
+        self._save_due = True
+        await self._save_data()
         tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._save_loop())]
         try:
             await asyncio.gather(*tasks)

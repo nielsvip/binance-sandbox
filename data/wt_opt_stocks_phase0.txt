@@ -1,0 +1,103 @@
+WT PARAMETER OPTIMIZATION — Phase 0
+Symbols: 48 | Param combos: 96 | Total: 9,216
+TFs: ['1h', '4h', 'D'] | Primary: 1h
+Sample: esa6_ema_chan8_sig15 → {'esa': 6, 'chan': 8, 'sig': 15, 'smooth': 3, 'esa_ma': 'ema', 'chan_ma': 'ema', 'ci': 0.015}
+  5/48 (5 with data) 15s
+  10/48 (9 with data) 20s
+  15/48 (13 with data) 25s
+  20/48 (18 with data) 31s
+  25/48 (22 with data) 39s
+  30/48 (27 with data) 46s
+  35/48 (32 with data) 54s
+  40/48 (36 with data) 60s
+  45/48 (40 with data) 64s
+
+Done: 69s — 43 symbols
+
+Combo                                                                   Sharpe    WR  AvgRet Trades   N
+====================================================================================================
+
+--- TOP 20 LONG ---
+LONG|esa14_ema_chan25_sig21                                             +5.648 76.3% +0.595%   124  43
+LONG|esa8_ema_chan8_sig15                                               +5.638 75.2% +0.579%   146  43
+LONG|esa6_ema_chan12_sig21                                              +5.630 75.0% +0.586%   145  43
+LONG|esa6_dema_chan18_sig15                                             +5.629 74.1% +0.552%   160  43
+LONG|esa14_ema_chan25_sig15                                             +5.618 76.7% +0.582%   131  43
+LONG|esa6_ema_chan8_sig15                                               +5.617 74.1% +0.576%   150  43
+LONG|esa6_dema_chan12_sig15                                             +5.604 74.0% +0.548%   162  43
+LONG|esa6_dema_chan18_sig21                                             +5.595 73.9% +0.552%   157  43
+LONG|esa6_dema_chan25_sig15                                             +5.595 74.1% +0.548%   159  43
+LONG|esa6_dema_chan8_sig15                                              +5.592 74.0% +0.543%   162  43
+LONG|esa6_dema_chan12_sig21                                             +5.587 73.6% +0.550%   158  43
+LONG|esa6_ema_chan8_sig21                                               +5.578 74.3% +0.568%   149  43
+LONG|esa6_dema_chan25_sig21                                             +5.576 73.9% +0.550%   157  43
+LONG|esa14_ema_chan18_sig15                                             +5.575 76.5% +0.570%   136  43
+LONG|esa8_ema_chan18_sig21                                              +5.575 75.6% +0.582%   139  43
+LONG|esa8_ema_chan25_sig15                                              +5.565 75.9% +0.587%   142  43
+LONG|esa6_dema_chan8_sig21                                              +5.558 73.6% +0.545%   158  43
+LONG|esa8_ema_chan18_sig15                                              +5.556 75.9% +0.587%   143  43
+LONG|esa8_ema_chan25_sig21                                              +5.555 75.6% +0.587%   138  43
+LONG|esa6_ema_chan12_sig30                                              +5.552 74.3% +0.572%   142  43
+
+--- TOP 20 SHORT ---
+SHORT|esa14_ema_chan18_sig15                                            +5.230 76.6% +0.602%   120  43
+SHORT|esa14_ema_chan18_sig21                                            +5.228 75.8% +0.613%   115  43
+SHORT|esa10_ema_chan18_sig30                                            +5.209 75.1% +0.625%   118  43
+SHORT|esa6_ema_chan8_sig30                                              +5.209 75.1% +0.641%   128  43
+SHORT|esa10_ema_chan25_sig21                                            +5.184 75.6% +0.597%   119  43
+SHORT|esa6_ema_chan12_sig30                                             +5.148 74.9% +0.647%   126  43
+SHORT|esa10_ema_chan8_sig15                                             +5.137 75.9% +0.627%   126  43
+SHORT|esa10_dema_chan18_sig15                                           +5.135 74.2% +0.558%   135  43
+SHORT|esa14_ema_chan8_sig30                                             +5.135 76.0% +0.649%   113  43
+SHORT|esa10_dema_chan12_sig15                                           +5.128 74.4% +0.569%   135  43
+SHORT|esa14_ema_chan12_sig21                                            +5.124 75.8% +0.631%   118  43
+SHORT|esa10_dema_chan8_sig15                                            +5.121 74.5% +0.579%   136  43
+SHORT|esa14_ema_chan8_sig15                                             +5.119 76.4% +0.625%   122  43
+SHORT|esa6_ema_chan8_sig15                                              +5.114 75.0% +0.592%   135  43
+SHORT|esa10_ema_chan18_sig21                                            +5.111 75.2% +0.594%   121  43
+SHORT|esa10_ema_chan25_sig30                                            +5.109 75.2% +0.614%   116  43
+SHORT|esa8_ema_chan8_sig15                                              +5.094 76.0% +0.620%   130  43
+SHORT|esa10_dema_chan25_sig15                                           +5.093 74.1% +0.552%   133  43
+SHORT|esa6_ema_chan18_sig30                                             +5.093 75.3% +0.635%   127  43
+SHORT|esa10_dema_chan12_sig21                                           +5.091 74.1% +0.566%   129  43
+
+--- TOP 20 OVERALL ---
+LONG|esa14_ema_chan25_sig21                                             +5.648 76.3% +0.595%   124  43
+LONG|esa8_ema_chan8_sig15                                               +5.638 75.2% +0.579%   146  43
+LONG|esa6_ema_chan12_sig21                                              +5.630 75.0% +0.586%   145  43
+LONG|esa6_dema_chan18_sig15                                             +5.629 74.1% +0.552%   160  43
+LONG|esa14_ema_chan25_sig15                                             +5.618 76.7% +0.582%   131  43
+LONG|esa6_ema_chan8_sig15                                               +5.617 74.1% +0.576%   150  43
+LONG|esa6_dema_chan12_sig15                                             +5.604 74.0% +0.548%   162  43
+LONG|esa6_dema_chan18_sig21                                             +5.595 73.9% +0.552%   157  43
+LONG|esa6_dema_chan25_sig15                                             +5.595 74.1% +0.548%   159  43
+LONG|esa6_dema_chan8_sig15                                              +5.592 74.0% +0.543%   162  43
+LONG|esa6_dema_chan12_sig21                                             +5.587 73.6% +0.550%   158  43
+LONG|esa6_ema_chan8_sig21                                               +5.578 74.3% +0.568%   149  43
+LONG|esa6_dema_chan25_sig21                                             +5.576 73.9% +0.550%   157  43
+LONG|esa14_ema_chan18_sig15                                             +5.575 76.5% +0.570%   136  43
+LONG|esa8_ema_chan18_sig21                                              +5.575 75.6% +0.582%   139  43
+LONG|esa8_ema_chan25_sig15                                              +5.565 75.9% +0.587%   142  43
+LONG|esa6_dema_chan8_sig21                                              +5.558 73.6% +0.545%   158  43
+LONG|esa8_ema_chan18_sig15                                              +5.556 75.9% +0.587%   143  43
+LONG|esa8_ema_chan25_sig21                                              +5.555 75.6% +0.587%   138  43
+LONG|esa6_ema_chan12_sig30                                              +5.552 74.3% +0.572%   142  43
+
+====================================================================================================
+PARAMETER ANALYSIS (top 50 combos)
+====================================================================================================
+  esa=14                         count=  6 avg_sharpe=+5.552 min=+5.421 max=+5.648
+  sig=15                         count= 23 avg_sharpe=+5.530 min=+5.427 max=+5.638
+  sig=21                         count= 17 avg_sharpe=+5.529 min=+5.440 max=+5.648
+  esa=6                          count= 24 avg_sharpe=+5.527 min=+5.414 max=+5.630
+  ma_type=ema                    count= 31 avg_sharpe=+5.519 min=+5.408 max=+5.648
+  esa=8                          count= 10 avg_sharpe=+5.519 min=+5.450 max=+5.638
+  chan=8                         count= 10 avg_sharpe=+5.517 min=+5.414 max=+5.638
+  chan=25                        count= 15 avg_sharpe=+5.516 min=+5.408 max=+5.648
+  chan=18                        count= 13 avg_sharpe=+5.515 min=+5.420 max=+5.629
+  chan=12                        count= 12 avg_sharpe=+5.511 min=+5.423 max=+5.630
+  ma_type=dema                   count= 19 avg_sharpe=+5.507 min=+5.414 max=+5.629
+  esa=10                         count= 10 avg_sharpe=+5.458 min=+5.408 max=+5.534
+  sig=30                         count= 10 avg_sharpe=+5.455 min=+5.408 max=+5.552
+
+Saved: data/wt_opt_phase0_1h_20260325_2149.json

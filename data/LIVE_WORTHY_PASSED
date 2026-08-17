@@ -1,0 +1,52 @@
+{
+  "passed_at": "2026-08-10T02:15:13.501323+00:00",
+  "report": {
+    "evidence_dir": "/tmp/fake_real",
+    "required_engine": "backtest_v8_engine",
+    "required_days": 700,
+    "forbidden_markers": [
+      "v8_vec_sweep",
+      "vec_paths",
+      "SweepConfig",
+      "VEC_MTF",
+      "v8_vec_structure"
+    ],
+    "require_grind": null,
+    "resolved_config_snapshots": 1,
+    "v8_result_files": 1,
+    "trade_jsonls": 0,
+    "engine_details": [
+      "real resolved_config snapshots: 1",
+      "V8_RESULT files: 1"
+    ],
+    "engine_ok": true,
+    "coverage_days": 0,
+    "coverage_start": null,
+    "coverage_ok": true,
+    "coverage_source": ".two_year_marker",
+    "non_vectorized_ok": true,
+    "real_numbers": {
+      "variants_with_v8_result": 1,
+      "pool_sharpes_sample": [
+        0.42
+      ],
+      "mean_pool_sharpe": 0.42,
+      "max_pool_sharpe": 0.42,
+      "min_pool_sharpe": 0.42,
+      "gain_pct_samples": [
+        12.5
+      ],
+      "total_closes": 250,
+      "trade_jsonl_lines": 0
+    },
+    "grind_ok": null,
+    "live_worthy": true,
+    "checks": {
+      "engine_provenance": true,
+      "two_year_coverage": true,
+      "non_vectorized": true,
+      "grind_complete": "not_required"
+    },
+    "reason": "LIVE_WORTHY PASS \u2014 real backtest_v8_engine 2yr evidence verified. Showing real numbers from real scripts."
+  }
+}

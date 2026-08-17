@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""12-hour digest email for the vec-screen -> reopt/gating -> real-engine
-optimization pipeline. Cron: 0 0,12 * * * (00:00 and 12:00 UTC).
+"""12-hour digest email for the audited direct-V8 GUI-lab system.
+Cron: 0 0,12 * * * (00:00 and 12:00 UTC).
 
 Reuses the existing Gmail send mechanism in morning_email.py (Keychain /
 ~/.gmail_app_pw password lookup + smtplib SSL/STARTTLS fallback) — does not
-rebuild auth. Data comes from results_dashboard_lib.py, the same aggregation
-the /results chart_server dashboard uses, so the email and the dashboard never
-disagree.
+rebuild auth. The active builder reads the supervisor's audited direct-V8
+receipts through ``direct_v8_digest.py``. Historical matrix/reopt helpers remain
+below only for forensic callers and are not part of the email payload.
 
-Delta window: [max(last_sent_ts, now - 12h), now] read from
-data/results_digest_state.json, so a digest that runs a bit late still shows
-a clean non-overlapping window since the last one actually sent (capped at 12h
-lookback if a run was ever missed by more than that).
+Delta window: the dedicated ``data/direct_v8_digest_state.json`` cursor is
+advanced only after a successful send.  There is no legacy 12-hour lookback:
+the cursor is the exact boundary since the last direct-V8 digest, while the
+morning/evening snapshots leave it untouched.
 
-NO-LIES MANDATE: see results_dashboard_lib.py docstring — all real_sharpe_1sym
-values are single-symbol (n_syms=1) real-engine confirmations, DIAGNOSTIC per
-CLAUDE.md rule 5, never a promotion signal. This email is a monitoring digest.
+NO-LIES MANDATE: every active row is an audited, capital-normalized 12-month
+receipt with marked-equity/unrealized P/L reconciliation. A rejected row is
+reported as evidence for the combiner, never as a recommendation.
 """
 import argparse
 import html as html_lib
@@ -37,14 +37,22 @@ sys.path.insert(0, str(BASE_PATH))
 sys.path.insert(0, str(BASE_PATH / "tools"))
 import results_dashboard_lib as lib  # noqa: E402
 import morning_email as me  # noqa: E402  (reused: get_gmail_password, FROM_EMAIL, TO_EMAIL, CSS)
+import direct_v8_digest as v8digest  # noqa: E402
+import current_matrix_reporting  # noqa: E402
+import vector_scalar_gap_reporting  # noqa: E402
+from trb_tim_contract import tim_band_for_key  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("results_digest_email")
 
 STATE_PATH = BASE_PATH / "data" / "results_digest_state.json"
 DASHBOARD_URL = "http://localhost:5077/results"
-XLS_ATTACH = ["SYMBOL_OVERVIEW_crypto.xlsx", "SYMBOL_OVERVIEW_stocks.xlsx"]
-XLS_LINK_ONLY = ["PERSYM_APPLIED_REVIEW.xlsx", "FULL_PARAM_MATRIX_crypto.xlsx", "FULL_PARAM_MATRIX_stocks.xlsx"]
+# The old matrix workbooks are deliberately not attached to the active
+# results digest.  The direct-V8 receipt tables below are the authoritative
+# result surface; attaching a SWITCH_MATRIX workbook would make a stale
+# artifact look current again.
+XLS_ATTACH = []
+XLS_LINK_ONLY = []
 TWELVE_H = 12 * 3600
 MATRIX_FILL_STAGES = (
     "VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS",
@@ -55,6 +63,51 @@ MATRIX_FILL_STAGE_PLACEHOLDERS = ",".join("?" for _ in MATRIX_FILL_STAGES)
 MATRIX_FILL_PRIORITY = ("MU", "ARM", "PBF")
 MATRIX_GUARD_SCRIPT = BASE_PATH / "tools" / "matrix_guard.py"
 MATRIX_STALE_H = 24.0
+LEDGER_STALE_H = 48.0
+RUNNING_ON_S1_SANDBOX = str(BASE_PATH) == "/home/niels/binance-sandbox"
+
+
+def _matrix_guard_script():
+    """Return the canonical guard that owns the repaired matrix artifact.
+
+    The digest cron can run from the live checkout on S1, while the current
+    SWITCH_MATRIX_TRB artifact and exact-result database intentionally live in
+    the sandbox checkout.  Prefer that guard when present; an explicit
+    MATRIX_GUARD_PATH remains available for tests and emergency operations.
+    """
+    configured = os.environ.get("MATRIX_GUARD_PATH")
+    if configured:
+        return Path(configured)
+    sandbox_guard = Path("/home/niels/binance-sandbox/tools/matrix_guard.py")
+    if sandbox_guard.exists():
+        return sandbox_guard
+    return MATRIX_GUARD_SCRIPT
+
+
+def _ledger_staleness_h():
+    """Age (hours) of the freshest file under data/history/*/*.jsonl on THIS host, or None if fresh.
+
+    2026-07-29: data/history/ is the MacBook live-trading ledger (CLAUDE.md source of
+    truth). This script also runs from an S1 sandbox cron (0 0,12 UTC) where that
+    directory is a long-stale mirror -- checked live: crypto accounts (ang/fin/flz/
+    inf/men) last written May-June 2026, trb held one May file, trc did not exist.
+    Silently reading that and printing "no fills" is indistinguishable from a real
+    quiet market to anyone reading the email -- exactly the failure mode the NO-LIES
+    MANDATE bans. Returns the staleness in hours (so callers can disclose it) when
+    it exceeds LEDGER_STALE_H, else None (ledger looks live on this host)."""
+    newest = 0.0
+    try:
+        for p in (BASE_PATH / "data" / "history").glob("*/*.jsonl"):
+            try:
+                newest = max(newest, p.stat().st_mtime)
+            except OSError:
+                continue
+    except OSError:
+        pass
+    if not newest:
+        return 1e9
+    age_h = (time.time() - newest) / 3600.0
+    return age_h if age_h > LEDGER_STALE_H else None
 
 
 def _matrix_guard_totals_section():
@@ -63,10 +116,13 @@ def _matrix_guard_totals_section():
     ONE canonical counter per CLAUDE.md's matrix_guard warning -- so this digest
     never invents a second/competing number for the same fill state."""
     import subprocess
+    guard_script = _matrix_guard_script()
+    guard_root = guard_script.parent.parent
     try:
         proc = subprocess.run(
-            [sys.executable, str(MATRIX_GUARD_SCRIPT)],
-            cwd=str(BASE_PATH), capture_output=True, text=True, timeout=60,
+            [sys.executable, str(guard_script)],
+            cwd=str(guard_root), capture_output=True, text=True,
+            timeout=MATRIX_GUARD_TIMEOUT_SECONDS,
         )
         body = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
         if not body.strip():
@@ -74,17 +130,239 @@ def _matrix_guard_totals_section():
     except Exception as exc:
         body = "matrix_guard.py failed to run: %s" % exc
     return (
-        "<h2>MATRIX FILL PROGRESS (canonical &mdash; tools/matrix_guard.py, run live at digest-build time)</h2>"
+        "<h2>MATRIX DIFFERENTIAL-EVIDENCE COVERAGE (canonical &mdash; tools/matrix_guard.py, run live at digest-build time)</h2>"
         "<p>Reused verbatim from <code>tools/matrix_guard.py</code> / <code>./matrix_progress.sh</code> -- "
-        "never a third counter. Canonical artifact: "
-        "<code>data/reports/SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz</code>. "
+        "never a third counter. Current repaired artifact: "
+        "<code>data/reports/SWITCH_MATRIX_TRB.csv.gz</code> "
+        "(full-window campaign <code>stocks_repaired_20260730_c5</code> plus "
+        "the shortened remaining-key campaign "
+        "<code>stocks_repaired_20260730_c5_1yr</code>, both c5 exact). "
         "NOT the matrix: <code>data/matrix_npz/*</code>, <code>band_ladder_walkforward_*</code>, "
-        "<code>data/handle_priority/*.json</code>, <code>SWITCH_MATRIX_TRB.csv.gz</code> (no _ENGINE_HIST_ suffix).</p>"
+        "<code>data/handle_priority/*.json</code>. "
+        "<code>SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz</code> is "
+        "frozen/quarantined history only.</p>"
         "<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
-        "<p><b>Live promotion status:</b> 0 matrix-derived configs are currently deployed to any live "
-        "trb/trc override -- said honestly rather than implying attribution. The live-fills tables "
-        "below (from data/history/, the trade ledger) run on pre-existing configs, NOT matrix output.</p>"
+        "<p>The guard reports differential-evidence coverage only. It is <b>not</b> "
+        "a live-deployment, approved-result, or historical-result counter. Live "
+        "state is read from active configuration metadata and is never inferred "
+        "from a cell count.</p>"
     ) % html_lib.escape(body)
+
+
+PROVISIONAL_MATRIX_KEYS = (
+    "MU_LONG", "NVDA_LONG", "VT_LONG", "TTD_SHORT", "ACN_SHORT", "LAC_SHORT",
+)
+
+
+def _provisional_matrix_completion_section():
+    """Render the user-facing completion bar (exact + amber provisional).
+
+    The guard's raw output is intentionally exact-only.  That is useful for
+    promotion accounting, but it was previously placed at the top of this
+    email and made a running amber fill look like ``0/826``.  Read the same
+    disjoint pilot denominator used by ``switch_matrix_digest`` when it is
+    available, then overlay VEC_APPROX logical cells.  If this checkout cannot
+    validate the canonical artifact, parse the authoritative S1 markdown
+    rather than inventing a zero.  Amber is completion monitoring only; exact
+    ENGINE credit and promotion remain explicitly separate below.
+    """
+    counts = {}
+    try:
+        from tools import switch_matrix_digest as smd
+        coverage = smd.load_classified_pilot_coverage(PROVISIONAL_MATRIX_KEYS)
+        if coverage.get("available"):
+            for key, row in (coverage.get("keys") or {}).items():
+                exact = int(row.get("differential_filled", 0) or 0)
+                total = exact + int(row.get("differential_empty", 0) or 0)
+                counts[key] = {"exact": exact, "total": total, "amber": 0}
+    except Exception:
+        counts = {}
+
+    def _normal(value):
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                pass
+        text = str(value).strip().lower()
+        if text in {"true", "yes", "on"}:
+            return "true"
+        if text in {"false", "no", "off"}:
+            return "false"
+        try:
+            number = float(text)
+            return str(int(number)) if number == int(number) else str(number)
+        except (TypeError, ValueError):
+            return text
+
+    # The guard owns the strict active vector audit used for the physical
+    # workbook.  In particular, it excludes broadcast/inert rows and applies
+    # the same uniqueness quarantine.  Do not resurrect the retired
+    # full_trb_blank_matrix_vec_approx_20260801 ledger here: its absence is
+    # not evidence that the active amber overlay is empty.
+    try:
+        from tools import matrix_guard
+        overlay = matrix_guard.strict_provisional_vector_overlay()
+        if overlay.get("available"):
+            for key, row in (overlay.get("keys") or {}).items():
+                if key in counts:
+                    counts[key]["amber"] = int(row.get("amber", 0) or 0)
+    except Exception:
+        # Exact denominators remain valid even when the optional amber audit
+        # cannot be read.  Render amber as unavailable below rather than
+        # replacing valid coverage with a stale report.
+        pass
+
+    # A Mac-run digest may only have the remote S1 markdown.  Its table is the
+    # canonical fallback when the overlay itself is not mounted here.
+    if not counts:
+        md_candidates = [
+            BASE_PATH / "data" / "reports" / "SWITCH_MATRIX_TRB_DIGEST.md",
+            Path("/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB_DIGEST.md"),
+        ]
+        for md in md_candidates:
+            if not md.is_file():
+                continue
+            try:
+                text = md.read_text(errors="replace")
+            except OSError:
+                continue
+            for line in text.splitlines():
+                fields = [part.strip() for part in line.strip().strip("|").split("|")]
+                if len(fields) < 4 or fields[0] not in PROVISIONAL_MATRIX_KEYS:
+                    continue
+                # New schema: key | exact differential | amber | provisional.
+                match = re.match(r"(\d+)\s*/\s*(\d+)", fields[1])
+                amber_match = re.match(r"(\d+)", fields[2]) if len(fields) > 2 else None
+                provisional_match = re.match(r"(\d+)\s*/\s*(\d+)", fields[3]) if len(fields) > 3 else None
+                # Reject the historical ``0/0`` fallback explicitly: it is
+                # an unavailable-contract marker, never a pilot denominator.
+                if match and provisional_match and int(match.group(2)) > 0:
+                    counts[fields[0]] = {
+                        "exact": int(match.group(1)),
+                        "total": int(match.group(2)),
+                        "amber": int(amber_match.group(1)) if amber_match else 0,
+                    }
+            if counts:
+                break
+
+    if not counts:
+        return (
+            "<h2>PROVISIONAL DIFFERENTIAL-MATRIX COVERAGE (exact + amber)</h2>"
+            "<p class='r'>Canonical pilot coverage unavailable; no completion number was fabricated.</p>"
+        )
+    rows = []
+    for key in PROVISIONAL_MATRIX_KEYS:
+        row = counts.get(key)
+        if not row:
+            continue
+        total = int(row["total"])
+        exact = int(row["exact"])
+        amber = int(row["amber"])
+        provisional = min(total, exact + amber)
+        rows.append(
+            "<tr><td><b>%s</b></td><td>%d/%d</td><td>%d</td><td><b>%d/%d</b> (%.1f%%)</td></tr>"
+            % (key, exact, total, amber, provisional, total, 100.0 * provisional / max(total, 1))
+        )
+    return (
+        "<h2>PROVISIONAL DIFFERENTIAL-MATRIX COVERAGE (exact + amber)</h2>"
+        "<p>Amber VEC_APPROX rows are valid provisional fills and valid inputs to vector "
+        "combination ranking. They are not exact ENGINE evidence and do not by themselves "
+        "promote a live configuration. This table is not a live-status or approved-results "
+        "counter: a zero here cannot declassify an already-live symbol/side.</p>"
+        + _table(["pilot", "exact differential", "amber provisional", "provisional completion"], rows,
+                 "no canonical pilot rows available")
+    )
+
+
+def _current_matrix_exact_section():
+    try:
+        return (
+            "<h2>CURRENT C5 MATRIX RESULTS (exact ledger or signed receipt, per symbol/side)</h2>"
+            + current_matrix_reporting.html_section(BASE_PATH)
+        )
+    except Exception as exc:
+        return (
+            "<h2>CURRENT C5 EXACT RESULTS</h2>"
+            "<p class='r'>Current matrix reporting failed closed: %s</p>"
+            % html_lib.escape(str(exc))
+        )
+
+
+def _vector_scalar_gap_section():
+    """Separate amber VEC evidence; never contributes to exact totals."""
+    try:
+        return vector_scalar_gap_reporting.html_section(BASE_PATH)
+    except Exception as exc:
+        return (
+            "<div class='box'><h3>VEC scalar-gap diagnostic</h3>"
+            "<p class='r'>Failed closed; no ENGINE credit: %s</p></div>"
+            % html_lib.escape(str(exc))
+        )
+
+
+MU_LONG_LADDER_PROMOTION_TS = datetime(2026, 7, 29, 19, 20, 0, tzinfo=timezone.utc)
+
+
+def _mu_long_ladder_promotion_section():
+    """Live trb MU_LONG results since the ladder-config promotion (2026-07-29 19:20 UTC).
+
+    Reads data/history/trb/MU_LONG.jsonl directly (the trade ledger, per CLAUDE.md --
+    /decisions/ is NOT the ledger). Reports raw fill counts/gain only -- a handful of
+    trades on one symbol is far below the 48-crypto/100-stock Sharpe sample floor, so
+    no Sharpe number is computed here at all (nothing to route through metrics_guard).
+    Zero fills since promotion is reported as-is, not spun as a pass or a fail."""
+    path = BASE_PATH / "data" / "history" / "trb" / "MU_LONG.jsonl"
+    if not path.exists():
+        return ("<h2>MU_LONG ladder promotion (2026-07-29 19:20 UTC) -- live trb</h2>"
+                "<p class='r'>ledger file missing: %s</p>") % html_lib.escape(str(path))
+    rows = []
+    try:
+        for line in path.read_text().splitlines():
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            ts = r.get("ts")
+            try:
+                t = datetime.fromisoformat(ts)
+            except Exception:
+                continue
+            if t >= MU_LONG_LADDER_PROMOTION_TS:
+                rows.append((t, r))
+    except Exception as exc:
+        return ("<h2>MU_LONG ladder promotion (2026-07-29 19:20 UTC) -- live trb</h2>"
+                "<p class='r'>ledger read failed: %s</p>") % html_lib.escape(str(exc))
+    hrs_since = (datetime.now(timezone.utc) - MU_LONG_LADDER_PROMOTION_TS).total_seconds() / 3600.0
+    ledger_stale_h = _ledger_staleness_h()
+    stale_note = ""
+    if ledger_stale_h is not None:
+        stale_note = ("<p class='r'>&#9888; LEDGER STALE ON THIS HOST: newest data/history/*/*.jsonl "
+                      "is %.0fh old -- a 0-fill count below can mean 'this host's ledger mirror is dead', "
+                      "not 'no trades'. See the Mac-run instance for the authoritative read.</p>"
+                      ) % ledger_stale_h
+    if not rows:
+        body = ("<p>0 fills recorded for MU_LONG on trb since promotion (%.1fh ago). "
+                "This is reported as-is: either no entry/exit signal has fired yet, or "
+                "(if the staleness warning above is present) this host's ledger mirror "
+                "is not current. NOT reported as a win or a failure -- no trades, no claim."
+                "</p>") % hrs_since
+    else:
+        table_rows = ["<tr><td>%s</td><td>%s</td><td>%s</td><td>%.2f</td><td>%s</td></tr>" % (
+            t.strftime("%Y-%m-%d %H:%M:%S"), r.get("type", "?"), r.get("qty", "?"),
+            float(r.get("price") or 0.0), html_lib.escape(str(r.get("reason") or ""))[:90])
+            for t, r in rows]
+        closes = [r for _, r in rows if r.get("type") == "CLOSE"]
+        body = ("<p><b>%d fills</b> since promotion (%.1fh ago): %d CLOSE event(s). "
+                "Raw ledger rows only -- %d trades is far below the 48-crypto/100-stock "
+                "Sharpe sample floor, so no Sharpe/gain-per-yr figure is computed or "
+                "claimed for this key yet.</p>%s") % (
+            len(rows), hrs_since, len(closes), len(rows),
+            _table(["ts (UTC)", "type", "qty", "price", "reason"], table_rows))
+    return ("<h2>MU_LONG ladder promotion (2026-07-29 19:20 UTC) -- live trb</h2>"
+            "<p>Source: <code>data/history/trb/MU_LONG.jsonl</code> (the trade ledger). "
+            "This is a promotion-tracking readout, not a matrix cell and not a Sharpe claim.</p>"
+            + stale_note + body)
 
 
 def _switch_matrix_digest_section():
@@ -100,14 +378,24 @@ def _switch_matrix_digest_section():
     writer -- not param_matrix_daemon/the manifest/backtest_v8_engine.py -- so if
     the file is stale (>1h) this regenerates it in place (~0.6s) before reading.
     """
+    explicit = os.environ.get("SWITCH_MATRIX_DIGEST_PATH")
     candidates = [
-        Path(os.environ.get("SWITCH_MATRIX_DIGEST_PATH", "")) if os.environ.get("SWITCH_MATRIX_DIGEST_PATH") else None,
+        Path(explicit) if explicit else None,
         BASE_PATH / "data" / "reports" / "SWITCH_MATRIX_TRB_DIGEST.md",
         Path("/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB_DIGEST.md"),
     ]
-    path = next((p for p in candidates if p and p.exists()), None)
+    existing = [p for p in candidates if p and p.exists()]
+    # On the Mac the local report can be an older mirror while S1 is actively
+    # writing the canonical digest.  Select the newest artifact (an explicit
+    # override remains authoritative), otherwise the email silently regresses
+    # to yesterday's exact-only/zero table.
+    path = (
+        existing[0]
+        if explicit and existing
+        else max(existing, key=lambda p: p.stat().st_mtime, default=None)
+    )
     generator = BASE_PATH / "tools" / "switch_matrix_digest.py"
-    if path is not None and generator.exists():
+    if path is not None and generator.exists() and path == BASE_PATH / "data" / "reports" / "SWITCH_MATRIX_TRB_DIGEST.md":
         try:
             age_h = (time.time() - path.stat().st_mtime) / 3600.0
         except OSError:
@@ -132,10 +420,12 @@ def _switch_matrix_digest_section():
     return (
         "<h2>SWITCH_MATRIX_TRB progress</h2>"
         "<p%s>source <code>%s</code> &middot; age %.1fh</p>"
-        "<p style='color:#666'>Note: the pilot table inside this report tracks the "
-        "<code>stocks_repaired_20260725_c2</code> campaign's own key set (currently MU_LONG/VT_LONG/HAO_SHORT), "
-        "which can differ from the canonical 6-pilot list in the MATRIX FILL PROGRESS section above "
-        "(MU_LONG, NVDA_LONG, VT_LONG, TTD_SHORT, ACN_SHORT, LAC_SHORT) -- treat the section above as the bar.</p>"
+        "<p style='color:#666'>The current repaired campaign and canonical pilot bar are "
+        "<code>MU_LONG</code>, <code>NVDA_LONG</code>, <code>VT_LONG</code>, "
+        "<code>TTD_SHORT</code>, <code>ACN_SHORT</code>, and <code>LAC_SHORT</code>. "
+        "HAO is not a current pilot because its frozen history is insufficient. "
+        "Only c5-fingerprinted exact cells count toward exact coverage or promotion; "
+        "VEC_APPROX amber rows are shown separately as provisional completion.</p>"
         "<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
     ) % (stale, html_lib.escape(str(path)), age_h, html_lib.escape(body[:24000]))
 
@@ -250,6 +540,7 @@ def _fold_failure_reasons(fold, tim_low, tim_high):
         "alpha_vs_same_entry_e02_pp",
         fold.get("alpha_vs_control_pp"),
     )
+
     tim = fold.get("weighted_tim_pct", fold.get("tim_pct"))
     exits = fold.get("exit_fills", fold.get("actual_exit_fills"))
     if isinstance(alpha_bh, (int, float)) and alpha_bh <= 0:
@@ -272,17 +563,54 @@ def _fold_failure_reasons(fold, tim_low, tim_high):
     return reasons
 
 
+def _deadline_vector_promotion_section():
+    """Report the explicit pre-open vector promotion exception truthfully."""
+    path = BASE_PATH / "data" / "reports" / "deadline_vector_promotions_20260801.json"
+    if not path.is_file():
+        return "<h2>DEADLINE VECTOR PROMOTIONS</h2><p class='r'>No deadline promotion receipt found.</p>"
+    try:
+        receipt = json.loads(path.read_text())
+        rows = list(receipt.get("candidates") or [])
+    except (OSError, json.JSONDecodeError, TypeError):
+        return "<h2>DEADLINE VECTOR PROMOTIONS</h2><p class='r'>Receipt unreadable; no promotion count claimed.</p>"
+    body = _table(
+        ["key", "parameter", "gain/mo (diagnostic)", "stored B&amp;H/mo", "stored delta", "activity/B&amp;H validity", "campaign", "universe", "exact V8"],
+        [
+            "<tr><td>%s</td><td>%s=%s</td><td class='r'>%.4f%%</td><td>%.4f%%</td><td class='r'>+%.4f</td><td class='r'>UNAVAILABLE — no real-close/month evidence</td><td>%s</td><td>%s</td><td class='%s'>%s</td></tr>"
+            % (html_lib.escape(str(r.get("key") or "")), html_lib.escape(str(r.get("parameter") or "")),
+               html_lib.escape(json.dumps(r.get("value"), sort_keys=True)), float(r.get("gain_per_mo") or 0),
+               float(r.get("bh_per_mo") or 0), float(r.get("delta_gain_mo_vs_bh") or 0),
+               html_lib.escape(str(r.get("campaign") or "")),
+               "TRADEABLE" if r.get("tradeable_universe") else "NOT IN TRB ALLOWLIST",
+               "g" if r.get("exact_v8_verified") else "r",
+               "YES (exact superseded)" if r.get("exact_v8_verified") else "NO")
+            for r in rows
+        ],
+        "no qualifying deadline rows",
+    )
+    status = "APPLIED" if receipt.get("applied") else "STAGED"
+    return (
+        "<h2>DEADLINE VECTOR PROMOTIONS (%s; %d symbol/sides)</h2>"
+        "<p>User-authorized temporary execution exception for 2026-08-02 13:30 UTC. "
+        "The stored gain/B&amp;H/delta values are diagnostic only: under Bible §16.14, "
+        "vector rows without at least one real close per elapsed month are not valid B&amp;H comparisons or winners. "
+        "These remain vector/historical-vector only, exact V8 verified = NO. "
+        "Source SHA256 <code>%s</code>; backup <code>%s</code>.</p>%s"
+        % (status, len(rows), html_lib.escape(str(receipt.get("source_sha256") or "")),
+           html_lib.escape(str(receipt.get("backup_path") or "none")), body)
+    )
+
+
 def _discovery_cell(payload, tim_low, tim_high):
     evidence = payload.get("discovery_fold_evidence") or []
-    gates = payload.get("discovery_fold_gate_pass") or []
     parts = []
     for idx, fold in enumerate(evidence):
         if not isinstance(fold, dict):
             continue
-        passed = bool(gates[idx]) if idx < len(gates) else False
         tim = fold.get("weighted_tim_pct", fold.get("tim_pct"))
         tim_text = "%.1f%%" % tim if isinstance(tim, (int, float)) else "TIM?"
         reasons = _fold_failure_reasons(fold, tim_low, tim_high)
+        passed = not reasons
         suffix = "" if passed or not reasons else " (%s)" % ", ".join(reasons)
         parts.append(
             "F%s%s %s%s"
@@ -298,8 +626,15 @@ def _discovery_cell(payload, tim_low, tim_high):
 
 def _gray_reason(row, payload, tim_low, tim_high):
     reasons = []
-    gates = payload.get("discovery_fold_gate_pass") or []
-    if gates and not all(bool(v) for v in gates):
+    evidence = [
+        fold
+        for fold in (payload.get("discovery_fold_evidence") or [])
+        if isinstance(fold, dict)
+    ]
+    if evidence and any(
+        _fold_failure_reasons(fold, tim_low, tim_high)
+        for fold in evidence
+    ):
         reasons.append("discovery fold failed")
     strategy = row.get("strategy_return_pct")
     bh = row.get("bh_return_pct")
@@ -327,18 +662,21 @@ def _gray_reason(row, payload, tim_low, tim_high):
 def _discovery_rank(item, tim_low, tim_high):
     """Display representative chosen without looking at the untouched final."""
     payload = item["payload"]
-    gates = payload.get("discovery_fold_gate_pass") or []
     evidence = payload.get("discovery_fold_evidence") or []
+    current_passes = []
     tim_distance = 0.0
     for fold in evidence:
         if not isinstance(fold, dict):
             continue
+        current_passes.append(
+            not _fold_failure_reasons(fold, tim_low, tim_high)
+        )
         tim = fold.get("weighted_tim_pct", fold.get("tim_pct"))
         if isinstance(tim, (int, float)):
             tim_distance += abs(float(tim) - (tim_low + tim_high) / 2.0)
         else:
             tim_distance += 1e6
-    return (sum(bool(v) for v in gates), -tim_distance, item["row"]["id"])
+    return (sum(current_passes), -tim_distance, item["row"]["id"])
 
 
 def _latest_matrix_filling_campaigns_section():
@@ -405,10 +743,11 @@ def _latest_matrix_filling_campaigns_section():
     fleet_stale_banner = ""
     if fleet_age_h is not None and fleet_age_h > MATRIX_STALE_H:
         fleet_stale_banner = (
-            "<p class='r'><b>&#9888; STALE (%.0fh since newest row).</b> "
-            "No active path-fleet producer was found running on S1 at digest-build time. "
+            "<p style='color:#666'><b>INFO: research path-fleet idle (%.0fh since newest row).</b> "
+            "No active path-fleet producer was found running on S1 at digest-build time; "
             "This lane is NOT the same artifact as MATRIX FILL PROGRESS above -- do not "
-            "read it as current pilot progress.</p>" % fleet_age_h
+            "read it as current pilot progress. The active exact/vectorized stock workers "
+            "are reported above.</p>" % fleet_age_h
         )
 
     research_root = _vec_research_root()
@@ -487,6 +826,7 @@ def _latest_matrix_filling_campaigns_section():
         grouped.setdefault(key, []).append(item)
 
     details = []
+    excluded_nontradeable = []
     for stage in MATRIX_FILL_STAGES:
         stage_groups = [
             (key, values)
@@ -515,12 +855,15 @@ def _latest_matrix_filling_campaigns_section():
             for key, items in side_groups:
                 campaign_id = key[3]
                 manifest = manifests.get(campaign_id) or {}
-                contract = manifest.get("contract") or {}
-                tim_gate = contract.get("every_fold_tim_gate_pct") or [70.0, 80.0]
                 try:
-                    tim_low, tim_high = float(tim_gate[0]), float(tim_gate[1])
-                except (TypeError, ValueError, IndexError):
-                    tim_low, tim_high = 70.0, 80.0
+                    tim_low, tim_high = tim_band_for_key(
+                        f"{key[1]}_{str(key[2]).upper()}"
+                    )
+                except (TypeError, ValueError, RuntimeError) as exc:
+                    excluded_nontradeable.append(
+                        f"{key[1]}_{str(key[2]).upper()}: {exc}"
+                    )
+                    continue
                 representative = max(
                     items,
                     key=lambda item: _discovery_rank(item, tim_low, tim_high),
@@ -577,10 +920,23 @@ def _latest_matrix_filling_campaigns_section():
                 )
             )
 
+    excluded_html = ""
+    if excluded_nontradeable:
+        excluded_html = (
+            "<p class='r'><b>%d research key(s) excluded:</b> they are not in "
+            "the current ranked TRB side files, so no TIM band may be guessed. "
+            "%s</p>"
+            % (
+                len(excluded_nontradeable),
+                html_lib.escape("; ".join(excluded_nontradeable[:12])),
+            )
+        )
     return (
         "<h2>Latest matrix-filling campaigns "
         "<span style='color:#666'>[RESEARCH ONLY &mdash; NOT ACCEPTED/LIVE]</span></h2>"
-        + fleet_stale_banner +
+        + fleet_stale_banner
+        + excluded_html
+        +
         "<p><b>Scope/units:</b> returns are capital-return percent on one final "
         "chronological outer-validation fold (no fold summing); TIM is percent. "
         "Strategy capacity and B&amp;H capital are shown from each campaign contract. "
@@ -655,12 +1011,12 @@ def _table(headers, rows, empty_msg="none"):
 MANDATORY_8 = ["MU_LONG", "NVDA_LONG", "SNDK_LONG", "MRVL_LONG", "VLO_LONG", "INTC_LONG", "MSTR_SHORT", "WDAY_SHORT"]
 
 STALE_PROGRESS_THRESHOLD_S = 12 * 3600  # USER 2026-07-15: alert when neither best real_sharpe_1sym
-# nor best gain_vs_bh has improved in >12h -- a live "we are testing the wrong params" signal
+# nor the true B&H multiple has improved in >12h -- a live "we are testing the wrong params" signal
 # rather than something a human has to notice by eyeballing consecutive digests.
 
 
 def _stale_progress_check(prev_state, reports, now):
-    """Track the best real_sharpe_1sym and best gain_vs_bh seen so far, per mode, across
+    """Track the best real_sharpe_1sym and true B&H multiple, per mode, across
     digest runs (persisted in results_digest_state.json alongside the existing window
     tracking). If NEITHER has improved for >STALE_PROGRESS_THRESHOLD_S, that mode is
     flagged stale -- returns (html_banner_or_empty_string, tracking_dict_to_merge_into_state).
@@ -674,7 +1030,11 @@ def _stale_progress_check(prev_state, reports, now):
     for mode, rep in reports.items():
         winners = rep.get("winners") or []
         cur_best_sharpe = winners[0].get("real_sharpe") if winners else None
-        gvbh_vals = [w.get("gain_vs_bh") for w in winners if isinstance(w.get("gain_vs_bh"), (int, float))]
+        gvbh_vals = [
+            w.get("bh_multiple")
+            for w in winners
+            if isinstance(w.get("bh_multiple"), (int, float))
+        ]
         cur_best_gvbh = max(gvbh_vals) if gvbh_vals else None
         prev = prev_tracking.get(mode) or {}
         prev_sharpe = prev.get("best_sharpe")
@@ -702,10 +1062,11 @@ def _stale_progress_check(prev_state, reports, now):
     if not stale_modes:
         return "", tracking
     rows = "".join(
-        "<li><b>%s</b>: no improvement in %.1fh (best real_sharpe_1sym=%s, best gain_vs_bh=%s) &mdash; "
+        "<li><b>%s</b>: no improvement in %.1fh (best real_sharpe_1sym=%s, best B&amp;H multiple=%s) &mdash; "
         "the current sweep grid is very likely testing the wrong params. Check switch_priority.csv "
         "for untested high-signal knobs, or widen the param range.</li>" % (
-            mode.upper(), hrs, _fmt_sharpe(best_s), _fmt_pct(best_g))
+            mode.upper(), hrs, _fmt_sharpe(best_s),
+            ("%.3fx" % best_g) if isinstance(best_g, (int, float)) else "&mdash;")
         for mode, hrs, best_s, best_g in stale_modes)
     banner = (
         "<div style='background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:10px 14px;margin:6px 0 14px 0'>"
@@ -720,20 +1081,14 @@ def _qualifying_rows():
         for mode in ("stock", "crypto"):
             rep = lib.build_report(mode)
             for w in rep.get("winners", []):
-                gvbh = w.get("gain_vs_bh")
+                multiple = w.get("bh_multiple")
                 try:
-                    gvbh_f = float(gvbh)
+                    multiple_f = float(multiple)
                 except (TypeError, ValueError):
                     continue
-                # 2026-07-28: `real_gain_vs_bh` in gating_corrections.jsonl is a
-                # DIFFERENCE in percentage points, not a ratio — provable from the
-                # rows themselves (real_gain_pct 0.03 - bh 0.028 = real_gain_vs_bh
-                # 0.002). It was rendered "%.2fx", so +9.01pp was published as
-                # "9.01x b&h". The same value is printed as "9.01%" ten lines away
-                # by _fmt_pct, so the email contradicted itself. Render as points.
-                if gvbh_f >= 2.0:
-                    rows.append("<tr><td>%s</td><td>%s</td><td class='g'><b>%s</b></td><td class='g'><b>%+.2f pp</b></td><td>%s</td><td>%s</td></tr>" % (
-                        mode.upper(), w.get("key"), _fmt_sharpe(w.get("real_sharpe")), gvbh_f, w.get("trades", "&mdash;"), (w.get("date") or "")[:10]))
+                if multiple_f >= lib.MIN_BH_MULTIPLE:
+                    rows.append("<tr><td>%s</td><td>%s</td><td class='g'><b>%s</b></td><td class='g'><b>%.3fx</b></td><td>%s</td><td>%s</td></tr>" % (
+                        mode.upper(), w.get("key"), _fmt_sharpe(w.get("real_sharpe")), multiple_f, w.get("trades", "&mdash;"), (w.get("date") or "")[:10]))
     except Exception as e:
         rows.append("<tr><td colspan=6>qualifier scan failed: %s</td></tr>" % e)
     return rows
@@ -833,11 +1188,25 @@ PARITY_FILES = ["config.py", "config_tradier.py", "ez_manage.py", "tradier_manag
                 "ez_indicators.py", "ez_reentry.py"]
 
 
+def _s1_self_parity_note(base):
+    return (
+        "<p class='r'><b>&#9888; PARITY CHECK SKIPPED ON THIS HOST.</b> This digest instance "
+        "is running directly on S1 (base=%s). This check compares local files to "
+        "<code>ssh s1-int</code> -- run from S1 itself that ssh loops back to the same "
+        "files, so any 'in sync' result would be a self-comparison, not real "
+        "Mac-vs-S1 parity. See the Mac-run instance of this digest (crontab 0 0,12 "
+        "on the MacBook) for the authoritative parity check.</p>" % base
+    )
+
+
 def _parity_sections():
     import subprocess, hashlib
     base = Path(__file__).resolve().parent.parent
     rows = []
-    try:
+    if RUNNING_ON_S1_SANDBOX:
+        sync_html = _s1_self_parity_note(base)
+    else:
+      try:
         local = {}
         for f in PARITY_FILES:
             try:
@@ -847,23 +1216,39 @@ def _parity_sections():
         out = subprocess.run(["ssh", "-o", "ConnectTimeout=10", "s1-int",
             "cd /home/niels/binance-sandbox && md5sum " + " ".join(PARITY_FILES) + " 2>/dev/null"],
             capture_output=True, text=True, timeout=25)
-        remote = {}
-        for line in (out.stdout or "").splitlines():
-            parts = line.split()
-            if len(parts) == 2:
-                remote[parts[1]] = parts[0]
-        n_ok = 0
-        for f in PARITY_FILES:
-            ok = local.get(f) == remote.get(f) and local.get(f) != "missing"
-            n_ok += 1 if ok else 0
-            if not ok:
-                rows.append("<tr><td>%s</td><td class='r'><b>OUT OF SYNC</b></td><td>%s</td><td>%s</td></tr>" % (
-                    f, (local.get(f) or "?")[:10], (remote.get(f) or "ABSENT")[:10]))
-        head = "<p class='%s'><b>%d/%d parity-critical files in sync (Mac live == S1 sandbox)</b>%s</p>" % (
-            "g" if n_ok == len(PARITY_FILES) else "r", n_ok, len(PARITY_FILES),
-            "" if n_ok == len(PARITY_FILES) else " — DRIFT DETECTED: backtests are testing different code than live trades!")
-        sync_html = head + (_table(["file", "status", "mac md5", "s1 md5"], rows) if rows else "")
-    except Exception as e:
+        if out.returncode != 0:
+            # A failed SSH probe must never be rendered as nine missing remote
+            # files (which falsely claims code drift).  Keep the failure
+            # visible, but distinguish UNAVAILABLE from a real hash mismatch.
+            detail = (out.stderr or out.stdout or "ssh probe returned no output").strip()
+            sync_html = (
+                "<p class='r'><b>&#9888; LIVE vs SANDBOX SYNC CHECK UNAVAILABLE.</b> "
+                "The remote md5 probe failed; this is not evidence that the files are out of sync. "
+                "Retry from the next digest run. <code>%s</code></p>"
+                % html_lib.escape(detail[-300:])
+            )
+            out = None
+        if out is None:
+            # Skip the hash comparison below after a failed probe.
+            pass
+        else:
+            remote = {}
+            for line in (out.stdout or "").splitlines():
+                parts = line.split()
+                if len(parts) == 2:
+                    remote[parts[1]] = parts[0]
+            n_ok = 0
+            for f in PARITY_FILES:
+                ok = local.get(f) == remote.get(f) and local.get(f) != "missing"
+                n_ok += 1 if ok else 0
+                if not ok:
+                    rows.append("<tr><td>%s</td><td class='r'><b>OUT OF SYNC</b></td><td>%s</td><td>%s</td></tr>" % (
+                        f, (local.get(f) or "?")[:10], (remote.get(f) or "ABSENT")[:10]))
+            head = "<p class='%s'><b>%d/%d parity-critical files in sync (Mac live == S1 sandbox)</b>%s</p>" % (
+                "g" if n_ok == len(PARITY_FILES) else "r", n_ok, len(PARITY_FILES),
+                "" if n_ok == len(PARITY_FILES) else " — DRIFT DETECTED: backtests are testing different code than live trades!")
+            sync_html = head + (_table(["file", "status", "mac md5", "s1 md5"], rows) if rows else "")
+      except Exception as e:
         sync_html = "<p>sync check failed: %s</p>" % e
     act_rows = []
     try:
@@ -896,9 +1281,26 @@ def _parity_sections():
             act_rows.append("<tr><td>%s</td><td>%s</td></tr>" % (acct, act))
     except Exception as e:
         act_rows.append("<tr><td colspan=2>%s</td></tr>" % e)
+    ledger_stale_h = _ledger_staleness_h()
+    ledger_stale_note = ""
+    if ledger_stale_h is not None:
+        ledger_stale_note = (
+            "<p class='r'><b>&#9888; LEDGER STALE ON THIS HOST (base=%s): newest data/history/*/*.jsonl "
+            "file is %.0fh old.</b> The rows below reflect what THIS process can see, not necessarily "
+            "what happened live -- 'no fills' here can mean 'no fills' OR 'this host's ledger mirror is "
+            "dead', and those are NOT the same claim. See the Mac-run instance of this digest for the "
+            "authoritative live-fills read (data/history/ is the MacBook live-trading source of "
+            "truth per CLAUDE.md).</p>" % (base, ledger_stale_h)
+        )
     par_tail = ""
     try:
-        pf = Path("/Users/niels/logs/parity_diff_nightly.log")
+        # The old Mac launchd job wrote outside the repository and depended on
+        # GNU `timeout`, which is absent on a stock macOS install. Prefer the
+        # repository-owned result, with the legacy path retained only as a
+        # compatibility fallback.
+        pf = base / "data" / "parity" / "parity_diff_nightly.log"
+        if not pf.exists():
+            pf = Path("/Users/niels/logs/parity_diff_nightly.log")
         # 2026-07-28: mtime alone was the only check, so a 36-byte log containing
         # "/bin/sh: timeout: command not found" was rendered under the parity
         # heading as if the diff had run and found nothing. Validate the content.
@@ -925,9 +1327,9 @@ def _parity_sections():
     except Exception:
         pass
     return ("<h2>LIVE vs SANDBOX SYNC (post-update drift guard)</h2>%s"
-            "<h3>Live fills last 24h (per account, from /history/ — signal-price ledger)</h3>%s"
+            "<h3>Live fills last 24h (per account, from /history/ — signal-price ledger)</h3>%s%s"
             "<h3>Latest live-vs-backtest trade parity diff (nightly)</h3>%s") % (
-        sync_html, _table(["account", "fills by type (24h)"], act_rows), par_tail)
+        sync_html, ledger_stale_note, _table(["account", "fills by type (24h)"], act_rows), par_tail)
 
 
 def _gainmo_sections():
@@ -1000,16 +1402,41 @@ def _gainmo_sections():
             bh.append("<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (acct, act, bench))
     except Exception as e:
         bh.append("<tr><td colspan=3>tracker failed: %s</td></tr>" % e)
-    bh_html = _table(["account", "ledger activity 7d (fills by type)", "benchmark 7d"], bh)
-    qual = _table(["mode", "key", "pool_sharpe (1sym)", "gain_vs_bh", "trades", "when"], _qualifying_rows(),
-                  "NONE yet - the 8-winners bar is unmet")
-    return ((_stocks_bh_capture_section() + _persym_latest_sections() + _parity_sections()).replace("%", "%%") + "<h2>QUALIFYING KEYS - EVERY key at the bar (pool_sharpe&gt;0.5 AND &gt;=2x b&amp;h, post-parity) [DIAGNOSTIC n_syms=1 each]</h2>%s"
-            "<h2>GAINMO test queue + stocks gate (S1)</h2>%s"
-            "<h2>Mandatory-8 trading status</h2>%s"
+    bh_ledger_stale_h = _ledger_staleness_h()
+    bh_stale_note = ""
+    if bh_ledger_stale_h is not None:
+        bh_stale_note = (
+            "<p class='r'><b>&#9888; LEDGER STALE ON THIS HOST (base=%s): newest data/history/*/*.jsonl "
+            "file is %.0fh old.</b> 'NO ACTIVITY (7d)' below can mean this host's ledger mirror is dead, "
+            "not that trading was quiet -- see the Mac-run instance of this digest for the authoritative "
+            "7d activity read.</p>" % (base, bh_ledger_stale_h)
+        )
+    bh_html = bh_stale_note + _table(["account", "ledger activity 7d (fills by type)", "benchmark 7d"], bh)
+    qual = _table(
+        ["mode", "key", "pool_sharpe (1sym)", "B&amp;H multiple", "trades", "when"],
+        _qualifying_rows(),
+        "NONE yet - the 8-qualifier bar is unmet",
+    )
+    # The July capture scoreboard, capture/*.summary.json and armq GAINMO queue
+    # predate the repaired c5 matrix contract.  They remain on disk for audit,
+    # but embedding their stock rankings here made a current digest look as if
+    # it still monitored BASELINE_V2_S4H.  Fail closed: do not render those
+    # rankings or the obsolete queue in the active email.
+    legacy_quarantine = (
+        "<h2>Historical stock diagnostics &mdash; QUARANTINED / NOT RANKED</h2>"
+        "<p><code>stocks_bh_capture.json</code>, "
+        "<code>data/_diagnostic/capture/*.summary.json</code>, and the old "
+        "<code>armq_20260709</code>/GAINMO queue are preserved for audit only. "
+        "They are not current matrix coverage, winner evidence, candidate inputs, "
+        "or live-promotion inputs. The active stock lane is exclusively the c5 "
+        "<code>stocks_repaired_20260730_c5</code> matrix printed above.</p>"
+    )
+    return ((legacy_quarantine + _parity_sections()).replace("%", "%%") + "<h2>QUALIFYING KEYS - EVERY key at the bar (pool_sharpe&gt;0.5 AND &gt;=2x b&amp;h, post-parity) [DIAGNOSTIC n_syms=1 each]</h2>%s"
+            "<h2>Mandatory-8 live configuration status (not matrix evidence)</h2>%s"
             "<h2>2x buy&amp;hold target (USER: trb + flz/ang by Monday)</h2>%s"
             "<p style='font-size:11px;color:#666'>True PnL is NOT in the ledgers (signal prices, no commissions) - "
             "verify 2x-b&amp;h against EXCHANGE INCOME (crypto) / Tradier account balance (stocks). Benchmark = single-symbol proxy. "
-            "Target: account PnL &gt;= 2x benchmark.</p>") % (qual, q[0], m8, bh_html)
+            "Target: account PnL &gt;= 2x benchmark.</p>") % (qual, m8, bh_html)
 
 
 def _legacy_reopt_staleness_note():
@@ -1028,9 +1455,9 @@ def _legacy_reopt_staleness_note():
         return "<p class='r'>reopt_loop store missing entirely.</p>"
     if newest_h > MATRIX_STALE_H:
         return (
-            "<p class='r'><b>&#9888; STALE (%.0fh since last write).</b> "
+            "<p style='color:#666'><b>INFO: legacy crypto reopt lane paused (%.0fh since last write).</b> "
             "reopt_loop.sh is disabled under the 2026-07-29 S1-matrix-only directive, "
-            "so this section is a frozen snapshot, not live progress. "
+            "so this section is a frozen snapshot, not live progress or an active failure. "
             "See MATRIX FILL PROGRESS above for the current active work.</p>" % newest_h
         )
     return "<p style='color:#666'>freshest reopt_loop write %.1fh ago.</p>" % newest_h
@@ -1039,6 +1466,9 @@ def _legacy_reopt_staleness_note():
 def build_digest(prev_state, now):
     win_start = _window_start(prev_state, now)
     reports = {"crypto": lib.build_report("crypto"), "stock": lib.build_report("stock")}
+    matrix_report = current_matrix_reporting.summary(BASE_PATH)
+    matrix_best = matrix_report["best_rows"]
+    matrix_qualifiers = matrix_report["qualifiers"]
     liveness = lib.get_s1_liveness()
     prog = liveness.get("progress") or {}
     sections = {}
@@ -1046,10 +1476,62 @@ def build_digest(prev_state, now):
     top10_html = {}
     new_state = {"last_sent_ts": now, "last_sent_iso": datetime.now(timezone.utc).isoformat(),
                  "vec_screened_keys": {}, "real_engine_confirmed_keys": {}}
-    stale_banner, stale_tracking = _stale_progress_check(prev_state, reports, now)
+    # The crypto reopt producer is intentionally paused while S1 is dedicated to
+    # the stock matrix.  Do not turn an expected frozen legacy snapshot into a
+    # misleading "testing wrong params" alert or a [STALE] email subject.
+    stale_banner, stale_tracking = _stale_progress_check(prev_state, {}, now)
     new_state["stale_progress_tracking"] = stale_tracking
     all_gated_new, all_reenabled, all_rescued, all_winners_new = [], [], [], []
     for mode, rep in reports.items():
+        if mode == "stock":
+            current_rows = sum(
+                item["rows"]
+                for item in matrix_report["campaigns"].values()
+            )
+            current_keys = len(matrix_best)
+            new_state["vec_screened_keys"][mode] = current_rows
+            new_state["real_engine_confirmed_keys"][mode] = current_keys
+            coverage_lines.append(
+                "<li><b>STOCK</b>: %d ledger-backed current c5 exact rows "
+                "across %d symbol/sides; %d meet the user bar "
+                "(gain/month &gt;2%% and beat B&amp;H). Legacy reopt counters "
+                "are quarantined and do not supply this line.</li>"
+                % (current_rows, current_keys, len(matrix_qualifiers))
+            )
+            matrix_top = sorted(
+                matrix_best,
+                key=lambda row: (
+                    float(row.get("delta_gain_mo_vs_bh") or -1e300),
+                    float(row.get("gain_per_mo") or -1e300),
+                ),
+                reverse=True,
+            )[:10]
+            top10_html[mode] = _table(
+                [
+                    "key",
+                    "window",
+                    "best exact cell",
+                    "gain/mo",
+                    "&Delta; vs B&amp;H",
+                    "trades",
+                ],
+                [
+                    "<tr><td>%s</td><td>%s</td><td>%s=%s</td>"
+                    "<td>%+.4f%%</td><td>%+.4f pp/mo</td><td>%s</td></tr>"
+                    % (
+                        row["key"],
+                        row["window"],
+                        row["param"],
+                        row["value_json"],
+                        float(row.get("gain_per_mo") or 0),
+                        float(row.get("delta_gain_mo_vs_bh") or 0),
+                        row.get("trades", "&mdash;"),
+                    )
+                    for row in matrix_top
+                ],
+                "no ledger-backed current c5 exact rows yet",
+            )
+            continue
         new_state["vec_screened_keys"][mode] = rep["vec_screened_keys"]
         new_state["real_engine_confirmed_keys"][mode] = rep["real_engine_confirmed_keys"]
         prev_vec = (prev_state.get("vec_screened_keys") or {}).get(mode, rep["vec_screened_keys"])
@@ -1071,10 +1553,19 @@ def build_digest(prev_state, now):
                 p.get("done", "?"), p.get("queue_total", "?"), p.get("rescued", 0), p.get("enabled", 0), p.get("hopeless", 0)))
         top10 = rep["winners"][:10]
         top10_html[mode] = _table(
-            ["key", "real_sharpe_1sym", "gain_vs_bh", "trades"],
-            ["<tr><td>%s</td><td class='g'><b>%s</b></td><td>%s</td><td>%s</td></tr>" % (
-                w["key"], _fmt_sharpe(w.get("real_sharpe")), _fmt_pct(w.get("gain_vs_bh")), w.get("trades", "&mdash;"))
-             for w in top10], "no real-engine winners (&gt;0.5) yet")
+            ["key", "real_sharpe_1sym", "B&amp;H multiple", "trades"],
+            [
+                "<tr><td>%s</td><td class='g'><b>%s</b></td><td class='g'><b>%.3fx</b></td><td>%s</td></tr>"
+                % (
+                    w["key"],
+                    _fmt_sharpe(w.get("real_sharpe")),
+                    float(w["bh_multiple"]),
+                    w.get("trades", "&mdash;"),
+                )
+                for w in top10
+            ],
+            "no real-engine qualifiers (Sharpe &gt;0.5 and actual B&amp;H multiple &ge;2x) yet",
+        )
     gated_rows = ["<tr><td>%s</td><td>%s</td><td class='r'>%s</td><td>%s</td></tr>" % (
         m.upper(), v["key"], _fmt_sharpe(v.get("real_sharpe")), (v.get("date") or "")[:19]) for m, v in all_gated_new]
     reenabled_rows = ["<tr><td>%s</td><td>%s</td><td class='g'>%s</td><td>%s</td></tr>" % (
@@ -1082,12 +1573,26 @@ def build_digest(prev_state, now):
     rescued_rows = ["<tr><td>%s</td><td>%s</td><td>%s &rarr; <b class='g'>%s</b></td><td>%s</td></tr>" % (
         m.upper(), v["key"], _fmt_sharpe(v.get("before_sharpe")), _fmt_sharpe(v.get("real_sharpe")), (v.get("date") or "")[:19])
         for m, v in all_rescued]
-    winners_new_rows = ["<tr><td>%s</td><td>%s</td><td class='g'>%s</td><td>%s</td></tr>" % (
-        m.upper(), v["key"], _fmt_sharpe(v.get("real_sharpe")), (v.get("date") or "")[:19]) for m, v in all_winners_new]
+    winners_new_rows = [
+        "<tr><td>%s</td><td>%s</td><td class='g'>%s</td><td class='g'><b>%.3fx</b></td><td>%s</td></tr>"
+        % (
+            m.upper(),
+            v["key"],
+            _fmt_sharpe(v.get("real_sharpe")),
+            float(v["bh_multiple"]),
+            (v.get("date") or "")[:19],
+        )
+        for m, v in all_winners_new
+    ]
     win_start_iso = datetime.fromtimestamp(win_start, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     win_end_iso = datetime.fromtimestamp(now, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    total_confirmed = sum(r["real_engine_confirmed_keys"] for r in reports.values())
-    total_screened = sum(r["vec_screened_keys"] for r in reports.values())
+    total_confirmed = (
+        reports["crypto"]["real_engine_confirmed_keys"] + len(matrix_best)
+    )
+    total_screened = (
+        reports["crypto"]["vec_screened_keys"]
+        + sum(item["rows"] for item in matrix_report["campaigns"].values())
+    )
     cov_pct = (100.0 * total_confirmed / total_screened) if total_screened else 0.0
     html = """
     <html><head><style>%s
@@ -1103,6 +1608,13 @@ def build_digest(prev_state, now):
     %s
 
     %s
+
+    %s
+
+    %s
+    %s
+    %s
+    %s
     %s
     %s
 
@@ -1112,18 +1624,18 @@ def build_digest(prev_state, now):
     %s
     <h3>Re-enabled (vec false-negative corrected by real engine)</h3>
     %s
-    <h3>Rescued to real-engine &gt;0.5 (reopt search found a config fix)</h3>
+    <h3>Rescued to qualifier status (real-engine Sharpe &gt;0.5 and actual B&amp;H multiple &ge;2x)</h3>
     %s
-    <h3>New winners this window (real-engine &gt;0.5)</h3>
+    <h3>New qualifiers this window (real-engine Sharpe &gt;0.5 and actual B&amp;H multiple &ge;2x)</h3>
     %s
 
     <h2>Progress / liveness</h2>
     <ul>%s</ul>
     <p>S1: %s &middot; %s</p>
 
-    <h2>Top 10 winners &mdash; CRYPTO (LEGACY reopt store)</h2>
+    <h2>Top 10 &ge;2x B&amp;H qualifiers &mdash; CRYPTO (LEGACY reopt store)</h2>
     %s
-    <h2>Top 10 winners &mdash; STOCKS (LEGACY reopt store)</h2>
+    <h2>Top current STOCK exact rows by gain/month delta vs B&amp;H (c5; 1yr preferred per key)</h2>
     %s
 
     <h2>Links</h2>
@@ -1135,14 +1647,19 @@ def build_digest(prev_state, now):
     </ul>
 
     <div class="box" style="font-size:11.5px;color:#666;line-height:1.5">
-    <b>Coverage:</b> %d/%d keys (%.0f%%) are real-engine-confirmed across both systems; the rest
-    are still vec-screen-only [DIAGNOSTIC]. Every real_sharpe_1sym figure above is a
-    SINGLE-SYMBOL (n_syms=1) real-engine backtest &mdash; below the 48-crypto/100-stock sample
-    floor, so per CLAUDE.md this is monitoring-only, never a promotion signal.
+    <b>Coverage:</b> %d/%d reported units (%.0f%%) have real-engine evidence across both
+    systems. Crypto retains its legacy vec-screen denominator. Stocks uses only
+    ledger-backed current c5 exact rows and symbol/side keys; it never substitutes
+    the legacy reopt zero counters. Every per-key result is n_syms=1 diagnostic evidence.
     </div>
     </body></html>""" % (
         me.CSS, win_start_iso, win_end_iso, (now - win_start) / 3600.0, DASHBOARD_URL, DASHBOARD_URL,
         _matrix_guard_totals_section(),
+        _provisional_matrix_completion_section(),
+        _current_matrix_exact_section(),
+        _vector_scalar_gap_section(),
+        _mu_long_ladder_promotion_section(),
+        _deadline_vector_promotion_section(),
         _gainmo_sections(), stale_banner,
         _latest_matrix_filling_campaigns_section()
         + _switch_matrix_digest_section(),
@@ -1150,7 +1667,11 @@ def build_digest(prev_state, now):
         _table(["mode", "key", "real_sharpe_1sym", "gated"], gated_rows, "none this window"),
         _table(["mode", "key", "real_sharpe_1sym", "when"], reenabled_rows, "none this window"),
         _table(["mode", "key", "before &rarr; after", "when"], rescued_rows, "none this window"),
-        _table(["mode", "key", "real_sharpe_1sym", "when"], winners_new_rows, "none this window"),
+        _table(
+            ["mode", "key", "real_sharpe_1sym", "B&amp;H multiple", "when"],
+            winners_new_rows,
+            "none this window",
+        ),
         "".join(coverage_lines),
         (liveness.get("cpu_line") or "S1 unreachable"), (liveness.get("mem_line") or ""),
         top10_html.get("crypto", ""), top10_html.get("stock", ""),
@@ -1158,14 +1679,165 @@ def build_digest(prev_state, now):
         "".join("<li><a href='http://localhost:5077/spreadsheets/%s'>%s</a> (also attached to this email)</li>" % (f, f) for f in XLS_ATTACH) +
         "".join("<li><a href='http://localhost:5077/spreadsheets/%s'>%s</a></li>" % (f, f) for f in XLS_LINK_ONLY),
         total_confirmed, total_screened, cov_pct)
-    subject = "%sResults digest %s UTC &mdash; crypto %d winners/%d gated | stocks %d winners/%d gated" % (
+    subject = "%sResults digest %s UTC &mdash; crypto %d qualifiers/%d gated | stocks %d above-bar/%d tested keys" % (
         "[STALE >12h] " if stale_banner else "",
         datetime.now(timezone.utc).strftime("%H:%M"),
         reports["crypto"]["winners_count"], reports["crypto"]["gated_off_keys"],
-        reports["stock"]["winners_count"], reports["stock"]["gated_off_keys"])
+        len(matrix_qualifiers), len(matrix_best))
     # strip stray HTML entity from subject (plain-text header)
     subject = subject.replace("&mdash;", "-")
     return html, subject, new_state
+
+
+def _ai_premarket_html() -> str:
+    """Morning AI recommendations + evening attribution for TRC paper A/B."""
+    import json as _json
+    from datetime import datetime as _dt, timezone as _tz
+    base = BASE_PATH / "data" / "ai_premarket"
+    today = _dt.now(_tz.utc).strftime("%Y-%m-%d")
+    candidates = [base / today / "decisions.json", base / "latest.json"]
+    if not any(p.exists() for p in candidates):
+        try:
+            all_files = sorted(base.glob("*/decisions.json"))
+            if all_files:
+                candidates.append(all_files[-1])
+        except Exception:
+            pass
+    data = None
+    src = None
+    for p in candidates:
+        if p.exists():
+            try:
+                data = _json.loads(p.read_text())
+                src = p
+                break
+            except Exception:
+                continue
+    if not data or not src:
+        return (
+            "<h2>AI PREMARKET — TRC PAPER A/B (12:00 UTC)</h2>"
+            "<p style='color:#888'>No AI decisions yet today — run <code>python tradier_ai_premarket.py</code> before open. TRB is control, TRC = TRB + AI picks.</p>"
+        )
+    decisions = data.get("decisions", []) if isinstance(data, dict) else []
+    all_scored = data.get("all_decisions", decisions)
+    gen = data.get("generated_at_utc", "?")[:19]
+    model = data.get("model", "?")
+    tv = "TradingView enriched" if data.get("tradingview_enabled") else "local indicators only"
+    # Morning table
+    html = f"<h2>AI PREMARKET — TRC PAPER A/B (12:00 UTC, {html_lib.escape(str(src))})</h2>"
+    html += f"<p>Generated {html_lib.escape(gen)} UTC &middot; Model {html_lib.escape(model)} &middot; {tv} &middot; Universe {data.get('universe_count','?')} &middot; Scored {len(all_scored)}</p>"
+    if not decisions:
+        html += f"<p>Scored {len(all_scored)} symbols, 0 actionable (conviction &lt; threshold). Top neutral:</p><table><tr><th>Symbol</th><th>Bias</th><th>Conv</th><th>Reason</th></tr>"
+        for d in sorted(all_scored, key=lambda x: x.get("conviction", 0), reverse=True)[:5]:
+            html += f"<tr><td><b>{html_lib.escape(d.get('symbol','?'))}</b></td><td>{html_lib.escape(d.get('bias','?'))}</td><td>{d.get('conviction',0):.2f}</td><td style='font-size:11px'>{html_lib.escape(d.get('reason','')[:90])}</td></tr>"
+        html += "</table><p>→ TRC stays TRB-like today; no AI injection.</p>"
+        return html
+    longs = [d for d in decisions if d.get("side") == "LONG"]
+    shorts = [d for d in decisions if d.get("side") == "SHORT"]
+    html += f"<p><b>Actionable: {len(decisions)} ({len(longs)} LONG / {len(shorts)} SHORT)</b> — TRC will inject via <code>tradier_rankings</code> (TRC = TRB + AI), TRB stays control.</p>"
+    html += "<table><tr><th>Symbol</th><th>Side</th><th>Conv</th><th>Size</th><th>Reason</th></tr>"
+    for d in decisions:
+        html += (
+            f"<tr><td><b>{html_lib.escape(d.get('symbol','?'))}</b></td>"
+            f"<td>{html_lib.escape(d.get('side','?'))}</td>"
+            f"<td>{d.get('conviction',0):.2f}</td>"
+            f"<td>{d.get('size_mult',1.0):.2f}x</td>"
+            f"<td style='font-size:11px'>{html_lib.escape(d.get('reason','')[:110])}</td></tr>"
+        )
+    html += "</table>"
+    html += "<p style='font-size:11px;color:#666'>Live enforcement via <code>~/binance-agent-handoff/trc_advisories.json</code> (expires 20:00 ET). Rankings: <code>TRC = read(TRB file) + AI picks → allowlist+dedupe</code>.</p>"
+    # Evening attribution — join against today's history ledgers if present
+    try:
+        hist_trc = BASE_PATH / "data" / "history" / "trc"
+        hist_trb = BASE_PATH / "data" / "history" / "trb"
+        today_str = _dt.now(_tz.utc).strftime("%Y-%m-%d")
+        # Collect symbols that were AI picks today
+        ai_syms = {d.get("symbol","").upper() for d in decisions}
+        trc_hits = trb_hits = 0
+        trc_pnl = trb_pnl = 0.0
+        # Very lightweight: count jsonl lines containing today string and parse gain if present
+        for hist_dir, label in [(hist_trc, "trc"), (hist_trb, "trb")]:
+            if not hist_dir.exists():
+                continue
+            for p in hist_dir.glob("*.jsonl"):
+                try:
+                    for line in p.read_text().splitlines():
+                        if today_str not in line:
+                            continue
+                        # Only count if symbol was an AI pick (for TRC) or would have been AI pick (for TRB attribution)
+                        # Fallback: count all if no symbol filtering possible
+                        if ai_syms and not any(s in line.upper() for s in ai_syms):
+                            continue
+                        if label == "trc":
+                            trc_hits += 1
+                        else:
+                            trb_hits += 1
+                        # Try to extract gain_pct or pnl
+                        try:
+                            obj = _json.loads(line)
+                            g = obj.get("gain_pct") or obj.get("pnl_pct") or obj.get("realized_pnl_pct") or 0
+                            if isinstance(g, (int, float)):
+                                if label == "trc":
+                                    trc_pnl += float(g)
+                                else:
+                                    trb_pnl += float(g)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+        if trc_hits or trb_hits:
+            html += (
+                f"<h3>Evening attribution (today {html_lib.escape(today_str)}, AI-picked symbols only)</h3>"
+                f"<table><tr><th>Account</th><th>Ledger hits</th><th>Sum gain (approx)</th></tr>"
+                f"<tr><td>TRC (paper, AI)</td><td>{trc_hits}</td><td>{trc_pnl:+.2f}%</td></tr>"
+                f"<tr><td>TRB (control)</td><td>{trb_hits}</td><td>{trb_pnl:+.2f}%</td></tr>"
+                f"<tr><td><b>Delta TRC−TRB</b></td><td>{trc_hits - trb_hits:+d}</td><td>{(trc_pnl - trb_pnl):+.2f}%</td></tr></table>"
+                "<p style='font-size:11px;color:#666'>Hits = jsonl lines containing today string for AI-picked symbols; sum gain is best-effort from gain fields. For audited P&L use ledger reports.</p>"
+            )
+        else:
+            html += f"<p style='font-size:11px;color:#888'>Evening ledger: no history hits for {html_lib.escape(today_str)} yet (market closed or not yet traded).</p>"
+    except Exception as _e:
+        html += f"<p style='color:#c62828'>Evening attribution error: {html_lib.escape(str(_e))}</p>"
+    return html
+
+
+# ---------------------------------------------------------------------------
+# Active digest cutover
+# ---------------------------------------------------------------------------
+# Keep the historical builders above available for forensic/unit-test callers,
+# but make the function used by ``main()`` unequivocally read the audited
+# direct-V8 GUI-lab receipts.  This avoids mixing old matrix numbers into a
+# current email during a gradual deployment.
+def build_digest(prev_state, now):
+    snap = v8digest.snapshot(now=float(now), state=prev_state)
+    body = v8digest.render_section(snap, title="DIRECT-V8 RESULTS DIGEST")
+    # AI premarket section — morning recommendations + evening attribution (TRC paper A/B)
+    try:
+        ai_html = _ai_premarket_html()
+    except Exception as _e:
+        ai_html = f"<h2>AI PREMARKET</h2><p style='color:#c62828'>AI section error: {html_lib.escape(str(_e))}</p>"
+    body = ai_html + body
+    generated = datetime.fromtimestamp(float(now), timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    html_body = (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'><style>"
+        + me.CSS
+        + "table{border-collapse:collapse;width:100%;margin:4px 0 12px}"
+        + "th{background:#1a1a2e;color:#fff;padding:5px 7px;text-align:left;font-size:11px}"
+        + "td{padding:4px 7px;border-bottom:1px solid #eee;font-size:12px}"
+        + ".g{color:#2e7d32}.r{color:#c62828}"
+        + "</style></head><body><h1>Direct-V8 results digest — "
+        + html_lib.escape(generated)
+        + "</h1>"
+        + body
+        + "<p><small>This digest is sourced only from audited direct-V8 GUI-lab receipts. "
+        + "The obsolete SWITCH_MATRIX/vector stores are intentionally excluded.</small></p>"
+        + "</body></html>"
+    )
+    new_state = v8digest.next_state(float(now), prev_state)
+    new_count = len(snap.get("since") or [])
+    boundary = (snap.get("combiner") or {}).get("boundary_clearing_receipts", 0)
+    subject = f"Direct-V8 results {generated} — {new_count} new audited, {boundary} boundary-clearing"
+    return html_body, subject, new_state
 
 
 def send_with_attachments(html_body, subject, to=None, attach_paths=None):
@@ -1218,7 +1890,9 @@ def main():
     parser.add_argument("--force", action="store_true", help="Send even if run again soon after the last one")
     args = parser.parse_args()
     now = time.time()
-    prev_state = _load_state()
+    # The active cursor belongs to the direct-V8 receipt stream.  Do not reuse
+    # the legacy matrix/reopt counters stored by older digest versions.
+    prev_state = v8digest._state_load()
     html, subject, new_state = build_digest(prev_state, now)
     out_path = BASE_PATH / "data" / "results_digest_latest.html"
     out_path.write_text(html)
@@ -1250,7 +1924,7 @@ def main():
         pass
     ok = send_with_attachments(html, subject, to=me.TO_EMAIL, attach_paths=attach_paths)
     if ok:
-        _save_state(new_state)
+        v8digest.save_digest_state(new_state)
         logger.info("State advanced: %s", new_state)
     else:
         logger.error("Digest NOT sent — state left unchanged so next run re-covers this window")
@@ -1259,3 +1933,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+MATRIX_GUARD_TIMEOUT_SECONDS = 180

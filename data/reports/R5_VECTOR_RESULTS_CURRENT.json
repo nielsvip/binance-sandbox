@@ -1,0 +1,45 @@
+{
+  "active_without_receipt": [
+    "ACN_SHORT",
+    "AMD_LONG",
+    "AR_LONG",
+    "CLF_SHORT",
+    "DIS_SHORT",
+    "INTC_LONG",
+    "MRVL_LONG",
+    "NKE_SHORT",
+    "NVDA_LONG",
+    "RBLX_SHORT",
+    "USAR_LONG",
+    "USAR_SHORT"
+  ],
+  "campaign_s1": "/home/niels/binance-sandbox/data/reports/vec_research/coupled_qualification_r6_tim50_source_complete_20260803T1555Z",
+  "completed_receipts": 0,
+  "current_source_receipts": 0,
+  "exact_full_v8_promotions": 0,
+  "generated_utc": "2026-08-03T19:49:02.005093+00:00",
+  "planned_keys": 77,
+  "recipe_candidates_evaluated": 0,
+  "result_producing_engine_hashes": {
+    "executor_sha256": "4e7963518aa83bfcf9660405c0158ed184635e0e1a9d3790b02d3846c88504a3",
+    "run_entry_exit_beam_campaign_sha256": "8c4d7893c385703bc7672e1f9a8a58bb06335d0a7aab1f8daaec362a68cb800c",
+    "v8_vec_sweep_sha256": "3d954b0c79e16b02afdfdb27ead4bd62793bab4fb15f7baa16739a9f0b5db58b",
+    "vec_entry_exit_beam_adapter_sha256": "92fb300ed0c87ea77cff73d0b548d975414eb15d107bc21402d9cf1333c277f2",
+    "vec_same_entry_exit_adapter_sha256": "19d9dd2dfc743e8e8e48bac989b223cf0c39a5da138a54f2f8299ef709a4d94e",
+    "vec_same_entry_structural_scan_sha256": "0487488eb04c6272bf8dab8547531b1dab56ff00954022da7728ccecef1afcfc"
+  },
+  "results": [],
+  "runtime": {
+    "exact_v8": false,
+    "key": "ACN_SHORT\nAMD_LONG\nAR_LONG\nCLF_SHORT\nDIS_SHORT\nINTC_LONG\nMRVL_LONG\nNKE_SHORT\nNVDA_LONG\nRBLX_SHORT\nUSAR_LONG\nUSAR_SHORT",
+    "observed_at_epoch": 1785786541.737494,
+    "schema": "s1-coupled-path-qualification-watchdog-v1",
+    "state_writes": false,
+    "status": "FLEET_AT_CAPACITY"
+  },
+  "schema": "coupled-vector-progress-v1",
+  "stale_source_receipts": 0,
+  "strict_train_survivors": 0,
+  "unique_discovery_screens": 0,
+  "untouched_final_survivors": 0
+}

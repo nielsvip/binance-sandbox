@@ -1,0 +1,26 @@
+{
+  "canonical_count_source": "SWITCH_MATRIX_UNIQUE_NONZERO_AUDIT_CURRENT.json",
+  "samples": [
+    {
+      "accepted_canonical_display_cells": 19182,
+      "epoch": 1785797281.514855
+    },
+    {
+      "accepted_canonical_display_cells": 19182,
+      "epoch": 1785797356.6898
+    },
+    {
+      "accepted_canonical_display_cells": 19182,
+      "epoch": 1785799087.677209
+    },
+    {
+      "accepted_canonical_display_cells": 19182,
+      "epoch": 1785799087.729399
+    },
+    {
+      "accepted_canonical_display_cells": 19182,
+      "epoch": 1785799101.973692
+    }
+  ],
+  "schema": "s1-30min-truth-state-v1"
+}

@@ -1,0 +1,822 @@
+{
+  "accepted_current_engine_rows": 2072,
+  "active_key_count": 115,
+  "campaign": "stocks_repaired_20260730_c5",
+  "canonical_matrix": "data/reports/SWITCH_MATRIX_TRB.csv.gz",
+  "canonical_matrix_sha256": "cb7f79d220f918fbd0cf2fe41ac69df237a522171e2693b279e9a2fce12bd54e",
+  "contract_version": "tradier-matrix-exec-c5-20260730",
+  "digest": "data/reports/SWITCH_MATRIX_TRB_DIGEST.md",
+  "digest_sha256": "5feaf7da4e54b056a2aaa17fec8ed1480f945041b4ed3b6eb1edf547dcad02d7",
+  "engine_cutoff": "2026-07-30T03:30:10Z",
+  "generated_at": "2026-08-03T10:06:40Z",
+  "matrix_export_rebound_at_ns": 1785865799576010197,
+  "matrix_scope": "CURRENT_CAMPAIGN_CURRENT_CODE_NPZ_SIDE_FINGERPRINTS_ONLY",
+  "schema": "switch-matrix-trb-current-digest-v1",
+  "tim_policy": {
+    "AAPL_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 11,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AAPL_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 10,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "ACN_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 38,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AEM_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 20,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AGCO_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 37,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AGI_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 2,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "AG_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 48,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "ALB_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 14,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AMAT_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 29,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AMD_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 47,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AMZN_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 39,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "ARM_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 12,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AR_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 32,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AU_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 12,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "AXON_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 28,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "A_LONG": {
+      "cohort": "TOP_10",
+      "rank": 7,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "BG_LONG": {
+      "cohort": "TOP_10",
+      "rank": 8,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "BK_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 13,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "BNO_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 25,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "BOTZ_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 25,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CAT_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 56,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CDE_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 26,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CDW_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 58,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CF_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 29,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CHRD_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 45,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CIBR_LONG": {
+      "cohort": "TOP_10",
+      "rank": 1,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "CIEN_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 38,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CIEN_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 41,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CLF_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 3,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "CLX_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 39,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CMC_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 43,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CMC_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 47,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "COE_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 42,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "COP_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 54,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "CRWD_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 43,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "DAR_LONG": {
+      "cohort": "TOP_10",
+      "rank": 9,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "DELL_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 23,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "DINO_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 28,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "DIS_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 22,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "DVN_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 15,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "EOG_LONG": {
+      "cohort": "TOP_10",
+      "rank": 4,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "EXEL_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 48,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "FANG_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 17,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "FCN_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 11,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "FCX_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 23,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "FIVN_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 52,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "FNV_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 18,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "GDX_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 5,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "GM_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 18,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "GOOGL_LONG": {
+      "cohort": "TOP_10",
+      "rank": 6,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "HAO_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 17,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "HII_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 9,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "HL_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 19,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "IBIT_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 30,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "INTC_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 16,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "KGC_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 21,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "LAC_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 52,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "LDOS_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 24,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "LEXX_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 57,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "LLY_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 46,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "LNG_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 41,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "LRCX_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 22,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "LSCC_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 51,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "MNTS_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 50,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "MOS_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 34,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "MPC_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 19,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "MP_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 6,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "MRVL_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 14,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "MSTR_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 57,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "MU_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 31,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "NEM_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 31,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "NKE_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 35,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "NLR_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 32,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "NOC_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 46,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "NVDA_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 33,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "NXE_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 8,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "OKE_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 27,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "OLED_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 24,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "OLED_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 27,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "ORCL_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 50,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "PAAS_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 49,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "PBF_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 55,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "PR_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 35,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "PSX_LONG": {
+      "cohort": "TOP_10",
+      "rank": 2,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "PWR_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 15,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "QRVO_LONG": {
+      "cohort": "TOP_10",
+      "rank": 5,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "RBLX_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 4,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "RDDT_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 55,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "RGLD_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 7,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "ROBO_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 26,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "ROKU_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 20,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "RRC_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 21,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "SCCO_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 51,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "SNDK_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 42,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "SNOW_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 49,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "STLD_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 36,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "TDG_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 56,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "TECK_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 37,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "TECK_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 40,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "TRGP_LONG": {
+      "cohort": "TOP_10",
+      "rank": 10,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "TSLA_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 54,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "TTD_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 33,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "TXN_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 30,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "USAR_LONG": {
+      "cohort": "TOP_10",
+      "rank": 3,
+      "source": "symbols_trb_long.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "USAR_SHORT": {
+      "cohort": "TOP_10",
+      "rank": 1,
+      "source": "symbols_trb_short.json:first_10",
+      "tim_max_pct": 80.0,
+      "tim_min_pct": 50.0
+    },
+    "UUUU_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 44,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "VALE_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 44,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "VALE_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 45,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "VICR_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 53,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "VLO_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 36,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "VT_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 34,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "WDAY_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 16,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "WPM_SHORT": {
+      "cohort": "REMAINDER",
+      "rank": 13,
+      "source": "symbols_trb_short.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "XLE_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 40,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    },
+    "XOP_LONG": {
+      "cohort": "REMAINDER",
+      "rank": 53,
+      "source": "symbols_trb_long.json:rank_gt_10",
+      "tim_max_pct": 60.0,
+      "tim_min_pct": 20.0
+    }
+  }
+}
