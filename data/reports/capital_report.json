@@ -1,68 +1,44 @@
 {
- "generated_at": "2026-08-17 18:36 UTC",
- "total_capital_usd": 27.96,
+ "generated_at": "2026-08-17 19:32 UTC",
+ "total_capital_usd": 13.94,
  "tier_capital": {
   "A": 0.0,
-  "B": 21.02,
-  "C": 6.95
+  "B": 7.0,
+  "C": 6.94
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 1,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:AIAUSDT_SHORT",
-  "fin:ZROUSDT_SHORT"
+  "men:DOTUSDT_SHORT",
+  "men:ZROUSDT_SHORT"
  ],
- "mediocre": [
-  "fin:MAGICUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:AIAUSDT_SHORT",
-   "symbol": "AIAUSDT",
-   "account": "fin",
-   "value_usd": 7.05,
-   "gain_pct": -0.782,
+   "pk": "men:DOTUSDT_SHORT",
+   "symbol": "DOTUSDT",
+   "account": "men",
+   "value_usd": 7.0,
+   "gain_pct": -0.616,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 103.0,
-   "mark": 0.0684
+   "amt": 9.2,
+   "mark": 0.7607
   },
   {
-   "pk": "fin:MAGICUSDT_SHORT",
-   "symbol": "MAGICUSDT",
-   "account": "fin",
-   "value_usd": 7.01,
-   "gain_pct": -0.148,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 172.7,
-   "mark": 0.04058
-  },
-  {
-   "pk": "fin:NOTUSDT_SHORT",
-   "symbol": "NOTUSDT",
-   "account": "fin",
-   "value_usd": 6.96,
-   "gain_pct": 0.589,
-   "tier": "B",
-   "perf_mult": 0.92,
-   "amt": 18158.0,
-   "mark": 0.00038323
-  },
-  {
-   "pk": "fin:ZROUSDT_SHORT",
+   "pk": "men:ZROUSDT_SHORT",
    "symbol": "ZROUSDT",
-   "account": "fin",
-   "value_usd": 6.95,
-   "gain_pct": -0.185,
+   "account": "men",
+   "value_usd": 6.94,
+   "gain_pct": 0.132,
    "tier": "C",
-   "perf_mult": 0.37,
+   "perf_mult": 0.35,
    "amt": 9.0,
-   "mark": 0.7722
+   "mark": 0.7711317
   }
  ]
 }

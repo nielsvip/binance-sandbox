@@ -1630,15 +1630,6 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-12T22:40:46.124971+00:00"
   },
-  "men:ZROUSDT_SHORT": {
-    "count": 3,
-    "first_seen_zero_at": "2026-08-12T23:21:48.005248+00:00",
-    "last_increment_at": "2026-08-12T23:23:05.077965+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    },
-    "last_seen": "2026-08-12T23:40:03.689682+00:00"
-  },
   "men:KSMUSDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-08-12T23:40:30.259228+00:00",
@@ -1718,13 +1709,12 @@
     },
     "last_seen": "2026-08-17T17:34:44.510537+00:00"
   },
-  "inf:WLDUSDC_SHORT": {
-    "count": 2,
-    "first_seen_zero_at": "2026-08-17T17:54:45.861011+00:00",
-    "last_increment_at": "2026-08-17T17:54:45.861011+00:00",
+  "fin:PTBUSDT_SHORT": {
+    "count": 3,
+    "first_seen_zero_at": "2026-08-17T17:42:19.338768+00:00",
+    "last_increment_at": "2026-08-17T17:44:10.915324+00:00",
     "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-08-17T17:54:48.497815+00:00"
+      "API_ABSENCE": 3
+    }
   }
 }

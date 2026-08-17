@@ -1,14 +1,22 @@
 {
-  "generated_at": "2026-08-17T19:16:25.642136+00:00",
-  "count": 1,
+  "generated_at": "2026-08-17T19:31:56.214970+00:00",
+  "count": 2,
   "advisories": [
+    {
+      "symbol": "DIS",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.72 threshold=0.45",
+      "score": 0.718,
+      "ts": "2026-08-17T19:31:56.214919+00:00"
+    },
     {
       "symbol": "PATH",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.90 threshold=0.45",
       "score": 0.9,
-      "ts": "2026-08-17T19:16:25.642038+00:00"
+      "ts": "2026-08-17T19:31:56.214935+00:00"
     }
   ]
 }

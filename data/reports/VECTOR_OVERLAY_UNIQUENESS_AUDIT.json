@@ -163,81 +163,6 @@
         "key": "VT_LONG",
         "reason": "ValueError: raw shard missing",
         "receipt": "data/reports/behavior_distinct_vector_frontier/VT_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "AAPL_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/AAPL_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "AAPL_SHORT",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/AAPL_SHORT/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "ACN_SHORT",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/ACN_SHORT/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "CLX_SHORT",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/CLX_SHORT/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "CMC_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/CMC_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "DINO_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/DINO_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "DVN_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/DVN_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "EOG_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/EOG_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "FANG_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/FANG_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "GM_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/GM_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "MU_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/MU_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "NVDA_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/NVDA_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "OKE_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/OKE_LONG/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "TTD_SHORT",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/TTD_SHORT/FRONTIER_RECEIPT.json"
-      },
-      {
-        "key": "VT_LONG",
-        "reason": "ValueError: raw shard missing",
-        "receipt": "data/reports/behavior_distinct_interaction_frontier_c6/VT_LONG/FRONTIER_RECEIPT.json"
       }
     ]
   },
@@ -246,7 +171,7 @@
   "data_unavailable_rows": 0,
   "engine_cells_modified": false,
   "fingerprint_collision_groups": 135,
-  "generated_at": "2026-08-04T16:54:34Z",
+  "generated_at": "2026-08-17T19:25:08Z",
   "input_rows": 2189,
   "matrix_numeric_fill_requires_pass": true,
   "metric_collision_groups": 131,
@@ -260,15 +185,15 @@
     "contract": "STRICT_PER_KEY_UNIQUE_METRIC_AND_ACTION_NO_DUPLICATES",
     "data_unavailable_rows": 0,
     "engine_cells_modified": false,
-    "fingerprint_collision_groups": 7,
-    "input_rows": 252,
+    "fingerprint_collision_groups": 5,
+    "input_rows": 151,
     "matrix_numeric_fill_requires_pass": true,
-    "metric_collision_groups": 7,
-    "passed_numeric_overlays": 238,
-    "quarantined_numeric_overlays": 14,
+    "metric_collision_groups": 5,
+    "passed_numeric_overlays": 141,
+    "quarantined_numeric_overlays": 10,
     "reason_counts": {
-      "DUPLICATE_ACTION_FINGERPRINT": 14,
-      "DUPLICATE_RESULT_NUMBER": 14
+      "DUPLICATE_ACTION_FINGERPRINT": 10,
+      "DUPLICATE_RESULT_NUMBER": 10
     },
     "schema_version": 1,
     "scope": "POST_EXACT_RECOVERED_AND_PRESERVED_V8_DISPLAY_PRECEDENCE"

@@ -56,7 +56,7 @@ DEFAULT_VARIANTS: Dict[str, Dict[str, Any]] = {
     "loose_wtdc_60": {"OPTIONS_BUY_MIN_WT_DC_SCORE": 60.0},
     "wt_dc_off": {"OPTIONS_BUY_WT_DC_GATE_ENABLED": False},
     "tighter_caps": {"OPTIONS_MAX_PER_SYMBOL": 0.15, "OPTIONS_MAX_PER_SECTOR": 0.30},
-    "aggressive_dte_30": {"OPTIONS_BUY_MIN_DTE": 30},
+    "aggressive_dte_30": {"OPTIONS_BUY_MIN_DTE": 45},
     "conservative_delta_50": {"OPTIONS_BUY_MIN_ABS_DELTA": 0.50},
 }
 

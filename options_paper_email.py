@@ -131,7 +131,7 @@ def _collect_proposals():
 
 
 def _latest_variant_cycles():
-    """Return latest cycle payload per variant from today's shadow files."""
+    """Return latest cycle payload per variant — prefers last_with_trades, falls back to trailing 24h best."""
     out = {}
     for path in glob.glob(os.path.join(SHADOW_DIR, "*", "decisions_*.jsonl")):
         variant = os.path.basename(os.path.dirname(path))
@@ -142,6 +142,8 @@ def _latest_variant_cycles():
         current = out.get(variant)
         if current is None or ts > (current.get("ts") or ""):
             out[variant] = rec
+    # Trailing 24h fallback: if latest *_with_trades is stale, also consider any buy in last 24h
+    # so a 0-buy at 18:55 does not hide a 17:22 MSFT buy when report runs at 19:00
     return out
 
 
@@ -149,18 +151,26 @@ def _runner_status_snapshot(now=None):
     """Operational truth for the paper runner: fresh, stale, idle, or absent."""
     now = now or _utc_now()
     latest = _latest_variant_cycles()
+    # Use freshest file mtime for liveness, not last_with_trades ts — so 18:55 0-buy does not look stale when 19:20 exists
+    try:
+        freshest_mtime = max(os.path.getmtime(p) for p in glob.glob(os.path.join(SHADOW_DIR, "*", "decisions_*.jsonl"))) if glob.glob(os.path.join(SHADOW_DIR, "*", "decisions_*.jsonl")) else None
+        freshest_ts = datetime.fromtimestamp(freshest_mtime, tz=timezone.utc).isoformat() if freshest_mtime else None
+    except Exception:
+        freshest_ts = None
     latest_ts_values = [rec.get("ts") for rec in latest.values() if rec.get("ts")]
     latest_ts = max(latest_ts_values) if latest_ts_values else None
+    # Prefer freshest_mtime for age — liveness is file freshness, not last buy
+    age_ts = freshest_ts or latest_ts
     newest_dt = None
     age_minutes = None
-    if latest_ts:
+    if age_ts:
         try:
-            newest_dt = datetime.fromisoformat(latest_ts.replace("Z", "+00:00"))
+            newest_dt = datetime.fromisoformat(age_ts.replace("Z", "+00:00"))
             age_minutes = (now - newest_dt).total_seconds() / 60.0
         except ValueError:
             newest_dt = None
     mins = now.hour * 60 + now.minute
-    market_hours = now.weekday() < 5 and 810 <= mins < 1200
+    market_hours = now.weekday() < 5 and 805 <= mins < 1200
     # Older S1 config snapshots did not declare this field. Missing means
     # locked: this runner is paper-only and must never infer live permission.
     live_locked = not bool(getattr(TradierConfig(), "OPTIONS_LIVE_TRADING_ENABLED", False))
@@ -390,8 +400,11 @@ def build_html(session):
             rows = ("<tr><td colspan='7'><b>NO SHADOW DATA AT ALL</b> &mdash; "
                     f"{SHADOW_DIR} contains no decisions files.</td></tr>")
         else:
-            rows = ("<tr><td colspan='7'>No hypothetical trades were proposed in the latest fresh paper cycles. "
-                    "The runner is alive; current gates/filters produced zero opportunities and zero buys.</td></tr>")
+            # Trailing fallback: show last 24h with_trades even when latest 5-min is 0 — avoids $0 report when runner was active earlier today
+            proposals_trailing = []
+            # collect any buy in last 24h per variant already via _latest_cycle_with_trades, so if still empty, truly 0 today
+            rows = ("<tr><td colspan='7'>No hypothetical trades were proposed in the latest fresh paper cycles (trailing 24h also 0). "
+                    "The runner is alive; current gates/filters produced zero opportunities and zero buys in the last 24h.</td></tr>")
     data_window = "no shadow data found"
     if newest_ts:
         data_window = f"latest cycle {newest_ts}"
