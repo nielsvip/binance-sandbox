@@ -30,6 +30,20 @@ class Config:
     def __hash__(self):
         return id(self)
 
+    BASE_TF: str = "3m"  # parity 2026-08-17: vector->live (was vector-only)
+    BB_PCTB_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    COOLDOWN_BARS: int = 3  # parity 2026-08-17: vector->live (was vector-only)
+    ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
+    MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
+    MODE: str = "crypto"  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL1_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL2_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL3_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL4_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    SATOSHIT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    WT_EXIT_MIN_TFS: int = 2  # parity 2026-08-17: vector->live (was vector-only)
+    WT_VEL_DECAY_EXIT_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    WT_VEL_DECAY_THRESHOLD: float = 1.0  # parity 2026-08-17: vector->live (was vector-only)
     MIN_POSITION_SIZE: float = 1.0
     # 1/50 RULE: No single position > 2% of total capital ($1k crypto = $20/pos max)
     MAX_POSITION_SIZE: float = 200.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).

@@ -47,6 +47,19 @@ class TradierConfig:
     REDUCTION_COOLDOWN_SECONDS: float = 30.0  # BACKTEST_CHANGE_T38 was 60 → 30s faster rotation
     AUGMENTATION_COOLDOWN_SECONDS: float = 300.0
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
+    BB_PCTB_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    COOLDOWN_BARS: int = 3  # parity 2026-08-17: vector->live (was vector-only)
+    ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
+    MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
+    MODE: str = "crypto"  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL1_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL2_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL3_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    REENTRY_PULL4_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    SATOSHIT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    WT_EXIT_MIN_TFS: int = 2  # parity 2026-08-17: vector->live (was vector-only)
+    WT_VEL_DECAY_EXIT_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    WT_VEL_DECAY_THRESHOLD: float = 1.0  # parity 2026-08-17: vector->live (was vector-only)
     MIN_POSITION_SIZE: float = 100
     # Per-entry timeframe sizing (stock analogue of config.BREAKOUT_TF_SIZE_*).
     # Tradier's native lower timeframe is 5m, which corresponds to crypto 3m.
