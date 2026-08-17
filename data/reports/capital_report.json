@@ -1,20 +1,18 @@
 {
- "generated_at": "2026-08-17 19:56 UTC",
- "total_capital_usd": 13.92,
+ "generated_at": "2026-08-17 20:12 UTC",
+ "total_capital_usd": 6.98,
  "tier_capital": {
   "A": 0.0,
   "B": 6.98,
-  "C": 6.94
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 1
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "men:ZROUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
@@ -22,22 +20,11 @@
    "symbol": "DOTUSDT",
    "account": "men",
    "value_usd": 6.98,
-   "gain_pct": -0.418,
+   "gain_pct": -0.386,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 9.2,
-   "mark": 0.7592
-  },
-  {
-   "pk": "men:ZROUSDT_SHORT",
-   "symbol": "ZROUSDT",
-   "account": "men",
-   "value_usd": 6.94,
-   "gain_pct": 0.188,
-   "tier": "C",
-   "perf_mult": 0.35,
-   "amt": 9.0,
-   "mark": 0.7707
+   "mark": 0.75895492
   }
  ]
 }

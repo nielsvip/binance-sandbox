@@ -904,15 +904,6 @@
         "why": "absolute rule failed: gain_mo=-0.0003 pool_sharpe=-0.0005 trades=38 [capture:T0]"
       }
     },
-    "CME_SHORT": {
-      "SHORT_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
-    },
     "COTIUSDT_SHORT": {
       "SHORT_ENABLED": false,
       "bh_long": -97.0,
@@ -1372,6 +1363,15 @@
         "why": "absolute rule: gain_mo=0.31>0 pool_sharpe=0.27>0 trades=41>=30 [capture:T0]"
       }
     },
+    "FDX_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
     "FIDAUSDT_LONG": {
       "LONG_ENABLED": false,
       "bh_long": 103.0,
@@ -1553,15 +1553,6 @@
         "ts": "2026-07-15T01:44:10Z",
         "why": "short-b&h=95.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
-    },
-    "HAO_SHORT": {
-      "SHORT_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "HL_SHORT": {
       "SHORT_ENABLED": false,
@@ -1956,6 +1947,15 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "absolute rule failed: gain_mo=-0.3861 pool_sharpe=-0.1263 trades=73 [capture:T0]"
       }
+    },
+    "MRK_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "MRVL_LONG": {
       "LONG_ENABLED": true,
@@ -2568,15 +2568,6 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "absolute rule failed: gain_mo=-0.0425 pool_sharpe=-0.206 trades=24 [capture:T0]"
       }
-    },
-    "RTX_LONG": {
-      "LONG_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "RVNUSDT_SHORT": {
       "SHORT_ENABLED": false,
