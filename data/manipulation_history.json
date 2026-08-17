@@ -2213,5 +2213,41 @@
     ],
     "timestamp": "2026-08-17T18:49:04.681556+00:00",
     "price": 8.67657565
+  },
+  {
+    "symbol": "BEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T18:52:16.599108+00:00",
+    "price": 233.2299987
+  },
+  {
+    "symbol": "ENAUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T18:53:45.527586+00:00",
+    "price": 0.08316534
+  },
+  {
+    "symbol": "HYPEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T18:58:44.083158+00:00",
+    "price": 59.09900476
+  },
+  {
+    "symbol": "PTBUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T19:03:11.567091+00:00",
+    "price": 0.00085239
   }
 ]

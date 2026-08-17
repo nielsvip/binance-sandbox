@@ -21117,15 +21117,36 @@ class TradierTradeManager:
                                         logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
                                         continue
                         elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired:
-                            # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) — now 2h per user 2026-08-17, also bypasses WT ═══
+                            # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) — 2h per user 2026-08-17, now conditional on dc_15m breakout OR GR HL/HH (higher high OR higher low) — bigger 1h/4h/D corrections need HTF structure, not guaranteed 2h ═══
                             if not getattr(config, 'TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED', True):
                                 logger.info(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue BUT TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED=False — stoch gate still applies")
                                 continue
-                            logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — stoch+WT BYPASSED, relying on exit score only")
-                            # Overdue >2h: bypass both stoch AND WT — price cross-back is enough if exit score cleared
+                            # Conditional overdue: require 15m Donchian breakout OR GR higher-high / higher-low on N TFs
+                            _gr_mode = str(getattr(config, 'REENTRY_GR_HLHH_MODE', 'OR')).upper()  # OR | HH | HL
+                            _gr_min_tfs = int(getattr(config, 'REENTRY_GR_MIN_TFS', 2))
+                            _dc_lvl = float(i.get('dc_high_15m' if side=="LONG" else 'dc_low_15m', 0) or 0)
+                            _dc_ok = _dc_lvl>0 and (current_price >= _dc_lvl if side=="LONG" else current_price <= _dc_lvl)
+                            # GR HL/HH: count TFs with higher high OR higher low
+                            _gr_count = 0
+                            for _tf in ('1h','4h','D'):
+                                _hi = float(i.get(f'high_{_tf}',0) or 0); _hip = float(i.get(f'high_{_tf}_prev',0) or 0)
+                                _lo = float(i.get(f'low_{_tf}',0) or 0); _lop = float(i.get(f'low_{_tf}_prev',0) or 0)
+                                _hh = _hi>0 and _hip>0 and _hi > _hip
+                                _hl = _lo>0 and _lop>0 and _lo > _lop
+                                _wt_ok = (wt1_1h>wt2_1h if _tf=='1h' else wt1_4h>wt2_4h if _tf=='4h' else wt1_D>wt2_D) if side=="LONG" else (wt1_1h<wt2_1h if _tf=='1h' else wt1_4h<wt2_4h if _tf=='4h' else wt1_D<wt2_D)
+                                if _gr_mode == 'HH' and _hh and _wt_ok:
+                                    _gr_count += 1
+                                elif _gr_mode == 'HL' and _hl and _wt_ok:
+                                    _gr_count += 1
+                                elif _gr_mode == 'OR' and (_hh or _hl) and _wt_ok:
+                                    _gr_count += 1
+                            _gr_ok = _gr_count >= _gr_min_tfs
+                            if not (_dc_ok or _gr_ok):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue but dc_15m={_dc_lvl:.2f} not broken ({_dc_ok}) and GR {_gr_mode} HL/HH { _gr_count}/{_gr_min_tfs} — holding (1h/4h/D correction active)")
+                                continue
+                            logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — dc_15m={_dc_ok} GR {_gr_mode} { _gr_count}/{_gr_min_tfs} → stoch+WT BYPASSED")
                             wt_support = 3
                             reenter = True
-                            # skip WT check below by marking as rescued
                             _p0_rescue = True
                         # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned (or a fast-path fired)
                         if _p0_rescue or _aggr_fired or _fav_fired or _g60_fired:

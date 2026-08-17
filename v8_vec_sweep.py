@@ -591,6 +591,8 @@ class SweepConfig:
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # 2026-05-22 parity: live False
     WT_3M_FORCE_OPEN_ENABLED: bool = False  # USER 2026-05-21 04:45 DISABLED in config.py + config_tradier.py (ZECUSDC parabolic suicide trade); sweep default now mirrors live. Re-enable only after SMA_15 pullback pyramid vec-validation.
     GR_VOTE_FALLBACK_MIN: int = 7  # 2026-05-27 surfaced so --override can tune (was getattr'd via vec_paths/golden_rule_enforce.py)
+    REENTRY_GR_HLHH_MODE: str = "OR"  # 2026-08-17 overdue reentry: OR=HH or HL, HH=only HH, HL=only HL on 1h/4h/D
+    REENTRY_GR_MIN_TFS: int = 2  # min TFs (1h/4h/D) with HL/HH + WT alignment required for overdue reentry
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
     # ── 2026-05-17 VEC_OVERTRADE_FIX (master kill flag) ──────────────────
@@ -1811,6 +1813,25 @@ def simulate_one_symbol(
     wt_velocity_15m = np.nan_to_num(npz.get("wt_velocity_15m", np.zeros(n)).astype(np.float32))
     wt1_1h = np.nan_to_num(npz.get("wt1_1h", np.zeros(n)).astype(np.float32))
     wt2_1h = np.nan_to_num(npz.get("wt2_1h", np.zeros(n)).astype(np.float32))
+    # 2026-08-17 OVERDUE REENTRY parity — 1h/4h/D HH/HL + WT + dc_15m for >2h flat
+    wt1_4h = np.nan_to_num(npz.get("wt1_4h", np.zeros(n)).astype(np.float32))
+    wt2_4h = np.nan_to_num(npz.get("wt2_4h", np.zeros(n)).astype(np.float32))
+    wt1_D = np.nan_to_num(npz.get("wt1_D", np.zeros(n)).astype(np.float32))
+    wt2_D = np.nan_to_num(npz.get("wt2_D", np.zeros(n)).astype(np.float32))
+    dc_high_15m = np.nan_to_num(npz.get("dc_high_15m", np.zeros(n)).astype(np.float32))
+    dc_low_15m = np.nan_to_num(npz.get("dc_low_15m", np.zeros(n)).astype(np.float32))
+    high_1h = np.nan_to_num(npz.get("high_1h", np.zeros(n)).astype(np.float32))
+    high_1h_prev = np.nan_to_num(npz.get("high_1h_prev", np.roll(npz.get("high_1h", np.zeros(n)), 1)).astype(np.float32))
+    low_1h = np.nan_to_num(npz.get("low_1h", np.zeros(n)).astype(np.float32))
+    low_1h_prev = np.nan_to_num(npz.get("low_1h_prev", np.roll(npz.get("low_1h", np.zeros(n)), 1)).astype(np.float32))
+    high_4h = np.nan_to_num(npz.get("high_4h", np.zeros(n)).astype(np.float32))
+    high_4h_prev = np.nan_to_num(npz.get("high_4h_prev", np.roll(npz.get("high_4h", np.zeros(n)), 1)).astype(np.float32))
+    low_4h = np.nan_to_num(npz.get("low_4h", np.zeros(n)).astype(np.float32))
+    low_4h_prev = np.nan_to_num(npz.get("low_4h_prev", np.roll(npz.get("low_4h", np.zeros(n)), 1)).astype(np.float32))
+    high_D = np.nan_to_num(npz.get("high_D", np.zeros(n)).astype(np.float32))
+    high_D_prev = np.nan_to_num(npz.get("high_D_prev", np.roll(npz.get("high_D", np.zeros(n)), 1)).astype(np.float32))
+    low_D = np.nan_to_num(npz.get("low_D", np.zeros(n)).astype(np.float32))
+    low_D_prev = np.nan_to_num(npz.get("low_D_prev", np.roll(npz.get("low_D", np.zeros(n)), 1)).astype(np.float32))
     dc_h_4h = exit_gates["dc_h_4h"]
     dc_l_4h = exit_gates["dc_l_4h"]
     if mode == "tradier":
@@ -3728,6 +3749,53 @@ def simulate_one_symbol(
                         else:
                             _trig = (mark <= state.last_exit_price) and (float(close[i-1]) > state.last_exit_price)
                     fire_block = bool(_trig and _wt_ok)
+                    # 2026-08-17 OVERDUE parity: after 2h require dc_15m breakout OR GR HL/HH (OR/HH/HL × min_tfs) — mirrors tradier_manage reentry_monitor_loop
+                    _overdue_bars = _hb * 2  # 2h default (12*2=24 bars at 5m)
+                    if _since >= _overdue_bars:
+                        if not bool(getattr(config, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", True)):
+                            fire_block = False
+                        else:
+                            _dc_lvl_v = float(dc_high_15m[i] if is_long else dc_low_15m[i])
+                            _dc_ok_v = _dc_lvl_v > 0 and (mark >= _dc_lvl_v if is_long else mark <= _dc_lvl_v)
+                            _gr_mode_v = str(getattr(config, "REENTRY_GR_HLHH_MODE", "OR")).upper()
+                            _gr_min_v = int(getattr(config, "REENTRY_GR_MIN_TFS", 2))
+                            _gr_cnt_v = 0
+                            # 1h
+                            _hh_1h_v = high_1h[i] > 0 and high_1h_prev[i] > 0 and high_1h[i] > high_1h_prev[i]
+                            _hl_1h_v = low_1h[i] > 0 and low_1h_prev[i] > 0 and low_1h[i] > low_1h_prev[i]
+                            _wt_1h_ok_v = (wt1_1h[i] > wt2_1h[i]) if is_long else (wt1_1h[i] < wt2_1h[i])
+                            if _gr_mode_v == "HH" and _hh_1h_v and _wt_1h_ok_v:
+                                _gr_cnt_v += 1
+                            elif _gr_mode_v == "HL" and _hl_1h_v and _wt_1h_ok_v:
+                                _gr_cnt_v += 1
+                            elif _gr_mode_v == "OR" and (_hh_1h_v or _hl_1h_v) and _wt_1h_ok_v:
+                                _gr_cnt_v += 1
+                            # 4h
+                            _hh_4h_v = high_4h[i] > 0 and high_4h_prev[i] > 0 and high_4h[i] > high_4h_prev[i]
+                            _hl_4h_v = low_4h[i] > 0 and low_4h_prev[i] > 0 and low_4h[i] > low_4h_prev[i]
+                            _wt_4h_ok_v = (wt1_4h[i] > wt2_4h[i]) if is_long else (wt1_4h[i] < wt2_4h[i])
+                            if _gr_mode_v == "HH" and _hh_4h_v and _wt_4h_ok_v:
+                                _gr_cnt_v += 1
+                            elif _gr_mode_v == "HL" and _hl_4h_v and _wt_4h_ok_v:
+                                _gr_cnt_v += 1
+                            elif _gr_mode_v == "OR" and (_hh_4h_v or _hl_4h_v) and _wt_4h_ok_v:
+                                _gr_cnt_v += 1
+                            # D
+                            _hh_D_v = high_D[i] > 0 and high_D_prev[i] > 0 and high_D[i] > high_D_prev[i]
+                            _hl_D_v = low_D[i] > 0 and low_D_prev[i] > 0 and low_D[i] > low_D_prev[i]
+                            _wt_D_ok_v = (wt1_D[i] > wt2_D[i]) if is_long else (wt1_D[i] < wt2_D[i])
+                            if _gr_mode_v == "HH" and _hh_D_v and _wt_D_ok_v:
+                                _gr_cnt_v += 1
+                            elif _gr_mode_v == "HL" and _hl_D_v and _wt_D_ok_v:
+                                _gr_cnt_v += 1
+                            elif _gr_mode_v == "OR" and (_hh_D_v or _hl_D_v) and _wt_D_ok_v:
+                                _gr_cnt_v += 1
+                            _gr_ok_v = _gr_cnt_v >= _gr_min_v
+                            if not (_dc_ok_v or _gr_ok_v):
+                                fire_block = False
+                            elif not fire_block:
+                                # overdue HTF structure satisfied → bypass stoch-style _trig gating, allow reentry
+                                fire_block = True
                 else:
                     fire_block = False
             elif fire_block and bool(getattr(config, "VEC_REENTRY_REQUIRE_PRIOR_EXIT", False)):
