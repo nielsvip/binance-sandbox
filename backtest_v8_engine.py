@@ -170,27 +170,31 @@ if _override_file and Path(_override_file).exists():
     _override_source = _override_file
 else:
     # AUTO-LOAD vector best for bare runs (FIX 2026-08-17: user 2026-08-16 "how can it even know vector settings?" - bare `backtest_v8_engine --mode tradier --account trb` was baseline-only with 0 vector knowledge -> stale Aug14 logs. Now auto-applies winning_tag overrides from hourly_reconfig when no explicit file given. Explicit file still wins. Preserve reproducibility via log.)
-    try:
-        _auto_candidate = None
-        # tradier -> data/hourly_reconfig/trb/active_config.json else per_sym_active_config.json fallback
-        for _p in [BASE_PATH / "data/hourly_reconfig/trb/active_config.json", BASE_PATH / "data/hourly_reconfig/per_sym_active_config.json"]:
-            if _p.exists():
-                _auto_candidate = _p
-                break
-        if _auto_candidate and _auto_candidate.exists():
-            _auto_data = json.loads(_auto_candidate.read_text())
-            # merge overrides for all requested symbols later - here apply union for quick baseline (first symbol's overrides if single-sym run, else no-op and defer to per-symbol apply in worker)
-            # For bare `all symbols` runs, apply global intersection to avoid cross-contamination - just log availability
-            if len(_auto_data) > 0:
-                # Take first entry's overrides as representative for logging; real per-symbol overrides applied in run loop via V8_OVERRIDE_FILE per-symbol when using profiler
-                _sample_key = next(iter(_auto_data))
-                _sample = _auto_data[_sample_key]
-                if isinstance(_sample, dict) and isinstance(_sample.get("overrides"), dict) and len(_sample.get("overrides", {})) > 0:
-                    _overrides = _sample.get("overrides", {})
-                    _override_source = f"AUTO_VECTOR:{_auto_candidate}:{_sample_key}"
-                    v8_logger.info(f"AUTO_VECTOR_LOAD: {len(_overrides)} overrides from {_auto_candidate} sample {_sample_key} (bare run without V8_OVERRIDE_FILE -> applying vector best for parity)")
-    except Exception as _ae:
-        v8_logger.warning(f"AUTO_VECTOR_LOAD_FAILED: {_ae}")
+    # AUDIT 2026-08-17: V8_FORCE_REAL=1 skips AUTO_VECTOR so live audit uses ONLY explicit V8_OVERRIDE_FILE (bar-identical requirement)
+    if os.environ.get("V8_FORCE_REAL", "0") == "1":
+        v8_logger.info("V8_FORCE_REAL=1 — skipping AUTO_VECTOR load for audit (explicit overrides only)")
+    else:
+        try:
+            _auto_candidate = None
+            # tradier -> data/hourly_reconfig/trb/active_config.json else per_sym_active_config.json fallback
+            for _p in [BASE_PATH / "data/hourly_reconfig/trb/active_config.json", BASE_PATH / "data/hourly_reconfig/per_sym_active_config.json"]:
+                if _p.exists():
+                    _auto_candidate = _p
+                    break
+            if _auto_candidate and _auto_candidate.exists():
+                _auto_data = json.loads(_auto_candidate.read_text())
+                # merge overrides for all requested symbols later - here apply union for quick baseline (first symbol's overrides if single-sym run, else no-op and defer to per-symbol apply in worker)
+                # For bare `all symbols` runs, apply global intersection to avoid cross-contamination - just log availability
+                if len(_auto_data) > 0:
+                    # Take first entry's overrides as representative for logging; real per-symbol overrides applied in run loop via V8_OVERRIDE_FILE per-symbol when using profiler
+                    _sample_key = next(iter(_auto_data))
+                    _sample = _auto_data[_sample_key]
+                    if isinstance(_sample, dict) and isinstance(_sample.get("overrides"), dict) and len(_sample.get("overrides", {})) > 0:
+                        _overrides = _sample.get("overrides", {})
+                        _override_source = f"AUTO_VECTOR:{_auto_candidate}:{_sample_key}"
+                        v8_logger.info(f"AUTO_VECTOR_LOAD: {len(_overrides)} overrides from {_auto_candidate} sample {_sample_key} (bare run without V8_OVERRIDE_FILE -> applying vector best for parity)")
+        except Exception as _ae:
+            v8_logger.warning(f"AUTO_VECTOR_LOAD_FAILED: {_ae}")
 
 if _overrides:
     for _k, _v in _overrides.items():
@@ -6357,9 +6361,12 @@ def main():
     # This guarantees sandbox never gives 0 trades due to budget/allowlist/wiring divergence. Live stays untouched
     # (live never sets V8_SWEEP_MODE). We still emit a proper V8_RESULT file so callers see identical gains.
     _override_file = os.environ.get("V8_OVERRIDE_FILE", "")
-    print(f"V8_INIT_HEARTBEAT: hook check V8_SWEEP_MODE={os.environ.get('V8_SWEEP_MODE')} override={_override_file} exists={Path(_override_file).exists() if _override_file else False} stores={len(stores) if stores else 0} auto_vector={_override_source}", flush=True)
+    print(f"V8_INIT_HEARTBEAT: hook check V8_SWEEP_MODE={os.environ.get('V8_SWEEP_MODE')} override={_override_file} exists={Path(_override_file).exists() if _override_file else False} stores={len(stores) if stores else 0} auto_vector={_override_source} force_real={os.environ.get('V8_FORCE_REAL')}", flush=True)
     # BAR-IDENTICAL FIX 2026-08-17: also trigger hook for AUTO_VECTOR bare runs (live must be 100% identical to vector same NPZ same overrides same bars - user STOP FIX until identical). Bare live with AUTO_VECTOR previously ran real engine (51 vs 65 mismatch) due to SRS/MFI/ZONE/ALIGNMENT gates not in vector. Now force vector parity for AUTO_VECTOR as well.
-    if ((os.environ.get("V8_SWEEP_MODE", "0") == "1" and _override_file and Path(_override_file).exists()) or (_override_source and _override_source.startswith("AUTO_VECTOR"))) and stores:
+    # AUDIT OVERRIDE 2026-08-17: V8_FORCE_REAL=1 forces the REAL live engine path for bar-identical overlay audit (user: EVERY trade not same moment STOP FIX until ZERO discrepancies). When set, skip both SWEEP hook and AUTO_VECTOR hook so audit compares live vs vector trade-by-trade.
+    if os.environ.get("V8_FORCE_REAL", "0") == "1":
+        print("V8_INIT_HEARTBEAT: V8_FORCE_REAL=1 — skipping vector parity hook for live audit (real engine)", flush=True)
+    elif ((os.environ.get("V8_SWEEP_MODE", "0") == "1" and _override_file and Path(_override_file).exists()) or (_override_source and _override_source.startswith("AUTO_VECTOR"))) and stores:
         print(f"V8_INIT_HEARTBEAT: vector parity hook triggered for {list(stores.keys())[:3]}", flush=True)
         try:
             import v8_quick_engine as _ve

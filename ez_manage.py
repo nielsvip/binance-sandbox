@@ -20312,9 +20312,23 @@ class MultiAccountTradeManager:
                 "symbols_ang_long"
             ) or symbol_to_check in get_sym_set("symbols_ang_short")
         elif account_key == "inf":
-            is_in_static_list = symbol_to_check in get_sym_set(
-                "symbols_inf_long"
-            ) or symbol_to_check in get_sym_set("symbols_inf_short")
+            # STRICT per-side: symbols_inf_long only as LONG, symbols_inf_short only as SHORT.
+            # When position_key carries a side, enforce that side's list only.
+            # Without position_key (pre-construction checks), fall back to union for compat.
+            if position_key:
+                try:
+                    _, _, _pk_side = parse_position_key(position_key)
+                    _pk_side_u = _pk_side.strip().upper()
+                    if _pk_side_u == "LONG":
+                        is_in_static_list = symbol_to_check in get_sym_set("symbols_inf_long")
+                    elif _pk_side_u == "SHORT":
+                        is_in_static_list = symbol_to_check in get_sym_set("symbols_inf_short")
+                    else:
+                        is_in_static_list = symbol_to_check in get_sym_set("symbols_inf_long") or symbol_to_check in get_sym_set("symbols_inf_short")
+                except Exception:
+                    is_in_static_list = symbol_to_check in get_sym_set("symbols_inf_long") or symbol_to_check in get_sym_set("symbols_inf_short")
+            else:
+                is_in_static_list = symbol_to_check in get_sym_set("symbols_inf_long") or symbol_to_check in get_sym_set("symbols_inf_short")
         elif account_key == "fin":
             if not self.symbols_fin:
                 try:

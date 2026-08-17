@@ -3576,12 +3576,8 @@ class Config:
     SYMBOLS: Path = BASE_PATH / "symbols.json"
     SYMBOLS_ACTIVE_FILE: Path = BASE_PATH / "symbols_active.json"
     SYMBOLS_ANG_LONG: Path = BASE_PATH / "symbols_ang_long.json"
-    # 2026-07-19 USER: inf redirected onto men's symbol universe (symbols_men_long/short.json,
-    # per_sym settings + 7D reapplied on top) for a live A/B comparison, instead of its own
-    # momentum-ranked list. ez_rankings.py still writes the old symbols_inf_long.json/short.json
-    # (now unused/orphaned) — kept for a fast revert. See BACKTEST_BIBLE.md §inf/men parity.
-    SYMBOLS_INF_LONG: Path = BASE_PATH / "symbols_men_long.json"
-    SYMBOLS_INF_SHORT: Path = BASE_PATH / "symbols_men_short.json"
+    SYMBOLS_INF_LONG: Path = BASE_PATH / "symbols_inf_long.json"
+    SYMBOLS_INF_SHORT: Path = BASE_PATH / "symbols_inf_short.json"
     # ================================================================
     # INF RANKING PRIORITY BYPASS — 2026-04-16
     # When a symbol is in symbols_inf_long/short (built by ez_rankings

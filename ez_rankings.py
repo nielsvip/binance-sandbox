@@ -5604,6 +5604,7 @@ async def save_market_data():
                 logger.error(f"Source file missing for copy: {src_p}")
 
         # Save symbol lists
+        # NOTE: symbols_inf_long/short.json is written by tradier_rankings.py [INF_HOOK] — ez_rankings MUST NOT write it
         # await _save_json_async(BASE_PATH / "symbols_inf_long.json", symbols_inf_long_list)
         # await _save_json_async(BASE_PATH / "symbols_inf_short.json", symbols_inf_short_list)
         await _save_json_async(BASE_PATH / "symbols_ang_short.json", symbols_ang_short_list)

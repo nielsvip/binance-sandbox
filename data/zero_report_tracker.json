@@ -1667,15 +1667,6 @@
       "API_ABSENCE": 2
     }
   },
-  "fin:MEMEUSDT_SHORT": {
-    "count": 5,
-    "first_seen_zero_at": "2026-08-17T13:26:57.738185+00:00",
-    "last_increment_at": "2026-08-17T13:34:44.976320+00:00",
-    "sources": {
-      "API_ABSENCE": 4
-    },
-    "last_seen": "2026-08-17T13:34:44.067123+00:00"
-  },
   "fin:ATOMUSDT_LONG": {
     "count": 3,
     "first_seen_zero_at": "2026-08-17T13:28:17.042253+00:00",
@@ -1711,5 +1702,13 @@
       "API_ABSENCE": 1
     },
     "last_seen": "2026-08-17T18:36:10.244563+00:00"
+  },
+  "fin:LTCUSDC_SHORT": {
+    "count": 1,
+    "first_seen_zero_at": "2026-08-17T23:38:45.245914+00:00",
+    "last_increment_at": "2026-08-17T23:38:45.245914+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    }
   }
 }

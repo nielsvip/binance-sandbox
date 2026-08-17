@@ -13625,18 +13625,19 @@ class StockStrategy:
         score = 0.0
         parts = []
         tfs = ('5m', '15m', '1h', '4h', 'D')
-        # --- 1. WT DIVERGENCE: price vs WT peak/trough ---
-        for tf in ('1h', '4h', 'D'):
-            wt1 = g(f'wt1_{tf}'); pk_val = g(f'wt_peak_value_{tf}'); tr_val = g(f'wt_trough_value_{tf}')
-            close_now = g(f'close_{tf}', current_price); close_prev = g(f'close_{tf}_prev')
-            if is_long and pk_val != 0 and close_prev > 0:
-                if wt1 < pk_val * 0.85 and close_now >= close_prev:
-                    w = {'1h': 6, '4h': 10, 'D': 14}.get(tf, 6)
-                    score += w; parts.append(f"DIV_LH_{tf}({wt1:.0f}<pk{pk_val:.0f})")
-            elif not is_long and tr_val != 0 and close_prev > 0:
-                if wt1 > tr_val * 0.85 and close_now <= close_prev:
-                    w = {'1h': 6, '4h': 10, 'D': 14}.get(tf, 6)
-                    score += w; parts.append(f"DIV_HL_{tf}({wt1:.0f}>tr{tr_val:.0f})")
+        # --- 1. WT DIVERGENCE: price vs WT peak/trough — vector retrace WT_DIV_EXIT_ENABLED (was VEC_PATHS_ONLY, now mirrored live) ---
+        if getattr(config, 'WT_DIV_EXIT_ENABLED', True):
+            for tf in ('1h', '4h', 'D'):
+                wt1 = g(f'wt1_{tf}'); pk_val = g(f'wt_peak_value_{tf}'); tr_val = g(f'wt_trough_value_{tf}')
+                close_now = g(f'close_{tf}', current_price); close_prev = g(f'close_{tf}_prev')
+                if is_long and pk_val != 0 and close_prev > 0:
+                    if wt1 < pk_val * 0.85 and close_now >= close_prev:
+                        w = {'1h': 6, '4h': 10, 'D': 14}.get(tf, 6)
+                        score += w; parts.append(f"DIV_LH_{tf}({wt1:.0f}<pk{pk_val:.0f})")
+                elif not is_long and tr_val != 0 and close_prev > 0:
+                    if wt1 > tr_val * 0.85 and close_now <= close_prev:
+                        w = {'1h': 6, '4h': 10, 'D': 14}.get(tf, 6)
+                        score += w; parts.append(f"DIV_HL_{tf}({wt1:.0f}>tr{tr_val:.0f})")
         # --- 2. DC POSITION FADE (breakout failure) ---
         for tf in ('15m', '1h', '4h'):
             dc_pos = g(f'dc_position_{tf}', 0.5)
@@ -13711,6 +13712,34 @@ class StockStrategy:
         # --- GAIN-AWARE URGENCY BOOST ---
         if gain > 3.0 and score >= 20: score *= 1.3
         elif gain > 1.0 and score >= 25: score *= 1.2
+        # --- RETRACE: 17 WT-related VEC_PATHS_ONLY now mirrored live (was vector-only beam) ---
+        # WT_HTF_DISCOUNT — discount HTF score when WT against
+        if getattr(config, 'WT_HTF_DISCOUNT_ENABLED', False):
+            _wt_htf_against = sum(1 for tf in ('1h','4h','D') if (g(f'wt1_{tf}') < g(f'wt2_{tf}') if is_long else g(f'wt1_{tf}') > g(f'wt2_{tf}')))
+            if _wt_htf_against >= 2:
+                score += 5; parts.append(f"WT_HTF_DISC_{_wt_htf_against}tf")
+        # WT_ACCEL — WT acceleration against position
+        if getattr(config, 'WT_ACCEL_EXIT_ENABLED', False):
+            _accel_against = sum(1 for tf in ('5m','15m','1h') if (g(f'wt_velocity_{tf}') < -1.0 if is_long else g(f'wt_velocity_{tf}') > 1.0))
+            _accel_min = int(getattr(config, 'WT_ACCEL_EXIT_MIN_TFS', 2))
+            if _accel_against >= _accel_min:
+                score += _accel_against * 4; parts.append(f"WT_ACCEL_{_accel_against}tf")
+        # WT_MOMENTUM — WT momentum threshold
+        if getattr(config, 'WT_MOMENTUM_EXIT_ENABLED', False):
+            _mom_thr = float(getattr(config, 'WT_MOMENTUM_EXIT_THRESHOLD', 20))
+            _mom_against = sum(1 for tf in ('15m','1h','4h') if (g(f'wt1_{tf}') < -_mom_thr if is_long else g(f'wt1_{tf}') > _mom_thr))
+            if _mom_against >= 2:
+                score += 6; parts.append(f"WT_MOM_{_mom_against}tf")
+        # WT_EXHAUST — WT exhaustion
+        if getattr(config, 'WT_EXHAUST_EXIT_MIN_TFS', 0):
+            _exh_min = int(getattr(config, 'WT_EXHAUST_EXIT_MIN_TFS', 2))
+            _exh_against = sum(1 for tf in ('15m','1h','4h') if (abs(g(f'wt1_{tf}')) > 80 if is_long else abs(g(f'wt1_{tf}')) > 80))
+            if _exh_against >= _exh_min:
+                score += 5; parts.append(f"WT_EXHST_{_exh_against}tf")
+        # MIN_EXIT_GAIN — require minimum gain to exit (prevents premature exits)
+        _min_exit_gain = float(getattr(config, 'MIN_EXIT_GAIN_PCT', 0))
+        if _min_exit_gain > 0 and gain < _min_exit_gain:
+            score = 0; parts.append(f"MIN_GAIN_BLOCK_{gain:.1f}<{_min_exit_gain}")
         score = min(score, 100.0)
         # --- THRESHOLD: exit when score high enough ---
         threshold = 35 if gain > 1.0 else 45 if gain > 0.3 else 55
