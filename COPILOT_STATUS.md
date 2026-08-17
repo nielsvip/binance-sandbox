@@ -1,4 +1,4 @@
-# Copilot Status — 2026-08-17 19:34:22 UTC
+# Copilot Status — 2026-08-17 19:49:39 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:32:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:32:18
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:32:48
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:32:48
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:33:20
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:33:20
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:33:50
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:33:50
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:34:22
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:34:22
+- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:47:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:47:16
+- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:47:47
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:47:47
+- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:48:17
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:48:17
+- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:48:48
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:48:48
+- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:49:18
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:49:18
 
 ## Missed Trades (trader comparison)
 
@@ -35,9 +35,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 44
-- [MEDIUM] tradier_positions.py running but log stale (37min)
-- [MEDIUM] tradier_positions.py running but log stale (38min)
-- [MEDIUM] tradier_positions.py running but log stale (39min)
-- [MEDIUM] tradier_positions.py running but log stale (40min)
-- [MEDIUM] tradier_positions.py running but log stale (41min)
+**Issues (last 1h):** 50
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)

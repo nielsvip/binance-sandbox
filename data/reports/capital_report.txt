@@ -1,21 +1,19 @@
-CAPITAL ALLOCATION REPORT — 2026-08-17 19:32 UTC
+CAPITAL ALLOCATION REPORT — 2026-08-17 19:39 UTC
 ================================================================================
-Total capital deployed: $13.94 across 2 positions
+Total capital deployed: $64.31 across 1 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $      7.00 ( 50.2%) — 1 positions
-  Tier C: $      6.94 ( 49.8%) — 1 positions
+  Tier B: $     64.31 (100.0%) — 1 positions
+  Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 50% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [2]:
-                    men:DOTUSDT_SHORT  $    7.00  gain=-0.62%  tier=B  mult=1.00
-                    men:ZROUSDT_SHORT  $    6.94  gain=+0.13%  tier=C  mult=0.35
-
-MEDIOCRE — capital sitting idle [0]:
+LOSERS — reduce allocation (C-tier or losing) [0]:
   (none)
+
+MEDIOCRE — capital sitting idle [1]:
+                     flz:BTCUSDC_LONG  $   64.31  gain=+0.07%  tier=B
