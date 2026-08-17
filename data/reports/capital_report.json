@@ -1,68 +1,32 @@
 {
- "generated_at": "2026-08-17 21:35 UTC",
- "total_capital_usd": 23.63,
+ "generated_at": "2026-08-17 22:01 UTC",
+ "total_capital_usd": 7.01,
  "tier_capital": {
   "A": 0.0,
-  "B": 23.62,
+  "B": 7.01,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
+  "B": 1,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "inf:ETHFIUSDC_LONG"
- ],
+ "losers": [],
  "mediocre": [
-  "inf:SNXUSDT_SHORT",
-  "inf:INJUSDT_SHORT"
+  "fin:FARTCOINUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "inf:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "inf",
-   "value_usd": 5.99,
-   "gain_pct": -0.023,
+   "pk": "fin:FARTCOINUSDT_LONG",
+   "symbol": "FARTCOINUSDT",
+   "account": "fin",
+   "value_usd": 7.01,
+   "gain_pct": 0.126,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 30.5,
-   "mark": 0.19654595
-  },
-  {
-   "pk": "inf:AXSUSDT_SHORT",
-   "symbol": "AXSUSDT",
-   "account": "inf",
-   "value_usd": 5.97,
-   "gain_pct": -0.489,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 7.0,
-   "mark": 0.85352924
-  },
-  {
-   "pk": "inf:ETHFIUSDC_LONG",
-   "symbol": "ETHFIUSDC",
-   "account": "inf",
-   "value_usd": 5.93,
-   "gain_pct": -0.704,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 11.9,
-   "mark": 0.49851262
-  },
-  {
-   "pk": "inf:INJUSDT_SHORT",
-   "symbol": "INJUSDT",
-   "account": "inf",
-   "value_usd": 5.73,
-   "gain_pct": 0.278,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 1.4,
-   "mark": 4.09248195
+   "amt": 48.1,
+   "mark": 0.14568342
   }
  ]
 }
