@@ -1,16 +1,16 @@
 # trb (per_sym) vs trc (7D) — live A/B
 
-Start: 2026-06-26T09:50:48Z · elapsed 52.2d · updated 2026-08-17 14:30Z
+Start: 2026-06-26T09:50:48Z · elapsed 52.4d · updated 2026-08-17 18:30Z
 
 | metric | trb · per_sym | trc · 7D | 7D useful? |
 |---|---|---|---|
-| trades | 771 | 237 | ✗ |
-| win % | 42.5 | 42.6 | ✓ 7D |
-| avg %/trade | -0.0321 | -0.7338 | ✗ |
-| cumulative % | -38.976 | -85.968 | ✗ |
-| pool_sharpe | -0.0127 | -0.1836 | ✗ |
+| trades | 800 | 237 | ✗ |
+| win % | 42.9 | 42.6 | ✗ |
+| avg %/trade | -0.0248 | -0.7338 | ✗ |
+| cumulative % | -35.94 | -85.968 | ✗ |
+| pool_sharpe | -0.0099 | -0.1836 | ✗ |
 | max drawdown % | -55.329 | -89.308 | ✗ |
-| realized $ (size-dependent) | 1843.62 | -5236.95 | ✗ |
+| realized $ (size-dependent) | 1931.47 | -5236.95 | ✗ |
 
 _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). Sample still small — needs weeks._
 
@@ -25,16 +25,16 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | AGI | 6.867 (2) | None (0) |  |
 | ALB | -1.103 (2) | None (0) |  |
 | AMZN | -3.507 (22) | None (0) |  |
-| ASML | 6.353 (28) | None (0) |  |
+| ASML | 6.507 (29) | None (0) |  |
 | ASTS | -26.516 (11) | None (0) |  |
 | BG | None (0) | -12.392 (1) |  |
-| BWXT | -2.176 (1) | None (0) |  |
+| BWXT | -2.154 (2) | None (0) |  |
 | CF | None (0) | -7.58 (1) |  |
 | CHRD | None (0) | -6.764 (7) |  |
 | CIBR | None (0) | 10.366 (1) |  |
 | CIEN | -12.794 (14) | None (0) |  |
 | CLX | 5.179 (5) | -4.542 (2) | -9.72 |
-| CME | -1.737 (14) | None (0) |  |
+| CME | -1.408 (17) | None (0) |  |
 | COPX | 5.965 (1) | -29.238 (11) | -35.2 |
 | CRWV | None (0) | -20.117 (4) |  |
 | DINO | None (0) | -0.848 (1) |  |
@@ -42,29 +42,30 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | EXEL | 0.801 (4) | 0.055 (5) | -0.75 |
 | FIVN | None (0) | -10.544 (3) |  |
 | GDX | None (0) | -0.46 (2) |  |
-| GLD | -0.244 (17) | None (0) |  |
+| GLD | -0.25 (18) | None (0) |  |
 | GM | -2.494 (3) | None (0) |  |
-| GME | 3.006 (12) | None (0) |  |
-| GOOGL | 0.805 (35) | 0.364 (3) | -0.44 |
-| IBIT | -1.337 (7) | 4.91 (11) | 6.25 |
-| IBM | 0.133 (5) | None (0) |  |
-| INTC | -23.574 (5) | None (0) |  |
+| GME | 2.838 (14) | None (0) |  |
+| GOOGL | 0.169 (36) | 0.364 (3) | 0.19 |
+| IBIT | -1.598 (10) | 4.91 (11) | 6.51 |
+| IBM | 0.818 (7) | None (0) |  |
+| INTC | -22.266 (6) | None (0) |  |
 | LDOS | 0.085 (1) | None (0) |  |
 | LEXX | -2.493 (1) | None (0) |  |
 | LLY | 1.061 (1) | 1.947 (6) | 0.89 |
 | LRCX | None (0) | 1.268 (6) |  |
 | LSCC | -3.476 (58) | 1.724 (2) | 5.2 |
-| MCD | 1.2 (11) | None (0) |  |
+| MCD | 1.206 (13) | None (0) |  |
 | META | -0.839 (52) | None (0) |  |
 | MOS | None (0) | -3.106 (3) |  |
 | MPC | None (0) | 2.023 (2) |  |
-| MRVL | 4.448 (29) | None (0) |  |
-| MSTR | -10.695 (31) | None (0) |  |
-| MU | -20.718 (70) | -12.45 (11) | 8.27 |
+| MRVL | 4.482 (30) | None (0) |  |
+| MSFT | -1.263 (1) | None (0) |  |
+| MSTR | -8.313 (32) | None (0) |  |
+| MU | -19.636 (73) | -12.45 (11) | 7.19 |
 | NEM | 0.742 (1) | -3.154 (11) | -3.9 |
 | NKE | 1.752 (61) | None (0) |  |
 | NUE | None (0) | -8.013 (4) |  |
-| NVDA | 7.248 (13) | -7.697 (5) | -14.95 |
+| NVDA | 7.256 (16) | -7.697 (5) | -14.95 |
 | OLED | 0.113 (17) | -2.876 (39) | -2.99 |
 | PBF | -5.539 (3) | 12.898 (12) | 18.44 |
 | PEP | -0.876 (6) | None (0) |  |
@@ -76,8 +77,8 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | ROKU | 0.934 (1) | -1.489 (2) | -2.42 |
 | RRC | -2.274 (2) | -2.046 (2) | 0.23 |
 | SCCO | -6.236 (7) | None (0) |  |
-| SLV | -0.067 (1) | None (0) |  |
-| SNDK | 36.293 (37) | None (0) |  |
+| SLV | -0.134 (2) | None (0) |  |
+| SNDK | 36.769 (39) | None (0) |  |
 | STZ | None (0) | 10.691 (3) |  |
 | TRGP | 1.762 (2) | -1.427 (1) | -3.19 |
 | TSLA | -2.756 (3) | None (0) |  |

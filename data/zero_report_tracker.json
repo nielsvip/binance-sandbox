@@ -1718,12 +1718,13 @@
     },
     "last_seen": "2026-08-17T17:34:44.510537+00:00"
   },
-  "fin:PTBUSDT_SHORT": {
-    "count": 3,
-    "first_seen_zero_at": "2026-08-17T17:42:19.338768+00:00",
-    "last_increment_at": "2026-08-17T17:44:10.915324+00:00",
+  "inf:WLDUSDC_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-08-17T17:54:45.861011+00:00",
+    "last_increment_at": "2026-08-17T17:54:45.861011+00:00",
     "sources": {
-      "API_ABSENCE": 3
-    }
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-08-17T17:54:48.497815+00:00"
   }
 }

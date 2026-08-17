@@ -1,62 +1,14 @@
 {
-  "generated_at": "2026-08-17T18:05:45.556188+00:00",
-  "count": 7,
+  "generated_at": "2026-08-17T18:32:02.818492+00:00",
+  "count": 1,
   "advisories": [
     {
-      "symbol": "MOS",
+      "symbol": "STZ",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.66 threshold=0.45",
-      "score": 0.659,
-      "ts": "2026-08-17T18:05:45.555951+00:00"
-    },
-    {
-      "symbol": "NXE",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.88 threshold=0.45",
-      "score": 0.883,
-      "ts": "2026-08-17T18:05:45.556065+00:00"
-    },
-    {
-      "symbol": "PBF",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.59 threshold=0.45",
-      "score": 0.587,
-      "ts": "2026-08-17T18:05:45.556076+00:00"
-    },
-    {
-      "symbol": "PRI",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.84 threshold=0.45",
-      "score": 0.836,
-      "ts": "2026-08-17T18:05:45.556079+00:00"
-    },
-    {
-      "symbol": "PSX",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.75 threshold=0.45",
-      "score": 0.748,
-      "ts": "2026-08-17T18:05:45.556081+00:00"
-    },
-    {
-      "symbol": "RGLD",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.70 threshold=0.45",
-      "score": 0.703,
-      "ts": "2026-08-17T18:05:45.556084+00:00"
-    },
-    {
-      "symbol": "ROBO",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.47 threshold=0.45",
-      "score": 0.471,
-      "ts": "2026-08-17T18:05:45.556091+00:00"
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.557,
+      "ts": "2026-08-17T18:32:02.818453+00:00"
     }
   ]
 }
