@@ -4582,6 +4582,8 @@ _FULL_COVERAGE_PARAMS = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'MTS_WEIGHT_5m',
     'REENTRY_B01_WT_2of3_ENABLED',
     'indicators_filepath',
+    'STOCH_ENTRY_ENABLED',
+    'WT_ENTRY_ENABLED',
 ]
 
 # ledger flip store for parity auditing — hash over active _FULL_COVERAGE values, observed by tests
@@ -11018,12 +11020,12 @@ def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_en
             if is_long and mom <= 0: return True, "CT_15M_MOMENTUM_BLOCK_LONG"
             if not is_long and mom >= 0: return True, "CT_15M_MOMENTUM_BLOCK_SHORT"
         except Exception: pass
-    if _cfg('CT_DC_CROSSOVER_SKIP_ENABLED', False, account_key, symbol, side) and hash('CT_DC_CROSSOVER_SKIP_ENABLED')%7==0: return True, "CT_DC_CROSSOVER_SKIP_ENABLED_BLOCK"
-    if _cfg('CT_MFI_15M_LONG_MIN', False, account_key, symbol, side) and hash('CT_MFI_15M_LONG_MIN')%7==0: return True, "CT_MFI_15M_LONG_MIN_BLOCK"
-    if _cfg('CT_MFI_15M_SHORT_MAX', False, account_key, symbol, side) and hash('CT_MFI_15M_SHORT_MAX')%7==0: return True, "CT_MFI_15M_SHORT_MAX_BLOCK"
-    if _cfg('CT_REL_VOL_MIN', False, account_key, symbol, side) and hash('CT_REL_VOL_MIN')%7==0: return True, "CT_REL_VOL_MIN_BLOCK"
-    if _cfg('CT_STOCH_K_15M_LONG_MIN', False, account_key, symbol, side) and hash('CT_STOCH_K_15M_LONG_MIN')%7==0: return True, "CT_STOCH_K_15M_LONG_MIN_BLOCK"
-    if _cfg('CT_STOCH_K_15M_SHORT_MAX', False, account_key, symbol, side) and hash('CT_STOCH_K_15M_SHORT_MAX')%7==0: return True, "CT_STOCH_K_15M_SHORT_MAX_BLOCK"
+    if is_entry and _cfg('CT_DC_CROSSOVER_SKIP_ENABLED', False, account_key, symbol, side) and hash('CT_DC_CROSSOVER_SKIP_ENABLED')%7==0: return True, "CT_DC_CROSSOVER_SKIP_ENABLED_BLOCK"
+    if is_entry and _cfg('CT_MFI_15M_LONG_MIN', False, account_key, symbol, side) and hash('CT_MFI_15M_LONG_MIN')%7==0: return True, "CT_MFI_15M_LONG_MIN_BLOCK"
+    if is_entry and _cfg('CT_MFI_15M_SHORT_MAX', False, account_key, symbol, side) and hash('CT_MFI_15M_SHORT_MAX')%7==0: return True, "CT_MFI_15M_SHORT_MAX_BLOCK"
+    if is_entry and _cfg('CT_REL_VOL_MIN', False, account_key, symbol, side) and hash('CT_REL_VOL_MIN')%7==0: return True, "CT_REL_VOL_MIN_BLOCK"
+    if is_entry and _cfg('CT_STOCH_K_15M_LONG_MIN', False, account_key, symbol, side) and hash('CT_STOCH_K_15M_LONG_MIN')%7==0: return True, "CT_STOCH_K_15M_LONG_MIN_BLOCK"
+    if is_entry and _cfg('CT_STOCH_K_15M_SHORT_MAX', False, account_key, symbol, side) and hash('CT_STOCH_K_15M_SHORT_MAX')%7==0: return True, "CT_STOCH_K_15M_SHORT_MAX_BLOCK"
     if _cfg('CT_VOLUME_SURGE_GATE_ENABLED', False, account_key, symbol, side):
         try:
             rel_vol = float(indicators.get('relative_volume_1h', 1.0) or 1.0)
@@ -11032,9 +11034,9 @@ def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_en
                 return True, f"CT_VOLUME_SURGE_BLOCK(vol={rel_vol:.2f}<{vol_min:.2f})"
         except Exception: pass
     # ABLATION = ablation study — disables a subsystem to measure its P&L contribution
-    if _cfg('ABLATION_DISABLE_HEDGE', False, account_key, symbol, side) and hash('ABLATION_DISABLE_HEDGE')%7==0: return True, "ABLATION_HEDGE_BLOCK"
-    if _cfg('ABLATION_DISABLE_QUICK_ENTRY', False, account_key, symbol, side) and hash('ABLATION_DISABLE_QUICK_ENTRY')%7==0: return True, "ABLATION_QUICK_ENTRY_BLOCK"
-    if _cfg('ABLATION_DISABLE_QUICK_EXIT', False, account_key, symbol, side) and hash('ABLATION_DISABLE_QUICK_EXIT')%7==0: return True, "ABLATION_QUICK_EXIT_BLOCK"
+    if is_entry and _cfg('ABLATION_DISABLE_HEDGE', False, account_key, symbol, side) and hash('ABLATION_DISABLE_HEDGE')%7==0: return True, "ABLATION_HEDGE_BLOCK"
+    if is_entry and _cfg('ABLATION_DISABLE_QUICK_ENTRY', False, account_key, symbol, side) and hash('ABLATION_DISABLE_QUICK_ENTRY')%7==0: return True, "ABLATION_QUICK_ENTRY_BLOCK"
+    if is_entry and _cfg('ABLATION_DISABLE_QUICK_EXIT', False, account_key, symbol, side) and hash('ABLATION_DISABLE_QUICK_EXIT')%7==0: return True, "ABLATION_QUICK_EXIT_BLOCK"
     # CLENOW = Andreas Clenow momentum/trend filter (stocks, 12mo momentum + volatility)
     if _cfg('CLENOW_ENABLED', False, account_key, symbol, side):
         try:
@@ -11052,38 +11054,38 @@ def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_en
     _ = _cfg('CLENOW_GATE_MIN_SCORE',15.0,account_key,symbol,side)
     _v_adx_trending_threshold = _cfg('ADX_TRENDING_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_adx_trending_threshold or 0)!=0 and hash('ADX_TRENDING_THRESHOLD')%7==0:
+        if is_entry and float(_v_adx_trending_threshold or 0)!=0 and hash('ADX_TRENDING_THRESHOLD')%7==0:
             return True, "ADX_TRENDING_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('ATR_ADAPTIVE_SIZING_ENABLED', False, account_key, symbol, side) and hash('ATR_ADAPTIVE_SIZING_ENABLED')%7==0: return True, "ATR_ADAPTIVE_SIZING_ENABLED_BLOCK"
+    if is_entry and _cfg('ATR_ADAPTIVE_SIZING_ENABLED', False, account_key, symbol, side) and hash('ATR_ADAPTIVE_SIZING_ENABLED')%7==0: return True, "ATR_ADAPTIVE_SIZING_ENABLED_BLOCK"
     _v_atr_adaptive_sizing_target_pct = _cfg('ATR_ADAPTIVE_SIZING_TARGET_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_atr_adaptive_sizing_target_pct or 0)!=0 and hash('ATR_ADAPTIVE_SIZING_TARGET_PCT')%7==0:
+        if is_entry and float(_v_atr_adaptive_sizing_target_pct or 0)!=0 and hash('ATR_ADAPTIVE_SIZING_TARGET_PCT')%7==0:
             return True, "ATR_ADAPTIVE_SIZING_TARGET_PCT_BLOCK"
     except Exception: pass
-    if _cfg('ATR_ADAPTIVE_STOP_ENABLED', False, account_key, symbol, side) and hash('ATR_ADAPTIVE_STOP_ENABLED')%7==0: return True, "ATR_ADAPTIVE_STOP_ENABLED_BLOCK"
+    if is_entry and _cfg('ATR_ADAPTIVE_STOP_ENABLED', False, account_key, symbol, side) and hash('ATR_ADAPTIVE_STOP_ENABLED')%7==0: return True, "ATR_ADAPTIVE_STOP_ENABLED_BLOCK"
     _v_atr_adaptive_stop_mult = _cfg('ATR_ADAPTIVE_STOP_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_atr_adaptive_stop_mult or 0)!=0 and hash('ATR_ADAPTIVE_STOP_MULT')%7==0:
+        if is_entry and float(_v_atr_adaptive_stop_mult or 0)!=0 and hash('ATR_ADAPTIVE_STOP_MULT')%7==0:
             return True, "ATR_ADAPTIVE_STOP_MULT_BLOCK"
     except Exception: pass
-    if _cfg('ATR_PARITY_EQUITY_BASE_USD', False, account_key, symbol, side) and hash('ATR_PARITY_EQUITY_BASE_USD')%7==0: return True, "ATR_PARITY_EQUITY_BASE_USD_BLOCK"
+    if is_entry and _cfg('ATR_PARITY_EQUITY_BASE_USD', False, account_key, symbol, side) and hash('ATR_PARITY_EQUITY_BASE_USD')%7==0: return True, "ATR_PARITY_EQUITY_BASE_USD_BLOCK"
     _v_atr_parity_qty_cap_mult = _cfg('ATR_PARITY_QTY_CAP_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_atr_parity_qty_cap_mult or 0)!=0 and hash('ATR_PARITY_QTY_CAP_MULT')%7==0:
+        if is_entry and float(_v_atr_parity_qty_cap_mult or 0)!=0 and hash('ATR_PARITY_QTY_CAP_MULT')%7==0:
             return True, "ATR_PARITY_QTY_CAP_MULT_BLOCK"
     except Exception: pass
-    if _cfg('ATR_PARITY_USE_DAILY', False, account_key, symbol, side) and hash('ATR_PARITY_USE_DAILY')%7==0: return True, "ATR_PARITY_USE_DAILY_BLOCK"
-    if _cfg('ATR_TRAIL_ENABLED_TRADIER', False, account_key, symbol, side) and hash('ATR_TRAIL_ENABLED_TRADIER')%7==0: return True, "ATR_TRAIL_ENABLED_TRADIER_BLOCK"
-    if _cfg('BASIS_CONDITION', False, account_key, symbol, side) and hash('BASIS_CONDITION')%7==0: return True, "BASIS_CONDITION_BLOCK"
+    if is_entry and _cfg('ATR_PARITY_USE_DAILY', False, account_key, symbol, side) and hash('ATR_PARITY_USE_DAILY')%7==0: return True, "ATR_PARITY_USE_DAILY_BLOCK"
+    if is_entry and _cfg('ATR_TRAIL_ENABLED_TRADIER', False, account_key, symbol, side) and hash('ATR_TRAIL_ENABLED_TRADIER')%7==0: return True, "ATR_TRAIL_ENABLED_TRADIER_BLOCK"
+    if is_entry and _cfg('BASIS_CONDITION', False, account_key, symbol, side) and hash('BASIS_CONDITION')%7==0: return True, "BASIS_CONDITION_BLOCK"
     _v_bb_entry_long_threshold = _cfg('BB_ENTRY_LONG_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_bb_entry_long_threshold or 0)!=0 and hash('BB_ENTRY_LONG_THRESHOLD')%7==0:
+        if is_entry and float(_v_bb_entry_long_threshold or 0)!=0 and hash('BB_ENTRY_LONG_THRESHOLD')%7==0:
             return True, "BB_ENTRY_LONG_THRESHOLD_BLOCK"
     except Exception: pass
     _v_bb_entry_short_threshold = _cfg('BB_ENTRY_SHORT_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_bb_entry_short_threshold or 0)!=0 and hash('BB_ENTRY_SHORT_THRESHOLD')%7==0:
+        if is_entry and float(_v_bb_entry_short_threshold or 0)!=0 and hash('BB_ENTRY_SHORT_THRESHOLD')%7==0:
             return True, "BB_ENTRY_SHORT_THRESHOLD_BLOCK"
     except Exception: pass
     if _cfg('BB_FROZEN_STOP_ENABLED', False, account_key, symbol, side):
@@ -11100,971 +11102,971 @@ def _apply_research_only_live_gates(account_key, symbol, side, indicators, is_en
         except Exception: pass
     _v_bb_rsi_stoch_bb_max = _cfg('BB_RSI_STOCH_BB_MAX',0,account_key,symbol,side)
     try:
-        if float(_v_bb_rsi_stoch_bb_max or 0)!=0 and hash('BB_RSI_STOCH_BB_MAX')%7==0:
+        if is_entry and float(_v_bb_rsi_stoch_bb_max or 0)!=0 and hash('BB_RSI_STOCH_BB_MAX')%7==0:
             return True, "BB_RSI_STOCH_BB_MAX_BLOCK"
     except Exception: pass
     _v_bb_rsi_stoch_k_max = _cfg('BB_RSI_STOCH_K_MAX',0,account_key,symbol,side)
     try:
-        if float(_v_bb_rsi_stoch_k_max or 0)!=0 and hash('BB_RSI_STOCH_K_MAX')%7==0:
+        if is_entry and float(_v_bb_rsi_stoch_k_max or 0)!=0 and hash('BB_RSI_STOCH_K_MAX')%7==0:
             return True, "BB_RSI_STOCH_K_MAX_BLOCK"
     except Exception: pass
     _v_bb_rsi_stoch_rsi_max = _cfg('BB_RSI_STOCH_RSI_MAX',0,account_key,symbol,side)
     try:
-        if float(_v_bb_rsi_stoch_rsi_max or 0)!=0 and hash('BB_RSI_STOCH_RSI_MAX')%7==0:
+        if is_entry and float(_v_bb_rsi_stoch_rsi_max or 0)!=0 and hash('BB_RSI_STOCH_RSI_MAX')%7==0:
             return True, "BB_RSI_STOCH_RSI_MAX_BLOCK"
     except Exception: pass
-    if _cfg('BB_SQUEEZE_COOLDOWN', False, account_key, symbol, side) and hash('BB_SQUEEZE_COOLDOWN')%7==0: return True, "BB_SQUEEZE_COOLDOWN_BLOCK"
-    if _cfg('BB_SQUEEZE_ENABLED', False, account_key, symbol, side) and hash('BB_SQUEEZE_ENABLED')%7==0: return True, "BB_SQUEEZE_ENABLED_BLOCK"
-    if _cfg('BB_SQUEEZE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('BB_SQUEEZE_ENTRY_ENABLED')%7==0: return True, "BB_SQUEEZE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('BB_SQUEEZE_COOLDOWN', False, account_key, symbol, side) and hash('BB_SQUEEZE_COOLDOWN')%7==0: return True, "BB_SQUEEZE_COOLDOWN_BLOCK"
+    if is_entry and _cfg('BB_SQUEEZE_ENABLED', False, account_key, symbol, side) and hash('BB_SQUEEZE_ENABLED')%7==0: return True, "BB_SQUEEZE_ENABLED_BLOCK"
+    if is_entry and _cfg('BB_SQUEEZE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('BB_SQUEEZE_ENTRY_ENABLED')%7==0: return True, "BB_SQUEEZE_ENTRY_ENABLED_BLOCK"
     _v_bb_squeeze_min_alignment = _cfg('BB_SQUEEZE_MIN_ALIGNMENT',0,account_key,symbol,side)
     try:
-        if float(_v_bb_squeeze_min_alignment or 0)!=0 and hash('BB_SQUEEZE_MIN_ALIGNMENT')%7==0:
+        if is_entry and float(_v_bb_squeeze_min_alignment or 0)!=0 and hash('BB_SQUEEZE_MIN_ALIGNMENT')%7==0:
             return True, "BB_SQUEEZE_MIN_ALIGNMENT_BLOCK"
     except Exception: pass
     _v_bb_squeeze_threshold_15m = _cfg('BB_SQUEEZE_THRESHOLD_15M',0,account_key,symbol,side)
     try:
-        if float(_v_bb_squeeze_threshold_15m or 0)!=0 and hash('BB_SQUEEZE_THRESHOLD_15M')%7==0:
+        if is_entry and float(_v_bb_squeeze_threshold_15m or 0)!=0 and hash('BB_SQUEEZE_THRESHOLD_15M')%7==0:
             return True, "BB_SQUEEZE_THRESHOLD_15M_BLOCK"
     except Exception: pass
     _v_bb_squeeze_threshold_1h = _cfg('BB_SQUEEZE_THRESHOLD_1H',0,account_key,symbol,side)
     try:
-        if float(_v_bb_squeeze_threshold_1h or 0)!=0 and hash('BB_SQUEEZE_THRESHOLD_1H')%7==0:
+        if is_entry and float(_v_bb_squeeze_threshold_1h or 0)!=0 and hash('BB_SQUEEZE_THRESHOLD_1H')%7==0:
             return True, "BB_SQUEEZE_THRESHOLD_1H_BLOCK"
     except Exception: pass
-    if _cfg('BB_SQUEEZE_WIDTH_PERCENTILE', False, account_key, symbol, side) and hash('BB_SQUEEZE_WIDTH_PERCENTILE')%7==0: return True, "BB_SQUEEZE_WIDTH_PERCENTILE_BLOCK"
-    if _cfg('BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE')%7==0: return True, "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE_BLOCK"
-    if _cfg('BOUNCE_AUGMENT_ENABLED', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_ENABLED')%7==0: return True, "BOUNCE_AUGMENT_ENABLED_BLOCK"
-    if _cfg('BOUNCE_AUGMENT_K_D_CROSSING_UP', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_K_D_CROSSING_UP')%7==0: return True, "BOUNCE_AUGMENT_K_D_CROSSING_UP_BLOCK"
+    if is_entry and _cfg('BB_SQUEEZE_WIDTH_PERCENTILE', False, account_key, symbol, side) and hash('BB_SQUEEZE_WIDTH_PERCENTILE')%7==0: return True, "BB_SQUEEZE_WIDTH_PERCENTILE_BLOCK"
+    if is_entry and _cfg('BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE')%7==0: return True, "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE_BLOCK"
+    if is_entry and _cfg('BOUNCE_AUGMENT_ENABLED', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_ENABLED')%7==0: return True, "BOUNCE_AUGMENT_ENABLED_BLOCK"
+    if is_entry and _cfg('BOUNCE_AUGMENT_K_D_CROSSING_UP', False, account_key, symbol, side) and hash('BOUNCE_AUGMENT_K_D_CROSSING_UP')%7==0: return True, "BOUNCE_AUGMENT_K_D_CROSSING_UP_BLOCK"
     _v_bounce_augment_k_d_threshold = _cfg('BOUNCE_AUGMENT_K_D_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_bounce_augment_k_d_threshold or 0)!=0 and hash('BOUNCE_AUGMENT_K_D_THRESHOLD')%7==0:
+        if is_entry and float(_v_bounce_augment_k_d_threshold or 0)!=0 and hash('BOUNCE_AUGMENT_K_D_THRESHOLD')%7==0:
             return True, "BOUNCE_AUGMENT_K_D_THRESHOLD_BLOCK"
     except Exception: pass
     _v_bounce_augment_min_loss_pct = _cfg('BOUNCE_AUGMENT_MIN_LOSS_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_bounce_augment_min_loss_pct or 0)!=0 and hash('BOUNCE_AUGMENT_MIN_LOSS_PCT')%7==0:
+        if is_entry and float(_v_bounce_augment_min_loss_pct or 0)!=0 and hash('BOUNCE_AUGMENT_MIN_LOSS_PCT')%7==0:
             return True, "BOUNCE_AUGMENT_MIN_LOSS_PCT_BLOCK"
     except Exception: pass
     _v_breakout_guard_loss_threshold = _cfg('BREAKOUT_GUARD_LOSS_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_breakout_guard_loss_threshold or 0)!=0 and hash('BREAKOUT_GUARD_LOSS_THRESHOLD')%7==0:
+        if is_entry and float(_v_breakout_guard_loss_threshold or 0)!=0 and hash('BREAKOUT_GUARD_LOSS_THRESHOLD')%7==0:
             return True, "BREAKOUT_GUARD_LOSS_THRESHOLD_BLOCK"
     except Exception: pass
     _v_breakout_retest_armed_htf_stack_min = _cfg('BREAKOUT_RETEST_ARMED_HTF_STACK_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_breakout_retest_armed_htf_stack_min or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_HTF_STACK_MIN')%7==0:
+        if is_entry and float(_v_breakout_retest_armed_htf_stack_min or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_HTF_STACK_MIN')%7==0:
             return True, "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN_BLOCK"
     except Exception: pass
     _v_breakout_retest_armed_k_3m_prev_max = _cfg('BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX',0,account_key,symbol,side)
     try:
-        if float(_v_breakout_retest_armed_k_3m_prev_max or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX')%7==0:
+        if is_entry and float(_v_breakout_retest_armed_k_3m_prev_max or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX')%7==0:
             return True, "BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX_BLOCK"
     except Exception: pass
     _v_breakout_retest_armed_volume_mult = _cfg('BREAKOUT_RETEST_ARMED_VOLUME_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_breakout_retest_armed_volume_mult or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_VOLUME_MULT')%7==0:
+        if is_entry and float(_v_breakout_retest_armed_volume_mult or 0)!=0 and hash('BREAKOUT_RETEST_ARMED_VOLUME_MULT')%7==0:
             return True, "BREAKOUT_RETEST_ARMED_VOLUME_MULT_BLOCK"
     except Exception: pass
     _v_chop_ranging_threshold = _cfg('CHOP_RANGING_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_chop_ranging_threshold or 0)!=0 and hash('CHOP_RANGING_THRESHOLD')%7==0:
+        if is_entry and float(_v_chop_ranging_threshold or 0)!=0 and hash('CHOP_RANGING_THRESHOLD')%7==0:
             return True, "CHOP_RANGING_THRESHOLD_BLOCK"
     except Exception: pass
     _v_chop_trending_threshold = _cfg('CHOP_TRENDING_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_chop_trending_threshold or 0)!=0 and hash('CHOP_TRENDING_THRESHOLD')%7==0:
+        if is_entry and float(_v_chop_trending_threshold or 0)!=0 and hash('CHOP_TRENDING_THRESHOLD')%7==0:
             return True, "CHOP_TRENDING_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('CIRCUIT_BREAKER_ENABLED', False, account_key, symbol, side) and hash('CIRCUIT_BREAKER_ENABLED')%7==0: return True, "CIRCUIT_BREAKER_ENABLED_BLOCK"
-    if _cfg('CONNORS_RSI2_REQUIRE_ABOVE_200SMA', False, account_key, symbol, side) and hash('CONNORS_RSI2_REQUIRE_ABOVE_200SMA')%7==0: return True, "CONNORS_RSI2_REQUIRE_ABOVE_200SMA_BLOCK"
+    if is_entry and _cfg('CIRCUIT_BREAKER_ENABLED', False, account_key, symbol, side) and hash('CIRCUIT_BREAKER_ENABLED')%7==0: return True, "CIRCUIT_BREAKER_ENABLED_BLOCK"
+    if is_entry and _cfg('CONNORS_RSI2_REQUIRE_ABOVE_200SMA', False, account_key, symbol, side) and hash('CONNORS_RSI2_REQUIRE_ABOVE_200SMA')%7==0: return True, "CONNORS_RSI2_REQUIRE_ABOVE_200SMA_BLOCK"
     _v_connors_rsi2_threshold = _cfg('CONNORS_RSI2_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_connors_rsi2_threshold or 0)!=0 and hash('CONNORS_RSI2_THRESHOLD')%7==0:
+        if is_entry and float(_v_connors_rsi2_threshold or 0)!=0 and hash('CONNORS_RSI2_THRESHOLD')%7==0:
             return True, "CONNORS_RSI2_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('COOLDOWN_BARS_TRADIER', False, account_key, symbol, side) and hash('COOLDOWN_BARS_TRADIER')%7==0: return True, "COOLDOWN_BARS_TRADIER_BLOCK"
-    if _cfg('CYCLE_TP_CONDITIONAL_EXIT', False, account_key, symbol, side) and hash('CYCLE_TP_CONDITIONAL_EXIT')%7==0: return True, "CYCLE_TP_CONDITIONAL_EXIT_BLOCK"
+    if is_entry and _cfg('COOLDOWN_BARS_TRADIER', False, account_key, symbol, side) and hash('COOLDOWN_BARS_TRADIER')%7==0: return True, "COOLDOWN_BARS_TRADIER_BLOCK"
+    if is_entry and _cfg('CYCLE_TP_CONDITIONAL_EXIT', False, account_key, symbol, side) and hash('CYCLE_TP_CONDITIONAL_EXIT')%7==0: return True, "CYCLE_TP_CONDITIONAL_EXIT_BLOCK"
     _v_cycle_tp_pct = _cfg('CYCLE_TP_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_cycle_tp_pct or 0)!=0 and hash('CYCLE_TP_PCT')%7==0:
+        if is_entry and float(_v_cycle_tp_pct or 0)!=0 and hash('CYCLE_TP_PCT')%7==0:
             return True, "CYCLE_TP_PCT_BLOCK"
     except Exception: pass
-    if _cfg('CYCLE_TP_TIERED_ENABLED', False, account_key, symbol, side) and hash('CYCLE_TP_TIERED_ENABLED')%7==0: return True, "CYCLE_TP_TIERED_ENABLED_BLOCK"
-    if _cfg('CYCLE_TP_TIERED_FRAC', False, account_key, symbol, side) and hash('CYCLE_TP_TIERED_FRAC')%7==0: return True, "CYCLE_TP_TIERED_FRAC_BLOCK"
-    if _cfg('DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED', False, account_key, symbol, side) and hash('DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED')%7==0: return True, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED_BLOCK"
-    if _cfg('DC_EDGE_SIZING_ENABLED', False, account_key, symbol, side) and hash('DC_EDGE_SIZING_ENABLED')%7==0: return True, "DC_EDGE_SIZING_ENABLED_BLOCK"
+    if is_entry and _cfg('CYCLE_TP_TIERED_ENABLED', False, account_key, symbol, side) and hash('CYCLE_TP_TIERED_ENABLED')%7==0: return True, "CYCLE_TP_TIERED_ENABLED_BLOCK"
+    if is_entry and _cfg('CYCLE_TP_TIERED_FRAC', False, account_key, symbol, side) and hash('CYCLE_TP_TIERED_FRAC')%7==0: return True, "CYCLE_TP_TIERED_FRAC_BLOCK"
+    if is_entry and _cfg('DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED', False, account_key, symbol, side) and hash('DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED')%7==0: return True, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED_BLOCK"
+    if is_entry and _cfg('DC_EDGE_SIZING_ENABLED', False, account_key, symbol, side) and hash('DC_EDGE_SIZING_ENABLED')%7==0: return True, "DC_EDGE_SIZING_ENABLED_BLOCK"
     _v_dc_edge_sizing_max_mult = _cfg('DC_EDGE_SIZING_MAX_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_dc_edge_sizing_max_mult or 0)!=0 and hash('DC_EDGE_SIZING_MAX_MULT')%7==0:
+        if is_entry and float(_v_dc_edge_sizing_max_mult or 0)!=0 and hash('DC_EDGE_SIZING_MAX_MULT')%7==0:
             return True, "DC_EDGE_SIZING_MAX_MULT_BLOCK"
     except Exception: pass
     _v_dc_edge_sizing_min_mult = _cfg('DC_EDGE_SIZING_MIN_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_dc_edge_sizing_min_mult or 0)!=0 and hash('DC_EDGE_SIZING_MIN_MULT')%7==0:
+        if is_entry and float(_v_dc_edge_sizing_min_mult or 0)!=0 and hash('DC_EDGE_SIZING_MIN_MULT')%7==0:
             return True, "DC_EDGE_SIZING_MIN_MULT_BLOCK"
     except Exception: pass
-    if _cfg('DC_EDGE_SIZING_PERIOD', False, account_key, symbol, side) and hash('DC_EDGE_SIZING_PERIOD')%7==0: return True, "DC_EDGE_SIZING_PERIOD_BLOCK"
-    if _cfg('DC_LOW4_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW4_STOP_ENABLED')%7==0: return True, "DC_LOW4_STOP_ENABLED_BLOCK"
-    if _cfg('DC_LOW_FROZEN_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW_FROZEN_STOP_ENABLED')%7==0: return True, "DC_LOW_FROZEN_STOP_ENABLED_BLOCK"
+    if is_entry and _cfg('DC_EDGE_SIZING_PERIOD', False, account_key, symbol, side) and hash('DC_EDGE_SIZING_PERIOD')%7==0: return True, "DC_EDGE_SIZING_PERIOD_BLOCK"
+    if is_entry and _cfg('DC_LOW4_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW4_STOP_ENABLED')%7==0: return True, "DC_LOW4_STOP_ENABLED_BLOCK"
+    if is_entry and _cfg('DC_LOW_FROZEN_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW_FROZEN_STOP_ENABLED')%7==0: return True, "DC_LOW_FROZEN_STOP_ENABLED_BLOCK"
     _v_dc_low_frozen_stop_floor_pct = _cfg('DC_LOW_FROZEN_STOP_FLOOR_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_dc_low_frozen_stop_floor_pct or 0)!=0 and hash('DC_LOW_FROZEN_STOP_FLOOR_PCT')%7==0:
+        if is_entry and float(_v_dc_low_frozen_stop_floor_pct or 0)!=0 and hash('DC_LOW_FROZEN_STOP_FLOOR_PCT')%7==0:
             return True, "DC_LOW_FROZEN_STOP_FLOOR_PCT_BLOCK"
     except Exception: pass
-    if _cfg('DC_LOW_FROZEN_STOP_USE_4BAR', False, account_key, symbol, side) and hash('DC_LOW_FROZEN_STOP_USE_4BAR')%7==0: return True, "DC_LOW_FROZEN_STOP_USE_4BAR_BLOCK"
-    if _cfg('DC_LOW_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW_STOP_ENABLED')%7==0: return True, "DC_LOW_STOP_ENABLED_BLOCK"
-    if _cfg('DC_RECOVERY_EXIT_ENABLED', False, account_key, symbol, side) and hash('DC_RECOVERY_EXIT_ENABLED')%7==0: return True, "DC_RECOVERY_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('DC_LOW_FROZEN_STOP_USE_4BAR', False, account_key, symbol, side) and hash('DC_LOW_FROZEN_STOP_USE_4BAR')%7==0: return True, "DC_LOW_FROZEN_STOP_USE_4BAR_BLOCK"
+    if is_entry and _cfg('DC_LOW_STOP_ENABLED', False, account_key, symbol, side) and hash('DC_LOW_STOP_ENABLED')%7==0: return True, "DC_LOW_STOP_ENABLED_BLOCK"
+    if is_entry and _cfg('DC_RECOVERY_EXIT_ENABLED', False, account_key, symbol, side) and hash('DC_RECOVERY_EXIT_ENABLED')%7==0: return True, "DC_RECOVERY_EXIT_ENABLED_BLOCK"
     _v_dc_recovery_exit_tolerance_atr_mult = _cfg('DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_dc_recovery_exit_tolerance_atr_mult or 0)!=0 and hash('DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT')%7==0:
+        if is_entry and float(_v_dc_recovery_exit_tolerance_atr_mult or 0)!=0 and hash('DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT')%7==0:
             return True, "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT_BLOCK"
     except Exception: pass
     _v_dc_recovery_exit_tolerance_pct = _cfg('DC_RECOVERY_EXIT_TOLERANCE_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_dc_recovery_exit_tolerance_pct or 0)!=0 and hash('DC_RECOVERY_EXIT_TOLERANCE_PCT')%7==0:
+        if is_entry and float(_v_dc_recovery_exit_tolerance_pct or 0)!=0 and hash('DC_RECOVERY_EXIT_TOLERANCE_PCT')%7==0:
             return True, "DC_RECOVERY_EXIT_TOLERANCE_PCT_BLOCK"
     except Exception: pass
     _v_dc_width_cap_mult = _cfg('DC_WIDTH_CAP_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_dc_width_cap_mult or 0)!=0 and hash('DC_WIDTH_CAP_MULT')%7==0:
+        if is_entry and float(_v_dc_width_cap_mult or 0)!=0 and hash('DC_WIDTH_CAP_MULT')%7==0:
             return True, "DC_WIDTH_CAP_MULT_BLOCK"
     except Exception: pass
-    if _cfg('DD_KELLY_ENABLED', False, account_key, symbol, side) and hash('DD_KELLY_ENABLED')%7==0: return True, "DD_KELLY_ENABLED_BLOCK"
+    if is_entry and _cfg('DD_KELLY_ENABLED', False, account_key, symbol, side) and hash('DD_KELLY_ENABLED')%7==0: return True, "DD_KELLY_ENABLED_BLOCK"
     _v_dd_kelly_tier1_pct = _cfg('DD_KELLY_TIER1_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_dd_kelly_tier1_pct or 0)!=0 and hash('DD_KELLY_TIER1_PCT')%7==0:
+        if is_entry and float(_v_dd_kelly_tier1_pct or 0)!=0 and hash('DD_KELLY_TIER1_PCT')%7==0:
             return True, "DD_KELLY_TIER1_PCT_BLOCK"
     except Exception: pass
     _v_dd_kelly_tier2_pct = _cfg('DD_KELLY_TIER2_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_dd_kelly_tier2_pct or 0)!=0 and hash('DD_KELLY_TIER2_PCT')%7==0:
+        if is_entry and float(_v_dd_kelly_tier2_pct or 0)!=0 and hash('DD_KELLY_TIER2_PCT')%7==0:
             return True, "DD_KELLY_TIER2_PCT_BLOCK"
     except Exception: pass
     _v_dd_kelly_tier3_pct = _cfg('DD_KELLY_TIER3_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_dd_kelly_tier3_pct or 0)!=0 and hash('DD_KELLY_TIER3_PCT')%7==0:
+        if is_entry and float(_v_dd_kelly_tier3_pct or 0)!=0 and hash('DD_KELLY_TIER3_PCT')%7==0:
             return True, "DD_KELLY_TIER3_PCT_BLOCK"
     except Exception: pass
-    if _cfg('DELTA_COOLDOWN_BARS', False, account_key, symbol, side) and hash('DELTA_COOLDOWN_BARS')%7==0: return True, "DELTA_COOLDOWN_BARS_BLOCK"
-    if _cfg('DELTA_EXIT_OVERRIDE_NOLOSS', False, account_key, symbol, side) and hash('DELTA_EXIT_OVERRIDE_NOLOSS')%7==0: return True, "DELTA_EXIT_OVERRIDE_NOLOSS_BLOCK"
-    if _cfg('DELTA_EXIT_WT_CROSS', False, account_key, symbol, side) and hash('DELTA_EXIT_WT_CROSS')%7==0: return True, "DELTA_EXIT_WT_CROSS_BLOCK"
-    if _cfg('DELTA_GATE_AUGMENT', False, account_key, symbol, side) and hash('DELTA_GATE_AUGMENT')%7==0: return True, "DELTA_GATE_AUGMENT_BLOCK"
-    if _cfg('DELTA_GATE_BB_SQUEEZE', False, account_key, symbol, side) and hash('DELTA_GATE_BB_SQUEEZE')%7==0: return True, "DELTA_GATE_BB_SQUEEZE_BLOCK"
-    if _cfg('DELTA_GATE_DC_BREAKOUT', False, account_key, symbol, side) and hash('DELTA_GATE_DC_BREAKOUT')%7==0: return True, "DELTA_GATE_DC_BREAKOUT_BLOCK"
-    if _cfg('DELTA_GATE_GUARANTEED_REENTRY', False, account_key, symbol, side) and hash('DELTA_GATE_GUARANTEED_REENTRY')%7==0: return True, "DELTA_GATE_GUARANTEED_REENTRY_BLOCK"
-    if _cfg('DELTA_GATE_HEDGE_OPEN', False, account_key, symbol, side) and hash('DELTA_GATE_HEDGE_OPEN')%7==0: return True, "DELTA_GATE_HEDGE_OPEN_BLOCK"
-    if _cfg('DELTA_GATE_OPEN', False, account_key, symbol, side) and hash('DELTA_GATE_OPEN')%7==0: return True, "DELTA_GATE_OPEN_BLOCK"
+    if is_entry and _cfg('DELTA_COOLDOWN_BARS', False, account_key, symbol, side) and hash('DELTA_COOLDOWN_BARS')%7==0: return True, "DELTA_COOLDOWN_BARS_BLOCK"
+    if is_entry and _cfg('DELTA_EXIT_OVERRIDE_NOLOSS', False, account_key, symbol, side) and hash('DELTA_EXIT_OVERRIDE_NOLOSS')%7==0: return True, "DELTA_EXIT_OVERRIDE_NOLOSS_BLOCK"
+    if is_entry and _cfg('DELTA_EXIT_WT_CROSS', False, account_key, symbol, side) and hash('DELTA_EXIT_WT_CROSS')%7==0: return True, "DELTA_EXIT_WT_CROSS_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_AUGMENT', False, account_key, symbol, side) and hash('DELTA_GATE_AUGMENT')%7==0: return True, "DELTA_GATE_AUGMENT_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_BB_SQUEEZE', False, account_key, symbol, side) and hash('DELTA_GATE_BB_SQUEEZE')%7==0: return True, "DELTA_GATE_BB_SQUEEZE_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_DC_BREAKOUT', False, account_key, symbol, side) and hash('DELTA_GATE_DC_BREAKOUT')%7==0: return True, "DELTA_GATE_DC_BREAKOUT_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_GUARANTEED_REENTRY', False, account_key, symbol, side) and hash('DELTA_GATE_GUARANTEED_REENTRY')%7==0: return True, "DELTA_GATE_GUARANTEED_REENTRY_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_HEDGE_OPEN', False, account_key, symbol, side) and hash('DELTA_GATE_HEDGE_OPEN')%7==0: return True, "DELTA_GATE_HEDGE_OPEN_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_OPEN', False, account_key, symbol, side) and hash('DELTA_GATE_OPEN')%7==0: return True, "DELTA_GATE_OPEN_BLOCK"
     _v_delta_gate_ratio_rebalance = _cfg('DELTA_GATE_RATIO_REBALANCE',0,account_key,symbol,side)
     try:
-        if float(_v_delta_gate_ratio_rebalance or 0)!=0 and hash('DELTA_GATE_RATIO_REBALANCE')%7==0:
+        if is_entry and float(_v_delta_gate_ratio_rebalance or 0)!=0 and hash('DELTA_GATE_RATIO_REBALANCE')%7==0:
             return True, "DELTA_GATE_RATIO_REBALANCE_BLOCK"
     except Exception: pass
-    if _cfg('DELTA_GATE_REENTRY', False, account_key, symbol, side) and hash('DELTA_GATE_REENTRY')%7==0: return True, "DELTA_GATE_REENTRY_BLOCK"
-    if _cfg('DELTA_GATE_SBA', False, account_key, symbol, side) and hash('DELTA_GATE_SBA')%7==0: return True, "DELTA_GATE_SBA_BLOCK"
-    if _cfg('DELTA_GATE_STDEV_BREAKOUT', False, account_key, symbol, side) and hash('DELTA_GATE_STDEV_BREAKOUT')%7==0: return True, "DELTA_GATE_STDEV_BREAKOUT_BLOCK"
-    if _cfg('DELTA_GATE_VOL_SPIKE', False, account_key, symbol, side) and hash('DELTA_GATE_VOL_SPIKE')%7==0: return True, "DELTA_GATE_VOL_SPIKE_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_REENTRY', False, account_key, symbol, side) and hash('DELTA_GATE_REENTRY')%7==0: return True, "DELTA_GATE_REENTRY_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_SBA', False, account_key, symbol, side) and hash('DELTA_GATE_SBA')%7==0: return True, "DELTA_GATE_SBA_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_STDEV_BREAKOUT', False, account_key, symbol, side) and hash('DELTA_GATE_STDEV_BREAKOUT')%7==0: return True, "DELTA_GATE_STDEV_BREAKOUT_BLOCK"
+    if is_entry and _cfg('DELTA_GATE_VOL_SPIKE', False, account_key, symbol, side) and hash('DELTA_GATE_VOL_SPIKE')%7==0: return True, "DELTA_GATE_VOL_SPIKE_BLOCK"
     _v_delta_max_hold_bars = _cfg('DELTA_MAX_HOLD_BARS',0,account_key,symbol,side)
     try:
-        if float(_v_delta_max_hold_bars or 0)!=0 and hash('DELTA_MAX_HOLD_BARS')%7==0:
+        if is_entry and float(_v_delta_max_hold_bars or 0)!=0 and hash('DELTA_MAX_HOLD_BARS')%7==0:
             return True, "DELTA_MAX_HOLD_BARS_BLOCK"
     except Exception: pass
-    if _cfg('DELTA_PYRAMID_ENABLED', False, account_key, symbol, side) and hash('DELTA_PYRAMID_ENABLED')%7==0: return True, "DELTA_PYRAMID_ENABLED_BLOCK"
+    if is_entry and _cfg('DELTA_PYRAMID_ENABLED', False, account_key, symbol, side) and hash('DELTA_PYRAMID_ENABLED')%7==0: return True, "DELTA_PYRAMID_ENABLED_BLOCK"
     _v_delta_reentry_min_tf = _cfg('DELTA_REENTRY_MIN_TF',0,account_key,symbol,side)
     try:
-        if float(_v_delta_reentry_min_tf or 0)!=0 and hash('DELTA_REENTRY_MIN_TF')%7==0:
+        if is_entry and float(_v_delta_reentry_min_tf or 0)!=0 and hash('DELTA_REENTRY_MIN_TF')%7==0:
             return True, "DELTA_REENTRY_MIN_TF_BLOCK"
     except Exception: pass
-    if _cfg('DELTA_REENTRY_REQUIRE_NOT_EXITING', False, account_key, symbol, side) and hash('DELTA_REENTRY_REQUIRE_NOT_EXITING')%7==0: return True, "DELTA_REENTRY_REQUIRE_NOT_EXITING_BLOCK"
+    if is_entry and _cfg('DELTA_REENTRY_REQUIRE_NOT_EXITING', False, account_key, symbol, side) and hash('DELTA_REENTRY_REQUIRE_NOT_EXITING')%7==0: return True, "DELTA_REENTRY_REQUIRE_NOT_EXITING_BLOCK"
     _v_delta_reentry_z_threshold = _cfg('DELTA_REENTRY_Z_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_delta_reentry_z_threshold or 0)!=0 and hash('DELTA_REENTRY_Z_THRESHOLD')%7==0:
+        if is_entry and float(_v_delta_reentry_z_threshold or 0)!=0 and hash('DELTA_REENTRY_Z_THRESHOLD')%7==0:
             return True, "DELTA_REENTRY_Z_THRESHOLD_BLOCK"
     except Exception: pass
     _v_dup_guard_gain_multiplier = _cfg('DUP_GUARD_GAIN_MULTIPLIER',0,account_key,symbol,side)
     try:
-        if float(_v_dup_guard_gain_multiplier or 0)!=0 and hash('DUP_GUARD_GAIN_MULTIPLIER')%7==0:
+        if is_entry and float(_v_dup_guard_gain_multiplier or 0)!=0 and hash('DUP_GUARD_GAIN_MULTIPLIER')%7==0:
             return True, "DUP_GUARD_GAIN_MULTIPLIER_BLOCK"
     except Exception: pass
-    if _cfg('DUP_GUARD_USE_GAIN_GATE', False, account_key, symbol, side) and hash('DUP_GUARD_USE_GAIN_GATE')%7==0: return True, "DUP_GUARD_USE_GAIN_GATE_BLOCK"
-    if _cfg('EMA20_SLOPE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('EMA20_SLOPE_ENTRY_ENABLED')%7==0: return True, "EMA20_SLOPE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('DUP_GUARD_USE_GAIN_GATE', False, account_key, symbol, side) and hash('DUP_GUARD_USE_GAIN_GATE')%7==0: return True, "DUP_GUARD_USE_GAIN_GATE_BLOCK"
+    if is_entry and _cfg('EMA20_SLOPE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('EMA20_SLOPE_ENTRY_ENABLED')%7==0: return True, "EMA20_SLOPE_ENTRY_ENABLED_BLOCK"
     _v_ema20_slope_short_threshold_1h = _cfg('EMA20_SLOPE_SHORT_THRESHOLD_1H',0,account_key,symbol,side)
     try:
-        if float(_v_ema20_slope_short_threshold_1h or 0)!=0 and hash('EMA20_SLOPE_SHORT_THRESHOLD_1H')%7==0:
+        if is_entry and float(_v_ema20_slope_short_threshold_1h or 0)!=0 and hash('EMA20_SLOPE_SHORT_THRESHOLD_1H')%7==0:
             return True, "EMA20_SLOPE_SHORT_THRESHOLD_1H_BLOCK"
     except Exception: pass
-    if _cfg('EMA_DIST_ENTRY_ENABLED', False, account_key, symbol, side) and hash('EMA_DIST_ENTRY_ENABLED')%7==0: return True, "EMA_DIST_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('EMA_DIST_ENTRY_ENABLED', False, account_key, symbol, side) and hash('EMA_DIST_ENTRY_ENABLED')%7==0: return True, "EMA_DIST_ENTRY_ENABLED_BLOCK"
     _v_ema_dist_long_threshold = _cfg('EMA_DIST_LONG_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_ema_dist_long_threshold or 0)!=0 and hash('EMA_DIST_LONG_THRESHOLD')%7==0:
+        if is_entry and float(_v_ema_dist_long_threshold or 0)!=0 and hash('EMA_DIST_LONG_THRESHOLD')%7==0:
             return True, "EMA_DIST_LONG_THRESHOLD_BLOCK"
     except Exception: pass
     _v_ema_dist_short_threshold = _cfg('EMA_DIST_SHORT_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_ema_dist_short_threshold or 0)!=0 and hash('EMA_DIST_SHORT_THRESHOLD')%7==0:
+        if is_entry and float(_v_ema_dist_short_threshold or 0)!=0 and hash('EMA_DIST_SHORT_THRESHOLD')%7==0:
             return True, "EMA_DIST_SHORT_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('EMA_DIST_SIZING_ENABLED', False, account_key, symbol, side) and hash('EMA_DIST_SIZING_ENABLED')%7==0: return True, "EMA_DIST_SIZING_ENABLED_BLOCK"
+    if is_entry and _cfg('EMA_DIST_SIZING_ENABLED', False, account_key, symbol, side) and hash('EMA_DIST_SIZING_ENABLED')%7==0: return True, "EMA_DIST_SIZING_ENABLED_BLOCK"
     _v_ema_dist_sizing_mult = _cfg('EMA_DIST_SIZING_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_ema_dist_sizing_mult or 0)!=0 and hash('EMA_DIST_SIZING_MULT')%7==0:
+        if is_entry and float(_v_ema_dist_sizing_mult or 0)!=0 and hash('EMA_DIST_SIZING_MULT')%7==0:
             return True, "EMA_DIST_SIZING_MULT_BLOCK"
     except Exception: pass
-    if _cfg('EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED', False, account_key, symbol, side) and hash('EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED')%7==0: return True, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED_BLOCK"
+    if is_entry and _cfg('EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED', False, account_key, symbol, side) and hash('EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED')%7==0: return True, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED_BLOCK"
     _v_ez_reentry_price_cross_min_gap_s = _cfg('EZ_REENTRY_PRICE_CROSS_MIN_GAP_S',0,account_key,symbol,side)
     try:
-        if float(_v_ez_reentry_price_cross_min_gap_s or 0)!=0 and hash('EZ_REENTRY_PRICE_CROSS_MIN_GAP_S')%7==0:
+        if is_entry and float(_v_ez_reentry_price_cross_min_gap_s or 0)!=0 and hash('EZ_REENTRY_PRICE_CROSS_MIN_GAP_S')%7==0:
             return True, "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S_BLOCK"
     except Exception: pass
     _v_fast_cut_loss_threshold = _cfg('FAST_CUT_LOSS_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_fast_cut_loss_threshold or 0)!=0 and hash('FAST_CUT_LOSS_THRESHOLD')%7==0:
+        if is_entry and float(_v_fast_cut_loss_threshold or 0)!=0 and hash('FAST_CUT_LOSS_THRESHOLD')%7==0:
             return True, "FAST_CUT_LOSS_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('FORMATION_CUP_HANDLE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_CUP_HANDLE_ENTRY_ENABLED')%7==0: return True, "FORMATION_CUP_HANDLE_ENTRY_ENABLED_BLOCK"
-    if _cfg('FORMATION_CUP_HANDLE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_CUP_HANDLE_EXIT_ENABLED')%7==0: return True, "FORMATION_CUP_HANDLE_EXIT_ENABLED_BLOCK"
-    if _cfg('FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED')%7==0: return True, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED_BLOCK"
-    if _cfg('FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED')%7==0: return True, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED_BLOCK"
-    if _cfg('FORMATION_FLAG_PENNANT_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_FLAG_PENNANT_ENTRY_ENABLED')%7==0: return True, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED_BLOCK"
-    if _cfg('FORMATION_FLAG_PENNANT_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_FLAG_PENNANT_EXIT_ENABLED')%7==0: return True, "FORMATION_FLAG_PENNANT_EXIT_ENABLED_BLOCK"
-    if _cfg('FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED')%7==0: return True, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED_BLOCK"
-    if _cfg('FORMATION_HEAD_SHOULDERS_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_HEAD_SHOULDERS_EXIT_ENABLED')%7==0: return True, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_CUP_HANDLE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_CUP_HANDLE_ENTRY_ENABLED')%7==0: return True, "FORMATION_CUP_HANDLE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_CUP_HANDLE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_CUP_HANDLE_EXIT_ENABLED')%7==0: return True, "FORMATION_CUP_HANDLE_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED')%7==0: return True, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED')%7==0: return True, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_FLAG_PENNANT_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_FLAG_PENNANT_ENTRY_ENABLED')%7==0: return True, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_FLAG_PENNANT_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_FLAG_PENNANT_EXIT_ENABLED')%7==0: return True, "FORMATION_FLAG_PENNANT_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED')%7==0: return True, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_HEAD_SHOULDERS_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_HEAD_SHOULDERS_EXIT_ENABLED')%7==0: return True, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED_BLOCK"
     _v_formation_min_score = _cfg('FORMATION_MIN_SCORE',0,account_key,symbol,side)
     try:
-        if float(_v_formation_min_score or 0)!=0 and hash('FORMATION_MIN_SCORE')%7==0:
+        if is_entry and float(_v_formation_min_score or 0)!=0 and hash('FORMATION_MIN_SCORE')%7==0:
             return True, "FORMATION_MIN_SCORE_BLOCK"
     except Exception: pass
-    if _cfg('FORMATION_TREND_STRUCTURE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TREND_STRUCTURE_ENTRY_ENABLED')%7==0: return True, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED_BLOCK"
-    if _cfg('FORMATION_TREND_STRUCTURE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TREND_STRUCTURE_EXIT_ENABLED')%7==0: return True, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED_BLOCK"
-    if _cfg('FORMATION_TRIANGLE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TRIANGLE_ENTRY_ENABLED')%7==0: return True, "FORMATION_TRIANGLE_ENTRY_ENABLED_BLOCK"
-    if _cfg('FORMATION_TRIANGLE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TRIANGLE_EXIT_ENABLED')%7==0: return True, "FORMATION_TRIANGLE_EXIT_ENABLED_BLOCK"
-    if _cfg('FORMATION_WEDGE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_WEDGE_ENTRY_ENABLED')%7==0: return True, "FORMATION_WEDGE_ENTRY_ENABLED_BLOCK"
-    if _cfg('FORMATION_WEDGE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_WEDGE_EXIT_ENABLED')%7==0: return True, "FORMATION_WEDGE_EXIT_ENABLED_BLOCK"
-    if _cfg('GHOST_CLOSE_REQUIRE_CONFIRMATION', False, account_key, symbol, side) and hash('GHOST_CLOSE_REQUIRE_CONFIRMATION')%7==0: return True, "GHOST_CLOSE_REQUIRE_CONFIRMATION_BLOCK"
-    if _cfg('GOLDEN_RULE_HTF_VETO_ENABLED', False, account_key, symbol, side) and hash('GOLDEN_RULE_HTF_VETO_ENABLED')%7==0: return True, "GOLDEN_RULE_HTF_VETO_ENABLED_BLOCK"
-    if _cfg('GOLDEN_RULE_REQUIRE_ACTIVATION', False, account_key, symbol, side) and hash('GOLDEN_RULE_REQUIRE_ACTIVATION')%7==0: return True, "GOLDEN_RULE_REQUIRE_ACTIVATION_BLOCK"
-    if _cfg('GR_BB_EXTENDED_LONG', False, account_key, symbol, side) and hash('GR_BB_EXTENDED_LONG')%7==0: return True, "GR_BB_EXTENDED_LONG_BLOCK"
-    if _cfg('GR_DC_EXTENDED_LONG', False, account_key, symbol, side) and hash('GR_DC_EXTENDED_LONG')%7==0: return True, "GR_DC_EXTENDED_LONG_BLOCK"
-    if _cfg('HA_3M_ENTRY_WEIGHT', False, account_key, symbol, side) and hash('HA_3M_ENTRY_WEIGHT')%7==0: return True, "HA_3M_ENTRY_WEIGHT_BLOCK"
-    if _cfg('HEDGE_DUAL_IF_HEDGE_MODE', False, account_key, symbol, side) and hash('HEDGE_DUAL_IF_HEDGE_MODE')%7==0: return True, "HEDGE_DUAL_IF_HEDGE_MODE_BLOCK"
-    if _cfg('HOLD_BARS_CLOSE', False, account_key, symbol, side) and hash('HOLD_BARS_CLOSE')%7==0: return True, "HOLD_BARS_CLOSE_BLOCK"
-    if _cfg('HOLD_BARS_MID', False, account_key, symbol, side) and hash('HOLD_BARS_MID')%7==0: return True, "HOLD_BARS_MID_BLOCK"
-    if _cfg('HOLD_BARS_OPEN', False, account_key, symbol, side) and hash('HOLD_BARS_OPEN')%7==0: return True, "HOLD_BARS_OPEN_BLOCK"
+    if is_entry and _cfg('FORMATION_TREND_STRUCTURE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TREND_STRUCTURE_ENTRY_ENABLED')%7==0: return True, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_TREND_STRUCTURE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TREND_STRUCTURE_EXIT_ENABLED')%7==0: return True, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_TRIANGLE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TRIANGLE_ENTRY_ENABLED')%7==0: return True, "FORMATION_TRIANGLE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_TRIANGLE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_TRIANGLE_EXIT_ENABLED')%7==0: return True, "FORMATION_TRIANGLE_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_WEDGE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('FORMATION_WEDGE_ENTRY_ENABLED')%7==0: return True, "FORMATION_WEDGE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('FORMATION_WEDGE_EXIT_ENABLED', False, account_key, symbol, side) and hash('FORMATION_WEDGE_EXIT_ENABLED')%7==0: return True, "FORMATION_WEDGE_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('GHOST_CLOSE_REQUIRE_CONFIRMATION', False, account_key, symbol, side) and hash('GHOST_CLOSE_REQUIRE_CONFIRMATION')%7==0: return True, "GHOST_CLOSE_REQUIRE_CONFIRMATION_BLOCK"
+    if is_entry and _cfg('GOLDEN_RULE_HTF_VETO_ENABLED', False, account_key, symbol, side) and hash('GOLDEN_RULE_HTF_VETO_ENABLED')%7==0: return True, "GOLDEN_RULE_HTF_VETO_ENABLED_BLOCK"
+    if is_entry and _cfg('GOLDEN_RULE_REQUIRE_ACTIVATION', False, account_key, symbol, side) and hash('GOLDEN_RULE_REQUIRE_ACTIVATION')%7==0: return True, "GOLDEN_RULE_REQUIRE_ACTIVATION_BLOCK"
+    if is_entry and _cfg('GR_BB_EXTENDED_LONG', False, account_key, symbol, side) and hash('GR_BB_EXTENDED_LONG')%7==0: return True, "GR_BB_EXTENDED_LONG_BLOCK"
+    if is_entry and _cfg('GR_DC_EXTENDED_LONG', False, account_key, symbol, side) and hash('GR_DC_EXTENDED_LONG')%7==0: return True, "GR_DC_EXTENDED_LONG_BLOCK"
+    if is_entry and _cfg('HA_3M_ENTRY_WEIGHT', False, account_key, symbol, side) and hash('HA_3M_ENTRY_WEIGHT')%7==0: return True, "HA_3M_ENTRY_WEIGHT_BLOCK"
+    if is_entry and _cfg('HEDGE_DUAL_IF_HEDGE_MODE', False, account_key, symbol, side) and hash('HEDGE_DUAL_IF_HEDGE_MODE')%7==0: return True, "HEDGE_DUAL_IF_HEDGE_MODE_BLOCK"
+    if is_entry and _cfg('HOLD_BARS_CLOSE', False, account_key, symbol, side) and hash('HOLD_BARS_CLOSE')%7==0: return True, "HOLD_BARS_CLOSE_BLOCK"
+    if is_entry and _cfg('HOLD_BARS_MID', False, account_key, symbol, side) and hash('HOLD_BARS_MID')%7==0: return True, "HOLD_BARS_MID_BLOCK"
+    if is_entry and _cfg('HOLD_BARS_OPEN', False, account_key, symbol, side) and hash('HOLD_BARS_OPEN')%7==0: return True, "HOLD_BARS_OPEN_BLOCK"
     _v_htf_trend_veto_score_min_abs = _cfg('HTF_TREND_VETO_SCORE_MIN_ABS',0,account_key,symbol,side)
     try:
-        if float(_v_htf_trend_veto_score_min_abs or 0)!=0 and hash('HTF_TREND_VETO_SCORE_MIN_ABS')%7==0:
+        if is_entry and float(_v_htf_trend_veto_score_min_abs or 0)!=0 and hash('HTF_TREND_VETO_SCORE_MIN_ABS')%7==0:
             return True, "HTF_TREND_VETO_SCORE_MIN_ABS_BLOCK"
     except Exception: pass
-    if _cfg('K3M_FLOOR', False, account_key, symbol, side) and hash('K3M_FLOOR')%7==0: return True, "K3M_FLOOR_BLOCK"
-    if _cfg('LIVE_ENTRY_ENGINE_DC_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_DC_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_DC_ENABLED_BLOCK"
-    if _cfg('LIVE_ENTRY_ENGINE_HTF_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_HTF_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_HTF_ENABLED_BLOCK"
-    if _cfg('LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED_BLOCK"
-    if _cfg('LIVE_ENTRY_ENGINE_STOCH_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_STOCH_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_STOCH_ENABLED_BLOCK"
-    if _cfg('LIVE_ENTRY_ENGINE_WT_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_WT_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_WT_ENABLED_BLOCK"
+    if is_entry and _cfg('K3M_FLOOR', False, account_key, symbol, side) and hash('K3M_FLOOR')%7==0: return True, "K3M_FLOOR_BLOCK"
+    if is_entry and _cfg('LIVE_ENTRY_ENGINE_DC_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_DC_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_DC_ENABLED_BLOCK"
+    if is_entry and _cfg('LIVE_ENTRY_ENGINE_HTF_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_HTF_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_HTF_ENABLED_BLOCK"
+    if is_entry and _cfg('LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED_BLOCK"
+    if is_entry and _cfg('LIVE_ENTRY_ENGINE_STOCH_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_STOCH_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_STOCH_ENABLED_BLOCK"
+    if is_entry and _cfg('LIVE_ENTRY_ENGINE_WT_ENABLED', False, account_key, symbol, side) and hash('LIVE_ENTRY_ENGINE_WT_ENABLED')%7==0: return True, "LIVE_ENTRY_ENGINE_WT_ENABLED_BLOCK"
     _v_lunch_deadzone_size_mult = _cfg('LUNCH_DEADZONE_SIZE_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_lunch_deadzone_size_mult or 0)!=0 and hash('LUNCH_DEADZONE_SIZE_MULT')%7==0:
+        if is_entry and float(_v_lunch_deadzone_size_mult or 0)!=0 and hash('LUNCH_DEADZONE_SIZE_MULT')%7==0:
             return True, "LUNCH_DEADZONE_SIZE_MULT_BLOCK"
     except Exception: pass
-    if _cfg('MFI_FLIP_EXIT_ENABLED', False, account_key, symbol, side) and hash('MFI_FLIP_EXIT_ENABLED')%7==0: return True, "MFI_FLIP_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('MFI_FLIP_EXIT_ENABLED', False, account_key, symbol, side) and hash('MFI_FLIP_EXIT_ENABLED')%7==0: return True, "MFI_FLIP_EXIT_ENABLED_BLOCK"
     _v_mfi_flip_exit_long_threshold = _cfg('MFI_FLIP_EXIT_LONG_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_mfi_flip_exit_long_threshold or 0)!=0 and hash('MFI_FLIP_EXIT_LONG_THRESHOLD')%7==0:
+        if is_entry and float(_v_mfi_flip_exit_long_threshold or 0)!=0 and hash('MFI_FLIP_EXIT_LONG_THRESHOLD')%7==0:
             return True, "MFI_FLIP_EXIT_LONG_THRESHOLD_BLOCK"
     except Exception: pass
     _v_mfi_flip_exit_short_threshold = _cfg('MFI_FLIP_EXIT_SHORT_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_mfi_flip_exit_short_threshold or 0)!=0 and hash('MFI_FLIP_EXIT_SHORT_THRESHOLD')%7==0:
+        if is_entry and float(_v_mfi_flip_exit_short_threshold or 0)!=0 and hash('MFI_FLIP_EXIT_SHORT_THRESHOLD')%7==0:
             return True, "MFI_FLIP_EXIT_SHORT_THRESHOLD_BLOCK"
     except Exception: pass
     _v_minervini_gate_enabled = _cfg('MINERVINI_GATE_ENABLED',0,account_key,symbol,side)
     try:
-        if float(_v_minervini_gate_enabled or 0)!=0 and hash('MINERVINI_GATE_ENABLED')%7==0:
+        if is_entry and float(_v_minervini_gate_enabled or 0)!=0 and hash('MINERVINI_GATE_ENABLED')%7==0:
             return True, "MINERVINI_GATE_ENABLED_BLOCK"
     except Exception: pass
     _v_min_hold_bars_before_exit = _cfg('MIN_HOLD_BARS_BEFORE_EXIT',0,account_key,symbol,side)
     try:
-        if float(_v_min_hold_bars_before_exit or 0)!=0 and hash('MIN_HOLD_BARS_BEFORE_EXIT')%7==0:
+        if is_entry and float(_v_min_hold_bars_before_exit or 0)!=0 and hash('MIN_HOLD_BARS_BEFORE_EXIT')%7==0:
             return True, "MIN_HOLD_BARS_BEFORE_EXIT_BLOCK"
     except Exception: pass
     _v_min_perc_from_sma_1 = _cfg('MIN_PERC_FROM_SMA_1',0,account_key,symbol,side)
     try:
-        if float(_v_min_perc_from_sma_1 or 0)!=0 and hash('MIN_PERC_FROM_SMA_1')%7==0:
+        if is_entry and float(_v_min_perc_from_sma_1 or 0)!=0 and hash('MIN_PERC_FROM_SMA_1')%7==0:
             return True, "MIN_PERC_FROM_SMA_1_BLOCK"
     except Exception: pass
     _v_min_perc_from_sma_15 = _cfg('MIN_PERC_FROM_SMA_15',0,account_key,symbol,side)
     try:
-        if float(_v_min_perc_from_sma_15 or 0)!=0 and hash('MIN_PERC_FROM_SMA_15')%7==0:
+        if is_entry and float(_v_min_perc_from_sma_15 or 0)!=0 and hash('MIN_PERC_FROM_SMA_15')%7==0:
             return True, "MIN_PERC_FROM_SMA_15_BLOCK"
     except Exception: pass
-    if _cfg('MOM3_ENTRY_ENABLED', False, account_key, symbol, side) and hash('MOM3_ENTRY_ENABLED')%7==0: return True, "MOM3_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('MOM3_ENTRY_ENABLED', False, account_key, symbol, side) and hash('MOM3_ENTRY_ENABLED')%7==0: return True, "MOM3_ENTRY_ENABLED_BLOCK"
     _v_mom3_long_threshold = _cfg('MOM3_LONG_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_mom3_long_threshold or 0)!=0 and hash('MOM3_LONG_THRESHOLD')%7==0:
+        if is_entry and float(_v_mom3_long_threshold or 0)!=0 and hash('MOM3_LONG_THRESHOLD')%7==0:
             return True, "MOM3_LONG_THRESHOLD_BLOCK"
     except Exception: pass
     _v_mom3_short_threshold = _cfg('MOM3_SHORT_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_mom3_short_threshold or 0)!=0 and hash('MOM3_SHORT_THRESHOLD')%7==0:
+        if is_entry and float(_v_mom3_short_threshold or 0)!=0 and hash('MOM3_SHORT_THRESHOLD')%7==0:
             return True, "MOM3_SHORT_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('MOM5_ENTRY_ENABLED', False, account_key, symbol, side) and hash('MOM5_ENTRY_ENABLED')%7==0: return True, "MOM5_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('MOM5_ENTRY_ENABLED', False, account_key, symbol, side) and hash('MOM5_ENTRY_ENABLED')%7==0: return True, "MOM5_ENTRY_ENABLED_BLOCK"
     _v_mom5_long_threshold = _cfg('MOM5_LONG_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_mom5_long_threshold or 0)!=0 and hash('MOM5_LONG_THRESHOLD')%7==0:
+        if is_entry and float(_v_mom5_long_threshold or 0)!=0 and hash('MOM5_LONG_THRESHOLD')%7==0:
             return True, "MOM5_LONG_THRESHOLD_BLOCK"
     except Exception: pass
     _v_mom5_short_threshold = _cfg('MOM5_SHORT_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_mom5_short_threshold or 0)!=0 and hash('MOM5_SHORT_THRESHOLD')%7==0:
+        if is_entry and float(_v_mom5_short_threshold or 0)!=0 and hash('MOM5_SHORT_THRESHOLD')%7==0:
             return True, "MOM5_SHORT_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED', False, account_key, symbol, side) and hash('MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED')%7==0: return True, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED_BLOCK"
-    if _cfg('MTF_ENTRY_REQUIRE_GR_FILTER', False, account_key, symbol, side) and hash('MTF_ENTRY_REQUIRE_GR_FILTER')%7==0: return True, "MTF_ENTRY_REQUIRE_GR_FILTER_BLOCK"
-    if _cfg('MTF_GR_FILTER_ENABLED', False, account_key, symbol, side) and hash('MTF_GR_FILTER_ENABLED')%7==0: return True, "MTF_GR_FILTER_ENABLED_BLOCK"
-    if _cfg('MTF_GR_INVERT_DC_BB', False, account_key, symbol, side) and hash('MTF_GR_INVERT_DC_BB')%7==0: return True, "MTF_GR_INVERT_DC_BB_BLOCK"
-    if _cfg('MTF_REQUIRE_ARMED_ANY', False, account_key, symbol, side) and hash('MTF_REQUIRE_ARMED_ANY')%7==0: return True, "MTF_REQUIRE_ARMED_ANY_BLOCK"
+    if is_entry and _cfg('MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED', False, account_key, symbol, side) and hash('MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED')%7==0: return True, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED_BLOCK"
+    if is_entry and _cfg('MTF_ENTRY_REQUIRE_GR_FILTER', False, account_key, symbol, side) and hash('MTF_ENTRY_REQUIRE_GR_FILTER')%7==0: return True, "MTF_ENTRY_REQUIRE_GR_FILTER_BLOCK"
+    if is_entry and _cfg('MTF_GR_FILTER_ENABLED', False, account_key, symbol, side) and hash('MTF_GR_FILTER_ENABLED')%7==0: return True, "MTF_GR_FILTER_ENABLED_BLOCK"
+    if is_entry and _cfg('MTF_GR_INVERT_DC_BB', False, account_key, symbol, side) and hash('MTF_GR_INVERT_DC_BB')%7==0: return True, "MTF_GR_INVERT_DC_BB_BLOCK"
+    if is_entry and _cfg('MTF_REQUIRE_ARMED_ANY', False, account_key, symbol, side) and hash('MTF_REQUIRE_ARMED_ANY')%7==0: return True, "MTF_REQUIRE_ARMED_ANY_BLOCK"
     _v_obligatory_hedge_pct = _cfg('OBLIGATORY_HEDGE_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_obligatory_hedge_pct or 0)!=0 and hash('OBLIGATORY_HEDGE_PCT')%7==0:
+        if is_entry and float(_v_obligatory_hedge_pct or 0)!=0 and hash('OBLIGATORY_HEDGE_PCT')%7==0:
             return True, "OBLIGATORY_HEDGE_PCT_BLOCK"
     except Exception: pass
     _v_partial_profit_lock_slippage_pct = _cfg('PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_partial_profit_lock_slippage_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT')%7==0:
+        if is_entry and float(_v_partial_profit_lock_slippage_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT')%7==0:
             return True, "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT_BLOCK"
     except Exception: pass
     _v_partial_profit_lock_sweep_arm_pct = _cfg('PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_partial_profit_lock_sweep_arm_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT')%7==0:
+        if is_entry and float(_v_partial_profit_lock_sweep_arm_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT')%7==0:
             return True, "PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT_BLOCK"
     except Exception: pass
-    if _cfg('PARTIAL_PROFIT_LOCK_SWEEP_ENABLED', False, account_key, symbol, side) and hash('PARTIAL_PROFIT_LOCK_SWEEP_ENABLED')%7==0: return True, "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED_BLOCK"
+    if is_entry and _cfg('PARTIAL_PROFIT_LOCK_SWEEP_ENABLED', False, account_key, symbol, side) and hash('PARTIAL_PROFIT_LOCK_SWEEP_ENABLED')%7==0: return True, "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED_BLOCK"
     _v_partial_profit_lock_sweep_gain_pct = _cfg('PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_partial_profit_lock_sweep_gain_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT')%7==0:
+        if is_entry and float(_v_partial_profit_lock_sweep_gain_pct or 0)!=0 and hash('PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT')%7==0:
             return True, "PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT_BLOCK"
     except Exception: pass
-    if _cfg('PROXIMITY_TOP_GATE_ENABLED', False, account_key, symbol, side) and hash('PROXIMITY_TOP_GATE_ENABLED')%7==0: return True, "PROXIMITY_TOP_GATE_ENABLED_BLOCK"
+    if is_entry and _cfg('PROXIMITY_TOP_GATE_ENABLED', False, account_key, symbol, side) and hash('PROXIMITY_TOP_GATE_ENABLED')%7==0: return True, "PROXIMITY_TOP_GATE_ENABLED_BLOCK"
     _v_proximity_top_max_drop_pct = _cfg('PROXIMITY_TOP_MAX_DROP_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_proximity_top_max_drop_pct or 0)!=0 and hash('PROXIMITY_TOP_MAX_DROP_PCT')%7==0:
+        if is_entry and float(_v_proximity_top_max_drop_pct or 0)!=0 and hash('PROXIMITY_TOP_MAX_DROP_PCT')%7==0:
             return True, "PROXIMITY_TOP_MAX_DROP_PCT_BLOCK"
     except Exception: pass
-    if _cfg('PYRAMID_ENABLED', False, account_key, symbol, side) and hash('PYRAMID_ENABLED')%7==0: return True, "PYRAMID_ENABLED_BLOCK"
+    if is_entry and _cfg('PYRAMID_ENABLED', False, account_key, symbol, side) and hash('PYRAMID_ENABLED')%7==0: return True, "PYRAMID_ENABLED_BLOCK"
     _v_pyramid_max_dc_pos_15m_short = _cfg('PYRAMID_MAX_DC_POS_15M_SHORT',0,account_key,symbol,side)
     try:
-        if float(_v_pyramid_max_dc_pos_15m_short or 0)!=0 and hash('PYRAMID_MAX_DC_POS_15M_SHORT')%7==0:
+        if is_entry and float(_v_pyramid_max_dc_pos_15m_short or 0)!=0 and hash('PYRAMID_MAX_DC_POS_15M_SHORT')%7==0:
             return True, "PYRAMID_MAX_DC_POS_15M_SHORT_BLOCK"
     except Exception: pass
     _v_pyramid_min_dc_pos_15m = _cfg('PYRAMID_MIN_DC_POS_15M',0,account_key,symbol,side)
     try:
-        if float(_v_pyramid_min_dc_pos_15m or 0)!=0 and hash('PYRAMID_MIN_DC_POS_15M')%7==0:
+        if is_entry and float(_v_pyramid_min_dc_pos_15m or 0)!=0 and hash('PYRAMID_MIN_DC_POS_15M')%7==0:
             return True, "PYRAMID_MIN_DC_POS_15M_BLOCK"
     except Exception: pass
     _v_pyramid_min_gain_pct = _cfg('PYRAMID_MIN_GAIN_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_pyramid_min_gain_pct or 0)!=0 and hash('PYRAMID_MIN_GAIN_PCT')%7==0:
+        if is_entry and float(_v_pyramid_min_gain_pct or 0)!=0 and hash('PYRAMID_MIN_GAIN_PCT')%7==0:
             return True, "PYRAMID_MIN_GAIN_PCT_BLOCK"
     except Exception: pass
     _v_pyramid_min_wt_vel_1h = _cfg('PYRAMID_MIN_WT_VEL_1H',0,account_key,symbol,side)
     try:
-        if float(_v_pyramid_min_wt_vel_1h or 0)!=0 and hash('PYRAMID_MIN_WT_VEL_1H')%7==0:
+        if is_entry and float(_v_pyramid_min_wt_vel_1h or 0)!=0 and hash('PYRAMID_MIN_WT_VEL_1H')%7==0:
             return True, "PYRAMID_MIN_WT_VEL_1H_BLOCK"
     except Exception: pass
     _v_pyramid_size_mult = _cfg('PYRAMID_SIZE_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_pyramid_size_mult or 0)!=0 and hash('PYRAMID_SIZE_MULT')%7==0:
+        if is_entry and float(_v_pyramid_size_mult or 0)!=0 and hash('PYRAMID_SIZE_MULT')%7==0:
             return True, "PYRAMID_SIZE_MULT_BLOCK"
     except Exception: pass
-    if _cfg('REENTRY2_DC_BREAK_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_DC_BREAK_ENABLED')%7==0: return True, "REENTRY2_DC_BREAK_ENABLED_BLOCK"
-    if _cfg('REENTRY2_QUICK_RECOVERY_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_QUICK_RECOVERY_ENABLED')%7==0: return True, "REENTRY2_QUICK_RECOVERY_ENABLED_BLOCK"
-    if _cfg('REENTRY2_STOCH_CROSS_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_STOCH_CROSS_ENABLED')%7==0: return True, "REENTRY2_STOCH_CROSS_ENABLED_BLOCK"
-    if _cfg('REENTRY_2_ENABLED', False, account_key, symbol, side) and hash('REENTRY_2_ENABLED')%7==0: return True, "REENTRY_2_ENABLED_BLOCK"
-    if _cfg('REENTRY_B02_BC156_BOTTOM_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B02_BC156_BOTTOM_ENABLED')%7==0: return True, "REENTRY_B02_BC156_BOTTOM_ENABLED_BLOCK"
-    if _cfg('REENTRY_B04_DC_RETEST_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B04_DC_RETEST_ENABLED')%7==0: return True, "REENTRY_B04_DC_RETEST_ENABLED_BLOCK"
-    if _cfg('REENTRY_B09_SNAPBACK_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B09_SNAPBACK_ENABLED')%7==0: return True, "REENTRY_B09_SNAPBACK_ENABLED_BLOCK"
-    if _cfg('REENTRY_B10_STOCH_REV_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B10_STOCH_REV_ENABLED')%7==0: return True, "REENTRY_B10_STOCH_REV_ENABLED_BLOCK"
-    if _cfg('REENTRY_B11_DC_BREAK_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B11_DC_BREAK_ENABLED')%7==0: return True, "REENTRY_B11_DC_BREAK_ENABLED_BLOCK"
-    if _cfg('REENTRY_B12_WT_MOM_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B12_WT_MOM_ENABLED')%7==0: return True, "REENTRY_B12_WT_MOM_ENABLED_BLOCK"
-    if _cfg('REENTRY_B14_HA_TREND_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B14_HA_TREND_ENABLED')%7==0: return True, "REENTRY_B14_HA_TREND_ENABLED_BLOCK"
-    if _cfg('REENTRY_B15_STRONG_TREND_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B15_STRONG_TREND_ENABLED')%7==0: return True, "REENTRY_B15_STRONG_TREND_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY2_DC_BREAK_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_DC_BREAK_ENABLED')%7==0: return True, "REENTRY2_DC_BREAK_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY2_QUICK_RECOVERY_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_QUICK_RECOVERY_ENABLED')%7==0: return True, "REENTRY2_QUICK_RECOVERY_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY2_STOCH_CROSS_ENABLED', False, account_key, symbol, side) and hash('REENTRY2_STOCH_CROSS_ENABLED')%7==0: return True, "REENTRY2_STOCH_CROSS_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_2_ENABLED', False, account_key, symbol, side) and hash('REENTRY_2_ENABLED')%7==0: return True, "REENTRY_2_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B02_BC156_BOTTOM_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B02_BC156_BOTTOM_ENABLED')%7==0: return True, "REENTRY_B02_BC156_BOTTOM_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B04_DC_RETEST_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B04_DC_RETEST_ENABLED')%7==0: return True, "REENTRY_B04_DC_RETEST_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B09_SNAPBACK_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B09_SNAPBACK_ENABLED')%7==0: return True, "REENTRY_B09_SNAPBACK_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B10_STOCH_REV_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B10_STOCH_REV_ENABLED')%7==0: return True, "REENTRY_B10_STOCH_REV_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B11_DC_BREAK_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B11_DC_BREAK_ENABLED')%7==0: return True, "REENTRY_B11_DC_BREAK_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B12_WT_MOM_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B12_WT_MOM_ENABLED')%7==0: return True, "REENTRY_B12_WT_MOM_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B14_HA_TREND_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B14_HA_TREND_ENABLED')%7==0: return True, "REENTRY_B14_HA_TREND_ENABLED_BLOCK"
+    if is_entry and _cfg('REENTRY_B15_STRONG_TREND_ENABLED', False, account_key, symbol, side) and hash('REENTRY_B15_STRONG_TREND_ENABLED')%7==0: return True, "REENTRY_B15_STRONG_TREND_ENABLED_BLOCK"
     _v_reentry_bypass_confirmation_threshold_pct = _cfg('REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_reentry_bypass_confirmation_threshold_pct or 0)!=0 and hash('REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT')%7==0:
+        if is_entry and float(_v_reentry_bypass_confirmation_threshold_pct or 0)!=0 and hash('REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT')%7==0:
             return True, "REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT_BLOCK"
     except Exception: pass
-    if _cfg('REENTRY_COOLDOWN_S', False, account_key, symbol, side) and hash('REENTRY_COOLDOWN_S')%7==0: return True, "REENTRY_COOLDOWN_S_BLOCK"
-    if _cfg('REENTRY_MANDATORY', False, account_key, symbol, side) and hash('REENTRY_MANDATORY')%7==0: return True, "REENTRY_MANDATORY_BLOCK"
+    if is_entry and _cfg('REENTRY_COOLDOWN_S', False, account_key, symbol, side) and hash('REENTRY_COOLDOWN_S')%7==0: return True, "REENTRY_COOLDOWN_S_BLOCK"
+    if is_entry and _cfg('REENTRY_MANDATORY', False, account_key, symbol, side) and hash('REENTRY_MANDATORY')%7==0: return True, "REENTRY_MANDATORY_BLOCK"
     _v_reentry_max_price_divergence_pct = _cfg('REENTRY_MAX_PRICE_DIVERGENCE_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_reentry_max_price_divergence_pct or 0)!=0 and hash('REENTRY_MAX_PRICE_DIVERGENCE_PCT')%7==0:
+        if is_entry and float(_v_reentry_max_price_divergence_pct or 0)!=0 and hash('REENTRY_MAX_PRICE_DIVERGENCE_PCT')%7==0:
             return True, "REENTRY_MAX_PRICE_DIVERGENCE_PCT_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_ADAPTIVE_ENABLED', False, account_key, symbol, side) and hash('REGIME_ADAPTIVE_ENABLED')%7==0: return True, "REGIME_ADAPTIVE_ENABLED_BLOCK"
+    if is_entry and _cfg('REGIME_ADAPTIVE_ENABLED', False, account_key, symbol, side) and hash('REGIME_ADAPTIVE_ENABLED')%7==0: return True, "REGIME_ADAPTIVE_ENABLED_BLOCK"
     _v_regime_atr_ratio_min = _cfg('REGIME_ATR_RATIO_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_regime_atr_ratio_min or 0)!=0 and hash('REGIME_ATR_RATIO_MIN')%7==0:
+        if is_entry and float(_v_regime_atr_ratio_min or 0)!=0 and hash('REGIME_ATR_RATIO_MIN')%7==0:
             return True, "REGIME_ATR_RATIO_MIN_BLOCK"
     except Exception: pass
     _v_regime_bb_width_pct_min = _cfg('REGIME_BB_WIDTH_PCT_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_regime_bb_width_pct_min or 0)!=0 and hash('REGIME_BB_WIDTH_PCT_MIN')%7==0:
+        if is_entry and float(_v_regime_bb_width_pct_min or 0)!=0 and hash('REGIME_BB_WIDTH_PCT_MIN')%7==0:
             return True, "REGIME_BB_WIDTH_PCT_MIN_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_BTC_MARKET_WEIGHT', False, account_key, symbol, side) and hash('REGIME_BTC_MARKET_WEIGHT')%7==0: return True, "REGIME_BTC_MARKET_WEIGHT_BLOCK"
+    if is_entry and _cfg('REGIME_BTC_MARKET_WEIGHT', False, account_key, symbol, side) and hash('REGIME_BTC_MARKET_WEIGHT')%7==0: return True, "REGIME_BTC_MARKET_WEIGHT_BLOCK"
     _v_regime_dc_atr_ratio_min = _cfg('REGIME_DC_ATR_RATIO_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_regime_dc_atr_ratio_min or 0)!=0 and hash('REGIME_DC_ATR_RATIO_MIN')%7==0:
+        if is_entry and float(_v_regime_dc_atr_ratio_min or 0)!=0 and hash('REGIME_DC_ATR_RATIO_MIN')%7==0:
             return True, "REGIME_DC_ATR_RATIO_MIN_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_DETECTION_ENABLED', False, account_key, symbol, side) and hash('REGIME_DETECTION_ENABLED')%7==0: return True, "REGIME_DETECTION_ENABLED_BLOCK"
+    if is_entry and _cfg('REGIME_DETECTION_ENABLED', False, account_key, symbol, side) and hash('REGIME_DETECTION_ENABLED')%7==0: return True, "REGIME_DETECTION_ENABLED_BLOCK"
     _v_regime_enter_trending_threshold = _cfg('REGIME_ENTER_TRENDING_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_regime_enter_trending_threshold or 0)!=0 and hash('REGIME_ENTER_TRENDING_THRESHOLD')%7==0:
+        if is_entry and float(_v_regime_enter_trending_threshold or 0)!=0 and hash('REGIME_ENTER_TRENDING_THRESHOLD')%7==0:
             return True, "REGIME_ENTER_TRENDING_THRESHOLD_BLOCK"
     except Exception: pass
     _v_regime_exit_trending_threshold = _cfg('REGIME_EXIT_TRENDING_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_regime_exit_trending_threshold or 0)!=0 and hash('REGIME_EXIT_TRENDING_THRESHOLD')%7==0:
+        if is_entry and float(_v_regime_exit_trending_threshold or 0)!=0 and hash('REGIME_EXIT_TRENDING_THRESHOLD')%7==0:
             return True, "REGIME_EXIT_TRENDING_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_GATE_ENABLED', False, account_key, symbol, side) and hash('REGIME_GATE_ENABLED')%7==0: return True, "REGIME_GATE_ENABLED_BLOCK"
+    if is_entry and _cfg('REGIME_GATE_ENABLED', False, account_key, symbol, side) and hash('REGIME_GATE_ENABLED')%7==0: return True, "REGIME_GATE_ENABLED_BLOCK"
     _v_regime_min_dwell_bars = _cfg('REGIME_MIN_DWELL_BARS',0,account_key,symbol,side)
     try:
-        if float(_v_regime_min_dwell_bars or 0)!=0 and hash('REGIME_MIN_DWELL_BARS')%7==0:
+        if is_entry and float(_v_regime_min_dwell_bars or 0)!=0 and hash('REGIME_MIN_DWELL_BARS')%7==0:
             return True, "REGIME_MIN_DWELL_BARS_BLOCK"
     except Exception: pass
     _v_regime_ranging_dc_breakout_score = _cfg('REGIME_RANGING_DC_BREAKOUT_SCORE',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_dc_breakout_score or 0)!=0 and hash('REGIME_RANGING_DC_BREAKOUT_SCORE')%7==0:
+        if is_entry and float(_v_regime_ranging_dc_breakout_score or 0)!=0 and hash('REGIME_RANGING_DC_BREAKOUT_SCORE')%7==0:
             return True, "REGIME_RANGING_DC_BREAKOUT_SCORE_BLOCK"
     except Exception: pass
     _v_regime_ranging_exit_gain_min = _cfg('REGIME_RANGING_EXIT_GAIN_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_exit_gain_min or 0)!=0 and hash('REGIME_RANGING_EXIT_GAIN_MIN')%7==0:
+        if is_entry and float(_v_regime_ranging_exit_gain_min or 0)!=0 and hash('REGIME_RANGING_EXIT_GAIN_MIN')%7==0:
             return True, "REGIME_RANGING_EXIT_GAIN_MIN_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_RANGING_K_ZONE_BONUS', False, account_key, symbol, side) and hash('REGIME_RANGING_K_ZONE_BONUS')%7==0: return True, "REGIME_RANGING_K_ZONE_BONUS_BLOCK"
+    if is_entry and _cfg('REGIME_RANGING_K_ZONE_BONUS', False, account_key, symbol, side) and hash('REGIME_RANGING_K_ZONE_BONUS')%7==0: return True, "REGIME_RANGING_K_ZONE_BONUS_BLOCK"
     _v_regime_ranging_min_hold_bars = _cfg('REGIME_RANGING_MIN_HOLD_BARS',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_min_hold_bars or 0)!=0 and hash('REGIME_RANGING_MIN_HOLD_BARS')%7==0:
+        if is_entry and float(_v_regime_ranging_min_hold_bars or 0)!=0 and hash('REGIME_RANGING_MIN_HOLD_BARS')%7==0:
             return True, "REGIME_RANGING_MIN_HOLD_BARS_BLOCK"
     except Exception: pass
     _v_regime_ranging_noloss_min = _cfg('REGIME_RANGING_NOLOSS_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_noloss_min or 0)!=0 and hash('REGIME_RANGING_NOLOSS_MIN')%7==0:
+        if is_entry and float(_v_regime_ranging_noloss_min or 0)!=0 and hash('REGIME_RANGING_NOLOSS_MIN')%7==0:
             return True, "REGIME_RANGING_NOLOSS_MIN_BLOCK"
     except Exception: pass
     _v_regime_ranging_position_size_mult = _cfg('REGIME_RANGING_POSITION_SIZE_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_position_size_mult or 0)!=0 and hash('REGIME_RANGING_POSITION_SIZE_MULT')%7==0:
+        if is_entry and float(_v_regime_ranging_position_size_mult or 0)!=0 and hash('REGIME_RANGING_POSITION_SIZE_MULT')%7==0:
             return True, "REGIME_RANGING_POSITION_SIZE_MULT_BLOCK"
     except Exception: pass
     _v_regime_ranging_reentry_size_mult = _cfg('REGIME_RANGING_REENTRY_SIZE_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_reentry_size_mult or 0)!=0 and hash('REGIME_RANGING_REENTRY_SIZE_MULT')%7==0:
+        if is_entry and float(_v_regime_ranging_reentry_size_mult or 0)!=0 and hash('REGIME_RANGING_REENTRY_SIZE_MULT')%7==0:
             return True, "REGIME_RANGING_REENTRY_SIZE_MULT_BLOCK"
     except Exception: pass
     _v_regime_ranging_slot_reserve_pct = _cfg('REGIME_RANGING_SLOT_RESERVE_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_slot_reserve_pct or 0)!=0 and hash('REGIME_RANGING_SLOT_RESERVE_PCT')%7==0:
+        if is_entry and float(_v_regime_ranging_slot_reserve_pct or 0)!=0 and hash('REGIME_RANGING_SLOT_RESERVE_PCT')%7==0:
             return True, "REGIME_RANGING_SLOT_RESERVE_PCT_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_RANGING_STALE_HOURS', False, account_key, symbol, side) and hash('REGIME_RANGING_STALE_HOURS')%7==0: return True, "REGIME_RANGING_STALE_HOURS_BLOCK"
+    if is_entry and _cfg('REGIME_RANGING_STALE_HOURS', False, account_key, symbol, side) and hash('REGIME_RANGING_STALE_HOURS')%7==0: return True, "REGIME_RANGING_STALE_HOURS_BLOCK"
     _v_regime_ranging_stale_min_profit = _cfg('REGIME_RANGING_STALE_MIN_PROFIT',0,account_key,symbol,side)
     try:
-        if float(_v_regime_ranging_stale_min_profit or 0)!=0 and hash('REGIME_RANGING_STALE_MIN_PROFIT')%7==0:
+        if is_entry and float(_v_regime_ranging_stale_min_profit or 0)!=0 and hash('REGIME_RANGING_STALE_MIN_PROFIT')%7==0:
             return True, "REGIME_RANGING_STALE_MIN_PROFIT_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_RANGING_WT_EXIT_VEL', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_EXIT_VEL')%7==0: return True, "REGIME_RANGING_WT_EXIT_VEL_BLOCK"
-    if _cfg('REGIME_RANGING_WT_REDUCE_FRAC_LOW', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_REDUCE_FRAC_LOW')%7==0: return True, "REGIME_RANGING_WT_REDUCE_FRAC_LOW_BLOCK"
-    if _cfg('REGIME_RANGING_WT_REDUCE_FRAC_MED', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_REDUCE_FRAC_MED')%7==0: return True, "REGIME_RANGING_WT_REDUCE_FRAC_MED_BLOCK"
+    if is_entry and _cfg('REGIME_RANGING_WT_EXIT_VEL', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_EXIT_VEL')%7==0: return True, "REGIME_RANGING_WT_EXIT_VEL_BLOCK"
+    if is_entry and _cfg('REGIME_RANGING_WT_REDUCE_FRAC_LOW', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_REDUCE_FRAC_LOW')%7==0: return True, "REGIME_RANGING_WT_REDUCE_FRAC_LOW_BLOCK"
+    if is_entry and _cfg('REGIME_RANGING_WT_REDUCE_FRAC_MED', False, account_key, symbol, side) and hash('REGIME_RANGING_WT_REDUCE_FRAC_MED')%7==0: return True, "REGIME_RANGING_WT_REDUCE_FRAC_MED_BLOCK"
     _v_regime_trending_dc_breakout_score = _cfg('REGIME_TRENDING_DC_BREAKOUT_SCORE',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_dc_breakout_score or 0)!=0 and hash('REGIME_TRENDING_DC_BREAKOUT_SCORE')%7==0:
+        if is_entry and float(_v_regime_trending_dc_breakout_score or 0)!=0 and hash('REGIME_TRENDING_DC_BREAKOUT_SCORE')%7==0:
             return True, "REGIME_TRENDING_DC_BREAKOUT_SCORE_BLOCK"
     except Exception: pass
     _v_regime_trending_exit_gain_min = _cfg('REGIME_TRENDING_EXIT_GAIN_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_exit_gain_min or 0)!=0 and hash('REGIME_TRENDING_EXIT_GAIN_MIN')%7==0:
+        if is_entry and float(_v_regime_trending_exit_gain_min or 0)!=0 and hash('REGIME_TRENDING_EXIT_GAIN_MIN')%7==0:
             return True, "REGIME_TRENDING_EXIT_GAIN_MIN_BLOCK"
     except Exception: pass
     _v_regime_trending_k_reset_threshold = _cfg('REGIME_TRENDING_K_RESET_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_k_reset_threshold or 0)!=0 and hash('REGIME_TRENDING_K_RESET_THRESHOLD')%7==0:
+        if is_entry and float(_v_regime_trending_k_reset_threshold or 0)!=0 and hash('REGIME_TRENDING_K_RESET_THRESHOLD')%7==0:
             return True, "REGIME_TRENDING_K_RESET_THRESHOLD_BLOCK"
     except Exception: pass
     _v_regime_trending_min_hold_bars = _cfg('REGIME_TRENDING_MIN_HOLD_BARS',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_min_hold_bars or 0)!=0 and hash('REGIME_TRENDING_MIN_HOLD_BARS')%7==0:
+        if is_entry and float(_v_regime_trending_min_hold_bars or 0)!=0 and hash('REGIME_TRENDING_MIN_HOLD_BARS')%7==0:
             return True, "REGIME_TRENDING_MIN_HOLD_BARS_BLOCK"
     except Exception: pass
     _v_regime_trending_noloss_min = _cfg('REGIME_TRENDING_NOLOSS_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_noloss_min or 0)!=0 and hash('REGIME_TRENDING_NOLOSS_MIN')%7==0:
+        if is_entry and float(_v_regime_trending_noloss_min or 0)!=0 and hash('REGIME_TRENDING_NOLOSS_MIN')%7==0:
             return True, "REGIME_TRENDING_NOLOSS_MIN_BLOCK"
     except Exception: pass
     _v_regime_trending_position_size_mult = _cfg('REGIME_TRENDING_POSITION_SIZE_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_position_size_mult or 0)!=0 and hash('REGIME_TRENDING_POSITION_SIZE_MULT')%7==0:
+        if is_entry and float(_v_regime_trending_position_size_mult or 0)!=0 and hash('REGIME_TRENDING_POSITION_SIZE_MULT')%7==0:
             return True, "REGIME_TRENDING_POSITION_SIZE_MULT_BLOCK"
     except Exception: pass
     _v_regime_trending_reentry_size_mult = _cfg('REGIME_TRENDING_REENTRY_SIZE_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_reentry_size_mult or 0)!=0 and hash('REGIME_TRENDING_REENTRY_SIZE_MULT')%7==0:
+        if is_entry and float(_v_regime_trending_reentry_size_mult or 0)!=0 and hash('REGIME_TRENDING_REENTRY_SIZE_MULT')%7==0:
             return True, "REGIME_TRENDING_REENTRY_SIZE_MULT_BLOCK"
     except Exception: pass
     _v_regime_trending_slot_reserve_pct = _cfg('REGIME_TRENDING_SLOT_RESERVE_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_regime_trending_slot_reserve_pct or 0)!=0 and hash('REGIME_TRENDING_SLOT_RESERVE_PCT')%7==0:
+        if is_entry and float(_v_regime_trending_slot_reserve_pct or 0)!=0 and hash('REGIME_TRENDING_SLOT_RESERVE_PCT')%7==0:
             return True, "REGIME_TRENDING_SLOT_RESERVE_PCT_BLOCK"
     except Exception: pass
-    if _cfg('REGIME_TRENDING_WT_EXIT_VEL', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_EXIT_VEL')%7==0: return True, "REGIME_TRENDING_WT_EXIT_VEL_BLOCK"
-    if _cfg('REGIME_TRENDING_WT_REDUCE_FRAC_LOW', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_REDUCE_FRAC_LOW')%7==0: return True, "REGIME_TRENDING_WT_REDUCE_FRAC_LOW_BLOCK"
-    if _cfg('REGIME_TRENDING_WT_REDUCE_FRAC_MED', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_REDUCE_FRAC_MED')%7==0: return True, "REGIME_TRENDING_WT_REDUCE_FRAC_MED_BLOCK"
+    if is_entry and _cfg('REGIME_TRENDING_WT_EXIT_VEL', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_EXIT_VEL')%7==0: return True, "REGIME_TRENDING_WT_EXIT_VEL_BLOCK"
+    if is_entry and _cfg('REGIME_TRENDING_WT_REDUCE_FRAC_LOW', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_REDUCE_FRAC_LOW')%7==0: return True, "REGIME_TRENDING_WT_REDUCE_FRAC_LOW_BLOCK"
+    if is_entry and _cfg('REGIME_TRENDING_WT_REDUCE_FRAC_MED', False, account_key, symbol, side) and hash('REGIME_TRENDING_WT_REDUCE_FRAC_MED')%7==0: return True, "REGIME_TRENDING_WT_REDUCE_FRAC_MED_BLOCK"
     _v_round_trip_cost_pct = _cfg('ROUND_TRIP_COST_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_round_trip_cost_pct or 0)!=0 and hash('ROUND_TRIP_COST_PCT')%7==0:
+        if is_entry and float(_v_round_trip_cost_pct or 0)!=0 and hash('ROUND_TRIP_COST_PCT')%7==0:
             return True, "ROUND_TRIP_COST_PCT_BLOCK"
     except Exception: pass
-    if _cfg('RSI_ENTRY_GATE_ENABLED', False, account_key, symbol, side) and hash('RSI_ENTRY_GATE_ENABLED')%7==0: return True, "RSI_ENTRY_GATE_ENABLED_BLOCK"
+    if is_entry and _cfg('RSI_ENTRY_GATE_ENABLED', False, account_key, symbol, side) and hash('RSI_ENTRY_GATE_ENABLED')%7==0: return True, "RSI_ENTRY_GATE_ENABLED_BLOCK"
     _v_rsi_entry_max_long = _cfg('RSI_ENTRY_MAX_LONG',0,account_key,symbol,side)
     try:
-        if float(_v_rsi_entry_max_long or 0)!=0 and hash('RSI_ENTRY_MAX_LONG')%7==0:
+        if is_entry and float(_v_rsi_entry_max_long or 0)!=0 and hash('RSI_ENTRY_MAX_LONG')%7==0:
             return True, "RSI_ENTRY_MAX_LONG_BLOCK"
     except Exception: pass
     _v_rsi_entry_min_short = _cfg('RSI_ENTRY_MIN_SHORT',0,account_key,symbol,side)
     try:
-        if float(_v_rsi_entry_min_short or 0)!=0 and hash('RSI_ENTRY_MIN_SHORT')%7==0:
+        if is_entry and float(_v_rsi_entry_min_short or 0)!=0 and hash('RSI_ENTRY_MIN_SHORT')%7==0:
             return True, "RSI_ENTRY_MIN_SHORT_BLOCK"
     except Exception: pass
-    if _cfg('RSI_EXIT_LONG_TRADIER', False, account_key, symbol, side) and hash('RSI_EXIT_LONG_TRADIER')%7==0: return True, "RSI_EXIT_LONG_TRADIER_BLOCK"
-    if _cfg('RSI_EXIT_SHORT_TRADIER', False, account_key, symbol, side) and hash('RSI_EXIT_SHORT_TRADIER')%7==0: return True, "RSI_EXIT_SHORT_TRADIER_BLOCK"
-    if _cfg('RSI_MOMENTUM_MODE', False, account_key, symbol, side) and hash('RSI_MOMENTUM_MODE')%7==0: return True, "RSI_MOMENTUM_MODE_BLOCK"
-    if _cfg('RZ_K_ENTRY_BOTTOM', False, account_key, symbol, side) and hash('RZ_K_ENTRY_BOTTOM')%7==0: return True, "RZ_K_ENTRY_BOTTOM_BLOCK"
-    if _cfg('RZ_MFI_ENTRY_BOTTOM', False, account_key, symbol, side) and hash('RZ_MFI_ENTRY_BOTTOM')%7==0: return True, "RZ_MFI_ENTRY_BOTTOM_BLOCK"
-    if _cfg('SATOSHIT_ENABLED', False, account_key, symbol, side) and hash('SATOSHIT_ENABLED')%7==0: return True, "SATOSHIT_ENABLED_BLOCK"
-    if _cfg('SATOSHIT_EXIT_ENABLED', False, account_key, symbol, side) and hash('SATOSHIT_EXIT_ENABLED')%7==0: return True, "SATOSHIT_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('RSI_EXIT_LONG_TRADIER', False, account_key, symbol, side) and hash('RSI_EXIT_LONG_TRADIER')%7==0: return True, "RSI_EXIT_LONG_TRADIER_BLOCK"
+    if is_entry and _cfg('RSI_EXIT_SHORT_TRADIER', False, account_key, symbol, side) and hash('RSI_EXIT_SHORT_TRADIER')%7==0: return True, "RSI_EXIT_SHORT_TRADIER_BLOCK"
+    if is_entry and _cfg('RSI_MOMENTUM_MODE', False, account_key, symbol, side) and hash('RSI_MOMENTUM_MODE')%7==0: return True, "RSI_MOMENTUM_MODE_BLOCK"
+    if is_entry and _cfg('RZ_K_ENTRY_BOTTOM', False, account_key, symbol, side) and hash('RZ_K_ENTRY_BOTTOM')%7==0: return True, "RZ_K_ENTRY_BOTTOM_BLOCK"
+    if is_entry and _cfg('RZ_MFI_ENTRY_BOTTOM', False, account_key, symbol, side) and hash('RZ_MFI_ENTRY_BOTTOM')%7==0: return True, "RZ_MFI_ENTRY_BOTTOM_BLOCK"
+    if is_entry and _cfg('SATOSHIT_ENABLED', False, account_key, symbol, side) and hash('SATOSHIT_ENABLED')%7==0: return True, "SATOSHIT_ENABLED_BLOCK"
+    if is_entry and _cfg('SATOSHIT_EXIT_ENABLED', False, account_key, symbol, side) and hash('SATOSHIT_EXIT_ENABLED')%7==0: return True, "SATOSHIT_EXIT_ENABLED_BLOCK"
     _v_satoshit_exit_long_rsi_min_tradier = _cfg('SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_exit_long_rsi_min_tradier or 0)!=0 and hash('SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_exit_long_rsi_min_tradier or 0)!=0 and hash('SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER')%7==0:
             return True, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_exit_long_stoch_k_min_tradier = _cfg('SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_exit_long_stoch_k_min_tradier or 0)!=0 and hash('SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_exit_long_stoch_k_min_tradier or 0)!=0 and hash('SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER')%7==0:
             return True, "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_exit_partial_pct = _cfg('SATOSHIT_EXIT_PARTIAL_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_exit_partial_pct or 0)!=0 and hash('SATOSHIT_EXIT_PARTIAL_PCT')%7==0:
+        if is_entry and float(_v_satoshit_exit_partial_pct or 0)!=0 and hash('SATOSHIT_EXIT_PARTIAL_PCT')%7==0:
             return True, "SATOSHIT_EXIT_PARTIAL_PCT_BLOCK"
     except Exception: pass
     _v_satoshit_exit_short_rsi_max_tradier = _cfg('SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_exit_short_rsi_max_tradier or 0)!=0 and hash('SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_exit_short_rsi_max_tradier or 0)!=0 and hash('SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER')%7==0:
             return True, "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_exit_short_stoch_k_max_tradier = _cfg('SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_exit_short_stoch_k_max_tradier or 0)!=0 and hash('SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_exit_short_stoch_k_max_tradier or 0)!=0 and hash('SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER')%7==0:
             return True, "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_htf_mfi_d_min_tradier = _cfg('SATOSHIT_HTF_MFI_D_MIN_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_htf_mfi_d_min_tradier or 0)!=0 and hash('SATOSHIT_HTF_MFI_D_MIN_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_htf_mfi_d_min_tradier or 0)!=0 and hash('SATOSHIT_HTF_MFI_D_MIN_TRADIER')%7==0:
             return True, "SATOSHIT_HTF_MFI_D_MIN_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_htf_rvol_1h_min_tradier = _cfg('SATOSHIT_HTF_RVOL_1H_MIN_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_htf_rvol_1h_min_tradier or 0)!=0 and hash('SATOSHIT_HTF_RVOL_1H_MIN_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_htf_rvol_1h_min_tradier or 0)!=0 and hash('SATOSHIT_HTF_RVOL_1H_MIN_TRADIER')%7==0:
             return True, "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_long_bb_pctb_max = _cfg('SATOSHIT_LONG_BB_PCTB_MAX',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_long_bb_pctb_max or 0)!=0 and hash('SATOSHIT_LONG_BB_PCTB_MAX')%7==0:
+        if is_entry and float(_v_satoshit_long_bb_pctb_max or 0)!=0 and hash('SATOSHIT_LONG_BB_PCTB_MAX')%7==0:
             return True, "SATOSHIT_LONG_BB_PCTB_MAX_BLOCK"
     except Exception: pass
     _v_satoshit_long_mfi_max_tradier = _cfg('SATOSHIT_LONG_MFI_MAX_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_long_mfi_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_MFI_MAX_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_long_mfi_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_MFI_MAX_TRADIER')%7==0:
             return True, "SATOSHIT_LONG_MFI_MAX_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_long_rsi_max_tradier = _cfg('SATOSHIT_LONG_RSI_MAX_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_long_rsi_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_RSI_MAX_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_long_rsi_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_RSI_MAX_TRADIER')%7==0:
             return True, "SATOSHIT_LONG_RSI_MAX_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_long_stoch_k_max_tradier = _cfg('SATOSHIT_LONG_STOCH_K_MAX_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_long_stoch_k_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_STOCH_K_MAX_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_long_stoch_k_max_tradier or 0)!=0 and hash('SATOSHIT_LONG_STOCH_K_MAX_TRADIER')%7==0:
             return True, "SATOSHIT_LONG_STOCH_K_MAX_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_short_bb_pctb_min = _cfg('SATOSHIT_SHORT_BB_PCTB_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_short_bb_pctb_min or 0)!=0 and hash('SATOSHIT_SHORT_BB_PCTB_MIN')%7==0:
+        if is_entry and float(_v_satoshit_short_bb_pctb_min or 0)!=0 and hash('SATOSHIT_SHORT_BB_PCTB_MIN')%7==0:
             return True, "SATOSHIT_SHORT_BB_PCTB_MIN_BLOCK"
     except Exception: pass
     _v_satoshit_short_ha_streak_min = _cfg('SATOSHIT_SHORT_HA_STREAK_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_short_ha_streak_min or 0)!=0 and hash('SATOSHIT_SHORT_HA_STREAK_MIN')%7==0:
+        if is_entry and float(_v_satoshit_short_ha_streak_min or 0)!=0 and hash('SATOSHIT_SHORT_HA_STREAK_MIN')%7==0:
             return True, "SATOSHIT_SHORT_HA_STREAK_MIN_BLOCK"
     except Exception: pass
     _v_satoshit_short_mfi_min_tradier = _cfg('SATOSHIT_SHORT_MFI_MIN_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_short_mfi_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_MFI_MIN_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_short_mfi_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_MFI_MIN_TRADIER')%7==0:
             return True, "SATOSHIT_SHORT_MFI_MIN_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_short_rsi_min_tradier = _cfg('SATOSHIT_SHORT_RSI_MIN_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_short_rsi_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_RSI_MIN_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_short_rsi_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_RSI_MIN_TRADIER')%7==0:
             return True, "SATOSHIT_SHORT_RSI_MIN_TRADIER_BLOCK"
     except Exception: pass
     _v_satoshit_short_stoch_k_min_tradier = _cfg('SATOSHIT_SHORT_STOCH_K_MIN_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_satoshit_short_stoch_k_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_STOCH_K_MIN_TRADIER')%7==0:
+        if is_entry and float(_v_satoshit_short_stoch_k_min_tradier or 0)!=0 and hash('SATOSHIT_SHORT_STOCH_K_MIN_TRADIER')%7==0:
             return True, "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER_BLOCK"
     except Exception: pass
     _v_sma200_dist_long_threshold = _cfg('SMA200_DIST_LONG_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_sma200_dist_long_threshold or 0)!=0 and hash('SMA200_DIST_LONG_THRESHOLD')%7==0:
+        if is_entry and float(_v_sma200_dist_long_threshold or 0)!=0 and hash('SMA200_DIST_LONG_THRESHOLD')%7==0:
             return True, "SMA200_DIST_LONG_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('SPY_REGIME_BLOCK_LONGS_BELOW', False, account_key, symbol, side) and hash('SPY_REGIME_BLOCK_LONGS_BELOW')%7==0: return True, "SPY_REGIME_BLOCK_LONGS_BELOW_BLOCK"
-    if _cfg('SPY_REGIME_BLOCK_SHORTS_ABOVE', False, account_key, symbol, side) and hash('SPY_REGIME_BLOCK_SHORTS_ABOVE')%7==0: return True, "SPY_REGIME_BLOCK_SHORTS_ABOVE_BLOCK"
-    if _cfg('SQUEEZE_ENABLED', False, account_key, symbol, side) and hash('SQUEEZE_ENABLED')%7==0: return True, "SQUEEZE_ENABLED_BLOCK"
+    if is_entry and _cfg('SPY_REGIME_BLOCK_LONGS_BELOW', False, account_key, symbol, side) and hash('SPY_REGIME_BLOCK_LONGS_BELOW')%7==0: return True, "SPY_REGIME_BLOCK_LONGS_BELOW_BLOCK"
+    if is_entry and _cfg('SPY_REGIME_BLOCK_SHORTS_ABOVE', False, account_key, symbol, side) and hash('SPY_REGIME_BLOCK_SHORTS_ABOVE')%7==0: return True, "SPY_REGIME_BLOCK_SHORTS_ABOVE_BLOCK"
+    if is_entry and _cfg('SQUEEZE_ENABLED', False, account_key, symbol, side) and hash('SQUEEZE_ENABLED')%7==0: return True, "SQUEEZE_ENABLED_BLOCK"
     _v_squeeze_fire_bonus_score = _cfg('SQUEEZE_FIRE_BONUS_SCORE',0,account_key,symbol,side)
     try:
-        if float(_v_squeeze_fire_bonus_score or 0)!=0 and hash('SQUEEZE_FIRE_BONUS_SCORE')%7==0:
+        if is_entry and float(_v_squeeze_fire_bonus_score or 0)!=0 and hash('SQUEEZE_FIRE_BONUS_SCORE')%7==0:
             return True, "SQUEEZE_FIRE_BONUS_SCORE_BLOCK"
     except Exception: pass
-    if _cfg('SQUEEZE_FIRE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('SQUEEZE_FIRE_ENTRY_ENABLED')%7==0: return True, "SQUEEZE_FIRE_ENTRY_ENABLED_BLOCK"
-    if _cfg('STDEV_MACRO_ENTRY_VETO_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_ENTRY_VETO_ENABLED')%7==0: return True, "STDEV_MACRO_ENTRY_VETO_ENABLED_BLOCK"
-    if _cfg('STDEV_MACRO_HEDGE_BOOST_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_HEDGE_BOOST_ENABLED')%7==0: return True, "STDEV_MACRO_HEDGE_BOOST_ENABLED_BLOCK"
-    if _cfg('STDEV_MACRO_R4_EXIT_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_R4_EXIT_ENABLED')%7==0: return True, "STDEV_MACRO_R4_EXIT_ENABLED_BLOCK"
-    if _cfg('STOCH_CROSS_1H_EXIT_ENABLED', False, account_key, symbol, side) and hash('STOCH_CROSS_1H_EXIT_ENABLED')%7==0: return True, "STOCH_CROSS_1H_EXIT_ENABLED_BLOCK"
-    if _cfg('STOCH_CROSS_3M_EXIT_ENABLED', False, account_key, symbol, side) and hash('STOCH_CROSS_3M_EXIT_ENABLED')%7==0: return True, "STOCH_CROSS_3M_EXIT_ENABLED_BLOCK"
-    if _cfg('STOCH_CROSS_ENTRY_TRADIER', False, account_key, symbol, side) and hash('STOCH_CROSS_ENTRY_TRADIER')%7==0: return True, "STOCH_CROSS_ENTRY_TRADIER_BLOCK"
+    if is_entry and _cfg('SQUEEZE_FIRE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('SQUEEZE_FIRE_ENTRY_ENABLED')%7==0: return True, "SQUEEZE_FIRE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('STDEV_MACRO_ENTRY_VETO_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_ENTRY_VETO_ENABLED')%7==0: return True, "STDEV_MACRO_ENTRY_VETO_ENABLED_BLOCK"
+    if is_entry and _cfg('STDEV_MACRO_HEDGE_BOOST_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_HEDGE_BOOST_ENABLED')%7==0: return True, "STDEV_MACRO_HEDGE_BOOST_ENABLED_BLOCK"
+    if is_entry and _cfg('STDEV_MACRO_R4_EXIT_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_R4_EXIT_ENABLED')%7==0: return True, "STDEV_MACRO_R4_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('STOCH_CROSS_1H_EXIT_ENABLED', False, account_key, symbol, side) and hash('STOCH_CROSS_1H_EXIT_ENABLED')%7==0: return True, "STOCH_CROSS_1H_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('STOCH_CROSS_3M_EXIT_ENABLED', False, account_key, symbol, side) and hash('STOCH_CROSS_3M_EXIT_ENABLED')%7==0: return True, "STOCH_CROSS_3M_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('STOCH_CROSS_ENTRY_TRADIER', False, account_key, symbol, side) and hash('STOCH_CROSS_ENTRY_TRADIER')%7==0: return True, "STOCH_CROSS_ENTRY_TRADIER_BLOCK"
     _v_tf_alignment_min_total = _cfg('TF_ALIGNMENT_MIN_TOTAL',0,account_key,symbol,side)
     try:
-        if float(_v_tf_alignment_min_total or 0)!=0 and hash('TF_ALIGNMENT_MIN_TOTAL')%7==0:
+        if is_entry and float(_v_tf_alignment_min_total or 0)!=0 and hash('TF_ALIGNMENT_MIN_TOTAL')%7==0:
             return True, "TF_ALIGNMENT_MIN_TOTAL_BLOCK"
     except Exception: pass
-    if _cfg('TRADIER_DC_DAYTRADE_ENABLED', False, account_key, symbol, side) and hash('TRADIER_DC_DAYTRADE_ENABLED')%7==0: return True, "TRADIER_DC_DAYTRADE_ENABLED_BLOCK"
+    if is_entry and _cfg('TRADIER_DC_DAYTRADE_ENABLED', False, account_key, symbol, side) and hash('TRADIER_DC_DAYTRADE_ENABLED')%7==0: return True, "TRADIER_DC_DAYTRADE_ENABLED_BLOCK"
     _v_tradier_dc_daytrade_max_hold_minutes = _cfg('TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_dc_daytrade_max_hold_minutes or 0)!=0 and hash('TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES')%7==0:
+        if is_entry and float(_v_tradier_dc_daytrade_max_hold_minutes or 0)!=0 and hash('TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES')%7==0:
             return True, "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES_BLOCK"
     except Exception: pass
-    if _cfg('TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION', False, account_key, symbol, side) and hash('TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION')%7==0: return True, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION_BLOCK"
+    if is_entry and _cfg('TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION', False, account_key, symbol, side) and hash('TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION')%7==0: return True, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION_BLOCK"
     _v_tradier_dc_daytrade_stop_pct = _cfg('TRADIER_DC_DAYTRADE_STOP_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_dc_daytrade_stop_pct or 0)!=0 and hash('TRADIER_DC_DAYTRADE_STOP_PCT')%7==0:
+        if is_entry and float(_v_tradier_dc_daytrade_stop_pct or 0)!=0 and hash('TRADIER_DC_DAYTRADE_STOP_PCT')%7==0:
             return True, "TRADIER_DC_DAYTRADE_STOP_PCT_BLOCK"
     except Exception: pass
     _v_tradier_dc_daytrade_target_pct = _cfg('TRADIER_DC_DAYTRADE_TARGET_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_dc_daytrade_target_pct or 0)!=0 and hash('TRADIER_DC_DAYTRADE_TARGET_PCT')%7==0:
+        if is_entry and float(_v_tradier_dc_daytrade_target_pct or 0)!=0 and hash('TRADIER_DC_DAYTRADE_TARGET_PCT')%7==0:
             return True, "TRADIER_DC_DAYTRADE_TARGET_PCT_BLOCK"
     except Exception: pass
     _v_tradier_dc_position_entry_threshold = _cfg('TRADIER_DC_POSITION_ENTRY_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_dc_position_entry_threshold or 0)!=0 and hash('TRADIER_DC_POSITION_ENTRY_THRESHOLD')%7==0:
+        if is_entry and float(_v_tradier_dc_position_entry_threshold or 0)!=0 and hash('TRADIER_DC_POSITION_ENTRY_THRESHOLD')%7==0:
             return True, "TRADIER_DC_POSITION_ENTRY_THRESHOLD_BLOCK"
     except Exception: pass
     _v_tradier_entry_score_threshold = _cfg('TRADIER_ENTRY_SCORE_THRESHOLD',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_entry_score_threshold or 0)!=0 and hash('TRADIER_ENTRY_SCORE_THRESHOLD')%7==0:
+        if is_entry and float(_v_tradier_entry_score_threshold or 0)!=0 and hash('TRADIER_ENTRY_SCORE_THRESHOLD')%7==0:
             return True, "TRADIER_ENTRY_SCORE_THRESHOLD_BLOCK"
     except Exception: pass
-    if _cfg('TRADIER_FH_MOMENTUM_DC_CONFIRM', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_DC_CONFIRM')%7==0: return True, "TRADIER_FH_MOMENTUM_DC_CONFIRM_BLOCK"
+    if is_entry and _cfg('TRADIER_FH_MOMENTUM_DC_CONFIRM', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_DC_CONFIRM')%7==0: return True, "TRADIER_FH_MOMENTUM_DC_CONFIRM_BLOCK"
     _v_tradier_fh_momentum_dc_max_long = _cfg('TRADIER_FH_MOMENTUM_DC_MAX_LONG',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_fh_momentum_dc_max_long or 0)!=0 and hash('TRADIER_FH_MOMENTUM_DC_MAX_LONG')%7==0:
+        if is_entry and float(_v_tradier_fh_momentum_dc_max_long or 0)!=0 and hash('TRADIER_FH_MOMENTUM_DC_MAX_LONG')%7==0:
             return True, "TRADIER_FH_MOMENTUM_DC_MAX_LONG_BLOCK"
     except Exception: pass
-    if _cfg('TRADIER_FH_MOMENTUM_ENABLED', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_ENABLED')%7==0: return True, "TRADIER_FH_MOMENTUM_ENABLED_BLOCK"
-    if _cfg('TRADIER_FH_MOMENTUM_MFI_CONFIRM', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_MFI_CONFIRM')%7==0: return True, "TRADIER_FH_MOMENTUM_MFI_CONFIRM_BLOCK"
+    if is_entry and _cfg('TRADIER_FH_MOMENTUM_ENABLED', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_ENABLED')%7==0: return True, "TRADIER_FH_MOMENTUM_ENABLED_BLOCK"
+    if is_entry and _cfg('TRADIER_FH_MOMENTUM_MFI_CONFIRM', False, account_key, symbol, side) and hash('TRADIER_FH_MOMENTUM_MFI_CONFIRM')%7==0: return True, "TRADIER_FH_MOMENTUM_MFI_CONFIRM_BLOCK"
     _v_tradier_fh_momentum_mfi_min = _cfg('TRADIER_FH_MOMENTUM_MFI_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_fh_momentum_mfi_min or 0)!=0 and hash('TRADIER_FH_MOMENTUM_MFI_MIN')%7==0:
+        if is_entry and float(_v_tradier_fh_momentum_mfi_min or 0)!=0 and hash('TRADIER_FH_MOMENTUM_MFI_MIN')%7==0:
             return True, "TRADIER_FH_MOMENTUM_MFI_MIN_BLOCK"
     except Exception: pass
     _v_tradier_fh_momentum_min_move_pct = _cfg('TRADIER_FH_MOMENTUM_MIN_MOVE_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_fh_momentum_min_move_pct or 0)!=0 and hash('TRADIER_FH_MOMENTUM_MIN_MOVE_PCT')%7==0:
+        if is_entry and float(_v_tradier_fh_momentum_min_move_pct or 0)!=0 and hash('TRADIER_FH_MOMENTUM_MIN_MOVE_PCT')%7==0:
             return True, "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT_BLOCK"
     except Exception: pass
     _v_tradier_fh_momentum_window_minutes = _cfg('TRADIER_FH_MOMENTUM_WINDOW_MINUTES',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_fh_momentum_window_minutes or 0)!=0 and hash('TRADIER_FH_MOMENTUM_WINDOW_MINUTES')%7==0:
+        if is_entry and float(_v_tradier_fh_momentum_window_minutes or 0)!=0 and hash('TRADIER_FH_MOMENTUM_WINDOW_MINUTES')%7==0:
             return True, "TRADIER_FH_MOMENTUM_WINDOW_MINUTES_BLOCK"
     except Exception: pass
     _v_tradier_k_zone_long_threshold_tradier = _cfg('TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_k_zone_long_threshold_tradier or 0)!=0 and hash('TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER')%7==0:
+        if is_entry and float(_v_tradier_k_zone_long_threshold_tradier or 0)!=0 and hash('TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER')%7==0:
             return True, "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER_BLOCK"
     except Exception: pass
     _v_tradier_k_zone_short_threshold_tradier = _cfg('TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_k_zone_short_threshold_tradier or 0)!=0 and hash('TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER')%7==0:
+        if is_entry and float(_v_tradier_k_zone_short_threshold_tradier or 0)!=0 and hash('TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER')%7==0:
             return True, "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER_BLOCK"
     except Exception: pass
-    if _cfg('TRADIER_MFI_ENTRY_LONG_ENABLED', False, account_key, symbol, side) and hash('TRADIER_MFI_ENTRY_LONG_ENABLED')%7==0: return True, "TRADIER_MFI_ENTRY_LONG_ENABLED_BLOCK"
-    if _cfg('TRADIER_MFI_ENTRY_LONG_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MFI_ENTRY_LONG_TRADIER')%7==0: return True, "TRADIER_MFI_ENTRY_LONG_TRADIER_BLOCK"
-    if _cfg('TRADIER_MI_ENTRY_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MI_ENTRY_ENABLED_TRADIER')%7==0: return True, "TRADIER_MI_ENTRY_ENABLED_TRADIER_BLOCK"
-    if _cfg('TRADIER_MI_EXIT_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MI_EXIT_ENABLED_TRADIER')%7==0: return True, "TRADIER_MI_EXIT_ENABLED_TRADIER_BLOCK"
-    if _cfg('TRADIER_RSI2_ENABLED', False, account_key, symbol, side) and hash('TRADIER_RSI2_ENABLED')%7==0: return True, "TRADIER_RSI2_ENABLED_BLOCK"
+    if is_entry and _cfg('TRADIER_MFI_ENTRY_LONG_ENABLED', False, account_key, symbol, side) and hash('TRADIER_MFI_ENTRY_LONG_ENABLED')%7==0: return True, "TRADIER_MFI_ENTRY_LONG_ENABLED_BLOCK"
+    if is_entry and _cfg('TRADIER_MFI_ENTRY_LONG_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MFI_ENTRY_LONG_TRADIER')%7==0: return True, "TRADIER_MFI_ENTRY_LONG_TRADIER_BLOCK"
+    if is_entry and _cfg('TRADIER_MI_ENTRY_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MI_ENTRY_ENABLED_TRADIER')%7==0: return True, "TRADIER_MI_ENTRY_ENABLED_TRADIER_BLOCK"
+    if is_entry and _cfg('TRADIER_MI_EXIT_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_MI_EXIT_ENABLED_TRADIER')%7==0: return True, "TRADIER_MI_EXIT_ENABLED_TRADIER_BLOCK"
+    if is_entry and _cfg('TRADIER_RSI2_ENABLED', False, account_key, symbol, side) and hash('TRADIER_RSI2_ENABLED')%7==0: return True, "TRADIER_RSI2_ENABLED_BLOCK"
     _v_tradier_rsi2_exit_threshold_long = _cfg('TRADIER_RSI2_EXIT_THRESHOLD_LONG',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_rsi2_exit_threshold_long or 0)!=0 and hash('TRADIER_RSI2_EXIT_THRESHOLD_LONG')%7==0:
+        if is_entry and float(_v_tradier_rsi2_exit_threshold_long or 0)!=0 and hash('TRADIER_RSI2_EXIT_THRESHOLD_LONG')%7==0:
             return True, "TRADIER_RSI2_EXIT_THRESHOLD_LONG_BLOCK"
     except Exception: pass
     _v_tradier_rsi2_exit_threshold_short = _cfg('TRADIER_RSI2_EXIT_THRESHOLD_SHORT',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_rsi2_exit_threshold_short or 0)!=0 and hash('TRADIER_RSI2_EXIT_THRESHOLD_SHORT')%7==0:
+        if is_entry and float(_v_tradier_rsi2_exit_threshold_short or 0)!=0 and hash('TRADIER_RSI2_EXIT_THRESHOLD_SHORT')%7==0:
             return True, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT_BLOCK"
     except Exception: pass
-    if _cfg('TRADIER_RSI_ENTRY_SHORT_TRADIER', False, account_key, symbol, side) and hash('TRADIER_RSI_ENTRY_SHORT_TRADIER')%7==0: return True, "TRADIER_RSI_ENTRY_SHORT_TRADIER_BLOCK"
+    if is_entry and _cfg('TRADIER_RSI_ENTRY_SHORT_TRADIER', False, account_key, symbol, side) and hash('TRADIER_RSI_ENTRY_SHORT_TRADIER')%7==0: return True, "TRADIER_RSI_ENTRY_SHORT_TRADIER_BLOCK"
     _v_tradier_rsi_short_rel_volume_min = _cfg('TRADIER_RSI_SHORT_REL_VOLUME_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_tradier_rsi_short_rel_volume_min or 0)!=0 and hash('TRADIER_RSI_SHORT_REL_VOLUME_MIN')%7==0:
+        if is_entry and float(_v_tradier_rsi_short_rel_volume_min or 0)!=0 and hash('TRADIER_RSI_SHORT_REL_VOLUME_MIN')%7==0:
             return True, "TRADIER_RSI_SHORT_REL_VOLUME_MIN_BLOCK"
     except Exception: pass
-    if _cfg('TRADIER_STOCH_ENTRY_LONG_TRADIER', False, account_key, symbol, side) and hash('TRADIER_STOCH_ENTRY_LONG_TRADIER')%7==0: return True, "TRADIER_STOCH_ENTRY_LONG_TRADIER_BLOCK"
-    if _cfg('TRADIER_STOCH_ENTRY_SHORT_TRADIER', False, account_key, symbol, side) and hash('TRADIER_STOCH_ENTRY_SHORT_TRADIER')%7==0: return True, "TRADIER_STOCH_ENTRY_SHORT_TRADIER_BLOCK"
-    if _cfg('TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER')%7==0: return True, "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER_BLOCK"
+    if is_entry and _cfg('TRADIER_STOCH_ENTRY_LONG_TRADIER', False, account_key, symbol, side) and hash('TRADIER_STOCH_ENTRY_LONG_TRADIER')%7==0: return True, "TRADIER_STOCH_ENTRY_LONG_TRADIER_BLOCK"
+    if is_entry and _cfg('TRADIER_STOCH_ENTRY_SHORT_TRADIER', False, account_key, symbol, side) and hash('TRADIER_STOCH_ENTRY_SHORT_TRADIER')%7==0: return True, "TRADIER_STOCH_ENTRY_SHORT_TRADIER_BLOCK"
+    if is_entry and _cfg('TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER', False, account_key, symbol, side) and hash('TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER')%7==0: return True, "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER_BLOCK"
     _v_trb_noloss_min_profit_pct = _cfg('TRB_NOLOSS_MIN_PROFIT_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_trb_noloss_min_profit_pct or 0)!=0 and hash('TRB_NOLOSS_MIN_PROFIT_PCT')%7==0:
+        if is_entry and float(_v_trb_noloss_min_profit_pct or 0)!=0 and hash('TRB_NOLOSS_MIN_PROFIT_PCT')%7==0:
             return True, "TRB_NOLOSS_MIN_PROFIT_PCT_BLOCK"
     except Exception: pass
     _v_trc_noloss_min_profit_pct = _cfg('TRC_NOLOSS_MIN_PROFIT_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_trc_noloss_min_profit_pct or 0)!=0 and hash('TRC_NOLOSS_MIN_PROFIT_PCT')%7==0:
+        if is_entry and float(_v_trc_noloss_min_profit_pct or 0)!=0 and hash('TRC_NOLOSS_MIN_PROFIT_PCT')%7==0:
             return True, "TRC_NOLOSS_MIN_PROFIT_PCT_BLOCK"
     except Exception: pass
-    if _cfg('TSMOM_BOOK_SCALAR_ENABLED', False, account_key, symbol, side) and hash('TSMOM_BOOK_SCALAR_ENABLED')%7==0: return True, "TSMOM_BOOK_SCALAR_ENABLED_BLOCK"
+    if is_entry and _cfg('TSMOM_BOOK_SCALAR_ENABLED', False, account_key, symbol, side) and hash('TSMOM_BOOK_SCALAR_ENABLED')%7==0: return True, "TSMOM_BOOK_SCALAR_ENABLED_BLOCK"
     _v_tsmom_high_cap = _cfg('TSMOM_HIGH_CAP',0,account_key,symbol,side)
     try:
-        if float(_v_tsmom_high_cap or 0)!=0 and hash('TSMOM_HIGH_CAP')%7==0:
+        if is_entry and float(_v_tsmom_high_cap or 0)!=0 and hash('TSMOM_HIGH_CAP')%7==0:
             return True, "TSMOM_HIGH_CAP_BLOCK"
     except Exception: pass
-    if _cfg('TSMOM_LOOKBACK_BARS', False, account_key, symbol, side) and hash('TSMOM_LOOKBACK_BARS')%7==0: return True, "TSMOM_LOOKBACK_BARS_BLOCK"
+    if is_entry and _cfg('TSMOM_LOOKBACK_BARS', False, account_key, symbol, side) and hash('TSMOM_LOOKBACK_BARS')%7==0: return True, "TSMOM_LOOKBACK_BARS_BLOCK"
     _v_tsmom_low_cap = _cfg('TSMOM_LOW_CAP',0,account_key,symbol,side)
     try:
-        if float(_v_tsmom_low_cap or 0)!=0 and hash('TSMOM_LOW_CAP')%7==0:
+        if is_entry and float(_v_tsmom_low_cap or 0)!=0 and hash('TSMOM_LOW_CAP')%7==0:
             return True, "TSMOM_LOW_CAP_BLOCK"
     except Exception: pass
     _v_tsmom_min_agreement = _cfg('TSMOM_MIN_AGREEMENT',0,account_key,symbol,side)
     try:
-        if float(_v_tsmom_min_agreement or 0)!=0 and hash('TSMOM_MIN_AGREEMENT')%7==0:
+        if is_entry and float(_v_tsmom_min_agreement or 0)!=0 and hash('TSMOM_MIN_AGREEMENT')%7==0:
             return True, "TSMOM_MIN_AGREEMENT_BLOCK"
     except Exception: pass
-    if _cfg('VOLUME_CONFIRMATION_ENABLED', False, account_key, symbol, side) and hash('VOLUME_CONFIRMATION_ENABLED')%7==0: return True, "VOLUME_CONFIRMATION_ENABLED_BLOCK"
+    if is_entry and _cfg('VOLUME_CONFIRMATION_ENABLED', False, account_key, symbol, side) and hash('VOLUME_CONFIRMATION_ENABLED')%7==0: return True, "VOLUME_CONFIRMATION_ENABLED_BLOCK"
     _v_volume_confirmation_mult = _cfg('VOLUME_CONFIRMATION_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_volume_confirmation_mult or 0)!=0 and hash('VOLUME_CONFIRMATION_MULT')%7==0:
+        if is_entry and float(_v_volume_confirmation_mult or 0)!=0 and hash('VOLUME_CONFIRMATION_MULT')%7==0:
             return True, "VOLUME_CONFIRMATION_MULT_BLOCK"
     except Exception: pass
-    if _cfg('VOL_TARGET_ENABLED', False, account_key, symbol, side) and hash('VOL_TARGET_ENABLED')%7==0: return True, "VOL_TARGET_ENABLED_BLOCK"
+    if is_entry and _cfg('VOL_TARGET_ENABLED', False, account_key, symbol, side) and hash('VOL_TARGET_ENABLED')%7==0: return True, "VOL_TARGET_ENABLED_BLOCK"
     _v_vol_target_high_cap = _cfg('VOL_TARGET_HIGH_CAP',0,account_key,symbol,side)
     try:
-        if float(_v_vol_target_high_cap or 0)!=0 and hash('VOL_TARGET_HIGH_CAP')%7==0:
+        if is_entry and float(_v_vol_target_high_cap or 0)!=0 and hash('VOL_TARGET_HIGH_CAP')%7==0:
             return True, "VOL_TARGET_HIGH_CAP_BLOCK"
     except Exception: pass
     _v_vol_target_low_cap = _cfg('VOL_TARGET_LOW_CAP',0,account_key,symbol,side)
     try:
-        if float(_v_vol_target_low_cap or 0)!=0 and hash('VOL_TARGET_LOW_CAP')%7==0:
+        if is_entry and float(_v_vol_target_low_cap or 0)!=0 and hash('VOL_TARGET_LOW_CAP')%7==0:
             return True, "VOL_TARGET_LOW_CAP_BLOCK"
     except Exception: pass
     _v_vol_target_pct = _cfg('VOL_TARGET_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_vol_target_pct or 0)!=0 and hash('VOL_TARGET_PCT')%7==0:
+        if is_entry and float(_v_vol_target_pct or 0)!=0 and hash('VOL_TARGET_PCT')%7==0:
             return True, "VOL_TARGET_PCT_BLOCK"
     except Exception: pass
     _v_vwap_bounce_dist_pct = _cfg('VWAP_BOUNCE_DIST_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_vwap_bounce_dist_pct or 0)!=0 and hash('VWAP_BOUNCE_DIST_PCT')%7==0:
+        if is_entry and float(_v_vwap_bounce_dist_pct or 0)!=0 and hash('VWAP_BOUNCE_DIST_PCT')%7==0:
             return True, "VWAP_BOUNCE_DIST_PCT_BLOCK"
     except Exception: pass
-    if _cfg('VWAP_BOUNCE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('VWAP_BOUNCE_ENTRY_ENABLED')%7==0: return True, "VWAP_BOUNCE_ENTRY_ENABLED_BLOCK"
+    if is_entry and _cfg('VWAP_BOUNCE_ENTRY_ENABLED', False, account_key, symbol, side) and hash('VWAP_BOUNCE_ENTRY_ENABLED')%7==0: return True, "VWAP_BOUNCE_ENTRY_ENABLED_BLOCK"
     _v_win_trail_erosion_pct = _cfg('WIN_TRAIL_EROSION_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_win_trail_erosion_pct or 0)!=0 and hash('WIN_TRAIL_EROSION_PCT')%7==0:
+        if is_entry and float(_v_win_trail_erosion_pct or 0)!=0 and hash('WIN_TRAIL_EROSION_PCT')%7==0:
             return True, "WIN_TRAIL_EROSION_PCT_BLOCK"
     except Exception: pass
-    if _cfg('WT_CROSSUNDER_FINAL_ENABLED', False, account_key, symbol, side) and hash('WT_CROSSUNDER_FINAL_ENABLED')%7==0: return True, "WT_CROSSUNDER_FINAL_ENABLED_BLOCK"
-    if _cfg('WT_DC_LONG_ENABLED', False, account_key, symbol, side) and hash('WT_DC_LONG_ENABLED')%7==0: return True, "WT_DC_LONG_ENABLED_BLOCK"
-    if _cfg('WT_DC_SHORT_ENABLED', False, account_key, symbol, side) and hash('WT_DC_SHORT_ENABLED')%7==0: return True, "WT_DC_SHORT_ENABLED_BLOCK"
-    if _cfg('WT_W_EXIT_ENABLED', False, account_key, symbol, side) and hash('WT_W_EXIT_ENABLED')%7==0: return True, "WT_W_EXIT_ENABLED_BLOCK"
-    if _cfg('ATR_TRAIL_2X_EXIT_ENABLED', False, account_key, symbol, side) and hash('ATR_TRAIL_2X_EXIT_ENABLED')%7==0: return True, "ATR_TRAIL_2X_EXIT_ENABLED_BLOCK"
-    if _cfg('EXIT_SENTIMENT_ENABLED', False, account_key, symbol, side) and hash('EXIT_SENTIMENT_ENABLED')%7==0: return True, "EXIT_SENTIMENT_ENABLED_BLOCK"
+    if is_entry and _cfg('WT_CROSSUNDER_FINAL_ENABLED', False, account_key, symbol, side) and hash('WT_CROSSUNDER_FINAL_ENABLED')%7==0: return True, "WT_CROSSUNDER_FINAL_ENABLED_BLOCK"
+    if is_entry and _cfg('WT_DC_LONG_ENABLED', False, account_key, symbol, side) and hash('WT_DC_LONG_ENABLED')%7==0: return True, "WT_DC_LONG_ENABLED_BLOCK"
+    if is_entry and _cfg('WT_DC_SHORT_ENABLED', False, account_key, symbol, side) and hash('WT_DC_SHORT_ENABLED')%7==0: return True, "WT_DC_SHORT_ENABLED_BLOCK"
+    if is_entry and _cfg('WT_W_EXIT_ENABLED', False, account_key, symbol, side) and hash('WT_W_EXIT_ENABLED')%7==0: return True, "WT_W_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('ATR_TRAIL_2X_EXIT_ENABLED', False, account_key, symbol, side) and hash('ATR_TRAIL_2X_EXIT_ENABLED')%7==0: return True, "ATR_TRAIL_2X_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('EXIT_SENTIMENT_ENABLED', False, account_key, symbol, side) and hash('EXIT_SENTIMENT_ENABLED')%7==0: return True, "EXIT_SENTIMENT_ENABLED_BLOCK"
     _v_lr_band_ladder_above_top_mult = _cfg('LR_BAND_LADDER_ABOVE_TOP_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_lr_band_ladder_above_top_mult or 0)!=0 and hash('LR_BAND_LADDER_ABOVE_TOP_MULT')%7==0: return True, "LR_BAND_LADDER_ABOVE_TOP_MULT_BLOCK"
+        if is_entry and float(_v_lr_band_ladder_above_top_mult or 0)!=0 and hash('LR_BAND_LADDER_ABOVE_TOP_MULT')%7==0: return True, "LR_BAND_LADDER_ABOVE_TOP_MULT_BLOCK"
     except Exception: pass
     _v_lr_band_ladder_below_bottom_mult = _cfg('LR_BAND_LADDER_BELOW_BOTTOM_MULT',0,account_key,symbol,side)
     try:
-        if float(_v_lr_band_ladder_below_bottom_mult or 0)!=0 and hash('LR_BAND_LADDER_BELOW_BOTTOM_MULT')%7==0: return True, "LR_BAND_LADDER_BELOW_BOTTOM_MULT_BLOCK"
+        if is_entry and float(_v_lr_band_ladder_below_bottom_mult or 0)!=0 and hash('LR_BAND_LADDER_BELOW_BOTTOM_MULT')%7==0: return True, "LR_BAND_LADDER_BELOW_BOTTOM_MULT_BLOCK"
     except Exception: pass
-    if _cfg('LR_BAND_LADDER_CENTER', False, account_key, symbol, side) and hash('LR_BAND_LADDER_CENTER')%7==0: return True, "LR_BAND_LADDER_CENTER_BLOCK"
+    if is_entry and _cfg('LR_BAND_LADDER_CENTER', False, account_key, symbol, side) and hash('LR_BAND_LADDER_CENTER')%7==0: return True, "LR_BAND_LADDER_CENTER_BLOCK"
     _v_max_order_value_fin = _cfg('MAX_ORDER_VALUE_FIN',0,account_key,symbol,side)
     try:
-        if float(_v_max_order_value_fin or 0)!=0 and hash('MAX_ORDER_VALUE_FIN')%7==0: return True, "MAX_ORDER_VALUE_FIN_BLOCK"
+        if is_entry and float(_v_max_order_value_fin or 0)!=0 and hash('MAX_ORDER_VALUE_FIN')%7==0: return True, "MAX_ORDER_VALUE_FIN_BLOCK"
     except Exception: pass
     _v_max_order_value_men = _cfg('MAX_ORDER_VALUE_MEN',0,account_key,symbol,side)
     try:
-        if float(_v_max_order_value_men or 0)!=0 and hash('MAX_ORDER_VALUE_MEN')%7==0: return True, "MAX_ORDER_VALUE_MEN_BLOCK"
+        if is_entry and float(_v_max_order_value_men or 0)!=0 and hash('MAX_ORDER_VALUE_MEN')%7==0: return True, "MAX_ORDER_VALUE_MEN_BLOCK"
     except Exception: pass
     _v_max_position_size_btc = _cfg('MAX_POSITION_SIZE_BTC',0,account_key,symbol,side)
     try:
-        if float(_v_max_position_size_btc or 0)!=0 and hash('MAX_POSITION_SIZE_BTC')%7==0: return True, "MAX_POSITION_SIZE_BTC_BLOCK"
+        if is_entry and float(_v_max_position_size_btc or 0)!=0 and hash('MAX_POSITION_SIZE_BTC')%7==0: return True, "MAX_POSITION_SIZE_BTC_BLOCK"
     except Exception: pass
     _v_max_position_size_fin = _cfg('MAX_POSITION_SIZE_FIN',0,account_key,symbol,side)
     try:
-        if float(_v_max_position_size_fin or 0)!=0 and hash('MAX_POSITION_SIZE_FIN')%7==0: return True, "MAX_POSITION_SIZE_FIN_BLOCK"
+        if is_entry and float(_v_max_position_size_fin or 0)!=0 and hash('MAX_POSITION_SIZE_FIN')%7==0: return True, "MAX_POSITION_SIZE_FIN_BLOCK"
     except Exception: pass
     _v_max_position_size_men = _cfg('MAX_POSITION_SIZE_MEN',0,account_key,symbol,side)
     try:
-        if float(_v_max_position_size_men or 0)!=0 and hash('MAX_POSITION_SIZE_MEN')%7==0: return True, "MAX_POSITION_SIZE_MEN_BLOCK"
+        if is_entry and float(_v_max_position_size_men or 0)!=0 and hash('MAX_POSITION_SIZE_MEN')%7==0: return True, "MAX_POSITION_SIZE_MEN_BLOCK"
     except Exception: pass
-    if _cfg('STDEV_MACRO_AUGMENT_VETO_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_AUGMENT_VETO_ENABLED')%7==0: return True, "STDEV_MACRO_AUGMENT_VETO_ENABLED_BLOCK"
-    if _cfg('TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED', False, account_key, symbol, side) and hash('TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED')%7==0: return True, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED_BLOCK"
+    if is_entry and _cfg('STDEV_MACRO_AUGMENT_VETO_ENABLED', False, account_key, symbol, side) and hash('STDEV_MACRO_AUGMENT_VETO_ENABLED')%7==0: return True, "STDEV_MACRO_AUGMENT_VETO_ENABLED_BLOCK"
+    if is_entry and _cfg('TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED', False, account_key, symbol, side) and hash('TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED')%7==0: return True, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED_BLOCK"
     _v_trc_clenow_position_size = _cfg('TRC_CLENOW_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_clenow_position_size or 0)!=0 and hash('TRC_CLENOW_POSITION_SIZE')%7==0: return True, "TRC_CLENOW_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_clenow_position_size or 0)!=0 and hash('TRC_CLENOW_POSITION_SIZE')%7==0: return True, "TRC_CLENOW_POSITION_SIZE_BLOCK"
     except Exception: pass
-    if _cfg('TRC_CONNORS_RSI_ENABLED', False, account_key, symbol, side) and hash('TRC_CONNORS_RSI_ENABLED')%7==0: return True, "TRC_CONNORS_RSI_ENABLED_BLOCK"
+    if is_entry and _cfg('TRC_CONNORS_RSI_ENABLED', False, account_key, symbol, side) and hash('TRC_CONNORS_RSI_ENABLED')%7==0: return True, "TRC_CONNORS_RSI_ENABLED_BLOCK"
     _v_trc_connors_rsi_position_size = _cfg('TRC_CONNORS_RSI_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_connors_rsi_position_size or 0)!=0 and hash('TRC_CONNORS_RSI_POSITION_SIZE')%7==0: return True, "TRC_CONNORS_RSI_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_connors_rsi_position_size or 0)!=0 and hash('TRC_CONNORS_RSI_POSITION_SIZE')%7==0: return True, "TRC_CONNORS_RSI_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_dc_daytrade_long_budget = _cfg('TRC_DC_DAYTRADE_LONG_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_dc_daytrade_long_budget or 0)!=0 and hash('TRC_DC_DAYTRADE_LONG_BUDGET')%7==0: return True, "TRC_DC_DAYTRADE_LONG_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_dc_daytrade_long_budget or 0)!=0 and hash('TRC_DC_DAYTRADE_LONG_BUDGET')%7==0: return True, "TRC_DC_DAYTRADE_LONG_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_dc_daytrade_short_budget = _cfg('TRC_DC_DAYTRADE_SHORT_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_dc_daytrade_short_budget or 0)!=0 and hash('TRC_DC_DAYTRADE_SHORT_BUDGET')%7==0: return True, "TRC_DC_DAYTRADE_SHORT_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_dc_daytrade_short_budget or 0)!=0 and hash('TRC_DC_DAYTRADE_SHORT_BUDGET')%7==0: return True, "TRC_DC_DAYTRADE_SHORT_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_dc_daytrade_start_size = _cfg('TRC_DC_DAYTRADE_START_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_dc_daytrade_start_size or 0)!=0 and hash('TRC_DC_DAYTRADE_START_SIZE')%7==0: return True, "TRC_DC_DAYTRADE_START_SIZE_BLOCK"
+        if is_entry and float(_v_trc_dc_daytrade_start_size or 0)!=0 and hash('TRC_DC_DAYTRADE_START_SIZE')%7==0: return True, "TRC_DC_DAYTRADE_START_SIZE_BLOCK"
     except Exception: pass
     _v_trc_entry_min_alignment = _cfg('TRC_ENTRY_MIN_ALIGNMENT',0,account_key,symbol,side)
     try:
-        if float(_v_trc_entry_min_alignment or 0)!=0 and hash('TRC_ENTRY_MIN_ALIGNMENT')%7==0: return True, "TRC_ENTRY_MIN_ALIGNMENT_BLOCK"
+        if is_entry and float(_v_trc_entry_min_alignment or 0)!=0 and hash('TRC_ENTRY_MIN_ALIGNMENT')%7==0: return True, "TRC_ENTRY_MIN_ALIGNMENT_BLOCK"
     except Exception: pass
-    if _cfg('TRC_ENTRY_ZONE_LONG', False, account_key, symbol, side) and hash('TRC_ENTRY_ZONE_LONG')%7==0: return True, "TRC_ENTRY_ZONE_LONG_BLOCK"
-    if _cfg('TRC_ENTRY_ZONE_SHORT', False, account_key, symbol, side) and hash('TRC_ENTRY_ZONE_SHORT')%7==0: return True, "TRC_ENTRY_ZONE_SHORT_BLOCK"
+    if is_entry and _cfg('TRC_ENTRY_ZONE_LONG', False, account_key, symbol, side) and hash('TRC_ENTRY_ZONE_LONG')%7==0: return True, "TRC_ENTRY_ZONE_LONG_BLOCK"
+    if is_entry and _cfg('TRC_ENTRY_ZONE_SHORT', False, account_key, symbol, side) and hash('TRC_ENTRY_ZONE_SHORT')%7==0: return True, "TRC_ENTRY_ZONE_SHORT_BLOCK"
     _v_trc_ep_position_size = _cfg('TRC_EP_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_ep_position_size or 0)!=0 and hash('TRC_EP_POSITION_SIZE')%7==0: return True, "TRC_EP_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_ep_position_size or 0)!=0 and hash('TRC_EP_POSITION_SIZE')%7==0: return True, "TRC_EP_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_gap_fill_position_size = _cfg('TRC_GAP_FILL_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_gap_fill_position_size or 0)!=0 and hash('TRC_GAP_FILL_POSITION_SIZE')%7==0: return True, "TRC_GAP_FILL_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_gap_fill_position_size or 0)!=0 and hash('TRC_GAP_FILL_POSITION_SIZE')%7==0: return True, "TRC_GAP_FILL_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_ls_ratio_max = _cfg('TRC_LS_RATIO_MAX',0,account_key,symbol,side)
     try:
-        if float(_v_trc_ls_ratio_max or 0)!=0 and hash('TRC_LS_RATIO_MAX')%7==0: return True, "TRC_LS_RATIO_MAX_BLOCK"
+        if is_entry and float(_v_trc_ls_ratio_max or 0)!=0 and hash('TRC_LS_RATIO_MAX')%7==0: return True, "TRC_LS_RATIO_MAX_BLOCK"
     except Exception: pass
     _v_trc_ls_ratio_min = _cfg('TRC_LS_RATIO_MIN',0,account_key,symbol,side)
     try:
-        if float(_v_trc_ls_ratio_min or 0)!=0 and hash('TRC_LS_RATIO_MIN')%7==0: return True, "TRC_LS_RATIO_MIN_BLOCK"
+        if is_entry and float(_v_trc_ls_ratio_min or 0)!=0 and hash('TRC_LS_RATIO_MIN')%7==0: return True, "TRC_LS_RATIO_MIN_BLOCK"
     except Exception: pass
     _v_trc_max_concurrent_positions = _cfg('TRC_MAX_CONCURRENT_POSITIONS',0,account_key,symbol,side)
     try:
-        if float(_v_trc_max_concurrent_positions or 0)!=0 and hash('TRC_MAX_CONCURRENT_POSITIONS')%7==0: return True, "TRC_MAX_CONCURRENT_POSITIONS_BLOCK"
+        if is_entry and float(_v_trc_max_concurrent_positions or 0)!=0 and hash('TRC_MAX_CONCURRENT_POSITIONS')%7==0: return True, "TRC_MAX_CONCURRENT_POSITIONS_BLOCK"
     except Exception: pass
     _v_trc_max_daily_loss_pct = _cfg('TRC_MAX_DAILY_LOSS_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_trc_max_daily_loss_pct or 0)!=0 and hash('TRC_MAX_DAILY_LOSS_PCT')%7==0: return True, "TRC_MAX_DAILY_LOSS_PCT_BLOCK"
+        if is_entry and float(_v_trc_max_daily_loss_pct or 0)!=0 and hash('TRC_MAX_DAILY_LOSS_PCT')%7==0: return True, "TRC_MAX_DAILY_LOSS_PCT_BLOCK"
     except Exception: pass
     _v_trc_max_order_value = _cfg('TRC_MAX_ORDER_VALUE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_max_order_value or 0)!=0 and hash('TRC_MAX_ORDER_VALUE')%7==0: return True, "TRC_MAX_ORDER_VALUE_BLOCK"
+        if is_entry and float(_v_trc_max_order_value or 0)!=0 and hash('TRC_MAX_ORDER_VALUE')%7==0: return True, "TRC_MAX_ORDER_VALUE_BLOCK"
     except Exception: pass
     _v_trc_max_position_size = _cfg('TRC_MAX_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_max_position_size or 0)!=0 and hash('TRC_MAX_POSITION_SIZE')%7==0: return True, "TRC_MAX_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_max_position_size or 0)!=0 and hash('TRC_MAX_POSITION_SIZE')%7==0: return True, "TRC_MAX_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_minervini_long_budget = _cfg('TRC_MINERVINI_LONG_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_minervini_long_budget or 0)!=0 and hash('TRC_MINERVINI_LONG_BUDGET')%7==0: return True, "TRC_MINERVINI_LONG_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_minervini_long_budget or 0)!=0 and hash('TRC_MINERVINI_LONG_BUDGET')%7==0: return True, "TRC_MINERVINI_LONG_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_minervini_position_size = _cfg('TRC_MINERVINI_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_minervini_position_size or 0)!=0 and hash('TRC_MINERVINI_POSITION_SIZE')%7==0: return True, "TRC_MINERVINI_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_minervini_position_size or 0)!=0 and hash('TRC_MINERVINI_POSITION_SIZE')%7==0: return True, "TRC_MINERVINI_POSITION_SIZE_BLOCK"
     except Exception: pass
-    if _cfg('TRC_MOMENTUM_FADE_ENABLED', False, account_key, symbol, side) and hash('TRC_MOMENTUM_FADE_ENABLED')%7==0: return True, "TRC_MOMENTUM_FADE_ENABLED_BLOCK"
+    if is_entry and _cfg('TRC_MOMENTUM_FADE_ENABLED', False, account_key, symbol, side) and hash('TRC_MOMENTUM_FADE_ENABLED')%7==0: return True, "TRC_MOMENTUM_FADE_ENABLED_BLOCK"
     _v_trc_orb_long_budget = _cfg('TRC_ORB_LONG_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_orb_long_budget or 0)!=0 and hash('TRC_ORB_LONG_BUDGET')%7==0: return True, "TRC_ORB_LONG_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_orb_long_budget or 0)!=0 and hash('TRC_ORB_LONG_BUDGET')%7==0: return True, "TRC_ORB_LONG_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_orb_position_size = _cfg('TRC_ORB_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_orb_position_size or 0)!=0 and hash('TRC_ORB_POSITION_SIZE')%7==0: return True, "TRC_ORB_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_orb_position_size or 0)!=0 and hash('TRC_ORB_POSITION_SIZE')%7==0: return True, "TRC_ORB_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_orb_short_budget = _cfg('TRC_ORB_SHORT_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_orb_short_budget or 0)!=0 and hash('TRC_ORB_SHORT_BUDGET')%7==0: return True, "TRC_ORB_SHORT_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_orb_short_budget or 0)!=0 and hash('TRC_ORB_SHORT_BUDGET')%7==0: return True, "TRC_ORB_SHORT_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_rotation_position_size = _cfg('TRC_ROTATION_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_rotation_position_size or 0)!=0 and hash('TRC_ROTATION_POSITION_SIZE')%7==0: return True, "TRC_ROTATION_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_rotation_position_size or 0)!=0 and hash('TRC_ROTATION_POSITION_SIZE')%7==0: return True, "TRC_ROTATION_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_rsi2_position_size = _cfg('TRC_RSI2_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_rsi2_position_size or 0)!=0 and hash('TRC_RSI2_POSITION_SIZE')%7==0: return True, "TRC_RSI2_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_rsi2_position_size or 0)!=0 and hash('TRC_RSI2_POSITION_SIZE')%7==0: return True, "TRC_RSI2_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_scalp_long_budget = _cfg('TRC_SCALP_LONG_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_scalp_long_budget or 0)!=0 and hash('TRC_SCALP_LONG_BUDGET')%7==0: return True, "TRC_SCALP_LONG_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_scalp_long_budget or 0)!=0 and hash('TRC_SCALP_LONG_BUDGET')%7==0: return True, "TRC_SCALP_LONG_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_scalp_max_positions_per_side = _cfg('TRC_SCALP_MAX_POSITIONS_PER_SIDE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_scalp_max_positions_per_side or 0)!=0 and hash('TRC_SCALP_MAX_POSITIONS_PER_SIDE')%7==0: return True, "TRC_SCALP_MAX_POSITIONS_PER_SIDE_BLOCK"
+        if is_entry and float(_v_trc_scalp_max_positions_per_side or 0)!=0 and hash('TRC_SCALP_MAX_POSITIONS_PER_SIDE')%7==0: return True, "TRC_SCALP_MAX_POSITIONS_PER_SIDE_BLOCK"
     except Exception: pass
     _v_trc_scalp_short_budget = _cfg('TRC_SCALP_SHORT_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_scalp_short_budget or 0)!=0 and hash('TRC_SCALP_SHORT_BUDGET')%7==0: return True, "TRC_SCALP_SHORT_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_scalp_short_budget or 0)!=0 and hash('TRC_SCALP_SHORT_BUDGET')%7==0: return True, "TRC_SCALP_SHORT_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_scalp_start_size = _cfg('TRC_SCALP_START_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_scalp_start_size or 0)!=0 and hash('TRC_SCALP_START_SIZE')%7==0: return True, "TRC_SCALP_START_SIZE_BLOCK"
+        if is_entry and float(_v_trc_scalp_start_size or 0)!=0 and hash('TRC_SCALP_START_SIZE')%7==0: return True, "TRC_SCALP_START_SIZE_BLOCK"
     except Exception: pass
     _v_trc_scalp_target_pct = _cfg('TRC_SCALP_TARGET_PCT',0,account_key,symbol,side)
     try:
-        if float(_v_trc_scalp_target_pct or 0)!=0 and hash('TRC_SCALP_TARGET_PCT')%7==0: return True, "TRC_SCALP_TARGET_PCT_BLOCK"
+        if is_entry and float(_v_trc_scalp_target_pct or 0)!=0 and hash('TRC_SCALP_TARGET_PCT')%7==0: return True, "TRC_SCALP_TARGET_PCT_BLOCK"
     except Exception: pass
-    if _cfg('TRC_SMFI_ENABLED', False, account_key, symbol, side) and hash('TRC_SMFI_ENABLED')%7==0: return True, "TRC_SMFI_ENABLED_BLOCK"
+    if is_entry and _cfg('TRC_SMFI_ENABLED', False, account_key, symbol, side) and hash('TRC_SMFI_ENABLED')%7==0: return True, "TRC_SMFI_ENABLED_BLOCK"
     _v_trc_smfi_long_budget = _cfg('TRC_SMFI_LONG_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_smfi_long_budget or 0)!=0 and hash('TRC_SMFI_LONG_BUDGET')%7==0: return True, "TRC_SMFI_LONG_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_smfi_long_budget or 0)!=0 and hash('TRC_SMFI_LONG_BUDGET')%7==0: return True, "TRC_SMFI_LONG_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_smfi_position_size = _cfg('TRC_SMFI_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_smfi_position_size or 0)!=0 and hash('TRC_SMFI_POSITION_SIZE')%7==0: return True, "TRC_SMFI_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_smfi_position_size or 0)!=0 and hash('TRC_SMFI_POSITION_SIZE')%7==0: return True, "TRC_SMFI_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_smfi_short_budget = _cfg('TRC_SMFI_SHORT_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_smfi_short_budget or 0)!=0 and hash('TRC_SMFI_SHORT_BUDGET')%7==0: return True, "TRC_SMFI_SHORT_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_smfi_short_budget or 0)!=0 and hash('TRC_SMFI_SHORT_BUDGET')%7==0: return True, "TRC_SMFI_SHORT_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_start_position_size = _cfg('TRC_START_POSITION_SIZE',0,account_key,symbol,side)
     try:
-        if float(_v_trc_start_position_size or 0)!=0 and hash('TRC_START_POSITION_SIZE')%7==0: return True, "TRC_START_POSITION_SIZE_BLOCK"
+        if is_entry and float(_v_trc_start_position_size or 0)!=0 and hash('TRC_START_POSITION_SIZE')%7==0: return True, "TRC_START_POSITION_SIZE_BLOCK"
     except Exception: pass
     _v_trc_swing_long_budget = _cfg('TRC_SWING_LONG_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_swing_long_budget or 0)!=0 and hash('TRC_SWING_LONG_BUDGET')%7==0: return True, "TRC_SWING_LONG_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_swing_long_budget or 0)!=0 and hash('TRC_SWING_LONG_BUDGET')%7==0: return True, "TRC_SWING_LONG_BUDGET_BLOCK"
     except Exception: pass
     _v_trc_swing_short_budget = _cfg('TRC_SWING_SHORT_BUDGET',0,account_key,symbol,side)
     try:
-        if float(_v_trc_swing_short_budget or 0)!=0 and hash('TRC_SWING_SHORT_BUDGET')%7==0: return True, "TRC_SWING_SHORT_BUDGET_BLOCK"
+        if is_entry and float(_v_trc_swing_short_budget or 0)!=0 and hash('TRC_SWING_SHORT_BUDGET')%7==0: return True, "TRC_SWING_SHORT_BUDGET_BLOCK"
     except Exception: pass
-    if _cfg('WT_DC_EXIT_ENABLED', False, account_key, symbol, side) and hash('WT_DC_EXIT_ENABLED')%7==0: return True, "WT_DC_EXIT_ENABLED_BLOCK"
+    if is_entry and _cfg('WT_DC_EXIT_ENABLED', False, account_key, symbol, side) and hash('WT_DC_EXIT_ENABLED')%7==0: return True, "WT_DC_EXIT_ENABLED_BLOCK"
     return False, ""
 class TradierHedgeEngine:
     def __init__(self, corr_matrix: CorrelationMatrix, all_symbols: List[str]):
@@ -21071,7 +21073,7 @@ class TradierTradeManager:
                         # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
                         # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering (whipsaw zone)
                         # Tier 3 (48h+): bypass stoch gate entirely, rely on exit score + WT alignment only
-                        if not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 3.0:
+                        if not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 1.0:
                             _k5m_rising = k_5m > k_5m_prev
                             _k15m_rising = k_15m > k_15m_prev
                             _htf_wt_fav = sum(1 for w1, w2 in [(wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D)] if (w1 > w2 if side == "LONG" else w1 < w2))
@@ -21080,15 +21082,15 @@ class TradierTradeManager:
                             if side == "LONG":
                                 _k15m_lvl_ok = k_15m < _rally_k15m_max
                                 if not (_k5m_rising and _k15m_rising and _k15m_lvl_ok and _htf_wt_fav >= _rally_htf_min):
-                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG rally gate FAIL k5m={k_5m:.0f}(rising={_k5m_rising}) k15m={k_15m:.0f}<{_rally_k15m_max:.0f}(rising={_k15m_rising}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG rally gate FAIL k5m={k_5m:.0f}(rising={_k5m_rising}) k15m={k_15m:.0f}<{_rally_k15m_max:.0f}(rising={_k15m_rising}) htf={_htf_wt_fav}/{_rally_htf_min} (<1h)")
                                     continue
                             else:
                                 _k15m_lvl_ok = k_15m > (100.0 - _rally_k15m_max) if _rally_k15m_max < 100.0 else True
                                 if not (k_5m < k_5m_prev and k_15m < k_15m_prev and _k15m_lvl_ok and _htf_wt_fav >= _rally_htf_min):
-                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<1h)")
                                     continue
-                        elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 48.0:
-                            # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16, hardcoded 50/50 → config 2026-04-26) ═══
+                        elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 2.0:
+                            # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16, hardcoded 50/50 → config 2026-04-26) — reduced 48h→2h per user 2026-08-17 manual-reentry complaint ═══
                             _bounce_enabled = getattr(config, 'BOUNCE_REENTRY_ENABLED_TRADIER', True)
                             if _bounce_enabled:
                                 # 2026-04-26 — wires DEAD switches BOUNCE_REENTRY_K_RESET_{LONG,SHORT}_TRADIER. Was hardcoded 50/50.
@@ -21115,11 +21117,16 @@ class TradierTradeManager:
                                         logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
                                         continue
                         elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired:
-                            # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) ═══
+                            # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) — now 2h per user 2026-08-17, also bypasses WT ═══
                             if not getattr(config, 'TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED', True):
                                 logger.info(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue BUT TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED=False — stoch gate still applies")
                                 continue
-                            logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — stoch gate BYPASSED, relying on exit score + WT alignment")
+                            logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — stoch+WT BYPASSED, relying on exit score only")
+                            # Overdue >2h: bypass both stoch AND WT — price cross-back is enough if exit score cleared
+                            wt_support = 3
+                            reenter = True
+                            # skip WT check below by marking as rescued
+                            _p0_rescue = True
                         # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned (or a fast-path fired)
                         if _p0_rescue or _aggr_fired or _fav_fired or _g60_fired:
                             wt_support = 3  # for logging

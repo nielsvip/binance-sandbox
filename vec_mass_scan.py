@@ -390,23 +390,22 @@ def score(mask, ret, min_trades):
     return {"n": n, "mean": mean, "std": std, "sharpe": sharpe, "wr": wr, "pf": pf}
 
 
-def compute_activity_gates(mask, close, horizon_bars, max_dd_pct=30.0, tim_hi=80.0, min_trades_per_week=30.0):
-    """Enforce >30 trades/week, TIM <80%, DD<30% gates for vector results.
-    mask: bool array (bars, syms) where signal fires
-    close: price array (bars, syms)
-    horizon_bars: forward horizon in bars
-    Returns (trades_per_week, tim_pct, max_dd_pct, passes: bool)
-    Uses simple equity curve from forward returns at fires.
+def compute_activity_gates(mask, close, horizon_bars, max_dd_pct=30.0, tim_hi=80.0, min_trades_per_month=30.0):
+    """Enforce >30/mo crypto (>10/mo live), TIM <80%, DD<30% gates for vector results.
+    min_trades_per_month is converted internally to per-week for backward compat.
+    mask bool array (bars, syms) where signal fires; close price array (bars, syms).
     """
     n_bars, n_syms = mask.shape
     # trades = fires counted
     n_trades = int(mask.sum())
     if n_bars == 0:
         return 0.0, 100.0, 999.0, False
-    # estimate weeks: bars * bar_minutes / (7*24*60); base TF 3m for crypto, 5m for tradier — use 5m conservative
+    # estimate weeks/months: bar_minutes 15; months = weeks*7*24*60 / (30*24*60) = weeks*7/30
     bar_minutes = 15  # conservative: conditions built on 15m+ TFs
     weeks = max(1.0, (n_bars * bar_minutes) / (7 * 24 * 60))
+    months = weeks * 7.0 / 30.0
     trades_per_week = n_trades / weeks
+    trades_per_month = n_trades / months if months else 0.0
     # TIM = bars where any symbol has signal (approx exposure)
     tim_pct = float(mask.any(axis=1).mean() * 100.0) if n_bars else 100.0
     # DD: build equity from masked forward returns at horizon 16 (proxy)
@@ -417,7 +416,7 @@ def compute_activity_gates(mask, close, horizon_bars, max_dd_pct=30.0, tim_hi=80
     equity = np.cumsum(per_bar) * 100.0
     peak = np.maximum.accumulate(equity)
     dd = (peak - equity).max() if len(equity) else 0.0
-    passes = (trades_per_week >= min_trades_per_week) and (tim_pct < tim_hi) and (dd < max_dd_pct)
+    passes = (trades_per_month >= min_trades_per_month) and (tim_pct < tim_hi) and (dd < max_dd_pct)
     return trades_per_week, tim_pct, float(dd), passes
 
 
@@ -427,7 +426,8 @@ def main():
     ap.add_argument("--bars", type=int, default=40000)
     ap.add_argument("--pick", type=int, default=3, help="N conditions to AND together")
     ap.add_argument("--min-trades", type=int, default=100)
-    ap.add_argument("--min-trades-per-week", type=float, default=30.0, help="Gate: >30 trades/week (pool)")
+    ap.add_argument("--min-trades-per-month", type=float, default=30.0, help="Gate: >30/mo crypto, >10/mo live (eased from >30/wk typo)")
+    ap.add_argument("--min-trades-per-week", type=float, default=None, help="Deprecated alias for --min-trades-per-month (converted /4.33)")
     ap.add_argument("--tim-hi", type=float, default=80.0, help="Gate: TIM <80%")
     ap.add_argument("--dd-max", type=float, default=30.0, help="Gate: DD <30%")
     ap.add_argument("--out", type=str, default="")
@@ -525,8 +525,15 @@ def main():
             mask = np.ones_like(C[combo[0]])
             for k in combo:
                 mask &= C[k]
-            # pre-filter by activity gates before horizon loop: need >30/wk, TIM<80, DD<30
-            tpw, tim, dd, gate_pass = compute_activity_gates(mask, close, 16, max_dd_pct=args.dd_max, tim_hi=args.tim_hi, min_trades_per_week=args.min_trades_per_week)
+            # pre-filter by activity gates: eased 2026-08-17 >30/mo crypto (>10/mo live) was >30/wk typo
+            # support deprecated --min-trades-per-week alias
+            _mtpm = args.min_trades_per_month if getattr(args, 'min_trades_per_month', 30.0) is not None else 30.0
+            if getattr(args, 'min_trades_per_week', None) is not None and args.min_trades_per_month == 30.0:
+                _mtpm = float(args.min_trades_per_week) * 4.33
+            # tradier/live eased to 10/mo
+            if args.mode == "tradier":
+                _mtpm = min(_mtpm, 10.0)
+            tpw, tim, dd, gate_pass = compute_activity_gates(mask, close, 16, max_dd_pct=args.dd_max, tim_hi=args.tim_hi, min_trades_per_month=_mtpm)
             if not gate_pass:
                 gated_out += 1
                 # still count combos for progress but skip scoring

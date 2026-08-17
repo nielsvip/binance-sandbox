@@ -4200,6 +4200,8 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'MTS_WEIGHT_5m',
     'REENTRY_B01_WT_2of3_ENABLED',
     'indicators_filepath',
+    'STOCH_ENTRY_ENABLED',
+    'WT_ENTRY_ENABLED',
 ]
 
 # ledger flip store for parity auditing — hash over active _FULL_COVERAGE values, observed by tests

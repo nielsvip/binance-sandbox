@@ -3309,6 +3309,8 @@ class QuickConfig:
     K_ZONE_ENTRY_ENABLED: bool = False
     K_ZONE_LONG_THRESHOLD: int = 35
     K_ZONE_SHORT_THRESHOLD: int = 65
+    STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks
+    WT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks
     MFI_ENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     MFI_ENTRY_LONG_MAX: float = 60.0
     MFI_ENTRY_SHORT_MIN: float = 40.0

@@ -36,6 +36,8 @@ class Config:
     ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
     MODE: str = "crypto"  # parity 2026-08-17: vector->live (was vector-only)
+    STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
+    WT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     REENTRY_PULL1_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     REENTRY_PULL2_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     REENTRY_PULL3_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
