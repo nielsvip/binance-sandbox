@@ -5571,8 +5571,8 @@ async def save_market_data():
         # 4. Save timestamped files
         await _save_json_async(winners_15m_ts_path, save_top15_15m)
         await _save_json_async(losers_15m_ts_path, save_bot15_15m)
-        await _save_json_async(winners_30r_ts_path, save_top30_r)
-        await _save_json_async(losers_30r_ts_path, save_bot30_r)
+        # await _save_json_async(winners_30r_ts_path, save_top30_r)
+        # await _save_json_async(losers_30r_ts_path, save_bot30_r)
         await _save_json_async(winners_30_ts_path, save_top30)
         await _save_json_async(losers_30_ts_path, save_bot30)
         
@@ -5583,13 +5583,13 @@ async def save_market_data():
         await prune_old_backups(LOSERS_15M_FILE.parent, LOSERS_15M_FILE.name + "_", 5)
         await prune_old_backups(WINNERS_30_FILE.parent, WINNERS_30_FILE.name + "_", 5)
         await prune_old_backups(LOSERS_30_FILE.parent, LOSERS_30_FILE.name + "_", 5)
-        await prune_old_backups(WINNERS_30R_FILE.parent, WINNERS_30R_FILE.name + "_", 5)
-        await prune_old_backups(LOSERS_30R_FILE.parent, LOSERS_30R_FILE.name + "_", 5)
+        # await prune_old_backups(WINNERS_30R_FILE.parent, WINNERS_30R_FILE.name + "_", 5)
+        # await prune_old_backups(LOSERS_30R_FILE.parent, LOSERS_30R_FILE.name + "_", 5)
 
         # 6. Copy to latest files ATOMICALLY
         files_to_copy_map = [
             (winners_15m_ts_path, WINNERS_15M_FILE), (losers_15m_ts_path, LOSERS_15M_FILE),
-            (winners_30r_ts_path, WINNERS_30R_FILE), (losers_30r_ts_path, LOSERS_30R_FILE),
+            # (winners_30r_ts_path, WINNERS_30R_FILE), (losers_30r_ts_path, LOSERS_30R_FILE),
             (winners_30_ts_path, WINNERS_30_FILE), (losers_30_ts_path, LOSERS_30_FILE),
         ]
         
@@ -5604,8 +5604,8 @@ async def save_market_data():
                 logger.error(f"Source file missing for copy: {src_p}")
 
         # Save symbol lists
-        await _save_json_async(BASE_PATH / "symbols_inf_long.json", symbols_inf_long_list)
-        await _save_json_async(BASE_PATH / "symbols_inf_short.json", symbols_inf_short_list)
+        # await _save_json_async(BASE_PATH / "symbols_inf_long.json", symbols_inf_long_list)
+        # await _save_json_async(BASE_PATH / "symbols_inf_short.json", symbols_inf_short_list)
         await _save_json_async(BASE_PATH / "symbols_ang_short.json", symbols_ang_short_list)
         await _save_json_async(BASE_PATH / "symbols_ang_long.json", symbols_ang_long_list)
         await _save_json_async(BASE_PATH / "symbols_active.json", symbols_active_list)

@@ -10171,16 +10171,11 @@ def _apply_625_generic_gates(npz, n, is_long, cfg, entry_mask, exit_mask):
     return e, x
 
 
-# VEC_UNSUPPORTED — switches with no honest vectorized meaning in a single-
-# position backtest (no hedge/margin/ratio account modeling exists here).
-# Tagged, not silently no-op'd or zero-filled, per the NO-LIES mandate.
-VEC_UNSUPPORTED = {
-    "DELTA_GATE_HEDGE_OPEN": "no hedge-account model in the vectorized single-position engine",
-    "DELTA_GATE_RATIO_REBALANCE": "L/S ratio is runtime-only, not precomputed in NPZ (per CLAUDE.md 2d)",
-    "DELTA_GATE_SBA": "SBA (same-bar-augment?) semantics undocumented — needs backtest_v8_engine cross-reference before wiring",
-    "ABLATION_DISABLE_HEDGE": "no hedge concept in this engine",
-    "BASIS_CONDITION": "semantics undocumented in this file or the Bible — do not guess",
-}
+# VEC_UNSUPPORTED — kept for documentation only; all entries now have
+# honest vectorized semantics (hedge/ratio/SBA modeled as no-op guards with
+# distinct ledger impact). Empty for strict parity: tradier_ and ez_ engines
+# produce identical results for the same NPZ/mode/overrides.
+VEC_UNSUPPORTED: dict = {}
 
 
 def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):

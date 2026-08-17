@@ -1304,5 +1304,104 @@
     ],
     "timestamp": "2026-08-17T14:34:29.959638+00:00",
     "price": 0.06052
+  },
+  {
+    "symbol": "1000BONKUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 6.9x normal"
+    ],
+    "timestamp": "2026-08-17T17:46:10.522018+00:00",
+    "price": 0.00232
+  },
+  {
+    "symbol": "CRCLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 22.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T17:46:10.522018+00:00",
+    "price": 74.61
+  },
+  {
+    "symbol": "DISUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.4x normal"
+    ],
+    "timestamp": "2026-08-17T17:46:10.522018+00:00",
+    "price": 104.21359027
+  },
+  {
+    "symbol": "FLEXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 10.9x normal"
+    ],
+    "timestamp": "2026-08-17T17:46:10.522018+00:00",
+    "price": 131.25
+  },
+  {
+    "symbol": "TRXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 6.4x normal"
+    ],
+    "timestamp": "2026-08-17T17:46:10.522018+00:00",
+    "price": 0.33084312
+  },
+  {
+    "symbol": "ASTSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T17:47:13.706177+00:00",
+    "price": 72.21
+  },
+  {
+    "symbol": "QCOMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 25.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T17:47:13.706177+00:00",
+    "price": 162.51
+  },
+  {
+    "symbol": "RLCUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T17:47:13.706177+00:00",
+    "price": 0.2874
+  },
+  {
+    "symbol": "WUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T17:47:13.706177+00:00",
+    "price": 0.00833545
+  },
+  {
+    "symbol": "ALABUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 8.8x (from rankings)"
+    ],
+    "timestamp": "2026-08-17T17:47:44.589604+00:00",
+    "price": 324.96
+  },
+  {
+    "symbol": "COMPUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 13.7x (from rankings)"
+    ],
+    "timestamp": "2026-08-17T17:47:44.589604+00:00",
+    "price": 17.3
   }
 ]

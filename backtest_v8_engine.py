@@ -223,7 +223,7 @@ if _overrides:
                 _cls = getattr(_mod, "Config", None) or getattr(_mod, "TradierConfig", None)
                 if not _cls:
                     continue
-                for _knob, _val in [("SRS_ENTRY_ENABLED", False), ("MFI_ENTRY_ENABLED", False), ("MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_MAX", 100), ("K_ZONE_ENTRY_ENABLED_TRADIER", False), ("K_ZONE_VETO_ENABLED_TRADIER", False), ("TRADIER_MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_TRADIER", 100), ("ENTRY_ZONE_LONG", 100), ("ENTRY_ZONE_SHORT", 0), ("ALIGNMENT_MIN_BARS", 0), ("ALIGNMENT_REQUIRED_TRADIER", 0)]:
+                for _knob, _val in [("SRS_ENTRY_ENABLED", False), ("MFI_ENTRY_ENABLED", False), ("MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_MAX", 100), ("K_ZONE_ENTRY_ENABLED", False), ("K_ZONE_ENTRY_ENABLED_TRADIER", False), ("K_ZONE_VETO_ENABLED_TRADIER", False), ("TRADIER_MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_TRADIER", 100), ("ENTRY_ZONE_LONG", 100), ("ENTRY_ZONE_SHORT", 0), ("ALIGNMENT_MIN_BARS", 0), ("ALIGNMENT_REQUIRED_TRADIER", 0), ("STOCH_ENTRY_ENABLED", False), ("WT_ENTRY_ENABLED", False)]:
                     try:
                         setattr(_mod, _knob, _val)
                         setattr(_cls, _knob, _val)

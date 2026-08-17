@@ -923,6 +923,15 @@
         "why": "absolute rule failed: gain_mo=-0.0003 pool_sharpe=-0.0005 trades=38 [capture:T0]"
       }
     },
+    "COE_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
     "COST_SHORT": {
       "SHORT_ENABLED": true,
       "gain_mo": null,
