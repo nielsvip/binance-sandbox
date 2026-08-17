@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-17T22:35:46.356269+00:00",
+  "timestamp": "2026-08-17T22:51:02.245672+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,6 +13,12 @@
       "short_score": 15.2
     },
     {
+      "symbol": "INJUSDT",
+      "net_score": -12.0,
+      "long_score": 0,
+      "short_score": 12.0
+    },
+    {
       "symbol": "TQQQUSDT",
       "net_score": -10.9,
       "long_score": 0,
@@ -23,12 +29,6 @@
       "net_score": -10.7,
       "long_score": 0,
       "short_score": 10.7
-    },
-    {
-      "symbol": "CHRUSDT",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
     },
     {
       "symbol": "INXUSDT",
@@ -176,6 +176,12 @@
     },
     {
       "symbol": "APPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CHRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -565,12 +571,6 @@
       "short_score": 0
     },
     {
-      "symbol": "INJUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BBUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -944,23 +944,23 @@
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 12.3,
-      "long_score": 12.3,
+      "net_score": 13.6,
+      "long_score": 13.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RIFUSDT",
-      12.3,
-      0.07675
+      13.6,
+      0.0771995
     ]
   ],
   "top_shorts": [
     [
-      "CHRUSDT",
-      10.2,
-      0.0131754
+      "INJUSDT",
+      12.0,
+      4.056
     ]
   ],
   "hedge_usage": {
