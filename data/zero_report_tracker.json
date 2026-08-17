@@ -877,12 +877,6 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-04-24T22:43:34.221271+00:00"
   },
-  "inf:ETHFIUSDC_LONG": {
-    "count": 2,
-    "first_seen": "2026-04-26T02:02:34.298101+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-04-26T02:03:05.860853+00:00"
-  },
   "inf:TRUMPUSDC_SHORT": {
     "count": 2,
     "first_seen": "2026-04-26T05:31:42.286423+00:00",
@@ -1708,5 +1702,23 @@
       "API_ABSENCE": 4
     },
     "last_seen": "2026-08-17T13:45:50.007036+00:00"
+  },
+  "inf:1000FLOKIUSDT_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-08-17T17:34:33.065897+00:00",
+    "last_increment_at": "2026-08-17T17:34:33.065897+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-08-17T17:34:44.510537+00:00"
+  },
+  "inf:WLDUSDC_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-08-17T17:54:45.861011+00:00",
+    "last_increment_at": "2026-08-17T17:54:45.861011+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-08-17T17:54:48.497815+00:00"
   }
 }
