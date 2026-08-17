@@ -1,32 +1,43 @@
 {
- "generated_at": "2026-08-17 19:39 UTC",
- "total_capital_usd": 64.31,
+ "generated_at": "2026-08-17 19:56 UTC",
+ "total_capital_usd": 13.92,
  "tier_capital": {
   "A": 0.0,
-  "B": 64.31,
-  "C": 0.0
+  "B": 6.98,
+  "C": 6.94
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 0
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "flz:BTCUSDC_LONG"
+ "losers": [
+  "men:ZROUSDT_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BTCUSDC_LONG",
-   "symbol": "BTCUSDC",
-   "account": "flz",
-   "value_usd": 64.31,
-   "gain_pct": 0.068,
+   "pk": "men:DOTUSDT_SHORT",
+   "symbol": "DOTUSDT",
+   "account": "men",
+   "value_usd": 6.98,
+   "gain_pct": -0.418,
    "tier": "B",
-   "perf_mult": 0.72,
-   "amt": 0.001,
-   "mark": 64312.0
+   "perf_mult": 1.0,
+   "amt": 9.2,
+   "mark": 0.7592
+  },
+  {
+   "pk": "men:ZROUSDT_SHORT",
+   "symbol": "ZROUSDT",
+   "account": "men",
+   "value_usd": 6.94,
+   "gain_pct": 0.188,
+   "tier": "C",
+   "perf_mult": 0.35,
+   "amt": 9.0,
+   "mark": 0.7707
   }
  ]
 }

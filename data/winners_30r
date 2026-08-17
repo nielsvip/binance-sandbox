@@ -1,9 +1,9 @@
 [
   {
     "symbol": "POLUSDT",
-    "returns_15m": 0.3880198860191595,
-    "returns_3m": 2.908638906152901,
-    "gain_score": 11.635
+    "returns_15m": 1.5952877653699786,
+    "returns_3m": 3.4487067349743827,
+    "gain_score": 13.795
   },
   {
     "symbol": "AAOIUSDT",
@@ -42,6 +42,12 @@
     "gain_score": 5.399
   },
   {
+    "symbol": "INXUSDT",
+    "returns_15m": 0.9835657370518046,
+    "returns_3m": 1.3115163627279658,
+    "gain_score": 5.246
+  },
+  {
     "symbol": "COHRUSDT",
     "returns_15m": 0.3400882543073103,
     "returns_3m": 1.2794689211041421,
@@ -66,22 +72,28 @@
     "gain_score": 4.666
   },
   {
+    "symbol": "TLMUSDT",
+    "returns_15m": 0.4273504273504223,
+    "returns_3m": 1.1477761836441862,
+    "gain_score": 4.591
+  },
+  {
     "symbol": "AXTIUSDT",
     "returns_15m": 0.34062758051197184,
     "returns_3m": 1.0709087128300967,
     "gain_score": 4.284
   },
   {
-    "symbol": "INXUSDT",
-    "returns_15m": 0.6327543424317705,
-    "returns_3m": 0.9584266865820349,
-    "gain_score": 3.834
+    "symbol": "BOMEUSDC",
+    "returns_15m": 0.8242112041210621,
+    "returns_3m": 0.9412068076328023,
+    "gain_score": 3.765
   },
   {
-    "symbol": "TLMUSDT",
-    "returns_15m": 0.07097232079488403,
-    "returns_3m": 0.9305654974946306,
-    "gain_score": 3.722
+    "symbol": "MRVLUSDT",
+    "returns_15m": 1.4242333518668937,
+    "returns_3m": 0.9278175008511994,
+    "gain_score": 3.711
   },
   {
     "symbol": "ARMUSDT",
@@ -90,9 +102,9 @@
     "gain_score": 3.515
   },
   {
-    "symbol": "ACEUSDT",
-    "returns_15m": 1.463240542469675,
-    "returns_3m": 0.8692566968245515,
+    "symbol": "STORJUSDT",
+    "returns_15m": 0.3036673674375103,
+    "returns_3m": 0.8691566831101769,
     "gain_score": 3.477
   },
   {
@@ -100,12 +112,6 @@
     "returns_15m": 0.003060287667049516,
     "returns_3m": 0.8549206806444374,
     "gain_score": 3.42
-  },
-  {
-    "symbol": "BOMEUSDC",
-    "returns_15m": 0.5651894669235707,
-    "returns_3m": 0.8501867834600094,
-    "gain_score": 3.401
   },
   {
     "symbol": "BEUSDT",
@@ -126,10 +132,22 @@
     "gain_score": 3.108
   },
   {
+    "symbol": "MORPHOUSDT",
+    "returns_15m": -0.38664654847227387,
+    "returns_3m": 0.7679465776293931,
+    "gain_score": 3.072
+  },
+  {
     "symbol": "AMDUSDT",
     "returns_15m": 0.031362709738115134,
     "returns_3m": 0.7621529834537799,
     "gain_score": 3.049
+  },
+  {
+    "symbol": "PLTRUSDT",
+    "returns_15m": 0.13832853025937125,
+    "returns_3m": 0.7013273053961676,
+    "gain_score": 2.805
   },
   {
     "symbol": "SHAZUSDT",
@@ -138,45 +156,27 @@
     "gain_score": 2.673
   },
   {
+    "symbol": "CAKEUSDT",
+    "returns_15m": 0.42903840915281755,
+    "returns_3m": 0.6483756483756375,
+    "gain_score": 2.594
+  },
+  {
+    "symbol": "TRUMPUSDC",
+    "returns_15m": 0.142857142857143,
+    "returns_3m": 0.6460875807609402,
+    "gain_score": 2.584
+  },
+  {
     "symbol": "DRAMUSDT",
     "returns_15m": 0.7958879124523245,
     "returns_3m": 0.6456953642384116,
     "gain_score": 2.583
   },
   {
-    "symbol": "SNDKUSDT",
-    "returns_15m": 0.34075853861182515,
-    "returns_3m": 0.6254644538023356,
-    "gain_score": 2.502
-  },
-  {
-    "symbol": "CBRSUSDT",
-    "returns_15m": 0.07455658452362177,
-    "returns_3m": 0.6075190342814281,
-    "gain_score": 2.43
-  },
-  {
-    "symbol": "MRVLUSDT",
-    "returns_15m": 1.1775748784025901,
-    "returns_3m": 0.6066776971702423,
-    "gain_score": 2.427
-  },
-  {
-    "symbol": "SPCXUSD1",
-    "returns_15m": 0.4523956405511173,
-    "returns_3m": 0.5557842733635256,
-    "gain_score": 2.223
-  },
-  {
-    "symbol": "GLWUSDT",
-    "returns_15m": -0.15933534399362723,
-    "returns_3m": 0.5386510801673244,
-    "gain_score": 2.155
-  },
-  {
-    "symbol": "MEMEUSDT",
-    "returns_15m": 0.5872118312309725,
-    "returns_3m": 0.5216257335361887,
-    "gain_score": 2.087
+    "symbol": "PUMPUSDT",
+    "returns_15m": 0.3180212014134238,
+    "returns_3m": 0.6380716058135337,
+    "gain_score": 2.552
   }
 ]
