@@ -1,15 +1,9 @@
 [
   {
     "symbol": "ACEUSDT",
-    "returns_15m": 1.2524485071526092,
-    "returns_3m": 4.51565467802219,
-    "gain_score": 18.063
-  },
-  {
-    "symbol": "POLUSDT",
-    "returns_15m": 3.0367143746110736,
-    "returns_3m": 3.681903569192233,
-    "gain_score": 14.728
+    "returns_15m": 4.592556257281253,
+    "returns_3m": 7.256036217303838,
+    "gain_score": 29.024
   },
   {
     "symbol": "CRWVUSDT",
@@ -18,16 +12,22 @@
     "gain_score": 12.851
   },
   {
-    "symbol": "PUMPUSDT",
-    "returns_15m": 0.745209368346336,
-    "returns_3m": 2.01221703197988,
-    "gain_score": 8.049
+    "symbol": "POLUSDT",
+    "returns_15m": 3.578130864506445,
+    "returns_3m": 2.870278330019889,
+    "gain_score": 11.481
   },
   {
     "symbol": "BBUSDT",
-    "returns_15m": 1.727272727272736,
-    "returns_3m": 2.0054694621695504,
-    "gain_score": 8.022
+    "returns_15m": 2.098540145985411,
+    "returns_3m": 2.3787740164684337,
+    "gain_score": 9.515
+  },
+  {
+    "symbol": "PUMPUSDT",
+    "returns_15m": 1.5016088666428293,
+    "returns_3m": 2.1958243340532704,
+    "gain_score": 8.783
   },
   {
     "symbol": "NBISUSDT",
@@ -61,15 +61,21 @@
   },
   {
     "symbol": "AAOIUSDT",
-    "returns_15m": 1.957870250710779,
+    "returns_15m": 1.920839892509774,
     "returns_3m": 1.4987778206612532,
     "gain_score": 5.995
   },
   {
-    "symbol": "SKYAIUSDT",
-    "returns_15m": 1.078351078351077,
-    "returns_3m": 1.480060298752928,
-    "gain_score": 5.92
+    "symbol": "INXUSDT",
+    "returns_15m": 1.197754210854655,
+    "returns_3m": 1.438219109554784,
+    "gain_score": 5.753
+  },
+  {
+    "symbol": "MRVLUSDT",
+    "returns_15m": 1.074077231267574,
+    "returns_3m": 1.3202307199316279,
+    "gain_score": 5.281
   },
   {
     "symbol": "LITEUSDT",
@@ -79,7 +85,7 @@
   },
   {
     "symbol": "CBRSUSDT",
-    "returns_15m": 1.4681308188111712,
+    "returns_15m": 1.4721680658894634,
     "returns_3m": 1.2948325852960998,
     "gain_score": 5.179
   },
@@ -96,10 +102,10 @@
     "gain_score": 5.03
   },
   {
-    "symbol": "MRVLUSDT",
-    "returns_15m": 1.1948450968677917,
-    "returns_3m": 1.134425110883656,
-    "gain_score": 4.538
+    "symbol": "WLDUSDC",
+    "returns_15m": 0.6541524459613107,
+    "returns_3m": 1.1142857142857185,
+    "gain_score": 4.457
   },
   {
     "symbol": "AXTIUSDT",
@@ -114,10 +120,10 @@
     "gain_score": 4.166
   },
   {
-    "symbol": "INXUSDT",
-    "returns_15m": 0.8830845771144263,
-    "returns_3m": 1.033881415047331,
-    "gain_score": 4.136
+    "symbol": "PLTRUSDT",
+    "returns_15m": 0.7889546351084893,
+    "returns_3m": 0.9764035801464646,
+    "gain_score": 3.906
   },
   {
     "symbol": "ONDSUSDT",
@@ -126,16 +132,10 @@
     "gain_score": 3.556
   },
   {
-    "symbol": "MUUSDT",
-    "returns_15m": 0.5562251773399983,
-    "returns_3m": 0.808200861684739,
-    "gain_score": 3.233
-  },
-  {
-    "symbol": "PLTRUSDT",
-    "returns_15m": 0.771416971173373,
-    "returns_3m": 0.7889546351084893,
-    "gain_score": 3.156
+    "symbol": "ETHFIUSDC",
+    "returns_15m": 0.2797202797202933,
+    "returns_3m": 0.8033741715203864,
+    "gain_score": 3.213
   },
   {
     "symbol": "ORCLUSDT",
@@ -156,8 +156,20 @@
     "gain_score": 2.912
   },
   {
+    "symbol": "BEATUSDT",
+    "returns_15m": 0.36101083032491,
+    "returns_3m": 0.724637681159421,
+    "gain_score": 2.899
+  },
+  {
+    "symbol": "MUUSDT",
+    "returns_15m": 0.778256349324214,
+    "returns_3m": 0.7054656271025443,
+    "gain_score": 2.822
+  },
+  {
     "symbol": "BMNRUSDT",
-    "returns_15m": 0.749063670411969,
+    "returns_15m": 0.6609696492336495,
     "returns_3m": 0.6951871657753959,
     "gain_score": 2.781
   },
@@ -166,17 +178,5 @@
     "returns_15m": 0.6123800066203201,
     "returns_3m": 0.6790327923153305,
     "gain_score": 2.716
-  },
-  {
-    "symbol": "NOKUSDT",
-    "returns_15m": 0.5535055350553552,
-    "returns_3m": 0.6463527239150534,
-    "gain_score": 2.585
-  },
-  {
-    "symbol": "PTBUSDT",
-    "returns_15m": 0.2942907592701597,
-    "returns_3m": 0.6140765233821467,
-    "gain_score": 2.456
   }
 ]

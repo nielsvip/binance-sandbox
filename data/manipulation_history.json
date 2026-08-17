@@ -2870,5 +2870,41 @@
     ],
     "timestamp": "2026-08-17T20:49:50.338822+00:00",
     "price": 0.0180281
+  },
+  {
+    "symbol": "ARKMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T20:54:29.786087+00:00",
+    "price": 0.08873596
+  },
+  {
+    "symbol": "UMAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T20:56:14.829965+00:00",
+    "price": 0.31944669
+  },
+  {
+    "symbol": "AGLDUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 21.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T20:59:52.208761+00:00",
+    "price": 0.15373353
+  },
+  {
+    "symbol": "FIDAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-17T21:01:01.277271+00:00",
+    "price": 0.01726719
   }
 ]
