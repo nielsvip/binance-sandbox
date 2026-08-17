@@ -258,6 +258,8 @@ class SymParamsStocks:
     REENTRY_MEAN_REV_ENABLED: bool = False
     REENTRY_MEAN_REV_TOLERANCE_PCT: float = 0.30
     REENTRY_MEAN_REV_WINDOW_BARS: int = 10
+    REENTRY_GR_HLHH_MODE: str = "OR"  # 2026-08-17 overdue reentry: OR=HH or HL, HH=only HH, HL=only HL on 1h/4h/D
+    REENTRY_GR_MIN_TFS: int = 2  # min TFs 1h/4h/D with HL/HH + WT required after 2h
     HEDGE_ENABLED: bool = True
     HEDGE_SIZE_FRAC: float = 0.5
     HEDGE_WT_TRIGGER: bool = True

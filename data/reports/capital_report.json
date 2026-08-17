@@ -1,44 +1,32 @@
 {
- "generated_at": "2026-08-17 22:49 UTC",
- "total_capital_usd": 13.25,
+ "generated_at": "2026-08-17 23:28 UTC",
+ "total_capital_usd": 6.99,
  "tier_capital": {
   "A": 0.0,
-  "B": 13.25,
+  "B": 6.99,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 1,
   "C": 0
  },
  "winners": [],
  "losers": [],
  "mediocre": [
-  "men:SNXUSDT_SHORT",
-  "men:APPUSDT_SHORT"
+  "fin:SKYUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "men:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "men",
+   "pk": "fin:SKYUSDT_SHORT",
+   "symbol": "SKYUSDT",
+   "account": "fin",
    "value_usd": 6.99,
-   "gain_pct": -0.038,
+   "gain_pct": -0.047,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 35.8,
-   "mark": 0.1952746
-  },
-  {
-   "pk": "men:APPUSDT_SHORT",
-   "symbol": "APPUSDT",
-   "account": "men",
-   "value_usd": 6.26,
-   "gain_pct": -0.125,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.02,
-   "mark": 313.11
+   "amt": 129.0,
+   "mark": 0.05415935
   }
  ]
 }
