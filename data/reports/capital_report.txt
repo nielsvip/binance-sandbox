@@ -1,10 +1,10 @@
-CAPITAL ALLOCATION REPORT — 2026-08-17 14:18 UTC
+CAPITAL ALLOCATION REPORT — 2026-08-17 14:38 UTC
 ================================================================================
-Total capital deployed: $5.12 across 1 positions
+Total capital deployed: $17.73 across 3 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $      5.12 ( 99.9%) — 1 positions
+  Tier B: $     17.73 (100.0%) — 3 positions
   Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
@@ -12,8 +12,8 @@ TIER DISTRIBUTION:
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [0]:
-  (none)
+LOSERS — reduce allocation (C-tier or losing) [1]:
+                     inf:CRVUSDC_LONG  $    5.92  gain=-1.14%  tier=B  mult=1.00
 
 MEDIOCRE — capital sitting idle [1]:
-                    ang:AMDUSDT_SHORT  $    5.12  gain=+0.06%  tier=B
+                    inf:ZILUSDT_SHORT  $    5.99  gain=+0.24%  tier=B

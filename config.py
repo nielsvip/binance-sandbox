@@ -4138,6 +4138,991 @@ class Config:
     EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW: bool = True
     EXECUTE_NOW_WIRE_TRIPWIRE_MAX_LAG_S: float = 5.0
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-08-17 PORTED FROM TradierConfig — 885 switches for cross-asset sweep
+    # Enables 900+ entry vs 900+ exit vs 120+ filter factorial in single Config
+    # ═══════════════════════════════════════════════════════════════════════════
+    ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(default_factory=lambda: {"tra": ["LONG"]})  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_DECISIONS_DIR: str = "data/ai_premarket"  # relative to BASE_PATH  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_ENABLED_TRB: bool = False       # control — never inject into TRB  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_ENABLED_TRC: bool = True        # paper — TRC = TRB + AI picks  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_EXPIRES_ET: str = "20:00"       # advisory expires at market close same day  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_MAX_NEW_PER_SIDE: int = 8       # cap new AI symbols per side per day  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_MIN_CONVICTION: float = 0.55    # minimum LLM conviction to inject symbol  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_SIZE_MULT_MAX: float = 1.5      # advisory size_override cap  # PORTED from TradierConfig 2026-08-17
+    AI_PREMARKET_TRADINGVIEW_ENABLED: bool = True  # use TradingView MCP when available, fallback to local indicators  # PORTED from TradierConfig 2026-08-17
+    ALIGNMENT_GATE_MIN: int = 4  # BACKTEST_CHANGE_T8 minimum indicators aligned  # PORTED from TradierConfig 2026-08-17
+    ALIGNMENT_GATE_TOTAL: int = 36  # BACKTEST_CHANGE_T8 total alignment score required ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:8009,8187 alignment gate log denominator  # PORTED from TradierConfig 2026-08-17
+    ATR_PARITY_EQUITY_BASE_USD: float = 35000.0             # nominal sleeve capital (50% of $70k trb+trc)  # PORTED from TradierConfig 2026-08-17
+    ATR_PARITY_QTY_CAP_MULT: float = 5.0                    # cap qty at 5× DEFAULT (prevents runaway low-vol sizes)  # PORTED from TradierConfig 2026-08-17
+    ATR_PARITY_TARGET_RISK_PCT: float = 0.20                # % of equity risked per trade (0.20 = aggressive)  # PORTED from TradierConfig 2026-08-17
+    ATR_PARITY_USE_DAILY: bool = True                       # True=atr_D (audited-winner standard), False=atr_5m  # PORTED from TradierConfig 2026-08-17
+    ATR_TRAIL_2X_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_T58: was True. ATR trail = #1 stock PnL destroyer (-2557% cumulative). Disabled.  # PORTED from TradierConfig 2026-08-17
+    ATR_TRAIL_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_T58: was True. ATR trailing stop = #1 stock PnL destroyer (-2557%). Disabled. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    AUGMENTATION_COOLDOWN_SECONDS: float = 300.0  # PORTED from TradierConfig 2026-08-17
+    AUGMENT_PYRAMID_TRADIER: bool = False  # BACKTEST_CHANGE_T60: Pyramiding barely fires on stocks (0-10 trades). Disabled. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    BACKTEST_VALIDATED_GATES_TRADIER: bool = True  # Block entries on signals confirmed -EV on both train+test  # PORTED from TradierConfig 2026-08-17
+    BAND_ARROW_ACCUMULATE: bool = True            # every green arrow adds while in-trend  # PORTED from TradierConfig 2026-08-17
+    BAND_ARROW_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    BAND_ARROW_ENTRY_TFS: str = "D,4h,1h"          # buy a green arrow on any of these  # PORTED from TradierConfig 2026-08-17
+    BAND_ARROW_EXIT_TFS: str = "D,4h"              # sell a red arrow on any of these (test +1h)  # PORTED from TradierConfig 2026-08-17
+    BAND_ARROW_MAX_POS_MULT: float = 30.0         # cap total exposure at N x START_POSITION_SIZE  # PORTED from TradierConfig 2026-08-17
+    BAND_ARROW_SLOPE_DEADBAND: float = 0.0        # |slope| must exceed this to count as an arrow  # PORTED from TradierConfig 2026-08-17
+    BB_PULLBACK_GATE_ENABLED: bool = True  # 2026-05-23: SWEEP WINNER — ΔSharpe +0.0056 vs baseline, only positive arm  # PORTED from TradierConfig 2026-08-17
+    BB_PULLBACK_GATE_LONG_MAX: float = 0.30  # PORTED from TradierConfig 2026-08-17
+    BB_PULLBACK_GATE_SHORT_MIN: float = 0.70  # PORTED from TradierConfig 2026-08-17
+    BB_PULLBACK_GATE_TF: str = '15m'  # PORTED from TradierConfig 2026-08-17
+    BB_RECOVERY_DIRECT_BARS: int = 1  # PORTED from TradierConfig 2026-08-17
+    BB_RECOVERY_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    BB_RECOVERY_DIRECT_TIMEFRAME: str = "1h"  # PORTED from TradierConfig 2026-08-17
+    BB_RECOVERY_EXIT_ENABLED_TRADIER: bool = True  # 2026-04-20 sweep: unlocks stranded positions stuck above bb_1h  # PORTED from TradierConfig 2026-08-17
+    BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0  # if >0, uses N * atr_3m instead of pct  # PORTED from TradierConfig 2026-08-17
+    BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.30  # stock pct tolerance around entry_price  # PORTED from TradierConfig 2026-08-17
+    BB_RSI_STOCH_BB_MAX: float = 0.30  # 2026-05-23: was 0.2  # PORTED from TradierConfig 2026-08-17
+    BB_RSI_STOCH_K_MAX: float = 30.0  # 2026-05-23: was 20  # PORTED from TradierConfig 2026-08-17
+    BB_RSI_STOCH_RSI_MAX: float = 40.0  # 2026-05-23: was 30  # PORTED from TradierConfig 2026-08-17
+    BB_RSI_STOCH_SCALP_TF: str = '15m'  # 2026-05-23: was hardcoded 5m  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME: str = "4h"  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT: float = 1.0  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_A_PROTECTIVE_TRAIL_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK: int = 6  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_A_PROTECTIVE_TRAIL_MODE: str = "STDEV"  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME: str = "5m"  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE: str = "ATR"  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD: float = 0.25  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF: str = "4h"  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS: int = 1  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE: str = "lower_top"  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF: str = "1h"  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H: int = 12  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK: int = 20  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    BOUNCE_TOP_REENTRY_MULT: float = 1.5  # 2026-04-26 WIRED — tradier_manage.py:5525, 5544 (divergence reentry size mult, was hardcoded 1.5). Previously DEAD_CONFIRMED (priority 70).  # PORTED from TradierConfig 2026-08-17
+    BOUNCE_TOP_RISING_CROSS_MULT: float = 2.0  # 2026-04-26 WIRED — tradier_manage.py:5531, 5550 (rising/falling WT cross reentry size mult, was hardcoded 1.5; raised default to 2.0 to match config intent). Previously DEAD_CONFIRMED (priority 70).  # PORTED from TradierConfig 2026-08-17
+    BREAKEVEN_EXIT_AFTER_BARS: int = 8  # PORTED from TradierConfig 2026-08-17
+    BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT: float = 0.05  # PORTED from TradierConfig 2026-08-17
+    BREAKEVEN_EXIT_AFTER_BARS_ENABLED: bool = True  # USER 2026-08-07: BE ratchet default ON — "stop to zero once 15m higher-low achieved"; may only leave defaults if a receipt beats it without it (Bible §16.63)  # PORTED from TradierConfig 2026-08-17
+    BREAKEVEN_EXIT_AFTER_BARS_TF: str = '15m'  # PORTED from TradierConfig 2026-08-17
+    BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE: bool = True  # PORTED from TradierConfig 2026-08-17
+    BREAKOUT_SIZE_EMA200_T1_MULT: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    BREAKOUT_SIZE_EMA200_T1_PCT: float = 1.0  # PORTED from TradierConfig 2026-08-17
+    BREAKOUT_SIZE_EMA200_T2_MULT: float = 2.0  # PORTED from TradierConfig 2026-08-17
+    BREAKOUT_SIZE_EMA200_T2_PCT: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    BREAKOUT_SIZE_EMA200_T3_MULT: float = 3.0  # PORTED from TradierConfig 2026-08-17
+    BREAKOUT_SIZE_EMA200_T3_PCT: float = 2.5  # PORTED from TradierConfig 2026-08-17
+    BREAKOUT_TF_SIZE_MULT_5M: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    BROKER_PREFLIGHT_CACHE_S: float = 3.0                     # cache the broker snapshot this long to avoid rate-limit (≤5s per user mandate)  # PORTED from TradierConfig 2026-08-17
+    BROKER_PREFLIGHT_ENABLED: bool = True                     # tradier_manage hits Tradier's /positions itself before every entry order  # PORTED from TradierConfig 2026-08-17
+    BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY: float = 50.0          # refuse further entries on same side if broker already holds ≥ this many shares  # PORTED from TradierConfig 2026-08-17
+    CATALYST_VOLUME_GATE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    CATALYST_VOLUME_RATIO: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    CLENOW_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.  # PORTED from TradierConfig 2026-08-17
+    CLENOW_GATE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    CLENOW_GATE_MIN_SCORE: float = 30.0       # slope_ann × R² (renamed from CLENOW_MIN_SCORE — collided with existing Clenow strategy param at line 1044)  # PORTED from TradierConfig 2026-08-17
+    CLENOW_LOOKBACK: int = 90  # Regression window (Clenow default) ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    CLENOW_MIN_SCORE: float = 5.0  # Min score (slope * R²) to qualify  # PORTED from TradierConfig 2026-08-17
+    CLENOW_POSITION_SIZE: float = 800.0  # Per-entry size  # PORTED from TradierConfig 2026-08-17
+    CLENOW_REBALANCE_DAYS: int = 21  # Monthly rebalance  # PORTED from TradierConfig 2026-08-17
+    CLENOW_REGIME_FILTER: bool = True  # Only hold when SPY > SMA200  # PORTED from TradierConfig 2026-08-17
+    CLENOW_TOP_N: int = 20  # Buy top N% of ranked symbols  # PORTED from TradierConfig 2026-08-17
+    CLOSE_ZONE_SIZE_MULT: float = 1.5  # BACKTEST_CHANGE_T23 size multiplier in close zone  # PORTED from TradierConfig 2026-08-17
+    COMBINED_STOCH_GATE_TRADIER: float = 60.0  # CLAUDE.md stocks=60 (was 40 — sub-crypto value; fixed 2026-05-27). ROLLBACK: 40.0  # PORTED from TradierConfig 2026-08-17
+    COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    CONFLUENCE_MIN_BLOCKS: int = 2  # PORTED from TradierConfig 2026-08-17
+    CONFLUENCE_MODE_ENABLED: bool = False  # vector 1177: N blocks must agree  # PORTED from TradierConfig 2026-08-17
+    CONGRESS_CONVICTION_MIN_SOURCES: int = 2  # PORTED from TradierConfig 2026-08-17
+    CONGRESS_CONVICTION_SIZING_BOOST: float = 1.3  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI2_EXIT_SMA_BARS_DAILY: int = 5  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = True  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI2_THRESHOLD: float = 10.0                    # connors_rsi composite (NPZ field connors_rsi_D); <10 = oversold  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI2_TIME_STOP_BARS_DAILY: int = 10             # max hold = 10 trading days  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI_ENABLED: bool = False  # DISABLED 2026-03-30: augmented MRVL at -6.74% on real money. Needs V5 validation.  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI_ENTRY_THRESHOLD: float = 10.0  # Buy when CRSI < 10  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI_EXIT_THRESHOLD: float = 70.0  # Sell when CRSI > 70  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI_MAX_HOLD_DAYS: int = 20  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    CONNORS_RSI_POSITION_SIZE: float = 600.0  # PORTED from TradierConfig 2026-08-17
+    CONVICTION_SHORT_THRESHOLD: int = 20  # BACKTEST_CHANGE_T9 min conviction score for short entries  # PORTED from TradierConfig 2026-08-17
+    COOLDOWN_BARS_TRADIER: int = 8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = 0.0  # tradier commission-free; crypto 0.08% only  # PORTED from TradierConfig 2026-08-17
+    DC_BREAK_GR_MULT_BREAKOUT: float = 0.1          # Phase 1: tiny entry on DC break  # PORTED from TradierConfig 2026-08-17
+    DC_BREAK_GR_MULT_ENABLED: bool = False          # P2-C: route DC_BREAK entries through GR Phase 1/2 sizing  # PORTED from TradierConfig 2026-08-17
+    DC_BREAK_GR_MULT_RETEST: float = 3.0            # Phase 2: large entry on dc_basis retest + WT confirm  # PORTED from TradierConfig 2026-08-17
+    DC_BREAK_GR_RETEST_TOLERANCE_PCT: float = 0.3   # dc_basis within this % = retest zone  # PORTED from TradierConfig 2026-08-17
+    DC_BREAK_LOW_REQUIRE_HTF_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS: int = 2  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_ACCOUNT: str = "trb"  # Account for daytrade positions  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_BUFFER: float = 0.001  # Min % outside channel to confirm break (0.1%)  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_ENABLED: bool = True  # Enable DC breakout daytrade system (parallel to HODL)  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_K_EXHAUSTED_LONG: float = 85.0  # Don't go long if 15m K > this (chasing)  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_K_EXHAUSTED_SHORT: float = 15.0  # Don't go short if 15m K < this (chasing)  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_LONG_BUDGET: float = 3000.0  # Max $ exposure in daytrade longs  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_MAX_HOLD_MINUTES: float = 240.0  # 4h max hold (flatten before close regardless)  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_MAX_PER_SIDE: int = 5  # Max concurrent daytrade positions per side  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_MAX_POSITION_SIZE: float = 1000.0  # was 2000 — 2026-04-27 emergency halve  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_PRE_CLOSE_MINUTES: int = 120  # Start flattening 2h before market close (14:00 ET)  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True  # Only trade DC breaks when 1h channel is expanding in same direction  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_SHORT_BUDGET: float = 3000.0  # Max $ exposure in daytrade shorts  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_START_SIZE: float = 600.0  # Base order value per daytrade entry  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_STOCH_FILTER: bool = True  # Require stoch not exhausted in entry direction  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_STOP_PCT: float = 0.015  # 1.5% hard stop for daytrades  # PORTED from TradierConfig 2026-08-17
+    DC_DAYTRADE_TARGET_PCT: float = 0.01  # 1% profit target  # PORTED from TradierConfig 2026-08-17
+    DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
+    DC_LOW_FROZEN_STOP_ENABLED: bool = False       # master switch; sweep variants set True + TF  # PORTED from TradierConfig 2026-08-17
+    DC_LOW_FROZEN_STOP_FLOOR_PCT: float = -999.0  # abs loss floor; -999 = off  # PORTED from TradierConfig 2026-08-17
+    DC_LOW_FROZEN_STOP_TF: str = '4h'             # TF to freeze: '5m','15m','1h','4h','D' (D added 2026-07-18 — engine reads dc_low_{tf} generically, NPZ has D)  # PORTED from TradierConfig 2026-08-17
+    DC_LOW_FROZEN_STOP_USE_4BAR: bool = False      # True=dc_low4_{tf} (4-bar tight), False=dc_low_{tf} (20-bar)  # PORTED from TradierConfig 2026-08-17
+    DC_POSITION_ENTRY_THRESHOLD: float = 0.25  # REVERTED 2026-04-17: 0.15 was too tight. Mar-30 baseline 0.25 = Sharpe 18.57 on 61 stocks.  # PORTED from TradierConfig 2026-08-17
+    DC_TIER4_BAR_MATURITY_BLOCK: float = 0.7  # PORTED from TradierConfig 2026-08-17
+    DC_TIER4_BAR_MATURITY_BLOCK_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    DC_TIER_AUG_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    DD_KELLY_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    DD_KELLY_TIER1_PCT: float = 10.0       # at -10% DD, size × 0.5  # PORTED from TradierConfig 2026-08-17
+    DD_KELLY_TIER2_PCT: float = 15.0       # at -15% DD, size × 0.25  # PORTED from TradierConfig 2026-08-17
+    DD_KELLY_TIER3_PCT: float = 20.0       # at -20% DD, size × 0.125  # PORTED from TradierConfig 2026-08-17
+    DELTA_EXIT_REENTRY_COOLDOWN_MIN: float = 45.0   # block DELTA_EXIT for 45min after reentry fill (USER 2026-06-22); Rollback: 0  # PORTED from TradierConfig 2026-08-17
+    DELTA_EXIT_REQUIRE_NONZERO_SCORE: bool = True  # 2026-06-02 USER MANDATE: refuse DELTA_EXIT_BASELINE closes that fire with ALL-ZERO scores (bs=0/es=0/btf=0/etf=0) — 57 such 0-signal closes seen in /history burning commissions at ~0% gain. When True, a delta exit only fires if it carries a real bull/bear speed or TF count. Gate: tradier_manage.py ~6513. ROLLBACK: False.  # PORTED from TradierConfig 2026-08-17
+    DELTA_EXIT_TYPE: str = "speed_decay"  # WINNER ST: speed_decay sp=70 Sharpe 0.710 WR 77.7% (corrected from wt_cross) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_LT_COOLDOWN_BARS: int = 120  # ~10h ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_LT_ENTRY_ACCEL_THRESHOLD: float = 0.0  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_LT_EXIT_SPEED_PCT: int = 50  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_LT_EXIT_TYPE: str = "combined_wt_speed"  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_LT_HTF_GATE: str = "4h_D"  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_OPTIONS_COOLDOWN: int = 120  # 10h between trades ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_OPTIONS_ENTRY_Z: float = 3.0  # Stricter: ez=3.0 for options (wider spreads) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_OPTIONS_EXIT_TYPE: str = "giveback"  # V2 sweep: giveback wins for options ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_OPTIONS_GIVEBACK_PCT: float = 30.0  # Close when 30% of max gain given back ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_OPTIONS_HTF_GATE: str = "4h_D"  # Both 4h AND D must confirm ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_OPTIONS_MAX_HOLD: int = 240  # 20h max hold ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    DELTA_TF_WEIGHTS_STOCK: Optional[dict] = None  # set in __post_init__  # PORTED from TradierConfig 2026-08-17
+    DG_BROKER_MEMORY_SYNC_BLOCK: bool = True                  # Control 6: if broker amt>0 but local memory has no position → REFUSE further opens for that key  # PORTED from TradierConfig 2026-08-17
+    DG_DAILY_GAIN_BLOCK_SHORT_PCT: float = 2.5                # Control 1: refuse SHORT entry if symbol is up ≥ this % today  # PORTED from TradierConfig 2026-08-17
+    DG_DAILY_LOSS_BLOCK_LONG_PCT: float = 2.5                 # Control 2: refuse LONG entry if symbol is down ≥ this % today  # PORTED from TradierConfig 2026-08-17
+    DG_HIGH_VOLATILITY_ATR_PCT: float = 4.0                   # Control 9: if (atr_1h / price) * 100 ≥ this, refuse force-opens (volatile day = false 3m crosses)  # PORTED from TradierConfig 2026-08-17
+    DG_HTF_ALIGN_REQUIRE_1H: bool = False                     # Control 3c: 1h close vs prev 1h close (default OFF — too noisy)  # PORTED from TradierConfig 2026-08-17
+    DG_HTF_ALIGN_REQUIRE_4H: bool = True                      # Control 3b: 4h close vs prev 4h close must agree with side  # PORTED from TradierConfig 2026-08-17
+    DG_HTF_ALIGN_REQUIRE_D: bool = True                       # Control 3a: D close vs prev_close must agree with side  # PORTED from TradierConfig 2026-08-17
+    DG_MAX_FORCE_OPEN_NOTIONAL_USD: float = 4000.0  # 2026-06-03 USER: was 500 — clamped the with-trend build; raised so above-sma200 winners can size up. Direction guards (DG_DAILY_GAIN/LOSS) still block shorting winners/longing losers.             # Control 5: WT_3M_FORCE_OPEN must NEVER size above this $ per fire  # PORTED from TradierConfig 2026-08-17
+    DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG: float = 35.0           # Control 4b: refuse LONG if rsi_15m ≤ this (catch falling knife)  # PORTED from TradierConfig 2026-08-17
+    DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT: float = 65.0          # Control 4a: refuse SHORT if rsi_15m ≥ this  # PORTED from TradierConfig 2026-08-17
+    DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG: float = 35.0            # Control 4d: refuse LONG if rsi_1h ≤ this  # PORTED from TradierConfig 2026-08-17
+    DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT: float = 65.0           # Control 4c: refuse SHORT if rsi_1h ≥ this  # PORTED from TradierConfig 2026-08-17
+    DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT: float = 1.0            # Control 7: if opposite side has gain ≥ this %, block this side opening  # PORTED from TradierConfig 2026-08-17
+    DG_REPEAT_OPEN_PER_DAY_MAX: int = 60                       # Control 8: cap opens per pos_key per session-day to this many fires of WT_3M_FORCE_OPEN  # PORTED from TradierConfig 2026-08-17
+    DG_SMA200_SHORT_BYPASS: bool = True                       # Controls 3/4h/10/11 bypass when price < sma_200_15m — structural bear overrides candle-color gates  # PORTED from TradierConfig 2026-08-17
+    DG_WT_3M_REQUIRE_HTF_CONFIRM: bool = True                 # Control 10: WT_3M_FORCE_OPEN requires at least D OR 4h agreeing with intended side  # PORTED from TradierConfig 2026-08-17
+    DISASTER_GUARD_ENABLED: bool = True                       # master switch — never let this off without explicit user override  # PORTED from TradierConfig 2026-08-17
+    DT_TARGET_ATR_ENABLED: bool = False  # REVERTED 2026-05-18 18:30 (was True since 2026-05-17). Flip had no sample-floor proof; isolated vec sweep queued.  # PORTED from TradierConfig 2026-08-17
+    DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # 2026-04-20 le_dynamic winner: exit when opposite-direction LE score >= threshold  # PORTED from TradierConfig 2026-08-17
+    DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # 2026-04-20 le_dynamic winner: counter-exit trigger threshold (score=55 validated)  # PORTED from TradierConfig 2026-08-17
+    D_TREND_REQUIRED: bool = True  # vector: ha_D alignment required  # PORTED from TradierConfig 2026-08-17
+    EARNINGS_AVOIDANCE_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    EARNINGS_BLACKOUT_DAYS_AFTER: int = 1      # T+1 still blackout (drift unclear early)  # PORTED from TradierConfig 2026-08-17
+    EARNINGS_BLACKOUT_DAYS_BEFORE: int = 1     # T-1 blackout  # PORTED from TradierConfig 2026-08-17
+    EARNINGS_FORCE_TRIM_PCT: float = 0.5        # 50% trim T-1 close  # PORTED from TradierConfig 2026-08-17
+    EARNINGS_PEAD_BOOST_ENABLED: bool = False  # post-earnings-drift overlay (start OFF)  # PORTED from TradierConfig 2026-08-17
+    EARNINGS_PEAD_BOOST_MULT: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    EARNINGS_PEAD_MIN_SURPRISE_PCT: float = 4.0  # PORTED from TradierConfig 2026-08-17
+    EMA_9_21_FILTER_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    EMA_9_21_TIMEFRAME: str = "5m"  # PORTED from TradierConfig 2026-08-17
+    EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17
+    ENABLE_IP_ROTATION: bool = False  # NOT DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE: float = 0.015  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME: str = "5m"  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN: int = 2  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H: float = 50.0  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE: str = "SHORT"  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS: tuple[str, ...] = ("WDAY",)  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H: float = 40.0  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION: str = "none"  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE: float = 0.008  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY: bool = False  # PORTED from TradierConfig 2026-08-17
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME: str = "5m"  # PORTED from TradierConfig 2026-08-17
+    ENTRY_MIN_ALIGNMENT: int =             5      # 2026-06-09: lowered 10→5 (10=impossible, max score=10 but alignment=5/10 was blocking good trades). Was 8→10. ROLLBACK: 8.  # PORTED from TradierConfig 2026-08-17
+    ENTRY_PRIMARY_TF: str =                '4h'   # BACKTEST_CHANGE_T7 was 1h → 4h slower primary TF  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_HHHL_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS: int = 1  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD: float = 20.0  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_HHHL_DIRECT_TFS: list[str] = field(default_factory=lambda: ["1h"])  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_PARENT_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_PARENT_DIRECT_FAMILY: str = "ENTRY_1H_TURN_UP"  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_PARENT_DIRECT_THRESHOLD: float = 40.0  # PORTED from TradierConfig 2026-08-17
+    ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION: str = "rising-vs-prior"  # PORTED from TradierConfig 2026-08-17
+    ENTRY_TRIGGER_TF: str =                '15m'  # Trigger TF for crossover (was 5m, shifted to 15m for stocks) ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:2680 referenced in entry eval  # PORTED from TradierConfig 2026-08-17
+    ENTRY_ZONE_LONG: float =               80.0   # 2026-04-27 LOOSENED from 35 — was blocking 65% of long entries. Now permissive: longs allowed when k<80.  # PORTED from TradierConfig 2026-08-17
+    ENTRY_ZONE_SHORT: float =              20.0   # 2026-04-27 FIX TYPO — was 100.0 (always-block bug from 2026-04-16 wiring task; comment said 100-35=65 but value typed wrong). Loosened to 20: shorts allowed when k>20.  # PORTED from TradierConfig 2026-08-17
+    EOD_RATIO_ENFORCE_TRADIER: bool = False  # BACKTEST_CHANGE_147: Scale down entries 30min before close, block at 5min  # PORTED from TradierConfig 2026-08-17
+    EOD_SLIM_RATIO_ENABLED: bool = False  # 2026-06-02 USER MANDATE: OFF. last_hour_balancing_loop EOD_SLIM_RATIO trim fires at any gain (incl ~0%), LIVE-ONLY rebalance not modeled in backtest. ROLLBACK: True.  # PORTED from TradierConfig 2026-08-17
+    EPISODIC_PIVOT_ENABLED: bool = False  # OFF for trb. TRC overrides to True.  # PORTED from TradierConfig 2026-08-17
+    EP_MAX_CONSOLIDATION_DAYS: int = 8  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    EP_MAX_RETRACE_PCT: float = 25.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    EP_MIN_GAP_PCT: float = 5.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    EP_MIN_VOL_MULT: float = 3.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    EP_POSITION_SIZE: float = 800.0  # PORTED from TradierConfig 2026-08-17
+    EXIT_ALGO_SCORE_ENABLED: bool = False        # Old calculate_signal_score exit. Bypassed scorer, closed PLTR.  # PORTED from TradierConfig 2026-08-17
+    EXIT_BOUNCE_TOP_ENABLED: bool = False        # Bounce-top loss exit. Percentage-based in disguise.  # PORTED from TradierConfig 2026-08-17
+    EXIT_CONV_FAIL_ENABLED: bool = False         # Convergence failure early exit. Was closing at tiny gains.  # PORTED from TradierConfig 2026-08-17
+    EXIT_HARD_DROP_5M_ENABLED: bool = False      # Price < prev 5m low. Too aggressive — kills options on minor dips.  # PORTED from TradierConfig 2026-08-17
+    EXIT_HTF_QUICK_TP_ENABLED: bool = True       # HTF Quick TP: 1h exhausted + LTFs turning + 4h intact. KEEP — proven.  # PORTED from TradierConfig 2026-08-17
+    EXIT_IBS_EXHAUSTION_ENABLED: bool = False    # Internal Bar Strength extreme. Minor signal, not worth standalone exit.  # PORTED from TradierConfig 2026-08-17
+    EXIT_K5M_BOUNCE_ENABLED: bool = False       # K5M stoch bounce turn + low break. Was closing on 5m noise.  # PORTED from TradierConfig 2026-08-17
+    EXIT_MAX_HOLD_ENABLED: bool = False          # Max hold timeout. OFF — technicals decide, not clocks.  # PORTED from TradierConfig 2026-08-17
+    EXIT_MAX_HOLD_MINUTES: float = 99999         # If enabled: max minutes before force-close.  # PORTED from TradierConfig 2026-08-17
+    EXIT_MI_ENABLED: bool = False                # Momentum Interception sub-signals. Tested: marginal value.  # PORTED from TradierConfig 2026-08-17
+    EXIT_ON_ALL: bool = True  # PORTED from TradierConfig 2026-08-17
+    EXIT_SENTIMENT_ENABLED: bool = False         # Sentiment collapse exit. Unreliable signal source. ; WIRED 2026-04-16 (priority 60/100) — tradier_manage.py:4149 exit guard  # PORTED from TradierConfig 2026-08-17
+    EXIT_STRUCT_BREAK_5M_ENABLED: bool = False   # 5m LH/HL structure exit. Too noisy for swing/options.  # PORTED from TradierConfig 2026-08-17
+    EXIT_STRUCT_DC_BREAK_ENABLED: bool = True    # DC structural break (multi-TF). KEEP — catches real breakdowns.  # PORTED from TradierConfig 2026-08-17
+    FAVORABLE_SLOPE_HOLD_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_DC_CONFIRM: bool = True  # DC retest logic handles smart filtering now  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_DC_MAX_LONG: float = 0.5  # Sweep: 0.25-1.0 all Sharpe>1.36. 0.5 = balanced.  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_ENABLED: bool = True  # VALIDATED: Sharpe 1.54, +100% PnL, 25/25 configs profitable. V8 T10 sweep 2026-04-07.  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_EVAL_MINUTES: int = 30  # 30min after open. Research: first 30min predicts day 82%.  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_MAX_POSITIONS: int = 5  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_MFI_CONFIRM: bool = False  # Sweep: MFI barely matters (1.314 vs 1.313). OFF = more entries.  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5  # Sweep: 0.3-1.0% all Sharpe>1.47. 0.5% = sweet spot (82% day-follows rate).  # PORTED from TradierConfig 2026-08-17
+    FH_MOMENTUM_POSITION_SIZE: float = 600.0  # PORTED from TradierConfig 2026-08-17
+    FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER: float = -8.0  # PORTED from TradierConfig 2026-08-17
+    FULL_RECIPE_ONLY_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    FUNDING_GATE_PC_RATIO_LONG_MAX: float = 1.2       # block LONG when put/call ratio >= this (bearish flow)  # PORTED from TradierConfig 2026-08-17
+    FUNDING_GATE_PC_RATIO_SHORT_MIN: float = 0.83     # block SHORT when put/call ratio <= this (bullish flow)  # PORTED from TradierConfig 2026-08-17
+    FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED: bool = False # apply gate to hedge entries too (default OFF)  # PORTED from TradierConfig 2026-08-17
+    FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER: bool = True   # prefer near_money_pc_ratio (±5% strikes) when present — purer signal  # PORTED from TradierConfig 2026-08-17
+    FUNDING_GATE_TRADIER_STALE_MAX_HOURS: float = 4.0     # skip gate if cache older than 4h (fail-open)  # PORTED from TradierConfig 2026-08-17
+    GAP_FILL_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    GAP_FILL_MAX_GAP_PCT: float = 5.0  # PORTED from TradierConfig 2026-08-17
+    GAP_FILL_MIN_GAP_PCT: float = 0.5  # BACKTEST_CHANGE_MT1: was 1.0. T6 sweep: Sharpe +0.120 (GAP=0.5) vs -0.138 (GAP=1.0). 180 configs, 2yr, 10 symbols. Smaller gaps fill more reliably.  # PORTED from TradierConfig 2026-08-17
+    GAP_FILL_POSITION_SIZE: float = 600.0  # BACKTEST_CHANGE_T30 was 400 → 600 align sizing  # PORTED from TradierConfig 2026-08-17
+    GAP_FILL_STOP_MULT: float = 0.3  # PORTED from TradierConfig 2026-08-17
+    GAP_FILL_TP_FILL_PCT: float = 0.7  # BACKTEST_CHANGE_T18 was 0.5 → 0.7 capture more of gap  # PORTED from TradierConfig 2026-08-17
+    GHOST_ABSENT_ALERT_THRESHOLD: int = 3  # 2026-05-28: fire desktop alert after N consecutive API misses (state NEVER zeroed)  # PORTED from TradierConfig 2026-08-17
+    GHOST_CLOSE_REQUIRE_CONFIRMATION: bool = True   # DEPRECATED — ghost-close zeroing abolished 2026-05-28 (ASTS disaster)  # PORTED from TradierConfig 2026-08-17
+    GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.  # PORTED from TradierConfig 2026-08-17
+    GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # GOLDEN_RULE exit gate: only exit when N TFs show bearish (0=off, no restriction on exits).  # PORTED from TradierConfig 2026-08-17
+    GR_HTF_GATE_ENABLED: bool = False       # NEW. Adds GR HTF alignment gate (uses wt_bull_alignment/wt_bear_alignment). ROLLBACK: False (no change — gate stays off until validated)  # PORTED from TradierConfig 2026-08-17
+    GR_HTF_REQUIRE_BEAR: int = 1            # Used only when GR_HTF_GATE_ENABLED=True  # PORTED from TradierConfig 2026-08-17
+    GR_HTF_REQUIRE_BULL: int = 1            # Used only when GR_HTF_GATE_ENABLED=True  # PORTED from TradierConfig 2026-08-17
+    HARD_MAX_SYMBOL_VALUE_TRADIER: float = 2500.0  # PORTED from TradierConfig 2026-08-17
+    HEDGE_CROSS_SYMBOL_TRADIER: bool = True  # BACKTEST_CHANGE_T62: Cross-symbol hedge enabled. 25% size, trigger -1%, no momentum gate. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HEDGE_SAME_SYMBOL_TRADIER: bool = False  # BACKTEST_CHANGE_T63: Same-symbol hedge DISABLED for stocks. Cross-symbol only. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HEDGE_SIZE_RATIO_TRADIER: float = 0.25  # BACKTEST_CHANGE_T62: Hedge at 25% of losing value. Sweet spot in sweep. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HEDGE_TRIGGER_LOSS_TRADIER: float = -1.0  # BACKTEST_CHANGE_T62: Trigger hedge at -1% loss (stocks: tighter than crypto -2% due to daily gaps). ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HIGH_GAIN_AUGMENTATION_MIN_SIZE: float = 200.0  # PORTED from TradierConfig 2026-08-17
+    HODL_LONG_ONLY: bool = True  # BACKTEST_CHANGE_T54: HODL strategy is LONG only. SHORT on stocks = negative returns (upward bias kills hold-forever shorts). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HOLD_BARS_CLOSE: int = 50  # BACKTEST_CHANGE_T25 max hold bars during close zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HOLD_BARS_MID: int = 500  # BACKTEST_CHANGE_T25 max hold bars during mid zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HOLD_BARS_OPEN: int = 200  # BACKTEST_CHANGE_T25 max hold bars during open zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    HTF_ALIGNMENT_ENABLED: bool = True  # vector 1140: htf_cnt >= HTF_MIN_ALIGNED  # PORTED from TradierConfig 2026-08-17
+    HTF_ALIGN_REQUIRED_TRADIER: int = 2     # CLAUDE.md stocks ≥2 (was 1 — crypto value; fixed 2026-05-27). ROLLBACK: 1  # PORTED from TradierConfig 2026-08-17
+    HTF_DC_BREAKOUT_TRADIER_ENABLED: bool = False      # F2: additive entry — close > dc_high_4h * (1+thr) AND W WT on side  # PORTED from TradierConfig 2026-08-17
+    HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT: bool = True  # require W WaveTrend on side (HTF anchor)  # PORTED from TradierConfig 2026-08-17
+    HTF_DC_BREAKOUT_TRADIER_TF: str = "4h"             # 4h | D | W (DC band timeframe)  # PORTED from TradierConfig 2026-08-17
+    HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT: float = 0.0 # 0 = exact break; 0.1 = +0.1% confirm  # PORTED from TradierConfig 2026-08-17
+    HTF_MIN_ALIGNED: int = 1  # PORTED from TradierConfig 2026-08-17
+    HTF_W_M_ALIGN_GATE_TRADIER_ENABLED: bool = False   # F1: entry GATE — N of 2 (W, M) WT must agree with side  # PORTED from TradierConfig 2026-08-17
+    HTF_W_M_ALIGN_TRADIER_REQUIRED: int = 2            # 1=either; 2=both  # PORTED from TradierConfig 2026-08-17
+    HTF_W_REVERSAL_EXIT_TRADIER_ENABLED: bool = False  # F3: exit when wt1_W against side AND wt1_D against side  # PORTED from TradierConfig 2026-08-17
+    HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D: bool = True # also require D against (2-TF anchor; if False, W alone suffices)  # PORTED from TradierConfig 2026-08-17
+    INDICATORS_FILE: Path = DATA_DIR / "tradier_indicators_latest.json"  # WIRED 2026-04-16 (priority 15/100) — tradier_rankings.py:144  # PORTED from TradierConfig 2026-08-17
+    INDICATOR_UPDATE_INTERVAL: float = 30.0  # BACKTEST_CHANGE_T49 was 60 → 30 faster indicator refresh ; DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    K_LOWER_HIGH_EXIT_ENABLED: bool = True        # v8 engine: exit if k peaks below extreme and turns down  # PORTED from TradierConfig 2026-08-17
+    K_LOWER_HIGH_EXTREME: float = 95.0           # only fires if k_prev < 95 (didn't reach true extreme)  # PORTED from TradierConfig 2026-08-17
+    K_LOWER_HIGH_LTF_THRESHOLD: float = 65.0     # k_5m must reach >= 65 to qualify as failed rally  # PORTED from TradierConfig 2026-08-17
+    K_ZONE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, K_ZONE_LONG/SHORT_THRESHOLD veto entries on wt_dc path (proves switch gates trades). Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
+    LEADERBOARD_LONG: Path = BASE_PATH / "symbols_long_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    LEADERBOARD_SHORT: Path = BASE_PATH / "symbols_short_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    LIVE_INDICATOR_MAX_BARS_PER_TF: int = 600                 # Clip klines bundle to latest N bars per TF in live indicator cycles (0=unlimited; reduces 15+min cycles to <2min)  # PORTED from TradierConfig 2026-08-17
+    LOCAL_EXTREMES_MIN_SCORE: float = 45.0  # 2026-04-20 le_dynamic winner: min LE score to allow entry (262sym Sharpe 3.5479). Wire in tradier_manage.py entry gate.  # PORTED from TradierConfig 2026-08-17
+    LOG_BACKUP_COUNT: int = 30  # PORTED from TradierConfig 2026-08-17
+    LOG_FILE_TRADIER_MANAGE: Path = LOG_DIR / "tradier_manage.log"  # DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    LOG_FILE_TRADIER_POSITIONS: Path = LOG_DIR / "tradier_positions.log"  # PORTED from TradierConfig 2026-08-17
+    LOG_FILE_TRADIER_PRICES: Path = LOG_DIR / "tradier_prices.log"  # PORTED from TradierConfig 2026-08-17
+    LOG_MAX_BYTES: int = 1024 * 1024 * 20  # PORTED from TradierConfig 2026-08-17
+    LONG_STRUCT_EXIT_TF: str = "D"  # PORTED from TradierConfig 2026-08-17
+    LONG_WAIT_DIRECT_BOUNCE_DISTANCE: float = 0.015  # PORTED from TradierConfig 2026-08-17
+    LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME: str = "15m"  # PORTED from TradierConfig 2026-08-17
+    LONG_WAIT_DIRECT_CONFIRMATION: str = "stoch5"  # PORTED from TradierConfig 2026-08-17
+    LONG_WAIT_DIRECT_DEEP_K4H: float = 50.0  # PORTED from TradierConfig 2026-08-17
+    LONG_WAIT_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    LONG_WAIT_DIRECT_TURN_K1H: float = 40.0  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_E02_EXIT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_ENTRY_PRIORITY: bool = False           # 2026-07-20 USER: evaluate band/regime entry FIRST (was last in cascade → 0 fires on 3189 eligible ARM bars)  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_ABOVE_TOP_MULT: float = -1.0   # <0 = use TOP_MULT ("3x at or above top")  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_BASE_UNIT_USD: float = 2000.0  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_BASIS: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_BELOW_BOTTOM_MULT: float = 0.0 # below the lower band = NO trade  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_BOTTOM_MULT: float = 10.0      # at the lower band (scalar fallback)  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_CAPACITY_USD: float = 16000.0  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_CENTER: float = 0.5            # plateau edge for center_plateau mode  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_MODE: str = "center_plateau"   # linear | center_plateau (10x at centre and below)  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_ORDINARY_PARITY_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_STOCH_EXTREME: float = 30.0  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_TF_BOTTOM: dict = field(default_factory=lambda: {"D": 10.0, "4h": 6.0, "1h": 4.0})  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_TF_TOP: dict = field(default_factory=lambda: {"D": 6.0, "4h": 4.0, "1h": 1.0})  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_TOP_MULT: float = 3.0          # at the upper band (scalar fallback)  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_LADDER_TRIGGER: str = "union"          # green | structure | union  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_SIZE_DEPTH_GAIN: float = 1.0           # size law: deeper in channel = bigger  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_SIZE_MAX: float = 3.0  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_SIZE_SLOPE_GAIN: float = 1.0           # size law: steeper HTF slope = bigger  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN: float = 240.0 # and the position must have held this long first  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_SLOPE_FLIP_MIN_PCT_DAY: float = 0.05   # deadband: slope must be decisively negative (%/day), not just <=0 — bare zero-cross caused 60/80 MU churn exits at +0.0x%  # PORTED from TradierConfig 2026-08-17
+    LR_BAND_SLOPE_NORM_PCT_DAY: float = 0.3  # PORTED from TradierConfig 2026-08-17
+    LR_PCTB_D_SHORT_THRESHOLD: float = 0.1  # BACKTEST_CHANGE_T10 daily LR %B threshold for shorts  # PORTED from TradierConfig 2026-08-17
+    LUNCH_DEADZONE_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    LUNCH_DEADZONE_MODE: str = "BLOCK_MOMENTUM"  # PORTED from TradierConfig 2026-08-17
+    LUNCH_DEADZONE_SIZE_MULT: float = 0.5  # DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    MACRO_BLACKOUT_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    MACRO_BLACKOUT_SIZE_MULT: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    MANAGE_REDUCE: bool = True  # PORTED from TradierConfig 2026-08-17
+    MANDATORY_REENTRY_DC4_WINDOW_MIN: float = 30.0  # require dc_high4_5m break within 30min for MANDATORY_REENTRY exits (USER 2026-06-22); Rollback: 0  # PORTED from TradierConfig 2026-08-17
+    MANDATORY_REENTRY_WT_FILTER_ENABLED: bool = True  # 2026-08-03 EMERGENCY: price-cross reentry requires 15m WT confirmation  # PORTED from TradierConfig 2026-08-17
+    MANDATORY_REENTRY_WT_FILTER_MIN_TFS: int = 1  # PORTED from TradierConfig 2026-08-17
+    MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY: float = 0.0  # PORTED from TradierConfig 2026-08-17
+    MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP: bool = False  # PORTED from TradierConfig 2026-08-17
+    MANDATORY_REENTRY_WT_FILTER_TF_MODE: str = "15m_only"  # PORTED from TradierConfig 2026-08-17
+    MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO: float = 0.90  # PORTED from TradierConfig 2026-08-17
+    MARKET_CLOSE_HOUR: int = 16  # PORTED from TradierConfig 2026-08-17
+    MARKET_CLOSE_MINUTE: int = 0  # PORTED from TradierConfig 2026-08-17
+    MARKET_OPEN_HOUR: int = 9  # DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    MARKET_OPEN_MINUTE: int = 30  # DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    MAX_ALLOWED_DRAWDOWN_PCT: float = 50.0  # PORTED from TradierConfig 2026-08-17
+    MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies  # PORTED from TradierConfig 2026-08-17
+    MAX_DAILY_LOSS_PCT: float = 3.0  # BACKTEST_CHANGE_T37 halt trading at 3% daily loss  # PORTED from TradierConfig 2026-08-17
+    MAX_SYMBOL_VALUE_TRADIER: float = 3750.0  # was 7500 / orig 15000 — 2026-04-27 second cut  # PORTED from TradierConfig 2026-08-17
+    MFI_ENTRY_ENABLED: bool = True   # FIXED 2026-05-18: semantics inverted from "oversold-required" to "overbought-block"  # PORTED from TradierConfig 2026-08-17
+    MFI_ENTRY_LONG_MAX: float = 60.0  # vector MFI gate long  # PORTED from TradierConfig 2026-08-17
+    MFI_ENTRY_SHORT_MIN: float = 40.0  # vector MFI gate short  # PORTED from TradierConfig 2026-08-17
+    MFI_FLIP_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_148: Exit when MFI exhausts (+3.91% avg vs +1.09% fixed TP, 44 trades)  # PORTED from TradierConfig 2026-08-17
+    MFI_FLIP_EXIT_LONG_THRESHOLD: float = 70.0  # Exit LONG when MFI_1h > 70 (overbought = sell)  # PORTED from TradierConfig 2026-08-17
+    MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0  # Exit SHORT when MFI_1h < 30 (oversold = cover)  # PORTED from TradierConfig 2026-08-17
+    MFI_LONG_THRESHOLD_D: float = 80.0  # block LONG when mfi_D > 80 (overbought reversal expected); was 20.0 (oversold-required, broken)  # PORTED from TradierConfig 2026-08-17
+    MICRO_SCALP_STOCKS_ACCOUNTS: List[str] = field(default_factory=lambda: [])#"trb", "trc", "tra"])  # PORTED from TradierConfig 2026-08-17
+    MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT: float = 0.2  # PORTED from TradierConfig 2026-08-17
+    MICRO_SCALP_STOCKS_MAKER_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT: float = 0.6  # 2026-05-28 USER: micro-scalp may only CLOSE a position whose gain has ALREADY peaked >= this floor. Stops 0.05-0.1% round-trip churn (IBIT g0.074% peak0.098% never near 0.5%).  # PORTED from TradierConfig 2026-08-17
+    MID_ZONE_SHORT_EXTRA_IND: str = "wt_crossunder_15m"  # BACKTEST_CHANGE_T24 extra indicator for mid-zone shorts ; DEAD_CONFIRMED (priority 35/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_GATE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_LONG_BUDGET: float = 4000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_MAX_HOLD_DAYS: int = 40  # Swing trade hold  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_MIN_SCORE: int = 5          # int 0-6 (5 = all 5 SEPA conditions met)  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_MIN_SEPA_SCORE: int = 5  # Need 5 of 6 conditions  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_POSITION_SIZE: float = 800.0  # PORTED from TradierConfig 2026-08-17
+    MINERVINI_TARGET_PCT: float = 25.0  # Take profit at 25%  # PORTED from TradierConfig 2026-08-17
+    MIN_EXIT_TF_AGAINST_TRADIER: int = 3  # 2026-04-26: 3 TFs against (was 2) — fewer false exits  # PORTED from TradierConfig 2026-08-17
+    MIN_HOLD_BARS_TRADIER: int = 40  # 2026-04-20 sweep: 40 (200min) consistently wins over 32 (160min)  # PORTED from TradierConfig 2026-08-17
+    MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback  # PORTED from TradierConfig 2026-08-17
+    MI_EXIT_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, MI_EXIT_ENABLED_TRADIER actually gates exits. Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_CONFIRM_PCT: float = 2.0             # 5m green-arrow confirm: entry only when price reverses >= this % off the running low (lab phase_b)  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_ENTRY_ENABLED: bool = False          # 2026-07-20 USER multi-TF arrow system (lab-proven ARM 5.81x b&h sized); OFF until Tier-2 confirms  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_SHORT_ENTRY_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_SIZE_GAIN: float = 1.0               # size = 1 + gain*score (deeper HTF + steeper slope = bigger)  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_SIZE_MAX: float = 4.0  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_SLOPE_LAMBDA: float = 1.0            # weight of the slope term vs depth term  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_SLOPE_NORM_PCT_DAY: float = 0.3  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_THETA: float = 0.3                   # entry gate on the weighted HTF band-depth+slope score  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_TRAIL_EXIT_ENABLED: bool = False     # lab-faithful exit: close when price retraces CONFIRM_PCT off running high; loss-closes need MTF_ARROW_TRAIL in the noloss bypass list (pack-scoped)  # PORTED from TradierConfig 2026-08-17
+    MTF_ARROW_WEIGHTS: dict = field(default_factory=lambda: {"1h": 0.35, "4h": 0.35, "D": 0.30})  # PORTED from TradierConfig 2026-08-17
+    MTF_ATR_MULTITF_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS: int = 1  # PORTED from TradierConfig 2026-08-17
+    MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    MTF_ATR_MULTITF_DIRECT_MULT: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    MTF_ATR_MULTITF_DIRECT_TIMEFRAMES: list[str] = field(default_factory=lambda: ["1h", "4h", "D"])  # PORTED from TradierConfig 2026-08-17
+    MTF_WT_CROSS_EXIT_DIRECT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_EXIT_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_HTF_K_MIN: float = 80.0  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_HTF_MIN_TFS: int = 1  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_HTF_RSI_MIN: float = 60.0  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_HTF_TFS: str = "1h+4h"  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_LTF_FALL_MIN_TFS: int = 2  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_LTF_FALL_TFS: str = "5m+15m"  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_MIN_GAIN_PCT: float = 0.0  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_REENTRY_DC_TOL_PCT: float = 2.0  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_REENTRY_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_REENTRY_STOCH_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_REQUIRE_CLOSE_REVERSAL: bool = True  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_REQUIRE_HIGH_REVERSAL: bool = True  # PORTED from TradierConfig 2026-08-17
+    MU_CORRECTION_SYMBOLS: str = "MU"  # PORTED from TradierConfig 2026-08-17
+    NEWBORN_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    NEWBORN_DC_STOP_FIELD: str = 'dc_low4_5m'  # PORTED from TradierConfig 2026-08-17
+    NEWBORN_DC_STOP_MAX_AGE_MIN: float = 20.0  # PORTED from TradierConfig 2026-08-17
+    NOLOSS_BB1H_GATE_ENABLED: bool = False  # 2026-07-08 GAINMO triage: True→False — wired loss-close on 1h-BB break bypassing STOCK_MIN_HOLD + UNIVERSAL_NOLOSS_GATE, outside the sanctioned loss-exit trio; value contradicted its own KILL comment  # PORTED from TradierConfig 2026-08-17
+    NOLOSS_ENABLED: bool = False  # vector 1116: hold losers unless DC recovery  # PORTED from TradierConfig 2026-08-17
+    OBLIGATORY_SECTOR_HEDGE_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS: float = 90.0          # how often to scan stock losers  # PORTED from TradierConfig 2026-08-17
+    OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H: bool = True   # USER mandate: 5m AND 1h against (stocks 5m base TF)  # PORTED from TradierConfig 2026-08-17
+    OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER: float = 0.5 # |total OI change since last cache snapshot| significance threshold  # PORTED from TradierConfig 2026-08-17
+    OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    OPENING_BUFFER_NO_CLOSE_MINUTES: float = 30.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_ALERT_ABS_LOSS_PP: float = 25.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_ALERT_DROP_PP: float = 5.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD: float = 0.85  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BASE_CAP: float = 5000.0          # Max with zero diversification  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BUY_MAX_OTM_PCT: float = 3.0         # Reject strikes >3% OTM (calls) / <3% ITM for puts relative to underlying  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BUY_MIN_ABS_DELTA: float = 0.35      # Reject lottery tickets — min |delta| for any new buy  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BUY_MIN_DTE: int = 60                # User rule 2026-04-22: never open options <2 months out (JNJ bought at 22 DTE = theta trap)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BUY_MIN_WT_DC_SCORE: float = 70.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BUY_PREFERRED_DTE: int = 90          # Prefer 3+ months out — score bonus applied when dte >= this  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BUY_REQUIRE_D_ALIGN: bool = True     # CALL needs wt_cross_D != BEAR; PUT needs wt_cross_D != BULL  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_BUY_WT_DC_GATE_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CONTINUOUS_SECTOR_GATE: bool = True  # Block new buys that widen existing sector/group/symbol violation  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_DTE_MAX: int = 90                # Max DTE (3 months — keeps liquidity + balances theta capture)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_DTE_MIN: int = 60                # Min days-to-expiry — at least 2 months ahead (time-premium strategy)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_EDGE_MARGIN: float = 1.15        # Sell-structure must beat buy-structure edge by 15% to be picked  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_ENABLED: bool = False            # Master switch — keep False until backtest + forward-test proven  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MAX_CAPITAL_PCT: float = 0.30    # Max fraction of available cash tied up in CSPs at once  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MAX_DELTA: float = 0.30          # Max |delta| on the put sold (30Δ ≈ 70% win rate empirically)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MAX_HOLD_DAYS: int = 21          # Force close after 21 days open regardless (~50% through a 60-DTE window)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT: float = 0.03  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MIN_DELTA: float = 0.15          # Min |delta| — don't sell puts too far OTM (premium too thin)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MIN_EXTRINSIC_PCT: float = 0.015 # Min extrinsic value as % of strike (1.5%) — premium must be worth it  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MIN_IV_RANK: float = 40.0        # Only sell premium when IV rank >= 40 (rich premium)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_CALL_BREACH_PCT: float = 0.05     # SHORT CALL: close if underlying rises 5%+ ABOVE strike (disabled v1 but gate wired)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT: float = 0.15  # SHORT CALL: close on 15%+ upside gap from entry  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N: int = 3      # N positions breaching simultaneously triggers emergency log/alert  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT: float = 0.15  # SHORT PUT: close if underlying drops 15%+ from entry spot (catches gap-down / earnings crash)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_LOG_EVERY_TICK: bool = True       # Log every poll for audit trail (required for non-skippable)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT: float = -0.20   # Arm close gate only on 20%+ premium drawdown (was -5%)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_MAX_LOSS_PCT: float = -1.50       # Hard premium cut: pnl <= -150% (buy-back costs 2.5x premium) — catastrophic only  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_POLL_SEC: int = 60                # Poll interval in seconds  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN: bool = True    # Require wt_D turn against position to confirm soft close  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT: float = 0.05   # SHORT PUT: close if underlying drops 5%+ BELOW strike (put is 5% ITM)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_NAKED_CALL_ENABLED: bool = False # HARD-disabled. Unlimited upside risk. Never flip without Level-4 margin + explicit approval.  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_CSP_PROFIT_TARGET_PCT: float = 0.50  # Close at 50% of premium collected (≈ 2-week avg hold on 60-DTE position)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN: float = 60.0  # don't re-fire same OCC within N minutes  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_EQUITY_HEDGE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD: float = 2500.0    # was 5000 — 2026-04-27 emergency halve  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST: float = 100.0  # was 150 — 2026-04-27 emergency tighten: hedge ≤ 1× option cost basis  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_EQUITY_HEDGE_TRIGGER_PCT: float = -10.0  # Unsellable := bid implies loss ≤ this (%)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_FULL_DIV_CAP: float = 15000.0     # Max with hedging + 3+ sector groups  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGED_CAP: float = 10000.0       # Max with call+put hedging within sectors  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS: int = 2  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_DC_REL_TOL_PCT: float = 1.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_K_OVERSOLD_PCT: float = 25.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_LADDER_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_PAIR_GUARD_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_PUT_DELTA_MAX: float = 0.50  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_PUT_DELTA_MIN: float = 0.30  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_PUT_DTE_MAX: int = 120  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_PUT_DTE_MIN: int = 45  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_PUT_MAX_IV_RANK: float = 35.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT: float = 8.0  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_HEDGE_RATIO_MIN: float = 0.25     # Min puts/(puts+calls) to qualify as hedged  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_LEVEL_BREAK_BUFFER: float = 0.01     # 1% buffer past dc_low_D (call) / dc_high_D (put)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_LEVEL_BREAK_MIN_DTE: int = 14        # Don't fire on sub-14-DTE (noise dominates)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_LIVE_TRADING_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MARKET_RATIO_MAX: float = 0.75    # Max fraction of exposure that is bull-market-bets  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MARKET_RATIO_MIN: float = 0.25    # Min fraction of exposure that is bull-market-bets  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_CONTRACTS_PER_ORDER: int = 3   # Hard cap: never buy >N contracts in one order (practical ceil given $800/order + $9/share rule)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_LOSS_GUARD_ENABLED: bool = False # 2026-04-22 disabled per user — bottom-seller  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -60.0   # (inactive unless re-enabled) 14 < DTE <= 30  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -80.0   # (inactive unless re-enabled) DTE > 30  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -40.0  # (inactive unless re-enabled) DTE <= 14  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_ORDER_BUDGET: float = 400.0         # was 800 — 2026-04-27 emergency halve  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_PER_GROUP: float = 0.60       # Max 60% of portfolio in one sector group  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_PER_SECTOR: float = 0.35      # tightened 2026-04-26 per §L6.2 (was 0.40)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_PER_SYMBOL: float = 0.20      # tightened 2026-04-26 per §L6.1 (was 0.25)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MAX_SINGLE_CONTRACT_PRICE: float = 9.0  # If price/share > this, max qty=1  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MIN_GROUPS: int = 3               # Min groups for full diversification tier  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_MIN_SECTORS: int = 2              # Min sectors for hedged tier  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_PREMARKET_NO_FIRE: bool = True  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_DTE_MAX: int = 75               # Max DTE (~10 weeks)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_DTE_MIN: int = 55               # Min DTE (~2 months out)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_ENABLED: bool = True           # Master gate — flip when ready  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_IV_RANK_MIN: float = 75.0       # Chain-relative IV rank gate (biggest backtest edge)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_MAX_CONCURRENT: int = 15        # Max simultaneous spread positions  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_MAX_HOLD_DAYS: int = 21         # Force close after 21 days  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_PROFIT_TARGET_PCT: float = 0.50 # Close at 50% of credit captured  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_SHORT_DELTA: float = 0.25       # Short-put target delta  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_UNIVERSE: tuple = ("SPY", "QQQ", "AAPL", "AMD", "AMZN", "META", "NVDA", "JPM", "CAT", "XLK", "XLF", "GLD")  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_SPREAD_WIDTH: float = 10.0             # $ between short and long strike  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_STOCK_CSP_ENABLED: bool = False        # Disabled by default; enable explicitly  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_STOCK_CSP_IV_RANK_MIN: float = 85.0    # Stricter than spreads  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_STOCK_CSP_MAX_CONCURRENT: int = 2      # Hard cap on concurrent positions  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_STOCK_CSP_MIN_CASH: float = 30000.0    # Only proceed if cash available >= this  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_USER_CANCEL_COOLDOWN_HOURS: float = 4.0  # Don't re-propose a user-canceled OCC for N hours  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_WT_ACCEL_GROWTH_PCT: float = 25.0    # LEGACY alias — reused as slowdown % if OPTIONS_WT_SLOWDOWN_PCT unset  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_WT_ACCEL_MIN_ABS: float = 10.0       # min |wt_velocity_D_prev| for slowdown to count (ignore noise)  # PORTED from TradierConfig 2026-08-17
+    OPTIONS_WT_SLOWDOWN_PCT: float = 25.0        # velocity must shrink by ≥25% bar-over-bar for slowdown to fire  # PORTED from TradierConfig 2026-08-17
+    ORB_ENABLED: bool = False  # OFF for trb (real $). TRC overrides to True.  # PORTED from TradierConfig 2026-08-17
+    ORB_LONG_BUDGET: float = 2000.0  # WIRED 2026-04-16 (priority 85/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
+    ORB_MAX_HOLD_MINUTES: float = 150.0  # PORTED from TradierConfig 2026-08-17
+    ORB_MAX_PER_DAY: int = 3  # PORTED from TradierConfig 2026-08-17
+    ORB_POSITION_SIZE: float = 600.0  # PORTED from TradierConfig 2026-08-17
+    ORB_RVOL_MIN: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    ORB_SHORT_BUDGET: float = 2000.0  # WIRED 2026-04-16 (priority 85/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
+    ORB_STOP_MIDPOINT: bool = True  # PORTED from TradierConfig 2026-08-17
+    ORB_TARGET_MULT: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    ORB_WINDOW_MINUTES: int = 15  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES: float = 5.0          # close N min after 09:30 ET open (→ 09:35 ET)  # PORTED from TradierConfig 2026-08-17
+    OVERNIGHT_GAP_HEDGE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    OVERNIGHT_GAP_HEDGE_OPEN_MINUTES: float = 15.0          # fire N min before 16:00 ET close (→ 15:45 ET)  # PORTED from TradierConfig 2026-08-17
+    OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD: float = 20.0   # abs(market_sentiment_score) must exceed this  # PORTED from TradierConfig 2026-08-17
+    OVERNIGHT_GAP_HEDGE_SIZE_FRAC: float = 0.50             # 50% of original position notional  # PORTED from TradierConfig 2026-08-17
+    PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT: float = 0.05    # per-leg slippage for sweep (0.05% × 2 sides + 0.01% commission ≈ 0.12% round-trip)  # PORTED from TradierConfig 2026-08-17
+    PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT: float = 0.5    # sweep variant of ARM_PCT  # PORTED from TradierConfig 2026-08-17
+    PARTIAL_PROFIT_LOCK_SWEEP_ENABLED: bool = False  # use sweep params instead of live params (backtest only)  # PORTED from TradierConfig 2026-08-17
+    PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT: float = 0.3   # sweep variant of GAIN_PCT (default = live default)  # PORTED from TradierConfig 2026-08-17
+    PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT: float = 0.0  # 2026-08-10 was -0.5 (let slip to loss). Now 0.0 — close at breakeven, reenter on signal  # PORTED from TradierConfig 2026-08-17
+    PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN: bool = True  # PORTED from TradierConfig 2026-08-17
+    PENNY_STOCK_LONG_BLOCK_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    PENNY_STOCK_LONG_BLOCK_PRICE_USD: float = 5.0  # PORTED from TradierConfig 2026-08-17
+    POSITION_CACHE_TTL: int = 5  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    POSITION_REFRESH_INTERVAL: float = 6.0  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    PRICE_CROSS_BACK_BAND_PCT: float = 0.3      # within 0.3% of last_reduction_price  # PORTED from TradierConfig 2026-08-17
+    PRICE_CROSS_BACK_MAX_AGE_MIN: float = 525_600_000.0  # 2026-06-02 USER MANDATE: fire FOREVER (~1000yr) until positionAmt>0, not just 4h. Was 240. Momentum still gated by check_reentry_confirmation. ROLLBACK: 240.  # PORTED from TradierConfig 2026-08-17
+    PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True  # USER: HAS TO BE ON everywhere (proven MU 0.84 / NVDA 0.71 vec). exit_price-cross reentry.  # PORTED from TradierConfig 2026-08-17
+    PRICE_REFRESH_INTERVAL: float = 3.0  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    PRICE_UPDATE_INTERVAL: float = 1.0  # PORTED from TradierConfig 2026-08-17
+    PROFIT_TARGET_ENABLED: bool = True  # vector 1186: pnl >= PROFIT_TARGET_PCT exit  # PORTED from TradierConfig 2026-08-17
+    PROFIT_TARGET_PCT: float = 1.6  # vector 1187: v3 peak 1.6%  # PORTED from TradierConfig 2026-08-17
+    PROXIMITY_TOP_GATE_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    PROXIMITY_TOP_MAX_DROP_PCT: float = 5.0        # don't long when within X% of 52w high  # PORTED from TradierConfig 2026-08-17
+    R1_REQUIRE_WT15_ADVERSE: bool = True  # PORTED from TradierConfig 2026-08-17
+    R3_HTF_FLIP_NEWBORN_WINDOW_MIN: float = 15.0  # suppress R3 for first 15min after open (USER 2026-06-22); Rollback: 0  # PORTED from TradierConfig 2026-08-17
+    RANKING_UPDATE_INTERVAL: float = 180.0  # BACKTEST_CHANGE_T50 was 300 → 180 faster ranking refresh  # PORTED from TradierConfig 2026-08-17
+    REBAL_ATTEMPT_COOLDOWN_SEC: float = 3600.0   # 2026-05-26 USER MANDATE — was 300s; bumped to 60min after trc/IBIT_LONG autopsy (40 SENTIMENT_BOOST + 119 SENTIMENT_FADE in 32 realized rounds, -77.85% gain on +26% UP-trending asset; rebalancer pyramided into highs and panic-sold at small dips)  # PORTED from TradierConfig 2026-08-17
+    REDIS_CHANNEL_MARKET_DATA: str = "tradier_indicators_channel"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    REDIS_CHANNEL_POSITIONS: str = "tradier_positions_channel"  # PORTED from TradierConfig 2026-08-17
+    REDIS_CHANNEL_PRICES: str = "tradier_prices_channel"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    REDUCTION_COOLDOWN_SECONDS: float = 30.0  # BACKTEST_CHANGE_T38 was 60 → 30s faster rotation  # PORTED from TradierConfig 2026-08-17
+    RED_ZONE_TRADIER_MIN_OI_AT_WALL: int = 1000     # require wall strike to have ≥1000 OI (filters spurious thin strikes)  # PORTED from TradierConfig 2026-08-17
+    RED_ZONE_TRADIER_STALE_MAX_HOURS: float = 4.0   # skip wall check if cache older than 4h  # PORTED from TradierConfig 2026-08-17
+    REENTRY_60MIN_MIN_PCT: float = 0.05                # 2026-04-26: tightened to 0.05% (was 0.3%) — almost pure price-cross with tiny epsilon to avoid bid-ask thrash  # PORTED from TradierConfig 2026-08-17
+    REENTRY_60MIN_UNCONDITIONAL_ENABLED: bool = True  # 2026-04-26 user directive — "ANY strategy that reenters when exit price is passed OUTPERFORMS B&H by plain logic"  # PORTED from TradierConfig 2026-08-17
+    REENTRY_60MIN_WINDOW_MIN: float = 1440.0            # 2026-04-26: 24h window (was 60min) — wide enough to catch back-cross even after weekend  # PORTED from TradierConfig 2026-08-17
+    REENTRY_BREAKOUT_ENABLED: bool = False  # P2-D: exit if price crosses back through the DC level that triggered the reentry  # PORTED from TradierConfig 2026-08-17
+    RISK_FREE_RATE: float = 0.045  # PORTED from TradierConfig 2026-08-17
+    ROTATION_BOTTOM_N: int = 8   # URGENT_FIX: more short candidates (was 5)  # PORTED from TradierConfig 2026-08-17
+    ROTATION_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    ROTATION_HOLD_DAYS: int = 7  # BACKTEST_CHANGE_T44 was 5 → 7 longer hold  # PORTED from TradierConfig 2026-08-17
+    ROTATION_LOOKBACK_DAYS: int = 10  # 10-day return lookback (5yr optimal, was 3)  # PORTED from TradierConfig 2026-08-17
+    ROTATION_POSITION_SIZE: float = 1200.0  # BACKTEST_CHANGE_T28 was 800 → 1200 larger rotation size  # PORTED from TradierConfig 2026-08-17
+    ROTATION_SMA200_FILTER: bool = True  # BACKTEST_CHANGE_T47 filter rotation candidates by SMA200  # PORTED from TradierConfig 2026-08-17
+    ROTATION_TOP_N: int = 3       # URGENT_FIX: fewer long positions in bear market (was 5)  # PORTED from TradierConfig 2026-08-17
+    ROUND_TRIP_COST_PCT: float = 0.05  # PORTED from TradierConfig 2026-08-17
+    RSI2_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    RSI2_ENTRY_THRESHOLD: float = 3.0  # BACKTEST_CHANGE_T48 was 5.0 → 3.0 stricter entry  # PORTED from TradierConfig 2026-08-17
+    RSI2_EXIT_THRESHOLD_LONG: float = 70.0  # BACKTEST_CHANGE_T13 was 65 → 70 hold longer  # PORTED from TradierConfig 2026-08-17
+    RSI2_EXIT_THRESHOLD_SHORT: float = 30.0  # BACKTEST_CHANGE_T14 was 35 → 30 hold longer  # PORTED from TradierConfig 2026-08-17
+    RSI2_POSITION_SIZE: float = 600.0  # BACKTEST_CHANGE_T29 was 800 → 600 align sizing  # PORTED from TradierConfig 2026-08-17
+    RSI_ENTRY_LONG_TRADIER: float = 40.0  # A/B 2026-04-17 full 109-sym × 3yr: rsi15<40 Sharpe=0.477 beats <42 and <35. Was 42. Evidence: MOM_rsi15_lt40_rsi1h_lt22 peak.  # PORTED from TradierConfig 2026-08-17
+    RSI_ENTRY_PERIOD_TRADIER: int = 10  # BACKTEST_CHANGE_T55: was 2. RSI(10) = OOS champion. Deeper mean-reversion captures bigger moves. Sharpe 6.43, WR 73.9%, PF 8.18  # PORTED from TradierConfig 2026-08-17
+    RSI_ENTRY_SHORT_TRADIER: float = 58.0  # BACKTEST_CHANGE_T64: was 70. RSI>58 for shorts.  # PORTED from TradierConfig 2026-08-17
+    RSI_EXIT_LONG_TRADIER: float = 85.0  # BACKTEST_CHANGE_T56: was 70. Exit at RSI>85 = let winners run longer. +311% PnL over 4.8yr  # PORTED from TradierConfig 2026-08-17
+    RSI_EXIT_SHORT_TRADIER: float = 15.0  # BACKTEST_CHANGE_T56: exit when RSI < 15  # PORTED from TradierConfig 2026-08-17
+    RULE_B_5M_EXIT_ENABLED: bool = True   # 2026-05-31 USER: stock RULE B exit — LONG on 5m lower-low+lower-high, SHORT on higher-high+higher-low (trend turning against). PROFIT-GATED (gain>=NOLOSS_MIN) → never closes at a loss, holds losers per protection model. Validated 74/74 stock keys positive (ema anchor). Mirrors crypto RULE_B_3M_EXIT. ROLLBACK: False.  # PORTED from TradierConfig 2026-08-17
+    RVOL_MOMENTUM_MIN: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    RVOL_SCALP_MIN: float = 1.0  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    RVOL_SCORE_BOOST_PCT: float = 0.20  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    RVOL_SCORE_BOOST_THRESHOLD: float = 2.0  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    RZ_BASELINE_TOL: float = 0.05  # Stocks: 5% proximity to mean (vs crypto 3%)  # PORTED from TradierConfig 2026-08-17
+    RZ_LTF_MICRO: str = "5m"  # Stocks: 5m base; crypto uses 3m  # PORTED from TradierConfig 2026-08-17
+    SATOSHIT_ENTRY_FILTER: bool = False  # T25 2026-04-14 (fixed gates): True=0.388 vs False=0.328 (+18%). Previous stale result (False=0.529) was broken-gate run. Marginal — leaving False until larger sweep.  # PORTED from TradierConfig 2026-08-17
+    SBA_COOLDOWN_S_TRADIER: int = 7200  # 2hr between adds (stocks move slower, 2x crypto's 1hr) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    SCALP_LONG_BUDGET: float = 250.0         # was 500 / orig 1000  # PORTED from TradierConfig 2026-08-17
+    SCALP_MAX_HOLD_MINUTES: float = 180.0     # URGENT_FIX: shorter holds, take profits/losses faster (was 300)  # PORTED from TradierConfig 2026-08-17
+    SCALP_MAX_POSITIONS_PER_SIDE: int = 6    # BACKTEST_CHANGE_T34 was 8 → 6 concentrate capital  # PORTED from TradierConfig 2026-08-17
+    SCALP_MAX_POSITION_SIZE: float = 500.0   # was 1000 / orig 2000  # PORTED from TradierConfig 2026-08-17
+    SCALP_MIN_MOVE_PCT: float = 0.003      # Min 0.3% 5m deviation from ema_20_5m — 2026-07-08 GAINMO triage: 0.3→0.003 (consumer treats as FRACTION; 0.3 = 30% = scalps never qualify, unit bug)  # PORTED from TradierConfig 2026-08-17
+    SCALP_MIN_REL_VOL: float = 1.1           # Min relative volume to qualify  # PORTED from TradierConfig 2026-08-17
+    SCALP_SHORT_BUDGET: float = 250.0        # was 500 / orig 1000  # PORTED from TradierConfig 2026-08-17
+    SCALP_START_SIZE: float = 150.0          # was 300 / orig 600  # PORTED from TradierConfig 2026-08-17
+    SCALP_STOP_PCT: float = 9.99             # BACKTEST_CHANGE_T12 was 1.5% → 999% effectively disabled NO_LOSS mode  # PORTED from TradierConfig 2026-08-17
+    SCALP_TARGET_PCT: float = 0.005           # URGENT_FIX: tighter TP in choppy market, take profits faster (was 0.01 = 1.0% → 0.005 = 0.5%)  # PORTED from TradierConfig 2026-08-17
+    SCALP_TOP_MOVERS_N: int = 14             # Candidate pool size  # PORTED from TradierConfig 2026-08-17
+    SECTOR_GROUPS: Dict[str, str] = field(default_factory=lambda: {  # PORTED from TradierConfig 2026-08-17
+        "TECH": "GROWTH", "TECH_SW": "GROWTH", "TECH_CONS": "GROWTH",
+        "ENERGY_OIL": "COMMODITIES", "ENERGY_NAT": "COMMODITIES",
+        "MINING_GOLD": "COMMODITIES", "MINING_BASE": "COMMODITIES",
+        "NUCLEAR": "ENERGY_ALT",
+        "DEFENSE": "DEFENSE",
+        "CRYPTO": "CRYPTO",
+        "AGRICULTURE": "COMMODITIES",
+        "SHIPPING": "SHIPPING",
+        "HEALTH": "DEFENSIVE", "CONSUMER": "DEFENSIVE", "TELECOM": "DEFENSIVE",
+        "FINANCIAL": "FINANCIAL",
+        "INDUSTRIAL": "CYCLICAL",
+        "INDEX": "INDEX",
+        "MEME": "SPECULATIVE",
+    })
+    SECTOR_LS_MIN_POSITIONS: int = 3        # don't enforce until ≥3 positions in a sector  # PORTED from TradierConfig 2026-08-17
+    SECTOR_LS_RATIO_BYPASS_HEDGE: bool = True  # PORTED from TradierConfig 2026-08-17
+    SECTOR_LS_RATIO_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    SECTOR_LS_RATIO_MAX: float = 2.00  # PORTED from TradierConfig 2026-08-17
+    SECTOR_LS_RATIO_MIN: float = 0.50  # PORTED from TradierConfig 2026-08-17
+    SECTOR_MAP: Dict[str, str] = field(default_factory=lambda: {  # PORTED from TradierConfig 2026-08-17
+        # TECH — Mega cap
+        "AAPL": "TECH", "MSFT": "TECH", "GOOGL": "TECH", "META": "TECH", "AMZN": "TECH", "NVDA": "TECH",
+        "AVGO": "TECH", "ASML": "TECH", "TSM": "TECH", "INTC": "TECH", "AMD": "TECH", "QCOM": "TECH",
+        "ARM": "TECH", "MRVL": "TECH", "MU": "TECH", "LRCX": "TECH", "TXN": "TECH",
+        # TECH — Software/Cloud
+        "CRM": "TECH_SW", "ADBE": "TECH_SW", "ORCL": "TECH_SW", "SNOW": "TECH_SW", "WDAY": "TECH_SW",
+        "PATH": "TECH_SW", "SHOP": "TECH_SW", "SPOT": "TECH_SW", "TTD": "TECH_SW", "QLYS": "TECH_SW",
+        "CRWD": "TECH_SW", "CRWV": "TECH_SW", "ZETA": "TECH_SW", "FIVN": "TECH_SW", "OLED": "TECH_SW",
+        # TECH — Internet/Consumer
+        "NFLX": "TECH_CONS", "RBLX": "TECH_CONS", "RDDT": "TECH_CONS", "ROKU": "TECH_CONS", "BABA": "TECH_CONS",
+        "BIDU": "TECH_CONS", "TCEHY": "TECH_CONS", "UBER": "TECH_CONS", "LYFT": "TECH_CONS", "SQ": "TECH_CONS",
+        "PYPL": "TECH_CONS", "ABNB": "TECH_CONS", "DUOL": "TECH_CONS",
+        # SMCI + hardware
+        "SMCI": "TECH",
+        # ENERGY — Oil & Gas
+        "XOM": "ENERGY_OIL", "CVX": "ENERGY_OIL", "COP": "ENERGY_OIL", "EOG": "ENERGY_OIL", "OXY": "ENERGY_OIL",
+        "MPC": "ENERGY_OIL", "VLO": "ENERGY_OIL", "PSX": "ENERGY_OIL", "PBF": "ENERGY_OIL", "DINO": "ENERGY_OIL",
+        "DVN": "ENERGY_OIL", "FANG": "ENERGY_OIL", "APA": "ENERGY_OIL", "MRO": "ENERGY_OIL", "PR": "ENERGY_OIL",
+        "HAL": "ENERGY_OIL", "SLB": "ENERGY_OIL", "BKR": "ENERGY_OIL", "HES": "ENERGY_OIL", "CHRD": "ENERGY_OIL",
+        "CRK": "ENERGY_OIL", "AR": "ENERGY_OIL", "RRC": "ENERGY_OIL", "CTRA": "ENERGY_OIL", "AM": "ENERGY_OIL",
+        "EQT": "ENERGY_OIL", "EPD": "ENERGY_OIL", "ET": "ENERGY_OIL", "KMI": "ENERGY_OIL", "WMB": "ENERGY_OIL",
+        "TRGP": "ENERGY_OIL", "OKE": "ENERGY_OIL", "LNG": "ENERGY_OIL",
+        # ENERGY ETFs
+        "XLE": "ENERGY_OIL", "XOP": "ENERGY_OIL", "OIH": "ENERGY_OIL", "USO": "ENERGY_OIL",
+        "UNG": "ENERGY_NAT", "BOIL": "ENERGY_NAT",
+        # NUCLEAR
+        "UEC": "NUCLEAR", "NXE": "NUCLEAR", "CCJ": "NUCLEAR", "DNN": "NUCLEAR", "LEU": "NUCLEAR",
+        "NNE": "NUCLEAR", "SMR": "NUCLEAR", "OKLO": "NUCLEAR", "BWXT": "NUCLEAR",
+        "URA": "NUCLEAR", "URNM": "NUCLEAR", "UUUU": "NUCLEAR",
+        # MINING — Precious metals
+        "NEM": "MINING_GOLD", "AEM": "MINING_GOLD", "FNV": "MINING_GOLD", "WPM": "MINING_GOLD", "RGLD": "MINING_GOLD",
+        "GOLD": "MINING_GOLD", "KGC": "MINING_GOLD", "AG": "MINING_GOLD", "AGI": "MINING_GOLD", "EGO": "MINING_GOLD",
+        "BTG": "MINING_GOLD", "CDE": "MINING_GOLD", "HL": "MINING_GOLD", "MAG": "MINING_GOLD", "PAAS": "MINING_GOLD",
+        "AU": "MINING_GOLD", "GDX": "MINING_GOLD", "GDXJ": "MINING_GOLD", "GLD": "MINING_GOLD", "SLV": "MINING_GOLD",
+        # MINING — Industrial/Base metals
+        "FCX": "MINING_BASE", "SCCO": "MINING_BASE", "RIO": "MINING_BASE", "BHP": "MINING_BASE", "VALE": "MINING_BASE",
+        "AA": "MINING_BASE", "NUE": "MINING_BASE", "STLD": "MINING_BASE", "CLF": "MINING_BASE", "X": "MINING_BASE",
+        "RS": "MINING_BASE", "CMC": "MINING_BASE", "ATI": "MINING_BASE", "CENX": "MINING_BASE", "MP": "MINING_BASE",
+        "LAC": "MINING_BASE", "PLL": "MINING_BASE", "SGML": "MINING_BASE", "SQM": "MINING_BASE",
+        "COPX": "MINING_BASE", "XME": "MINING_BASE", "REMX": "MINING_BASE",
+        # DEFENSE & AEROSPACE
+        "LMT": "DEFENSE", "RTX": "DEFENSE", "GD": "DEFENSE", "NOC": "DEFENSE", "BA": "DEFENSE",
+        "LHX": "DEFENSE", "HII": "DEFENSE", "LDOS": "DEFENSE", "KTOS": "DEFENSE", "HWM": "DEFENSE",
+        "AXON": "DEFENSE", "RKLB": "DEFENSE", "JOBY": "DEFENSE", "TDG": "DEFENSE", "GE": "DEFENSE",
+        "ITA": "DEFENSE", "PPA": "DEFENSE",
+        # CRYPTO / DIGITAL ASSETS
+        "IBIT": "CRYPTO", "BITO": "CRYPTO", "COIN": "CRYPTO", "BLOK": "CRYPTO", "SBIT": "CRYPTO",
+        "BTCL": "CRYPTO", "ETHD": "CRYPTO", "ETH": "CRYPTO", "DIME": "CRYPTO", "QBTS": "CRYPTO",
+        # AGRICULTURE
+        "ADM": "AGRICULTURE", "BG": "AGRICULTURE", "CTVA": "AGRICULTURE", "FMC": "AGRICULTURE",
+        "DE": "AGRICULTURE", "AGCO": "AGRICULTURE", "CNHI": "AGRICULTURE", "CF": "AGRICULTURE",
+        "MOS": "AGRICULTURE", "NTR": "AGRICULTURE", "ICL": "AGRICULTURE", "SMG": "AGRICULTURE",
+        "IPI": "AGRICULTURE", "LSB": "AGRICULTURE", "UAN": "AGRICULTURE", "INGR": "AGRICULTURE",
+        "CALM": "AGRICULTURE", "TSN": "AGRICULTURE", "DAR": "AGRICULTURE",
+        "MOO": "AGRICULTURE", "WEAT": "AGRICULTURE", "CORN": "AGRICULTURE", "DBA": "AGRICULTURE", "PDBC": "AGRICULTURE",
+        # SHIPPING
+        "ZIM": "SHIPPING", "SBLK": "SHIPPING", "DAC": "SHIPPING", "FRO": "SHIPPING", "GOGL": "SHIPPING",
+        "EGLE": "SHIPPING", "GNK": "SHIPPING", "NAT": "SHIPPING", "TNK": "SHIPPING", "STNG": "SHIPPING",
+        "DHT": "SHIPPING", "INSW": "SHIPPING", "ASC": "SHIPPING",
+        # HEALTHCARE / PHARMA
+        "LLY": "HEALTH", "JNJ": "HEALTH", "PFE": "HEALTH", "MRK": "HEALTH", "ABBV": "HEALTH",
+        "ABT": "HEALTH", "TMO": "HEALTH", "DHR": "HEALTH", "GILD": "HEALTH", "MDT": "HEALTH",
+        "UNH": "HEALTH",
+        # CONSUMER / RETAIL
+        "COST": "CONSUMER", "WMT": "CONSUMER", "TGT": "CONSUMER", "HD": "CONSUMER", "LOW": "CONSUMER",
+        "NKE": "CONSUMER", "SBUX": "CONSUMER", "MCD": "CONSUMER", "PEP": "CONSUMER", "KO": "CONSUMER",
+        "CLX": "CONSUMER", "ULTA": "CONSUMER", "DIS": "CONSUMER", "MO": "CONSUMER",
+        # FINANCIALS
+        "JPM": "FINANCIAL", "BK": "FINANCIAL", "SCHW": "FINANCIAL", "CME": "FINANCIAL",
+        "MA": "FINANCIAL", "V": "FINANCIAL", "ACN": "FINANCIAL", "ADP": "FINANCIAL",
+        "APO": "FINANCIAL", "EXE": "FINANCIAL", "IBM": "FINANCIAL",
+        # INDUSTRIAL
+        "CAT": "INDUSTRIAL", "GM": "INDUSTRIAL", "FDX": "INDUSTRIAL", "UPS": "INDUSTRIAL",
+        # TELECOM
+        "T": "TELECOM", "VZ": "TELECOM",
+        # BROAD MARKET ETFs
+        "SPY": "INDEX", "QQQ": "INDEX", "SHY": "INDEX",
+        # GME / MEME
+        "GME": "MEME", "TSLA": "MEME", "PLTR": "MEME", "QUBT": "MEME", "ASTS": "MEME",
+        "SNDK": "MEME", "STZ": "CONSUMER",
+    })
+    SENTIMENT_FADE_MODE: str = "DISABLED"  # 2026-06-02 USER MANDATE: was REDUCE. SENTIMENT_FADE rebalance-reduce fires at any gain (~0%), LIVE-ONLY (not in backtest), pyramided-into-highs+panic-sold-dips per IBIT autopsy. DISABLED skips the rebalance entirely. ROLLBACK: REDUCE.  # PORTED from TradierConfig 2026-08-17
+    SENTIMENT_REBALANCER_ENABLED: bool = False   # 2026-05-26 USER MANDATE — KILLED after trc/IBIT_LONG -$80k/mo bleed. periodic_sentiment_rebalancing pyramids into winners + flushes on noise. Re-enable only after sample-floor backtest with proper cooldowns + dead zone proves positive Sharpe.  # PORTED from TradierConfig 2026-08-17
+    SENTIMENT_REBAL_AUGMENT_DEVIATION_THR: float = 1.0   # was 0.25 — require qty 50% under ideal before any BOOST add  # PORTED from TradierConfig 2026-08-17
+    SENTIMENT_REBAL_COOLDOWN_MIN: float = 240.0          # was 30min — sentiment doesn't move that fast  # PORTED from TradierConfig 2026-08-17
+    SENTIMENT_REBAL_REDUCE_DEVIATION_THR: float = 0.50   # was 0.20 — require qty 50% over ideal before any FADE reduce  # PORTED from TradierConfig 2026-08-17
+    SERVICE_STOP: bool = True  # PORTED from TradierConfig 2026-08-17
+    SHORT_STRUCT_EXIT_TF: str = "15m"  # PORTED from TradierConfig 2026-08-17
+    SIZING_MODE_TRADIER: str = "DEFAULT"                    # DEFAULT (current MFI-momentum sizing) | ATR_PARITY  # PORTED from TradierConfig 2026-08-17
+    SMA200_DIST_LONG_THRESHOLD_4H: float = -10.0  # BACKTEST_CHANGE_T3 only long when price within -10% of SMA200 on 4h  # PORTED from TradierConfig 2026-08-17
+    SMA_FILTER_PERIOD_TRADIER: int = 100  # BACKTEST_CHANGE_T57: was 200. SMA100 filter = best OOS. Only LONG above SMA, SHORT below  # PORTED from TradierConfig 2026-08-17
+    SMFI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.  # PORTED from TradierConfig 2026-08-17
+    SMFI_LONG_BUDGET: float = 3000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
+    SMFI_MAX_HOLD_DAYS: int = 10  # Exit when price > 20SMA or 10d hold ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    SMFI_MAX_PER_SIDE: int = 5  # Max concurrent SMFI positions per side  # PORTED from TradierConfig 2026-08-17
+    SMFI_POSITION_SIZE: float = 600.0  # PORTED from TradierConfig 2026-08-17
+    SMFI_SHORT_BUDGET: float = 3000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
+    SPIKE_FADE_COOLDOWN_BARS: int = 6  # Min bars between entries on same symbol  # PORTED from TradierConfig 2026-08-17
+    SPIKE_FADE_ENABLED: bool = False  # 2026-07-10 OFF: never validated (NEW STRATEGY PROHIBITION — needs sweep proof before enable) AND evaluate_spike_fade has a wrong-self bug crashing every cycle (see memory 2026-07-09); it never successfully traded, so this is zero-behavior. Fix the self refs + validate at floor before re-enabling.  # PORTED from TradierConfig 2026-08-17
+    SPIKE_FADE_K_EXHAUSTION: float = 70.0  # K5m must be > this (spike up) or < 100-this (spike down)  # PORTED from TradierConfig 2026-08-17
+    SPIKE_FADE_LOOKBACK_BARS: int = 6  # 6 bars × 5m = 30min lookback  # PORTED from TradierConfig 2026-08-17
+    SPIKE_FADE_MAX_POSITIONS: int = 10  # Max concurrent spike fade positions  # PORTED from TradierConfig 2026-08-17
+    SPIKE_FADE_POSITION_SIZE: float = 600.0  # Per-entry size  # PORTED from TradierConfig 2026-08-17
+    SPIKE_FADE_THRESHOLD_PCT: float = 2.0  # Min % move in lookback to qualify as spike  # PORTED from TradierConfig 2026-08-17
+    SPY_REGIME_BLOCK_LONGS_BELOW: bool = True               # block new LONG opens when SPY < 200SMA  # PORTED from TradierConfig 2026-08-17
+    SPY_REGIME_BLOCK_SHORTS_ABOVE: bool = False             # opt-in: block new SHORT opens when SPY > 200SMA  # PORTED from TradierConfig 2026-08-17
+    SPY_REGIME_GATE_ENABLED_TRADIER: bool = False           # master flag for the gate  # PORTED from TradierConfig 2026-08-17
+    SPY_REGIME_SMA_BARS_DAILY: int = 200                    # daily SMA lookback  # PORTED from TradierConfig 2026-08-17
+    SPY_REGIME_SYMBOL: str = "SPY"                          # reference symbol; switch to "QQQ" or other if desired  # PORTED from TradierConfig 2026-08-17
+    SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; WIRED 2026-04-16 (priority 80/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
+    SQUEEZE_FIRE_BONUS_SCORE: float = 11.25  # PORTED from TradierConfig 2026-08-17
+    SQUEEZE_FIRE_ENTRY_ENABLED: bool = True  # 2026-04-27 sweep T1 (S2/91 winners): 9× True. Was False.  # PORTED from TradierConfig 2026-08-17
+    SQUEEZE_FIRE_TF: str = "5m"  # PORTED from TradierConfig 2026-08-17
+    SQUEEZE_SCORE_BONUS: int = 15  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    SRS_K_EXIT_1H: float = 85.0                  # v8 engine: SRS exit k_1h threshold (matches K_HIGH above)  # PORTED from TradierConfig 2026-08-17
+    STOCH_1H_EXIT_K_MIN: float = 85.0            # v8 engine: stoch cross exit requires k_1h >= 85  # PORTED from TradierConfig 2026-08-17
+    STOCH_CROSS_1H_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_T17 stoch cross on 1h triggers exit  # PORTED from TradierConfig 2026-08-17
+    STOCH_CROSS_ENTRY_TRADIER: bool = True  # BACKTEST_CHANGE_T59: was True. Stoch crossover = noise on daily bars. RSI(10) is the real entry.  # PORTED from TradierConfig 2026-08-17
+    STOP_LOSS_ENABLED: bool = False  # vector sweep-only cap  # PORTED from TradierConfig 2026-08-17
+    STOP_LOSS_PCT: float = 2.0  # PORTED from TradierConfig 2026-08-17
+    STRENGTH_FILTER_ENABLED: bool = True  # vector 1181: score >= STRENGTH_MIN_SCORE  # PORTED from TradierConfig 2026-08-17
+    STRENGTH_MIN_SCORE: float = 5.0  # PORTED from TradierConfig 2026-08-17
+    STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    STRUCTURE_FLIP_REENTRY_BASIS_TF: str = '4h'  # PORTED from TradierConfig 2026-08-17
+    STRUCTURE_FLIP_REENTRY_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    STRUCTURE_FLIP_REENTRY_TF: str = '15m'  # PORTED from TradierConfig 2026-08-17
+    SWING_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    SWING_EXIT_TFS: str = "D"                      # start with D only; test 4h then 1h after  # PORTED from TradierConfig 2026-08-17
+    SWING_LONG_BUDGET: float = 2500.0      # was 50000 / orig 100000  # PORTED from TradierConfig 2026-08-17
+    SWING_MAX_POSITION_SIZE: float = 1100.0   # was 1000 (DEAD)  # PORTED from TradierConfig 2026-08-17
+    SWING_REENTER_AT_OR_BELOW_EXIT: bool = True    # THE GUARANTEE — do not disable lightly  # PORTED from TradierConfig 2026-08-17
+    SWING_REENTER_MULT: float = 1.0                # size multiplier on the below-exit re-entry  # PORTED from TradierConfig 2026-08-17
+    SWING_REENTER_SIGNAL: str = "green_or_hhll"    # green_arrow | hhll | green_or_hhll  # PORTED from TradierConfig 2026-08-17
+    SWING_REENTER_TOLERANCE_PCT: float = 0.0       # allow re-entry up to this % ABOVE exit (0=strict)  # PORTED from TradierConfig 2026-08-17
+    SWING_RUNAWAY_REENTER: bool = True             # re-enter at START_POSITION_SIZE if price ran away up  # PORTED from TradierConfig 2026-08-17
+    SWING_SHORT_BUDGET: float = 2500.0     # was 50000 / orig 100000  # PORTED from TradierConfig 2026-08-17
+    SWING_START_SIZE: float = 200.0          # was 400 (DEAD)  # PORTED from TradierConfig 2026-08-17
+    THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER: int = 30  # PORTED from TradierConfig 2026-08-17
+    TIMEFRAMES: List[str] = field(default_factory=lambda: ["1m", "5m", "15m", "1h", "4h", "D"])  # PORTED from TradierConfig 2026-08-17
+    TIME_ZONE_ENABLED: bool = True  # BACKTEST_CHANGE_T19 enable time-of-day zone sizing  # PORTED from TradierConfig 2026-08-17
+    TRADIER_ACCOUNT_ID: str = os.getenv("TRADIER_ACCOUNT_ID_TRC", "")  # DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    TRADIER_API_BASE_URL: str = "https://api.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    TRADIER_API_KEY: str = os.getenv("TRADIER_API_KEY_TRC", "")  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    TRADIER_DC_DAYTRADE_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 240  # PORTED from TradierConfig 2026-08-17
+    TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop  # PORTED from TradierConfig 2026-08-17
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.25   # REVERTED 2026-04-17: see DC_POSITION_ENTRY_THRESHOLD above.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_ENTRY_SCORE_THRESHOLD: int = 30             # 2026-04-23 EMERGENCY: raised 24→30. 2.8155 validated winner uses 30. Reduces bad entries.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_FH_MOMENTUM_DC_CONFIRM: bool = True         # require DC breakout confirm  # PORTED from TradierConfig 2026-08-17
+    TRADIER_FH_MOMENTUM_DC_MAX_LONG: float = 0.33       # only longs in bottom third of DC range  # PORTED from TradierConfig 2026-08-17
+    TRADIER_FH_MOMENTUM_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_FH_MOMENTUM_MFI_CONFIRM: bool = True        # require MFI > threshold confirm  # PORTED from TradierConfig 2026-08-17
+    TRADIER_FH_MOMENTUM_MFI_MIN: float = 55.0           # min MFI for FH long entry  # PORTED from TradierConfig 2026-08-17
+    TRADIER_FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5       # min gap move % to qualify  # PORTED from TradierConfig 2026-08-17
+    TRADIER_FH_MOMENTUM_WINDOW_MINUTES: int = 60        # FH window in minutes after 13:30 UTC  # PORTED from TradierConfig 2026-08-17
+    TRADIER_INDICATORS_CYCLE_CONCURRENCY: int = 24       # was 4  # PORTED from TradierConfig 2026-08-17
+    TRADIER_INDICATORS_HTTP_CONCURRENCY: int = 48        # was 15  # PORTED from TradierConfig 2026-08-17
+    TRADIER_INDICATORS_IDLE_SLEEP_SEC: float = 1.0       # was 15  # PORTED from TradierConfig 2026-08-17
+    TRADIER_INDICATORS_NARROW_UNIVERSE: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 25        # score add when K in zone  # PORTED from TradierConfig 2026-08-17
+    TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35     # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was 80)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65    # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_LOCAL_EXTREMES_SCORING_ENABLED: bool = False  # 2026-04-26 KILL: tier sizing was suffocating PnL; Phase 8 disable = 90× PnL boost in v8  # PORTED from TradierConfig 2026-08-17
+    TRADIER_LONG_ONLY_ENTRIES: bool = False        # 2026-07-20 USER band mandate: skip SHORT entries entirely (shorts were squatting symbols and blocking LONG band entries via has_opposing_pos)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_MFI_ENTRY_LONG_ENABLED: bool = False  # FLIPPED 2026-08-10 03:25: was True blocks all AAPL longs MFI 100>80, need live results GDX/HAO/LLY; vector bypasses, real engine gated  # PORTED from TradierConfig 2026-08-17
+    TRADIER_MFI_ENTRY_LONG_TRADIER: float = 60.0        # MFI > this for long entry  # PORTED from TradierConfig 2026-08-17
+    TRADIER_MIN_HOLD_MINUTES: float = 4320.0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_MI_ENTRY_ENABLED_TRADIER: bool = False      # wait for MI reset before entry  # PORTED from TradierConfig 2026-08-17
+    TRADIER_MI_EXIT_ENABLED_TRADIER: bool = False       # REVERTED 2026-04-17: see MI_EXIT_ENABLED_TRADIER above.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_MI_SUBSIGNAL_MIN_COUNT: int = 3             # N of 5 sub-signals must fire  # PORTED from TradierConfig 2026-08-17
+    TRADIER_NOLOSS_SRS_BYPASS: bool = True          # True=SRS reason bypasses NOLOSS; False=no reason bypass  # PORTED from TradierConfig 2026-08-17
+    TRADIER_OI_INJECT_ENABLED: bool = True         # 2026-04-28 restored — probe one-by-one  # PORTED from TradierConfig 2026-08-17
+    TRADIER_OI_INJECT_MAX_EACH: int = 10            # cap per side  # PORTED from TradierConfig 2026-08-17
+    TRADIER_OI_INJECT_MIN_TOTAL_OI: int = 1000     # require ≥1000 contracts open across all monitored exps (filters illiquid names)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_OI_INJECT_NEAR_MONEY_PREFER: bool = True   # use near_money_pc_ratio (±5% strikes) when present — purer near-term sentiment  # PORTED from TradierConfig 2026-08-17
+    TRADIER_OI_INJECT_PC_BEARISH: float = 1.4      # P/C above this → put OI dominates → SHORT bias inject  # PORTED from TradierConfig 2026-08-17
+    TRADIER_OI_INJECT_PC_BULLISH: float = 0.6      # P/C below this → call OI dominates → LONG bias inject  # PORTED from TradierConfig 2026-08-17
+    TRADIER_OI_INJECT_STALE_MAX_HOURS: float = 4.0 # skip cache files older than 4h (fetcher missed last cycle)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_POST_CLOSE_COOLDOWN_MIN: float = 15.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_QUEUE_DEDUPE_SEC: float = 60.0       # global queue_trade_action dedupe  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RATIO_BOOST_MIN_GAIN_PCT: float = 1.0  # Min gain for ratio boost to fire  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False   # Block RATIO_BOOST on positions with gain < min  # PORTED from TradierConfig 2026-08-17
+    TRADIER_REENTRY_ANTI_CHURN_ENABLED: bool = False  # 2026-05-10 USER MANDATE: REENTRY guaranteed — ANTI_CHURN_exit_score gate was blocking reentries when wt_dc still indicated exit. Default OFF.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_REENTRY_HARDCOOL_MIN: float = 30.0  # 2026-04-26 NEW: was hardcoded at tradier_manage.py:5392. Default 30 preserves prior behavior. Sweep candidate values: 5/10/15/30. Lower → more reentry surface (helps reentry_rate=3.7% problem) but risk of churn the 30-min was originally protecting against.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED: bool = True  # True=legacy (bypass after 48h); False=always enforce stoch  # PORTED from TradierConfig 2026-08-17
+    TRADIER_REENTRY_RZ_BLOCK_ENABLED: bool = False    # 2026-05-10 USER MANDATE: REENTRY guaranteed — RZ_BLOCK_REENTRY_LONG_AT_TOP / SHORT_AT_BOTTOM gate was blocking reentries via DELTA zone. Default OFF.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_REOPEN_WAIT_S: float = 0.0       # Was 300s (5 min); zero for instant reentry  # PORTED from TradierConfig 2026-08-17
+    TRADIER_REQUIRE_TRADEABLE_KEY: bool = True     # Gate entry at execute_now if not in tradeable_keys  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RESET_MAX_GAIN_ON_CLOSE: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI2_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 90.0      # exit long when RSI2 > this  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 10.0     # exit short when RSI2 < this  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_ENTRY_LONG_TRADIER: float = -1.0        # SENTINEL: <0 => DISABLED (long uses MFI)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_ENTRY_SHORT_TRADIER: float = 70.0       # RSI > this to consider short (LEGACY: single-TF default)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_LONG_15M: float = 40.0                  # A/B 2026-04-17 winner (was 42 single-threshold)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_LONG_1H: float = 22.0                   # A/B 2026-04-17 REAL LEVER (was not per-TF)  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_LONG_4H: float = 35.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_LONG_5M: float = 35.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_LONG_D: float = 40.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_15M: float = 65.0                 # validated top short cluster rsi15_gt_65  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_1H: float = 65.0                  # validated top short cluster rsi1h_gt_65  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_4H: float = 60.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_5M: float = 65.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_D: float = 55.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_REL_VOLUME_MIN: float = 2.4  # relative vol > 1.2× avg required  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_RVOL_15M: float = 1.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_RSI_SHORT_RVOL_1H: float = 1.0  # PORTED from TradierConfig 2026-08-17
+    TRADIER_SANDBOX_URL: str = "https://sandbox.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    TRADIER_STOCH_ENTRY_LONG_TRADIER: int = 30          # K < this for normal long entry  # PORTED from TradierConfig 2026-08-17
+    TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 52  # K > this for normal short entry  # PORTED from TradierConfig 2026-08-17
+    TRADIER_STOCH_EXTREME_LONG_TRADIER: int = 15        # deeper K for high-conviction long  # PORTED from TradierConfig 2026-08-17
+    TRADIER_STOCH_EXTREME_SHORT_TRADIER: int = 85       # deeper K for high-conviction short  # PORTED from TradierConfig 2026-08-17
+    TRADIER_STREAMING_URL: str = "https://stream.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    TRADIER_SYMBOLS_FILE: Path = BASE_PATH / "symbols_tradier.json"  # PORTED from TradierConfig 2026-08-17
+    TRADIER_WS_URL: str = "wss://ws.tradier.com/v1"  # PORTED from TradierConfig 2026-08-17
+    TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 5             # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5 (require ALL 5 TFs against). Patient exits.  # PORTED from TradierConfig 2026-08-17
+    TRADIER_WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # T4 sweep: 5m+15m+1h+4h+D avg=5.961 best tested (was "3m,15m,1h")  # PORTED from TradierConfig 2026-08-17
+    TRAILING_AUG_ENABLED_TRADIER: bool = False  # PORTED from TradierConfig 2026-08-17
+    TRAILING_AUG_GAIN_STEP_PCT: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    TRAILING_AUG_MAX_PER_POSITION: int = 3  # PORTED from TradierConfig 2026-08-17
+    TRAILING_AUG_MIN_GAIN_PCT: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    TRA_ALLOW_BUYS: bool = False                   # USER 2026-08-14: tra NEVER buys, only sells before loss in selloff                       # tra is cash account → no shorts EVER  # PORTED from TradierConfig 2026-08-17
+    TRA_BUY_COOLDOWN_AFTER_SELL_HOURS: float = 96.0     # 4 DAYS no buying after a sell on cash (prevent GFV 6th flag = ban)  # PORTED from TradierConfig 2026-08-17
+    TRA_DISABLE_AUGMENT: bool = True                 # no churn from augments either  # PORTED from TradierConfig 2026-08-17
+    TRA_DISABLE_DELTA_ENTRY: bool = True             # delta engine is too fast for long-term hold  # PORTED from TradierConfig 2026-08-17
+    TRA_LONG_ONLY: bool = True                       # tra is cash account → no shorts EVER  # PORTED from TradierConfig 2026-08-17
+    TRA_MAX_BUYS_PER_DAY: int = 1                   # GFV guard: at most 1 buy per calendar day for tra (cash acct, 5 flags)  # PORTED from TradierConfig 2026-08-17
+    TRA_MIN_HOLD_MINUTES: float = 5760.0             # 4 DAYS hold floor - cash GFV 5 flags, prevent 6th ban  # PORTED from TradierConfig 2026-08-17
+    TRA_NO_LOSS_EXIT: bool = False                    # tra never closes a position at a loss  # PORTED from TradierConfig 2026-08-17
+    TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    TRA_SATOSHIT_ONLY: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRA_STRICT_EXIT_ONLY: bool = True                # only the 5-of-5 STRICT_EXIT gate counts  # PORTED from TradierConfig 2026-08-17
+    TRA_WT_DC_ENTRY_THRESHOLD: float = 85.0          # REVERTED 2026-08-11 per SWITCH_LAB_VECTOR_LIVE_AUDIT.md M3 — live bypass removed, vector+live parity restored; re-promote only via 1yr Tier-2  # PORTED from TradierConfig 2026-08-17
+    TRB_MAX_CALL_VALUE: float = 750.0      # was 1500 / orig 3000  # PORTED from TradierConfig 2026-08-17
+    TRB_MAX_LONG_VALUE: float = 12500.0    # was 25000 / orig 50000  # PORTED from TradierConfig 2026-08-17
+    TRB_MAX_PUT_VALUE: float = 750.0       # was 1500 / orig 3000  # PORTED from TradierConfig 2026-08-17
+    TRB_MAX_SHORT_VALUE: float = 12500.0   # was 25000 / orig 50000  # PORTED from TradierConfig 2026-08-17
+    TRB_MAX_SYMBOL_VALUE: float = 2500.0  # was 5000 / orig 10000 — 2026-04-27 second cut  # PORTED from TradierConfig 2026-08-17
+    TRB_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY. Was 3.0% which blocked all exits on losers. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    TRC_5M_SWEEP_BENCHMARK: str = "SPY"  # PORTED from TradierConfig 2026-08-17
+    TRC_5M_SWEEP_BUFFER_N: int = 20  # PORTED from TradierConfig 2026-08-17
+    TRC_5M_SWEEP_DELTA_WEIGHT: float = 0.3  # PORTED from TradierConfig 2026-08-17
+    TRC_5M_SWEEP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRC_5M_SWEEP_TOP_N: int = 8  # PORTED from TradierConfig 2026-08-17
+    TRC_5M_SWEEP_Z_WEIGHT: float = 0.7  # PORTED from TradierConfig 2026-08-17
+    TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally  # PORTED from TradierConfig 2026-08-17
+    TRC_CLENOW_ENABLED: bool = True  # 2026-06-02 V8-VALIDATED → KEPT ON (USER). Faithful vec backtest (tools/bt_clenow.py, NPZ clenow_score_D = same slope×R² momentum live reads): pool_sharpe=+0.1815, gain_per_mo=+8.5%, total=+221% over 96 trades/35 syms — a REAL gain-augmenting momentum edge. Augments gains → ON in live. (Gain-augmenting strategy NOT fully modeled in vec sweep → controlled by PARITY_COMPARISON_MODE master switch: only flipped off during a live↔backtest parity A/B, then back on.)  # PORTED from TradierConfig 2026-08-17
+    TRC_CLENOW_POSITION_SIZE: float = 2640.0  # PORTED from TradierConfig 2026-08-17
+    TRC_CONNORS_RSI_ENABLED: bool = False  # 2026-06-02 V8-VALIDATED → LOSER, turned OFF per user parity policy. Faithful vec backtest (tools/backtest_connors_rsi_vec.py, uses NPZ connors_rsi_D + sma_200_D, same inputs as live): pool_sharpe=-0.5754, gain_per_mo=-15.25%, total_gain=-555% over 139 trades/34 syms. Oversold-mean-reversion catches falling knives on this universe. OFF in both live (was trc-on) AND backtest by default. ROLLBACK: True (but don't — it loses).  # PORTED from TradierConfig 2026-08-17
+    TRC_CONNORS_RSI_POSITION_SIZE: float = 1980.0  # PORTED from TradierConfig 2026-08-17
+    TRC_DC_DAYTRADE_LONG_BUDGET: float = 9900.0    # was 4950 / orig 9900  # PORTED from TradierConfig 2026-08-17
+    TRC_DC_DAYTRADE_SHORT_BUDGET: float = 9900.0   # was 4950 / orig 9900  # PORTED from TradierConfig 2026-08-17
+    TRC_DC_DAYTRADE_START_SIZE: float = 1980.0   # was 990 / orig 1980  # PORTED from TradierConfig 2026-08-17
+    TRC_ENTRY_MIN_ALIGNMENT: int = 4  # 2026-06-09: 6→4. ROLLBACK: 6.  # PORTED from TradierConfig 2026-08-17
+    TRC_ENTRY_ZONE_LONG: float = 30.0  # Local extremes: deeper oversold bottom (was 30)  # PORTED from TradierConfig 2026-08-17
+    TRC_ENTRY_ZONE_SHORT: float = 70.0  # Local extremes: deeper overbought top (was 70)  # PORTED from TradierConfig 2026-08-17
+    TRC_EPISODIC_PIVOT_ENABLED: bool = False  # Disabled — trc now runs local extremes only  # PORTED from TradierConfig 2026-08-17
+    TRC_EP_POSITION_SIZE: float = 2640.0  # PORTED from TradierConfig 2026-08-17
+    TRC_GAP_FILL_POSITION_SIZE: float = 1980.0   # was 990 / orig 1980  # PORTED from TradierConfig 2026-08-17
+    TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = True  # Use local_extremes_scorer for dynamic $50-$5000 sizing  # PORTED from TradierConfig 2026-08-17
+    TRC_LS_RATIO_MAX: float = 3.00  # Wider than trb (2.00)  # PORTED from TradierConfig 2026-08-17
+    TRC_LS_RATIO_MIN: float = 0.30  # Wider than trb (0.50)  # PORTED from TradierConfig 2026-08-17
+    TRC_MAX_CONCURRENT_POSITIONS: int = 32    # was 20 / orig 40  # PORTED from TradierConfig 2026-08-17
+    TRC_MAX_DAILY_LOSS_PCT: float = 10.0  # 3.3x trb (3%) — paper money, let it run  # PORTED from TradierConfig 2026-08-17
+    TRC_MAX_ORDER_VALUE: float = 1250.0       # was 2500 / orig 5000  # PORTED from TradierConfig 2026-08-17
+    TRC_MAX_POSITION_SIZE: float = 3750.0     # was 2500 / orig 5000  # PORTED from TradierConfig 2026-08-17
+    TRC_MAX_SYMBOL_VALUE: float = 1250.0  # was 2500 / orig 5000 — 2026-04-27 second cut  # PORTED from TradierConfig 2026-08-17
+    TRC_MINERVINI_ENABLED: bool = True  # Paper-only: needs V5 validation before trb  # PORTED from TradierConfig 2026-08-17
+    TRC_MINERVINI_LONG_BUDGET: float = 13200.0  # PORTED from TradierConfig 2026-08-17
+    TRC_MINERVINI_POSITION_SIZE: float = 2640.0  # PORTED from TradierConfig 2026-08-17
+    TRC_MOMENTUM_FADE_ENABLED: bool = False  # Disabled — trc now runs local extremes only  # PORTED from TradierConfig 2026-08-17
+    TRC_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-07-08 GAINMO triage: 0.5→0.0 — this silently resurrected the killed NOLOSS gate on trc only (272 blocked closes/hr, 8 stuck losers incl -31.74%; STRICT_NO_LOSS is ELIMINATED per STATE OF AFFAIRS)  # PORTED from TradierConfig 2026-08-17
+    TRC_ORB_ENABLED: bool = False  # Disabled — trc now runs local extremes only  # PORTED from TradierConfig 2026-08-17
+    TRC_ORB_LONG_BUDGET: float = 6600.0  # PORTED from TradierConfig 2026-08-17
+    TRC_ORB_POSITION_SIZE: float = 1980.0  # PORTED from TradierConfig 2026-08-17
+    TRC_ORB_SHORT_BUDGET: float = 6600.0  # PORTED from TradierConfig 2026-08-17
+    TRC_ROTATION_POSITION_SIZE: float = 3000.0   # was 1500 / orig 3000  # PORTED from TradierConfig 2026-08-17
+    TRC_RSI2_POSITION_SIZE: float = 1980.0     # was 990 / orig 1980  # PORTED from TradierConfig 2026-08-17
+    TRC_SCALP_LONG_BUDGET: float = 1250.0     # was 2500 / orig 5000  # PORTED from TradierConfig 2026-08-17
+    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 12   # was 10 / orig 20  # PORTED from TradierConfig 2026-08-17
+    TRC_SCALP_SHORT_BUDGET: float = 1250.0    # was 2500 / orig 5000  # PORTED from TradierConfig 2026-08-17
+    TRC_SCALP_START_SIZE: float = 495.0       # was 500 / orig 1000  # PORTED from TradierConfig 2026-08-17
+    TRC_SCALP_TARGET_PCT: float = 0.01  # 2x trb (0.005) — let winners run further  # PORTED from TradierConfig 2026-08-17
+    TRC_SMFI_ENABLED: bool = False  # 2026-06-02 V8-VALIDATED → NOISE-tier, off per user parity policy. Faithful vec backtest (tools/bt_smfi.py, replicates compute_smfi cumulative smart-money-flow + 20d bull-divergence on NPZ daily OHLC — same formula as live): pool_sharpe=+0.0534 (Noise), gain_per_mo=+10.2%, total=+264% over 719 trades/37 syms. POSITIVE in raw gain but risk-adjusted NOISE (0.05 << 0.48 Minervini / 0.44 baseline) + 719 trades = commission churn → does NOT improve the book → OFF both. NOTE: it IS backtestable (OHLC formula, not order-flow); this is a validated-noise cut, NOT a can't-backtest case. ROLLBACK: True (if you want the raw +10%/mo despite the churn).  # PORTED from TradierConfig 2026-08-17
+    TRC_SMFI_LONG_BUDGET: float = 9900.0  # PORTED from TradierConfig 2026-08-17
+    TRC_SMFI_POSITION_SIZE: float = 1980.0  # PORTED from TradierConfig 2026-08-17
+    TRC_SMFI_SHORT_BUDGET: float = 9900.0  # PORTED from TradierConfig 2026-08-17
+    TRC_SQUEEZE_ENABLED: bool = False  # Disabled — trc now runs local extremes only  # PORTED from TradierConfig 2026-08-17
+    TRC_START_POSITION_SIZE: float = 330.0    # was 500 / orig 1000  # PORTED from TradierConfig 2026-08-17
+    TRC_SWING_LONG_BUDGET: float = 100000.0    # was 50000 / orig 100000  # PORTED from TradierConfig 2026-08-17
+    TRC_SWING_SHORT_BUDGET: float = 100000.0   # was 50000 / orig 100000  # PORTED from TradierConfig 2026-08-17
+    TR_TREND_V1_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    TR_TREND_V1_SHADOW_LOG_ONLY: bool = True  # PORTED from TradierConfig 2026-08-17
+    TR_TREND_V1_SHADOW_SYMBOLS: tuple = ('TRGP', 'SNDK', 'AVGO', 'GLD', 'PLTR', 'MU', 'CDE', 'SLV')  # PORTED from TradierConfig 2026-08-17
+    TSMOM_BOOK_SCALAR_ENABLED: bool = True  # 2026-04-27 sweep T1: 8× True in winners. Was False.  # PORTED from TradierConfig 2026-08-17
+    TSMOM_HIGH_CAP: float = 1.5  # PORTED from TradierConfig 2026-08-17
+    TSMOM_LOOKBACK_BARS: int = 252  # PORTED from TradierConfig 2026-08-17
+    TSMOM_LOW_CAP: float = 0.25  # PORTED from TradierConfig 2026-08-17
+    TSMOM_MIN_AGREEMENT: float = 0.5  # PORTED from TradierConfig 2026-08-17
+    VEL_EXIT_ENABLED: bool = True  # vector 1131: gates wt_vel_4h <-2 / >2 exit  # PORTED from TradierConfig 2026-08-17
+    VIX_EXTREME_THRESHOLD: float = 40.0  # PORTED from TradierConfig 2026-08-17
+    VIX_PANIC_THRESHOLD: float = 30.0  # PORTED from TradierConfig 2026-08-17
+    VIX_REGIME_FILTER_ENABLED: bool = True  # Block entries when SPY < SMA200  # PORTED from TradierConfig 2026-08-17
+    VIX_REGIME_SIZE_MULT_HIGH_VOL: float = 0.5   # VIX > 200dMA → 50% size  # PORTED from TradierConfig 2026-08-17
+    VIX_REGIME_SIZE_MULT_PANIC: float = 0.0      # VIX > 30 → halt new entries  # PORTED from TradierConfig 2026-08-17
+    VIX_SMA_LOOKBACK_DAYS: int = 200  # PORTED from TradierConfig 2026-08-17
+    VIX_VOLATILITY_REGIME_ENABLED: bool = True   # 2026-04-26: VIX vs VIX-200dMA gate (NOT SPY-SMA200 — that's L1061); 32% DD reduction documented  # PORTED from TradierConfig 2026-08-17
+    VOL_TARGET_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    VOL_TARGET_FIELD: str = "yz_vol_60_d"   # NPZ field (Yang-Zhang 60d Daily)  # PORTED from TradierConfig 2026-08-17
+    VOL_TARGET_HIGH_CAP: float = 2.0  # PORTED from TradierConfig 2026-08-17
+    VOL_TARGET_LOW_CAP: float = 0.25  # PORTED from TradierConfig 2026-08-17
+    VOL_TARGET_PCT: float = 20.0       # target annualized vol % (S&P 15-25% range)  # PORTED from TradierConfig 2026-08-17
+    VWAP_BOUNCE_DIST_PCT: float = 0.3  # Price must be within 0.3% of VWAP for bounce entry ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    VWAP_BOUNCE_ENTRY_ENABLED: bool = True  # Enter on VWAP bounce (pullback to VWAP + reversal) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    VWAP_FILTER_ENABLED: bool = False  # 2026-04-20 sweep: VWAP filter suppresses valid trades — top 20 mega configs all False  # PORTED from TradierConfig 2026-08-17
+    VWAP_SCORE_BONUS: int = 10  # Score bonus when price is on correct side of VWAP ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    WT_3M_FORCE_OPEN_BUILD_TO_TARGET: bool = True       # keep adding (with-trend, on 3m WT bounce) until target  # PORTED from TradierConfig 2026-08-17
+    WT_3M_FORCE_OPEN_DIST_PCT: float = 0.0              # required % beyond sma_200_15m (0 = just "above"); set >0 for a buffer  # PORTED from TradierConfig 2026-08-17
+    WT_3M_FORCE_OPEN_TARGET_USD: float = 2000.0         # 2026-06-24 ROLLED BACK: $50k was entire trb portfolio in 1 sym; $2k = ~3% of $70k per confirmed winner  # PORTED from TradierConfig 2026-08-17
+    WT_3M_FORCE_OPEN_TF_LADDER: bool = True             # scale size by # of HTFs (15m/1h/4h/D) confirming  # PORTED from TradierConfig 2026-08-17
+    WT_3M_FORCE_OPEN_TF_LADDER_MULT: float = 1.0        # extra ×mult per confirming HTF (3m base ×1, +1.0 each)  # PORTED from TradierConfig 2026-08-17
+    WT_3M_FORCE_OPEN_USE_SMA200: bool = True            # anchor sma_200_15m (user spec) vs ema_200_15m  # PORTED from TradierConfig 2026-08-17
+    WT_COMPOSITE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, WT_COMPOSITE_SCORING_ENABLED vetoes wt_dc entries lacking composite alignment. Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
+    WT_CROSSUNDER_15M_SHORT: bool = True  # BACKTEST_CHANGE_T5 enable WT crossunder on 15m for short entries  # PORTED from TradierConfig 2026-08-17
+    WT_CROSSUNDER_FINAL_ENABLED: bool = True  # T25 2026-04-14: True=0.357 vs False=0.363 (Δ=0.006) — essentially noise. Keeping True for live WT exit coverage.  # PORTED from TradierConfig 2026-08-17
+    WT_DC_DIRECT_COMBINED_STOCH_GATE: float = 100.0  # PORTED from TradierConfig 2026-08-17
+    WT_DC_DIRECT_COMPLETED_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    WT_DC_DIRECT_HTF_ALIGN_REQUIRED: int = 0  # PORTED from TradierConfig 2026-08-17
+    WT_DC_DIRECT_HTF_GATE: str = "none"  # PORTED from TradierConfig 2026-08-17
+    WT_DC_DIRECT_THRESHOLD: float = 20.0  # PORTED from TradierConfig 2026-08-17
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK: float = 0.7  # PORTED from TradierConfig 2026-08-17
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0  # 2026-04-27: hard k5m cap for WT_DC_ENTRY_THRESHOLD-path LONG entries (default inert at 100). Lower to 80 to block "buy at 5m top" e.g. NVDA k5m=95.  # PORTED from TradierConfig 2026-08-17
+    WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0   # 2026-04-27: hard k5m floor for WT_DC_ENTRY_THRESHOLD-path SHORT entries (default inert at 0). Raise to 20 to block "short at 5m bottom".  # PORTED from TradierConfig 2026-08-17
+    WT_DC_ENTRY_THRESHOLD: float = 45  # 2026-06-24 ROLLED BACK: bt_wtdc_threshold (291 stocks) — LONG ps 0.092→0.123 (+33%), SHORT ps 0.082→0.113 (+38%) at 45 vs 20. Gain/mo essentially unchanged (+3.82%/+3.20% vs +3.89%/+3.14%). Prior test (2026-06-03) optimized gain/mo not pool_sharpe — lower pool_sharpe = lower live quality.  # PORTED from TradierConfig 2026-08-17
+    WT_DC_EXIT_ENABLED: bool = True  # path-scoped master; False skips only the WT_DC scorer exit  # PORTED from TradierConfig 2026-08-17
+    WT_DC_EXIT_STALE_MAX_S: int = 600  # Don't exit on indicators > 10min stale (protects against stale data firing exits)  # PORTED from TradierConfig 2026-08-17
+    WT_DC_HTF_GATE: str = "4h_D"                     # 2026-07-14 RESTORED 1h->4h_D: the 2026-05-21 loosening to "1h" (for trade-frequency reasons) silently re-opened the EXACT "SHORT-into-uptrend" gap this gate was built to close on 2026-04-27 (see WT_DC_ENTRY comment ~3131) -- a 1h-only check can't see a multi-week Daily uptrend. Live proof: PLTR_SHORT (trb, opened 2026-07-09, reason WT_DC_ENTRY_60_4h_bear|1h_cross_BEAR) and IBIT_SHORT (trb, opened 2026-07-13, same pattern) both entered on 1h/4h bearish WT crosses DURING pullbacks inside established multi-week uptrends (PLTR +25% off its 06-25 low, IBIT +9% off its 06-30 low, both still rising at entry) -- textbook countertrend entries, not "top of a bounce in a downtrend". Both ran hard against (PLTR -6.8%, IBIT required manual close). Trade-off: "4h" alone caused 28/day blocks on trb per the 05-21 note; "4h_D" is the strongest documented setting and is the one the original 04-27 fix intended. ROLLBACK: "1h" (accepts the uptrend-short risk for more trade frequency) or "4h" (partial). Values: 'none' / '1h' / '4h' / '4h_D'  # PORTED from TradierConfig 2026-08-17
+    WT_D_BOUNCE_AUG_COOLDOWN_HOURS: float = 1.0  # min hours between wt_D augments per position  # PORTED from TradierConfig 2026-08-17
+    WT_D_BOUNCE_AUG_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled — was augmenting losers at gain<0. Best 2.8155 config has this False.  # PORTED from TradierConfig 2026-08-17
+    WT_D_BOUNCE_AUG_MULTIPLIER: float = 2.0  # 2026-04-20: 2x (add 1x to existing) per user directive. Was 4x.  # PORTED from TradierConfig 2026-08-17
+    WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE: bool = True  # 2026-04-20: require bounce price > last aug price (higher low for LONG)  # PORTED from TradierConfig 2026-08-17
+    WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT: bool = True  # 2026-04-20: require bounce WT > last aug WT (was False)  # PORTED from TradierConfig 2026-08-17
+    WT_D_BOUNCE_DD_STOP_ENABLED: bool = True  # 2026-04-20: cut extra DD leg if price continues below aug price  # PORTED from TradierConfig 2026-08-17
+    WT_EXIT_MIN_TFS_TRADIER: int = 5  # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5. Patient exits.  # PORTED from TradierConfig 2026-08-17
+    WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # PORTED from TradierConfig 2026-08-17
+    WT_EXIT_VELOCITY_TRADIER: bool = False  # SWEEP: velocity makes zero difference. Cross is simpler. ; DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
+    WT_EXIT_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, WT_EXIT_MIN_TFS_TRADIER actually gates exits. Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
+    WT_FORCE_OPEN_FRESH_CROSS_ONLY: bool = False        # [2026-06-27] True=fire only on a FRESH WT cross event (wt_cross_bull/bear), not the standing wt1>wt2 state. Standing-state on higher TF churned MORE (688→940 tr/sym/yr); cross-event fires once per cross. A/B-tested.  # PORTED from TradierConfig 2026-08-17
+    WT_FORCE_OPEN_FRESH_MAX_BARS: int = 0               # [2026-06-27] freshness window for FRESH_CROSS_ONLY. 0=this bar only (strictest); N=within N bars of cross (uses wt_cross_bars_ago + wt_cross_rising direction).  # PORTED from TradierConfig 2026-08-17
+    WT_FORCE_OPEN_TRIGGER_TF: str = "5m"                # [2026-06-26] force-open WT-cross trigger TF. 5m=current (fires every 5m bar=churn); 15m/1h fire less=less churn. A/B-tested 5m vs 15m vs 1h vs OFF; keep best.  # PORTED from TradierConfig 2026-08-17
+    WT_W_EXIT_ENABLED: bool = False      # Exit when weekly WaveTrend crosses against position.  # PORTED from TradierConfig 2026-08-17
+    ZONE_CLOSE_THRESHOLD: int = 20  # BACKTEST_CHANGE_T22 minutes before close = "close zone"  # PORTED from TradierConfig 2026-08-17
+    ZONE_MID_THRESHOLD: int = 30  # BACKTEST_CHANGE_T21 minutes into session = "mid zone" start  # PORTED from TradierConfig 2026-08-17
+    ZONE_OPEN_THRESHOLD: int = 25  # BACKTEST_CHANGE_T20 minutes after open = "open zone"  # PORTED from TradierConfig 2026-08-17
+
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))

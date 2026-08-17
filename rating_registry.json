@@ -1,28 +1,40 @@
 {
-  "timestamp": "2026-08-17T14:34:48.035940+00:00",
+  "timestamp": "2026-08-17T14:49:14.855143+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 126
+    "total_ranked": 129
   },
   "unified_ranking": [
     {
       "symbol": "MSFTUSDT",
-      "net_score": -19.5,
+      "net_score": -18.4,
       "long_score": 0,
-      "short_score": 19.5
+      "short_score": 18.4
     },
     {
       "symbol": "GOOGLUSDT",
-      "net_score": -17.4,
+      "net_score": -16.8,
       "long_score": 0,
-      "short_score": 17.4
+      "short_score": 16.8
     },
     {
       "symbol": "MAGICUSDT",
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
+    },
+    {
+      "symbol": "CHRUSDT",
+      "net_score": -10.5,
+      "long_score": 0,
+      "short_score": 10.5
+    },
+    {
+      "symbol": "PTBUSDT",
+      "net_score": -10.0,
+      "long_score": 0,
+      "short_score": 10.0
     },
     {
       "symbol": "AAVEUSDC",
@@ -92,6 +104,12 @@
     },
     {
       "symbol": "SOLUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "KSMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -553,13 +571,13 @@
       "short_score": 0
     },
     {
-      "symbol": "PTBUSDT",
+      "symbol": "SCRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "SCRUSDT",
+      "symbol": "IOTXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -752,44 +770,54 @@
     },
     {
       "symbol": "MRVLUSDT",
-      "net_score": 15.6,
-      "long_score": 15.6,
+      "net_score": 13.0,
+      "long_score": 13.0,
       "short_score": 0
     },
     {
       "symbol": "CBRSUSDT",
-      "net_score": 17.4,
-      "long_score": 17.4,
+      "net_score": 15.7,
+      "long_score": 15.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "CBRSUSDT",
-      17.4,
+      15.7,
       225.06646784
     ],
     [
       "MRVLUSDT",
-      15.6,
-      236.54
+      13.0,
+      225.21
     ]
   ],
   "top_shorts": [
     [
       "MSFTUSDT",
-      19.5,
-      484.79
+      18.4,
+      492.06
     ],
     [
       "GOOGLUSDT",
-      17.4,
-      345.77518651
+      16.8,
+      347.71
     ],
     [
       "MAGICUSDT",
       12.8,
-      0.04059
+      0.04071
+    ],
+    [
+      "CHRUSDT",
+      10.5,
+      0.01333
+    ],
+    [
+      "PTBUSDT",
+      10.0,
+      0.0008715
     ]
   ],
   "hedge_usage": {

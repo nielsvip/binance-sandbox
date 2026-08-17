@@ -1,32 +1,56 @@
 {
- "generated_at": "2026-08-17 14:18 UTC",
- "total_capital_usd": 5.12,
+ "generated_at": "2026-08-17 14:38 UTC",
+ "total_capital_usd": 17.73,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.12,
+  "B": 17.73,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 3,
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "inf:CRVUSDC_LONG"
+ ],
  "mediocre": [
-  "ang:AMDUSDT_SHORT"
+  "inf:ZILUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "ang:AMDUSDT_SHORT",
-   "symbol": "AMDUSDT",
-   "account": "ang",
-   "value_usd": 5.12,
-   "gain_pct": 0.061,
+   "pk": "inf:ZILUSDT_SHORT",
+   "symbol": "ZILUSDT",
+   "account": "inf",
+   "value_usd": 5.99,
+   "gain_pct": 0.238,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.01,
-   "mark": 512.29033629
+   "amt": 2678.0,
+   "mark": 0.002235
+  },
+  {
+   "pk": "inf:CRVUSDC_LONG",
+   "symbol": "CRVUSDC",
+   "account": "inf",
+   "value_usd": 5.92,
+   "gain_pct": -1.143,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 24.4,
+   "mark": 0.24264209
+  },
+  {
+   "pk": "inf:ENSUSDT_SHORT",
+   "symbol": "ENSUSDT",
+   "account": "inf",
+   "value_usd": 5.82,
+   "gain_pct": 0.126,
+   "tier": "B",
+   "perf_mult": 4.71,
+   "amt": 1.5,
+   "mark": 3.88330943
   }
  ]
 }
