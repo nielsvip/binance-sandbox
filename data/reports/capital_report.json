@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-08-17 22:01 UTC",
- "total_capital_usd": 7.01,
+ "generated_at": "2026-08-17 22:35 UTC",
+ "total_capital_usd": 5.96,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.01,
-  "C": 0.0
+  "B": 0.0,
+  "C": 5.96
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "fin:FARTCOINUSDT_LONG"
+ "losers": [
+  "inf:FILUSDC_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:FARTCOINUSDT_LONG",
-   "symbol": "FARTCOINUSDT",
-   "account": "fin",
-   "value_usd": 7.01,
-   "gain_pct": 0.126,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 48.1,
-   "mark": 0.14568342
+   "pk": "inf:FILUSDC_SHORT",
+   "symbol": "FILUSDC",
+   "account": "inf",
+   "value_usd": 5.96,
+   "gain_pct": 0.026,
+   "tier": "C",
+   "perf_mult": 0.71,
+   "amt": 8.9,
+   "mark": 0.67011938
   }
  ]
 }

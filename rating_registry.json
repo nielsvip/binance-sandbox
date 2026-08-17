@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-17T22:05:29.941696+00:00",
+  "timestamp": "2026-08-17T22:35:46.356269+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 156
+    "total_ranked": 157
   },
   "unified_ranking": [
     {
@@ -11,12 +11,6 @@
       "net_score": -15.2,
       "long_score": 0,
       "short_score": 15.2
-    },
-    {
-      "symbol": "EWYUSDT",
-      "net_score": -12.6,
-      "long_score": 0,
-      "short_score": 12.6
     },
     {
       "symbol": "TQQQUSDT",
@@ -31,10 +25,10 @@
       "short_score": 10.7
     },
     {
-      "symbol": "IRENUSDT",
-      "net_score": -10.4,
+      "symbol": "CHRUSDT",
+      "net_score": -10.2,
       "long_score": 0,
-      "short_score": 10.4
+      "short_score": 10.2
     },
     {
       "symbol": "INXUSDT",
@@ -182,12 +176,6 @@
     },
     {
       "symbol": "APPUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CHRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -457,6 +445,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IRENUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AAOIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -530,6 +524,12 @@
     },
     {
       "symbol": "SKYAIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEIROUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -650,12 +650,6 @@
     },
     {
       "symbol": "BMNRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "RIFUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -805,6 +799,12 @@
       "short_score": 0
     },
     {
+      "symbol": "EWYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CRVUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -941,14 +941,26 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "RIFUSDT",
+      "net_score": 12.3,
+      "long_score": 12.3,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "RIFUSDT",
+      12.3,
+      0.07675
+    ]
+  ],
   "top_shorts": [
     [
-      "IRENUSDT",
-      10.4,
-      45.21
+      "CHRUSDT",
+      10.2,
+      0.0131754
     ]
   ],
   "hedge_usage": {
