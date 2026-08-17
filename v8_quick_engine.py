@@ -2201,7 +2201,7 @@ class QuickConfig:
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
     CT_WT_VELOCITY_1H_MIN: float = 0.0
-    CT_DC_CROSSOVER_SKIP_ENABLED: bool = True
+    CT_DC_CROSSOVER_SKIP_ENABLED: bool = False  # DISABLED LIVE TEST 2026-08-17: was True closing TRB winners via 9386
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False
     CT_CHOP_4H_GATE_ENABLED: bool = False
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False

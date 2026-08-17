@@ -1,14 +1,86 @@
 {
-  "generated_at": "2026-08-17T14:00:18.519830+00:00",
-  "count": 1,
+  "generated_at": "2026-08-17T14:29:28.076182+00:00",
+  "count": 10,
   "advisories": [
     {
-      "symbol": "TECK",
+      "symbol": "ADP",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.47 threshold=0.45",
-      "score": 0.467,
-      "ts": "2026-08-17T14:00:18.519795+00:00"
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.494,
+      "ts": "2026-08-17T14:29:28.076102+00:00"
+    },
+    {
+      "symbol": "AGCO",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.74 threshold=0.45",
+      "score": 0.735,
+      "ts": "2026-08-17T14:29:28.076115+00:00"
+    },
+    {
+      "symbol": "ALKT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.93 threshold=0.45",
+      "score": 0.934,
+      "ts": "2026-08-17T14:29:28.076118+00:00"
+    },
+    {
+      "symbol": "AU",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.85 threshold=0.45",
+      "score": 0.848,
+      "ts": "2026-08-17T14:29:28.076120+00:00"
+    },
+    {
+      "symbol": "AXON",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.564,
+      "ts": "2026-08-17T14:29:28.076122+00:00"
+    },
+    {
+      "symbol": "A",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.562,
+      "ts": "2026-08-17T14:29:28.076124+00:00"
+    },
+    {
+      "symbol": "BG",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.84 threshold=0.45",
+      "score": 0.836,
+      "ts": "2026-08-17T14:29:28.076126+00:00"
+    },
+    {
+      "symbol": "CHRD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.90 threshold=0.45",
+      "score": 0.901,
+      "ts": "2026-08-17T14:29:28.076129+00:00"
+    },
+    {
+      "symbol": "CLS",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.5,
+      "ts": "2026-08-17T14:29:28.076131+00:00"
+    },
+    {
+      "symbol": "CLX",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.65 threshold=0.45",
+      "score": 0.649,
+      "ts": "2026-08-17T14:29:28.076133+00:00"
     }
   ]
 }

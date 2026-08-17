@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-08-17 14:04 UTC",
- "total_capital_usd": 5.11,
+ "generated_at": "2026-08-17 14:18 UTC",
+ "total_capital_usd": 5.12,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.11,
+  "B": 5.12,
   "C": 0.0
  },
  "tier_count": {
@@ -13,18 +13,20 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "ang:AMDUSDT_SHORT"
+ ],
  "positions": [
   {
    "pk": "ang:AMDUSDT_SHORT",
    "symbol": "AMDUSDT",
    "account": "ang",
-   "value_usd": 5.11,
-   "gain_pct": 0.335,
+   "value_usd": 5.12,
+   "gain_pct": 0.061,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.01,
-   "mark": 510.88777307
+   "mark": 512.29033629
   }
  ]
 }

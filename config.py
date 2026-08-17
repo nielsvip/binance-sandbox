@@ -2637,7 +2637,7 @@ class Config:
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
     CT_MFI_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_MFI_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
-    CT_DC_CROSSOVER_SKIP_ENABLED: bool = True  # BC_172: ENABLED 2026-04-08. 5yr validated: SHORT Sharpe +34%, removes only 1.3% of trades. Skip SHORT when DC basis crosses over on 15m/1h.
+    CT_DC_CROSSOVER_SKIP_ENABLED: bool = False  # DISABLED LIVE TEST 2026-08-17 USER: TRB winning trades closed via 9386 — must be False to give positive delta per_sym
     CT_CHOP_4H_GATE_ENABLED: bool = False  # BC_173: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe (no choppiness_4h in NPZ). OFF forever.
     CT_CHOP_4H_MAX: float = 50.0  # BC_173: max choppiness_4h
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
