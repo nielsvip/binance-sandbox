@@ -241,13 +241,18 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
     sd = float(arr.std())
     pool = float(arr.mean() / sd) if sd > 1e-12 else 0.0
     wr = float((arr > 0).mean() * 100)
-    eq = np.cumsum(arr); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
+    # FIX 2026-08-18 COPX_LONG -143%: drawdown must be on compounded equity, not sum
+    compounded_eq = np.cumprod(1.0 + arr / 100.0)
+    c_peak = np.maximum.accumulate(compounded_eq)
+    dd = float(((c_peak - compounded_eq) / np.maximum(c_peak, 1e-12) * 100.0).max()) if n else 0.0
     total = float(arr.sum())
+    total_compounded = float((np.prod(1.0 + arr / 100.0) - 1.0) * 100.0) if n else 0.0
     return {
         'sym': sym, 'tag': tag, 'trades': n, 'trades_per_day': n / span_days,
         'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
-        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
-        'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total_compounded,
+        'total_gain_pct_sum_diagnostic': total, 'total_gain_pct_compounded': total_compounded,
+        'avg_gain_trade': total_compounded / n if n else 0.0, 'gain_per_yr': total_compounded / yrs, 'gain_sym_yr': total_compounded / yrs,
         'years': yrs, 'n_syms': 1, 'n_wins': int((arr > 0).sum()),
         'override': override,
         'note': nonzero_note if nonzero_note else '',

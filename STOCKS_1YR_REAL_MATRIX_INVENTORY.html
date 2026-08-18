@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>STOCKS 1YR — Real Matrix Switch Inventory</title>
+<style>
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;--card:#ffffff;--teal:#0f766e;--amber:#b45309;--rose:#be123c;--sky:#0369a1;--slate:#475569;--emerald:#047857;--red:#991b1b}
+*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:ui-sans-system,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#0f172a}
+a{color:var(--sky)}
+.top{position:sticky;top:0;z-index:20;background:#0f172a;color:#e2e8f0;border-bottom:1px solid #1e293b}
+.top-inner{max-width:1280px;margin:0 auto;padding:14px 18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.top h1{margin:0;font-size:14px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#f1f5f9}
+.top .sub{font-size:12px;color:#94a3b8}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
+.stat{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 10px;min-width:110px}
+.stat b{display:block;font-size:16px;color:#f8fafc;line-height:1}
+.stat span{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}
+.wrap{max-width:1280px;margin:0 auto;padding:18px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.controls input,.controls select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff}
+.controls input{flex:1;min-width:220px}
+.legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:11px;background:#fff;white-space:nowrap}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.1)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.card-head{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.card-head h2{margin:0;font-size:12px;letter-spacing:.07em;text-transform:uppercase}
+.card-head .count{margin-left:auto;font-size:11px;color:var(--muted);background:#f1f5f9;border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.group{border-top:1px solid var(--line)}
+.group:first-child{border-top:0}
+.group-head{padding:10px 14px;display:flex;gap:10px;align-items:center;cursor:pointer;user-select:none;background:#fbfdff}
+.group-head:hover{background:#f1f5f9}
+.group-head h3{margin:0;font-size:13px}
+.group-head p{margin:2px 0 0;font-size:11px;color:var(--muted);line-height:1.3}
+.badge{font-size:10px;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 7px;border:1px solid var(--line);background:#fff;white-space:nowrap}
+.badge.teal{border-color:#99f6e4;color:#0f766e;background:#f0fdfa}
+.badge.amber{border-color:#fde68a;color:#92400e;background:#fffbeb}
+.badge.rose{border-color:#fecdd3;color:#9f1239;background:#fff1f2}
+.badge.sky{border-color:#bae6fd;color:#0c4a6e;background:#f0f9ff}
+.badge.slate{border-color:#cbd5e1;color:#334155;background:#f8fafc}
+.badge.emerald{border-color:#a7f3d0;color:#065f46;background:#ecfdf5}
+.badge.red{border-color:#fecaca;color:#991b1b;background:#fef2f2}
+.switch-table{width:100%;border-collapse:collapse;font-size:12px}
+.switch-table th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 10px;background:#f8fafc;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.switch-table td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;word-break:break-all}
+.wiring{font-size:10px;border-radius:999px;padding:2px 6px;border:1px solid var(--line);white-space:nowrap}
+.wiring.WIRED{color:#065f46;background:#ecfdf5;border-color:#a7f3d0}
+.wiring.WEAK{color:#92400e;background:#fffbeb;border-color:#fde68a}
+.wiring.UNWIRED{color:#475569;background:#f1f5f9}
+.wiring.DEAD{color:#991b1b;background:#fef2f2;border-color:#fecaca}
+.wiring.GHOST{color:#6b7280;background:#f3f4f6;border-style:dashed}
+.wiring.PARAM{color:#334155;background:#f8fafc}
+.default{font-family:ui-monospace,monospace;font-size:11px;color:#334155}
+.comment{color:#475569;line-height:1.35}
+.section{margin-top:18px}
+.section h2{margin:0 0 8px;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:#0f172a}
+.section p.lead{margin:0 0 10px;color:#475569;font-size:13px;line-height:1.5;max-width:900px}
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:900px){.plan-grid{grid-template-columns:1fr}}
+.plan{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.plan h4{margin:0 0 6px;font-size:13px}
+.plan ul{margin:6px 0 0 16px;padding:0;font-size:12px;color:#334155;line-height:1.5}
+.kbd{font-family:ui-monospace,monospace;font-size:11px;background:#0f172a;color:#e2e8f0;border-radius:6px;padding:2px 6px}
+.filter-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 14px;background:#f8fafc;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="top-inner">
+    <div>
+      <h1>STOCKS 1YR Real Matrix — Switch Inventory</h1>
+      <div class="sub">Source: <span class="kbd">config_tradier.py</span> 3,264 lines · 2,051 fields · 416 <span class="kbd">_ENABLED</span> switches · Build: <span id="buildDate"></span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>2,051</b><span>total fields</span></div>
+      <div class="stat"><b>416</b><span>_ENABLED switches</span></div>
+      <div class="stat"><b>224</b><span>DEAD_CONFIRMED</span></div>
+      <div class="stat"><b>32 wired</b><span>≥3 usage sites</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="controls">
+    <input id="q" placeholder="Search switch, param, comment, line…  (e.g. WT, DC break, reentry, trail)"/>
+    <select id="wiringFilter"><option value="">All wiring</option><option>WIRED</option><option>WEAK</option><option>UNWIRED</option><option>DEAD</option><option>PARAM</option></select>
+    <select id="bucketFilter"><option value="">All buckets</option><option value="ENTRY_BOTTOM">Entries — Bottom / Top (mean-reversion)</option><option value="ENTRY_BREAKOUT">Entries — Breakout / Breakdown (momentum)</option><option value="REENTRY">Reentries</option><option value="EXIT_TOP">Exits — Top / Take-profit</option><option value="EXIT_BREAKDOWN">Exits — Breakdown / Stop / Structure</option><option value="EXIT_TRAIL">Exits — Trailing</option><option value="FILTER">Filters / Gates</option><option value="SIZING">Sizing / Augment / Hedge</option></select>
+    <button id="expandBtn" style="border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer">Expand all</button>
+    <button id="collapseBtn" style="border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer">Collapse all</button>
+  </div>
+
+  <div class="legend" style="margin-top:10px">
+    <span class="chip"><span class="dot" style="background:#0f766e"></span> Bottom buy / Top short — mean-reversion</span>
+    <span class="chip"><span class="dot" style="background:#b45309"></span> Breakout long / Breakdown short — momentum</span>
+    <span class="chip"><span class="dot" style="background:#047857"></span> Exit at Top — take profit</span>
+    <span class="chip"><span class="dot" style="background:#be123c"></span> Exit at Breakdown — stop / structure</span>
+    <span class="chip"><span class="dot" style="background:#92400e"></span> Trailing / chandelier</span>
+    <span class="chip"><span class="dot" style="background:#0369a1"></span> Oscillator / scorer</span>
+    <span class="chip"><span class="dot" style="background:#475569"></span> Filter / Gate</span>
+    <span class="chip"><span class="dot" style="background:#f59e0b"></span> Sizing / Augment</span>
+  </div>
+
+  <div class="section">
+    <h2>1 — Entries</h2>
+    <p class="lead">Two macro buckets. <b>Bottom</b> buys an oversold dip (long) or sells an overbought top (short) — price stretched away from mean and turning. <b>Breakout</b> buys a Donchian/Δ/arrow break (long) or breakdown (short) — price confirming direction through structure. Every entry switch lives in one bucket; filters in §4 then gate the bucket they belong to. Short entries are mirrors: what is "bottom" for long is "top" for short.</p>
+    <div class="grid" id="entryGrid"></div>
+  </div>
+
+  <div class="section">
+    <h2>2 — Reentries</h2>
+    <p class="lead">Reentry = second+ entry into a position after the first close. <b>PULL</b> are dumb distance buckets (900+ combo illusion). <b>B-blocks</b> are smart conditional reentries (only 4 of 15 actually fire on stocks). <b>Mandatory/Guaranteed</b> forces reentry after a profitable close — the anti-churn emergency lane. Sweep reentries <b>inside</b> an entry bucket, never alone.</p>
+    <div class="grid" id="reentryGrid"></div>
+  </div>
+
+  <div class="section">
+    <h2>3 — Exits</h2>
+    <p class="lead">Three exit families. <b>Top/TP</b> exits a long into strength (overbought / scorer fade) — mirrors a short's breakdown exit. <b>Breakdown/Structure</b> exits when price breaks the wrong way — the stop family. <b>Trailing</b> rides winners with an ATR/chandelier shelf. No-loss gates (§4) veto loss exits globally.</p>
+    <div class="grid" id="exitGrid"></div>
+  </div>
+
+  <div class="section">
+    <h2>4 — Filters &amp; Gates — who filters what</h2>
+    <p class="lead">Filters are not strategies — they are vetoes. The table maps each gate to the entry/exit bucket it should gate. Testing a filter outside its bucket wastes the sweep. Example: <span class="kbd">RED_ZONE_TRADIER_GATE</span> gates entries near option walls — almost entirely Bottom bounces near resistance; testing it on Breakout DC entries adds noise.</p>
+    <div class="card" id="filterCard"></div>
+  </div>
+
+  <div class="section">
+    <h2>5 — Grouped backtest plan (replace random 900×900×120×20)</h2>
+    <p class="lead">Do not cartesian entries×exits×reentries×filters. Instead run <b>coherent bundles</b>: fix one entry bucket, pair it with the 1–2 exits that naturally belong to it, and gate only with filters that belong to that bucket. Promote only after 1yr × ≥100 stocks × ≥30 trades/sym clears <span class="kbd">pool_sharpe ≥ 1.0</span>.</p>
+    <div class="plan-grid" id="planGrid"></div>
+    <div class="card" style="margin-top:12px;padding:12px">
+      <h4 style="margin:0 0 6px">Why this beats random</h4>
+      <ul style="margin:0 0 0 16px;font-size:12px;color:#475569;line-height:1.6">
+        <li><b>2,051 fields collapse → ~10 testable families.</b> 416 switches contain 224 DEAD + 144 UNWIRED ghosts — two-thirds are inventory noise.</li>
+        <li><b>32 wired switches</b> are the only ones with &gt;2 real call sites. Promote from those; use WEAK switches only as experiment lanes.</li>
+        <li>B-blocks: only <span class="kbd">B02, B04, B11, B12</span> showed ablation Sharpe &gt;0.15 on stocks — delete the rest until new code wires them.</li>
+        <li>Exits: pairing a Bottom entry with a Breakdown stop (instead of Top TP) inverts the signal — the sweep then measures the gate, not the idea.</li>
+        <li>Filters: <span class="kbd">STRENGTH_MIN_SCORE=5</span> alone drops 91% of raw block fires (STOCKS_DIAG) — its group must be tested with/without, not averaged across buckets.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>6 — Raw switch table (searchable)</h2>
+    <div class="card" id="rawCard"></div>
+  </div>
+
+  <div style="margin:18px 0 40px;color:#94a3b8;font-size:11px">Generated from <span class="kbd">config_tradier.py</span> + <span class="kbd">data/sweep_alerts/switch_registry.json</span>. Wiring = usage sites of <span class="kbd">getattr(config,…_ENABLED)</span> in ez_manage/tradier_manage/backtest_v8_engine + DEAD_CONFIRMED comment flag. PARAM = non-switch field (threshold/cap). GHOST = no dataclass default. Short entries are directional mirrors — same code path, opposite side.</div>
+</div>
+
+<script>
+document.getElementById('buildDate').textContent = new Date().toISOString().slice(0,10);
+
+// ── Curated inventory — human grouping over the 416 switches + key params ──
+const GROUPS = [
+  // ENTRY BOTTOM
+  {id:'E-BOTTOM-BOUNCE', bucket:'ENTRY_BOTTOM', title:'A1 — BOUNCE (mean-reversion at bottom)', color:'teal', wiring:'WEAK', desc:'Long: price bounced X% off 5m/1h low + deep K4H + turning K1H. Short mirror: bounce off top. Wired only for WDAY pilot; otherwise vector-only. 8 params per switch.', switches:[
+    ['ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED','False','WDAY short pilot master. needs deep K4H<50 + turn K1H<40 + bounce 1.5% + 2 TF confirms'],
+    ['ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE','0.015','Bounce % off timeframe low'],
+    ['ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H','50.0','4h stoch K ceiling for deep signal'],
+    ['ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H','40.0','1h turn threshold'],
+    ['ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED','False','Direct Donchian distance bounce (5m, 0.8%)'],
+    ['ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE','0.008','Distance from DC low/high'],
+    ['BOUNCE_REENTRY_ENABLED_TRADIER','False','Post-profit K-reset reentry (K long 35 / short 65)'],
+  ]},
+  {id:'E-BOTTOM-STOCH', bucket:'ENTRY_BOTTOM', title:'A2 — STOCH / K-ZONE (stochastic oversold)', color:'teal', wiring:'WEAK', desc:'K oversold + turning up. K_ZONE 35/65 = entry gate. ENTRY_STOCH_HHHL needs N TFs confirming. Paired with WT for composite. Most STOCH entries are UNWIRED on stocks — ablation found only WT matters; stoch alone is noise on 1yr stocks.', switches:[
+    ['STOCH_ENTRY_ENABLED','False','Master stoch entry (parity switch)'],
+    ['K_ZONE_ENTRY_ENABLED_TRADIER','False','K-zone entry bonus +20 score when K in zone'],
+    ['K_ZONE_VETO_ENABLED_TRADIER','False','When True, blocks entry outside K 35/65'],
+    ['K_ZONE_LONG_THRESHOLD_TRADIER','35','K below this = long zone'],
+    ['K_ZONE_SHORT_THRESHOLD_TRADIER','65','K above this = short zone'],
+    ['ENTRY_STOCH_HHHL_DIRECT_ENABLED','False','HHHL stoch pattern (N TFs)'],
+    ['ENTRY_STOCH_PARENT_DIRECT_ENABLED','False','Parent TF stoch turn definition'],
+    ['COMBINED_STOCH_GATE_TRADIER','60.0','Global stoch gate stocks=60 (crypto 50)'],
+    ['LONG_STOCH_CHASE_BLOCK','True','Block long when k1h>85 (chasing top) — gate for Bottom entries'],
+  ]},
+  {id:'E-BOTTOM-WT', bucket:'ENTRY_BOTTOM', title:'A3 — WT (WaveTrend) — oscillator dip', color:'teal', wiring:'WIRED', desc:'WT cross up from oversold. WT_DC_ENTRY needs WT cross + K5m cap + HTF gate 4h_D. Ablation king: wt_all3 Sharpe 7.71. WT is the only wired oscillator — stoch/MFI variants below are gated by it.', switches:[
+    ['WT_ENTRY_ENABLED','False','WaveTrend entry master (parity)'],
+    ['WT_DC_ENTRY_THRESHOLD','45','WT composite score threshold for entry (rolled back from higher)'],
+    ['WT_DC_ENTRY_K5M_MAX_LONG','100.0','Hard K5m ceiling for long WT entry (off=100 = disabled)'],
+    ['WT_DC_ENTRY_K5M_MIN_SHORT','0.0','Hard K5m floor for short'],
+    ['WT_DC_HTF_GATE','4h_D','HTF gate protecting against short-into-uptrend (PLTR/IBIT disaster fix)'],
+    ['REENTRY_B12_WT_MOM_ENABLED','True','WT momentum reentry — ablation volume king 112k trades'],
+    ['MANDATORY_REENTRY_WT_FILTER_ENABLED','False','Price-cross reentry requires WT 15m confirmation'],
+  ]},
+  {id:'E-BOTTOM-BB', bucket:'ENTRY_BOTTOM', title:'A4 — BB / Band / %B (price near lower band)', color:'teal', wiring:'WEAK', desc:'Price near lower Bollinger/Linear-Reg band. LR_BAND needs D band + R²≥0.7. BB_ENTRY 0.30/0.70 = pullback buy/sell inside bands. Squeeze entry is DEAD_CONFIRMED.', switches:[
+    ['BB_PCTB_ENTRY_ENABLED','False','%B entry (parity)'],
+    ['BB_ENTRY_LONG_THRESHOLD','0.30','Long when %B < 0.30 (pullback inside lower band)'],
+    ['BB_ENTRY_SHORT_THRESHOLD','0.70','Short when %B > 0.70'],
+    ['LR_BAND_ENTRY_ENABLED','False','Linear-reg band entry (D, 0.3, R²≥0.7)'],
+    ['LR_PCTB_D_LONG_ENTRY_ENABLED','False','%B D long <0.20'],
+    ['BB_SQUEEZE_ENTRY_ENABLED','False','DEAD — Bollinger squeeze (never fires)'],
+  ]},
+  {id:'E-BOTTOM-RSI', bucket:'ENTRY_BOTTOM', title:'A5 — RSI2 / Connors (extreme oversold)', color:'teal', wiring:'WEAK', desc:'RSI(10) <40 long / >58 short (OOS champion). RSI2(2) <3. Connors <10. RSI_ENTRY_GATE is disabled by ablation (stoch gate already covers it). Use for bottom only — breakout RSIs are short-lived.', switches:[
+    ['RSI_ENTRY_PERIOD_TRADIER','10','RSI period 10 = OOS winner (was 2)'],
+    ['RSI_ENTRY_LONG_TRADIER','40.0','RSI <40 for long'],
+    ['RSI_ENTRY_SHORT_TRADIER','58.0','RSI >58 for short'],
+    ['RSI2_ENTRY_THRESHOLD','3.0','RSI2 <3 stricter'],
+    ['CONNORS_RSI_ENTRY_THRESHOLD','10.0','CRSI <10'],
+    ['RSI_ENTRY_GATE_ENABLED','False','DISABLED — ablation: stoch gate already does this'],
+    ['TRADIER_RSI_ENTRY_LONG_TRADIER','-1.0','SENTINEL <0 => disabled (stocks use MFI)'],
+  ]},
+  {id:'E-BOTTOM-ZONE', bucket:'ENTRY_BOTTOM', title:'A6 — ZONE filter (intraday position)', color:'slate', wiring:'PARAM', desc:'ENTRY_ZONE 80/20 was inverted bug (100 always-block). Loosened 35→80. Filters where in day range an entry may fire. Not an entry itself — gates Bottom entries hardest.', switches:[
+    ['ENTRY_ZONE_LONG','80.0','Long zone threshold (was 35 blocking 65% of longs)'],
+    ['ENTRY_ZONE_SHORT','20.0','Short zone (was 100 = always block)'],
+    ['K_ZONE_ENTRY_BONUS_TRADIER','20','Score bonus when K in zone'],
+  ]},
+  // ENTRY BREAKOUT
+  {id:'E-BREAK-DC', bucket:'ENTRY_BREAKOUT', title:'B1 — DC BREAK (Donchian breakout)', color:'amber', wiring:'WEAK', desc:'Price breaks Donchian channel. DC_ENTRY_VETO sentinel when True blocks DC_POSITION_ENTRY. Breakout TF sizing multiplies position by 0.5×(5m)…4×(D). Live Delta now does DC breakout better — DC alone is mostly UNWIRED.', switches:[
+    ['DC_ENTRY_VETO_ENABLED_TRADIER','False','Sentinel: when True blocks DC_POSITION entry'],
+    ['BREAKOUT_TF_SIZE_ENABLED','False','TF-based position sizing (0.5×5m … 4×D)'],
+    ['DELTA_GATE_DC_BREAKOUT','True','DEAD — block DC breakout without delta'],
+  ]},
+  {id:'E-BREAK-DELTA', bucket:'ENTRY_BREAKOUT', title:'B2 — DELTA (order-flow / velocity breakout)', color:'amber', wiring:'WEAK', desc:'Delta = velocity breakout: z≥2.5 + accel + min TF + ATR filter. Score +15 when confirms, -25 when opposes. Sweep found +15/-25; LT variant DEAD. The only breakout entry with real ablation win.', switches:[
+    ['DELTA_ENTRY_ENABLED','False','T25 winner False avg 0.527 vs True 0.507 — currently OFF'],
+    ['DELTA_ENTRY_Z_THRESHOLD','2.5','Winner ez=2.5'],
+    ['DELTA_ENTRY_ACCEL_THRESHOLD','0.3','Winner ST 0.3 (LT 0)'],
+    ['DELTA_ENTRY_MIN_TF','3','Winner ST 3 TFs'],
+    ['DELTA_ENTRY_SCORE_BONUS','15','Bonus when delta confirms'],
+    ['DELTA_ENTRY_SCORE_PENALTY','-25','Penalty when delta opposes'],
+    ['DELTA_ATR_ENTRY_FILTER','True','ATR filter on for stocks'],
+  ]},
+  {id:'E-BREAK-ARROW', bucket:'ENTRY_BREAKOUT', title:'B3 — ARROW / HTF (trend continuation)', color:'amber', wiring:'WEAK', desc:'Green arrow on D/4h/1h = momentum confirm. MTF_ARROW lab 5.81× ARM but UNWIRED for live. GR_HTF_DIRECT is the wired HTF entry (score 12–27 + WT alignment).', switches:[
+    ['MTF_ARROW_ENTRY_ENABLED','False','Multi-TF green arrow (lab ARM 5.81×)'],
+    ['BAND_ARROW_ENTRY_TFS','D,4h,1h','TFs where arrow counts'],
+    ['GR_HTF_DIRECT_ENTRY_ENABLED','False','Master HTF alignment entry — rollback False'],
+    ['GR_HTF_DIRECT_ENTRY_SCORE_MIN','12.0','Lowered 18→12 (18 too strict)'],
+    ['GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE','27.0','Gap above SCORE_MIN to create tier'],
+  ]},
+  {id:'E-OTHER', bucket:'ENTRY_BOTTOM', title:'A7 — SATOSHIT / FORMATION / LIVE ENGINE', color:'slate', wiring:'WEAK', desc:'SATOSHIT composite score (maker partial), FORMATION entries (H&S/wedge/triangle/flag — all False), LIVE_ENTRY_ENGINE additive boost (+8 when engine fires). Engines never block — only add conviction.', switches:[
+    ['SATOSHIT_ENTRY_ENABLED','False','Composite score entry (parity)'],
+    ['LIVE_ENTRY_ENGINE_ENABLED','True','Master additive boost (+8 score)'],
+    ['LIVE_ENTRY_ENGINE_MIN_SCORE','0.5','Engine fires above 0.5'],
+    ['LIVE_ENTRY_ENGINE_BOOST_SCORE','8.0','Additive bump'],
+    ['FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED','False','All formation entries = False sweep candidates'],
+    ['MFI_ENTRY_ENABLED','True','MFI gate (stocks use MFI not RSI)'],
+  ]},
+  // REENTRY
+  {id:'R-PULL', bucket:'REENTRY', title:'R1 — PULL blocks (dumb pullback distance)', color:'slate', wiring:'UNWIRED', desc:'Four dumb pullback buckets by % distance from last close. All False. Invented before B-blocks. Zero ablation wins — kept only for parity. Do not test alone; test as fallback when B-blocks miss.', switches:[
+    ['REENTRY_PULL1_ENABLED','False','Pull1 bucket'],
+    ['REENTRY_PULL2_ENABLED','False','Pull2'],
+    ['REENTRY_PULL3_ENABLED','False','Pull3'],
+    ['REENTRY_PULL4_ENABLED','False','Pull4'],
+  ]},
+  {id:'R-BBLOCK', bucket:'REENTRY', title:'R2 — B-BLOCK smart reentries (the only ones that fire)', color:'teal', wiring:'WIRED', desc:'15 B-blocks, but only B02/B04/B10/B11/B12/B14 actually fire on stocks. Ablation (48sym/4yr) ranked them. B02=BC156 bottom 0.31 Sharpe 22k trades; B09 cut (0.02 Sharpe). Sweep ONLY keepers; delete cuts from the combo.', switches:[
+    ['REENTRY_B02_BC156_BOTTOM_ENABLED','True','KEEP — Sharpe 0.31, 22k trades, 62.5% WR — BC156 bottom'],
+    ['REENTRY_B04_DC_RETEST_ENABLED','True','KEEP — 0.39/0.31, 579/335 trades — DC retest'],
+    ['REENTRY_B10_STOCH_REV_ENABLED','True','KEEP — 0.07/0.12, 69–75% WR — stoch reversal'],
+    ['REENTRY_B11_DC_BREAK_ENABLED','True','KEEP — 0.34/0.31, 94–97% WR — DC break'],
+    ['REENTRY_B12_WT_MOM_ENABLED','True','KEEP — 0.15/0.17, 112k/73k trades — volume king'],
+    ['REENTRY_B14_HA_TREND_ENABLED','True','KEEP — 0.11/0.13 — Heikin-Ashi trend'],
+    ['REENTRY_B09_SNAPBACK_ENABLED','False','CUT — 0.022 Sharpe weak'],
+    ['TRADIER_REENTRY_RZ_BLOCK_ENABLED','False','RZ block mandate'],
+    ['REENTRY_RALLY_K15M_MAX','100.0','Rally gate k15m max (100=off)'],
+    ['REENTRY_FAVORABLE_HTF_MIN','1','≥1 of 1h/4h/D WT aligned (was 2)'],
+  ]},
+  {id:'R-MANDATORY', bucket:'REENTRY', title:'R3 — MANDATORY / GUARANTEED (anti-churn emergency)', color:'rose', wiring:'WEAK', desc:'Forces reentry after profitable close. 2026-08-03 anti-churn: mandatory reentry now requires 5m DC break + WT 15m filter to avoid chicken-hedge churn. GUARANTEED with HTF veto was headless-chicken MSTR loop — now gated.', switches:[
+    ['REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED','True','Mandatory reentry requires 5m DC break (anti-churn)'],
+    ['MANDATORY_REENTRY_WT_FILTER_ENABLED','False','Price-cross reentry needs WT 15m'],
+    ['GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN','False','Require hedge open to guarantee'],
+    ['LEGACY_GUARANTEED_REENTRY','True','Rewritten 60min/HTF gate (logically guaranteed)'],
+    ['LEGACY_REENTRY_GUARANTEED_2WT','False','Exit crossed 0.3% + 2/4 WT, 50% reentry'],
+    ['GUARANTEED_REENTRY_HTF_VETO_ENABLED','False','HTF veto on guaranteed'],
+    ['TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED','False','Bypass stoch after 48h if overdue'],
+  ]},
+  {id:'R-TIER', bucket:'REENTRY', title:'R4 — TIER sizing (how big the reentry is)', color:'slate', wiring:'PARAM', desc:'Not a trigger — sizing multiplier applied WHEN a reentry fires. Tier1 1.5× of closed qty, Tier2 0.8× after 0.3% move. DIP 2.0× when k15<30, BREAKOUT 1.5× at same price, EXTENDED 1.0× when k1h>90. Test sizing inside a fixed trigger bundle.', switches:[
+    ['REENTRY_TIER1_SIZE_MULT_TRADIER','1.5','Tier1 150% of closed qty'],
+    ['REENTRY_TIER2_SIZE_MULT_TRADIER','0.8','Tier2 80%'],
+    ['REENTRY_TIER2_PRICE_PCT_TRADIER','0.003','0.3% move triggers Tier2'],
+    ['REENTRY_TIER2_MAX_MINUTES_TRADIER','120.0','Force after 120m'],
+    ['REENTRY_SIZE_DIP_MULT','2.0','Dip k15<30 → 200%'],
+    ['REENTRY_SIZE_BREAKOUT_MULT','1.5','Continuation ~same price →150%'],
+    ['REENTRY_SIZE_EXTENDED_MULT','1.0','Extended k1h>90 →100% (was 0.5)'],
+  ]},
+  // EXITS
+  {id:'X-TOP-SCORER', bucket:'EXIT_TOP', title:'X1A — TOP / TP — scorer & oscillator fade', color:'emerald', wiring:'WEAK', desc:'Long exits into strength: MFI>70 flip, RSI>85, stoch cross, WT exit min 5 TFs, WT_DC exit ≥30. Mirror: short exits at breakdown (cover into weakness). MTF/GR exit gate 3 TFs +5 indicators.', switches:[
+    ['MFI_FLIP_EXIT_ENABLED','False','Exit long when MFI_1h>70 (overbought = sell) — +3.91% avg'],
+    ['MFI_FLIP_EXIT_LONG_THRESHOLD','70.0','Long overbought threshold'],
+    ['RSI_EXIT_LONG_TRADIER','85.0','Exit long RSI>85 (was 70 — let winners run)'],
+    ['RSI2_EXIT_THRESHOLD_LONG','70.0','RSI2 >70 hold longer'],
+    ['STOCH_CROSS_1H_EXIT_ENABLED','False','Stoch cross 1h exit (disable — lagging vs delta/WT)'],
+    ['WT_DC_EXIT_ENABLED','True','Path-scoped WT/DC scorer exit master'],
+    ['WT_DC_EXIT_THRESHOLD','30','Exit score ≥30 (server 204: ≥25 optimal)'],
+    ['WT_EXIT_MIN_TFS_TRADIER','5','REVERTED 4→5: 4 exits too eagerly'],
+    ['MTF_GR_EXIT_GATE_ENABLED','True','MTF GR exit 3 TFs ×5 indicators'],
+    ['GR_HTF_DIRECT_EXIT_ENABLED','True','Master HTF exit'],
+  ]},
+  {id:'X-TOP-FORMATION', bucket:'EXIT_TOP', title:'X1B — TOP — formation & regime', color:'emerald', wiring:'UNWIRED', desc:'Head & shoulders / double top/bottom / wedge / triangle / flag / cup-handle / trend-structure exits. All False — formation exits are research-only, never wired for live. Regime exits (trending 2%+ vs ranging 0.15% gain min). Test only after scorer exits locked.', switches:[
+    ['FORMATION_HEAD_SHOULDERS_EXIT_ENABLED','False','H&S top'],
+    ['FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED','False','Double top'],
+    ['FORMATION_WEDGE_EXIT_ENABLED','False','Wedge'],
+    ['REGIME_TRENDING_EXIT_GAIN_MIN','2.0','Require 2%+ gain to exit in trending regime'],
+    ['REGIME_RANGING_EXIT_GAIN_MIN','0.15','Exit at 0.15% in ranging'],
+  ]},
+  {id:'X-BREAK-DC', bucket:'EXIT_BREAKDOWN', title:'X2A — BREAKDOWN — Donchian / structure / SRS', color:'rose', wiring:'WEAK', desc:'Price breaks structure the wrong way — the stop family. DC structural break (multi-TF), SRS = DC/BB hybrid, STDEV reject (price exits D BB band), STRUCTURAL_RANGE_SHIFT (bb_1h only — bb_4h was Apr-13 disaster -0.95% avg, 16% WR). Blocked by NOLOSS unless technical bypass fires.', switches:[
+    ['EXIT_STRUCT_DC_BREAK_ENABLED','False','DC structural break'],
+    ['STRUCTURAL_RANGE_SHIFT_EXIT','True','bb_1h only (bb_4h disaster)'],
+    ['STDEV_BB_RZ_EXIT_ENABLED','False','Exit when price exits D BB band'],
+    ['STDEV_REJECT_EXIT_ENABLED','False','D band reject 80/65'],
+    ['MTF_DC_REJECT_EXIT_ENABLED','True','MTF DC reject'],
+    ['MTF_BB_REJECT_EXIT_ENABLED','True','MTF BB reject'],
+    ['EXIT_STRUCT_BREAK_5M_ENABLED','False','5m LH/HL — too noisy'],
+  ]},
+  {id:'X-BREAK-SCORER', bucket:'EXIT_BREAKDOWN', title:'X2B — BREAKDOWN — scorer velocity & delta', color:'rose', wiring:'WEAK', desc:'Scorer decay exits: MI velocity/wave/divergence, DYNAMIC_SCORE_COUNTER (opposite direction ≥55), DELTA speed-decay (30% off peak, 15m, speed_decay winner 0.71 Sharpe 77.7% WR), WT velocity decay. These catch breakdown before DC does — but also whip.', switches:[
+    ['DELTA_EXIT_ENABLED','False','Delta speed decay 30% on 15m'],
+    ['DELTA_EXIT_DECAY_RATIO','0.30','Winner 30% from peak'],
+    ['DELTA_EXIT_TF','15m','Winner ST 15m (top 8 all 15m)'],
+    ['DELTA_EXIT_TYPE','speed_decay','Winner speed_decay 0.71 Sharpe'],
+    ['DYNAMIC_SCORE_COUNTER_EXIT_ENABLED','False','Opposite ≥55'],
+    ['MI_VELOCITY_EXIT_ENABLED_TRADIER','False','Velocity declining 2+ TFs'],
+    ['WT_VEL_DECAY_EXIT_ENABLED','False','WT velocity decay'],
+  ]},
+  {id:'X-BREAK-STOP', bucket:'EXIT_BREAKDOWN', title:'X2C — STOP / loss — the guarded family', color:'rose', wiring:'PARAM', desc:'Loss exits are GUARDED by NOLOSS — they cannot fire unless a technical bypass or hedge open condition is met. RATIO_EMERGENCY is permanently disabled (Sharpe 19 vs ratio). LOSS_EXIT_REQUIRES_HEDGE=True is master. These are not strategies — they are emergency lanes.', switches:[
+    ['LOSS_EXIT_REQUIRES_HEDGE','True','Master: can only exit at loss if hedge ≥ losing value'],
+    ['TRA_NO_LOSS_EXIT','False','tra never close at loss'],
+    ['LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED','False','Hedge-failed escape gain<-15% & 30m'],
+    ['RATIO_EMERGENCY_EXIT_ENABLED','False','PERMANENTLY DISABLED — closing losers = Sharpe 19 vs ratio'],
+    ['STRICT_NO_LOSS_ACCOUNTS','[]','Eliminated — UNIVERSAL_NOLOSS=true is core'],
+    ['MIN_HOLD_BARS_BEFORE_EXIT','32','8h hold floor: Sharpe 0.503 vs 0.460 (+9%)'],
+  ]},
+  {id:'X-TRAIL', bucket:'EXIT_TRAIL', title:'X3 — TRAILING (ATR / chandelier / structure)', color:'amber', wiring:'UNWIRED', desc:'Ride winners with a rising shelf. ATR_TRAIL 2× is #1 PnL destroyer on stocks (OFF). BOTTOM_A chandelier 4h arm / 5m trail / STDEV mode / 0.5 ATR buffer — all False. DYN_STRUCT_TRAIL ghost (no usage). Only trail that survives is inside DELTA_EXIT already.', switches:[
+    ['ATR_TRAIL_ENABLED_TRADIER','False','#1 stock PnL destroyer — OFF'],
+    ['ATR_TRAIL_2X_EXIT_ENABLED','False','#1 stock PnL destroyer — OFF'],
+    ['BOTTOM_A_PROTECTIVE_TRAIL_ENABLED','False','Chandelier 4h arm / 5m trail'],
+    ['MTF_ARROW_TRAIL_EXIT_ENABLED','False','Trail: close when price retraces CONFIRM_PCT'],
+    ['EXIT_DC_BREACH_REDUCE_ENABLED','False','Augmented DC breach reduce'],
+  ]},
+  {id:'X-HTF', bucket:'EXIT_TOP', title:'X4 — HTF exits (weekly reversal & hard drop)', color:'slate', wiring:'UNWIRED', desc:'Weekly WT reversal (W+D against side), HTF quick TP (1h exhausted + LTFs turning + 4h intact), HARD_DROP 5m <prev low, IBS exhaustion. Mostly False — HTF exits overlap with MTF scorer and add little.', switches:[
+    ['HTF_W_REVERSAL_EXIT_TRADIER_ENABLED','False','W+D WT against side = exit'],
+    ['EXIT_HTF_QUICK_TP_ENABLED','False','1h exhausted + LTF turning + 4h intact'],
+    ['EXIT_HARD_DROP_5M_ENABLED','False','Price < prev 5m low (too aggressive)'],
+    ['EXIT_IBS_EXHAUSTION_ENABLED','False','Internal bar strength extreme'],
+  ]},
+  // FILTERS
+  {id:'F-HTF', bucket:'FILTER', title:'F1 — HTF ALIGNMENT gates (entry + reentry)', color:'slate', wiring:'PARAM', desc:'Must have N higher TFs aligned with side before any entry/reentry. WT_DC_HTF_GATE=4h_D blocks shorts into multi-week uptrend (PLTR/IBIT disaster fix). GR_HTF_GATE, GOLDEN_RULE veto, SPY regime, ALIGNMENT_GATE. Apply to BOTH bottom and breakout — the universal gate.', switches:[
+    ['WT_DC_HTF_GATE','4h_D','Blocks short into Daily uptrend — STRONGEST setting'],
+    ['HTF_ALIGN_REQUIRED_TRADIER','2','≥2 of (1h,4h,D) WT aligned'],
+    ['GOLDEN_RULE_HTF_VETO_ENABLED','True','HTF veto on entry'],
+    ['SPY_REGIME_GATE_ENABLED_TRADIER','False','SPY <200SMA block longs'],
+    ['SPY_REGIME_BLOCK_LONGS_BELOW','True','Block longs when SPY < SMA200'],
+    ['ALIGNMENT_GATE_MIN','4','Min indicators aligned'],
+    ['GR_HTF_GATE_ENABLED','False','GR WT bull alignment gate'],
+    ['HTF_W_M_ALIGN_GATE_TRADIER_ENABLED','False','W/M WT agree gate'],
+  ]},
+  {id:'F-STRENGTH', bucket:'FILTER', title:'F2 — STRENGTH / MFI / SCORE filters', color:'slate', wiring:'WEAK', desc:'STRENGTH_MIN_SCORE=5 alone drops 91% of raw block fires → killer filter. Gates Bottom entries hardest. MFI/COMBINED_STOCH gates add little after WT. Clenow gate (slope×R² ≥30) for trend entries.', switches:[
+    ['STRENGTH_FILTER_ENABLED','True','Vector 1181 score ≥5'],
+    ['STRENGTH_MIN_SCORE','5.0','THE killer — 91% drop from raw_or'],
+    ['MFI_ENTRY_ENABLED','True','MFI gate (stocks only, never RSI)'],
+    ['COMBINED_STOCH_GATE_TRADIER','60.0','Stocks 60 (crypto 50)'],
+    ['CLENOW_GATE_MIN_SCORE','30.0','Slope×R² ≥30 for trend longs'],
+  ]},
+  {id:'F-ZONE', bucket:'FILTER', title:'F3 — ZONE / TIME filters', color:'slate', wiring:'PARAM', desc:'TIME_ZONE open/mid/close sizing + LUNCH_DEADZONE (blocks momentum at lunch). ENTRY_ZONE 80/20 gate for Bottom entries. Not a veto for breakout — breakout can fire any time; zone matters mostly for mean-reversion bounces near open/close.', switches:[
+    ['TIME_ZONE_ENABLED','True','Open/mid/close zone sizing'],
+    ['ZONE_OPEN_THRESHOLD','25','Minutes after open = open zone'],
+    ['ZONE_CLOSE_THRESHOLD','20','Minutes before close'],
+    ['LUNCH_DEADZONE_ENABLED','True','Blocks momentum at lunch'],
+    ['CLOSE_ZONE_SIZE_MULT','1.5','Size ×1.5 in close zone'],
+    ['K_ZONE_ENTRY_BONUS_TRADIER','20','Score +20 in K zone'],
+  ]},
+  {id:'F-KZONE', bucket:'FILTER', title:'F4 — K-ZONE & stoch filters', color:'slate', wiring:'PARAM', desc:'K_ZONE_VETO blocks entry outside 35/65; MOMENTUM_FADE only when K overbought/oversold. Paired with STRENGTH — together they define the tradable oversold window.', switches:[
+    ['K_ZONE_VETO_ENABLED_TRADIER','False','Variance fix: gates all entries'],
+    ['MOMENTUM_FADE_K_ZONE_TRADIER','True','Only fade when K overbought/oversold'],
+    ['LONG_STOCH_CHASE_BLOCK','True','Block long when k1h>85'],
+    ['DC_DAYTRADE_STOCH_FILTER','True','Require stoch not exhausted in entry direction'],
+  ]},
+  {id:'F-VOL', bucket:'FILTER', title:'F5 — VOLUME filters (breakout only)', color:'slate', wiring:'UNWIRED', desc:'CATALYST_VOLUME_GATE, CT_VOLUME_SURGE — ablation 0.0000 ΔSharpe on 11sym. No stock vector confirms volume gates help. Gate Breakout entries only; never gate Bottom bounces (they occur on low volume).', switches:[
+    ['CATALYST_VOLUME_GATE_ENABLED','False','Ablation 0.0000 ΔSharpe'],
+    ['CT_VOLUME_SURGE_GATE_ENABLED','False','BC_174 DEAD'],
+    ['VOL_SPIKE_COOLDOWN','300.0','Seconds between vol spike entries/sym'],
+  ]},
+  {id:'F-OI', bucket:'FILTER', title:'F6 — OI / RED ZONE / funding walls', color:'slate', wiring:'WEAK', desc:'Options max-OI walls as support/resistance. RED_ZONE blocks long within 0.5% below max call OI wall (resistance). OI_INJECT injects extreme P/C names into rankings. FUNDING_GATE P/C 1.2/0.83. Walls gate entries near price — mostly Bottom bounces at resistance; irrelevant deep in trend.', switches:[
+    ['RED_ZONE_TRADIER_GATE_ENABLED','True','Block entry within 0.5% of wall strike ≥1000 OI'],
+    ['RED_ZONE_TRADIER_MIN_DISTANCE_PCT','0.5','Wall proximity %'],
+    ['TRADIER_OI_INJECT_ENABLED','True','Inject extreme P/C into rankings'],
+    ['FUNDING_GATE_ENABLED_TRADIER','False','Default OFF; flip in sweep'],
+    ['FUNDING_GATE_PC_RATIO_LONG_MAX','1.2','Block long when P/C ≥1.2 (bearish flow)'],
+  ]},
+  {id:'F-COOL', bucket:'FILTER', title:'F7 — COOLDOWN / anti-churn (reentry gate)', color:'slate', wiring:'PARAM', desc:'Cooldowns gate REENTRIES specifically, not first entries. COOLDOWN_BARS=3, SBA 2h between adds, HARDCOOL 30m, SPIKE_FADE 6 bars, DELTA cooldown 60 bars (5h). Anti-churn emergency 2026-08-03 tightened these — never loosen without Tier-2.', switches:[
+    ['COOLDOWN_BARS','3','Bars between entries/sym'],
+    ['SBA_COOLDOWN_S_TRADIER','7200','2h between adds (stocks slower)'],
+    ['TRADIER_REENTRY_HARDCOOL_MIN','30.0','Hard cool 30m before reentry'],
+    ['SPIKE_FADE_COOLDOWN_BARS','6','Min bars between spike entries'],
+    ['TRADIER_REENTRY_ANTI_CHURN_ENABLED','False','MANDATE: guaranteed (anti-churn OFF means churn)'],
+  ]},
+  {id:'F-NOLOSS', bucket:'FILTER', title:'F8 — NO-LOSS gates (exit gate)', color:'rose', wiring:'PARAM', desc:'Block any close that would realize a loss unless a TECHNICAL bypass fires (LIQUIDATION/EMERGENCY/DC break/WT decay). UNIVERSAL_NOLOSS was re-disabled after -25%/week bleed — hedge+ratio is the protection, not NOLOSS. TRB min 0% / TRC 0.5% / NOLOSS 0.01% are mutually exclusive experiments.', switches:[
+    ['UNIVERSAL_NOLOSS_GATE','False','RE-DISABLED: hedge+ratio is protection'],
+    ['NOLOSS_BYPASS_WT_5OF5_ENABLED','False','Even if NOLOSS sneaks, require 5/5 WT against'],
+    ['NOLOSS_MIN_PROFIT_PCT_TRADIER','0.01','MU forensics 0.01 let DELTA_EXIT through'],
+    ['TRB_NOLOSS_MIN_PROFIT_PCT','0.0','TECHNICALS ONLY — was 3% blocking all exits'],
+    ['TRADIER_NOLOSS_SRS_BYPASS','True','SRS reason bypasses NOLOSS'],
+    ['LOSS_EXIT_TECHNICAL_BYPASS',"('LIQUIDATION', …)",'Gain erosion + HTF flip added 2026-04-20'],
+  ]},
+  {id:'F-REGIME', bucket:'FILTER', title:'F9 — REGIME & structure filters', color:'slate', wiring:'PARAM', desc:'CLENOW (SPY>SMA200), VIX, ADX<20 sizing penalty, LH/HL structure filter (STRICT_2BAR / DC_REGRESS), TREND_GATES, COUNTER_TREND_ADD_BLOCK. LH/HL replaces SMA200D when enabled. Gate breakout entries in ranging regimes.', switches:[
+    ['CLENOW_REGIME_FILTER','True','Only hold when SPY>SMA200'],
+    ['VIX_REGIME_FILTER_ENABLED','True','Block when SPY<SMA200'],
+    ['ADX_REGIME_FILTER_ENABLED','True','ADX<20 = sizing penalty + block'],
+    ['LH_HL_FILTER_ENABLED','False','STRICT_2BAR LH/HL structure'],
+    ['COUNTER_TREND_ADD_BLOCK_ENABLED','True','Block adds against trend'],
+    ['SPY_REGIME_BLOCK_SHORTS_ABOVE','False','Opt-in: block shorts when SPY>SMA200'],
+  ]},
+  // SIZING
+  {id:'S-SIZING', bucket:'SIZING', title:'Sizing / Augment / Hedge', color:'amber', wiring:'PARAM', desc:'Not entries/exits — how big and how we hedge. MAX 2250 / START 500 (quarter of orig after emergency cuts). AUGMENT gated by profitability + cooldown + pyramiding. HEDGE live via ez_positions_quick only (HEDGE_MODE False). Options stack is research/report only (OPTIONS_LIVE_TRADING_ENABLED False).', switches:[
+    ['MAX_POSITION_SIZE','2250.0','Was 5000 orig → 2250 after 2 emergency cuts'],
+    ['START_POSITION_SIZE','500.0','Was 150 →500: $150 cannot buy 1 share of $300 stocks'],
+    ['MIN_POSITION_SIZE','100','Floor'],
+    ['AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER','False','Augment only when profitable'],
+    ['AUGMENT_PYRAMID_TRADIER','False','DEAD — pyramid'],
+    ['OPTIONS_LIVE_TRADING_ENABLED','False','SAFETY: options research/report only — no live orders'],
+    ['HEDGE_MODE','False','Hedges via ez_positions_quick only'],
+  ]},
+];
+
+function renderGroups(containerId, bucketFilter){
+  const c=document.getElementById(containerId);
+  c.innerHTML='';
+  GROUPS.filter(g=>!bucketFilter || g.bucket===bucketFilter || (bucketFilter==='ENTRY_BOTTOM'&&g.bucket==='ENTRY_BOTTOM') || (bucketFilter==='ENTRY_BREAKOUT'&&g.bucket==='ENTRY_BREAKOUT') || (bucketFilter==='EXIT_TOP'&&g.bucket==='EXIT_TOP') || (bucketFilter==='EXIT_BREAKDOWN'&&g.bucket==='EXIT_BREAKDOWN') || (bucketFilter==='EXIT_TRAIL'&&g.bucket==='EXIT_TRAIL')).forEach(g=>{
+    const el=document.createElement('div');
+    el.className='card group-card';
+    el.dataset.bucket=g.bucket;
+    el.dataset.text=(g.title+' '+g.desc+' '+g.switches.map(s=>s.join(' ')).join(' ')).toLowerCase();
+    el.innerHTML=`
+      <div class="group-head" onclick="this.nextElementSibling.classList.toggle('hidden')">
+        <span class="dot" style="background:${g.color==='teal'?'#0f766e':g.color==='amber'?'#b45309':g.color==='rose'?'#be123c':g.color==='emerald'?'#047857':g.color==='sky'?'#0369a1':'#475569'}"></span>
+        <div style="flex:1">
+          <h3>${g.title} <span class="badge ${g.color}">${g.bucket.replace('_',' ')}</span></h3>
+          <p>${g.desc}</p>
+        </div>
+        <span class="badge slate">${g.switches.length} switches</span>
+      </div>
+      <div>
+        <table class="switch-table">
+          <thead><tr><th>Switch / Param</th><th>Default</th><th>Wiring</th><th>What it does</th></tr></thead>
+          <tbody>
+            ${g.switches.map(([name,defVal,cmt])=>{
+              const wired = name.includes('_ENABLED') ? (/DEAD/i.test(cmt)?'DEAD': defVal==='True'?'WIRED': defVal==='False'?'WEAK':'PARAM') : 'PARAM';
+              // better: infer from curated wiring
+              const w = g.wiring;
+              const wClass = w;
+              return `<tr data-text="${(name+' '+defVal+' '+cmt).toLowerCase()}"><td class="mono">${name}</td><td class="default">${defVal}</td><td><span class="wiring ${wClass}">${w}</span></td><td class="comment">${cmt}</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    c.appendChild(el);
+  });
+}
+
+function wireEntry(){ renderGroups('entryGrid',''); renderGroups('reentryGrid',''); renderGroups('exitGrid',''); renderFilterCard(); renderPlanGrid(); renderRawCard(); }
+function renderFilterCard(){
+  const rows=[
+    ['F1 HTF Alignment','WT_DC_HTF_GATE, HTF_ALIGN_REQUIRED, GOLDEN_RULE, SPY_REGIME, ALIGNMENT_GATE','BOTH Bottom + Breakout (universal first gate)','Bottom squeezes too hard → 28/day blocks; Breakout needs it less but still catches uptrend traps'],
+    ['F2 Strength / MFI','STRENGTH_MIN_SCORE=5, MFI, CLENOW, COMBINED_STOCH 60','Bottom only (kills 91% of bounces)','Breakout on high score still valid — do not gate Breakout with STRENGTH'],
+    ['F3 Zone / Time','ENTRY_ZONE, TIME_ZONE, LUNCH_DEADZONE','Bottom only','Breakout is intraday-agnostic; zone matters for mean-reversion timing'],
+    ['F4 K-Zone','K_ZONE_VETO, thresholds 35/65, LONG_STOCH_CHASE','Bottom only','Breakout fires mid-range; K veto kills legitimate breakouts'],
+    ['F5 Volume','CATALYST_VOLUME_GATE, CT_VOLUME_SURGE','Breakout only','Bottom bounces occur on low volume — volume gate kills them'],
+    ['F6 OI / Red Zone','RED_ZONE_TRADIER_GATE 0.5%, OI_INJECT, FUNDING P/C','Bottom only (near-wall entries)','Breakout through wall is signal, not block — invert logic for breakout'],
+    ['F7 Cooldown','COOLDOWN_BARS, SBA, HARDCOOL, SPIKE_FADE','Reentry only','First-entry cooldown is separate (3 bars) — do not mix with reentry anti-churn'],
+    ['F8 No-Loss','UNIVERSAL_NOLOSS, NOLOSS_BYPASS 5/5, TRB_NOLOSS 0%','All breakdown / stop / trailing exits','Never gate Top/TP exits with NOLOSS — they are profitable by definition'],
+    ['F9 Regime / Structure','CLENOW, VIX, ADX<20, LH/HL STRICT_2BAR','Breakout mostly','Bottom mean-reversion wants ranging regime — regime gate kills the best bounces'],
+  ];
+  document.getElementById('filterCard').innerHTML = `
+    <div class="filter-row"><span>Filter family → Entry/Exit bucket it gates → why</span><span style="font-size:10px">Test filters ONLY inside their bucket</span></div>
+    <table class="switch-table">
+      <thead><tr><th>Family</th><th>Switches</th><th>Gates bucket</th><th>Note</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr><td><b>${r[0]}</b></td><td class="mono" style="font-size:11px">${r[1]}</td><td><span class="badge ${r[2].includes('Both')?'sky':r[2].includes('Reentry')?'amber':r[2].includes('No-Loss')?'rose':'teal'}">${r[2]}</span></td><td class="comment">${r[3]}</td></tr>`).join('')}</tbody>
+    </table>`;
+}
+function renderPlanGrid(){
+  const plans=[
+    {t:'P1 — Bottom Bounce + Top TP',c:'A1 bounce + X1A scorer TP + F2/F3/F4 + F1',d:'WDAY-pilot family. Entry: BOUNCE 1.5% + K4H<50 + K1H turn. Exit: MFI flip / RSI>85 / WT_DC. Filters: STRENGTH+MFI+K_ZONE+ZONE + HTF alignment. Reentry: B02+B04 only. No trailing, no DC breakdown.',why:'Isolates pure mean-reversion. Needs scorer TP, not breakdown stop — mix kills the edge.'},
+    {t:'P2 — WT Dip + Top TP',c:'A3 WT + X1A + F1+F2+F8',d:'WaveTrend dip buy (wt_all3). Entry WT 45 + K5m cap + HTF 4h_D. Exit WT_DC 30 + 5 TFs. Gates: HTF alignment + STRENGTH + NOLOSS 0.01%. Reentry B12 WT mom.',why:'Ablation king (Sharpe 7.71). Proven on tradier; test WT in isolation before adding stoch.'},
+    {t:'P3 — Band Pullback + Top TP',c:'A4 band + X1A + F1+F3',d:'LR_BAND D + %B<0.30 entry → BB %B / formation TP. Daily band so HTF gate is band itself. No vol, no red-zone.',why:'Different physics than stoch/WT — holds through noise on D band. Pair only with Top exits, never trailing.'},
+    {t:'P4 — Breakout DC/Delta + Breakdown Stop',c:'B1/B2 + X2A/X2B + F1+F5+F9+F7',d:'DC break or Delta z≥2.5 entry → DC structural break / Delta speed-decay stop. Gates: HTF + volume + regime (trending) + cooldown. Reentry B11 DC break.',why:'Momentum needs breakdown stop, not TP fade. Mirrors Bottom P1 with opposite exit family.'},
+    {t:'P5 — Arrow / HTF Trend + Trailing',c:'B3/B4 + X3 trailing + F1+F9',d:'Arrow D/4h/1h or GR_HTF entry → chandelier/ATR trail. Gates: HTF (trivially passes — arrow already is HTF) + ADX/LH_HL. No stoch/MFI gates.',why:'Trend rider — TP at fixed RSIs cuts winners short. Trailing only here.'},
+    {t:'P6 — RSI2 Extreme + Quick TP',c:'A5 RSI2/Connors + X1A quick + F2+F4',d:'RSI2<3 / Connors<10 → RSI>85 / MFI flip TP in <32 bars (8h hold floor). Tight K_ZONE filter. No breakdown exits.',why:'Extreme oversold bounces are shortest holds — need fast TP, not structure.'},
+    {t:'P7 — Reentry Stress (all pulls + B-blocks)',c:'R1+R2 + any P1–P3 entry held fixed',d:'Fix entry P2, rotate reentries PULL vs B02/B04/B11/B12 in isolation. Compare Tier sizing 1.5/0.8 inside each trigger. Cooldowns from F7 only.',why:'Reentries caused 91% volume illusion — measure per-block contribution with entry held constant.'},
+    {t:'P8 — Filter ablation',c:'F1→F9 one-at-a-time on P2',d:'Start from clean P2 (WT). Toggle each filter solo: +STRENGTH, +ZONE, +K_ZONE, +RED_ZONE, +VOL, +REGIME. Record Sharpe delta and trade-drop %.',why:'Filters were blamed for 91% drop but never ablated per-bucket. Required before promoting any filter to live.'},
+    {t:'P9 — No-Loss & Structure guardrails',c:'X2C + F8 against X2A exits',d:'Same entry+exit bundle, compare LOSS_REQUIRES_HEDGE True vs False, NOLOSS 0% vs 0.01% vs OFF, technical bypass on/off. Measure stranded positions & dd.',why:'NOLOSS re-disabled after -25%/week. Re-promote only if Tier-2 shows +Sharpe, not just fewer loss closes.'},
+  ];
+  document.getElementById('planGrid').innerHTML = plans.map(p=>`
+    <div class="plan"><h4>${p.t}</h4><div style="font-size:11px;color:#0369a1" class="mono">${p.c}</div><p style="font-size:12px;color:#334155;margin:6px 0 4px;line-height:1.5">${p.d}</p><div style="font-size:11px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:7px">${p.why}</div></div>
+  `).join('');
+}
+function renderRawCard(){
+  const all = GROUPS.flatMap(g=>g.switches.map(s=>({group:g.title,bucket:g.bucket,name:s[0],defVal:s[1],cmt:s[2],wiring:g.wiring})));
+  document.getElementById('rawCard').innerHTML = `
+    <div class="filter-row"><span>${all.length} curated switches (from 416 _ENABLED + key params). Full 2,051-field JSON available at startup time under <span class="kbd">/tmp/inventory_fields.json</span>.</span><span class="mono" style="font-size:10px">${all.length} rows</span></div>
+    <div style="max-height:520px;overflow:auto">
+    <table class="switch-table" id="rawTable">
+      <thead><tr><th>Switch / Param</th><th>Group</th><th>Default</th><th>Wiring</th><th>What it does</th></tr></thead>
+      <tbody>${all.map(r=>`<tr data-text="${(r.name+' '+r.group+' '+r.cmt+' '+r.bucket).toLowerCase()}"><td class="mono">${r.name}</td><td style="font-size:11px;color:#475569">${r.group.split(' — ')[0]}</td><td class="default">${r.defVal}</td><td><span class="wiring ${r.wiring}">${r.wiring}</span></td><td class="comment">${r.cmt}</td></tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+// initial render
+wireEntry();
+reRender = () => {
+  const q=(document.getElementById('q').value||'').toLowerCase().trim();
+  const wf=document.getElementById('wiringFilter').value;
+  const bf=document.getElementById('bucketFilter').value;
+  document.querySelectorAll('.group-card, #rawTable tbody tr').forEach(el=>{
+    const inBucket = !bf || el.dataset.bucket===bf || (bf.startsWith('ENTRY') && el.dataset.bucket && el.dataset.bucket.startsWith('ENTRY')) || (bf.startsWith('EXIT') && el.dataset.bucket && el.dataset.bucket.startsWith('EXIT'));
+    const inWiring = !wf || (()=>{ const t=el.querySelector('.wiring'); return t && t.textContent.trim()===wf; })() || el.dataset.bucket===wf;
+    const inText = !q || (el.dataset.text||'').includes(q);
+    el.classList.toggle('hidden', !(inBucket && inText));
+    if(el.tagName==='TR') el.style.display = (inBucket && inText) ? '' : 'none';
+  });
+  // also filter inside group rows
+  document.querySelectorAll('.group-card').forEach(card=>{
+    const showCard = !card.classList.contains('hidden');
+    if(!showCard) return;
+    card.querySelectorAll('tbody tr').forEach(tr=>{
+      const inText = !q || (tr.dataset.text||'').includes(q);
+      const inWiring = !wf || (tr.querySelector('.wiring') && tr.querySelector('.wiring').textContent.trim()===wf);
+      tr.style.display = (inText && inWiring) ? '' : 'none';
+    });
+  });
+};
+document.getElementById('q').addEventListener('input', reRender);
+document.getElementById('wiringFilter').addEventListener('change', reRender);
+document.getElementById('bucketFilter').addEventListener('change', ()=>{ const v=document.getElementById('bucketFilter').value; if(v){ document.querySelectorAll('.group-card').forEach(c=>c.classList.toggle('hidden', c.dataset.bucket!==v && !(v.startsWith('ENTRY')&&c.dataset.bucket.startsWith('ENTRY')) && !(v.startsWith('EXIT')&&c.dataset.bucket.startsWith('EXIT')))); } else { document.querySelectorAll('.group-card').forEach(c=>c.classList.remove('hidden'));} reRender(); });
+document.getElementById('expandBtn').onclick=()=>document.querySelectorAll('.group-card > div').forEach(d=>d.classList.remove('hidden'));
+document.getElementById('collapseBtn').onclick=()=>document.querySelectorAll('.group-card > div').forEach(d=>d.classList.add('hidden'));
+</script>
+</body>
+</html>

@@ -4731,14 +4731,26 @@ def compute_all_stats(window_days: int = None) -> Dict[str, dict]:
         win_rate = wins / n_trades
         avg_gain = sum(t['pnl_pct'] for t in all_trades) / n_trades
         avg_hold_sec = sum(t['hold_seconds'] for t in all_trades) / n_trades
-        total_pnl_pct = sum(t['pnl_pct'] for t in all_trades)
+        # FIX 2026-08-18 COPX_LONG -143%: sum(pnl_pct) can exceed -100% for LONG
+        # (additive) while equity cannot. Use compounded gain and dollar gain;
+        # keep sum as diagnostic only. See BACKTEST_BIBLE §2 avg-trade-deployed-2000-v1.
+        total_pnl_pct_sum = sum(t['pnl_pct'] for t in all_trades)
+        # compounded: product(1+p/100)-1, capped for LONG at -100%
+        compounded = 1.0
+        for t in all_trades:
+            compounded *= (1.0 + float(t['pnl_pct']) / 100.0)
+        total_pnl_pct_compounded = (compounded - 1.0) * 100.0
+        # for LONG, floor at -100% equity; SHORT can exceed -100% not modelled here
+        total_pnl_pct = max(-100.0, total_pnl_pct_compounded) if any(k.endswith('_LONG') for k in [key]) else total_pnl_pct_compounded
+        # preserve diagnostic sum for audit
+        total_pnl_pct_diagnostic_sum = total_pnl_pct_sum
         best_trade = max(t['pnl_pct'] for t in all_trades)
         worst_trade = min(t['pnl_pct'] for t in all_trades)
         if symbol not in result or result[symbol].get('trade_count', 0) < n_trades:
             multiplier = _perf_compute_multiplier(win_rate, avg_gain, n_trades)
             tier = _perf_compute_tier(win_rate, avg_gain, n_trades)
             now_iso = datetime.now(timezone.utc).isoformat()
-            result[symbol] = {'symbol': symbol, 'trade_count': n_trades, 'win_rate': round(win_rate, 4), 'avg_gain_pct': round(avg_gain, 4), 'total_pnl_pct': round(total_pnl_pct, 2), 'best_trade_pct': round(best_trade, 2), 'worst_trade_pct': round(worst_trade, 2), 'avg_hold_hours': round(avg_hold_sec / 3600, 2), 'accounts': list(data['accounts']), 'raw_multiplier': round(multiplier, 4), 'order_multiplier': round(multiplier, 3), 'tier': tier, 'set_at': now_iso, 'updated_at': now_iso}
+            result[symbol] = {'symbol': symbol, 'trade_count': n_trades, 'win_rate': round(win_rate, 4), 'avg_gain_pct': round(avg_gain, 4), 'total_pnl_pct': round(total_pnl_pct, 2), 'total_pnl_pct_compounded': round(total_pnl_pct, 2), 'total_pnl_pct_sum_diagnostic': round(total_pnl_pct_diagnostic_sum, 2), 'best_trade_pct': round(best_trade, 2), 'worst_trade_pct': round(worst_trade, 2), 'avg_hold_hours': round(avg_hold_sec / 3600, 2), 'accounts': list(data['accounts']), 'raw_multiplier': round(multiplier, 4), 'order_multiplier': round(multiplier, 3), 'tier': tier, 'set_at': now_iso, 'updated_at': now_iso}
     return result
 
 def refresh_cache() -> Dict[str, dict]:

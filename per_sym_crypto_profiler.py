@@ -452,14 +452,19 @@ def _simulate_one_side(sym: str, params: SymParams, side: str, years_back: float
     sd = float(rets.std())
     pool = float(rets.mean() / sd) if sd > 1e-12 else 0.0
     wr = float((rets > 0).mean() * 100.0)
-    eq = np.cumsum(rets); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
+    # FIX 2026-08-18 COPX_LONG -143%: use compounded equity, not sum
+    compounded_eq = np.cumprod(1.0 + rets / 100.0)
+    c_peak = np.maximum.accumulate(compounded_eq) if n else np.array([1.0])
+    dd = float(((c_peak - compounded_eq) / np.maximum(c_peak, 1e-12) * 100.0).max()) if n else 0.0
     total = float(rets.sum())
+    total_compounded = float((np.prod(1.0 + rets / 100.0) - 1.0) * 100.0) if n else 0.0
     out = dict(m)
     out.update({
         'trades': n, 'trades_per_day': n / span_days,
         'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
-        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
-        'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total_compounded,
+        'total_gain_pct_sum_diagnostic': total, 'total_gain_pct_compounded': total_compounded,
+        'avg_gain_trade': total_compounded / n if n else 0.0, 'gain_per_yr': total_compounded / yrs, 'gain_sym_yr': total_compounded / yrs,
         'years': yrs, 'side': side, 'trade_list': trades,
         'long_trades': n if side == 'LONG' else 0,
         'short_trades': n if side == 'SHORT' else 0,
@@ -518,15 +523,19 @@ def optimize_sym(sym: str, years_back: float = 4.0) -> Optional[Dict]:
     sd = float(all_rets.std())
     pool = float(all_rets.mean() / sd) if sd > 1e-12 else 0.0
     wr = float((all_rets > 0).mean() * 100.0)
-    eq = np.cumsum(all_rets); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
+    compounded_eq = np.cumprod(1.0 + all_rets / 100.0) if len(all_rets) else np.array([1.0])
+    c_peak = np.maximum.accumulate(compounded_eq) if len(all_rets) else np.array([1.0])
+    dd = float(((c_peak - compounded_eq) / np.maximum(c_peak, 1e-12) * 100.0).max()) if len(all_rets) else 0.0
     total = float(all_rets.sum())
+    total_compounded = float((np.prod(1.0 + all_rets / 100.0) - 1.0) * 100.0) if len(all_rets) else 0.0
     yrs = max(float(long_m.get('years', 0.01)), float(short_m.get('years', 0.01)))
     span_days = yrs * 365.25
     combined_m = {
         'sym': sym, 'trades': n_total, 'long_trades': n_long, 'short_trades': n_short,
         'trades_per_day': n_total / max(1.0, span_days),
         'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
-        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
+        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total_compounded,
+        'total_gain_pct_sum_diagnostic': total, 'total_gain_pct_compounded': total_compounded,
         'avg_gain_trade': total / n_total, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
         'years': yrs, 'n_syms': 1,
         'augment_count': long_m.get('augment_count', 0) + short_m.get('augment_count', 0),
