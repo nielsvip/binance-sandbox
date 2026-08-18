@@ -1,55 +1,44 @@
 {
- "generated_at": "2026-08-18 02:16 UTC",
- "total_capital_usd": 19.69,
+ "generated_at": "2026-08-18 02:32 UTC",
+ "total_capital_usd": 12.23,
  "tier_capital": {
   "A": 0.0,
-  "B": 19.69,
+  "B": 12.23,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [],
  "mediocre": [
-  "fin:ORDIUSDC_SHORT",
-  "fin:BNBUSDC_SHORT"
+  "men:APPUSDT_SHORT",
+  "men:BNBUSDC_SHORT"
  ],
  "positions": [
   {
-   "pk": "fin:PARTIUSDT_SHORT",
-   "symbol": "PARTIUSDT",
-   "account": "fin",
-   "value_usd": 6.99,
-   "gain_pct": -0.123,
-   "tier": "B",
-   "perf_mult": 1.29,
-   "amt": 307.0,
-   "mark": 0.02277279
-  },
-  {
-   "pk": "fin:ORDIUSDC_SHORT",
-   "symbol": "ORDIUSDC",
-   "account": "fin",
-   "value_usd": 6.67,
-   "gain_pct": 0.095,
+   "pk": "men:APPUSDT_SHORT",
+   "symbol": "APPUSDT",
+   "account": "men",
+   "value_usd": 6.2,
+   "gain_pct": 0.171,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 2.0,
-   "mark": 3.333
+   "amt": 0.02,
+   "mark": 310.02
   },
   {
-   "pk": "fin:BNBUSDC_SHORT",
+   "pk": "men:BNBUSDC_SHORT",
    "symbol": "BNBUSDC",
-   "account": "fin",
+   "account": "men",
    "value_usd": 6.03,
-   "gain_pct": 0.234,
+   "gain_pct": 0.09,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.01,
-   "mark": 603.28497644
+   "mark": 602.61450513
   }
  ]
 }

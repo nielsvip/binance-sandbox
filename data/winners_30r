@@ -1,9 +1,9 @@
 [
   {
     "symbol": "SNXXUSDT",
-    "returns_15m": 3.4883720930232376,
-    "returns_3m": 8.236594803758974,
-    "gain_score": 32.946
+    "returns_15m": 7.464324917672885,
+    "returns_3m": 10.621468926553668,
+    "gain_score": 42.486
   },
   {
     "symbol": "KORUUSDT",
@@ -30,22 +30,22 @@
     "gain_score": 18.545
   },
   {
+    "symbol": "SNDKUSDT",
+    "returns_15m": 3.5045994294306286,
+    "returns_3m": 4.3734181958641125,
+    "gain_score": 17.494
+  },
+  {
     "symbol": "MVLLUSDT",
     "returns_15m": 3.2258064516128995,
     "returns_3m": 4.056319141803557,
     "gain_score": 16.225
   },
   {
-    "symbol": "SNDKUSDT",
-    "returns_15m": 1.5589238432886037,
-    "returns_3m": 3.938983362230318,
-    "gain_score": 15.756
-  },
-  {
     "symbol": "BIGTIMEUSDT",
-    "returns_15m": 3.231527093596061,
-    "returns_3m": 3.8248117320649935,
-    "gain_score": 15.299
+    "returns_15m": 4.15506958250497,
+    "returns_3m": 3.907179690598971,
+    "gain_score": 15.629
   },
   {
     "symbol": "COHRUSDT",
@@ -72,6 +72,12 @@
     "gain_score": 13.307
   },
   {
+    "symbol": "WDCUSDT",
+    "returns_15m": 2.402476544991851,
+    "returns_3m": 3.3208140114206954,
+    "gain_score": 13.283
+  },
+  {
     "symbol": "DRAMUSDT",
     "returns_15m": 2.260927817785968,
     "returns_3m": 3.2290786136940044,
@@ -96,22 +102,58 @@
     "gain_score": 11.935
   },
   {
+    "symbol": "SKYAIUSDT",
+    "returns_15m": 1.1925499129036605,
+    "returns_3m": 2.9584185412406345,
+    "gain_score": 11.834
+  },
+  {
     "symbol": "STORJUSDT",
     "returns_15m": 2.7344686975293886,
     "returns_3m": 2.8578290105667543,
     "gain_score": 11.431
   },
   {
-    "symbol": "WDCUSDT",
-    "returns_15m": 1.1575550635998786,
-    "returns_3m": 2.5856164383561704,
-    "gain_score": 10.342
+    "symbol": "GLWUSDT",
+    "returns_15m": 1.5511589791617921,
+    "returns_3m": 2.827169274537702,
+    "gain_score": 11.309
   },
   {
-    "symbol": "MOVRUSDT",
-    "returns_15m": 2.4390243902439046,
-    "returns_3m": 2.578018995929446,
-    "gain_score": 10.312
+    "symbol": "NBISUSDT",
+    "returns_15m": 1.7161392524422023,
+    "returns_3m": 2.7783071001181527,
+    "gain_score": 11.113
+  },
+  {
+    "symbol": "WLDUSDC",
+    "returns_15m": 1.1535048802129588,
+    "returns_3m": 2.7644230769230895,
+    "gain_score": 11.058
+  },
+  {
+    "symbol": "MUUSDT",
+    "returns_15m": 1.8402513709322326,
+    "returns_3m": 2.56795299476936,
+    "gain_score": 10.272
+  },
+  {
+    "symbol": "NOKUSDT",
+    "returns_15m": 1.6901408450704198,
+    "returns_3m": 2.5568181818181777,
+    "gain_score": 10.227
+  },
+  {
+    "symbol": "IRENUSDT",
+    "returns_15m": 1.6584491259524923,
+    "returns_3m": 2.5548270404702746,
+    "gain_score": 10.219
+  },
+  {
+    "symbol": "DELLUSDT",
+    "returns_15m": 1.4995135569561422,
+    "returns_3m": 2.4769917362430918,
+    "gain_score": 9.908
   },
   {
     "symbol": "EWYUSDT",
@@ -136,47 +178,5 @@
     "returns_15m": 1.4150483068215116,
     "returns_3m": 2.3640661938534335,
     "gain_score": 9.456
-  },
-  {
-    "symbol": "CRWVUSDT",
-    "returns_15m": 1.6585178793979523,
-    "returns_3m": 2.1678389054822236,
-    "gain_score": 8.671
-  },
-  {
-    "symbol": "LITEUSDT",
-    "returns_15m": 1.4804451775907737,
-    "returns_3m": 2.155566532491145,
-    "gain_score": 8.622
-  },
-  {
-    "symbol": "DOTUSDT",
-    "returns_15m": 0.8891838088918435,
-    "returns_3m": 1.9991949550516603,
-    "gain_score": 7.997
-  },
-  {
-    "symbol": "GLWUSDT",
-    "returns_15m": 0.556424969570514,
-    "returns_3m": 1.9869496208335755,
-    "gain_score": 7.948
-  },
-  {
-    "symbol": "BSPUSDT",
-    "returns_15m": 1.6222613096791145,
-    "returns_3m": 1.9414099973828893,
-    "gain_score": 7.766
-  },
-  {
-    "symbol": "TAOUSDT",
-    "returns_15m": 0.1330263494499971,
-    "returns_3m": 1.9376009167144115,
-    "gain_score": 7.75
-  },
-  {
-    "symbol": "MUUSDT",
-    "returns_15m": 0.5026564752819451,
-    "returns_3m": 1.9269482307931143,
-    "gain_score": 7.708
   }
 ]
