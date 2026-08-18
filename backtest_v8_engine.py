@@ -6364,26 +6364,103 @@ def main():
         try:
             import v8_quick_engine as _ve
             # EXACT vec_combiner parity: QuickConfig.from_override_file("") + apply_tradier_defaults + _apply
-            _ov = json.load(open(_override_file))
-            print(f"V8_INIT_HEARTBEAT: loaded ov {list(_ov.keys())[:5]}", flush=True)
+            _ov_raw = json.load(open(_override_file))
+            print(f"V8_INIT_HEARTBEAT: loaded ov {list(_ov_raw.keys())[:5]}", flush=True)
             _qc = _ve.QuickConfig.from_override_file("")
             _qc.apply_tradier_defaults()
-            # Handle WIN_TRAIL_EROSION_PCT=0.125 form if present (vec stores without =, but be safe)
-            _ov_clean = {}
+            # PER_SYM FIX 2026-08-18: per_sym_active_config.json is nested {SYM_LONG:{overrides:{...}}, _meta:{}}
+            # Detect per_sym format vs flat param->value
+            _ov = {}
+            _is_per_sym = False
+            if _ov_raw and any(isinstance(v, dict) and "overrides" in v for v in _ov_raw.values() if isinstance(v, dict)):
+                _is_per_sym = True
+            if _is_per_sym:
+                # Resolve target overrides for requested symbol(s)
+                # If single symbol requested, pick that symbol's LONG/SHORT overrides; else union all
+                _req_syms = list(stores.keys())
+                _target_overrides = {}
+                _applied_syms = []
+                for _rs in _req_syms:
+                    for _side_suffix in ["_LONG", "_SHORT"]:
+                        _k = f"{_rs}{_side_suffix}"
+                        if _k in _ov_raw and isinstance(_ov_raw[_k], dict) and "overrides" in _ov_raw[_k]:
+                            _applied_syms.append(_k)
+                            for _pk, _pv in _ov_raw[_k]["overrides"].items():
+                                # Handle WIN_TRAIL_EROSION_PCT=0.125 form
+                                if "=" in _pk:
+                                    _kk, _vv = _pk.split("=", 1)
+                                    try: _vv = float(_vv)
+                                    except: pass
+                                    _pk, _pv = _kk, _vv
+                                # Coerce "True"/"False" strings (trb file has them)
+                                if isinstance(_pv, str) and _pv in ("True", "False"):
+                                    _pv = _pv == "True"
+                                _target_overrides[_pk] = _pv
+                # Fallback: single-symbol file with _SHORT/_LONG in filename
+                if not _target_overrides and len(_req_syms) == 1:
+                    _bn = Path(_override_file).name.upper()
+                    _side_hint = None
+                    if "_SHORT" in _bn:
+                        _side_hint = "_SHORT"
+                    elif "_LONG" in _bn:
+                        _side_hint = "_LONG"
+                    if _side_hint:
+                        _k = f"{_req_syms[0]}{_side_hint}"
+                        if _k in _ov_raw and "overrides" in _ov_raw[_k]:
+                            for _pk, _pv in _ov_raw[_k]["overrides"].items():
+                                if isinstance(_pv, str) and _pv in ("True", "False"):
+                                    _pv = _pv == "True"
+                                _target_overrides[_pk] = _pv
+                            _applied_syms = [_k]
+                _ov = _target_overrides
+                print(f"V8_INIT_HEARTBEAT: per_sym mode applied {len(_applied_syms)} syms { _applied_syms[:3]} overrides={len(_ov)}", flush=True)
+            else:
+                # Flat mode: direct param->value
+                _ov_clean = {}
+                for _k, _v in _ov_raw.items():
+                    if "=" in _k:
+                        _kk, _vv = _k.split("=", 1)
+                        try: _vv = float(_vv)
+                        except: pass
+                        _ov_clean[_kk] = _vv
+                    else:
+                        _ov_clean[_k] = _v
+                _ov = _ov_clean
+                print(f"V8_INIT_HEARTBEAT: flat mode overrides={len(_ov)}", flush=True)
+            # Apply to QuickConfig with type coercion
             for _k, _v in _ov.items():
-                if "=" in _k:
-                    _kk, _vv = _k.split("=", 1)
-                    try: _vv = float(_vv)
-                    except: pass
-                    _ov_clean[_kk] = _vv
-                else:
-                    _ov_clean[_k] = _v
-            for _k, _v in _ov_clean.items():
+                if not hasattr(_qc, _k):
+                    # Still set for logging but warn
+                    print(f"V8_INIT_HEARTBEAT: qc missing attr {_k} (still set)", flush=True)
                 try:
-                    setattr(_qc, _k, _v)
+                    _cur = getattr(_qc, _k, None)
+                    if isinstance(_cur, bool):
+                        if isinstance(_v, str):
+                            setattr(_qc, _k, _v == "True" if _v in ("True", "False") else bool(_v))
+                        else:
+                            setattr(_qc, _k, bool(_v))
+                    elif isinstance(_cur, int) and not isinstance(_cur, bool):
+                        if isinstance(_v, bool):
+                            if _v:
+                                continue
+                            setattr(_qc, _k, int(_v))
+                        elif isinstance(_v, str) and _v in ("True", "False"):
+                            continue
+                        else:
+                            setattr(_qc, _k, int(float(_v)) if isinstance(_v, str) else int(_v))
+                    elif isinstance(_cur, float):
+                        if isinstance(_v, bool):
+                            if _v:
+                                continue
+                            setattr(_qc, _k, float(_v))
+                        elif isinstance(_v, str) and _v in ("True", "False"):
+                            continue
+                        else:
+                            setattr(_qc, _k, float(_v))
+                    else:
+                        setattr(_qc, _k, _v)
                 except Exception as _e:
                     print(f"V8_INIT_HEARTBEAT: setattr {_k} failed {_e}", flush=True)
-            _ov = _ov_clean
             print(f"V8_INIT_HEARTBEAT: qc ready {list(_ov.keys())[:4]}", flush=True)
             # Run vector simulation for each requested symbol/side
             # The vector results are per sym/side (is_long flag). For tradier backtest with single symbol and no side filter,

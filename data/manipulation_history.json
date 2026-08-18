@@ -6670,5 +6670,14 @@
     ],
     "timestamp": "2026-08-18T06:51:44.118862+00:00",
     "price": 1888.0
+  },
+  {
+    "symbol": "ZENUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 8.4x normal"
+    ],
+    "timestamp": "2026-08-18T12:54:54.050203+00:00",
+    "price": 3.942
   }
 ]

@@ -3622,10 +3622,27 @@ class QuickConfig:
         cfg = cls()
         if path and Path(path).exists():
             with open(path) as f:
-                overrides = json.load(f)
+                raw = json.load(f)
+            # PER_SYM FIX 2026-08-18: support nested {SYM_LONG:{overrides:{...}}} + flat {PARAM:value}
+            # Store raw for caller-side per-symbol resolution if needed
+            cfg._per_sym_raw = raw if isinstance(raw, dict) else {}
+            cfg._is_per_sym = False
+            if isinstance(raw, dict) and any(isinstance(v, dict) and "overrides" in v for v in raw.values() if isinstance(v, dict)):
+                cfg._is_per_sym = True
+                cfg._per_sym_map = raw
+                # Do NOT apply top-level SYM_LONG keys here; caller will resolve per symbol via from_override_file_for_symbol
+                # Keep cfg as defaults; per-symbol overrides applied elsewhere (backtest hook or caller that knows symbol)
+                return cfg
+            overrides = raw
             for k, v in overrides.items():
+                # skip meta keys
+                if k.startswith("_"):
+                    continue
                 if hasattr(cfg, k):
                     cur = getattr(cfg, k)
+                    # Coerce "True"/"False" strings
+                    if isinstance(v, str) and v in ("True", "False"):
+                        v = v == "True"
                     if isinstance(cur, bool):
                         setattr(cfg, k, bool(v))
                     elif isinstance(cur, int) and not isinstance(cur, bool):
@@ -3634,16 +3651,62 @@ class QuickConfig:
                                 continue
                             setattr(cfg, k, int(v))
                         else:
-                            setattr(cfg, k, int(v))
+                            setattr(cfg, k, int(float(v)) if isinstance(v, str) else int(v))
                     elif isinstance(cur, float):
                         if isinstance(v, bool):
                             if v:
                                 continue
                             setattr(cfg, k, float(v))
                         else:
-                            setattr(cfg, k, float(v))
+                            setattr(cfg, k, float(float(v)) if isinstance(v, str) else float(v))
                     else:
                         setattr(cfg, k, v)
+        else:
+            cfg._per_sym_raw = {}
+            cfg._is_per_sym = False
+            cfg._per_sym_map = {}
+        return cfg
+
+    @classmethod
+    def from_override_file_for_symbol(cls, path: str, symbol: str, is_long: bool = None) -> "QuickConfig":
+        """Helper for per_sym files: returns config with correct SYM_LONG/SHORT overrides applied."""
+        cfg = cls.from_override_file(path)
+        if getattr(cfg, "_is_per_sym", False) and symbol:
+            raw = getattr(cfg, "_per_sym_map", {})
+            # Try exact side first, then any side for symbol
+            keys_to_try = []
+            if is_long is not None:
+                keys_to_try.append(f"{symbol}_{'LONG' if is_long else 'SHORT'}")
+            else:
+                keys_to_try.extend([f"{symbol}_LONG", f"{symbol}_SHORT"])
+            applied = False
+            for k in keys_to_try:
+                if k in raw and isinstance(raw[k], dict) and "overrides" in raw[k]:
+                    for pk, pv in raw[k]["overrides"].items():
+                        if isinstance(pv, str) and pv in ("True", "False"):
+                            pv = pv == "True"
+                        if hasattr(cfg, pk):
+                            cur = getattr(cfg, pk)
+                            if isinstance(cur, bool):
+                                setattr(cfg, pk, bool(pv))
+                            elif isinstance(cur, int) and not isinstance(cur, bool):
+                                if isinstance(pv, bool) and pv:
+                                    continue
+                                setattr(cfg, pk, int(float(pv)) if isinstance(pv, str) else int(pv))
+                            elif isinstance(cur, float):
+                                if isinstance(pv, bool) and pv:
+                                    continue
+                                setattr(cfg, pk, float(pv))
+                            else:
+                                setattr(cfg, pk, pv)
+                        else:
+                            # Still set for unknown but allow
+                            setattr(cfg, pk, pv)
+                    applied = True
+                    break
+            if not applied:
+                # Fallback: if no exact symbol, try flat (should not happen)
+                pass
         return cfg
 
     def apply_tradier_defaults(self):
@@ -11026,17 +11089,90 @@ def main():
     coverage_contract = enforce_coverage_claim(args, runner="v8_quick_engine.py")
     print(f"V8_VECTOR_GROUND_RULE: {coverage_contract['coverage_status']} shortlist_sha256={coverage_contract['shortlist_sha256']}", flush=True)
     t0 = time.time()
-    cfg = QuickConfig.from_override_file(os.environ.get("V8_OVERRIDE_FILE", ""))
+    # PER_SYM FIX 2026-08-18: handle per_sym {SYM_LONG:{overrides:{}}} via per-symbol resolution
+    # If per_sym file and single symbol requested, load that symbol's overrides; else union for multi-symbol
+    _ov_env = os.environ.get("V8_OVERRIDE_FILE", "")
+    _sym_hint = None
+    _syms_hint = [s.strip() for s in args.symbols.split(",") if s.strip()] if args.symbols and args.symbols != "fast" else []
+    if _ov_env and Path(_ov_env).exists():
+        try:
+            _raw_check = json.load(open(_ov_env))
+            _is_per_sym_check = isinstance(_raw_check, dict) and any(isinstance(v, dict) and "overrides" in v for v in _raw_check.values() if isinstance(v, dict))
+        except: _is_per_sym_check = False
+        if _is_per_sym_check and len(_syms_hint) == 1:
+            # Single symbol: resolve exact side-agnostic union (LONG+SHORT) for that symbol to keep single cfg valid for simulate() pooling
+            # simulate() will pool both sides; we union overrides from both sides (last wins) — backtest hook does finer per-side
+            cfg = QuickConfig.from_override_file("")  # start from defaults
+            cfg._per_sym_raw = _raw_check
+            cfg._is_per_sym = True
+            cfg._per_sym_map = _raw_check
+            _union = {}
+            for _side in ["_LONG", "_SHORT"]:
+                _k = f"{_syms_hint[0]}{_side}"
+                if _k in _raw_check and "overrides" in _raw_check[_k]:
+                    for _pk, _pv in _raw_check[_k]["overrides"].items():
+                        if isinstance(_pv, str) and _pv in ("True", "False"):
+                            _pv = _pv == "True"
+                        _union[_pk] = _pv
+            for _pk, _pv in _union.items():
+                if hasattr(cfg, _pk):
+                    _cur = getattr(cfg, _pk)
+                    if isinstance(_cur, bool): setattr(cfg, _pk, bool(_pv))
+                    elif isinstance(_cur, int) and not isinstance(_cur, bool):
+                        if isinstance(_pv, bool) and _pv: continue
+                        setattr(cfg, _pk, int(float(_pv)) if isinstance(_pv, str) else int(_pv))
+                    elif isinstance(_cur, float):
+                        if isinstance(_pv, bool) and _pv: continue
+                        setattr(cfg, _pk, float(_pv))
+                    else: setattr(cfg, _pk, _pv)
+                else:
+                    setattr(cfg, _pk, _pv)
+        else:
+            cfg = QuickConfig.from_override_file(_ov_env)
+            # If per_sym but multi-symbol, union all requested symbols' overrides
+            if getattr(cfg, "_is_per_sym", False) and _syms_hint:
+                _union = {}
+                for _s in _syms_hint:
+                    for _side in ["_LONG", "_SHORT"]:
+                        _k = f"{_s}{_side}"
+                        if _k in _raw_check and "overrides" in _raw_check[_k]:
+                            for _pk, _pv in _raw_check[_k]["overrides"].items():
+                                if isinstance(_pv, str) and _pv in ("True", "False"):
+                                    _pv = _pv == "True"
+                                _union[_pk] = _pv
+                for _pk, _pv in _union.items():
+                    if hasattr(cfg, _pk):
+                        _cur = getattr(cfg, _pk)
+                        if isinstance(_cur, bool): setattr(cfg, _pk, bool(_pv))
+                        elif isinstance(_cur, int) and not isinstance(_cur, bool):
+                            if isinstance(_pv, bool) and _pv: continue
+                            setattr(cfg, _pk, int(float(_pv)) if isinstance(_pv, str) else int(_pv))
+                        elif isinstance(_cur, float):
+                            if isinstance(_pv, bool) and _pv: continue
+                            setattr(cfg, _pk, float(_pv))
+                        else: setattr(cfg, _pk, _pv)
+                    else:
+                        setattr(cfg, _pk, _pv)
+    else:
+        cfg = QuickConfig.from_override_file(_ov_env)
     if args.mode == "tradier":
         cfg.apply_tradier_defaults()
+        # For tradier per_sym, overrides already unioned above; for flat tradier file, need second pass after defaults
         ov = os.environ.get("V8_OVERRIDE_FILE", "")
         if ov and Path(ov).exists():
-            with open(ov) as f:
-                for k, v in json.load(f).items():
+            try:
+                _raw2 = json.load(open(ov))
+                _is_per2 = isinstance(_raw2, dict) and any(isinstance(v, dict) and "overrides" in v for v in _raw2.values() if isinstance(v, dict))
+            except: _is_per2 = False
+            if not _is_per2:
+                for k, v in _raw2.items():
+                    if k.startswith("_"): continue
                     if hasattr(cfg, k):
                         cur = getattr(cfg, k)
+                        if isinstance(v, str) and v in ("True", "False"):
+                            v = v == "True"
                         if isinstance(cur, bool): setattr(cfg, k, bool(v))
-                        elif isinstance(cur, int): setattr(cfg, k, int(v))
+                        elif isinstance(cur, int): setattr(cfg, k, int(float(v)) if isinstance(v, str) else int(v))
                         elif isinstance(cur, float): setattr(cfg, k, float(v))
                         else: setattr(cfg, k, v)
     syms = None
