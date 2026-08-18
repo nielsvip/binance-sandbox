@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T05:56:28.847400+00:00",
+  "timestamp": "2026-08-18T06:11:26.833810+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,27 +8,27 @@
   "unified_ranking": [
     {
       "symbol": "INTWUSDT",
-      "net_score": -16.2,
+      "net_score": -16.1,
       "long_score": 0,
-      "short_score": 16.2
+      "short_score": 16.1
     },
     {
       "symbol": "QQQUSDT",
-      "net_score": -16.2,
+      "net_score": -16.1,
       "long_score": 0,
-      "short_score": 16.2
+      "short_score": 16.1
     },
     {
       "symbol": "KORUUSDT",
-      "net_score": -15.6,
+      "net_score": -15.7,
       "long_score": 0,
-      "short_score": 15.6
+      "short_score": 15.7
     },
     {
       "symbol": "ASMLUSDT",
-      "net_score": -13.7,
+      "net_score": -13.6,
       "long_score": 0,
-      "short_score": 13.7
+      "short_score": 13.6
     },
     {
       "symbol": "NVDAUSDT",
@@ -38,15 +38,15 @@
     },
     {
       "symbol": "ZILUSDT",
-      "net_score": -13.1,
+      "net_score": -13.2,
       "long_score": 0,
-      "short_score": 13.1
+      "short_score": 13.2
     },
     {
       "symbol": "ARMUSDT",
-      "net_score": -13.0,
+      "net_score": -12.9,
       "long_score": 0,
-      "short_score": 13.0
+      "short_score": 12.9
     },
     {
       "symbol": "QCOMUSDT",
@@ -74,9 +74,9 @@
     },
     {
       "symbol": "HOODUSDT",
-      "net_score": -11.3,
+      "net_score": -11.4,
       "long_score": 0,
-      "short_score": 11.3
+      "short_score": 11.4
     },
     {
       "symbol": "ASTSUSDT",
@@ -101,12 +101,6 @@
       "net_score": -10.4,
       "long_score": 0,
       "short_score": 10.4
-    },
-    {
-      "symbol": "SKYAIUSDT",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
     },
     {
       "symbol": "PENGUUSDC",
@@ -218,6 +212,12 @@
     },
     {
       "symbol": "MASKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SKYAIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -488,12 +488,6 @@
     },
     {
       "symbol": "NOTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1021,6 +1015,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SNXXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1028,59 +1028,59 @@
     },
     {
       "symbol": "BABAUSDT",
-      "net_score": 13.2,
-      "long_score": 13.2,
+      "net_score": 13.3,
+      "long_score": 13.3,
       "short_score": 0
     },
     {
       "symbol": "SQQQUSDT",
-      "net_score": 16.2,
-      "long_score": 16.2,
+      "net_score": 16.1,
+      "long_score": 16.1,
       "short_score": 0
     },
     {
       "symbol": "SOXSUSDT",
-      "net_score": 16.4,
-      "long_score": 16.4,
+      "net_score": 16.3,
+      "long_score": 16.3,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "SOXSUSDT",
-      16.4,
+      16.3,
       40.0
     ],
     [
       "SQQQUSDT",
-      16.2,
+      16.1,
       37.22
     ],
     [
       "BABAUSDT",
-      13.2,
+      13.3,
       126.93
     ]
   ],
   "top_shorts": [
     [
       "INTWUSDT",
-      16.2,
+      16.1,
       23.91
     ],
     [
       "QQQUSDT",
-      16.2,
+      16.1,
       726.05
     ],
     [
       "KORUUSDT",
-      15.6,
+      15.7,
       21.27
     ],
     [
       "ASMLUSDT",
-      13.7,
+      13.6,
       1860.22
     ],
     [
@@ -1090,12 +1090,12 @@
     ],
     [
       "ZILUSDT",
-      13.1,
+      13.2,
       0.002185
     ],
     [
       "ARMUSDT",
-      13.0,
+      12.9,
       265.13
     ],
     [
@@ -1109,13 +1109,8 @@
       771.06
     ],
     [
-      "CRWVUSDT",
-      12.3,
-      103.73
-    ],
-    [
       "HOODUSDT",
-      11.3,
+      11.4,
       95.31
     ],
     [
@@ -1127,21 +1122,6 @@
       "FARTCOINUSDT",
       11.0,
       0.1405
-    ],
-    [
-      "BEUSDT",
-      10.8,
-      227.71
-    ],
-    [
-      "NOKUSDT",
-      10.4,
-      10.62
-    ],
-    [
-      "SKYAIUSDT",
-      10.1,
-      0.07033
     ]
   ],
   "hedge_usage": {
