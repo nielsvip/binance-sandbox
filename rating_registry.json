@@ -1,49 +1,67 @@
 {
-  "timestamp": "2026-08-18T20:37:34.013833+00:00",
+  "timestamp": "2026-08-18T20:52:33.592094+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 174
+    "total_ranked": 175
   },
   "unified_ranking": [
     {
       "symbol": "PENGUUSDC",
-      "net_score": -16.1,
+      "net_score": -16.5,
       "long_score": 0,
-      "short_score": 16.1
-    },
-    {
-      "symbol": "SKYAIUSDT",
-      "net_score": -14.0,
-      "long_score": 0,
-      "short_score": 14.0
+      "short_score": 16.5
     },
     {
       "symbol": "HOODUSDT",
-      "net_score": -13.1,
+      "net_score": -13.7,
       "long_score": 0,
-      "short_score": 13.1
+      "short_score": 13.7
     },
     {
-      "symbol": "BSPUSDT",
+      "symbol": "VIRTUALUSDT",
+      "net_score": -13.6,
+      "long_score": 0,
+      "short_score": 13.6
+    },
+    {
+      "symbol": "PLTRUSDT",
       "net_score": -12.9,
       "long_score": 0,
       "short_score": 12.9
     },
     {
       "symbol": "ZENUSDT",
-      "net_score": -11.4,
+      "net_score": -12.7,
       "long_score": 0,
-      "short_score": 11.4
+      "short_score": 12.7
+    },
+    {
+      "symbol": "XPLUSDT",
+      "net_score": -12.7,
+      "long_score": 0,
+      "short_score": 12.7
     },
     {
       "symbol": "PNUTUSDC",
-      "net_score": -10.6,
+      "net_score": -11.7,
       "long_score": 0,
-      "short_score": 10.6
+      "short_score": 11.7
+    },
+    {
+      "symbol": "BSPUSDT",
+      "net_score": -11.5,
+      "long_score": 0,
+      "short_score": 11.5
     },
     {
       "symbol": "GRASSUSDT",
+      "net_score": -11.3,
+      "long_score": 0,
+      "short_score": 11.3
+    },
+    {
+      "symbol": "ENAUSDC",
       "net_score": -10.3,
       "long_score": 0,
       "short_score": 10.3
@@ -127,6 +145,12 @@
       "short_score": 0
     },
     {
+      "symbol": "POLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "1000LUNCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -170,12 +194,6 @@
     },
     {
       "symbol": "FILUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -337,12 +355,6 @@
       "short_score": 0
     },
     {
-      "symbol": "VIRTUALUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -380,6 +392,12 @@
     },
     {
       "symbol": "SOLUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ONDSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -745,6 +763,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CAKEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "TIAUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -758,12 +782,6 @@
     },
     {
       "symbol": "BEATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ENAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -860,6 +878,12 @@
     },
     {
       "symbol": "ASMLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SKYAIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1027,77 +1051,63 @@
       "short_score": 0
     },
     {
-      "symbol": "XPLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BNBUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ONDSUSDT",
-      "net_score": 10.5,
-      "long_score": 10.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "CAKEUSDT",
-      "net_score": 18.5,
-      "long_score": 18.5,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "CAKEUSDT",
-      18.5,
-      1.5137
-    ],
-    [
-      "ONDSUSDT",
-      10.5,
-      9.06
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "PENGUUSDC",
-      16.1,
-      0.006026
-    ],
-    [
-      "SKYAIUSDT",
-      14.0,
-      0.05724
+      16.5,
+      0.006023
     ],
     [
       "HOODUSDT",
-      13.1,
-      91.47
+      13.7,
+      91.56
     ],
     [
-      "BSPUSDT",
+      "VIRTUALUSDT",
+      13.6,
+      0.5786
+    ],
+    [
+      "PLTRUSDT",
       12.9,
-      38.72
+      171.4
+    ],
+    [
+      "XPLUSDT",
+      12.7,
+      0.07479
     ],
     [
       "ZENUSDT",
-      11.4,
-      3.843
+      12.7,
+      3.842
     ],
     [
       "PNUTUSDC",
-      10.6,
-      0.04184
+      11.7,
+      0.04175
+    ],
+    [
+      "BSPUSDT",
+      11.5,
+      38.84
     ],
     [
       "GRASSUSDT",
+      11.3,
+      0.3125
+    ],
+    [
+      "ENAUSDC",
       10.3,
-      0.3132
+      0.0832
     ]
   ],
   "hedge_usage": {
