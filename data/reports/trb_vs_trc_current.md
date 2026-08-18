@@ -1,16 +1,16 @@
 # trb (per_sym) vs trc (7D) — live A/B
 
-Start: 2026-06-26T09:50:48Z · elapsed 53.2d · updated 2026-08-18 14:30Z
+Start: 2026-06-26T09:50:48Z · elapsed 53.2d · updated 2026-08-18 15:30Z
 
 | metric | trb · per_sym | trc · 7D | 7D useful? |
 |---|---|---|---|
-| trades | 800 | 237 | ✗ |
-| win % | 42.9 | 42.6 | ✗ |
-| avg %/trade | -0.0248 | -0.7338 | ✗ |
-| cumulative % | -35.94 | -85.968 | ✗ |
-| pool_sharpe | -0.0099 | -0.1836 | ✗ |
-| max drawdown % | -55.329 | -89.308 | ✗ |
-| realized $ (size-dependent) | 1931.47 | -5236.95 | ✗ |
+| trades | 822 | 237 | ✗ |
+| win % | 42.3 | 42.6 | ✓ 7D |
+| avg %/trade | -0.0601 | -0.7338 | ✗ |
+| cumulative % | -52.697 | -85.968 | ✗ |
+| pool_sharpe | -0.0241 | -0.1836 | ✗ |
+| max drawdown % | -57.284 | -89.308 | ✗ |
+| realized $ (size-dependent) | 1797.5 | -5236.95 | ✗ |
 
 _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). Sample still small — needs weeks._
 
@@ -19,13 +19,13 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | symbol | trb cumul% (n) | trc cumul% (n) | trc−trb |
 |---|---|---|---|
 | A | -0.625 (1) | -10.711 (4) | -10.09 |
-| AAPL | 15.761 (8) | None (0) |  |
+| AAPL | 17.986 (9) | None (0) |  |
 | ADBE | 2.845 (1) | None (0) |  |
 | AGCO | 1.109 (3) | -2.772 (3) | -3.88 |
 | AGI | 6.867 (2) | None (0) |  |
 | ALB | -1.103 (2) | None (0) |  |
-| AMZN | -3.507 (22) | None (0) |  |
-| ASML | 6.507 (29) | None (0) |  |
+| AMZN | -3.125 (23) | None (0) |  |
+| ASML | 6.668 (30) | None (0) |  |
 | ASTS | -26.516 (11) | None (0) |  |
 | BG | None (0) | -12.392 (1) |  |
 | BWXT | -2.154 (2) | None (0) |  |
@@ -34,38 +34,38 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | CIBR | None (0) | 10.366 (1) |  |
 | CIEN | -12.794 (14) | None (0) |  |
 | CLX | 5.179 (5) | -4.542 (2) | -9.72 |
-| CME | -1.408 (17) | None (0) |  |
-| COPX | 5.965 (1) | -29.238 (11) | -35.2 |
+| CME | -2.455 (18) | None (0) |  |
+| COPX | 4.779 (2) | -29.238 (11) | -34.02 |
 | CRWV | None (0) | -20.117 (4) |  |
 | DINO | None (0) | -0.848 (1) |  |
 | EGO | 5.241 (4) | None (0) |  |
-| EXEL | 0.801 (4) | 0.055 (5) | -0.75 |
+| EXEL | -0.605 (5) | 0.055 (5) | 0.66 |
 | FIVN | None (0) | -10.544 (3) |  |
 | GDX | None (0) | -0.46 (2) |  |
-| GLD | -0.25 (18) | None (0) |  |
+| GLD | -0.629 (19) | None (0) |  |
 | GM | -2.494 (3) | None (0) |  |
-| GME | 2.838 (14) | None (0) |  |
-| GOOGL | 0.169 (36) | 0.364 (3) | 0.19 |
-| IBIT | -1.598 (10) | 4.91 (11) | 6.51 |
-| IBM | 0.818 (7) | None (0) |  |
-| INTC | -22.266 (6) | None (0) |  |
+| GME | 3.509 (15) | None (0) |  |
+| GOOGL | 0.071 (37) | 0.364 (3) | 0.29 |
+| IBIT | -1.948 (11) | 4.91 (11) | 6.86 |
+| IBM | -0.566 (8) | None (0) |  |
+| INTC | -26.446 (7) | None (0) |  |
 | LDOS | 0.085 (1) | None (0) |  |
 | LEXX | -2.493 (1) | None (0) |  |
 | LLY | 1.061 (1) | 1.947 (6) | 0.89 |
 | LRCX | None (0) | 1.268 (6) |  |
 | LSCC | -3.476 (58) | 1.724 (2) | 5.2 |
 | MCD | 1.206 (13) | None (0) |  |
-| META | -0.839 (52) | None (0) |  |
+| META | -4.548 (53) | None (0) |  |
 | MOS | None (0) | -3.106 (3) |  |
 | MPC | None (0) | 2.023 (2) |  |
-| MRVL | 4.482 (30) | None (0) |  |
+| MRVL | -1.229 (31) | None (0) |  |
 | MSFT | -1.263 (1) | None (0) |  |
-| MSTR | -8.313 (32) | None (0) |  |
-| MU | -19.636 (73) | -12.45 (11) | 7.19 |
-| NEM | 0.742 (1) | -3.154 (11) | -3.9 |
+| MSTR | -6.79 (33) | None (0) |  |
+| MU | -24.668 (74) | -12.45 (11) | 12.22 |
+| NEM | -1.316 (2) | -3.154 (11) | -1.84 |
 | NKE | 1.752 (61) | None (0) |  |
 | NUE | None (0) | -8.013 (4) |  |
-| NVDA | 7.256 (16) | -7.697 (5) | -14.95 |
+| NVDA | 4.64 (17) | -7.697 (5) | -12.34 |
 | OLED | 0.113 (17) | -2.876 (39) | -2.99 |
 | PBF | -5.539 (3) | 12.898 (12) | 18.44 |
 | PEP | -0.876 (6) | None (0) |  |
@@ -77,18 +77,18 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | ROKU | 0.934 (1) | -1.489 (2) | -2.42 |
 | RRC | -2.274 (2) | -2.046 (2) | 0.23 |
 | SCCO | -6.236 (7) | None (0) |  |
-| SLV | -0.134 (2) | None (0) |  |
+| SLV | -2.12 (3) | None (0) |  |
 | SNDK | 36.769 (39) | None (0) |  |
 | STZ | None (0) | 10.691 (3) |  |
 | TRGP | 1.762 (2) | -1.427 (1) | -3.19 |
-| TSLA | -2.756 (3) | None (0) |  |
+| TSLA | -3.179 (4) | None (0) |  |
 | TSM | -4.355 (1) | -10.25 (30) | -5.89 |
 | TTD | -5.799 (2) | None (0) |  |
 | TXN | -5.451 (1) | None (0) |  |
 | UAN | None (0) | -10.695 (2) |  |
 | USAR | 2.026 (7) | -35.547 (3) | -37.57 |
 | UUUU | -0.625 (1) | 13.124 (10) | 13.75 |
-| VLO | -3.323 (102) | None (0) |  |
-| VT | 0.234 (13) | None (0) |  |
+| VLO | -3.349 (103) | None (0) |  |
+| VT | -0.595 (14) | None (0) |  |
 | WDAY | 3.03 (5) | None (0) |  |
 | XLE | None (0) | -3.298 (7) |  |

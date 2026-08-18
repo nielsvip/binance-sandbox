@@ -56,6 +56,7 @@
     "RSRUSDT_SHORT",
     "SANDUSDT_LONG",
     "SANDUSDT_SHORT",
+    "SCHW_LONG",
     "SNDK_SHORT",
     "SOLUSDC_SHORT",
     "THETAUSDT_LONG",
@@ -326,6 +327,24 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "gain_vs_bh=0.0355 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
       }
+    },
+    "AMZN_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "AMZN_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "ANKRUSDT_SHORT": {
       "SHORT_ENABLED": false,
@@ -816,6 +835,15 @@
         "why": "short-b&h=95.0%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
     },
+    "CAT_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
     "CDE_SHORT": {
       "SHORT_ENABLED": true,
       "gain_mo": 2.9571,
@@ -877,15 +905,6 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "short-b&h=57.6%>0 but gain_vs_bh=0.0169 < 2.0 [capture:T0]"
       }
-    },
-    "CLS_SHORT": {
-      "SHORT_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "CMC_SHORT": {
       "SHORT_ENABLED": false,
@@ -1054,15 +1073,6 @@
         "ts": "2026-07-15T01:44:10Z",
         "why": "absolute rule failed: gain_mo=0.0 pool_sharpe=0.0 trades=0 [capture:T0]"
       }
-    },
-    "DELL_LONG": {
-      "LONG_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "DE_SHORT": {
       "SHORT_ENABLED": false,
@@ -1324,6 +1334,15 @@
         "why": "short-b&h=21.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
     },
+    "FANG_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
     "FANG_SHORT": {
       "gain_mo": 2.2849,
       "gate_src": "gainmo",
@@ -1334,15 +1353,6 @@
       "size_cap": null,
       "size_mult": 1.26,
       "strategy": "gainmo_gate"
-    },
-    "FCN_SHORT": {
-      "SHORT_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "FCX_SHORT": {
       "SHORT_ENABLED": true,
@@ -1362,15 +1372,6 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "absolute rule: gain_mo=0.31>0 pool_sharpe=0.27>0 trades=41>=30 [capture:T0]"
       }
-    },
-    "FDX_SHORT": {
-      "SHORT_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "FIDAUSDT_LONG": {
       "LONG_ENABLED": false,
@@ -1431,6 +1432,15 @@
       "size_cap": null,
       "size_mult": 2.0,
       "strategy": "staircase_long"
+    },
+    "GME_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "GM_LONG": {
       "LONG_ENABLED": false,
@@ -1554,6 +1564,15 @@
         "why": "short-b&h=95.3%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
     },
+    "HAO_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
     "HL_SHORT": {
       "SHORT_ENABLED": false,
       "gain_mo": 1.1611,
@@ -1570,15 +1589,6 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "absolute rule failed: gain_mo=-0.2764 pool_sharpe=-0.5015 trades=48 [capture:T0]"
       }
-    },
-    "HOOD_LONG": {
-      "LONG_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "HOTUSDT_SHORT": {
       "SHORT_ENABLED": false,
@@ -1719,15 +1729,6 @@
         "why": "short-b&h=95.4%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
     },
-    "JPM_LONG": {
-      "LONG_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
-    },
     "KAVAUSDT_SHORT": {
       "SHORT_ENABLED": false,
       "gain_mo": 9.9093,
@@ -1833,6 +1834,15 @@
         "why": "short-b&h=57.5%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
     },
+    "LLY_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
     "LNG_SHORT": {
       "gain_mo": 0.16,
       "gate_src": "gainmo",
@@ -1878,6 +1888,24 @@
         "ts": "2026-07-15T01:44:10Z",
         "why": "short-b&h=87.0%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
+    },
+    "META_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
+    "META_SHORT": {
+      "SHORT_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "MOS_SHORT": {
       "SHORT_ENABLED": false,
@@ -1947,15 +1975,6 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "absolute rule failed: gain_mo=-0.3861 pool_sharpe=-0.1263 trades=73 [capture:T0]"
       }
-    },
-    "MRK_LONG": {
-      "LONG_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "MRVL_LONG": {
       "LONG_ENABLED": true,
@@ -2218,7 +2237,7 @@
         "why": "gain_vs_bh=0.0 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
       }
     },
-    "ORCL_SHORT": {
+    "OXY_SHORT": {
       "SHORT_ENABLED": true,
       "gain_mo": null,
       "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
@@ -2621,15 +2640,6 @@
         "why": "absolute rule: gain_mo=0.13>0 pool_sharpe=0.17>0 trades=42>=30 [capture:T0]"
       }
     },
-    "SCHW_LONG": {
-      "LONG_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
-    },
     "SKLUSDT_SHORT": {
       "SHORT_ENABLED": false,
       "gain_mo": 22.4666,
@@ -2663,6 +2673,15 @@
         "ts": "2026-07-14T18:17:00Z",
         "why": "gain_vs_bh=-0.001 < 2.0 [capture:T0] \u2014 stays in retune/ladder"
       }
+    },
+    "SMCI_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "SMG_SHORT": {
       "SHORT_ENABLED": false,
@@ -2868,6 +2887,15 @@
         "why": "absolute rule: gain_mo=0.03>0 pool_sharpe=0.03>0 trades=44>=30 [capture:T0]"
       }
     },
+    "TGT_LONG": {
+      "LONG_ENABLED": true,
+      "gain_mo": null,
+      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
+      "pct_entry": null,
+      "size_cap": 1.0,
+      "size_mult": 1.0,
+      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
+    },
     "TIAUSDC_LONG": {
       "LONG_ENABLED": false,
       "bh_long": 23.0,
@@ -2897,24 +2925,6 @@
       "size_cap": null,
       "size_mult": 0.62,
       "strategy": "gainmo_gate"
-    },
-    "TSLA_LONG": {
-      "LONG_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
-    },
-    "TSLA_SHORT": {
-      "SHORT_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "UAN_LONG": {
       "LONG_ENABLED": false,
@@ -2984,15 +2994,6 @@
         "ts": "2026-07-15T01:44:10Z",
         "why": "short-b&h=50.6%>0 but gain_vs_bh=0.0 < 2.0 [capture:T0]"
       }
-    },
-    "UPS_SHORT": {
-      "SHORT_ENABLED": true,
-      "gain_mo": null,
-      "gate_src": "USER_20260802_MIN_60_SYMBOL_SIDES",
-      "pct_entry": null,
-      "size_cap": 1.0,
-      "size_mult": 1.0,
-      "strategy": "BH_FALLBACK_USER_LIVE_FLOOR"
     },
     "USAR_LONG": {
       "gain_mo": 260.9994,
