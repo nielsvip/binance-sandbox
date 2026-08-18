@@ -1,20 +1,19 @@
-CAPITAL ALLOCATION REPORT — 2026-08-18 02:56 UTC
+CAPITAL ALLOCATION REPORT — 2026-08-18 03:16 UTC
 ================================================================================
-Total capital deployed: $80.20 across 1 positions
+Total capital deployed: $5.22 across 1 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $      0.00 (  0.0%) — 0 positions
-  Tier C: $     80.20 (100.0%) — 1 positions
+  Tier B: $      5.22 (100.1%) — 1 positions
+  Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 100% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [1]:
-                    flz:WLDUSDC_SHORT  $   80.20  gain=+0.33%  tier=C  mult=0.65
-
-MEDIOCRE — capital sitting idle [0]:
+LOSERS — reduce allocation (C-tier or losing) [0]:
   (none)
+
+MEDIOCRE — capital sitting idle [1]:
+                   inf:AMZNUSDT_SHORT  $    5.22  gain=+0.02%  tier=B

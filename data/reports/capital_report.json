@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-08-18 02:56 UTC",
- "total_capital_usd": 80.2,
+ "generated_at": "2026-08-18 03:16 UTC",
+ "total_capital_usd": 5.22,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 80.2
+  "B": 5.22,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:WLDUSDC_SHORT"
+ "losers": [],
+ "mediocre": [
+  "inf:AMZNUSDT_SHORT"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "flz:WLDUSDC_SHORT",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 80.2,
-   "gain_pct": 0.328,
-   "tier": "C",
-   "perf_mult": 0.65,
-   "amt": 243.4,
-   "mark": 0.3295
+   "pk": "inf:AMZNUSDT_SHORT",
+   "symbol": "AMZNUSDT",
+   "account": "inf",
+   "value_usd": 5.22,
+   "gain_pct": 0.022,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.02,
+   "mark": 260.84252246
   }
  ]
 }
