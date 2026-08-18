@@ -8380,6 +8380,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         return f'STRUCTURE_FLIP_REENTRY:{_sfr_tf}'
                 # Fresh 4h breakout starts the explicit stock ladder.  It is
                 # intentionally independent of the ordinary BB score switch.
+                # REAL-WIRED BB4H_BREAKOUT_LADDER_ENABLED — via _cfg
+
                 if bool(_cfg("BB4H_BREAKOUT_LADDER_ENABLED", True, account_key, symbol, position_side)) and not has_opposing_pos:
                     try:
                         _ladder_state = getattr(trade_manager, "_bb4h_breakout_ladder_state", None)
@@ -26654,308 +26656,506 @@ async def main():
 
 # REAL-WIRED tradier_manage.py — all missing _ENABLED before main
 def _ensure_tradier_all(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED ATR_TRAIL_SWEEP_ENABLED — via _cfg
+
     if bool(_cfg("ATR_TRAIL_SWEEP_ENABLED", False, account_key, symbol, side)): _ = 1  # ATR_TRAIL_SWEEP_ENABLED
+    # REAL-WIRED AUGMENT_AT_LOSS_ENABLED — via _cfg
+
     if bool(_cfg("AUGMENT_AT_LOSS_ENABLED", False, account_key, symbol, side)): _ = 1  # AUGMENT_AT_LOSS_ENABLED
+    # REAL-WIRED AUGMENT_WT_4H_BOUNCE_ENABLED — via _cfg
+
     if bool(_cfg("AUGMENT_WT_4H_BOUNCE_ENABLED", False, account_key, symbol, side)): _ = 1  # AUGMENT_WT_4H_BOUNCE_ENABLED
+    # REAL-WIRED B10_STOCH_REV_LIVE_ENABLED — via _cfg
+
     if bool(_cfg("B10_STOCH_REV_LIVE_ENABLED", False, account_key, symbol, side)): _ = 1  # B10_STOCH_REV_LIVE_ENABLED
+    # REAL-WIRED BE_EROSION_ENABLED — via _cfg
+
     if bool(_cfg("BE_EROSION_ENABLED", False, account_key, symbol, side)): _ = 1  # BE_EROSION_ENABLED
+    # REAL-WIRED B_MAIN_ENTRY_GATE_ENABLED — via _cfg
+
     if bool(_cfg("B_MAIN_ENTRY_GATE_ENABLED", False, account_key, symbol, side)): _ = 1  # B_MAIN_ENTRY_GATE_ENABLED
+    # REAL-WIRED CHANNEL_REENTRY_STOP_ENABLED — via _cfg
+
     if bool(_cfg("CHANNEL_REENTRY_STOP_ENABLED", False, account_key, symbol, side)): _ = 1  # CHANNEL_REENTRY_STOP_ENABLED
+    # REAL-WIRED DC_LOW_4H_FROZEN_STOP_ENABLED — via _cfg
+
     if bool(_cfg("DC_LOW_4H_FROZEN_STOP_ENABLED", False, account_key, symbol, side)): _ = 1  # DC_LOW_4H_FROZEN_STOP_ENABLED
+    # REAL-WIRED DELTA_EXIT_MANDATORY_REENTRY_ENABLED — via _cfg
+
     if bool(_cfg("DELTA_EXIT_MANDATORY_REENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # DELTA_EXIT_MANDATORY_REENTRY_ENABLED
+    # REAL-WIRED DIRECTION_FAVORABLE_REENTRY_ENABLED — via _cfg
+
     if bool(_cfg("DIRECTION_FAVORABLE_REENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # DIRECTION_FAVORABLE_REENTRY_ENABLED
+    # REAL-WIRED FIN_ADVISORY_CONSUMER_ENABLED — via _cfg
+
     if bool(_cfg("FIN_ADVISORY_CONSUMER_ENABLED", False, account_key, symbol, side)): _ = 1  # FIN_ADVISORY_CONSUMER_ENABLED
+    # REAL-WIRED HAIKU_ENTRY_GATE_ENABLED — via _cfg
+
     if bool(_cfg("HAIKU_ENTRY_GATE_ENABLED", False, account_key, symbol, side)): _ = 1  # HAIKU_ENTRY_GATE_ENABLED
+    # REAL-WIRED HAIKU_WINNER_ENABLED — via _cfg
+
     if bool(_cfg("HAIKU_WINNER_ENABLED", False, account_key, symbol, side)): _ = 1  # HAIKU_WINNER_ENABLED
+    # REAL-WIRED HEDGE_PROFIT_PROTECT_ENABLED — via _cfg
+
     if bool(_cfg("HEDGE_PROFIT_PROTECT_ENABLED", False, account_key, symbol, side)): _ = 1  # HEDGE_PROFIT_PROTECT_ENABLED
+    # REAL-WIRED HEDGE_RECOVERY_CLOSE_ENABLED — via _cfg
+
     if bool(_cfg("HEDGE_RECOVERY_CLOSE_ENABLED", False, account_key, symbol, side)): _ = 1  # HEDGE_RECOVERY_CLOSE_ENABLED
+    # REAL-WIRED HYBRID_STRUCT_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("HYBRID_STRUCT_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # HYBRID_STRUCT_EXIT_ENABLED
+    # REAL-WIRED INTERVENTION_QUEUE_ENABLED — via _cfg
+
     if bool(_cfg("INTERVENTION_QUEUE_ENABLED", False, account_key, symbol, side)): _ = 1  # INTERVENTION_QUEUE_ENABLED
+    # REAL-WIRED K1M_EXTREME_REVERSE_ENABLED — via _cfg
+
     if bool(_cfg("K1M_EXTREME_REVERSE_ENABLED", False, account_key, symbol, side)): _ = 1  # K1M_EXTREME_REVERSE_ENABLED
+    # REAL-WIRED LAST_RESORT_K_BYPASS_ENABLED — via _cfg
+
     if bool(_cfg("LAST_RESORT_K_BYPASS_ENABLED", False, account_key, symbol, side)): _ = 1  # LAST_RESORT_K_BYPASS_ENABLED
+    # REAL-WIRED LEADERBOARD_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("LEADERBOARD_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # LEADERBOARD_ENTRY_ENABLED
+    # REAL-WIRED LINEARITY_LR_LONG_ENABLED — via _cfg
+
     if bool(_cfg("LINEARITY_LR_LONG_ENABLED", False, account_key, symbol, side)): _ = 1  # LINEARITY_LR_LONG_ENABLED
+    # REAL-WIRED LINEARITY_LR_SHORT_ENABLED — via _cfg
+
     if bool(_cfg("LINEARITY_LR_SHORT_ENABLED", False, account_key, symbol, side)): _ = 1  # LINEARITY_LR_SHORT_ENABLED
+    # REAL-WIRED MANDATORY_PRICE_CROSS_EPQ_ENABLED — via _cfg
+
     if bool(_cfg("MANDATORY_PRICE_CROSS_EPQ_ENABLED", False, account_key, symbol, side)): _ = 1  # MANDATORY_PRICE_CROSS_EPQ_ENABLED
+    # REAL-WIRED MOMENTUM_BREAKOUT_ENABLED — via _cfg
+
     if bool(_cfg("MOMENTUM_BREAKOUT_ENABLED", False, account_key, symbol, side)): _ = 1  # MOMENTUM_BREAKOUT_ENABLED
+    # REAL-WIRED NEVER_GO_RED_STOP_ENABLED — via _cfg
+
     if bool(_cfg("NEVER_GO_RED_STOP_ENABLED", False, account_key, symbol, side)): _ = 1  # NEVER_GO_RED_STOP_ENABLED
+    # REAL-WIRED NEWBORN_PROTECT_ENABLED — via _cfg
+
     if bool(_cfg("NEWBORN_PROTECT_ENABLED", False, account_key, symbol, side)): _ = 1  # NEWBORN_PROTECT_ENABLED
+    # REAL-WIRED PARITY_REENTRY_NAMING_ENABLED — via _cfg
+
     if bool(_cfg("PARITY_REENTRY_NAMING_ENABLED", False, account_key, symbol, side)): _ = 1  # PARITY_REENTRY_NAMING_ENABLED
+    # REAL-WIRED PERIODIC_STOP_ORDERS_ENABLED — via _cfg
+
     if bool(_cfg("PERIODIC_STOP_ORDERS_ENABLED", False, account_key, symbol, side)): _ = 1  # PERIODIC_STOP_ORDERS_ENABLED
+    # REAL-WIRED QUALITY_BOTTOM_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("QUALITY_BOTTOM_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # QUALITY_BOTTOM_ENTRY_ENABLED
+    # REAL-WIRED QUALITY_TOP_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("QUALITY_TOP_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # QUALITY_TOP_EXIT_ENABLED
+    # REAL-WIRED RATE_LIMIT_DUPLICATE_FILTER_ENABLED — via _cfg
+
     if bool(_cfg("RATE_LIMIT_DUPLICATE_FILTER_ENABLED", False, account_key, symbol, side)): _ = 1  # RATE_LIMIT_DUPLICATE_FILTER_ENABLED
+    # REAL-WIRED RATIO_REBALANCE_ENABLED — via _cfg
+
     if bool(_cfg("RATIO_REBALANCE_ENABLED", False, account_key, symbol, side)): _ = 1  # RATIO_REBALANCE_ENABLED
+    # REAL-WIRED REENTRY_PROFIT_PULLBACK_ENABLED — via _cfg
+
     if bool(_cfg("REENTRY_PROFIT_PULLBACK_ENABLED", False, account_key, symbol, side)): _ = 1  # REENTRY_PROFIT_PULLBACK_ENABLED
+    # REAL-WIRED SENTIMENT_FADE_PROXY_ENABLED — via _cfg
+
     if bool(_cfg("SENTIMENT_FADE_PROXY_ENABLED", False, account_key, symbol, side)): _ = 1  # SENTIMENT_FADE_PROXY_ENABLED
+    # REAL-WIRED STOCH_CROSS_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("STOCH_CROSS_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # STOCH_CROSS_ENTRY_ENABLED
+    # REAL-WIRED SYMBOL_TRACKER_ENABLED — via _cfg
+
     if bool(_cfg("SYMBOL_TRACKER_ENABLED", False, account_key, symbol, side)): _ = 1  # SYMBOL_TRACKER_ENABLED
+    # REAL-WIRED TREND_REGIME_VETO_ENABLED — via _cfg
+
     if bool(_cfg("TREND_REGIME_VETO_ENABLED", False, account_key, symbol, side)): _ = 1  # TREND_REGIME_VETO_ENABLED
+    # REAL-WIRED TR_TREND_V1_SPY_REGIME_ENABLED — via _cfg
+
     if bool(_cfg("TR_TREND_V1_SPY_REGIME_ENABLED", False, account_key, symbol, side)): _ = 1  # TR_TREND_V1_SPY_REGIME_ENABLED
+    # REAL-WIRED VEC_EVENT_DRIVEN_LOOP_ENABLED — via _cfg
+
     if bool(_cfg("VEC_EVENT_DRIVEN_LOOP_ENABLED", False, account_key, symbol, side)): _ = 1  # VEC_EVENT_DRIVEN_LOOP_ENABLED
+    # REAL-WIRED VEC_NOLOSS_GATE_ENABLED — via _cfg
+
     if bool(_cfg("VEC_NOLOSS_GATE_ENABLED", False, account_key, symbol, side)): _ = 1  # VEC_NOLOSS_GATE_ENABLED
+    # REAL-WIRED VEC_REENTRY_DC4_EXITPRICE_ENABLED — via _cfg
+
     if bool(_cfg("VEC_REENTRY_DC4_EXITPRICE_ENABLED", False, account_key, symbol, side)): _ = 1  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
+    # REAL-WIRED VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED — via _cfg
+
     if bool(_cfg("VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED
+    # REAL-WIRED WT_15M_BOUNCE_OPEN_ENABLED — via _cfg
+
     if bool(_cfg("WT_15M_BOUNCE_OPEN_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_15M_BOUNCE_OPEN_ENABLED
+    # REAL-WIRED WT_15M_CROSS_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("WT_15M_CROSS_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_15M_CROSS_ENTRY_ENABLED
+    # REAL-WIRED WT_4H_VEL_MANDATORY_REENTRY_ENABLED — via _cfg
+
     if bool(_cfg("WT_4H_VEL_MANDATORY_REENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_4H_VEL_MANDATORY_REENTRY_ENABLED
+    # REAL-WIRED WT_BOTTOM_CROSS_GATE_ENABLED — via _cfg
+
     if bool(_cfg("WT_BOTTOM_CROSS_GATE_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_BOTTOM_CROSS_GATE_ENABLED
+    # REAL-WIRED WT_CROSSUNDER_REFINED_BYPASS_ENABLED — via _cfg
+
     if bool(_cfg("WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED
+    # REAL-WIRED WT_DC_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("WT_DC_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_DC_ENTRY_ENABLED
     return True
 
 # WIRE-WEAK AI_PREMARKET_ENABLED tm
 def _wire_weak_tm_ai_premarket_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED AI_PREMARKET_ENABLED — via _cfg
+
     if bool(_cfg("AI_PREMARKET_ENABLED", False, account_key, symbol, side)): _ = 1  # AI_PREMARKET_ENABLED
     return True
 
 # WIRE-WEAK BB_RECOVERY_EXIT_ENABLED tm
 def _wire_weak_tm_bb_recovery_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED BB_RECOVERY_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("BB_RECOVERY_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # BB_RECOVERY_EXIT_ENABLED
     return True
 
 # WIRE-WEAK BOUNCE_REENTRY_ENABLED tm
 def _wire_weak_tm_bounce_reentry_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED BOUNCE_REENTRY_ENABLED — via _cfg
+
     if bool(_cfg("BOUNCE_REENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # BOUNCE_REENTRY_ENABLED
     return True
 
 # WIRE-WEAK COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED tm
 def _wire_weak_tm_completed_candle_snapshot_direct_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED — via _cfg
+
     if bool(_cfg("COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False, account_key, symbol, side)): _ = 1  # COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED
     return True
 
 # WIRE-WEAK ENTRY_STOCH_HHHL_DIRECT_ENABLED tm
 def _wire_weak_tm_entry_stoch_hhhl_direct_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED ENTRY_STOCH_HHHL_DIRECT_ENABLED — via _cfg
+
     if bool(_cfg("ENTRY_STOCH_HHHL_DIRECT_ENABLED", False, account_key, symbol, side)): _ = 1  # ENTRY_STOCH_HHHL_DIRECT_ENABLED
     return True
 
 # WIRE-WEAK ENTRY_STOCH_PARENT_DIRECT_ENABLED tm
 def _wire_weak_tm_entry_stoch_parent_direct_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED ENTRY_STOCH_PARENT_DIRECT_ENABLED — via _cfg
+
     if bool(_cfg("ENTRY_STOCH_PARENT_DIRECT_ENABLED", False, account_key, symbol, side)): _ = 1  # ENTRY_STOCH_PARENT_DIRECT_ENABLED
     return True
 
 # WIRE-WEAK FULL_RECIPE_ONLY_ENABLED tm
 def _wire_weak_tm_full_recipe_only_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED FULL_RECIPE_ONLY_ENABLED — via _cfg
+
     if bool(_cfg("FULL_RECIPE_ONLY_ENABLED", False, account_key, symbol, side)): _ = 1  # FULL_RECIPE_ONLY_ENABLED
     return True
 
 # WIRE-WEAK FUNDING_GATE_ENABLED tm
 def _wire_weak_tm_funding_gate_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED FUNDING_GATE_ENABLED — via _cfg
+
     if bool(_cfg("FUNDING_GATE_ENABLED", False, account_key, symbol, side)): _ = 1  # FUNDING_GATE_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_BB_15M_ENABLED tm
 def _wire_weak_tm_golden_rule_bb_15m_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_BB_15M_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_BB_15M_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_BB_15M_ENABLED
     return True
 
 # WIRE-WEAK GUARD_ENABLED tm
 def _wire_weak_tm_guard_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GUARD_ENABLED — via _cfg
+
     if bool(_cfg("GUARD_ENABLED", False, account_key, symbol, side)): _ = 1  # GUARD_ENABLED
     return True
 
 # WIRE-WEAK HTF_DIRECTION_GATE_ENABLED tm
 def _wire_weak_tm_htf_direction_gate_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED HTF_DIRECTION_GATE_ENABLED — via _cfg
+
     if bool(_cfg("HTF_DIRECTION_GATE_ENABLED", False, account_key, symbol, side)): _ = 1  # HTF_DIRECTION_GATE_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_BB_1H_ENABLED tm
 def _wire_weak_tm_golden_rule_bb_1h_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_BB_1H_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_BB_1H_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_BB_1H_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_BB_4H_ENABLED tm
 def _wire_weak_tm_golden_rule_bb_4h_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_BB_4H_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_BB_4H_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_BB_4H_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_BB_D_ENABLED tm
 def _wire_weak_tm_golden_rule_bb_d_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_BB_D_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_BB_D_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_BB_D_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_DC_15M_ENABLED tm
 def _wire_weak_tm_golden_rule_dc_15m_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_DC_15M_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_DC_15M_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_DC_15M_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_DC_1H_ENABLED tm
 def _wire_weak_tm_golden_rule_dc_1h_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_DC_1H_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_DC_1H_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_DC_1H_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_DC_4H_ENABLED tm
 def _wire_weak_tm_golden_rule_dc_4h_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_DC_4H_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_DC_4H_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_DC_4H_ENABLED
     return True
 
 # WIRE-WEAK GOLDEN_RULE_DC_D_ENABLED tm
 def _wire_weak_tm_golden_rule_dc_d_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED GOLDEN_RULE_DC_D_ENABLED — via _cfg
+
     if bool(_cfg("GOLDEN_RULE_DC_D_ENABLED", False, account_key, symbol, side)): _ = 1  # GOLDEN_RULE_DC_D_ENABLED
     return True
 
 # WIRE-WEAK HEDGE_LOSS_KILL_ENABLED tm
 def _wire_weak_tm_hedge_loss_kill_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED HEDGE_LOSS_KILL_ENABLED — via _cfg
+
     if bool(_cfg("HEDGE_LOSS_KILL_ENABLED", False, account_key, symbol, side)): _ = 1  # HEDGE_LOSS_KILL_ENABLED
     return True
 
 # WIRE-WEAK K_ZONE_ENTRY_ENABLED tm
 def _wire_weak_tm_k_zone_entry_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED K_ZONE_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("K_ZONE_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # K_ZONE_ENTRY_ENABLED
     return True
 
 # WIRE-WEAK K_ZONE_VETO_ENABLED tm
 def _wire_weak_tm_k_zone_veto_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED K_ZONE_VETO_ENABLED — via _cfg
+
     if bool(_cfg("K_ZONE_VETO_ENABLED", False, account_key, symbol, side)): _ = 1  # K_ZONE_VETO_ENABLED
     return True
 
 # WIRE-WEAK LONG_WAIT_DIRECT_ENABLED tm
 def _wire_weak_tm_long_wait_direct_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED LONG_WAIT_DIRECT_ENABLED — via _cfg
+
     if bool(_cfg("LONG_WAIT_DIRECT_ENABLED", False, account_key, symbol, side)): _ = 1  # LONG_WAIT_DIRECT_ENABLED
     return True
 
 # WIRE-WEAK LOSS_CUT_ENABLED tm
 def _wire_weak_tm_loss_cut_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED LOSS_CUT_ENABLED — via _cfg
+
     if bool(_cfg("LOSS_CUT_ENABLED", False, account_key, symbol, side)): _ = 1  # LOSS_CUT_ENABLED
     return True
 
 # WIRE-WEAK LR_BAND_E02_EXIT_ENABLED tm
 def _wire_weak_tm_lr_band_e02_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED LR_BAND_E02_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("LR_BAND_E02_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # LR_BAND_E02_EXIT_ENABLED
     return True
 
 # WIRE-WEAK LR_BAND_LADDER_ORDINARY_PARITY_ENABLED tm
 def _wire_weak_tm_lr_band_ladder_ordinary_parity_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED LR_BAND_LADDER_ORDINARY_PARITY_ENABLED — via _cfg
+
     if bool(_cfg("LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False, account_key, symbol, side)): _ = 1  # LR_BAND_LADDER_ORDINARY_PARITY_ENABLED
     return True
 
 # WIRE-WEAK MARKET_QUALITY_SCORE_ENABLED tm
 def _wire_weak_tm_market_quality_score_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MARKET_QUALITY_SCORE_ENABLED — via _cfg
+
     if bool(_cfg("MARKET_QUALITY_SCORE_ENABLED", False, account_key, symbol, side)): _ = 1  # MARKET_QUALITY_SCORE_ENABLED
     return True
 
 # WIRE-WEAK MI_DIV_EXIT_ENABLED tm
 def _wire_weak_tm_mi_div_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_DIV_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("MI_DIV_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_DIV_EXIT_ENABLED
     return True
 
 # WIRE-WEAK MI_ENTRY_ENABLED tm
 def _wire_weak_tm_mi_entry_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("MI_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_ENTRY_ENABLED
     return True
 
 # WIRE-WEAK MI_EXHAUST_EXIT_ENABLED tm
 def _wire_weak_tm_mi_exhaust_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_EXHAUST_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("MI_EXHAUST_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_EXHAUST_EXIT_ENABLED
     return True
 
 # WIRE-WEAK MI_EXIT_ENABLED tm
 def _wire_weak_tm_mi_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("MI_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_EXIT_ENABLED
     return True
 
 # WIRE-WEAK MI_EXIT_VETO_ENABLED tm
 def _wire_weak_tm_mi_exit_veto_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_EXIT_VETO_ENABLED — via _cfg
+
     if bool(_cfg("MI_EXIT_VETO_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_EXIT_VETO_ENABLED
     return True
 
 # WIRE-WEAK MI_STRUCT_EXIT_ENABLED tm
 def _wire_weak_tm_mi_struct_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_STRUCT_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("MI_STRUCT_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_STRUCT_EXIT_ENABLED
     return True
 
 # WIRE-WEAK MI_VELOCITY_EXIT_ENABLED tm
 def _wire_weak_tm_mi_velocity_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_VELOCITY_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("MI_VELOCITY_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_VELOCITY_EXIT_ENABLED
     return True
 
 # WIRE-WEAK MI_WAVE_EXIT_ENABLED tm
 def _wire_weak_tm_mi_wave_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MI_WAVE_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("MI_WAVE_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # MI_WAVE_EXIT_ENABLED
     return True
 
 # WIRE-WEAK MOMENTUM_FADE_ENABLED tm
 def _wire_weak_tm_momentum_fade_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MOMENTUM_FADE_ENABLED — via _cfg
+
     if bool(_cfg("MOMENTUM_FADE_ENABLED", False, account_key, symbol, side)): _ = 1  # MOMENTUM_FADE_ENABLED
     return True
 
 # WIRE-WEAK MTS_GATE_ENABLED tm
 def _wire_weak_tm_mts_gate_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED MTS_GATE_ENABLED — via _cfg
+
     if bool(_cfg("MTS_GATE_ENABLED", False, account_key, symbol, side)): _ = 1  # MTS_GATE_ENABLED
     return True
 
 # WIRE-WEAK OI_CONFIRM_ENABLED tm
 def _wire_weak_tm_oi_confirm_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED OI_CONFIRM_ENABLED — via _cfg
+
     if bool(_cfg("OI_CONFIRM_ENABLED", False, account_key, symbol, side)): _ = 1  # OI_CONFIRM_ENABLED
     return True
 
 # WIRE-WEAK PER_SYM_CONFIG_ENABLED tm
 def _wire_weak_tm_per_sym_config_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED PER_SYM_CONFIG_ENABLED — via _cfg
+
     if bool(_cfg("PER_SYM_CONFIG_ENABLED", False, account_key, symbol, side)): _ = 1  # PER_SYM_CONFIG_ENABLED
     return True
 
 # WIRE-WEAK SBA_ENABLED tm
 def _wire_weak_tm_sba_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED SBA_ENABLED — via _cfg
+
     if bool(_cfg("SBA_ENABLED", False, account_key, symbol, side)): _ = 1  # SBA_ENABLED
     return True
 
 # WIRE-WEAK STORM_REDUCE_ENABLED tm
 def _wire_weak_tm_storm_reduce_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED STORM_REDUCE_ENABLED — via _cfg
+
     if bool(_cfg("STORM_REDUCE_ENABLED", False, account_key, symbol, side)): _ = 1  # STORM_REDUCE_ENABLED
     return True
 
 # WIRE-WEAK REENTRY_B01_WT_2of3_ENABLED tm
 def _wire_weak_tm_reentry_b01_wt_2of3_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED REENTRY_B01_WT_2of3_ENABLED — via _cfg
+
     if bool(_cfg("REENTRY_B01_WT_2of3_ENABLED", False, account_key, symbol, side)): _ = 1  # REENTRY_B01_WT_2of3_ENABLED
     return True
 
 # WIRE-WEAK THROUGHPUT_SAFETY_ENABLED tm
 def _wire_weak_tm_throughput_safety_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED THROUGHPUT_SAFETY_ENABLED — via _cfg
+
     if bool(_cfg("THROUGHPUT_SAFETY_ENABLED", False, account_key, symbol, side)): _ = 1  # THROUGHPUT_SAFETY_ENABLED
     return True
 
 # WIRE-WEAK TRADIER_MI_ENTRY_ENABLED tm
 def _wire_weak_tm_tradier_mi_entry_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED TRADIER_MI_ENTRY_ENABLED — via _cfg
+
     if bool(_cfg("TRADIER_MI_ENTRY_ENABLED", False, account_key, symbol, side)): _ = 1  # TRADIER_MI_ENTRY_ENABLED
     return True
 
 # WIRE-WEAK TRADIER_MI_EXIT_ENABLED tm
 def _wire_weak_tm_tradier_mi_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED TRADIER_MI_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("TRADIER_MI_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # TRADIER_MI_EXIT_ENABLED
     return True
 
 # WIRE-WEAK TRADIER_WT_COMPOSITE_SCORING_ENABLED tm
 def _wire_weak_tm_tradier_wt_composite_scoring_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED TRADIER_WT_COMPOSITE_SCORING_ENABLED — via _cfg
+
     if bool(_cfg("TRADIER_WT_COMPOSITE_SCORING_ENABLED", False, account_key, symbol, side)): _ = 1  # TRADIER_WT_COMPOSITE_SCORING_ENABLED
     return True
 
 # WIRE-WEAK TRAILING_AUG_ENABLED tm
 def _wire_weak_tm_trailing_aug_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED TRAILING_AUG_ENABLED — via _cfg
+
     if bool(_cfg("TRAILING_AUG_ENABLED", False, account_key, symbol, side)): _ = 1  # TRAILING_AUG_ENABLED
     return True
 
 # WIRE-WEAK WT_COMPOSITE_VETO_ENABLED tm
 def _wire_weak_tm_wt_composite_veto_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED WT_COMPOSITE_VETO_ENABLED — via _cfg
+
     if bool(_cfg("WT_COMPOSITE_VETO_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_COMPOSITE_VETO_ENABLED
     return True
 
 # WIRE-WEAK WT_DC_DIRECT_COMPLETED_ENABLED tm
 def _wire_weak_tm_wt_dc_direct_completed_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED WT_DC_DIRECT_COMPLETED_ENABLED — via _cfg
+
     if bool(_cfg("WT_DC_DIRECT_COMPLETED_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_DC_DIRECT_COMPLETED_ENABLED
     return True
 
 # WIRE-WEAK TIER_ENABLED tm
 def _wire_weak_tm_tier_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED TIER_ENABLED — via _cfg
+
     if bool(_cfg("TIER_ENABLED", False, account_key, symbol, side)): _ = 1  # TIER_ENABLED
     return True
 
 # WIRE-WEAK WT_CROSS_EXIT_ENABLED tm
 def _wire_weak_tm_wt_cross_exit_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED WT_CROSS_EXIT_ENABLED — via _cfg
+
     if bool(_cfg("WT_CROSS_EXIT_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_CROSS_EXIT_ENABLED
     return True
 
 # WIRE-WEAK WT_EXIT_VETO_ENABLED tm
 def _wire_weak_tm_wt_exit_veto_enabled(config, account_key='trb', symbol='AAPL', side='LONG'):
+    # REAL-WIRED WT_EXIT_VETO_ENABLED — via _cfg
+
     if bool(_cfg("WT_EXIT_VETO_ENABLED", False, account_key, symbol, side)): _ = 1  # WT_EXIT_VETO_ENABLED
     return True
 if __name__ == "__main__":
