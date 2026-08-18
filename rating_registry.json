@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T18:05:45.998632+00:00",
+  "timestamp": "2026-08-18T18:20:57.562263+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,39 +8,27 @@
   "unified_ranking": [
     {
       "symbol": "CRWVUSDT",
-      "net_score": -16.3,
+      "net_score": -17.6,
       "long_score": 0,
-      "short_score": 16.3
+      "short_score": 17.6
     },
     {
       "symbol": "NBISUSDT",
-      "net_score": -15.5,
+      "net_score": -16.4,
       "long_score": 0,
-      "short_score": 15.5
+      "short_score": 16.4
     },
     {
       "symbol": "SHAZUSDT",
-      "net_score": -15.2,
+      "net_score": -15.7,
       "long_score": 0,
-      "short_score": 15.2
+      "short_score": 15.7
     },
     {
       "symbol": "BEUSDT",
-      "net_score": -11.5,
+      "net_score": -12.0,
       "long_score": 0,
-      "short_score": 11.5
-    },
-    {
-      "symbol": "IRENUSDT",
-      "net_score": -11.5,
-      "long_score": 0,
-      "short_score": 11.5
-    },
-    {
-      "symbol": "SNDKUSDT",
-      "net_score": -10.4,
-      "long_score": 0,
-      "short_score": 10.4
+      "short_score": 12.0
     },
     {
       "symbol": "EGLDUSDT",
@@ -457,6 +445,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IRENUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ARBUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -500,6 +494,12 @@
     },
     {
       "symbol": "NVDAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SNDKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -698,12 +698,6 @@
     },
     {
       "symbol": "ETHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CAKEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -983,39 +977,41 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "CAKEUSDT",
+      "net_score": 14.5,
+      "long_score": 14.5,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "CAKEUSDT",
+      14.5,
+      1.487
+    ]
+  ],
   "top_shorts": [
     [
       "CRWVUSDT",
-      16.3,
-      94.22
+      17.6,
+      93.91
     ],
     [
       "NBISUSDT",
-      15.5,
-      247.24
+      16.4,
+      246.59
     ],
     [
       "SHAZUSDT",
-      15.2,
-      68.35
+      15.7,
+      68.27
     ],
     [
       "BEUSDT",
-      11.5,
+      12.0,
       207.56
-    ],
-    [
-      "IRENUSDT",
-      11.5,
-      42.05
-    ],
-    [
-      "SNDKUSDT",
-      10.4,
-      1608.69
     ]
   ],
   "hedge_usage": {
