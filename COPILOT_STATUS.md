@@ -1,4 +1,4 @@
-# Copilot Status — 2026-08-18 13:45:20 UTC
+# Copilot Status — 2026-08-18 14:01:26 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:40:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:40:53
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:41:24
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:41:59
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:42:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:43:04
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:43:34
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:44:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:44:49
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:45:19
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:55:40
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:56:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:56:45
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:57:15
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:57:50
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:58:20
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:58:55
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T13:59:25
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T14:00:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T14:01:26
 
 ## Missed Trades (trader comparison)
 
@@ -27,19 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 2 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +10.2%
-
-- WATCHING: **BWXT** SHORT (tradier) peaked +3.3%, exited 1m ago
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +9.7%
+- HELD: **BWXT** SHORT (tradier) peak +3.5%, now +2.7%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 6
-- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_manage.py for men is NOT running
+**Issues (last 1h):** 31
+- [CRITICAL] Local Redis (port 6379) is NOT responding
+- [HIGH] ez_market_data.py is NOT running
 - [HIGH] ez_manage.py for ang is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for men is NOT running
+- [CRITICAL] Local Redis (port 6379) is NOT responding
