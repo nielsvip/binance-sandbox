@@ -1011,6 +1011,9 @@ class SweepConfig:
     GR_HTF_REQUIRE_BEAR: int = 1             # min wt_bear_alignment for SHORT OPEN
     GOLDEN_RULE_HTF_GATE_MODE: str = "ALIGN" # ALIGN | OFF (reserved)
     MFI_ENTRY_ENABLED: bool = False          # mirrors backtest_v8_engine.py:6077
+    WT_ENTRY_ENABLED: bool = False           # WT dip entry — mirrors tradier_manage.py:9476 (WT_ENTRY_ENABLED)
+    STRENGTH_FILTER_ENABLED: bool = False    # Strength gate — mirrors tradier_manage.py:11322 (STRENGTH_FILTER_ENABLED)
+    WT_DC_ENTRY_ENABLED: bool = False        # WT/DC score gate — mirrors ez_positions_quick.py:2106
     MFI_LONG_THRESHOLD_D: float = 80.0       # block LONG when mfi_D > this (overbought zone, fixed 2026-05-18)
     MFI_SHORT_THRESHOLD_D: float = 20.0      # block SHORT when mfi_D < this (oversold zone)
     # ── CATALYST_VOLUME_GATE (2026-05-17) — block OPEN unless vol > N×50d-avg + DC-D break ──
@@ -2243,6 +2246,35 @@ def simulate_one_symbol(
         else:
             _mfi_short_thr = float(getattr(config, "MFI_SHORT_THRESHOLD_D", 20.0))
             _mfi_entry_open_ok = _mfi_d_arr >= _mfi_short_thr
+
+    # WT_ENTRY dip: WT cross proxy — mirrors tradier_manage.py:9476 entry gate.
+    # When enabled, requires WT cross alignment on 1h/15m: wt1 < -50 and wt1>wt2 (LONG).
+    _wt_entry_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "WT_ENTRY_ENABLED", False)):
+        _wt1_1h = np.nan_to_num(npz.get("wt1_1h", npz.get("wt1_15m", np.zeros(n, dtype=np.float32))), nan=0.0).astype(np.float32)
+        _wt2_1h = np.nan_to_num(npz.get("wt2_1h", npz.get("wt2_15m", np.zeros(n, dtype=np.float32))), nan=0.0).astype(np.float32)
+        if is_long:
+            _wt_entry_open_ok = (_wt1_1h < -50) & (_wt1_1h > _wt2_1h)
+        else:
+            _wt_entry_open_ok = (_wt1_1h > 50) & (_wt1_1h < _wt2_1h)
+
+    # STRENGTH_FILTER: composite score gate — mirrors tradier_manage.py:11322.
+    # When enabled, requires WT gap >= STRENGTH_MIN_SCORE*0.8.
+    _strength_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "STRENGTH_FILTER_ENABLED", False)):
+        _min_score = float(getattr(config, "STRENGTH_MIN_SCORE", 5.0))
+        _wt1_1h_s = np.nan_to_num(npz.get("wt1_1h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _wt2_1h_s = np.nan_to_num(npz.get("wt2_1h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _wt_gap_s = np.abs(_wt1_1h_s - _wt2_1h_s)
+        _strength_open_ok = _wt_gap_s >= (_min_score * 0.8)
+
+    # WT_DC_ENTRY: threshold gate mirroring ez_positions_quick.py:2106 — uses WT/DC composite.
+    _wt_dc_entry_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "WT_DC_ENTRY_ENABLED", False)):
+        _wt_dc_thr = float(getattr(config, "WT_DC_ENTRY_THRESHOLD", 45.0))
+        _wt1_15m = np.nan_to_num(npz.get("wt1_15m", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _wt_gap_dc = np.abs(_wt1_15m)  # proxy: |wt1| as score, matches scalar wt/dc logic
+        _wt_dc_entry_open_ok = _wt_gap_dc >= _wt_dc_thr
 
     # Exact scalar Tradier DC-position veto (tradier_manage.py). Missing DC
     # inputs fail closed when explicitly enabled; silently substituting 0.5
@@ -3717,6 +3749,15 @@ def simulate_one_symbol(
                 continue
             # HTF_TREND_VETO (2026-05-18 REWIRE) — daily WT trend gate.
             if not bool(_htf_trend_veto_ok[i]) and not _hard_wt_breakout_reentry:
+                continue
+            # WT_ENTRY — WT dip entry gate (tradier_manage.py:9476).
+            if not bool(_wt_entry_open_ok[i]) and not _hard_wt_breakout_reentry:
+                continue
+            # STRENGTH_FILTER — WT gap composite (tradier_manage.py:11322).
+            if not bool(_strength_open_ok[i]) and not _hard_wt_breakout_reentry:
+                continue
+            # WT_DC_ENTRY — WT/DC threshold gate (ez_positions_quick.py:2106).
+            if not bool(_wt_dc_entry_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # BB_PULLBACK_GATE (2026-05-23) — block entries when BB %B unfavorable.
             if not bool(_bb_pullback_ok[i]) and not _hard_wt_breakout_reentry:

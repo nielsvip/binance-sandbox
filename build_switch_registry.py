@@ -27,13 +27,16 @@ FILES = [
     BASE / "ez_positions_quick.py",
     BASE / "ez_positions_service.py",
     BASE / "backtest_v8_engine.py",
+    BASE / "v8_vec_sweep.py",
 ]
 CONFIG_FILES = [
     BASE / "config.py",
     BASE / "config_tradier.py",
 ]
 
-GETATTR_RE = re.compile(r"getattr\(\s*(?:config|cfg|self\.config|tm_mod\.config)\s*,\s*['\"](\w+_ENABLED)['\"]")
+GETATTR_RE = re.compile(r"getattr\(\s*(?:config|cfg|self\.config|tm_mod\.config|config_tradier\.TradierConfig)\s*,\s*['\"](\w+_ENABLED)['\"]")
+CFG_RE = re.compile(r"_cfg\(\s*['\"](\w+_ENABLED)['\"]")
+PSYM_RE = re.compile(r"_psym_get\([^,]+,\s*[^,]+,\s*['\"](\w+_ENABLED)['\"]")
 DEFAULT_RE = re.compile(r"^\s*(\w+_ENABLED)(?:\s*:\s*bool)?\s*=\s*(True|False)\s*(?:#\s*(.*))?$")
 
 
@@ -43,10 +46,18 @@ def scan_usage(files):
         if not f.exists():
             continue
         try:
-            for i, line in enumerate(f.read_text().splitlines(), 1):
+            text = f.read_text()
+            for i, line in enumerate(text.splitlines(), 1):
                 for m in GETATTR_RE.finditer(line):
-                    name = m.group(1)
-                    usages[name].append(f"{f.name}:{i}")
+                    usages[m.group(1)].append(f"{f.name}:{i}")
+                for m in CFG_RE.finditer(line):
+                    usages[m.group(1)].append(f"{f.name}:{i}")
+                for m in PSYM_RE.finditer(line):
+                    usages[m.group(1)].append(f"{f.name}:{i}")
+                # _FULL_COVERAGE hash-flip also counts as wire: string literal in list counts if file is tradier_manage
+                if f.name == "tradier_manage.py" and "_FULL_COVERAGE_PARAMS" in line:
+                    # coverage list itself not counted per-line, but hash reads are via _cfg above
+                    pass
         except Exception as e:
             print(f"[WARN] {f}: {e}")
     return usages

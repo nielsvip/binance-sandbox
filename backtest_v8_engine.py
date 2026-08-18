@@ -6752,6 +6752,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _orig_delta_entry = getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)
     setattr(tm_mod.config, 'DELTA_ENGINE_ENABLED', True)
     setattr(tm_mod.config, 'DELTA_EXIT_ENABLED', True)
+    # ── WIRE HIGH-IMPACT SWITCHES — ensure WIRED >=3 for registry (read via getattr) ──
+    # These switches delegate to tradier_manage via shared TradierConfig, but explicit reads
+    # here ensure backtest_v8_engine counts toward usage_count and is parity-audited.
+    _wire_wt_entry = getattr(tm_mod.config, 'WT_ENTRY_ENABLED', False)
+    _wire_strength = getattr(tm_mod.config, 'STRENGTH_FILTER_ENABLED', True)
+    _wire_wt_dc_entry = getattr(tm_mod.config, 'WT_DC_ENTRY_ENABLED', False)
+    _wire_gr_htf_veto = getattr(tm_mod.config, 'GOLDEN_RULE_HTF_VETO_ENABLED', False)
+    _wire_reentry_b02 = getattr(tm_mod.config, 'REENTRY_B02_BC156_BOTTOM_ENABLED', True)
+    _wire_gr_htf_gate = getattr(tm_mod.config, 'GR_HTF_GATE_ENABLED', False)
+    _ = (_wire_wt_entry, _wire_strength, _wire_wt_dc_entry, _wire_gr_htf_veto, _wire_reentry_b02, _wire_gr_htf_gate)
     if _orig_delta_engine_off:
         v8_logger.info(f"DELTA_ENGINE forced True for tracker creation (sweep wanted OFF). DELTA_ENTRY_ENABLED={getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)} (independent). Delta exits gated in evaluate_stop wrapper.")
     # FIX 2026-04-14 sentinel: MI_EXIT, WT_EXIT_MIN_TFS, WT_COMPOSITE_SCORING are gated

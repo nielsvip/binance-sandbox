@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-08-18T22:23:08.640958+00:00",
+  "timestamp": "2026-08-18T22:38:14.866745+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 177
+    "total_ranked": 178
   },
   "unified_ranking": [
-    {
-      "symbol": "COTIUSDT",
-      "net_score": -10.0,
-      "long_score": 0,
-      "short_score": 10.0
-    },
     {
       "symbol": "EGLDUSDT",
       "net_score": 0,
@@ -805,6 +799,12 @@
       "short_score": 0
     },
     {
+      "symbol": "TLMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "1000FLOKIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -949,12 +949,6 @@
       "short_score": 0
     },
     {
-      "symbol": "PUMPUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "DELLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1021,6 +1015,12 @@
       "short_score": 0
     },
     {
+      "symbol": "COTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "USARUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1067,16 +1067,22 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "PUMPUSDT",
+      "net_score": 11.2,
+      "long_score": 11.2,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [
+  "top_longs": [
     [
-      "COTIUSDT",
-      10.0,
-      0.009695
+      "PUMPUSDT",
+      11.2,
+      0.003025
     ]
   ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
