@@ -1260,6 +1260,14 @@
       "API_ABSENCE": 2
     }
   },
+  "inf:DOTUSDT_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-06-05T17:17:43.709247+00:00",
+    "last_increment_at": "2026-06-05T17:18:26.445518+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    }
+  },
   "ang:DOGEUSDC_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-06-07T00:02:16.839490+00:00",
@@ -1668,15 +1676,6 @@
     },
     "last_seen": "2026-08-17T13:34:44.067115+00:00"
   },
-  "fin:OPUSDT_SHORT": {
-    "count": 5,
-    "first_seen_zero_at": "2026-08-17T13:43:55.061305+00:00",
-    "last_increment_at": "2026-08-17T13:46:13.020054+00:00",
-    "sources": {
-      "API_ABSENCE": 4
-    },
-    "last_seen": "2026-08-17T13:45:50.007036+00:00"
-  },
   "inf:1000FLOKIUSDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-08-17T17:34:33.065897+00:00",
@@ -1702,5 +1701,14 @@
     "sources": {
       "API_ABSENCE": 1
     }
+  },
+  "fin:MEMEUSDT_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-08-18T00:35:47.354615+00:00",
+    "last_increment_at": "2026-08-18T00:35:47.354615+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-08-18T00:36:07.706151+00:00"
   }
 }
