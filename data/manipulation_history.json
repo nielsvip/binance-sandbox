@@ -8005,5 +8005,105 @@
     ],
     "timestamp": "2026-08-18T20:27:58.749190+00:00",
     "price": 0.002254
+  },
+  {
+    "symbol": "SNOWUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-18T20:56:21.603775+00:00",
+    "price": 323.45
+  },
+  {
+    "symbol": "ACEUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 61.6% range"
+    ],
+    "timestamp": "2026-08-18T20:57:32.709525+00:00",
+    "price": 0.23297
+  },
+  {
+    "symbol": "BEATUSDT",
+    "severity": 2,
+    "reasons": [
+      "DEAD_COIN: price -69% below SMA200",
+      "PRICE_RANGE_1H: 44.7% range"
+    ],
+    "timestamp": "2026-08-18T20:57:32.709525+00:00",
+    "price": 0.224
+  },
+  {
+    "symbol": "GRIFFAINUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T20:57:32.709525+00:00",
+    "price": 0.011684
+  },
+  {
+    "symbol": "KORUUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 34.0% range"
+    ],
+    "timestamp": "2026-08-18T20:57:32.709525+00:00",
+    "price": 17.82
+  },
+  {
+    "symbol": "SKYAIUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 30.5% range"
+    ],
+    "timestamp": "2026-08-18T20:57:32.709525+00:00",
+    "price": 0.05812
+  },
+  {
+    "symbol": "SNOWUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-18T20:57:32.709525+00:00",
+    "price": 323.45
+  },
+  {
+    "symbol": "IOSTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T20:59:44.213843+00:00",
+    "price": 0.0005296
+  },
+  {
+    "symbol": "CRWVUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T21:03:17.764000+00:00",
+    "price": 92.95
+  },
+  {
+    "symbol": "ORDIUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T21:05:36.090514+00:00",
+    "price": 3.384
+  },
+  {
+    "symbol": "SKLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T21:05:36.090514+00:00",
+    "price": 0.00326
   }
 ]
