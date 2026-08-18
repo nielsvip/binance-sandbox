@@ -78,7 +78,8 @@ class Config:
     # Set buffer to 0.10% to cover worst case (taker close + slippage). Closing below this = NET LOSS.
     COMMISSION_BUFFER_PCT: float = 0.08
     REENTRY_PRICE_IMPROVE_PCT: float = 0.08  # require 0.10% price improvement vs exit before reentry
-    AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # URGENT_FIX: NEVER augment a position with gain < 0
+    AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # BASE RULE — NEVER augment a position with gain < 0. OPEN at a loss is impossible by definition (flat has no gain; you cannot be down before you own). AUGMENT at loss is the one GOOD path only when gain is sufficient — this gate enforces it.
+    AUGMENT_AT_LOSS_ENABLED: bool = False  # 2026-08-18 DEBATE GATE — base rule OFF. Augmenting at loss may be revisited MUCH LATER only with Tier-2 proof (≥48 sym × >1yr × ≥30 trades/sym) + USER explicit unlock. Never flip True casually — it was the core bleed. See BACKTEST_REPLICA_SWITCHES.md §0.
     MAX_AUGMENTS_PER_POSITION: int = 999999  # USER 2026-05-30: NO cap — augment a million times as long as gain > 0.5*MIN_GAIN (and wt1_1h aligned via add-block)  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
@@ -91,7 +92,21 @@ class Config:
     SERVICE_STOP = True
     SERVICE_REDUCE = True
     MANAGE_REDUCE = True
-    HEDGE_MODE: bool = False  # 2026-08-14 REVERTED per user: hedgeengine too faulty, first round this weekend WITHOUT hedging, hedge fix via dedicated agent 900*900*160: hedge was dead and missing from >2000 sweep, retesting all HEDGE_* combos, replaced by MTF compound exit (2x ATR15m trail + GR/WT/DC/BB rejection). All hedge code paths gated by config.HEDGE_MODE → False short-circuits them. ROLLBACK: True restores hedge protection.
+    HEDGE_MODE: bool = False  # 2026-08-18 RE-AFFIRMED OFF LIMITS per user — hedge engine stripped accounts, replaced by MTF compound exit (2x ATR15m trail + GR/WT/DC/BB). Dedicated hedge-agent (900*900*160 combos) must rebuild HEDGE_* parity before ANY re-enable via USER explicit unlock. See BACKTEST_REPLICA_SWITCHES.md §15. ROLLBACK: True (do NOT without Tier-2 900*900 proof).
+    # ── 2026-08-18 BACKTEST REPLICA MASTER SWITCHES — LIVE-OFF BY DEFAULT ──
+    # All 15 families in BACKTEST_REPLICA_SWITCHES.md are OFF here. They are NOT modeled
+    # in backtest_v8_engine / v8_vec_sweep by default and must be hooked via vec_paths
+    # + v8_quick parity before ANY live re-enable. See that file for per-family file:line.
+    # Mark NON_VECTORIZABLE where noted (portfolio sentiment ratio) — those re-enable LIVE
+    # directly after per_sym decent set, no vector proof needed.
+    FIN_ADVISORY_CONSUMER_ENABLED: bool = False  # §1 advisory (local_advisory_generator → fin_advisory_consumer → ez_manage:20052). No backtest analog. OFF = stop cron; ON only after vec hook.
+    WT_4H_VEL_MANDATORY_REENTRY_ENABLED: bool = False  # §8 WT_4H_VEL_EXIT mand reentry flag (ez_manage:20578). OFF → exit without forced reentry.
+    DELTA_EXIT_MANDATORY_REENTRY_ENABLED: bool = False  # §9 DELTA_EXIT mand reentry routing (ez_manage:20924 / epq:3246). OFF → no mandatory requeue.
+    MANDATORY_PRICE_CROSS_EPQ_ENABLED: bool = False  # §5 EPQ "NO QUESTIONS ASKED" (epq:16068). OFF → never fires. ETF vet via PRICE_CROSSED_HTF_AGAINST_VETO.
+    LEADERBOARD_ENTRY_ENABLED: bool = False  # §13 leaderboard path (ez_manage:17030). OFF = never fires.
+    DIRECTION_FAVORABLE_REENTRY_ENABLED: bool = False  # §6 direction favorable (epq:15973). OFF = disabled.
+    B10_STOCH_REV_LIVE_ENABLED: bool = False  # §7 B10_STOCH_REV (epq:15842/15845). OFF live; ablation WR gate lives in vector only.
+    # Augment/reentry at loss hard gates (see §0): OPEN at loss impossible (flat has no PnL); AUGMENT at loss blocked by AUGMENT_ONLY_WHEN_PROFITABLE + AUGMENT_AT_LOSS_ENABLED above.
     SANDBOX_MODE: bool = False
     SANDBOX_ACCOUNTS: List[str] = field(default_factory=lambda: ["sbx"])
 
@@ -625,7 +640,7 @@ class Config:
     HEDGE_DC_SHORT_REJECT_DCP: float = 0.15         # SHORT-side dc_position_1h/4h threshold (<=) for rejection.
     HEDGE_WT_VEL_GATE_ENABLED: bool = False         # 2026-04-26: OFF — same reason as DC gate above. Hedge-the-bleeder must not be filtered by candidate-symbol velocity. Sweep-only knob.
     # 2026-04-26 — Force-reentry HTF veto (refuse PRICE_CROSSED_MANDATORY when 1h+15m+4h all confirm trend AGAINST). Triggered after C98USDT triple-open against bullish HTF.
-    PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = False
+    PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True  # 2026-08-18 PARITY FIX: protective veto — blocks MANDATORY_PRICE_CROSS_EPQ when ANY HTF (1h OR 15m) is against. Keep True to reduce bad reentries. See BACKTEST_REPLICA_SWITCHES.md §5.
     # 2026-04-26 USER RULE — HARD hedge sizing caps. Trades move <1% per cycle on a ~$1k crypto
     # account, so hedges must NEVER exceed 1.5× loser notional or absolute $25. Caps applied in
     # both compute_hedge_size and execute_same_symbol_hedge inner. Triggered after ALTUSDT_LONG
@@ -974,7 +989,7 @@ class Config:
     #       the SAME tick as the entry. If the hedge can't be opened, refuse
     #       the entry too — never enter naked.
     GOLDEN_RULE_ENABLED: bool = True                       # SACRED — never disable
-    LEGACY_GUARANTEED_REENTRY: bool = True                 # OBLIGATION — never disable
+    LEGACY_GUARANTEED_REENTRY: bool = False                # 2026-08-18 PARITY FIX: LIVE-OFF by default (BACKTEST_REPLICA_SWITCHES.md §3). Enforcement loop has no backtest analog (ez_manage:15700 / epq:15398). Vector+backtest_v8 must regain it via dedicated agent 900*900*160 before re-enable. See docs.
     # 2026-05-16 wire-up: these were previously read via getattr(config, ..., default)
     # in backtest_v8_engine.py:4497-4508 and vec_paths/golden_rule_enforce.py:88-99
     # WITHOUT being defined as BotConfig fields — so JSON overrides silently dropped
@@ -1314,7 +1329,7 @@ class Config:
     # When True: execute_now blocks ALL reduce/close where real_gain < 0%
     # Exceptions: hedges (is_hedge=True), STRUCTURAL_RANGE_SHIFT_EXIT, LIQUIDATION
     # This replaces Finandy's external NO_LOSS so it can be turned off safely.
-    UNIVERSAL_NOLOSS_GATE: bool = True  # 2026-07-06 RE-ARMED: was False → all 3 protections (this, STRICT_NO_LOSS_ACCOUNTS=[], HEDGE_MODE=False) were OFF, so ~40 exit reasons freely closed losers → 10,622 loss-closes drained live accounts. Re-arming restores the no-loss gate at ez_manage.py:25051. ROLLBACK: False (removes ALL loss protection — do not).
+    UNIVERSAL_NOLOSS_GATE: bool = False  # 2026-08-18 OFF LIMITS per user — blanket noloss + hedge stripped accounts (USER: "hedging and no_loss have stripped my accounts so they are both off limits"). Technical exits (R1/R2/DC break/WT 5/5) still close via structural gates. Re-enable only after Tier-2 per_sym proves decent LIVE per_sym set with targeted stop parity. Was True 2026-07-06 (10,622 loss-closes). See BACKTEST_REPLICA_SWITCHES.md §0.
     # 2026-04-16: bypass for technical-exit reasons so WT/DC/structure reversals can close losers.
     # Without this, UNIVERSAL_NOLOSS_GATE turns all technical exits into no-ops on losing positions,
     # which is the exact pattern that kept ATOMUSDT SHORT bleeding from 0 to -2.78%.
@@ -1609,7 +1624,7 @@ class Config:
     REENTRY_B02_BC156_BOTTOM_ENABLED: bool = True  # ABLATION: Sharpe 0.31/0.32, 22K/14K trades, 62.5% WR. Best balance.
     REENTRY_B04_DC_RETEST_ENABLED: bool = True  # ABLATION: Sharpe 0.39/0.31, 579/335 trades. High quality.
     REENTRY_B09_SNAPBACK_ENABLED: bool = False  # ABLATION: Sharpe 0.022/0.024 = weak. CUT.
-    REENTRY_B10_STOCH_REV_ENABLED: bool = True  # ABLATION: Sharpe 0.07/0.12, 69-75% WR. Keep for WR.
+    REENTRY_B10_STOCH_REV_ENABLED: bool = False  # 2026-08-18 LIVE-OFF (BACKTEST_REPLICA_SWITCHES.md §7). Was True (Sharpe 0.07 WR). Keep vector WR gate; live EPQ path OFF until vector parity hook.
     REENTRY_B11_DC_BREAK_ENABLED: bool = True  # ABLATION: Sharpe 0.34/0.31, 94-97% WR. Top quality.
     REENTRY_B12_WT_MOM_ENABLED: bool = True  # ABLATION: Sharpe 0.15/0.17, 112K/73K trades. Volume king.
     REENTRY_B14_HA_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.11/0.13. Moderate.
@@ -1999,8 +2014,8 @@ class Config:
     DC_RECOVERY_EXIT_DISABLED_ACCOUNTS: list = field(default_factory=lambda: ['inf'])
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
     # Each one is now gated by TOLERANT delta conditions (looser than fresh-entry gate).
-    LEGACY_GUARANTEED_REENTRY: bool = True     # 2026-04-15: logic REWRITTEN with 60min/HTF gate (see reentry_enforcement_loop)
-    LEGACY_DIRECTION_FAVORABLE: bool = True    # ON — gated by tolerant delta
+    LEGACY_GUARANTEED_REENTRY: bool = False    # 2026-08-18 PARITY FIX: LIVE-OFF default (see line 977). Second definition — last wins for dataclass; must be False in both places. Hook into vector/backtest_v8 before re-enable.
+    LEGACY_DIRECTION_FAVORABLE: bool = False   # 2026-08-18 LIVE-OFF (BACKTEST_REPLICA_SWITCHES.md §6). Was True. Re-enable only after vec hook + Tier-2 proof.
     LEGACY_DC_BREAKOUT_REENTRY: bool = True    # ON — gated by tolerant delta
     LEGACY_PROC_SINGLE_REENTRY: bool = False   # OFF 2026-04-15 per user — fired mid-move on LTF only
     # Per-variant reentry switches (each fires a distinct path so backtest can A/B)
@@ -2047,8 +2062,9 @@ class Config:
     BOUNCE_TOP_MIN_HOLD_MINUTES: float = 2880.0
     BOUNCE_TOP_MIN_LOSS_PCT: float = -3.0
     BOUNCE_TOP_MAX_LOSS_PCT: float = -50.0
-    # === L/S RATIO ENFORCEMENT ===
-    LS_RATIO_ENFORCE: bool = True  # Master toggle for L/S ratio enforcement
+    # === L/S RATIO ENFORCEMENT — NON-VECTORIZABLE PORTFOLIO GATE (MARKED 2026-08-18) ===
+    # ⚠️  NON-VECTORIZABLE: sentiment-driven L/S ratio is cross-symbol portfolio state (counts + PnL across ~30 live positions). Vectorized single-symbol backtest (v8_vec_sweep / uve_engine) cannot model it — no portfolio to measure. Keep LIVE-ON after per_sym decent set; keep BACKTEST-OFF and RE-ENABLE LIVE via USER explicit unlock once `data/hourly_reconfig/*/active_config.json` shows decent LIVE per_sym (>2% gain/mo, pool_sharpe>0.2, TIM<85, DD≤30) and Tier-2 confirms. See BACKTEST_REPLICA_SWITCHES.md §16 + BACKTEST_BIBLE §16.50.
+    LS_RATIO_ENFORCE: bool = True  # Master toggle for L/S ratio enforcement — LIVE-ONLY, stays True; vector stays unaware by design.
     LS_RATIO_MIN: float = 0.11  # WT alignment controls direction, ratio follows — allow 90/10 short/long
     LS_RATIO_MAX: float = 9.0  # WT alignment controls direction, ratio follows — allow 90/10 long/short
     LS_RATIO_HARD_MIN: float = 0.05  # Near-zero: ratio must FOLLOW the WT direction, not fight it
@@ -4886,7 +4902,7 @@ class Config:
     SPY_REGIME_SYMBOL: str = "SPY"                          # reference symbol; switch to "QQQ" or other if desired  # PORTED from TradierConfig 2026-08-17
     SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; WIRED 2026-04-16 (priority 80/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
     SQUEEZE_FIRE_BONUS_SCORE: float = 11.25  # PORTED from TradierConfig 2026-08-17
-    SQUEEZE_FIRE_ENTRY_ENABLED: bool = True  # 2026-04-27 sweep T1 (S2/91 winners): 9× True. Was False.  # PORTED from TradierConfig 2026-08-17
+    SQUEEZE_FIRE_ENTRY_ENABLED: bool = False  # 2026-08-18 LIVE-OFF (BACKTEST_REPLICA_SWITCHES.md §SQUEEZE). Was True (ported tradier sweep). Crypto SQUEEZE_FIRE_ENABLED=False master already OFF; this ported tradier flag must also be OFF for parity. Re-enable only after vec hook.
     SQUEEZE_FIRE_TF: str = "5m"  # PORTED from TradierConfig 2026-08-17
     SQUEEZE_SCORE_BONUS: int = 15  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     SRS_K_EXIT_1H: float = 85.0                  # v8 engine: SRS exit k_1h threshold (matches K_HIGH above)  # PORTED from TradierConfig 2026-08-17

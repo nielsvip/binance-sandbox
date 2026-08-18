@@ -1229,7 +1229,7 @@ class TradierConfig:
     AUGMENT_PYRAMID_TRADIER: bool = False  # BACKTEST_CHANGE_T60: Pyramiding barely fires on stocks (0-10 trades). Disabled. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # === BEAR MARKET MODE ===
     BEAR_MARKET_MODE_TRADIER: bool = True  # URGENT_FIX: favor shorts in current bear market
-    AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: bool = True  # URGENT_FIX: never augment losing positions
+    AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: bool = True  # BASE RULE — NEVER augment losing positions. OPEN at loss impossible (flat has no gain). See AUGMENT_AT_LOSS_ENABLED_TRADIER debate gate.
     # === HEDGE vs RATIO SWEEP (2026-03-21 — 65 configs, both systems) ===
     RATIO_MULTIPLIER_TRADIER: float = 3.5  # BACKTEST_CHANGE_T61: was 2.0. 3.5x ratio exaggeration = Sharpe 260 (vs 249 at 2x). Best: 3.5-4x.
     HEDGE_CROSS_SYMBOL_TRADIER: bool = True  # BACKTEST_CHANGE_T62: Cross-symbol hedge enabled. 25% size, trigger -1%, no momentum gate. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
@@ -1237,7 +1237,23 @@ class TradierConfig:
     HEDGE_TRIGGER_LOSS_TRADIER: float = -1.0  # BACKTEST_CHANGE_T62: Trigger hedge at -1% loss (stocks: tighter than crypto -2% due to daily gaps). ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_SAME_SYMBOL_TRADIER: bool = False  # BACKTEST_CHANGE_T63: Same-symbol hedge DISABLED for stocks. Cross-symbol only. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     # === HEDGE MODE (backtest) ===
-    HEDGE_MODE_TRADIER: bool = False  # BACKTEST_CHANGE_T31 hedge mode disabled for stocks
+    HEDGE_MODE_TRADIER: bool = False  # 2026-08-18 OFF LIMITS (BACKTEST_REPLICA_SWITCHES.md §15). Was BACKTEST_CHANGE_T31 disabled. Re-enable only via hedge-agent + USER unlock.
+    # ── 2026-08-18 BACKTEST REPLICA MASTER SWITCHES (TRADIER) — LIVE-OFF BY DEFAULT ──
+    # Tradier siblings of crypto replica switches. All OFF here; hook via vec_paths + v8_vec_sweep parity before live re-enable.
+    # NON_VECTORIZABLE portfolio gates (LS_RATIO, SECTOR_LS) stay LIVE-ON after per_sym decent set — see notes below.
+    B_MAIN_ENTRY_GATE_ENABLED: bool = False  # §11 B_MAIN entry gate (tradier_manage:1633). Not in v8 engine.
+    LOCAL_EXTREMES_SCORER_ENABLED: bool = False  # §10 local extremes scorer (tradier_manage:1790). v8_quick OFF default; stays OFF.
+    LINEARITY_LR_LONG_ENABLED: bool = False  # §12 LR long linearity filter. Not in backtest.
+    LINEARITY_LR_SHORT_ENABLED: bool = False  # §12 LR short linearity filter. Not in backtest.
+    FIN_ADVISORY_CONSUMER_ENABLED_TRADIER: bool = False  # §1 advisory consumer for tradier (if ever). OFF = no advisory.
+    WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER: bool = False  # §8 WT_4H_VEL mand reentry (stocks side). OFF.
+    DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER: bool = False  # §9 DELTA mand reentry (stocks). OFF.
+    MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER: bool = False  # §5 EPQ "NO QUESTIONS ASKED" (stocks). OFF.
+    LEADERBOARD_ENTRY_ENABLED_TRADIER: bool = False  # §13 leaderboard (stocks). OFF.
+    DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER: bool = False  # §6 direction favorable (stocks). OFF.
+    B10_STOCH_REV_LIVE_ENABLED_TRADIER: bool = False  # §7 B10 stoch rev (stocks). OFF live.
+    AUGMENT_AT_LOSS_ENABLED_TRADIER: bool = False  # 2026-08-18 DEBATE GATE (stocks). OFF — augment at loss may be revisited MUCH LATER only with Tier-2 proof + USER unlock. OPEN at loss impossible (flat has no loss).
+    SQUEEZE_FIRE_ENABLED_TRADIER: bool = False  # SQUEEZE fire (stocks). OFF until vec hook.
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
     # trc is paper-money. Push extreme settings here to prove before applying to trb.
     # 2026-04-27 SECOND CUT — every trc cap now 1/4 of original.
@@ -1302,8 +1318,9 @@ class TradierConfig:
     # === FOMC/CPI/NFP blackout (Phase B framework) ===
     MACRO_BLACKOUT_ENABLED: bool = True
     MACRO_BLACKOUT_SIZE_MULT: float = 0.5
-    # === Per-sector L/S ratio enforcement (Phase B framework) ===
-    SECTOR_LS_RATIO_ENABLED: bool = True
+    # === Per-sector L/S ratio enforcement (Phase B framework) — NON-VECTORIZABLE PORTFOLIO GATE (2026-08-18) ===
+    # ⚠️ NON-VECTORIZABLE: sector L/S is cross-symbol portfolio state (counts per sector). Vector single-symbol engine cannot model it. Keep LIVE-ON after per_sym decent set. See BACKTEST_REPLICA_SWITCHES.md §16.
+    SECTOR_LS_RATIO_ENABLED: bool = True  # LIVE-ONLY portfolio gate; vector unaware by design.
     SECTOR_LS_RATIO_MIN: float = 0.50
     SECTOR_LS_RATIO_MAX: float = 2.00
     SECTOR_LS_MIN_POSITIONS: int = 3        # don't enforce until ≥3 positions in a sector
@@ -1312,8 +1329,9 @@ class TradierConfig:
     MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies
     # === AUGMENT GUARD (parity with crypto) ===
     MIN_GAIN: float = 3.0  # NEVER augment below 3% gain — same rule as crypto
-    # === L/S RATIO ENFORCEMENT (backtest) ===
-    LS_RATIO_ENFORCE_TRADIER: bool = True  # 2026-07-28 RE-ENABLED (USER unlocked config_tradier to stop HAO_SHORT stacking). The 2026-07-11 note said to disable only until defect-2 (shorts never enter) was fixed, then RE-ENABLE. Shorts demonstrably enter now — HAO_SHORT stacked 8 OPENs / ~$20k with ZERO closes because with the L/S band off (tradier_manage.py:4423) RATIO_BOOST_S could spam shorts at 25:1. The precondition for re-enabling is met; leaving it False is what let a single collapsing penny stock absorb $20k of short exposure unchecked.
+    # === L/S RATIO ENFORCEMENT (backtest) — NON-VECTORIZABLE PORTFOLIO GATE (2026-08-18) ===
+    # ⚠️ NON-VECTORIZABLE: tradier L/S ratio is cross-symbol portfolio state. Vector single-symbol engine cannot model it. Keep LIVE-ON after per_sym decent set. See BACKTEST_REPLICA_SWITCHES.md §16.
+    LS_RATIO_ENFORCE_TRADIER: bool = True  # LIVE-ONLY portfolio gate — stays True; vector unaware by design. 2026-07-28 RE-ENABLED (USER unlocked to stop HAO_SHORT stacking). Precondition (shorts enter) met.
     LS_RATIO_MIN_TRADIER: float = 0.50  # BACKTEST_CHANGE_T36 min L/S ratio
     LS_RATIO_MAX_TRADIER: float = 2.00  # BACKTEST_CHANGE_T36 max L/S ratio
     # === DAILY LOSS LIMIT (backtest) ===
@@ -2990,7 +3008,7 @@ class TradierConfig:
     TR_MFI4H_LONG_BOYCOTT_SCORE: int = -25  # BC_155d: Moderate penalty
     TR_MFI4H_LONG_ENABLED: bool = True  # BC_155d: LONG boycott when MFI_4h too low (no buying pressure)
     TR_MFI4H_LONG_MIN: float = 40.0  # BC_155d: Conservative (41 was loser mean)
-    UNIVERSAL_NOLOSS_GATE: bool = False  # 2026-04-27 RE-DISABLED: True cost 25% of net worth/week (positions buried, never recovered). Bleed today was from PEAK_GIVEBACK + DELTA_EXIT_TOP firing as profit-take while position negative — those are now individually gated (DELTA_EXIT_OVERRIDE_NOLOSS=False, PEAK_GIVEBACK_HARD_ZERO=False) so technical exits (WT 5/5 flip, DC break) still fire at loss. Targeted, not blanket.
+    UNIVERSAL_NOLOSS_GATE: bool = False  # 2026-08-18 RE-AFFIRMED OFF LIMITS (BACKTEST_REPLICA_SWITCHES.md §0). Was 2026-04-27 disabled (25%/week bury). Hedging + blanket noloss stripped accounts. Targeted technical exits (R1/R2/DC break/WT 5/5) still fire via structural gates. Re-enable only with USER unlock after per_sym decent set + targeted stop parity.
     # 2026-07-15 ADDED: this flag existed but was never actually consulted anywhere in
     # tradier_manage.py -- Safety Switch 5 (execute_now, ~11310) was a totally separate,
     # independently-hardcoded blanket blocker with only a 4-string allowlist, so stocks

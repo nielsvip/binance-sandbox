@@ -16906,7 +16906,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             _dir_fav_long = is_long and k_3m > d_3m and k_15m > d_15m and k_3m < 85
             _dir_fav_short = not is_long and k_3m < d_3m and k_15m < d_15m and k_3m > 15
             _wt_confirm = (is_long and wt1_15m > wt2_15m and wt1_3m > wt2_3m) or (not is_long and wt1_15m < wt2_15m and wt1_3m < wt2_3m)
-            if (_dir_fav_long or _dir_fav_short) and _wt_confirm and getattr(config_obj, 'LEGACY_DIRECTION_FAVORABLE', True) and getattr(config_obj, 'REENTRY2_DIR_FAV_ENABLED', True):
+            if (_dir_fav_long or _dir_fav_short) and _wt_confirm and getattr(config_obj, 'LEGACY_DIRECTION_FAVORABLE', False) and getattr(config_obj, 'DIRECTION_FAVORABLE_REENTRY_ENABLED', False) and getattr(config_obj, 'REENTRY2_DIR_FAV_ENABLED', True):
                 _dfr_delta_ok, _dfr_delta_reason = _ez_check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
                 if not _dfr_delta_ok:
                     logger.info(f"[DIRECTION_FAVORABLE_DELTA_BLOCK_EPQ] {position_key}: {_dfr_delta_reason}")
@@ -16996,7 +16996,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                 if not (_ag_wt3m and _ag_wt15m and _ag_wt1h): return
             elif _age_gate == 'extreme':
                 if not (_ag_wt3m and _ag_wt15m and _ag_wt1h and _ag_wt4h): return
-        # STANDARD GATES
+        # STANDARD GATES — 2026-08-18 LIVE-OFF via MANDATORY_PRICE_CROSS_EPQ_ENABLED (BACKTEST_REPLICA_SWITCHES.md §5). EPQ "NO QUESTIONS ASKED" is OFF by default; hook into vec before re-enable.
+        if not getattr(config_obj, "MANDATORY_PRICE_CROSS_EPQ_ENABLED", False):
+            return  # EPQ mand price-cross is OFF live (TOP priority bleed gate). Re-enable only after vec hedge/reentry agent proof.
         _price_above_red_epq = (reentry_level > 0.0) and ((is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level))
         if _price_above_red_epq:
             _epq_force_mult = 0.55 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0

@@ -35347,7 +35347,9 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
 
 @timed_function("evaluate_leaderboard_entry")
 async def evaluate_leaderboard_entry(ctx: dict) -> Optional[Signal]:
-    """Evaluate leaderboard entry signals with Redis signals + ranking data fallback"""
+    """Evaluate leaderboard entry signals — 2026-08-18 LIVE-OFF via LEADERBOARD_ENTRY_ENABLED (BACKTEST_REPLICA_SWITCHES.md §13). Hook into vector before re-enable."""
+    if not getattr(ctx.get("config") or __import__("config"), "LEADERBOARD_ENTRY_ENABLED", False):
+        return None
     event_type = ctx.get("event_type")
     signal_data = ctx.get("signal_data")
     if not event_type and signal_data:
@@ -38325,7 +38327,8 @@ async def process_single_reentry_evaluation(
             if (
                 (_dir_fav_long or _dir_fav_short)
                 and _wt_confirm
-                and getattr(config, "LEGACY_DIRECTION_FAVORABLE", True)
+                and getattr(config, "LEGACY_DIRECTION_FAVORABLE", False)
+                and getattr(config, "DIRECTION_FAVORABLE_REENTRY_ENABLED", False)
                 and getattr(config, "REENTRY2_DIR_FAV_ENABLED", True)
             ):
                 _dfr_delta_ok, _dfr_delta_reason = check_reentry_delta_tolerant(
@@ -42190,9 +42193,8 @@ async def process_position(
     # first GR gate that fires, reuses for all subsequent gates in the same cycle.
     _pp_shared_ind: Optional[dict] = None
     # 🤖 AGENT advisory short-circuit (supervisor override, all 5 crypto accounts)
-    # Hook fires after position fetch so we have all needed context. inf runs SCALP_V3 too —
-    # this hook runs first; a force_close advisory wins over a SCALP_V3 hold.
-    if account_key in ("fin", "ang", "inf", "flz", "men"):
+    # 2026-08-18 PARITY FIX: LIVE-OFF via FIN_ADVISORY_CONSUMER_ENABLED (BACKTEST_REPLICA_SWITCHES.md §1). Hook into vector before re-enable.
+    if getattr(config, "FIN_ADVISORY_CONSUMER_ENABLED", False) and account_key in ("fin", "ang", "inf", "flz", "men"):
         try:
             import fin_advisory_consumer as _ag_adv
 
@@ -45464,15 +45466,17 @@ async def process_position(
             else:
                 _kx_ok = True
             if _4h_against and _pos_age_s > 360 and _profit_ok and _kx_ok:
+                _wt4h_mand = bool(getattr(config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED", False))
+                _mand_suffix = "_MANDATORY_REENTRY" if _wt4h_mand else ""
                 logger.warning(
-                    f"[WT_4H_VEL_EXIT] {position_key}: vel_4h={_wt_vel_4h:.1f} wt1/2={_wt1_4h:.1f}/{_wt2_4h:.1f} g={_pp_g:.2f}% k_3m={_k_3m:.0f} k_15m={_k_15m:.0f} → MANDATORY_REENTRY"
+                    f"[WT_4H_VEL_EXIT] {position_key}: vel_4h={_wt_vel_4h:.1f} wt1/2={_wt1_4h:.1f}/{_wt2_4h:.1f} g={_pp_g:.2f}% k_3m={_k_3m:.0f} k_15m={_k_15m:.0f} → {_mand_suffix or 'NO_MAND'}"
                 )
                 result = await queue_trade_action(
                     order_queue,
                     trade_manager,
                     position_key,
                     "QUICK_CLOSE",
-                    f"WT_4H_VEL_EXIT_vel={_wt_vel_4h:.1f}_g={_pp_g:.2f}%_k3m={_k_3m:.0f}_k15m={_k_15m:.0f}_MANDATORY_REENTRY",
+                    f"WT_4H_VEL_EXIT_vel={_wt_vel_4h:.1f}_g={_pp_g:.2f}%_k3m={_k_3m:.0f}_k15m={_k_15m:.0f}{_mand_suffix}",
                     0.95,
                 )
                 if result:
@@ -46130,7 +46134,9 @@ async def process_position(
                     # and vetoes _d_sig.exit_long/short if only LTF noise fires. If exit reaches
                     # here, HTF has confirmed the slowdown → fire exit.
                     _d_reason = f"DELTA_EXIT_speed_decay_tfs_lost={getattr(_d_sig, 'tf_lost', '?')}_gain={_pp_gain:.2f}%"
-                    logger.warning(f"[DELTA_EXIT] {position_key}: {_d_reason}")
+                    _d_mand = bool(getattr(config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED", False))
+                    _d_suffix = "_MANDATORY_REENTRY" if _d_mand else ""
+                    logger.warning(f"[DELTA_EXIT] {position_key}: {_d_reason}{_d_suffix or ' (NO_MAND)'}")
                     _d_side = "SELL" if is_long else "BUY"
                     _d_amt = abs(
                         safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)
@@ -46141,7 +46147,7 @@ async def process_position(
                             trade_manager,
                             position_key,
                             "QUICK_CLOSE",
-                            f"DELTA_EXIT_{_d_reason}_MANDATORY_REENTRY",
+                            f"DELTA_EXIT_{_d_reason}{_d_suffix}",
                             0.95,
                         )
                         if result:

@@ -7969,5 +7969,14 @@
     ],
     "timestamp": "2026-08-18T20:05:37.735834+00:00",
     "price": 160.36
+  },
+  {
+    "symbol": "CSCOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.3x normal"
+    ],
+    "timestamp": "2026-08-18T20:15:58.527150+00:00",
+    "price": 111.76
   }
 ]
