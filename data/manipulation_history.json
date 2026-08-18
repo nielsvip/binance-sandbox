@@ -7762,5 +7762,32 @@
     ],
     "timestamp": "2026-08-18T18:18:55.891657+00:00",
     "price": 0.201
+  },
+  {
+    "symbol": "ICXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T18:23:29.367133+00:00",
+    "price": 0.01792
+  },
+  {
+    "symbol": "SNXXUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 30.1% range"
+    ],
+    "timestamp": "2026-08-18T18:23:29.367133+00:00",
+    "price": 15.33
+  },
+  {
+    "symbol": "MEMEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T18:32:24.461770+00:00",
+    "price": 0.0004615
   }
 ]

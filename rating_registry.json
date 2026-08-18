@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T18:20:57.562263+00:00",
+  "timestamp": "2026-08-18T18:36:07.283890+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,22 +13,34 @@
       "short_score": 17.6
     },
     {
-      "symbol": "NBISUSDT",
-      "net_score": -16.4,
-      "long_score": 0,
-      "short_score": 16.4
-    },
-    {
       "symbol": "SHAZUSDT",
-      "net_score": -15.7,
+      "net_score": -17.2,
       "long_score": 0,
-      "short_score": 15.7
+      "short_score": 17.2
     },
     {
-      "symbol": "BEUSDT",
-      "net_score": -12.0,
+      "symbol": "MSTRUSDT",
+      "net_score": -15.9,
       "long_score": 0,
-      "short_score": 12.0
+      "short_score": 15.9
+    },
+    {
+      "symbol": "NBISUSDT",
+      "net_score": -14.2,
+      "long_score": 0,
+      "short_score": 14.2
+    },
+    {
+      "symbol": "IRENUSDT",
+      "net_score": -11.5,
+      "long_score": 0,
+      "short_score": 11.5
+    },
+    {
+      "symbol": "SPYUSDT",
+      "net_score": -10.1,
+      "long_score": 0,
+      "short_score": 10.1
     },
     {
       "symbol": "EGLDUSDT",
@@ -49,6 +61,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BSPUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -62,12 +80,6 @@
     },
     {
       "symbol": "MVLLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MSTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -271,12 +283,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SPYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -440,12 +446,6 @@
     },
     {
       "symbol": "COMPUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "IRENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -698,6 +698,12 @@
     },
     {
       "symbol": "ETHUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CAKEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -977,21 +983,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "CAKEUSDT",
-      "net_score": 14.5,
-      "long_score": 14.5,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "CAKEUSDT",
-      14.5,
-      1.487
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "CRWVUSDT",
@@ -999,19 +993,29 @@
       93.91
     ],
     [
-      "NBISUSDT",
-      16.4,
-      246.59
-    ],
-    [
       "SHAZUSDT",
-      15.7,
+      17.2,
       68.27
     ],
     [
-      "BEUSDT",
-      12.0,
-      207.56
+      "MSTRUSDT",
+      15.9,
+      94.14
+    ],
+    [
+      "NBISUSDT",
+      14.2,
+      246.59
+    ],
+    [
+      "IRENUSDT",
+      11.5,
+      42.1
+    ],
+    [
+      "SPYUSDT",
+      10.1,
+      768.18
     ]
   ],
   "hedge_usage": {

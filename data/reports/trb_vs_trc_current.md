@@ -1,16 +1,16 @@
 # trb (per_sym) vs trc (7D) — live A/B
 
-Start: 2026-06-26T09:50:48Z · elapsed 53.3d · updated 2026-08-18 17:30Z
+Start: 2026-06-26T09:50:48Z · elapsed 53.4d · updated 2026-08-18 18:30Z
 
 | metric | trb · per_sym | trc · 7D | 7D useful? |
 |---|---|---|---|
-| trades | 823 | 237 | ✗ |
-| win % | 42.4 | 42.6 | ✓ 7D |
+| trades | 826 | 237 | ✗ |
+| win % | 42.3 | 42.6 | ✓ 7D |
 | avg %/trade | -0.056 | -0.7338 | ✗ |
-| cumulative % | -51.123 | -85.968 | ✗ |
+| cumulative % | -51.222 | -85.968 | ✗ |
 | pool_sharpe | -0.0225 | -0.1836 | ✗ |
 | max drawdown % | -57.284 | -89.308 | ✗ |
-| realized $ (size-dependent) | 1855.15 | -5236.95 | ✗ |
+| realized $ (size-dependent) | 1851.35 | -5236.95 | ✗ |
 
 _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). Sample still small — needs weeks._
 
@@ -60,7 +60,7 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | MPC | None (0) | 2.023 (2) |  |
 | MRVL | -1.229 (31) | None (0) |  |
 | MSFT | -1.263 (1) | None (0) |  |
-| MSTR | -6.79 (33) | None (0) |  |
+| MSTR | -6.978 (36) | None (0) |  |
 | MU | -24.668 (74) | -12.45 (11) | 12.22 |
 | NEM | -1.316 (2) | -3.154 (11) | -1.84 |
 | NKE | 1.752 (61) | None (0) |  |

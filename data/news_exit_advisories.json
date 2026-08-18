@@ -1,38 +1,86 @@
 {
-  "generated_at": "2026-08-18T18:21:04.053813+00:00",
-  "count": 5,
+  "generated_at": "2026-08-18T18:32:38.378721+00:00",
+  "count": 12,
   "advisories": [
     {
-      "symbol": "LNG",
+      "symbol": "DHR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.72 threshold=0.45",
-      "score": 0.718,
-      "ts": "2026-08-18T18:21:04.053716+00:00"
+      "reason": "bullish_news_score=0.74 threshold=0.45",
+      "score": 0.743,
+      "ts": "2026-08-18T18:32:38.378662+00:00"
     },
     {
-      "symbol": "NLR",
+      "symbol": "FNV",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.54 threshold=0.45",
-      "score": 0.536,
-      "ts": "2026-08-18T18:21:04.053746+00:00"
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.463,
+      "ts": "2026-08-18T18:32:38.378670+00:00"
+    },
+    {
+      "symbol": "GDXJ",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.79 threshold=0.45",
+      "score": 0.792,
+      "ts": "2026-08-18T18:32:38.378673+00:00"
+    },
+    {
+      "symbol": "GE",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.478,
+      "ts": "2026-08-18T18:32:38.378674+00:00"
+    },
+    {
+      "symbol": "GM",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.45 threshold=0.45",
+      "score": 0.454,
+      "ts": "2026-08-18T18:32:38.378676+00:00"
+    },
+    {
+      "symbol": "HL",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.82 threshold=0.45",
+      "score": 0.818,
+      "ts": "2026-08-18T18:32:38.378679+00:00"
+    },
+    {
+      "symbol": "INTC",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.60 threshold=0.45",
+      "score": 0.6,
+      "ts": "2026-08-18T18:32:38.378681+00:00"
+    },
+    {
+      "symbol": "KGC",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.62 threshold=0.45",
+      "score": 0.625,
+      "ts": "2026-08-18T18:32:38.378682+00:00"
+    },
+    {
+      "symbol": "LMT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.48,
+      "ts": "2026-08-18T18:32:38.378684+00:00"
     },
     {
       "symbol": "TECK",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.54 threshold=0.45",
-      "score": 0.536,
-      "ts": "2026-08-18T18:21:04.053760+00:00"
-    },
-    {
-      "symbol": "VZ",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.461,
-      "ts": "2026-08-18T18:21:04.053766+00:00"
+      "score": 0.535,
+      "ts": "2026-08-18T18:32:38.378692+00:00"
     },
     {
       "symbol": "XOM",
@@ -40,7 +88,15 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.72 threshold=0.45",
       "score": 0.718,
-      "ts": "2026-08-18T18:21:04.053771+00:00"
+      "ts": "2026-08-18T18:32:38.378695+00:00"
+    },
+    {
+      "symbol": "ZETA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.57 threshold=0.45",
+      "score": 0.566,
+      "ts": "2026-08-18T18:32:38.378696+00:00"
     }
   ]
 }

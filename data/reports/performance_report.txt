@@ -1,12 +1,12 @@
-PERFORMANCE REPORT — 2026-08-18 18:20 UTC
+PERFORMANCE REPORT — 2026-08-18 18:34 UTC
 ================================================================================
-Total: 107 symbols | A=1 B=84 C=22
+Total: 106 symbols | A=1 B=83 C=22
 Window: 14 days | Min trades: 5
 
 --- TIER A (1 symbols) ---
              CIEN  WR=84%  avg=+1.58%  total=+33.2%  trades= 19  mult=10.00
 
---- TIER B (84 symbols) ---
+--- TIER B (83 symbols) ---
              SNDK  WR=52%  avg=+2.04%  total=+56.1%  trades= 23  mult=10.00
              ASTS  WR=50%  avg=+1.53%  total=+12.3%  trades=  8  mult=4.60
              ASML  WR=59%  avg=+0.29%  total=+12.3%  trades= 41  mult=4.46
@@ -35,7 +35,6 @@ Window: 14 days | Min trades: 5
          ASTSUSDT  WR=60%  avg=+0.05%  total=+0.2%  trades=  5  mult=1.53
        RENDERUSDT  WR=67%  avg=+0.04%  total=+0.2%  trades=  6  mult=1.97
           SKYUSDT  WR=83%  avg=+0.03%  total=+0.2%  trades=  6  mult=2.86
-             AGCO  WR=100%  avg=+0.17%  total=+0.2%  trades=  1  mult=1.00
           ZRXUSDT  WR=75%  avg=+0.02%  total=+0.1%  trades=  4  mult=1.00
           UNIUSDC  WR=67%  avg=+0.03%  total=+0.1%  trades=  3  mult=1.00
          EGLDUSDT  WR=100%  avg=+0.04%  total=+0.1%  trades=  2  mult=1.00
@@ -73,7 +72,7 @@ Window: 14 days | Min trades: 5
      1000SHIBUSDC  WR=0%  avg=-0.04%  total=-0.1%  trades=  2  mult=1.00
           KSMUSDT  WR=0%  avg=-0.04%  total=-0.1%  trades=  3  mult=1.00
          NBISUSDT  WR=0%  avg=-0.07%  total=-0.1%  trades=  2  mult=1.00
-          LTCUSDC  WR=25%  avg=-0.04%  total=-0.1%  trades=  4  mult=1.00
+          LTCUSDC  WR=25%  avg=-0.04%  total=-0.1%  trades=  4  mult=1.00 ** OPEN **
           ETHUSDC  WR=0%  avg=-0.18%  total=-0.2%  trades=  1  mult=1.00
           APPUSDT  WR=33%  avg=-0.07%  total=-0.2%  trades=  3  mult=1.00
                VT  WR=61%  avg=-0.01%  total=-0.2%  trades= 18  mult=2.73
@@ -105,7 +104,7 @@ Window: 14 days | Min trades: 5
           CRVUSDC  WR=29%  avg=-0.11%  total=-0.8%  trades=  7  mult=0.58
          MEMEUSDT  WR=40%  avg=-0.08%  total=-0.8%  trades= 10  mult=0.66
           SNXUSDT  WR=20%  avg=-0.38%  total=-1.9%  trades=  5  mult=0.53
-         MANAUSDT  WR=0%  avg=-0.41%  total=-2.0%  trades=  5  mult=0.43
+         MANAUSDT  WR=0%  avg=-0.41%  total=-2.0%  trades=  5  mult=0.43 ** OPEN **
          RUNEUSDT  WR=43%  avg=-0.35%  total=-2.5%  trades=  7  mult=0.64
              LSCC  WR=33%  avg=-0.15%  total=-3.2%  trades= 21  mult=0.36
              RBLX  WR=31%  avg=-0.30%  total=-3.8%  trades= 13  mult=0.39
@@ -117,7 +116,7 @@ Window: 14 days | Min trades: 5
              MRVL  WR=40%  avg=-0.50%  total=-17.1%  trades= 35  mult=0.30
 
 SUMMARY:
-  Total PnL (all symbols): +42.4%
+  Total PnL (all symbols): +42.3%
   Avg win rate: 46%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.50
