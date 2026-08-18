@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-08-18T22:53:32.370327+00:00",
+  "timestamp": "2026-08-18T23:08:38.667537+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 178
+    "total_ranked": 179
   },
   "unified_ranking": [
+    {
+      "symbol": "TLMUSDT",
+      "net_score": -10.5,
+      "long_score": 0,
+      "short_score": 10.5
+    },
     {
       "symbol": "EGLDUSDT",
       "net_score": 0,
@@ -272,6 +278,12 @@
     },
     {
       "symbol": "MOVEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "EIGENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -751,6 +763,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CAKEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "TIAUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -788,12 +806,6 @@
     },
     {
       "symbol": "TSLAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "TLMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1067,22 +1079,16 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "CAKEUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
-      "short_score": 0
     }
   ],
-  "top_longs": [
+  "top_longs": [],
+  "top_shorts": [
     [
-      "CAKEUSDT",
-      10.4,
-      1.5151
+      "TLMUSDT",
+      10.5,
+      0.001344
     ]
   ],
-  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
