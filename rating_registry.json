@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T22:08:03.978187+00:00",
+  "timestamp": "2026-08-18T22:23:08.640958+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,22 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "CRCLUSDT",
-      "net_score": -11.8,
+      "symbol": "COTIUSDT",
+      "net_score": -10.0,
       "long_score": 0,
-      "short_score": 11.8
-    },
-    {
-      "symbol": "JASMYUSDT",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
-    },
-    {
-      "symbol": "HOODUSDT",
-      "net_score": -10.4,
-      "long_score": 0,
-      "short_score": 10.4
+      "short_score": 10.0
     },
     {
       "symbol": "EGLDUSDT",
@@ -175,6 +163,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GOOGLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ORDIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -242,6 +236,12 @@
     },
     {
       "symbol": "SANDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRCLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -494,6 +494,12 @@
     },
     {
       "symbol": "WLFIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "HOODUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -889,6 +895,12 @@
       "short_score": 0
     },
     {
+      "symbol": "JASMYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LINKUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -1009,12 +1021,6 @@
       "short_score": 0
     },
     {
-      "symbol": "COTIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "USARUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1061,36 +1067,14 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "GOOGLUSDT",
-      "net_score": 11.7,
-      "long_score": 11.7,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "GOOGLUSDT",
-      11.7,
-      344.42
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
-      "CRCLUSDT",
-      11.8,
-      71.62
-    ],
-    [
-      "JASMYUSDT",
-      10.5,
-      0.003484
-    ],
-    [
-      "HOODUSDT",
-      10.4,
-      91.71
+      "COTIUSDT",
+      10.0,
+      0.009695
     ]
   ],
   "hedge_usage": {
