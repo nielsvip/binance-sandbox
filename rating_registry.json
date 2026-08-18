@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T21:52:49.558427+00:00",
+  "timestamp": "2026-08-18T22:08:03.978187+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,27 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "CRCLUSDT",
-      "net_score": -11.6,
+      "net_score": -11.8,
       "long_score": 0,
-      "short_score": 11.6
+      "short_score": 11.8
     },
     {
-      "symbol": "ENAUSDC",
-      "net_score": -10.9,
+      "symbol": "JASMYUSDT",
+      "net_score": -10.5,
       "long_score": 0,
-      "short_score": 10.9
-    },
-    {
-      "symbol": "SKYAIUSDT",
-      "net_score": -10.7,
-      "long_score": 0,
-      "short_score": 10.7
-    },
-    {
-      "symbol": "BSPUSDT",
-      "net_score": -10.4,
-      "long_score": 0,
-      "short_score": 10.4
+      "short_score": 10.5
     },
     {
       "symbol": "HOODUSDT",
@@ -56,6 +44,12 @@
     },
     {
       "symbol": "BEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BSPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -176,12 +170,6 @@
     },
     {
       "symbol": "PLTRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -787,6 +775,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ENAUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "DOTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -883,13 +877,13 @@
       "short_score": 0
     },
     {
-      "symbol": "ATOMUSDT",
+      "symbol": "SKYAIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "JASMYUSDT",
+      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1067,29 +1061,31 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "GOOGLUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "GOOGLUSDT",
+      11.7,
+      344.42
+    ]
+  ],
   "top_shorts": [
     [
       "CRCLUSDT",
-      11.6,
-      71.52
+      11.8,
+      71.62
     ],
     [
-      "ENAUSDC",
-      10.9,
-      0.08296
-    ],
-    [
-      "SKYAIUSDT",
-      10.7,
-      0.05486
-    ],
-    [
-      "BSPUSDT",
-      10.4,
-      38.87
+      "JASMYUSDT",
+      10.5,
+      0.003484
     ],
     [
       "HOODUSDT",
