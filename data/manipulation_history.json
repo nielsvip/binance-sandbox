@@ -6988,5 +6988,14 @@
     ],
     "timestamp": "2026-08-18T14:17:54.312954+00:00",
     "price": 141.43
+  },
+  {
+    "symbol": "LTCUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.4x normal"
+    ],
+    "timestamp": "2026-08-18T14:27:26.696317+00:00",
+    "price": 44.43610805
   }
 ]
