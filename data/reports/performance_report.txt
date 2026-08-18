@@ -1,11 +1,11 @@
-PERFORMANCE REPORT — 2026-08-17 23:51 UTC
+PERFORMANCE REPORT — 2026-08-18 00:03 UTC
 ================================================================================
-Total: 58 symbols | A=0 B=50 C=8
+Total: 59 symbols | A=0 B=51 C=8
 Window: 14 days | Min trades: 5
 
 --- TIER A (0 symbols) ---
 
---- TIER B (50 symbols) ---
+--- TIER B (51 symbols) ---
         USUALUSDT  WR=100%  avg=+0.69%  total=+0.7%  trades=  1  mult=1.00
          IOTXUSDT  WR=25%  avg=+0.16%  total=+0.6%  trades=  4  mult=1.00
           AXSUSDT  WR=100%  avg=+0.16%  total=+0.5%  trades=  3  mult=1.00
@@ -33,6 +33,7 @@ Window: 14 days | Min trades: 5
      1000PEPEUSDC  WR=67%  avg=-0.00%  total=-0.0%  trades=  3  mult=1.00
           LPTUSDT  WR=33%  avg=+0.00%  total=+0.0%  trades=  3  mult=1.00
          SANDUSDT  WR=50%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
+         ASTSUSDT  WR=0%  avg=-0.03%  total=-0.0%  trades=  1  mult=1.00
          ATOMUSDT  WR=0%  avg=-0.04%  total=-0.0%  trades=  1  mult=1.00
          LINKUSDC  WR=33%  avg=-0.02%  total=-0.1%  trades=  3  mult=1.00
         ETHFIUSDC  WR=0%  avg=-0.05%  total=-0.1%  trades=  1  mult=1.00
@@ -58,7 +59,7 @@ Window: 14 days | Min trades: 5
          MANAUSDT  WR=0%  avg=-0.65%  total=-1.9%  trades=  3  mult=1.00
 
 --- TIER C (8 symbols) ---
-         MEMEUSDT  WR=33%  avg=-0.01%  total=-0.0%  trades=  6  mult=0.71 ** OPEN **
+         MEMEUSDT  WR=33%  avg=-0.01%  total=-0.0%  trades=  6  mult=0.71
          HYPEUSDT  WR=33%  avg=-0.02%  total=-0.1%  trades=  6  mult=0.71
     1000FLOKIUSDT  WR=38%  avg=-0.01%  total=-0.1%  trades=  8  mult=0.71
           FILUSDC  WR=29%  avg=-0.02%  total=-0.1%  trades=  7  mult=0.62
@@ -68,7 +69,7 @@ Window: 14 days | Min trades: 5
           CRVUSDC  WR=29%  avg=-0.11%  total=-0.8%  trades=  7  mult=0.58
 
 SUMMARY:
-  Total PnL (all symbols): -9.3%
-  Avg win rate: 47%
+  Total PnL (all symbols): -9.4%
+  Avg win rate: 46%
   A-tier avg mult: 0.00
   C-tier avg mult: 0.62

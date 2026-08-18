@@ -1,21 +1,14 @@
-# Copilot Status — 2026-08-17 19:59:55 UTC
+# Copilot Status — 2026-08-18 00:06:13 UTC
 
-**Market Hours:** YES | **Tradier Priority:** YES
+**Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:57:30
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:57:30
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:58:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:58:01
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:58:31
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:58:31
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:59:03
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:59:03
-- **STALE_INDICATORS** [tradier]  — 2026-08-17T19:59:33
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-17T19:59:33
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T00:01:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T00:03:13
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T00:05:21
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +22,15 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +9.7%
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +10.3%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_manage.py for men is NOT running
+**Issues (last 1h):** 35
+- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running

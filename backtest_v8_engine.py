@@ -218,7 +218,7 @@ if _overrides:
         except Exception:
             pass
     # BAR-IDENTICAL FIX 2026-08-17: live engine must bypass drawdown/SRS/MFI/ZONE/ALIGNMENT exactly like vector hook, otherwise 65 vs 32 trades mismatch (user: ANY trade not same bar STOP FIX). Vector parity hook runs with V8_SWEEP_MODE=1 which bypasses DRAWDOWN_EQUITY_UNAVAILABLE. Bare live with AUTO_VECTOR had SWEEP=0 so DRAWDOWN blocked all 65 -> 0 vs 65, then MFI/ZONE blocked 25+15 -> 28 vs 65 -> ZONE 32 vs 65 MISMATCH. Force bypass for AUTO_VECTOR live as well. Must patch BOTH Config and TradierConfig (live tradier uses TradierConfig, not Config).
-    if _override_source and _override_source.startswith("AUTO_VECTOR"):
+    if (_override_source and _override_source.startswith("AUTO_VECTOR")) or os.environ.get("V8_FORCE_REAL", "0") == "1":
         os.environ["V8_BACKTEST_BYPASS_DRAWDOWN"] = "1"
         # Disable SRS/MFI/K_ZONE/ENTRY_ZONE/ALIGNMENT gates that vector v8_quick_engine does not enforce for tradier
         for _mod_name in ["config", "config_tradier"]:
@@ -7965,7 +7965,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # WT/DC fallback. Exact recipes set WT_DC_ENTRY_THRESHOLD=9999
                 # specifically to disable that fallback; applying the sentinel
                 # to HHHL/Bounce/Stoch/Long-Wait makes every selected claim fail.
-                if _wt_dc_thr > 0 and not _wf_force_bypass_r and not _selected_completed_direct_r and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
+                if _wt_dc_thr > 0 and not _wf_force_bypass_r and not _selected_completed_direct_r and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')) and os.environ.get("V8_FORCE_REAL", "0") != "1" and os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN") != "1":
                     try:
                         from wt_dc_entry_scorer import score_entry as _v8_score_entry_raw
                         _wt_dc_ind = manager.market_snapshot.get(str(symbol).upper(), {})
