@@ -7591,5 +7591,23 @@
     ],
     "timestamp": "2026-08-18T17:04:30.227144+00:00",
     "price": 0.005195
+  },
+  {
+    "symbol": "SKYAIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T17:06:33.403928+00:00",
+    "price": 0.06486
+  },
+  {
+    "symbol": "UNIUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T17:06:33.403928+00:00",
+    "price": 3.271
   }
 ]

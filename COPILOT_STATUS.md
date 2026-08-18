@@ -1,4 +1,4 @@
-# Copilot Status — 2026-08-18 17:04:13 UTC
+# Copilot Status — 2026-08-18 17:19:33 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:02:09
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:02:09
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:02:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:02:39
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:03:12
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:03:12
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:03:42
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:03:42
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:04:13
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:04:13
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:17:29
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:17:29
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:17:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:17:59
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:18:31
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:18:31
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:19:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:19:01
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:19:33
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:19:33
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +29,15 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +9.5%
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +9.4%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (47min)
-- [MEDIUM] tradier_positions.py running but log stale (48min)
-- [MEDIUM] tradier_positions.py running but log stale (49min)
 - [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)

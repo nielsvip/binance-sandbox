@@ -1,70 +1,38 @@
 {
-  "generated_at": "2026-08-18T16:58:57.010234+00:00",
-  "count": 8,
+  "generated_at": "2026-08-18T17:16:57.628949+00:00",
+  "count": 4,
   "advisories": [
     {
-      "symbol": "SMCI",
+      "symbol": "LNG",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.56 threshold=0.45",
-      "score": 0.555,
-      "ts": "2026-08-18T16:58:57.010178+00:00"
+      "reason": "bullish_news_score=0.72 threshold=0.45",
+      "score": 0.718,
+      "ts": "2026-08-18T17:16:57.628907+00:00"
     },
     {
-      "symbol": "STLD",
+      "symbol": "NLR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.93 threshold=0.45",
-      "score": 0.927,
-      "ts": "2026-08-18T16:58:57.010189+00:00"
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.536,
+      "ts": "2026-08-18T17:16:57.628917+00:00"
     },
     {
-      "symbol": "TMO",
+      "symbol": "NXE",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.74 threshold=0.45",
-      "score": 0.743,
-      "ts": "2026-08-18T16:58:57.010192+00:00"
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.477,
+      "ts": "2026-08-18T17:16:57.628920+00:00"
     },
     {
-      "symbol": "TRGP",
+      "symbol": "XOM",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.80 threshold=0.45",
-      "score": 0.798,
-      "ts": "2026-08-18T16:58:57.010194+00:00"
-    },
-    {
-      "symbol": "UUUU",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.57 threshold=0.45",
-      "score": 0.572,
-      "ts": "2026-08-18T16:58:57.010196+00:00"
-    },
-    {
-      "symbol": "VLO",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.73 threshold=0.45",
-      "score": 0.728,
-      "ts": "2026-08-18T16:58:57.010198+00:00"
-    },
-    {
-      "symbol": "WMB",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.76 threshold=0.45",
-      "score": 0.758,
-      "ts": "2026-08-18T16:58:57.010200+00:00"
-    },
-    {
-      "symbol": "WPM",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.85 threshold=0.45",
-      "score": 0.848,
-      "ts": "2026-08-18T16:58:57.010202+00:00"
+      "reason": "bullish_news_score=0.72 threshold=0.45",
+      "score": 0.718,
+      "ts": "2026-08-18T17:16:57.628926+00:00"
     }
   ]
 }
