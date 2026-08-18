@@ -4637,6 +4637,19 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         hi_thr = getattr(cfg, 'TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER', 65) if is_tradier else getattr(cfg, 'K_ZONE_SHORT_THRESHOLD', 65)
         blocks["B_KZONE"] = (k_3m < lo_thr) if is_long else (k_3m > hi_thr)
 
+    # STOCKS LIVE==vector: SRS ENTRY gate (STRUCTURAL_RANGE_SHIFT_EXIT pctb 0.97/0.03) — blocks LONG at top and SHORT at bottom unless WT_3M_FORCE_OPEN
+    if getattr(cfg, 'STRUCTURAL_RANGE_SHIFT_EXIT', False) and not bool(os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN")):
+        tf_map_srs = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}
+        srs_tf = getattr(cfg, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
+        srs_key = tf_map_srs.get(srs_tf, 'bb_pct_b_1h')
+        srs_pctb = _safe(npz, srs_key, n, 0.5)
+        if is_long:
+            srs_block = srs_pctb >= 0.97
+        else:
+            srs_block = srs_pctb <= 0.03
+        # WT_3M_FORCE_OPEN bypass not modeled in vector entry blocks (no reason string) — keep gate but allow hash fallback for that reason
+        blocks["B_SRS_ENTRY"] = ~srs_block
+
     if getattr(cfg, 'MOM3_ENTRY_ENABLED', False):
         mom3 = np.where(close_3bar_15m > 0, (close_15m_2 - close_3bar_15m) / np.maximum(close_3bar_15m, 1e-9) * 100, 0.0)
         blocks["B_MOM3"] = (mom3 < getattr(cfg, 'MOM3_LONG_THRESHOLD', -1.0)) if is_long else (mom3 > getattr(cfg, 'MOM3_SHORT_THRESHOLD', 1.0))
@@ -5083,8 +5096,61 @@ def compute_entry_signals(npz, n, is_long, cfg):
             # Gate without CLENOW main is inert (matches live fail-open)
             pass
 
+    # 2026-08-18 GOLDEN_RULE parity — live blocks entry when < MIN_TFS TFs each have >= MIN_IND bullish indicators
+    # BNBUSDC divergence: live GOLDEN_RULE_CONSENSUS_BLOCK_ENTRY tfs=0/3req while vector had no gate → 0 vs vector trades mismatch
+    # Invert semantics: GR loop entries are breakout mode (DC/BB extended = bullish), matching golden_rule_htf invert_dc_bb=True
+    _gr_ok = np.ones(n, dtype=bool)
+    _gr_min_tfs = int(getattr(cfg, 'GOLDEN_RULE_HTF_MIN_TFS', getattr(cfg, 'GOLDEN_RULE_MIN_TFS', 0)) or 0)
+    _gr_min_ind = int(getattr(cfg, 'GOLDEN_RULE_MIN_IND', 0) or 0)
+    if _gr_min_tfs > 0 and _gr_min_ind > 0:
+        _mode = str(getattr(cfg, 'MODE', 'crypto')).lower()
+        _tfs = ["3m","15m","1h","4h","D","W"] if _mode == "crypto" else ["5m","15m","1h","4h","D","W"]
+        # per-TF indicator count (vectorized) — 11 indicators per TF as in golden_rule_htf._ind_score
+        _tf_scores = []
+        for tf in _tfs:
+            _s = np.zeros(n, dtype=int)
+            wt1 = _safe(npz, f'wt1_{tf}', n); wt2 = _safe(npz, f'wt2_{tf}', n)
+            if wt1.sum() != 0 or wt2.sum() != 0:
+                _s += (wt1 > wt2).astype(int) if is_long else (wt1 < wt2).astype(int)
+            rsi = _safe(npz, f'rsi_{tf}', n, -1)
+            _has = rsi >= 0
+            _s += np.where(_has, (rsi > 50).astype(int) if is_long else (rsi < 50).astype(int), 0)
+            mfi = _safe(npz, f'mfi_{tf}', n, -1)
+            _has = mfi >= 0
+            _s += np.where(_has, (mfi > 50).astype(int) if is_long else (mfi < 50).astype(int), 0)
+            dc_pos = _safe(npz, f'dc_position_{tf}', n, -1)
+            _has = dc_pos >= 0
+            # breakout mode: extended = bullish
+            _s += np.where(_has, (dc_pos >= 0.65).astype(int) if is_long else (dc_pos <= 0.35).astype(int), 0)
+            bb = _safe(npz, f'bb_pct_b_{tf}', n, -1)
+            _has = bb >= 0
+            _s += np.where(_has, (bb >= 0.75).astype(int) if is_long else (bb <= 0.25).astype(int), 0)
+            rvol = _safe(npz, f'relative_volume_{tf}', n, -1)
+            _has = rvol >= 0
+            _s += np.where(_has, (rvol > 1.0).astype(int), 0)
+            k = _safe(npz, f'stoch_k_{tf}', n, -1)
+            _has = k >= 0
+            _s += np.where(_has, (k < 80).astype(int) if is_long else (k > 20).astype(int), 0)
+            adx = _safe(npz, f'adx_{tf}', n, -1)
+            _has = adx > 0
+            _s += np.where(_has, (adx > 20).astype(int), 0)
+            mh = _safe(npz, f'macd_hist_{tf}', n, 0)
+            _has = mh != 0
+            _s += np.where(_has, (mh > 0).astype(int) if is_long else (mh < 0).astype(int), 0)
+            ha = _safe(npz, f'ha_color_{tf}', n, 0)
+            _has = ha != 0
+            _s += np.where(_has, (ha > 0).astype(int) if is_long else (ha < 0).astype(int), 0)
+            d = _safe(npz, f'stoch_d_{tf}', n, -1)
+            _has = (d >= 0) & (k >= 0)
+            _s += np.where(_has, (k > d).astype(int) if is_long else (k < d).astype(int), 0)
+            _tf_scores.append(_s >= _gr_min_ind)
+        if _tf_scores:
+            _stack = np.stack(_tf_scores, axis=0)
+            _n_tfs = _stack.sum(axis=0)
+            _gr_ok = _n_tfs >= _gr_min_tfs
+
     # 2026-08-09 625 wiring — causal entry gates for every formerly unwired knob
-    _base_entry = delta_open_gate & (raw & k3m_ok & ct_vel_ok & ct_dc_ok & ct_momentum_ok & ct_chop_ok & ct_vol_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & _wt_dc_mask & _wtdc_htf_ok & mtf_armed_ok & clenow_ok)
+    _base_entry = delta_open_gate & (raw & k3m_ok & ct_vel_ok & ct_dc_ok & ct_momentum_ok & ct_chop_ok & ct_vol_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & _wt_dc_mask & _wtdc_htf_ok & mtf_armed_ok & clenow_ok & _gr_ok)
     _base_entry = _apply_625_entry_gates(npz, n, is_long, cfg, _base_entry)
     _base_entry, _ = _apply_625_generic_gates(npz, n, is_long, cfg, _base_entry, np.zeros(n, dtype=bool))
     # REMOVED 2026-08-11 per M1/M2 — hash fallback fabricated distinctness for 309 unmapped params

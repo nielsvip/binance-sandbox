@@ -227,7 +227,8 @@ if _overrides:
                 _cls = getattr(_mod, "Config", None) or getattr(_mod, "TradierConfig", None)
                 if not _cls:
                     continue
-                for _knob, _val in [("SRS_ENTRY_ENABLED", False), ("MFI_ENTRY_ENABLED", False), ("MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_MAX", 100), ("K_ZONE_ENTRY_ENABLED_TRADIER", False), ("K_ZONE_VETO_ENABLED_TRADIER", False), ("TRADIER_MFI_ENTRY_LONG_ENABLED", False), ("MFI_ENTRY_LONG_TRADIER", 100), ("ENTRY_ZONE_LONG", 100), ("ENTRY_ZONE_SHORT", 0), ("ALIGNMENT_MIN_BARS", 0), ("ALIGNMENT_REQUIRED_TRADIER", 0)]:
+                # STOCKS LIVE==vector fix 2026-08-18: do NOT disable SRS/MFI/K_ZONE/ENTRY_ZONE/ALIGNMENT — vector now enforces same gates as live (see v8_quick compute_entry). Only DRAWDOWN is bypassed via env (vector has no account drawdown model). Keeping per_sym overrides intact for per_sym+7D testing.
+                for _knob, _val in []:
                     try:
                         setattr(_mod, _knob, _val)
                         setattr(_cls, _knob, _val)
@@ -237,15 +238,7 @@ if _overrides:
                             setattr(_inst, _knob, _val)
                     except Exception:
                         pass
-                # Also patch already imported tradier_manage's config instance if exists
-                try:
-                    import tradier_manage as _tm
-                    if hasattr(_tm, "config"):
-                        for _knob, _val in [("SRS_ENTRY_ENABLED", False), ("MFI_ENTRY_ENABLED", False), ("K_ZONE_ENTRY_ENABLED_TRADIER", False), ("ENTRY_ZONE_LONG", 100), ("ENTRY_ZONE_SHORT", 0)]:
-                            try:
-                                setattr(_tm.config, _knob, _val)
-                            except: pass
-                except: pass
+                # No per-gate patch of tradier_manage.config — live gates remain as per config/per_sym for stocks parity
             except: pass
     v8_logger.info(f"Applied {len(_overrides)} config overrides from {_override_source} (module + class + dataclass default + instances)")
 
@@ -8000,8 +7993,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         if _es_score < _es_thr:
                             return f"BLOCKED_ENTRY_SCORE_THRESHOLD_{_es_score:.0f}lt{_es_thr:.0f}"
                 if getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
-                    # parity fix 2026-08-13: bypass SRS entry gate for V8 ladder parity (vector has no SRS gate)
-                    _v8_parity_bypass_srs = os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN") == "1" or bool(os.environ.get("V8_LADDER_ONLY_SIDE"))
+                    # STOCKS LIVE==vector 2026-08-18: vector now HAS SRS entry gate (B_SRS_ENTRY), so do NOT bypass — keep LIVE identical to vector (previous bypass was the LIE)
+                    _v8_parity_bypass_srs = False
                     if not _v8_parity_bypass_srs:
                         try:
                             _srs_e_ind = manager.market_snapshot.get(str(symbol).upper(), {})
