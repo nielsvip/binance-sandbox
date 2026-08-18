@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T19:06:21.077242+00:00",
+  "timestamp": "2026-08-18T19:21:26.221523+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -38,12 +38,6 @@
     },
     {
       "symbol": "SPYUSDT",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
-    },
-    {
-      "symbol": "SKYAIUSDT",
       "net_score": -10.1,
       "long_score": 0,
       "short_score": 10.1
@@ -835,6 +829,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SKYAIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1017,11 +1017,6 @@
       "IRENUSDT",
       11.5,
       42.1
-    ],
-    [
-      "SKYAIUSDT",
-      10.1,
-      0.06226
     ],
     [
       "SPYUSDT",

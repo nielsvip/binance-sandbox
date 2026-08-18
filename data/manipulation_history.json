@@ -7816,5 +7816,32 @@
     ],
     "timestamp": "2026-08-18T18:58:32.393650+00:00",
     "price": 0.1931
+  },
+  {
+    "symbol": "CAKEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-18T19:09:56.764803+00:00",
+    "price": 1.5035
+  },
+  {
+    "symbol": "EDUUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T19:09:56.764803+00:00",
+    "price": 0.03708
+  },
+  {
+    "symbol": "STORJUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T19:20:03.748334+00:00",
+    "price": 0.04025
   }
 ]
