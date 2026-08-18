@@ -1,4 +1,4 @@
-# Copilot Status — 2026-08-18 16:48:41 UTC
+# Copilot Status — 2026-08-18 17:04:13 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T16:46:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T16:46:17
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T16:46:48
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T16:46:48
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T16:47:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T16:47:18
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T16:47:49
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T16:47:49
-- **STALE_INDICATORS** [tradier]  — 2026-08-18T16:48:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T16:48:19
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:02:09
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:02:09
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:02:39
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:02:39
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:03:12
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:03:12
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:03:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:03:42
+- **STALE_INDICATORS** [tradier]  — 2026-08-18T17:04:13
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T17:04:13
 
 ## Missed Trades (trader comparison)
 
@@ -36,8 +36,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (34min)
+- [MEDIUM] tradier_positions.py running but log stale (47min)
+- [MEDIUM] tradier_positions.py running but log stale (48min)
+- [MEDIUM] tradier_positions.py running but log stale (49min)
 - [HIGH] ez_manage.py for ang is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (35min)
-- [MEDIUM] tradier_positions.py running but log stale (36min)

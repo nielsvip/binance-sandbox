@@ -7582,5 +7582,14 @@
     ],
     "timestamp": "2026-08-18T16:39:55.704141+00:00",
     "price": 6.348
+  },
+  {
+    "symbol": "BIGTIMEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 18.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T17:04:30.227144+00:00",
+    "price": 0.005195
   }
 ]
