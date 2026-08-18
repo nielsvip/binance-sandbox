@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-08-18T17:32:50.242116+00:00",
+  "generated_at": "2026-08-18T18:04:57.515697+00:00",
   "count": 2,
   "advisories": [
     {
-      "symbol": "NXE",
+      "symbol": "LNG",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.46,
-      "ts": "2026-08-18T17:32:50.242085+00:00"
+      "reason": "bullish_news_score=0.72 threshold=0.45",
+      "score": 0.718,
+      "ts": "2026-08-18T18:04:57.515617+00:00"
     },
     {
       "symbol": "XOM",
@@ -16,7 +16,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.72 threshold=0.45",
       "score": 0.718,
-      "ts": "2026-08-18T17:32:50.242100+00:00"
+      "ts": "2026-08-18T18:04:57.515648+00:00"
     }
   ]
 }
