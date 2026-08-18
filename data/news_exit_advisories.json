@@ -1,30 +1,46 @@
 {
-  "generated_at": "2026-08-18T19:36:11.842192+00:00",
-  "count": 3,
+  "generated_at": "2026-08-18T19:47:06.442700+00:00",
+  "count": 5,
   "advisories": [
     {
-      "symbol": "LNG",
+      "symbol": "CLX",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.474,
+      "ts": "2026-08-18T19:47:06.442651+00:00"
+    },
+    {
+      "symbol": "DUOL",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.457,
+      "ts": "2026-08-18T19:47:06.442661+00:00"
+    },
+    {
+      "symbol": "NLR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.536,
+      "ts": "2026-08-18T19:47:06.442668+00:00"
+    },
+    {
+      "symbol": "XOM",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.72 threshold=0.45",
       "score": 0.718,
-      "ts": "2026-08-18T19:36:11.842153+00:00"
+      "ts": "2026-08-18T19:47:06.442675+00:00"
     },
     {
-      "symbol": "MO",
+      "symbol": "ZETA",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.456,
-      "ts": "2026-08-18T19:36:11.842163+00:00"
-    },
-    {
-      "symbol": "PAAS",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.62 threshold=0.45",
-      "score": 0.624,
-      "ts": "2026-08-18T19:36:11.842166+00:00"
+      "reason": "bullish_news_score=0.51 threshold=0.45",
+      "score": 0.507,
+      "ts": "2026-08-18T19:47:06.442679+00:00"
     }
   ]
 }

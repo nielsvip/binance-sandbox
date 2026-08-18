@@ -51,7 +51,7 @@ class TradierConfig:
     COOLDOWN_BARS: int = 3  # parity 2026-08-17: vector->live (was vector-only)
     ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
     MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
-    MODE: str = "crypto"  # parity 2026-08-17: vector->live (was vector-only)
+    MODE: str = "tradier"
     STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     WT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     REENTRY_PULL1_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
@@ -2201,7 +2201,7 @@ class TradierConfig:
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD.  2026ABLATION-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
-    CT_WT_VELOCITY_1H_MIN: float = 2.0  # 2026-04-20 sweep: every top result had 2.0 — filters no-momentum entries
+    CT_WT_VELOCITY_1H_MIN: float = 0.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = False  # BC_170 (crypto). 2026-05-08: wired into tradier_manage BV gate; default OFF for stocks (not yet validated — sweep vel_gate_on=True to test).
     # ═══ FREEZE REVERTED 2026-05-10 22:20 ═══
     # 3-month real-engine sweep (tradier_param_hunt on 12 stocks × 2026-01-01 to 2026-03-27)
@@ -2384,7 +2384,7 @@ class TradierConfig:
     INF_RANKING_BYPASS_WT: bool = False  # WT composite bypass (trend misread risk) ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     INF_RANKING_PRIORITY_BYPASS: bool = False  # master switch ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
-    K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
+    K3M_FLOOR: int = 25
     LADDER_AUTO_SAVE_SECONDS: float = 60.0  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     LADDER_TTL_MINUTES: int = 24 * 60  # Ladder order TTL
     LEGACY_AGGRESSIVE_LOSS_CUT: bool = False  # OFF — single TF 1m flip ; DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
@@ -2657,7 +2657,7 @@ class TradierConfig:
     # Mirrors config.py. R2_TF_LIST stays ('1h','4h','D') per CLAUDE.md stocks rule.
     # ═══════════════════════════════════════════════════════════════════
     # REVERTED 2026-05-18 18:30: all 4 flips below had no sample-floor evidence (DEAD KNOB / BLOCKED_NON_VEC sweeps only). Isolated vec sweeps queued on S1.
-    HTF_TREND_VETO_ENABLED: bool = True                 # next to turn off User mandate 06-09                  # 2026-05-21 USER URGENT: re-enabled after UAN+SNDK flip-flops at 19:30 UTC. Gates OPEN/AUGMENT when wt1_D vs wt2_D against side. Backtest validation in flight on S1; revert on negative Sharpe delta.
+    HTF_TREND_VETO_ENABLED: bool = False
     HTF_TREND_VETO_ON_REDUCE_ENABLED: bool = True       # next to trun off fist ,ake softerUser mandate 06-09        # 2026-05-21 USER URGENT: block reduce/close (EOD_SLIM_RATIO, SENTIMENT_FADE, SCALP_TIMEOUT, MTF_ATR_TRAIL, etc.) when Daily WT still SUPPORTS position direction. R1_/R2_/HEDGE/PARTIAL_PROFIT_LOCK/EOD_FORCE_FLAT/EMERGENCY/LIQUIDATION/PARABOLIC_EXIT bypass. Mirror of [[feedback-filter-block-triage-loosening-20260521]] reversal — HTF must agree both ways.
     # 2026-05-21 20:05 — wired knob (was hardcoded ±5 in ez_manage.py:18379/18382).
     # Sweep [5,6,7,8,10,12,15] for positive delta Sharpe / WR vs current ±5. ROLLBACK: 5.
@@ -3022,7 +3022,7 @@ class TradierConfig:
     PROFIT_TARGET_PCT: float = 1.6  # vector 1187: v3 peak 1.6%
     STOP_LOSS_ENABLED: bool = False  # vector sweep-only cap
     STOP_LOSS_PCT: float = 2.0
-    NOLOSS_ENABLED: bool = False  # vector 1116: hold losers unless DC recovery
+    NOLOSS_ENABLED: bool = True
     STRENGTH_FILTER_ENABLED: bool = True  # vector 1181: score >= STRENGTH_MIN_SCORE
     STRENGTH_MIN_SCORE: float = 5.0
     HTF_ALIGNMENT_ENABLED: bool = True  # vector 1140: htf_cnt >= HTF_MIN_ALIGNED

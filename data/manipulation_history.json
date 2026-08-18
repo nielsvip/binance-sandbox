@@ -7879,5 +7879,23 @@
     ],
     "timestamp": "2026-08-18T19:36:39.868557+00:00",
     "price": 198.28
+  },
+  {
+    "symbol": "MVLLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T19:38:11.605458+00:00",
+    "price": 25.47
+  },
+  {
+    "symbol": "ROSEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-18T19:42:57.133678+00:00",
+    "price": 0.005319
   }
 ]

@@ -1,52 +1,22 @@
 {
-  "timestamp": "2026-08-18T19:36:51.635294+00:00",
+  "timestamp": "2026-08-18T19:51:55.589922+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 164
+    "total_ranked": 167
   },
   "unified_ranking": [
     {
-      "symbol": "CRWVUSDT",
-      "net_score": -17.6,
-      "long_score": 0,
-      "short_score": 17.6
-    },
-    {
-      "symbol": "SHAZUSDT",
-      "net_score": -15.2,
-      "long_score": 0,
-      "short_score": 15.2
-    },
-    {
-      "symbol": "MSTRUSDT",
-      "net_score": -14.9,
-      "long_score": 0,
-      "short_score": 14.9
-    },
-    {
       "symbol": "SKYAIUSDT",
-      "net_score": -13.3,
-      "long_score": 0,
-      "short_score": 13.3
-    },
-    {
-      "symbol": "NBISUSDT",
       "net_score": -13.1,
       "long_score": 0,
       "short_score": 13.1
     },
     {
-      "symbol": "IRENUSDT",
-      "net_score": -10.4,
+      "symbol": "SPCXUSD1",
+      "net_score": -11.5,
       "long_score": 0,
-      "short_score": 10.4
-    },
-    {
-      "symbol": "SPYUSDT",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
+      "short_score": 11.5
     },
     {
       "symbol": "EGLDUSDT",
@@ -86,6 +56,12 @@
     },
     {
       "symbol": "MVLLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MSTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -133,6 +109,12 @@
       "short_score": 0
     },
     {
+      "symbol": "XTZUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LRCXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -146,6 +128,12 @@
     },
     {
       "symbol": "PENGUUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NBISUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -247,6 +235,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CRWVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SKYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -284,6 +278,12 @@
     },
     {
       "symbol": "SKHYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SPYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -332,6 +332,12 @@
     },
     {
       "symbol": "ALGOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SHAZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -452,6 +458,12 @@
     },
     {
       "symbol": "COMPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "IRENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -578,12 +590,6 @@
     },
     {
       "symbol": "GLWUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SPCXUSD1",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -817,6 +823,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PENDLEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SMCIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -985,6 +997,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GRASSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BNBUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -994,39 +1012,14 @@
   "top_longs": [],
   "top_shorts": [
     [
-      "CRWVUSDT",
-      17.6,
-      93.91
-    ],
-    [
-      "SHAZUSDT",
-      15.2,
-      66.62
-    ],
-    [
-      "MSTRUSDT",
-      14.9,
-      93.83
-    ],
-    [
       "SKYAIUSDT",
-      13.3,
-      0.06081
-    ],
-    [
-      "NBISUSDT",
       13.1,
-      247.83
+      0.05938
     ],
     [
-      "IRENUSDT",
-      10.4,
-      41.9
-    ],
-    [
-      "SPYUSDT",
-      10.1,
-      768.18
+      "SPCXUSD1",
+      11.5,
+      142.4
     ]
   ],
   "hedge_usage": {

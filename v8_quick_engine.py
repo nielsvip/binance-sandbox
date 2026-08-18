@@ -3274,12 +3274,12 @@ def _base_ha(npz: dict, field: str, n: int, cfg) -> np.ndarray:
 
 @dataclass
 class QuickConfig:
-    MODE: str = "crypto"
+    MODE: str = "tradier"
     BASE_TF: str = "3m"
     ENTRY_SCORE_THRESHOLD: float = 18.0
-    K3M_FLOOR: float = 30.0
+    K3M_FLOOR: float = 25.0
     COOLDOWN_BARS: int = 3
-    NOLOSS_ENABLED: bool = False
+    NOLOSS_ENABLED: bool = True
     DC_RECOVERY_EXIT_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
     START_POSITION_SIZE: float = 2000.0
@@ -4001,7 +4001,7 @@ class QuickConfig:
     HTF_DC_BREAKOUT_TRADIER_ENABLED: bool = False  # auto-wired 625
     HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT: float = 0.0  # auto-wired 625
-    HTF_TREND_VETO_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
+    HTF_TREND_VETO_ENABLED: bool = False
     HTF_TREND_VETO_ON_REDUCE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     HTF_TREND_VETO_SCORE_MIN_ABS: float = 2.0  # auto-wired 625
     HTF_W_M_ALIGN_GATE_TRADIER_ENABLED: bool = False  # auto-wired 625
