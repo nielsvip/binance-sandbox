@@ -1,34 +1,58 @@
 {
-  "timestamp": "2026-08-18T01:38:43.894914+00:00",
+  "timestamp": "2026-08-18T02:09:32.785312+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 167
+    "total_ranked": 171
   },
   "unified_ranking": [
     {
-      "symbol": "BIGTIMEUSDT",
-      "net_score": -13.9,
+      "symbol": "NVDAUSDT",
+      "net_score": -15.0,
       "long_score": 0,
-      "short_score": 13.9
+      "short_score": 15.0
     },
     {
-      "symbol": "ORCLUSDT",
-      "net_score": -12.1,
+      "symbol": "STXXUSDT",
+      "net_score": -14.3,
       "long_score": 0,
-      "short_score": 12.1
+      "short_score": 14.3
     },
     {
-      "symbol": "JASMYUSDT",
-      "net_score": -11.2,
+      "symbol": "MASKUSDT",
+      "net_score": -13.6,
       "long_score": 0,
-      "short_score": 11.2
+      "short_score": 13.6
+    },
+    {
+      "symbol": "MAGICUSDT",
+      "net_score": -12.6,
+      "long_score": 0,
+      "short_score": 12.6
+    },
+    {
+      "symbol": "ENSUSDT",
+      "net_score": -12.5,
+      "long_score": 0,
+      "short_score": 12.5
+    },
+    {
+      "symbol": "CHRUSDT",
+      "net_score": -11.9,
+      "long_score": 0,
+      "short_score": 11.9
+    },
+    {
+      "symbol": "ORDIUSDC",
+      "net_score": -11.6,
+      "long_score": 0,
+      "short_score": 11.6
     },
     {
       "symbol": "NOTUSDT",
-      "net_score": -10.3,
+      "net_score": -11.5,
       "long_score": 0,
-      "short_score": 10.3
+      "short_score": 11.5
     },
     {
       "symbol": "APPUSDT",
@@ -62,6 +86,12 @@
     },
     {
       "symbol": "LRCXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -133,12 +163,6 @@
       "short_score": 0
     },
     {
-      "symbol": "MASKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SOXSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -164,12 +188,6 @@
     },
     {
       "symbol": "MOVEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MAGICUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -391,6 +409,12 @@
       "short_score": 0
     },
     {
+      "symbol": "JASMYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SQQQUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -463,6 +487,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BIGTIMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "FILUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -511,12 +541,6 @@
       "short_score": 0
     },
     {
-      "symbol": "NVDAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BEATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -524,12 +548,6 @@
     },
     {
       "symbol": "RKLBUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ENSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -661,13 +679,13 @@
       "short_score": 0
     },
     {
-      "symbol": "STXXUSDT",
+      "symbol": "ONDOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "ONDOUSDT",
+      "symbol": "TAOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -865,19 +883,25 @@
       "short_score": 0
     },
     {
+      "symbol": "INTWUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "ETCUSDT",
+      "symbol": "ORCLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
+      "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -943,12 +967,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CHRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZROUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1007,29 +1025,55 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "AMZNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
     }
   ],
   "top_longs": [],
   "top_shorts": [
     [
-      "BIGTIMEUSDT",
-      13.9,
-      0.005082
+      "NVDAUSDT",
+      15.0,
+      224.43
     ],
     [
-      "ORCLUSDT",
-      12.1,
-      146.29898521
+      "STXXUSDT",
+      14.3,
+      977.76
     ],
     [
-      "JASMYUSDT",
-      11.2,
-      0.003661
+      "MASKUSDT",
+      13.6,
+      0.3449
+    ],
+    [
+      "MAGICUSDT",
+      12.6,
+      0.040184
+    ],
+    [
+      "ENSUSDT",
+      12.5,
+      3.84146611
+    ],
+    [
+      "CHRUSDT",
+      11.9,
+      0.01306459
+    ],
+    [
+      "ORDIUSDC",
+      11.6,
+      3.345
     ],
     [
       "NOTUSDT",
-      10.3,
-      0.0003793
+      11.5,
+      0.0003784
     ]
   ],
   "hedge_usage": {

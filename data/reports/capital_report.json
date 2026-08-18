@@ -1,44 +1,32 @@
 {
- "generated_at": "2026-08-18 01:32 UTC",
- "total_capital_usd": 14.89,
+ "generated_at": "2026-08-18 01:56 UTC",
+ "total_capital_usd": 79.96,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.89,
-  "C": 0.0
+  "B": 0.0,
+  "C": 79.96
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "men:XMRUSDT_LONG",
-  "men:SNXUSDT_SHORT"
+ "losers": [
+  "flz:WLDUSDC_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:XMRUSDT_LONG",
-   "symbol": "XMRUSDT",
-   "account": "men",
-   "value_usd": 7.9,
-   "gain_pct": 0.067,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.019,
-   "mark": 415.54033333
-  },
-  {
-   "pk": "men:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "men",
-   "value_usd": 6.99,
-   "gain_pct": -0.074,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 35.8,
-   "mark": 0.19534486
+   "pk": "flz:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 79.96,
+   "gain_pct": -0.026,
+   "tier": "C",
+   "perf_mult": 0.57,
+   "amt": 236.8,
+   "mark": 0.33768888
   }
  ]
 }
