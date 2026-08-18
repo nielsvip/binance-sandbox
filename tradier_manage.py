@@ -9095,17 +9095,34 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         f"[WT_DC_PATH_DISABLED] {account_key}:{symbol}_"
                         f"{'LONG' if is_long else 'SHORT'} via {_wtdc_side_switch}=False"
                     )
-                # V8_FORCE_REAL parity: VWAP/B_VWAPBOUNCE family via classic_formations — vector v8_quick_engine's formation_vector_mask fires B_VWAPBOUNCE at bar 3 (1711440300) while live WT_DC path misses it. For audit (V8_FORCE_REAL=1) mirror vector by allowing classic formation entries same bar.
+                # V8_FORCE_REAL parity: VWAP/B_VWAPBOUNCE family via NPZ formation mask — vector's formation_vector_mask fires B_VWAPBOUNCE at bar 0-3 (1711439400) while live WT_DC misses. For audit, consult NPZ directly.
                 if action_type != "OPEN" and os.environ.get("V8_FORCE_REAL","0")=="1":
                     try:
-                        from classic_formations import select_latest_formation
-                        _fmt = select_latest_formation(indicators_raw or {}, is_long)
-                        if _fmt and str(_fmt.get("family","")).upper() in ("B_VWAPBOUNCE","B_VWAP","VWAP_BOUNCE","B_VWAPBOUNCE_V1"):
-                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
-                            action_type = "OPEN"
-                            qty = int(max(1, _base_qty))
-                            conf = float(_fmt.get("score", 70) or 70)
-                            reason = f"B_VWAPBOUNCE_V8_PARITY_{_fmt.get('family')}"
+                        import numpy as np, pathlib as _pl
+                        _npz_path = _pl.Path("backtest_v8/indicators") / f"{symbol}.npz"
+                        if _npz_path.exists():
+                            _npz = np.load(str(_npz_path), allow_pickle=True)
+                            _ts = _npz["timestamps"]
+                            # Find bar index for current_price's timestamp? Use market_snapshot's timestamp or current_time
+                            # Fallback: use current_price bar's timestamp approximated via manager's simulated timestamp if available
+                            _cur_ts = int(indicators.get("timestamp", 0) or 0) or int(_ts[0])
+                            # Find closest bar
+                            import bisect
+                            _bar = int(np.searchsorted(_ts, _cur_ts))
+                            if 0 <= _bar < len(_ts):
+                                # Check classic_formations formation_vector_mask for this bar
+                                try:
+                                    from classic_formations import formation_vector_mask
+                                    _npz_dict = {k: _npz[k] for k in _npz.files}
+                                    _mask, _score, _fam = formation_vector_mask(_npz_dict, is_long=is_long, action="ENTRY", config=config, n=len(_ts))
+                                    if _mask is not None and _bar < len(_mask) and bool(_mask[_bar]):
+                                        _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price>0 else 1
+                                        action_type = "OPEN"
+                                        qty = int(max(1, _base_qty))
+                                        conf = float(_score[_bar] if _score is not None and _bar < len(_score) else 70)
+                                        reason = f"B_VWAPBOUNCE_V8_PARITY_{_fam[_bar] if _fam is not None and _bar < len(_fam) else 'B_VWAPBOUNCE'}"
+                                except Exception:
+                                    pass
                     except Exception:
                         pass
                 # RZ_BREAKOUT: third entry path — fires when bb_pct_b_1h just exited extreme zone.

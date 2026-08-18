@@ -205,7 +205,7 @@ an authorization to promote a vector result.
 
 1. **START — ONLY `stdev_ladder` ON.** At `S0B` the *only* entry engine enabled is the causal `stdev/LR ladder` — `1–10× whole-share qty` on fresh completed favorable `WT` crossovers at `D,4h,1h,15m` (never `1m/3m/5m`). Every other entry, augment, exit, reduce, reentry and filter family is **OFF**. `stdev_ladder` stays on through the entire beam because it is a proven winner in almost every setting — its `1–10×` sizing is basically unbeatable as a baseline. No other engine is on at start.
 
-2. **ITERATE — exits → entries → filters → exits → entries → filters → …** From the current survivor, add **one coherent lifecycle bundle at a time** — an `EXIT` bundle, then an `ENTRY/AUGMENT` bundle, then a `FILTER` bundle, then again `EXIT`, `REENTRY`, `FILTER`, `ENTRY`, etc etc etc — in any order the evidence suggests. Each bundle is tested as a complete chronological ledger against the survivor's ledger on equal `$2,000` avg deployed capital. **Keep it only if its signed `delta_vs_BH` is positive AND it preserves or improves `TIM 20-75%`, `DD ≤50%`, `≥10 closes/month` and `win rate`**. Otherwise discard it and try the next family in the inventory. For every negative family, first exhaust its full declared parameter range (e.g. `BB %B 0.60/0.70/0.80`, `WT/DC threshold`, `HTF gate`, `exit TF/lookback`), write its relatively best `RELATIVE_BEST_NEGATIVE_DELTA` with all tested values/hashes, then move to the next lifecycle category — never repeatedly retune a losing family.
+2. **ITERATE — exits → entries → filters → exits → entries → filters → …** From the current survivor, add **one coherent lifecycle bundle at a time** — an `EXIT` bundle, then an `ENTRY/AUGMENT` bundle, then a `FILTER` bundle, then again `EXIT`, `REENTRY`, `FILTER`, `ENTRY`, etc etc etc — in any order the evidence suggests. Each bundle is tested as a complete chronological ledger against the survivor's ledger on equal `$2,000` avg deployed capital. **Keep it only if its signed `delta_vs_BH` is positive AND it preserves or improves `BASICS` (`trades never 0/1 + ≥30/mo crypto/≥10/mo stock`, `TIM <85%` pref `20-75%`, `DD <30%`, `gain>B&H`) and `win rate`**. Otherwise discard it and try the next family in the inventory. For every negative family, first exhaust its full declared parameter range (e.g. `BB %B 0.60/0.70/0.80`, `WT/DC threshold`, `HTF gate`, `exit TF/lookback`), write its relatively best `RELATIVE_BEST_NEGATIVE_DELTA` with all tested values/hashes, then move to the next lifecycle category — never repeatedly retune a losing family.
 
 3. **CONTINUE until no bundle can improve.** The beam never stops at a fixed number of steps. It keeps adding `filter/entry/augment/reduce/exit/reentry` bundles one-by-one, always comparing to the current best complete recipe, until **no remaining modeled family yields a positive equal-capital delta while holding correct `TIM/DD/closes`**. The final survivor is the **highest gain with correct `TIM/DD`** for that unique `symbol/side`.
 
@@ -234,11 +234,18 @@ This loop — `stdev_ladder alone → add EXIT → add ENTRY → add FILTER → 
   capacity, causal, TIM/trade-count, and win-rate gates may be replayed in
   `backtest_v8_engine.py`. Compare raw event ledgers; a mismatch is a vector or
   engine defect to fix, never evidence to copy into the matrix.
+- **BASICS — always-have-to-be-complied gates (2026-08-17).** Every vector, V8, and live candidate must pass **all** of these before any Sharpe/gain ranking:
+  - **Trades:** **never 0 or 1** — at least **2 completed closes** absolute, and **≥30/mo crypto** (`>30/mo` pool, ~7/wk) or **≥10/mo stocks** (`>10/mo` pool, ~2.3/wk) as the per-mode floor. `0`/`1` is `REJECTED` as `NO_TRADES`/`SINGLE_TRADE`, not a quiet diagnostic.
+  - **TIM:** **<85%** hard cap (preferred band **20–75%**; `20–80%` tolerated for crypto breadth, but `≥85%` is `REJECTED` as `HOLD_IS_B&H`). Near-100% TIM is `S0A/S0B` control only.
+  - **DD:** **<30%** marked-equity max drawdown (`≤30%` passes, `>30%` is `REJECTED`).
+  - **Gain > B&H:** side-aware **gain vs B&H `>0`** (`delta_vs_bh_per_mo >0` or `gain_per_mo > bh_per_mo` on equal `$2,000` capital). `≤0` is `REJECTED`.
+  - **Crypto vs stock floors are mode-specific but live ≡ vector:** crypto live `30/mo` identical to crypto vector `30/mo`; stock `10/mo` (both vector and live). No mode may loosen these to admit a failing recipe.
+  - Failure on any BASICS gate is `REJECTED` — never ranked, never promoted, never written to `per_sym` live ledger.
 - **Candidate test setup (2026-08-04).** S0A/S0B and exit-off Q1 runs are
   controls, not candidates: their near-100% TIM or terminal-only close may be
   reported only with that label. Every E1/E2+ candidate must have at least
-  **10 completed closes per month**, TIM in **[20%, 75%]**, and marked-equity
-  maximum drawdown **≤50%**. A failure is `REJECTED`, not a reason to loosen
+  **10 completed closes per month**, TIM in **[20%, 75%]** (hard cap `85%`), and marked-equity
+  maximum drawdown **≤30%** (was `≤50%` before 2026-08-17 BASICS tightening). A failure is `REJECTED`, not a reason to loosen
   or omit the gate. Among otherwise admissible behavior-distinct recipes, a
   recipe with equal-or-higher gain and strictly lower TIM dominates the
   higher-TIM recipe and is always preferred. These are test/admission rules;

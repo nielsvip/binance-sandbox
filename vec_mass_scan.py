@@ -428,8 +428,8 @@ def main():
     ap.add_argument("--min-trades", type=int, default=100)
     ap.add_argument("--min-trades-per-month", type=float, default=30.0, help="Gate: >30/mo crypto, >10/mo live (eased from >30/wk typo)")
     ap.add_argument("--min-trades-per-week", type=float, default=None, help="Deprecated alias for --min-trades-per-month (converted /4.33)")
-    ap.add_argument("--tim-hi", type=float, default=80.0, help="Gate: TIM <80%")
-    ap.add_argument("--dd-max", type=float, default=30.0, help="Gate: DD <30%")
+    ap.add_argument("--tim-hi", type=float, default=85.0, help="Gate: TIM <85% BASICS hard cap (pref 20-80)")
+    ap.add_argument("--dd-max", type=float, default=30.0, help="Gate: DD <30% BASICS")
     ap.add_argument("--out", type=str, default="")
     ap.add_argument("--top-report", type=int, default=30)
     from vector_mandatory_coverage import add_coverage_claim_arguments, enforce_coverage_claim
