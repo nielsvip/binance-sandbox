@@ -3294,7 +3294,7 @@ class QuickConfig:
     DELTA_ENGINE_ENABLED: bool = True
     DELTA_ENTRY_ENABLED: bool = True
     DELTA_EXIT_ENABLED: bool = True  # 2026-08-08: was unconditional (wt_against exit fired regardless of any flag) — now a real gate so G0 baseline can actually disable it
-    VEL_EXIT_ENABLED: bool = True  # 2026-08-08: was unconditional (wt_vel_4h exit fired regardless of any flag) — now a real gate
+    VEL_EXIT_ENABLED: bool = False  # IDENTICAL TO LIVE config_tradier.py:3020 OFF until proven positive delta — untested = OFF both
     RZ_EXIT_ENABLED: bool = True
     STRUCTURAL_EXIT_GATE_ENABLED: bool = True  # USER MANDATE 2026-07-21: no exit into a rising price — LTF collapse or 1h/4h LH+LL only. Mirrors wt_dc_delta.structural_exit_permitted(). ROLLBACK: False.
     SATOSHIT_ENABLED: bool = True

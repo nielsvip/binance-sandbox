@@ -14315,8 +14315,7 @@ class StockStrategy:
         current_price, ts = await self.trade_manager.get_current_price(symbol)
         current_price = float(current_price)
         # RESEARCH-ONLY EXIT GATES — causal per-bar wiring for remaining switches
-        # RESEARCH_ONLY is exercised for per_sym switch tests via literal _cfg in _apply_research_only_live_gates,
-        # but must NEVER open/close a real trade (suicide fix 2026-08-18).
+        # _apply_research_only_live_gates HAS TO HAPPEN — live 100% identical to vectorized (no invert). OFF=OFF in both until proven.
         _ro_exit_block, _ro_exit_reason = _apply_research_only_live_gates(current_account.get("") or "trb", symbol, "LONG" if is_long else "SHORT", indicators or i, False)
         if _ro_exit_block:
             logger.info(f"[RESEARCH_ONLY_BLOCKED_EXIT] {symbol}_{'LONG' if is_long else 'SHORT'}: {_ro_exit_reason}")
