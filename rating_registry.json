@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T19:21:26.221523+00:00",
+  "timestamp": "2026-08-18T19:36:51.635294+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -14,27 +14,33 @@
     },
     {
       "symbol": "SHAZUSDT",
-      "net_score": -17.2,
+      "net_score": -15.2,
       "long_score": 0,
-      "short_score": 17.2
+      "short_score": 15.2
     },
     {
       "symbol": "MSTRUSDT",
-      "net_score": -15.9,
+      "net_score": -14.9,
       "long_score": 0,
-      "short_score": 15.9
+      "short_score": 14.9
+    },
+    {
+      "symbol": "SKYAIUSDT",
+      "net_score": -13.3,
+      "long_score": 0,
+      "short_score": 13.3
     },
     {
       "symbol": "NBISUSDT",
-      "net_score": -14.2,
+      "net_score": -13.1,
       "long_score": 0,
-      "short_score": 14.2
+      "short_score": 13.1
     },
     {
       "symbol": "IRENUSDT",
-      "net_score": -11.5,
+      "net_score": -10.4,
       "long_score": 0,
-      "short_score": 11.5
+      "short_score": 10.4
     },
     {
       "symbol": "SPYUSDT",
@@ -829,12 +835,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SKYAIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1000,23 +1000,28 @@
     ],
     [
       "SHAZUSDT",
-      17.2,
-      68.27
+      15.2,
+      66.62
     ],
     [
       "MSTRUSDT",
-      15.9,
-      94.14
+      14.9,
+      93.83
+    ],
+    [
+      "SKYAIUSDT",
+      13.3,
+      0.06081
     ],
     [
       "NBISUSDT",
-      14.2,
-      246.59
+      13.1,
+      247.83
     ],
     [
       "IRENUSDT",
-      11.5,
-      42.1
+      10.4,
+      41.9
     ],
     [
       "SPYUSDT",

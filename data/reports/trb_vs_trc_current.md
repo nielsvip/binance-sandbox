@@ -1,16 +1,16 @@
 # trb (per_sym) vs trc (7D) — live A/B
 
-Start: 2026-06-26T09:50:48Z · elapsed 53.4d · updated 2026-08-18 18:30Z
+Start: 2026-06-26T09:50:48Z · elapsed 53.4d · updated 2026-08-18 19:30Z
 
 | metric | trb · per_sym | trc · 7D | 7D useful? |
 |---|---|---|---|
-| trades | 826 | 237 | ✗ |
+| trades | 828 | 237 | ✗ |
 | win % | 42.3 | 42.6 | ✓ 7D |
-| avg %/trade | -0.056 | -0.7338 | ✗ |
-| cumulative % | -51.222 | -85.968 | ✗ |
-| pool_sharpe | -0.0225 | -0.1836 | ✗ |
+| avg %/trade | -0.0557 | -0.7338 | ✗ |
+| cumulative % | -51.144 | -85.968 | ✗ |
+| pool_sharpe | -0.0224 | -0.1836 | ✗ |
 | max drawdown % | -57.284 | -89.308 | ✗ |
-| realized $ (size-dependent) | 1851.35 | -5236.95 | ✗ |
+| realized $ (size-dependent) | 1854.01 | -5236.95 | ✗ |
 
 _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). Sample still small — needs weeks._
 
@@ -28,7 +28,7 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | ASML | 6.668 (30) | None (0) |  |
 | ASTS | -26.516 (11) | None (0) |  |
 | BG | None (0) | -12.392 (1) |  |
-| BWXT | 1.101 (3) | None (0) |  |
+| BWXT | 1.263 (5) | None (0) |  |
 | CF | None (0) | -7.58 (1) |  |
 | CHRD | None (0) | -6.764 (7) |  |
 | CIBR | None (0) | 10.366 (1) |  |
