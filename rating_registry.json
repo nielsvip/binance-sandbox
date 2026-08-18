@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-18T18:51:19.448051+00:00",
+  "timestamp": "2026-08-18T19:06:21.077242+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 163
+    "total_ranked": 164
   },
   "unified_ranking": [
     {
@@ -38,6 +38,12 @@
     },
     {
       "symbol": "SPYUSDT",
+      "net_score": -10.1,
+      "long_score": 0,
+      "short_score": 10.1
+    },
+    {
+      "symbol": "SKYAIUSDT",
       "net_score": -10.1,
       "long_score": 0,
       "short_score": 10.1
@@ -601,6 +607,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PNUTUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GRTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -823,12 +835,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SKYAIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1011,6 +1017,11 @@
       "IRENUSDT",
       11.5,
       42.1
+    ],
+    [
+      "SKYAIUSDT",
+      10.1,
+      0.06226
     ],
     [
       "SPYUSDT",

@@ -7798,5 +7798,23 @@
     ],
     "timestamp": "2026-08-18T18:41:56.129687+00:00",
     "price": 0.06352
+  },
+  {
+    "symbol": "JASMYUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-18T18:58:32.393650+00:00",
+    "price": 0.003523
+  },
+  {
+    "symbol": "SNXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T18:58:32.393650+00:00",
+    "price": 0.1931
   }
 ]
