@@ -1,20 +1,20 @@
-CAPITAL ALLOCATION REPORT — 2026-08-18 00:02 UTC
+CAPITAL ALLOCATION REPORT — 2026-08-18 00:16 UTC
 ================================================================================
-Total capital deployed: $13.64 across 2 positions
+Total capital deployed: $54.55 across 6 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $      6.62 ( 48.5%) — 1 positions
-  Tier C: $      7.01 ( 51.4%) — 1 positions
+  Tier B: $     47.53 ( 87.1%) — 5 positions
+  Tier C: $      7.01 ( 12.9%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
-  ** C-tier OVERWEIGHT: 51% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
 LOSERS — reduce allocation (C-tier or losing) [1]:
-                   fin:MEMEUSDT_SHORT  $    7.01  gain=-0.20%  tier=C  mult=0.71
+                   fin:MEMEUSDT_SHORT  $    7.01  gain=-0.15%  tier=C  mult=0.71
 
-MEDIOCRE — capital sitting idle [0]:
-  (none)
+MEDIOCRE — capital sitting idle [2]:
+                   fin:COTIUSDT_SHORT  $   20.02  gain=-0.01%  tier=B
+                    fin:INJUSDT_SHORT  $    6.93  gain=-0.15%  tier=B
