@@ -1,44 +1,32 @@
 {
- "generated_at": "2026-08-18 02:32 UTC",
- "total_capital_usd": 12.23,
+ "generated_at": "2026-08-18 02:56 UTC",
+ "total_capital_usd": 80.2,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.23,
-  "C": 0.0
+  "B": 0.0,
+  "C": 80.2
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "men:APPUSDT_SHORT",
-  "men:BNBUSDC_SHORT"
+ "losers": [
+  "flz:WLDUSDC_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:APPUSDT_SHORT",
-   "symbol": "APPUSDT",
-   "account": "men",
-   "value_usd": 6.2,
-   "gain_pct": 0.171,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.02,
-   "mark": 310.02
-  },
-  {
-   "pk": "men:BNBUSDC_SHORT",
-   "symbol": "BNBUSDC",
-   "account": "men",
-   "value_usd": 6.03,
-   "gain_pct": 0.09,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.01,
-   "mark": 602.61450513
+   "pk": "flz:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 80.2,
+   "gain_pct": 0.328,
+   "tier": "C",
+   "perf_mult": 0.65,
+   "amt": 243.4,
+   "mark": 0.3295
   }
  ]
 }
