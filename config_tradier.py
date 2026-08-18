@@ -632,7 +632,7 @@ class TradierConfig:
     ROUND_TRIP_COST_PCT: float = 0.05
     # Global master/kill switch. When False, live per-symbol/hourly/Redis overlays
     # are not allowed to re-enable PPL.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = True   # 2026-08-10 USER MANDATE: ever-in-gain never slip to loss -> PPL ON (was OFF 2026-07-19). 50% at +0.5%, arm at +0.75% breakeven
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False   # 2026-08-10 USER MANDATE: ever-in-gain never slip to loss -> PPL ON (was OFF 2026-07-19). 50% at +0.5%, arm at +0.75% breakeven
     # 2026-04-25 PPL CURVE (114-sym, 4.3yr, HVC sweep confirmed): 0.5%=2.832 Sharpe/114%gain | 0.9375%(baseline)=2.435/171% | 1.5%=1.784/206% | 2.0%=1.507/226% | 2.5%=1.379/239% | 3.0%=1.253/244% | 4.0%=1.130/259% | 5.0%=1.092/262% | disabled=1.077/247%.
     # 2026-05-26 crypto grid favours 1.5% (best risk-adjusted vs PPL OFF baseline); apply to stocks symmetrically — tradier-specific sweep can refine later.
     # Use PARTIAL_PROFIT_LOCK_GAIN_PCT (NOT _TRADIER key) for vectorized sweeps.
@@ -2153,7 +2153,7 @@ class TradierConfig:
     PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True  # 2026-08-10 USER MANDATE: ever-in-gain never to loss — hard zero
     PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.3  # 2026-08-10 ever-in-gain: was 2.0 (let 0.3-2% winners bleed). Now any gain >=0.3% protected
     PEAK_GIVEBACK_DROP_PCT: float = 0.6  # 2026-08-10 was 5.0 (let winners crash). Now 0.6% drop from 0.3% peak → close at breakeven
-    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = True  # 2026-08-10 ever-in-gain: was False (bled to -5%). Now fires at 0.0% with PPL
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False  # 2026-08-10 ever-in-gain: was False (bled to -5%). Now fires at 0.0% with PPL
     # 2026-04-29 USER RULE: PEAK_GIVEBACK must NOT close manual buys that pulled back to flat. Today killed
     # GOOGL (peak 12.37% → cur 0.00%) and MSFT (peak 8.69% → 0.00%) — normal swing pullbacks, NOT reversals.
     # Require real loss after fees before peak-giveback fires.
@@ -2194,7 +2194,7 @@ class TradierConfig:
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
     CT_CHOP_4H_GATE_ENABLED: bool = False  # BC_173: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe (no choppiness_4h in NPZ). OFF forever.
     CT_CHOP_4H_MAX: float = 50.0  # BC_173: max choppiness_4h
-    CT_DC_CROSSOVER_SKIP_ENABLED: bool = True  # BC_172: ENABLED 2026-04-08. 5yr validated: SHORT Sharpe +34%, removes only 1.3% of trades. Skip SHORT when DC basis crosses over on 15m/1h.
+    CT_DC_CROSSOVER_SKIP_ENABLED: bool = False  # BC_172: ENABLED 2026-04-08. 5yr validated: SHORT Sharpe +34%, removes only 1.3% of trades. Skip SHORT when DC basis crosses over on 15m/1h.
     CT_MFI_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_MFI_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
     CT_REL_VOL_MIN: float = 1.3  # BC_174: min relative_volume for entry
@@ -2543,7 +2543,7 @@ class TradierConfig:
     POSITION_STALE_THRESHOLD_SECONDS: float = 60.0
     PROGRESSIVE_LOCK_ENABLED: bool = False  # TIER_A: Sharpe +0.3. Staged profit without full close.
     PROGRESSIVE_LOCK_FRACTION: float = 0.25  # Reduce fraction per tier.
-    PYRAMID_ENABLED: bool = True  # 2026-04-26: Phase 8 winner; amplifies winners
+    PYRAMID_ENABLED: bool = False  # 2026-04-26: Phase 8 winner; amplifies winners
     PYRAMID_MAX_DC_POS_15M_SHORT: float = 0.3  # SHORT: DC pos < 0.3 = lower third.
     PYRAMID_MIN_DC_POS_15M: float = 0.7  # LONG: DC pos > 0.7 = upper third.
     PYRAMID_MIN_GAIN_PCT: float = 2.0  # 2026-04-26: only pyramid after +2% confirmed gain
@@ -3018,7 +3018,7 @@ class TradierConfig:
     V8Q_STRENGTH_MIN_SCORE: float = 5.0  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # ═══ V8Q/LIVE PARITY — causal gates now wired live identically to vector (2026-08-11) ═══
     VEL_EXIT_ENABLED: bool = False  # vector 1131: gates wt_vel_4h <-2 / >2 exit
-    PROFIT_TARGET_ENABLED: bool = True  # vector 1186: pnl >= PROFIT_TARGET_PCT exit
+    PROFIT_TARGET_ENABLED: bool = False  # vector 1186: pnl >= PROFIT_TARGET_PCT exit
     PROFIT_TARGET_PCT: float = 1.6  # vector 1187: v3 peak 1.6%
     STOP_LOSS_ENABLED: bool = False  # vector sweep-only cap
     STOP_LOSS_PCT: float = 2.0

@@ -528,3 +528,89 @@ Hedge-account/ratio concepts — VEC_UNSUPPORTED, no single-position meaning
 - Per LOCKED_FILES.md all 8 engines are RELOCKED 2026-07-21 structural-exit veto. A real wiring run would `cp backups/before_<desc>_<ts>.py` → edit tradier_manage.py (+ wt_dc_delta.py) live function + its vector twin (vec_paths/* scalar + precompute + v8_quick_engine compute_entry/exit_signals) + backtest_v8_engine.py (_cfg/getattr(tm_mod.config,…) + V8_OVERRIDE delta map) per family, fails-open when _ENABLED False, side-aware, gated behind its group's filter family only. BACKTEST_BIBLE §1/§13/§16.50 VECTOR_LIFECYCLE + metrics_guard + causal next-RTH fill is admission gate; DEAD_CONFIRMED handled as VEC_UNSUPPORTED + owner note, not silent pass. S1 sync is hash-verified sandbox only.
 
 - To proceed: issue explicit `unlock <file>` per LOCKED_FILES.md Step 0b for each bundle you want wired (e.g. `unlock tradier_manage.py config_tradier.py backtest_v8_engine.py v8_quick_engine.py` plus specific vec_paths/*). Then family agents can be respawned shared-checkout (worktree_isolation:false) with crash-isolated re-queue.
+
+## Filters — Corrected (Golden Rule + HH/HL + WT_DC) — Hedging/No_loss REMOVED per user
+
+> User 2026-08-18: `Hedging` and `No_loss` have been prohibited years ago — completely irrelevant for 1yr matrix. The filters that make the difference are **Golden Rule 1/2/3/4/5 out of 5**, **higher_high / higher_low / higher TF bar**, and **WT_DC gates**. Previous inventory incorrectly weighted `F8 Hedging/No_loss`.
+
+> **Color `SKY #0369a1` — each still maps to ONE bucket only**, but the real high-impact filters are the GR ladder + HH/HL + WT_DC hierarchy, not hedging.
+
+### F1 Golden Rule HTF Ladder — 1/2/3/4/5 out of 5 HTF (THE difference-maker, currently bypassed)
+
+**What it acts on:** Consensus of 5 HTF timeframes (`D`, `4h`, `1h`, `15m`, `5m` per `GOLDEN_RULE_ACTIVATION_TF_LIST [D,4h]` + `ENTRY_TF_LIST [1h,15m,5m]`). For each TF, counts `MIN_IND` bullish/bearish indicators (DC `≥0.8` / BB `≥0.75` / `K` / `WT` etc. per `GR_DC_EXTENDED_LONG 0.80`, `GR_BB_EXTENDED_LONG 0.75`).
+
+**How alike:** All 5 rungs use same counting logic; `GOLDEN_RULE_HTF_MIN_TFS` is the ladder (`1` = any TF, `5` = all 5 must agree). `GOLDEN_RULE_MIN_IND` is depth per TF (`1`..`5`).
+
+**What it does & status:**
+- `GOLDEN_RULE_HTF_MIN_TFS = 0` (bypass, LIVE BYPASS 2026-08-10: was `3` blocks all → bypass for live-first) + `GOLDEN_RULE_MIN_IND = 0` (bypass, was `5`)
+- `GOLDEN_RULE_HTF_VETO_ENABLED = True`, `GOLDEN_RULE_REQUIRE_ACTIVATION = True` (`D`+`4h` must activate before `1h`/`15m`/`5m` entries count)
+- `GOLDEN_RULE_EXIT_MIN_TFS = 0` (exit unrestricted), `GOLDEN_RULE_EXIT_MIN_IND = 2`
+- Beam needs to test `1/2/3/4/5` × `MIN_IND 1..5` — this is `P1–P5 Filters` in the bible xlsx (`REENTRY_GR_MIN_TFS 2`, `MIN_TFS_AGREE*` 1/2/3). `MTF_GR_FILTER_ENABLED` & `MTF_ENTRY_REQUIRE_GR_FILTER` are `False` per USER 09/06 mandate (no GR filter for now) — so currently **no GR filtering is live**, which is why entries are noisy.
+
+| Switch | Default | Badge | Live | Vec | Engine | Comment |
+|---|---|---|---|---|---|---|
+| GOLDEN_RULE_HTF_MIN_TFS | 0 config_tradier.py:2218 | WIRED | Y | Y | Y | LIVE BYPASS was 3, vector 870 keys |
+| GOLDEN_RULE_MIN_IND | 0 config_tradier.py:2219 | WIRED | Y | Y | Y | LIVE BYPASS was 5 |
+| GOLDEN_RULE_HTF_VETO_ENABLED | True config_tradier.py:700 | WIRED | Y | Y | Y | veto killing day-1 LONG |
+| GOLDEN_RULE_REQUIRE_ACTIVATION | True config_tradier.py:2226 | WIRED | Y | Y | Y | D/4h must fire first |
+| MTF_GR_MIN_TFS | 3 config_tradier.py:2740 | WIRED | Y | Y | Y | Phase I winner 3×5 |
+| MTF_GR_MIN_IND | 5 config_tradier.py:2741 | WIRED | Y | Y | Y | Phase I winner |
+| MTF_GR_FILTER_ENABLED | False config_tradier.py:2739 | WIRED | Y | Y | Y | USER 09/06 no GR filter |
+
+### F2 GR_HTF Direct Entry/Exit — ladder 12 vs 27 (sizing ladder)
+
+**What it acts on / how alike:** `GR_V5` breakout/bounce engine (`HTF_TFS 4h/D/W MIN_ALIGN 2-of-3`, `LTF_TFS 5m/15m/1h 2-of-3`, `ARM_WINDOW 168 bars`, `RETEST_BAND 0.03`, `INVALIDATE 0.02`, `VOL_MULT 1.25`, `STOCH_LONG 25 / SHORT 75`, `WT_CROSS_REQUIRED True`). `GR_HTF_DIRECT_ENTRY_SCORE_MIN 12` vs `DOUBLE_SCORE 27` creates the size gap (was same `18` → every entry double-sized, fixed 2026-05-22).
+
+| Switch | Default | Badge | Live | Vec | Engine |
+|---|---|---|---|---|---|
+| GR_HTF_DIRECT_ENTRY_ENABLED | False config_tradier.py:2235 | WIRED | Y | Y | Y |
+| GR_HTF_DIRECT_ENTRY_SCORE_MIN | 12.0 config_tradier.py:2236 | WIRED | Y | Y | Y |
+| GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE | 27.0 config_tradier.py:2237 | WIRED | Y | Y | Y |
+| GR_HTF_DIRECT_EXIT_ENABLED | True config_tradier.py:2238 | WIRED | Y | Y | Y |
+| GR_HTF_DIRECT_EXIT_SCORE | 12.0 config_tradier.py:2239 | WIRED | Y | Y | Y |
+| GR_V5_ENABLED | False config_tradier.py:2245 | WEAK | Y | Y | Y |
+| GR_V5_HTF_MIN_ALIGN | 2 config_tradier.py:2247 | WEAK | Y | Y | Y |
+
+### F3 Higher High / Higher Low — 1h/4h/D structure (THE trend filter)
+
+**What it acts on:** Price structure on higher TF bars (`1h`, `4h`, `D` per `REENTRY_GR_MIN_TFS 2`).
+
+**How alike:** All use `OR/HH/HL` mode (`REENTRY_GR_HLHH_MODE = "OR"`). `HH` = higher high only, `HL` = higher low only, `OR` = either triggers. `MIN_TFS 1` = either `1h` or `4h`, `2` = both must confirm, `3` = add `D`. Previous sweep showed `GR_HTF_off (0)` beat `3×5` — need beam `OR/HH/HL × 1/2/3`.
+
+**What it does:**
+- `LH_HL_FILTER_ENABLED = False` (`STRICT_2BAR` vs `DC_REGRESS`, `TF_REQ 2` = both `1h`+`4h` must confirm `LH`/`HL`, `REQUIRE_BOTH False` = LH-only/HL-only, `AUGMENT_GATE True`)
+- `REENTRY_GR_MIN_TFS = 2`, `REENTRY_GR_HLHH_MODE = "OR"` (overdue reentry after 2h needs `1h/4h/D` HL/HH + WT alignment)
+- `K_LOWER_HIGH_EXIT_ENABLED = False` (`threshold 65` `extreme 95` — exit if `k` peaks below extreme and turns down)
+
+| Switch | Default | Badge | Live | Vec | Engine |
+|---|---|---|---|---|---|
+| REENTRY_GR_MIN_TFS | 2 config_tradier.py:2595 | WIRED | Y | Y | Y |
+| REENTRY_GR_HLHH_MODE | OR config_tradier.py:2594 | WIRED | Y | Y | Y |
+| LH_HL_FILTER_ENABLED | False config_tradier.py:214 | WIRED | Y | Y | Y |
+| LH_HL_FILTER_TF_REQ | 2 config_tradier.py:216 | WIRED | Y | Y | Y |
+| LH_HL_FILTER_MODE | STRICT_2BAR config_tradier.py:215 | WIRED | Y | Y | Y |
+| K_LOWER_HIGH_EXIT_ENABLED | False config_tradier.py:1639 | WEAK | Y | Y | Y |
+
+### F4 WT_DC Hierarchy — the 4h_D that prevents shorting into uptrends (THE entry gate difference-maker)
+
+**What it acts on:** WaveTrend + Donchian Channel alignment across `4h` + `D` (`TRA_WT_DC_ENTRY_THRESHOLD 85` reverted 2026-08-11, `WT_DC_ENTRY_THRESHOLD 45`, `WT_DC_HTF_GATE 4h_D`).
+
+**How alike:** `WT_DC` is a single gate string: `none` / `1h` / `4h` / `4h_D` (`D` = must see Daily trend). `1h` alone re-opened gap: `PLTR_SHORT` + `IBIT_SHORT` July 2026 entered on `1h/4h bearish` inside multi-week `+25%/+9%` uptrends → `−6.8%` countertrend, fixed by `4h_D`. `WT_DC_DIRECT_*` is the completed-candle snapshot variant (`threshold 20`, `HTF none`, `align 0`, `stoch 100`).
+
+| Switch | Default | Badge | Live | Vec | Engine | Comment |
+|---|---|---|---|---|---|---|
+| WT_DC_ENTRY_THRESHOLD | 45 config_tradier.py:1532 | WIRED | Y | Y | Y | +33% LONG +38% SHORT pool_sharpe vs 20 |
+| TRA_WT_DC_ENTRY_THRESHOLD | 85 config_tradier.py:139 | WIRED | Y | Y | Y | REVERTED 08-11 per audit M3 |
+| WT_DC_HTF_GATE | 4h_D config_tradier.py:146 | WIRED | Y | Y | Y | restored 1h→4h_D fixes shorts into uptrend |
+| WT_DC_DIRECT_ENABLED | False config_tradier.py:846 | WIRED | Y | Y | Y | completed-snapshot route |
+| WT_DC_EXIT_THRESHOLD | 30 config_tradier.py:1546 | WIRED | Y | Y | Y | scorer exit guard |
+| WT_DC_ENTRY_K5M_MAX_LONG | 100 config_tradier.py:1881 | WIRED | Y | Y | Y | inert at 100, lower to 80 blocks buy at top |
+| HIER_WT_DELTA_MIN | (bible) | WIRED | Y | Y | Y | hierarchical WT delta |
+| HIER_USE_W_M | (bible) | WIRED | Y | Y | Y | W+M hierarchy |
+
+### F5 WT Chan/Avg/Cross + Funding/Regime (secondary but still gated per bucket, not global)
+
+`WT_CHAN 10` + `WT_AVG 21` per `15m/1h/4h/D` drive `WT_CROSS` events; `FUNDING_GATE_ENABLED` + `DIVERGENCE_BLOCK_ENABLED` + `SPY_REGIME_GATE_ENABLED` are the funding/regime filters that belong ONLY to Bottom bounces (not Breakout) and ONLY to specific buckets — never global.
+
+> **Removed:** `Hedging` (`HEDGE_*`, `DC4_STOP_GR_HEDGE_OVERRIDE`, `HEDGE_HTF_VETO`, `HEDGE_TRIGGER_GR_SCORE`, `BT_UNDERWATER_HEDGE_OR_CLOSE`, `BT_RIDICULOUS*`, `AUGMENT_*_HEDGE`) and `No_loss` (`UNIVERSAL_NOLOSS_GATE`, `LOSS_EXIT_TECHNICAL_BYPASS`) — prohibited years ago per user, irrelevant for `1yr` matrix; bible `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_BIBLE.xlsx` keeps them off (defaults `False`). Vector keeps them as `VEC_UNSUPPORTED` never wired.
+

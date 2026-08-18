@@ -94,7 +94,11 @@ a{color:var(--sky)}
     <button id="collapseBtn" style="border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer">Collapse all</button>
   </div>
 
-  <div class="legend" style="margin-top:10px">
+  
+<div style="margin:12px 0;padding:10px 12px;border:1px solid #fed7aa;background:#fffbeb;border-radius:8px;font-size:12px;line-height:1.5">
+<b style="color:#92400e">Corrected 2026-08-18 per user:</b> Hedging/No_loss removed (prohibited years ago, irrelevant for 1yr). <b>High-impact filters are Golden Rule 1/2/3/4/5 out of 5 HTF, higher_high/higher_low (TF 1h/4h/D, mode OR/HH/HL), and WT_DC 4h_D hierarchy</b> — these make the difference. See <code>STOCKS_1YR_REAL_MATRIX_BIBLE_GROUPED.md</code> § Filters — Corrected for exact defaults (GR 0 bypass → 1–5, MTF_GR 3×5, REENTRY_GR 2 OR, LH_HL 2 TF, WT_DC 45/4h_D).
+</div>
+<div class="legend" style="margin-top:10px">
     <span class="chip"><span class="dot" style="background:#0f766e"></span> Bottom buy / Top short — mean-reversion</span>
     <span class="chip"><span class="dot" style="background:#b45309"></span> Breakout long / Breakdown short — momentum</span>
     <span class="chip"><span class="dot" style="background:#047857"></span> Exit at Top — take profit</span>

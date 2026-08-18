@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-08-18T15:49:05.098551+00:00",
-  "count": 5,
+  "generated_at": "2026-08-18T15:59:57.827629+00:00",
+  "count": 4,
   "advisories": [
-    {
-      "symbol": "ABBV",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.484,
-      "ts": "2026-08-18T15:49:05.098504+00:00"
-    },
     {
       "symbol": "LNG",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.72 threshold=0.45",
       "score": 0.718,
-      "ts": "2026-08-18T15:49:05.098520+00:00"
+      "ts": "2026-08-18T15:59:57.827588+00:00"
+    },
+    {
+      "symbol": "NLR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.536,
+      "ts": "2026-08-18T15:59:57.827599+00:00"
     },
     {
       "symbol": "PATH",
@@ -24,7 +24,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.90 threshold=0.45",
       "score": 0.9,
-      "ts": "2026-08-18T15:49:05.098524+00:00"
+      "ts": "2026-08-18T15:59:57.827602+00:00"
     },
     {
       "symbol": "XOM",
@@ -32,15 +32,7 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.72 threshold=0.45",
       "score": 0.718,
-      "ts": "2026-08-18T15:49:05.098530+00:00"
-    },
-    {
-      "symbol": "ZETA",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.52 threshold=0.45",
-      "score": 0.522,
-      "ts": "2026-08-18T15:49:05.098532+00:00"
+      "ts": "2026-08-18T15:59:57.827608+00:00"
     }
   ]
 }

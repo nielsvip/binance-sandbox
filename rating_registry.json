@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T15:49:56.652359+00:00",
+  "timestamp": "2026-08-18T16:04:57.132987+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -25,22 +25,10 @@
       "short_score": 19.4
     },
     {
-      "symbol": "CRWVUSDT",
-      "net_score": -19.1,
-      "long_score": 0,
-      "short_score": 19.1
-    },
-    {
       "symbol": "BEUSDT",
       "net_score": -17.3,
       "long_score": 0,
       "short_score": 17.3
-    },
-    {
-      "symbol": "INTCUSDT",
-      "net_score": -16.9,
-      "long_score": 0,
-      "short_score": 16.9
     },
     {
       "symbol": "QQQUSDT",
@@ -55,16 +43,16 @@
       "short_score": 16.2
     },
     {
-      "symbol": "HOODUSDT",
-      "net_score": -16.0,
-      "long_score": 0,
-      "short_score": 16.0
-    },
-    {
       "symbol": "LRCXUSDT",
       "net_score": -15.4,
       "long_score": 0,
       "short_score": 15.4
+    },
+    {
+      "symbol": "INTCUSDT",
+      "net_score": -14.9,
+      "long_score": 0,
+      "short_score": 14.9
     },
     {
       "symbol": "TQQQUSDT",
@@ -319,6 +307,12 @@
       "short_score": 0
     },
     {
+      "symbol": "HOODUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "DOGEUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -440,6 +434,12 @@
     },
     {
       "symbol": "QNTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRWVUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -944,8 +944,8 @@
     },
     {
       "symbol": "ONDSUSDT",
-      "net_score": 12.9,
-      "long_score": 12.9,
+      "net_score": 10.3,
+      "long_score": 10.3,
       "short_score": 0
     },
     {
@@ -963,8 +963,8 @@
     ],
     [
       "ONDSUSDT",
-      12.9,
-      8.86
+      10.3,
+      9.09
     ]
   ],
   "top_shorts": [
@@ -984,19 +984,9 @@
       129.64255066
     ],
     [
-      "CRWVUSDT",
-      19.1,
-      98.56069775
-    ],
-    [
       "BEUSDT",
       17.3,
       214.57193883
-    ],
-    [
-      "INTCUSDT",
-      16.9,
-      96.46
     ],
     [
       "INTWUSDT",
@@ -1009,14 +999,14 @@
       718.5
     ],
     [
-      "HOODUSDT",
-      16.0,
-      93.42149982
-    ],
-    [
       "LRCXUSDT",
       15.4,
       319.15
+    ],
+    [
+      "INTCUSDT",
+      14.9,
+      96.46
     ],
     [
       "TQQQUSDT",
