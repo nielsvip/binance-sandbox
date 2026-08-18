@@ -6578,5 +6578,97 @@
     ],
     "timestamp": "2026-08-18T04:15:31.519623+00:00",
     "price": 74.89
+  },
+  {
+    "symbol": "DOTUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 0.7311
+  },
+  {
+    "symbol": "ACEUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 35.1% range"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 0.15514
+  },
+  {
+    "symbol": "BEATUSDT",
+    "severity": 2,
+    "reasons": [
+      "DEAD_COIN: price -70% below SMA200",
+      "PRICE_RANGE_1H: 32.2% range"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 0.274
+  },
+  {
+    "symbol": "COMPUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 9.1x (from rankings)"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 17.44
+  },
+  {
+    "symbol": "FILUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 11.7x (from rankings)"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 0.6159
+  },
+  {
+    "symbol": "GALAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 9.9x normal",
+      "RANKINGS_VOL: 18.8x (from rankings)"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 0.001395
+  },
+  {
+    "symbol": "IMXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 9.2x normal"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 0.0995
+  },
+  {
+    "symbol": "TMFUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 29.87
+  },
+  {
+    "symbol": "TQQQUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 74.89
+  },
+  {
+    "symbol": "YFIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 10.5x normal"
+    ],
+    "timestamp": "2026-08-18T06:51:44.118862+00:00",
+    "price": 1888.0
   }
 ]
