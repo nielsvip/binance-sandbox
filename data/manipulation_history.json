@@ -7789,5 +7789,14 @@
     ],
     "timestamp": "2026-08-18T18:32:24.461770+00:00",
     "price": 0.0004615
+  },
+  {
+    "symbol": "MANAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T18:41:56.129687+00:00",
+    "price": 0.06352
   }
 ]
