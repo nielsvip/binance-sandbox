@@ -705,32 +705,33 @@ def run(dry_run: bool = False, force: bool = False):
         new_parts.append(f"{n_direct} direct-V8 receipts")
     subject = f"Research Digest — {', '.join(new_parts) if new_parts else 'status update'}"
     if dry_run:
-        # Save to file instead of sending
+        # Save to file instead of sending — do NOT advance any cursor or last_sent.
         out_path = REPORT_DIR / f"newsletter_preview_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.html"
         with open(out_path, "w") as f:
             f.write(html)
-        logger.info(f"DRY RUN — preview saved to {out_path}")
+        logger.info(f"DRY RUN — preview saved to {out_path} (state not advanced)")
         print(f"Preview: {out_path}")
         print(f"Subject: {subject}")
-    else:
-        try:
-            from morning_email import send_email
-            send_email(html, subject=subject)
-            logger.info(f"Newsletter sent: {subject}")
-        except Exception as e:
-            logger.error(f"Send failed: {e}")
+        return
+    try:
+        from morning_email import send_email
+        ok = send_email(html, subject=subject)
+        if not ok:
+            logger.error("Newsletter send_email returned False — state not advanced")
+            print("Send failed — state not advanced")
             return
-    # Update state
+        logger.info(f"Newsletter sent: {subject}")
+    except Exception as e:
+        logger.error(f"Send failed: {e}")
+        return
+    # Update state — only on successful real send
     now = datetime.now(timezone.utc).isoformat()
     state["last_sent"] = now
     if trader_delta.get("_state_update"):
         state.update(trader_delta["_state_update"])
     state["last_sweep_s1"] = {"timestamp": now, "active": bool(s1_status.get("active_sweeps")), "n_results": len(s1_status.get("latest_results", []))}
     state["last_sweep_s2"] = {"timestamp": now, "active": bool(s2_status.get("active_sweeps")), "n_results": len(s2_status.get("latest_results", []))}
-    # HTML previews must not consume the production cursor.  A successful send
-    # marks the exact boundary for the next unified-newsletter delta.
-    if not dry_run:
-        state["direct_v8_last_sent_ts"] = now
+    state["direct_v8_last_sent_ts"] = now
     if zec_delta.get("_state_update"):
         state.update(zec_delta["_state_update"])
     save_state(state)

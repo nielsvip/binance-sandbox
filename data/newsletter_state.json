@@ -1,5 +1,5 @@
 {
-  "last_sent": "2026-06-05T21:01:10.068937+00:00",
+  "last_sent": "2026-08-18T20:04:26.546079+00:00",
   "last_n_trades": 6467,
   "last_n_traders": 513,
   "last_patterns": [
@@ -23,17 +23,18 @@
   "last_health_green": [],
   "last_health_red": [],
   "last_sweep_s1": {
-    "timestamp": "2026-06-05T21:01:10.068937+00:00",
-    "active": true,
+    "timestamp": "2026-08-18T20:04:26.546079+00:00",
+    "active": false,
     "n_results": 0
   },
   "last_sweep_s2": {
-    "timestamp": "2026-06-05T21:01:10.068937+00:00",
+    "timestamp": "2026-08-18T20:04:26.546079+00:00",
     "active": false,
     "n_results": 0
   },
   "last_sweep_local": {},
   "applied_configs": [],
   "last_health_str": "Trader Health: 49 GREEN / 31 YELLOW / 7 RED",
-  "last_zec_iter": 1780693202
+  "last_zec_iter": 1785211202,
+  "direct_v8_last_sent_ts": "2026-08-18T20:04:26.546079+00:00"
 }

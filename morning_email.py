@@ -69,8 +69,20 @@ logger = logging.getLogger("morning_email")
 
 
 def get_gmail_password():
+    # Try keychain first, but validate it — corrupted keychain entries (e.g. the literal
+    # command string " security add-generic-password -U \") were returned verbatim and
+    # caused 869 consecutive 535 BadCredentials failures even though ~/.gmail_app_pw was correct.
+    # Fall through to file backup when keychain is missing or doesn't look like a 16-char app password.
+    def _looks_like_app_pw(s: str) -> bool:
+        stripped = s.replace(" ", "").strip()
+        return 16 <= len(stripped) <= 19 and stripped.isalpha()
+
     try:
-        return subprocess.check_output(["security", "find-generic-password", "-a", FROM_EMAIL, "-s", "gmail-app-password", "-w"], stderr=subprocess.DEVNULL).decode().strip()
+        out = subprocess.check_output(["security", "find-generic-password", "-a", FROM_EMAIL, "-s", "gmail-app-password", "-w"], stderr=subprocess.DEVNULL).decode().strip()
+        if out and _looks_like_app_pw(out):
+            return out
+        if out:
+            logger.warning(f"Keychain returned non-app-password ({len(out)} chars) — falling through to file")
     except Exception:
         logger.warning("Keychain unavailable (cron?), trying file fallback")
     try:
@@ -78,6 +90,8 @@ def get_gmail_password():
         if os.path.exists(pw_file):
             with open(pw_file) as f:
                 pw = f.read().strip()
+            if pw and _looks_like_app_pw(pw):
+                return pw
             if pw:
                 return pw
     except Exception:
