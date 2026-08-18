@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T16:15:59.508850+00:00",
-  "count": 3,
+  "generated_at": "2026-08-18T16:33:17.203366+00:00",
+  "count": 4,
   "advisories": [
     {
       "symbol": "LNG",
@@ -8,15 +8,15 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.72 threshold=0.45",
       "score": 0.718,
-      "ts": "2026-08-18T16:15:59.508817+00:00"
+      "ts": "2026-08-18T16:33:17.203283+00:00"
     },
     {
-      "symbol": "NXE",
+      "symbol": "NLR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.53 threshold=0.45",
-      "score": 0.53,
-      "ts": "2026-08-18T16:15:59.508826+00:00"
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.536,
+      "ts": "2026-08-18T16:33:17.203304+00:00"
     },
     {
       "symbol": "PATH",
@@ -24,7 +24,15 @@
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.90 threshold=0.45",
       "score": 0.9,
-      "ts": "2026-08-18T16:15:59.508829+00:00"
+      "ts": "2026-08-18T16:33:17.203310+00:00"
+    },
+    {
+      "symbol": "XOM",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.72 threshold=0.45",
+      "score": 0.718,
+      "ts": "2026-08-18T16:33:17.203325+00:00"
     }
   ]
 }
