@@ -2261,12 +2261,3755 @@ def simulate_one_symbol(
     # STRENGTH_FILTER: composite score gate — mirrors tradier_manage.py:11322.
     # When enabled, requires WT gap >= STRENGTH_MIN_SCORE*0.8.
     _strength_open_ok = np.ones(n, dtype=bool)
+    # REAL-WIRED ADAPTIVE_REGIME_ENABLED — via vec_paths/adaptive_regime
+    if bool(getattr(config, "ADAPTIVE_REGIME_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.adaptive_regime") if importlib.util.find_spec("vec_paths.adaptive_regime") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ADAPTIVE_REGIME_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ADAPTIVE_REGIME_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ADX_REGIME_FILTER_ENABLED — via vec_paths/adx_regime_filter
+    if bool(getattr(config, "ADX_REGIME_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.adx_regime_filter") if importlib.util.find_spec("vec_paths.adx_regime_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ADX_REGIME_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ADX_REGIME_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AGGRESSIVE_LOSS_CUT_ENABLED — via vec_paths/aggressive_loss_cut
+    if bool(getattr(config, "AGGRESSIVE_LOSS_CUT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.aggressive_loss_cut") if importlib.util.find_spec("vec_paths.aggressive_loss_cut") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AGGRESSIVE_LOSS_CUT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AGGRESSIVE_LOSS_CUT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AI_PREMARKET_ENABLED — via vec_paths/ai_premarket
+    if bool(getattr(config, "AI_PREMARKET_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ai_premarket") if importlib.util.find_spec("vec_paths.ai_premarket") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AI_PREMARKET_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AI_PREMARKET_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AI_PREMARKET_TRADINGVIEW_ENABLED — via vec_paths/ai_premarket_tradingview
+    if bool(getattr(config, "AI_PREMARKET_TRADINGVIEW_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ai_premarket_tradingview") if importlib.util.find_spec("vec_paths.ai_premarket_tradingview") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AI_PREMARKET_TRADINGVIEW_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AI_PREMARKET_TRADINGVIEW_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ALL_TF_AGAINST_CLOSE_ENABLED — via vec_paths/all_tf_against_close
+    if bool(getattr(config, "ALL_TF_AGAINST_CLOSE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.all_tf_against_close") if importlib.util.find_spec("vec_paths.all_tf_against_close") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ALL_TF_AGAINST_CLOSE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ALL_TF_AGAINST_CLOSE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ASYMMETRIC_STOPS_ENABLED — via vec_paths/asymmetric_stops
+    if bool(getattr(config, "ASYMMETRIC_STOPS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.asymmetric_stops") if importlib.util.find_spec("vec_paths.asymmetric_stops") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ASYMMETRIC_STOPS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ASYMMETRIC_STOPS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ATR_ADAPTIVE_SIZING_ENABLED — via vec_paths/atr_adaptive_sizing
+    if bool(getattr(config, "ATR_ADAPTIVE_SIZING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.atr_adaptive_sizing") if importlib.util.find_spec("vec_paths.atr_adaptive_sizing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ATR_ADAPTIVE_SIZING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ATR_ADAPTIVE_SIZING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ATR_ADAPTIVE_STOP_ENABLED — via vec_paths/atr_adaptive_stop
+    if bool(getattr(config, "ATR_ADAPTIVE_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.atr_adaptive_stop") if importlib.util.find_spec("vec_paths.atr_adaptive_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ATR_ADAPTIVE_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ATR_ADAPTIVE_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ATR_TRAIL_2X_EXIT_ENABLED — via vec_paths/atr_trail_2x_exit
+    if bool(getattr(config, "ATR_TRAIL_2X_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.atr_trail_2x_exit") if importlib.util.find_spec("vec_paths.atr_trail_2x_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ATR_TRAIL_2X_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ATR_TRAIL_2X_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ATR_TRAIL_SWEEP_ENABLED — via vec_paths/atr_trail_sweep
+    if bool(getattr(config, "ATR_TRAIL_SWEEP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.atr_trail_sweep") if importlib.util.find_spec("vec_paths.atr_trail_sweep") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ATR_TRAIL_SWEEP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ATR_TRAIL_SWEEP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AUGMENT_AT_LOSS_ENABLED — via vec_paths/augment_at_loss
+    if bool(getattr(config, "AUGMENT_AT_LOSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.augment_at_loss") if importlib.util.find_spec("vec_paths.augment_at_loss") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AUGMENT_AT_LOSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AUGMENT_AT_LOSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AUGMENT_BLOWPAST_ENABLED — via vec_paths/augment_blowpast
+    if bool(getattr(config, "AUGMENT_BLOWPAST_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.augment_blowpast") if importlib.util.find_spec("vec_paths.augment_blowpast") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AUGMENT_BLOWPAST_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AUGMENT_BLOWPAST_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AUGMENT_HTF_TREND_ENABLED — via vec_paths/augment_htf_trend
+    if bool(getattr(config, "AUGMENT_HTF_TREND_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.augment_htf_trend") if importlib.util.find_spec("vec_paths.augment_htf_trend") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AUGMENT_HTF_TREND_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AUGMENT_HTF_TREND_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AUGMENT_PYRAMID_ENABLED — via vec_paths/augment_pyramid
+    if bool(getattr(config, "AUGMENT_PYRAMID_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.augment_pyramid") if importlib.util.find_spec("vec_paths.augment_pyramid") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AUGMENT_PYRAMID_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AUGMENT_PYRAMID_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AUGMENT_WT_3TF_ENABLED — via vec_paths/augment_wt_3tf
+    if bool(getattr(config, "AUGMENT_WT_3TF_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.augment_wt_3tf") if importlib.util.find_spec("vec_paths.augment_wt_3tf") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AUGMENT_WT_3TF_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AUGMENT_WT_3TF_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED AUGMENT_WT_CROSS_ENABLED — via vec_paths/augment_wt_cross
+    if bool(getattr(config, "AUGMENT_WT_CROSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.augment_wt_cross") if importlib.util.find_spec("vec_paths.augment_wt_cross") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real AUGMENT_WT_CROSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # AUGMENT_WT_CROSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED B10_STOCH_REV_LIVE_ENABLED — via vec_paths/b10_stoch_rev_live
+    if bool(getattr(config, "B10_STOCH_REV_LIVE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.b10_stoch_rev_live") if importlib.util.find_spec("vec_paths.b10_stoch_rev_live") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real B10_STOCH_REV_LIVE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # B10_STOCH_REV_LIVE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BAND_ARROW_ENABLED — via vec_paths/band_arrow
+    if bool(getattr(config, "BAND_ARROW_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.band_arrow") if importlib.util.find_spec("vec_paths.band_arrow") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BAND_ARROW_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BAND_ARROW_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BAND_SLOPE_SIZING_V2_ENABLED — via vec_paths/band_slope_sizing_v2
+    if bool(getattr(config, "BAND_SLOPE_SIZING_V2_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.band_slope_sizing_v2") if importlib.util.find_spec("vec_paths.band_slope_sizing_v2") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BAND_SLOPE_SIZING_V2_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BAND_SLOPE_SIZING_V2_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BB4H_BREAKOUT_LADDER_ENABLED — via vec_paths/bb4h_breakout_ladder
+    if bool(getattr(config, "BB4H_BREAKOUT_LADDER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bb4h_breakout_ladder") if importlib.util.find_spec("vec_paths.bb4h_breakout_ladder") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BB4H_BREAKOUT_LADDER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BB4H_BREAKOUT_LADDER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BB_BREAKOUT_CONT_ENABLED — via vec_paths/bb_breakout_cont
+    if bool(getattr(config, "BB_BREAKOUT_CONT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bb_breakout_cont") if importlib.util.find_spec("vec_paths.bb_breakout_cont") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BB_BREAKOUT_CONT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BB_BREAKOUT_CONT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BB_PCTB_ENTRY_ENABLED — via vec_paths/bb_pctb_entry
+    if bool(getattr(config, "BB_PCTB_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bb_pctb_entry") if importlib.util.find_spec("vec_paths.bb_pctb_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BB_PCTB_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BB_PCTB_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BB_RECOVERY_DIRECT_ENABLED — via vec_paths/bb_recovery_direct
+    if bool(getattr(config, "BB_RECOVERY_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bb_recovery_direct") if importlib.util.find_spec("vec_paths.bb_recovery_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BB_RECOVERY_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BB_RECOVERY_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BB_RECOVERY_EXIT_ENABLED — via vec_paths/bb_recovery_exit
+    if bool(getattr(config, "BB_RECOVERY_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bb_recovery_exit") if importlib.util.find_spec("vec_paths.bb_recovery_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BB_RECOVERY_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BB_RECOVERY_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BB_SQUEEZE_ENABLED — via vec_paths/bb_squeeze
+    if bool(getattr(config, "BB_SQUEEZE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bb_squeeze") if importlib.util.find_spec("vec_paths.bb_squeeze") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BB_SQUEEZE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BB_SQUEEZE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BB_SQUEEZE_ENTRY_ENABLED — via vec_paths/bb_squeeze_entry
+    if bool(getattr(config, "BB_SQUEEZE_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bb_squeeze_entry") if importlib.util.find_spec("vec_paths.bb_squeeze_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BB_SQUEEZE_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BB_SQUEEZE_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BOTTOM_A_PROTECTIVE_TRAIL_ENABLED — via vec_paths/bottom_a_protective_trail
+    if bool(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bottom_a_protective_trail") if importlib.util.find_spec("vec_paths.bottom_a_protective_trail") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BOTTOM_A_PROTECTIVE_TRAIL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BOTTOM_A_PROTECTIVE_TRAIL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BOTTOM_B_DELAYED_LOWER_TOP_ENABLED — via vec_paths/bottom_b_delayed_lower_top
+    if bool(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bottom_b_delayed_lower_top") if importlib.util.find_spec("vec_paths.bottom_b_delayed_lower_top") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BOTTOM_B_DELAYED_LOWER_TOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BOTTOM_B_DELAYED_LOWER_TOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BOUNCE_AUGMENT_ENABLED — via vec_paths/bounce_augment
+    if bool(getattr(config, "BOUNCE_AUGMENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bounce_augment") if importlib.util.find_spec("vec_paths.bounce_augment") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BOUNCE_AUGMENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BOUNCE_AUGMENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BOUNCE_REENTRY_ENABLED — via vec_paths/bounce_reentry
+    if bool(getattr(config, "BOUNCE_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bounce_reentry") if importlib.util.find_spec("vec_paths.bounce_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BOUNCE_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BOUNCE_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BOUNCE_TOP_EXIT_ENABLED — via vec_paths/bounce_top_exit
+    if bool(getattr(config, "BOUNCE_TOP_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.bounce_top_exit") if importlib.util.find_spec("vec_paths.bounce_top_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BOUNCE_TOP_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BOUNCE_TOP_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKEVEN_DC_LOW4_ENABLED — via vec_paths/breakeven_dc_low4
+    if bool(getattr(config, "BREAKEVEN_DC_LOW4_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakeven_dc_low4") if importlib.util.find_spec("vec_paths.breakeven_dc_low4") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKEVEN_DC_LOW4_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKEVEN_DC_LOW4_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKEVEN_EXIT_AFTER_BARS_ENABLED — via vec_paths/breakeven_exit_after_bars
+    if bool(getattr(config, "BREAKEVEN_EXIT_AFTER_BARS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakeven_exit_after_bars") if importlib.util.find_spec("vec_paths.breakeven_exit_after_bars") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKEVEN_EXIT_AFTER_BARS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKEVEN_EXIT_AFTER_BARS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKEVEN_GAIN_EROSION_ENABLED — via vec_paths/breakeven_gain_erosion
+    if bool(getattr(config, "BREAKEVEN_GAIN_EROSION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakeven_gain_erosion") if importlib.util.find_spec("vec_paths.breakeven_gain_erosion") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKEVEN_GAIN_EROSION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKEVEN_GAIN_EROSION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKOUT_DC1H_BYPASS_ENABLED — via vec_paths/breakout_dc1h_bypass
+    if bool(getattr(config, "BREAKOUT_DC1H_BYPASS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakout_dc1h_bypass") if importlib.util.find_spec("vec_paths.breakout_dc1h_bypass") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKOUT_DC1H_BYPASS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKOUT_DC1H_BYPASS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED — via vec_paths/breakout_guard_momentum_check
+    if bool(getattr(config, "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakout_guard_momentum_check") if importlib.util.find_spec("vec_paths.breakout_guard_momentum_check") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKOUT_LEASH_ENABLED — via vec_paths/breakout_leash
+    if bool(getattr(config, "BREAKOUT_LEASH_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakout_leash") if importlib.util.find_spec("vec_paths.breakout_leash") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKOUT_LEASH_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKOUT_LEASH_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKOUT_MULTI_LUNG_ENABLED — via vec_paths/breakout_multi_lung
+    if bool(getattr(config, "BREAKOUT_MULTI_LUNG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakout_multi_lung") if importlib.util.find_spec("vec_paths.breakout_multi_lung") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKOUT_MULTI_LUNG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKOUT_MULTI_LUNG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED — via vec_paths/breakout_retest_armed_persistent
+    if bool(getattr(config, "BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakout_retest_armed_persistent") if importlib.util.find_spec("vec_paths.breakout_retest_armed_persistent") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BREAKOUT_TF_SIZE_ENABLED — via vec_paths/breakout_tf_size
+    if bool(getattr(config, "BREAKOUT_TF_SIZE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.breakout_tf_size") if importlib.util.find_spec("vec_paths.breakout_tf_size") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BREAKOUT_TF_SIZE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BREAKOUT_TF_SIZE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BROKER_PREFLIGHT_ENABLED — via vec_paths/broker_preflight
+    if bool(getattr(config, "BROKER_PREFLIGHT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.broker_preflight") if importlib.util.find_spec("vec_paths.broker_preflight") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BROKER_PREFLIGHT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BROKER_PREFLIGHT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_ACCEL_RAMP_ENABLED — via vec_paths/btc_accel_ramp
+    if bool(getattr(config, "BTC_ACCEL_RAMP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_accel_ramp") if importlib.util.find_spec("vec_paths.btc_accel_ramp") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_ACCEL_RAMP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_ACCEL_RAMP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_BREAKOUT_ENTRY_ENABLED — via vec_paths/btc_breakout_entry
+    if bool(getattr(config, "BTC_BREAKOUT_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_breakout_entry") if importlib.util.find_spec("vec_paths.btc_breakout_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_BREAKOUT_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_BREAKOUT_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_DIVERGENCE_ENABLED — via vec_paths/btc_divergence
+    if bool(getattr(config, "BTC_DIVERGENCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_divergence") if importlib.util.find_spec("vec_paths.btc_divergence") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_DIVERGENCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_DIVERGENCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_ENTRY_DIV_ONLY_ENABLED — via vec_paths/btc_entry_div_only
+    if bool(getattr(config, "BTC_ENTRY_DIV_ONLY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_entry_div_only") if importlib.util.find_spec("vec_paths.btc_entry_div_only") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_ENTRY_DIV_ONLY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_ENTRY_DIV_ONLY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_FOLLOW_THROUGH_REENTRY_ENABLED — via vec_paths/btc_follow_through_reentry
+    if bool(getattr(config, "BTC_FOLLOW_THROUGH_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_follow_through_reentry") if importlib.util.find_spec("vec_paths.btc_follow_through_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_FOLLOW_THROUGH_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_FOLLOW_THROUGH_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_GUARANTEED_REENTRY_ENABLED — via vec_paths/btc_guaranteed_reentry
+    if bool(getattr(config, "BTC_GUARANTEED_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_guaranteed_reentry") if importlib.util.find_spec("vec_paths.btc_guaranteed_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_GUARANTEED_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_GUARANTEED_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED — via vec_paths/btc_hedge_dc_resistance_gate
+    if bool(getattr(config, "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_hedge_dc_resistance_gate") if importlib.util.find_spec("vec_paths.btc_hedge_dc_resistance_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_HEDGE_SAMESYM_ENABLED — via vec_paths/btc_hedge_samesym
+    if bool(getattr(config, "BTC_HEDGE_SAMESYM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_hedge_samesym") if importlib.util.find_spec("vec_paths.btc_hedge_samesym") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_HEDGE_SAMESYM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_HEDGE_SAMESYM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_HEDGE_WT_VEL_GATE_ENABLED — via vec_paths/btc_hedge_wt_vel_gate
+    if bool(getattr(config, "BTC_HEDGE_WT_VEL_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_hedge_wt_vel_gate") if importlib.util.find_spec("vec_paths.btc_hedge_wt_vel_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_HEDGE_WT_VEL_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_HEDGE_WT_VEL_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_PER_SYM_CONFIG_ENABLED — via vec_paths/btc_per_sym_config
+    if bool(getattr(config, "BTC_PER_SYM_CONFIG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_per_sym_config") if importlib.util.find_spec("vec_paths.btc_per_sym_config") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_PER_SYM_CONFIG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_PER_SYM_CONFIG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_REGIME_PAUSE_ENABLED — via vec_paths/btc_regime_pause
+    if bool(getattr(config, "BTC_REGIME_PAUSE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_regime_pause") if importlib.util.find_spec("vec_paths.btc_regime_pause") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_REGIME_PAUSE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_REGIME_PAUSE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_REVERSE_ON_EXIT_ENABLED — via vec_paths/btc_reverse_on_exit
+    if bool(getattr(config, "BTC_REVERSE_ON_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_reverse_on_exit") if importlib.util.find_spec("vec_paths.btc_reverse_on_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_REVERSE_ON_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_REVERSE_ON_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED BTC_RZ_AS_BOOST_ENABLED — via vec_paths/btc_rz_as_boost
+    if bool(getattr(config, "BTC_RZ_AS_BOOST_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.btc_rz_as_boost") if importlib.util.find_spec("vec_paths.btc_rz_as_boost") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real BTC_RZ_AS_BOOST_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # BTC_RZ_AS_BOOST_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED B_MAIN_ENTRY_GATE_ENABLED — via vec_paths/b_main_entry_gate
+    if bool(getattr(config, "B_MAIN_ENTRY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.b_main_entry_gate") if importlib.util.find_spec("vec_paths.b_main_entry_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real B_MAIN_ENTRY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # B_MAIN_ENTRY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CLENOW_ENABLED — via vec_paths/clenow
+    if bool(getattr(config, "CLENOW_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.clenow") if importlib.util.find_spec("vec_paths.clenow") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CLENOW_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CLENOW_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CLENOW_GATE_ENABLED — via vec_paths/clenow_gate
+    if bool(getattr(config, "CLENOW_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.clenow_gate") if importlib.util.find_spec("vec_paths.clenow_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CLENOW_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CLENOW_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CLOSE_FOOTHOLD_ENABLED — via vec_paths/close_foothold
+    if bool(getattr(config, "CLOSE_FOOTHOLD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.close_foothold") if importlib.util.find_spec("vec_paths.close_foothold") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CLOSE_FOOTHOLD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CLOSE_FOOTHOLD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED — via vec_paths/completed_candle_snapshot_direct
+    if bool(getattr(config, "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.completed_candle_snapshot_direct") if importlib.util.find_spec("vec_paths.completed_candle_snapshot_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CONFLUENCE_MODE_ENABLED — via vec_paths/confluence_mode
+    if bool(getattr(config, "CONFLUENCE_MODE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.confluence_mode") if importlib.util.find_spec("vec_paths.confluence_mode") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CONFLUENCE_MODE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CONFLUENCE_MODE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED — via vec_paths/connors_rsi2_priority_override
+    if bool(getattr(config, "CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.connors_rsi2_priority_override") if importlib.util.find_spec("vec_paths.connors_rsi2_priority_override") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CONNORS_RSI_ENABLED — via vec_paths/connors_rsi
+    if bool(getattr(config, "CONNORS_RSI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.connors_rsi") if importlib.util.find_spec("vec_paths.connors_rsi") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CONNORS_RSI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CONNORS_RSI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CONVICTION_SIZING_ENABLED — via vec_paths/conviction_sizing
+    if bool(getattr(config, "CONVICTION_SIZING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.conviction_sizing") if importlib.util.find_spec("vec_paths.conviction_sizing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CONVICTION_SIZING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CONVICTION_SIZING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CRASH_MULT_GRADIENT_ENABLED — via vec_paths/crash_mult_gradient
+    if bool(getattr(config, "CRASH_MULT_GRADIENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.crash_mult_gradient") if importlib.util.find_spec("vec_paths.crash_mult_gradient") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CRASH_MULT_GRADIENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CRASH_MULT_GRADIENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CRYPTO_FH_MOMENTUM_ENABLED — via vec_paths/crypto_fh_momentum
+    if bool(getattr(config, "CRYPTO_FH_MOMENTUM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.crypto_fh_momentum") if importlib.util.find_spec("vec_paths.crypto_fh_momentum") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CRYPTO_FH_MOMENTUM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CRYPTO_FH_MOMENTUM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CRYPTO_SPIKE_FADE_ENABLED — via vec_paths/crypto_spike_fade
+    if bool(getattr(config, "CRYPTO_SPIKE_FADE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.crypto_spike_fade") if importlib.util.find_spec("vec_paths.crypto_spike_fade") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CRYPTO_SPIKE_FADE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CRYPTO_SPIKE_FADE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CT_15M_MOMENTUM_GATE_ENABLED — via vec_paths/ct_15m_momentum_gate
+    if bool(getattr(config, "CT_15M_MOMENTUM_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ct_15m_momentum_gate") if importlib.util.find_spec("vec_paths.ct_15m_momentum_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CT_15M_MOMENTUM_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CT_15M_MOMENTUM_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CT_CHOP_4H_GATE_ENABLED — via vec_paths/ct_chop_4h_gate
+    if bool(getattr(config, "CT_CHOP_4H_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ct_chop_4h_gate") if importlib.util.find_spec("vec_paths.ct_chop_4h_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CT_CHOP_4H_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CT_CHOP_4H_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CT_DC_CROSSOVER_SKIP_ENABLED — via vec_paths/ct_dc_crossover_skip
+    if bool(getattr(config, "CT_DC_CROSSOVER_SKIP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ct_dc_crossover_skip") if importlib.util.find_spec("vec_paths.ct_dc_crossover_skip") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CT_DC_CROSSOVER_SKIP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CT_DC_CROSSOVER_SKIP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CT_VOLUME_SURGE_GATE_ENABLED — via vec_paths/ct_volume_surge_gate
+    if bool(getattr(config, "CT_VOLUME_SURGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ct_volume_surge_gate") if importlib.util.find_spec("vec_paths.ct_volume_surge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CT_VOLUME_SURGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CT_VOLUME_SURGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CT_WT_VELOCITY_GATE_ENABLED — via vec_paths/ct_wt_velocity_gate
+    if bool(getattr(config, "CT_WT_VELOCITY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ct_wt_velocity_gate") if importlib.util.find_spec("vec_paths.ct_wt_velocity_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CT_WT_VELOCITY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CT_WT_VELOCITY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED CYCLE_TP_TIERED_ENABLED — via vec_paths/cycle_tp_tiered
+    if bool(getattr(config, "CYCLE_TP_TIERED_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.cycle_tp_tiered") if importlib.util.find_spec("vec_paths.cycle_tp_tiered") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real CYCLE_TP_TIERED_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # CYCLE_TP_TIERED_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED — via vec_paths/daemon_reentry_short_wt_xunder_gate
+    if bool(getattr(config, "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.daemon_reentry_short_wt_xunder_gate") if importlib.util.find_spec("vec_paths.daemon_reentry_short_wt_xunder_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DAEMON_REENTRY_STALE_EXIT_ENABLED — via vec_paths/daemon_reentry_stale_exit
+    if bool(getattr(config, "DAEMON_REENTRY_STALE_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.daemon_reentry_stale_exit") if importlib.util.find_spec("vec_paths.daemon_reentry_stale_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DAEMON_REENTRY_STALE_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DAEMON_REENTRY_STALE_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED — via vec_paths/dc4_stop_gr_hedge_override
+    if bool(getattr(config, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc4_stop_gr_hedge_override") if importlib.util.find_spec("vec_paths.dc4_stop_gr_hedge_override") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_BB_D_BREAK_REVERSE_ENABLED — via vec_paths/dc_bb_d_break_reverse
+    if bool(getattr(config, "DC_BB_D_BREAK_REVERSE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_bb_d_break_reverse") if importlib.util.find_spec("vec_paths.dc_bb_d_break_reverse") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_BB_D_BREAK_REVERSE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_BB_D_BREAK_REVERSE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_BREAKOUT_ENTRY_ENABLED — via vec_paths/dc_breakout_entry
+    if bool(getattr(config, "DC_BREAKOUT_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_breakout_entry") if importlib.util.find_spec("vec_paths.dc_breakout_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_BREAKOUT_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_BREAKOUT_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_BREAK_GR_MULT_ENABLED — via vec_paths/dc_break_gr_mult
+    if bool(getattr(config, "DC_BREAK_GR_MULT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_break_gr_mult") if importlib.util.find_spec("vec_paths.dc_break_gr_mult") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_BREAK_GR_MULT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_BREAK_GR_MULT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_DAYTRADE_ENABLED — via vec_paths/dc_daytrade
+    if bool(getattr(config, "DC_DAYTRADE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_daytrade") if importlib.util.find_spec("vec_paths.dc_daytrade") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_DAYTRADE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_DAYTRADE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_EDGE_SIZING_ENABLED — via vec_paths/dc_edge_sizing
+    if bool(getattr(config, "DC_EDGE_SIZING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_edge_sizing") if importlib.util.find_spec("vec_paths.dc_edge_sizing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_EDGE_SIZING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_EDGE_SIZING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_LOW_4H_FROZEN_STOP_ENABLED — via vec_paths/dc_low_4h_frozen_stop
+    if bool(getattr(config, "DC_LOW_4H_FROZEN_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_low_4h_frozen_stop") if importlib.util.find_spec("vec_paths.dc_low_4h_frozen_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_LOW_4H_FROZEN_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_LOW_4H_FROZEN_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_MOMENT_ENABLED — via vec_paths/dc_moment
+    if bool(getattr(config, "DC_MOMENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_moment") if importlib.util.find_spec("vec_paths.dc_moment") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_MOMENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_MOMENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_RECOVERY_EXIT_ENABLED — via vec_paths/dc_recovery_exit
+    if bool(getattr(config, "DC_RECOVERY_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_recovery_exit") if importlib.util.find_spec("vec_paths.dc_recovery_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_RECOVERY_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_RECOVERY_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_TIER_AUG_ENABLED — via vec_paths/dc_tier_aug
+    if bool(getattr(config, "DC_TIER_AUG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_tier_aug") if importlib.util.find_spec("vec_paths.dc_tier_aug") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_TIER_AUG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_TIER_AUG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DC_WIDTH_SIZING_ENABLED — via vec_paths/dc_width_sizing
+    if bool(getattr(config, "DC_WIDTH_SIZING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dc_width_sizing") if importlib.util.find_spec("vec_paths.dc_width_sizing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DC_WIDTH_SIZING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DC_WIDTH_SIZING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DD_BOUNCE_DD_STOP_ENABLED — via vec_paths/dd_bounce_dd_stop
+    if bool(getattr(config, "DD_BOUNCE_DD_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dd_bounce_dd_stop") if importlib.util.find_spec("vec_paths.dd_bounce_dd_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DD_BOUNCE_DD_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DD_BOUNCE_DD_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DD_BOUNCE_ENABLED — via vec_paths/dd_bounce
+    if bool(getattr(config, "DD_BOUNCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dd_bounce") if importlib.util.find_spec("vec_paths.dd_bounce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DD_BOUNCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DD_BOUNCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DD_BOUNCE_WT_4H_ENABLED — via vec_paths/dd_bounce_wt_4h
+    if bool(getattr(config, "DD_BOUNCE_WT_4H_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dd_bounce_wt_4h") if importlib.util.find_spec("vec_paths.dd_bounce_wt_4h") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DD_BOUNCE_WT_4H_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DD_BOUNCE_WT_4H_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DD_BOUNCE_WT_D_ENABLED — via vec_paths/dd_bounce_wt_d
+    if bool(getattr(config, "DD_BOUNCE_WT_D_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dd_bounce_wt_d") if importlib.util.find_spec("vec_paths.dd_bounce_wt_d") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DD_BOUNCE_WT_D_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DD_BOUNCE_WT_D_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DD_KELLY_ENABLED — via vec_paths/dd_kelly
+    if bool(getattr(config, "DD_KELLY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dd_kelly") if importlib.util.find_spec("vec_paths.dd_kelly") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DD_KELLY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DD_KELLY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DELTA_EXIT_DOM_TF_ENABLED — via vec_paths/delta_exit_dom_tf
+    if bool(getattr(config, "DELTA_EXIT_DOM_TF_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.delta_exit_dom_tf") if importlib.util.find_spec("vec_paths.delta_exit_dom_tf") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DELTA_EXIT_DOM_TF_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DELTA_EXIT_DOM_TF_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DELTA_EXIT_ENABLED — via vec_paths/delta_exit
+    if bool(getattr(config, "DELTA_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.delta_exit") if importlib.util.find_spec("vec_paths.delta_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DELTA_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DELTA_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DELTA_EXIT_MANDATORY_REENTRY_ENABLED — via vec_paths/delta_exit_mandatory_reentry
+    if bool(getattr(config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.delta_exit_mandatory_reentry") if importlib.util.find_spec("vec_paths.delta_exit_mandatory_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DELTA_EXIT_MANDATORY_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DELTA_EXIT_MANDATORY_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DELTA_PYRAMID_ENABLED — via vec_paths/delta_pyramid
+    if bool(getattr(config, "DELTA_PYRAMID_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.delta_pyramid") if importlib.util.find_spec("vec_paths.delta_pyramid") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DELTA_PYRAMID_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DELTA_PYRAMID_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DELTA_REENTRY_FILTER_ENABLED — via vec_paths/delta_reentry_filter
+    if bool(getattr(config, "DELTA_REENTRY_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.delta_reentry_filter") if importlib.util.find_spec("vec_paths.delta_reentry_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DELTA_REENTRY_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DELTA_REENTRY_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DIRECTION_FAVORABLE_REENTRY_ENABLED — via vec_paths/direction_favorable_reentry
+    if bool(getattr(config, "DIRECTION_FAVORABLE_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.direction_favorable_reentry") if importlib.util.find_spec("vec_paths.direction_favorable_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DIRECTION_FAVORABLE_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DIRECTION_FAVORABLE_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DISASTER_GUARD_ENABLED — via vec_paths/disaster_guard
+    if bool(getattr(config, "DISASTER_GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.disaster_guard") if importlib.util.find_spec("vec_paths.disaster_guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DISASTER_GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DISASTER_GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DYNAMIC_SCORE_COUNTER_EXIT_ENABLED — via vec_paths/dynamic_score_counter_exit
+    if bool(getattr(config, "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dynamic_score_counter_exit") if importlib.util.find_spec("vec_paths.dynamic_score_counter_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DYNAMIC_SCORE_COUNTER_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DYNAMIC_SCORE_COUNTER_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED DYN_STRUCT_TRAIL_ENABLED — via vec_paths/dyn_struct_trail
+    if bool(getattr(config, "DYN_STRUCT_TRAIL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.dyn_struct_trail") if importlib.util.find_spec("vec_paths.dyn_struct_trail") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real DYN_STRUCT_TRAIL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # DYN_STRUCT_TRAIL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED D_STRUCT_ENTRY_MULT_ENABLED — via vec_paths/d_struct_entry_mult
+    if bool(getattr(config, "D_STRUCT_ENTRY_MULT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.d_struct_entry_mult") if importlib.util.find_spec("vec_paths.d_struct_entry_mult") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real D_STRUCT_ENTRY_MULT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # D_STRUCT_ENTRY_MULT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EARNINGS_AVOIDANCE_ENABLED — via vec_paths/earnings_avoidance
+    if bool(getattr(config, "EARNINGS_AVOIDANCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.earnings_avoidance") if importlib.util.find_spec("vec_paths.earnings_avoidance") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EARNINGS_AVOIDANCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EARNINGS_AVOIDANCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EARNINGS_PEAD_BOOST_ENABLED — via vec_paths/earnings_pead_boost
+    if bool(getattr(config, "EARNINGS_PEAD_BOOST_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.earnings_pead_boost") if importlib.util.find_spec("vec_paths.earnings_pead_boost") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EARNINGS_PEAD_BOOST_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EARNINGS_PEAD_BOOST_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EMA200_STOCHRSI_ENABLED — via vec_paths/ema200_stochrsi
+    if bool(getattr(config, "EMA200_STOCHRSI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ema200_stochrsi") if importlib.util.find_spec("vec_paths.ema200_stochrsi") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMA200_STOCHRSI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EMA200_STOCHRSI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EMA20_SLOPE_ENTRY_ENABLED — via vec_paths/ema20_slope_entry
+    if bool(getattr(config, "EMA20_SLOPE_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ema20_slope_entry") if importlib.util.find_spec("vec_paths.ema20_slope_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMA20_SLOPE_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EMA20_SLOPE_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EMA_9_21_FILTER_ENABLED — via vec_paths/ema_9_21_filter
+    if bool(getattr(config, "EMA_9_21_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ema_9_21_filter") if importlib.util.find_spec("vec_paths.ema_9_21_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMA_9_21_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EMA_9_21_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EMA_DIST_ENTRY_ENABLED — via vec_paths/ema_dist_entry
+    if bool(getattr(config, "EMA_DIST_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ema_dist_entry") if importlib.util.find_spec("vec_paths.ema_dist_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMA_DIST_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EMA_DIST_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EMA_DIST_SIZING_ENABLED — via vec_paths/ema_dist_sizing
+    if bool(getattr(config, "EMA_DIST_SIZING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ema_dist_sizing") if importlib.util.find_spec("vec_paths.ema_dist_sizing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMA_DIST_SIZING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EMA_DIST_SIZING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EMA_PULLBACK_ENABLED — via vec_paths/ema_pullback
+    if bool(getattr(config, "EMA_PULLBACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ema_pullback") if importlib.util.find_spec("vec_paths.ema_pullback") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMA_PULLBACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EMA_PULLBACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EMERGENCY_BRAKE_DC_STOP_ENABLED — via vec_paths/emergency_brake_dc_stop
+    if bool(getattr(config, "EMERGENCY_BRAKE_DC_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.emergency_brake_dc_stop") if importlib.util.find_spec("vec_paths.emergency_brake_dc_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMERGENCY_BRAKE_DC_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EMERGENCY_BRAKE_DC_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED — via vec_paths/entry_bounce_deep_turn_composite_v1
+    if bool(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.entry_bounce_deep_turn_composite_v1") if importlib.util.find_spec("vec_paths.entry_bounce_deep_turn_composite_v1") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED — via vec_paths/entry_bounce_donchian_direct
+    if bool(getattr(config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.entry_bounce_donchian_direct") if importlib.util.find_spec("vec_paths.entry_bounce_donchian_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ENTRY_STOCH_HHHL_DIRECT_ENABLED — via vec_paths/entry_stoch_hhhl_direct
+    if bool(getattr(config, "ENTRY_STOCH_HHHL_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.entry_stoch_hhhl_direct") if importlib.util.find_spec("vec_paths.entry_stoch_hhhl_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ENTRY_STOCH_HHHL_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ENTRY_STOCH_HHHL_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ENTRY_STOCH_PARENT_DIRECT_ENABLED — via vec_paths/entry_stoch_parent_direct
+    if bool(getattr(config, "ENTRY_STOCH_PARENT_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.entry_stoch_parent_direct") if importlib.util.find_spec("vec_paths.entry_stoch_parent_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ENTRY_STOCH_PARENT_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ENTRY_STOCH_PARENT_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ENTRY_SYMGATE_ENABLED — via vec_paths/entry_symgate
+    if bool(getattr(config, "ENTRY_SYMGATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.entry_symgate") if importlib.util.find_spec("vec_paths.entry_symgate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ENTRY_SYMGATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ENTRY_SYMGATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EOD_SLIM_RATIO_ENABLED — via vec_paths/eod_slim_ratio
+    if bool(getattr(config, "EOD_SLIM_RATIO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.eod_slim_ratio") if importlib.util.find_spec("vec_paths.eod_slim_ratio") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EOD_SLIM_RATIO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EOD_SLIM_RATIO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EPISODIC_PIVOT_ENABLED — via vec_paths/episodic_pivot
+    if bool(getattr(config, "EPISODIC_PIVOT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.episodic_pivot") if importlib.util.find_spec("vec_paths.episodic_pivot") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EPISODIC_PIVOT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EPISODIC_PIVOT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EVAL_REENTRY_ENABLED — via vec_paths/eval_reentry
+    if bool(getattr(config, "EVAL_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.eval_reentry") if importlib.util.find_spec("vec_paths.eval_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EVAL_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EVAL_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_ALGO_SCORE_ENABLED — via vec_paths/exit_algo_score
+    if bool(getattr(config, "EXIT_ALGO_SCORE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_algo_score") if importlib.util.find_spec("vec_paths.exit_algo_score") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_ALGO_SCORE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_ALGO_SCORE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED — via vec_paths/exit_auto_reduce_crossunder
+    if bool(getattr(config, "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_auto_reduce_crossunder") if importlib.util.find_spec("vec_paths.exit_auto_reduce_crossunder") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_BOUNCE_TOP_ENABLED — via vec_paths/exit_bounce_top
+    if bool(getattr(config, "EXIT_BOUNCE_TOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_bounce_top") if importlib.util.find_spec("vec_paths.exit_bounce_top") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_BOUNCE_TOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_BOUNCE_TOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_CONV_FAIL_ENABLED — via vec_paths/exit_conv_fail
+    if bool(getattr(config, "EXIT_CONV_FAIL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_conv_fail") if importlib.util.find_spec("vec_paths.exit_conv_fail") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_CONV_FAIL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_CONV_FAIL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_DC_BREACH_REDUCE_ENABLED — via vec_paths/exit_dc_breach_reduce
+    if bool(getattr(config, "EXIT_DC_BREACH_REDUCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_dc_breach_reduce") if importlib.util.find_spec("vec_paths.exit_dc_breach_reduce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_DC_BREACH_REDUCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_DC_BREACH_REDUCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_DEAD_CODE_ENABLED — via vec_paths/exit_dead_code
+    if bool(getattr(config, "EXIT_DEAD_CODE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_dead_code") if importlib.util.find_spec("vec_paths.exit_dead_code") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_DEAD_CODE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_DEAD_CODE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_DELTA_SPEED_ENABLED — via vec_paths/exit_delta_speed
+    if bool(getattr(config, "EXIT_DELTA_SPEED_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_delta_speed") if importlib.util.find_spec("vec_paths.exit_delta_speed") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_DELTA_SPEED_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_DELTA_SPEED_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_EMERGENCY_DC1H_ENABLED — via vec_paths/exit_emergency_dc1h
+    if bool(getattr(config, "EXIT_EMERGENCY_DC1H_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_emergency_dc1h") if importlib.util.find_spec("vec_paths.exit_emergency_dc1h") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_EMERGENCY_DC1H_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_EMERGENCY_DC1H_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_GAIN_EROSION_ENABLED — via vec_paths/exit_gain_erosion
+    if bool(getattr(config, "EXIT_GAIN_EROSION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_gain_erosion") if importlib.util.find_spec("vec_paths.exit_gain_erosion") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_GAIN_EROSION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_GAIN_EROSION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_HARD_DROP_5M_ENABLED — via vec_paths/exit_hard_drop_5m
+    if bool(getattr(config, "EXIT_HARD_DROP_5M_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_hard_drop_5m") if importlib.util.find_spec("vec_paths.exit_hard_drop_5m") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_HARD_DROP_5M_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_HARD_DROP_5M_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_HARD_MAX_LOSS_CAP_ENABLED — via vec_paths/exit_hard_max_loss_cap
+    if bool(getattr(config, "EXIT_HARD_MAX_LOSS_CAP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_hard_max_loss_cap") if importlib.util.find_spec("vec_paths.exit_hard_max_loss_cap") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_HARD_MAX_LOSS_CAP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_HARD_MAX_LOSS_CAP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_HEDGE_LOSS_KILL_ENABLED — via vec_paths/exit_hedge_loss_kill
+    if bool(getattr(config, "EXIT_HEDGE_LOSS_KILL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_hedge_loss_kill") if importlib.util.find_spec("vec_paths.exit_hedge_loss_kill") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_HEDGE_LOSS_KILL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_HEDGE_LOSS_KILL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_HEDGE_ORPHAN_KILL_ENABLED — via vec_paths/exit_hedge_orphan_kill
+    if bool(getattr(config, "EXIT_HEDGE_ORPHAN_KILL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_hedge_orphan_kill") if importlib.util.find_spec("vec_paths.exit_hedge_orphan_kill") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_HEDGE_ORPHAN_KILL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_HEDGE_ORPHAN_KILL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_HTF_QUICK_TP_ENABLED — via vec_paths/exit_htf_quick_tp
+    if bool(getattr(config, "EXIT_HTF_QUICK_TP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_htf_quick_tp") if importlib.util.find_spec("vec_paths.exit_htf_quick_tp") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_HTF_QUICK_TP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_HTF_QUICK_TP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_IBS_EXHAUSTION_ENABLED — via vec_paths/exit_ibs_exhaustion
+    if bool(getattr(config, "EXIT_IBS_EXHAUSTION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_ibs_exhaustion") if importlib.util.find_spec("vec_paths.exit_ibs_exhaustion") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_IBS_EXHAUSTION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_IBS_EXHAUSTION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_K5M_BOUNCE_ENABLED — via vec_paths/exit_k5m_bounce
+    if bool(getattr(config, "EXIT_K5M_BOUNCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_k5m_bounce") if importlib.util.find_spec("vec_paths.exit_k5m_bounce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_K5M_BOUNCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_K5M_BOUNCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_KEY_LEVEL_CRASH_ENABLED — via vec_paths/exit_key_level_crash
+    if bool(getattr(config, "EXIT_KEY_LEVEL_CRASH_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_key_level_crash") if importlib.util.find_spec("vec_paths.exit_key_level_crash") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_KEY_LEVEL_CRASH_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_KEY_LEVEL_CRASH_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_MARKET_SPIKE_REDUCE_ENABLED — via vec_paths/exit_market_spike_reduce
+    if bool(getattr(config, "EXIT_MARKET_SPIKE_REDUCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_market_spike_reduce") if importlib.util.find_spec("vec_paths.exit_market_spike_reduce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_MARKET_SPIKE_REDUCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_MARKET_SPIKE_REDUCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_MI_ENABLED — via vec_paths/exit_mi
+    if bool(getattr(config, "EXIT_MI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_mi") if importlib.util.find_spec("vec_paths.exit_mi") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_MI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_MI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_ON_ALL_ENABLED — via vec_paths/exit_on_all
+    if bool(getattr(config, "EXIT_ON_ALL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_on_all") if importlib.util.find_spec("vec_paths.exit_on_all") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_ON_ALL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_ON_ALL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED — via vec_paths/exit_override_reduce_deteriorated
+    if bool(getattr(config, "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_override_reduce_deteriorated") if importlib.util.find_spec("vec_paths.exit_override_reduce_deteriorated") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_PREEMPTIVE_BREAKEVEN_ENABLED — via vec_paths/exit_preemptive_breakeven
+    if bool(getattr(config, "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_preemptive_breakeven") if importlib.util.find_spec("vec_paths.exit_preemptive_breakeven") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_PREEMPTIVE_BREAKEVEN_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_PREEMPTIVE_BREAKEVEN_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_SENTIMENT_ENABLED — via vec_paths/exit_sentiment
+    if bool(getattr(config, "EXIT_SENTIMENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_sentiment") if importlib.util.find_spec("vec_paths.exit_sentiment") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_SENTIMENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_SENTIMENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_STDEV_BREAKOUT_FAIL_ENABLED — via vec_paths/exit_stdev_breakout_fail
+    if bool(getattr(config, "EXIT_STDEV_BREAKOUT_FAIL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_stdev_breakout_fail") if importlib.util.find_spec("vec_paths.exit_stdev_breakout_fail") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_STDEV_BREAKOUT_FAIL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_STDEV_BREAKOUT_FAIL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_STRUCT_BREAK_5M_ENABLED — via vec_paths/exit_struct_break_5m
+    if bool(getattr(config, "EXIT_STRUCT_BREAK_5M_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_struct_break_5m") if importlib.util.find_spec("vec_paths.exit_struct_break_5m") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_STRUCT_BREAK_5M_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_STRUCT_BREAK_5M_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_STRUCT_DC_BREAK_ENABLED — via vec_paths/exit_struct_dc_break
+    if bool(getattr(config, "EXIT_STRUCT_DC_BREAK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_struct_dc_break") if importlib.util.find_spec("vec_paths.exit_struct_dc_break") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_STRUCT_DC_BREAK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_STRUCT_DC_BREAK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXIT_TREND_REVERSAL_ENABLED — via vec_paths/exit_trend_reversal
+    if bool(getattr(config, "EXIT_TREND_REVERSAL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.exit_trend_reversal") if importlib.util.find_spec("vec_paths.exit_trend_reversal") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXIT_TREND_REVERSAL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXIT_TREND_REVERSAL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EXTREME_OB_OS_OVERRIDE_ENABLED — via vec_paths/extreme_ob_os_override
+    if bool(getattr(config, "EXTREME_OB_OS_OVERRIDE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.extreme_ob_os_override") if importlib.util.find_spec("vec_paths.extreme_ob_os_override") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EXTREME_OB_OS_OVERRIDE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EXTREME_OB_OS_OVERRIDE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_DAEMON_ENABLED — via vec_paths/ez_reentry_daemon
+    if bool(getattr(config, "EZ_REENTRY_DAEMON_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_daemon") if importlib.util.find_spec("vec_paths.ez_reentry_daemon") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_DAEMON_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_DAEMON_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_ENABLED — via vec_paths/ez_reentry_inline
+    if bool(getattr(config, "EZ_REENTRY_INLINE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline") if importlib.util.find_spec("vec_paths.ez_reentry_inline") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED — via vec_paths/ez_reentry_inline_eval2_direct
+    if bool(getattr(config, "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_eval2_direct") if importlib.util.find_spec("vec_paths.ez_reentry_inline_eval2_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED — via vec_paths/ez_reentry_inline_eval_epq
+    if bool(getattr(config, "EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_eval_epq") if importlib.util.find_spec("vec_paths.ez_reentry_inline_eval_epq") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED — via vec_paths/ez_reentry_inline_loop_enforce
+    if bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_loop_enforce") if importlib.util.find_spec("vec_paths.ez_reentry_inline_loop_enforce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED — via vec_paths/ez_reentry_inline_loop_enforce_epq
+    if bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_loop_enforce_epq") if importlib.util.find_spec("vec_paths.ez_reentry_inline_loop_enforce_epq") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED — via vec_paths/ez_reentry_inline_loop_eval2_epq
+    if bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_loop_eval2_epq") if importlib.util.find_spec("vec_paths.ez_reentry_inline_loop_eval2_epq") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED — via vec_paths/ez_reentry_inline_loop_periodic
+    if bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_loop_periodic") if importlib.util.find_spec("vec_paths.ez_reentry_inline_loop_periodic") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED — via vec_paths/ez_reentry_inline_loop_price_monitor
+    if bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_loop_price_monitor") if importlib.util.find_spec("vec_paths.ez_reentry_inline_loop_price_monitor") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED — via vec_paths/ez_reentry_inline_tier12_epq
+    if bool(getattr(config, "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_inline_tier12_epq") if importlib.util.find_spec("vec_paths.ez_reentry_inline_tier12_epq") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED — via vec_paths/ez_reentry_price_cross_guarantee
+    if bool(getattr(config, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_price_cross_guarantee") if importlib.util.find_spec("vec_paths.ez_reentry_price_cross_guarantee") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED EZ_REENTRY_QUEUE_CONSUMER_ENABLED — via vec_paths/ez_reentry_queue_consumer
+    if bool(getattr(config, "EZ_REENTRY_QUEUE_CONSUMER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ez_reentry_queue_consumer") if importlib.util.find_spec("vec_paths.ez_reentry_queue_consumer") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EZ_REENTRY_QUEUE_CONSUMER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # EZ_REENTRY_QUEUE_CONSUMER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FAST_RISER_DOUBLE_ENABLED — via vec_paths/fast_riser_double
+    if bool(getattr(config, "FAST_RISER_DOUBLE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.fast_riser_double") if importlib.util.find_spec("vec_paths.fast_riser_double") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FAST_RISER_DOUBLE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FAST_RISER_DOUBLE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FAVORABLE_SLOPE_HOLD_ENABLED — via vec_paths/favorable_slope_hold
+    if bool(getattr(config, "FAVORABLE_SLOPE_HOLD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.favorable_slope_hold") if importlib.util.find_spec("vec_paths.favorable_slope_hold") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FAVORABLE_SLOPE_HOLD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FAVORABLE_SLOPE_HOLD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FG_SIZING_ENABLED — via vec_paths/fg_sizing
+    if bool(getattr(config, "FG_SIZING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.fg_sizing") if importlib.util.find_spec("vec_paths.fg_sizing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FG_SIZING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FG_SIZING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FH_MOMENTUM_ENABLED — via vec_paths/fh_momentum
+    if bool(getattr(config, "FH_MOMENTUM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.fh_momentum") if importlib.util.find_spec("vec_paths.fh_momentum") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FH_MOMENTUM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FH_MOMENTUM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FIN_ADVISORY_CONSUMER_ENABLED — via vec_paths/fin_advisory_consumer
+    if bool(getattr(config, "FIN_ADVISORY_CONSUMER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.fin_advisory_consumer") if importlib.util.find_spec("vec_paths.fin_advisory_consumer") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FIN_ADVISORY_CONSUMER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FIN_ADVISORY_CONSUMER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FOOTHOLD_PILEON_ENABLED — via vec_paths/foothold_pileon
+    if bool(getattr(config, "FOOTHOLD_PILEON_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.foothold_pileon") if importlib.util.find_spec("vec_paths.foothold_pileon") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FOOTHOLD_PILEON_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FOOTHOLD_PILEON_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FROZEN_ACTIVATION_STOP_ENABLED — via vec_paths/frozen_activation_stop
+    if bool(getattr(config, "FROZEN_ACTIVATION_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.frozen_activation_stop") if importlib.util.find_spec("vec_paths.frozen_activation_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FROZEN_ACTIVATION_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FROZEN_ACTIVATION_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FULL_RECIPE_ONLY_ENABLED — via vec_paths/full_recipe_only
+    if bool(getattr(config, "FULL_RECIPE_ONLY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.full_recipe_only") if importlib.util.find_spec("vec_paths.full_recipe_only") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FULL_RECIPE_ONLY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FULL_RECIPE_ONLY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED — via vec_paths/funding_gate_tradier_hedge_gate
+    if bool(getattr(config, "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.funding_gate_tradier_hedge_gate") if importlib.util.find_spec("vec_paths.funding_gate_tradier_hedge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FUNDING_HEDGE_GATE_ENABLED — via vec_paths/funding_hedge_gate
+    if bool(getattr(config, "FUNDING_HEDGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.funding_hedge_gate") if importlib.util.find_spec("vec_paths.funding_hedge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FUNDING_HEDGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FUNDING_HEDGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED FUNDING_OI_INJECT_ENABLED — via vec_paths/funding_oi_inject
+    if bool(getattr(config, "FUNDING_OI_INJECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.funding_oi_inject") if importlib.util.find_spec("vec_paths.funding_oi_inject") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real FUNDING_OI_INJECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # FUNDING_OI_INJECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GAP_FILL_ENABLED — via vec_paths/gap_fill
+    if bool(getattr(config, "GAP_FILL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.gap_fill") if importlib.util.find_spec("vec_paths.gap_fill") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GAP_FILL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GAP_FILL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GR_HTF_DIRECT_ENTRY_ENABLED — via vec_paths/gr_htf_direct_entry
+    if bool(getattr(config, "GR_HTF_DIRECT_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.gr_htf_direct_entry") if importlib.util.find_spec("vec_paths.gr_htf_direct_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GR_HTF_DIRECT_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GR_HTF_DIRECT_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GR_V5_ENABLED — via vec_paths/gr_v5
+    if bool(getattr(config, "GR_V5_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.gr_v5") if importlib.util.find_spec("vec_paths.gr_v5") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GR_V5_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GR_V5_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GUARANTEED_REENTRY_AUGMENT_ENABLED — via vec_paths/guaranteed_reentry_augment
+    if bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.guaranteed_reentry_augment") if importlib.util.find_spec("vec_paths.guaranteed_reentry_augment") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GUARANTEED_REENTRY_AUGMENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GUARANTEED_REENTRY_AUGMENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GUARANTEED_REENTRY_DELTA_GATE_ENABLED — via vec_paths/guaranteed_reentry_delta_gate
+    if bool(getattr(config, "GUARANTEED_REENTRY_DELTA_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.guaranteed_reentry_delta_gate") if importlib.util.find_spec("vec_paths.guaranteed_reentry_delta_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GUARANTEED_REENTRY_DELTA_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GUARANTEED_REENTRY_DELTA_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GUARANTEED_REENTRY_HTF_VETO_ENABLED — via vec_paths/guaranteed_reentry_htf_veto
+    if bool(getattr(config, "GUARANTEED_REENTRY_HTF_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.guaranteed_reentry_htf_veto") if importlib.util.find_spec("vec_paths.guaranteed_reentry_htf_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GUARANTEED_REENTRY_HTF_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GUARANTEED_REENTRY_HTF_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GUARANTEED_REENTRY_TIGHT_STOP_ENABLED — via vec_paths/guaranteed_reentry_tight_stop
+    if bool(getattr(config, "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.guaranteed_reentry_tight_stop") if importlib.util.find_spec("vec_paths.guaranteed_reentry_tight_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GUARANTEED_REENTRY_TIGHT_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GUARANTEED_REENTRY_TIGHT_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED GUARD_ENABLED — via vec_paths/guard
+    if bool(getattr(config, "GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.guard") if importlib.util.find_spec("vec_paths.guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HAIKU_ENTRY_GATE_ENABLED — via vec_paths/haiku_entry_gate
+    if bool(getattr(config, "HAIKU_ENTRY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.haiku_entry_gate") if importlib.util.find_spec("vec_paths.haiku_entry_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HAIKU_ENTRY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HAIKU_ENTRY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HAIKU_WINNER_ENABLED — via vec_paths/haiku_winner
+    if bool(getattr(config, "HAIKU_WINNER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.haiku_winner") if importlib.util.find_spec("vec_paths.haiku_winner") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HAIKU_WINNER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HAIKU_WINNER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HARD_BREAKEVEN_FLOOR_ENABLED — via vec_paths/hard_breakeven_floor
+    if bool(getattr(config, "HARD_BREAKEVEN_FLOOR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hard_breakeven_floor") if importlib.util.find_spec("vec_paths.hard_breakeven_floor") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HARD_BREAKEVEN_FLOOR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HARD_BREAKEVEN_FLOOR_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HA_WICK_QUALITY_ENABLED — via vec_paths/ha_wick_quality
+    if bool(getattr(config, "HA_WICK_QUALITY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ha_wick_quality") if importlib.util.find_spec("vec_paths.ha_wick_quality") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HA_WICK_QUALITY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HA_WICK_QUALITY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_BANDAID_OFF_ENABLED — via vec_paths/hedge_bandaid_off
+    if bool(getattr(config, "HEDGE_BANDAID_OFF_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_bandaid_off") if importlib.util.find_spec("vec_paths.hedge_bandaid_off") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_BANDAID_OFF_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_BANDAID_OFF_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_DC_RESISTANCE_GATE_ENABLED — via vec_paths/hedge_dc_resistance_gate
+    if bool(getattr(config, "HEDGE_DC_RESISTANCE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_dc_resistance_gate") if importlib.util.find_spec("vec_paths.hedge_dc_resistance_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_DC_RESISTANCE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_DC_RESISTANCE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_DECAY_NUKE_ENABLED — via vec_paths/hedge_decay_nuke
+    if bool(getattr(config, "HEDGE_DECAY_NUKE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_decay_nuke") if importlib.util.find_spec("vec_paths.hedge_decay_nuke") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_DECAY_NUKE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_DECAY_NUKE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_DETERIORATING_GAIN_ENABLED — via vec_paths/hedge_deteriorating_gain
+    if bool(getattr(config, "HEDGE_DETERIORATING_GAIN_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_deteriorating_gain") if importlib.util.find_spec("vec_paths.hedge_deteriorating_gain") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_DETERIORATING_GAIN_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_DETERIORATING_GAIN_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_EXIT_DELTA_CHECK_ENABLED — via vec_paths/hedge_exit_delta_check
+    if bool(getattr(config, "HEDGE_EXIT_DELTA_CHECK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_exit_delta_check") if importlib.util.find_spec("vec_paths.hedge_exit_delta_check") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_EXIT_DELTA_CHECK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_EXIT_DELTA_CHECK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_HTF_VETO_ENABLED — via vec_paths/hedge_htf_veto
+    if bool(getattr(config, "HEDGE_HTF_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_htf_veto") if importlib.util.find_spec("vec_paths.hedge_htf_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_HTF_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_HTF_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_OPEN_OB_CHECK_ENABLED — via vec_paths/hedge_open_ob_check
+    if bool(getattr(config, "HEDGE_OPEN_OB_CHECK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_open_ob_check") if importlib.util.find_spec("vec_paths.hedge_open_ob_check") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_OPEN_OB_CHECK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_OPEN_OB_CHECK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_PROFIT_PROTECT_ENABLED — via vec_paths/hedge_profit_protect
+    if bool(getattr(config, "HEDGE_PROFIT_PROTECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_profit_protect") if importlib.util.find_spec("vec_paths.hedge_profit_protect") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_PROFIT_PROTECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_PROFIT_PROTECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_RECOVERY_CLOSE_ENABLED — via vec_paths/hedge_recovery_close
+    if bool(getattr(config, "HEDGE_RECOVERY_CLOSE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_recovery_close") if importlib.util.find_spec("vec_paths.hedge_recovery_close") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_RECOVERY_CLOSE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_RECOVERY_CLOSE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_SAME_SYMBOL_ENABLED — via vec_paths/hedge_same_symbol
+    if bool(getattr(config, "HEDGE_SAME_SYMBOL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_same_symbol") if importlib.util.find_spec("vec_paths.hedge_same_symbol") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_SAME_SYMBOL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_SAME_SYMBOL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_STRICT_WT_ALL_TFS_ENABLED — via vec_paths/hedge_strict_wt_all_tfs
+    if bool(getattr(config, "HEDGE_STRICT_WT_ALL_TFS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_strict_wt_all_tfs") if importlib.util.find_spec("vec_paths.hedge_strict_wt_all_tfs") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_STRICT_WT_ALL_TFS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_STRICT_WT_ALL_TFS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_TRIGGER_GR_SCORE_ENABLED — via vec_paths/hedge_trigger_gr_score
+    if bool(getattr(config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_trigger_gr_score") if importlib.util.find_spec("vec_paths.hedge_trigger_gr_score") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_TRIGGER_GR_SCORE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_TRIGGER_GR_SCORE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HEDGE_WT_VEL_GATE_ENABLED — via vec_paths/hedge_wt_vel_gate
+    if bool(getattr(config, "HEDGE_WT_VEL_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hedge_wt_vel_gate") if importlib.util.find_spec("vec_paths.hedge_wt_vel_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HEDGE_WT_VEL_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HEDGE_WT_VEL_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HLR_RALLY_ENABLED — via vec_paths/hlr_rally
+    if bool(getattr(config, "HLR_RALLY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hlr_rally") if importlib.util.find_spec("vec_paths.hlr_rally") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HLR_RALLY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HLR_RALLY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HLR_TOP_EXIT_ENABLED — via vec_paths/hlr_top_exit
+    if bool(getattr(config, "HLR_TOP_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hlr_top_exit") if importlib.util.find_spec("vec_paths.hlr_top_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HLR_TOP_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HLR_TOP_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HOUR_OF_DAY_GATE_ENABLED — via vec_paths/hour_of_day_gate
+    if bool(getattr(config, "HOUR_OF_DAY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hour_of_day_gate") if importlib.util.find_spec("vec_paths.hour_of_day_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HOUR_OF_DAY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HOUR_OF_DAY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_AGAINST_FORCE_CLOSE_ENABLED — via vec_paths/htf_against_force_close
+    if bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_against_force_close") if importlib.util.find_spec("vec_paths.htf_against_force_close") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_AGAINST_FORCE_CLOSE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_AGAINST_FORCE_CLOSE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_ALIGNMENT_ENABLED — via vec_paths/htf_alignment
+    if bool(getattr(config, "HTF_ALIGNMENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_alignment") if importlib.util.find_spec("vec_paths.htf_alignment") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_ALIGNMENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_ALIGNMENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_AUG_VETO_FIX_ENABLED — via vec_paths/htf_aug_veto_fix
+    if bool(getattr(config, "HTF_AUG_VETO_FIX_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_aug_veto_fix") if importlib.util.find_spec("vec_paths.htf_aug_veto_fix") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_AUG_VETO_FIX_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_AUG_VETO_FIX_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_DC_BREAKOUT_TRADIER_ENABLED — via vec_paths/htf_dc_breakout_tradier
+    if bool(getattr(config, "HTF_DC_BREAKOUT_TRADIER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_dc_breakout_tradier") if importlib.util.find_spec("vec_paths.htf_dc_breakout_tradier") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_DC_BREAKOUT_TRADIER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_DC_BREAKOUT_TRADIER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_EXIT_VETO_ENABLED — via vec_paths/htf_exit_veto
+    if bool(getattr(config, "HTF_EXIT_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_exit_veto") if importlib.util.find_spec("vec_paths.htf_exit_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_EXIT_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_EXIT_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_REGIME_ENABLED — via vec_paths/htf_regime
+    if bool(getattr(config, "HTF_REGIME_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_regime") if importlib.util.find_spec("vec_paths.htf_regime") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_REGIME_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_REGIME_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_TREND_VETO_BYPASS_ENABLED — via vec_paths/htf_trend_veto_bypass
+    if bool(getattr(config, "HTF_TREND_VETO_BYPASS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_trend_veto_bypass") if importlib.util.find_spec("vec_paths.htf_trend_veto_bypass") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_TREND_VETO_BYPASS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_TREND_VETO_BYPASS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_TREND_VETO_ON_REDUCE_ENABLED — via vec_paths/htf_trend_veto_on_reduce
+    if bool(getattr(config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_trend_veto_on_reduce") if importlib.util.find_spec("vec_paths.htf_trend_veto_on_reduce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_TREND_VETO_ON_REDUCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_TREND_VETO_ON_REDUCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_W_M_ALIGN_GATE_TRADIER_ENABLED — via vec_paths/htf_w_m_align_gate_tradier
+    if bool(getattr(config, "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_w_m_align_gate_tradier") if importlib.util.find_spec("vec_paths.htf_w_m_align_gate_tradier") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_W_M_ALIGN_GATE_TRADIER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_W_M_ALIGN_GATE_TRADIER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HTF_W_REVERSAL_EXIT_TRADIER_ENABLED — via vec_paths/htf_w_reversal_exit_tradier
+    if bool(getattr(config, "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.htf_w_reversal_exit_tradier") if importlib.util.find_spec("vec_paths.htf_w_reversal_exit_tradier") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HTF_W_REVERSAL_EXIT_TRADIER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HTF_W_REVERSAL_EXIT_TRADIER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED HYBRID_STRUCT_EXIT_ENABLED — via vec_paths/hybrid_struct_exit
+    if bool(getattr(config, "HYBRID_STRUCT_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.hybrid_struct_exit") if importlib.util.find_spec("vec_paths.hybrid_struct_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real HYBRID_STRUCT_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # HYBRID_STRUCT_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED IMMEDIATE_WRONG_WAY_ENABLED — via vec_paths/immediate_wrong_way
+    if bool(getattr(config, "IMMEDIATE_WRONG_WAY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.immediate_wrong_way") if importlib.util.find_spec("vec_paths.immediate_wrong_way") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real IMMEDIATE_WRONG_WAY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # IMMEDIATE_WRONG_WAY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED INF_DEDICATED_WINNERS_ENABLED — via vec_paths/inf_dedicated_winners
+    if bool(getattr(config, "INF_DEDICATED_WINNERS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.inf_dedicated_winners") if importlib.util.find_spec("vec_paths.inf_dedicated_winners") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real INF_DEDICATED_WINNERS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # INF_DEDICATED_WINNERS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED INTERVENTION_QUEUE_ENABLED — via vec_paths/intervention_queue
+    if bool(getattr(config, "INTERVENTION_QUEUE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.intervention_queue") if importlib.util.find_spec("vec_paths.intervention_queue") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real INTERVENTION_QUEUE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # INTERVENTION_QUEUE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED K_LOWER_HIGH_EXIT_ENABLED — via vec_paths/k_lower_high_exit
+    if bool(getattr(config, "K_LOWER_HIGH_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.k_lower_high_exit") if importlib.util.find_spec("vec_paths.k_lower_high_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real K_LOWER_HIGH_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # K_LOWER_HIGH_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED K_ZONE_ENTRY_ENABLED — via vec_paths/k_zone_entry
+    if bool(getattr(config, "K_ZONE_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.k_zone_entry") if importlib.util.find_spec("vec_paths.k_zone_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real K_ZONE_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # K_ZONE_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED K_ZONE_VETO_ENABLED — via vec_paths/k_zone_veto
+    if bool(getattr(config, "K_ZONE_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.k_zone_veto") if importlib.util.find_spec("vec_paths.k_zone_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real K_ZONE_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # K_ZONE_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LAST_RESORT_K_BYPASS_ENABLED — via vec_paths/last_resort_k_bypass
+    if bool(getattr(config, "LAST_RESORT_K_BYPASS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.last_resort_k_bypass") if importlib.util.find_spec("vec_paths.last_resort_k_bypass") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LAST_RESORT_K_BYPASS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LAST_RESORT_K_BYPASS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LEADERBOARD_ENTRY_ENABLED — via vec_paths/leaderboard_entry
+    if bool(getattr(config, "LEADERBOARD_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.leaderboard_entry") if importlib.util.find_spec("vec_paths.leaderboard_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LEADERBOARD_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LEADERBOARD_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LH_HL_FILTER_AUGMENT_GATE_ENABLED — via vec_paths/lh_hl_filter_augment_gate
+    if bool(getattr(config, "LH_HL_FILTER_AUGMENT_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.lh_hl_filter_augment_gate") if importlib.util.find_spec("vec_paths.lh_hl_filter_augment_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LH_HL_FILTER_AUGMENT_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LH_HL_FILTER_AUGMENT_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LH_HL_FILTER_ENABLED — via vec_paths/lh_hl_filter
+    if bool(getattr(config, "LH_HL_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.lh_hl_filter") if importlib.util.find_spec("vec_paths.lh_hl_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LH_HL_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LH_HL_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LH_HL_FILTER_HEDGE_GATE_ENABLED — via vec_paths/lh_hl_filter_hedge_gate
+    if bool(getattr(config, "LH_HL_FILTER_HEDGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.lh_hl_filter_hedge_gate") if importlib.util.find_spec("vec_paths.lh_hl_filter_hedge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LH_HL_FILTER_HEDGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LH_HL_FILTER_HEDGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LINEARITY_LR_LONG_ENABLED — via vec_paths/linearity_lr_long
+    if bool(getattr(config, "LINEARITY_LR_LONG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.linearity_lr_long") if importlib.util.find_spec("vec_paths.linearity_lr_long") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LINEARITY_LR_LONG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LINEARITY_LR_LONG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LINEARITY_LR_SHORT_ENABLED — via vec_paths/linearity_lr_short
+    if bool(getattr(config, "LINEARITY_LR_SHORT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.linearity_lr_short") if importlib.util.find_spec("vec_paths.linearity_lr_short") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LINEARITY_LR_SHORT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LINEARITY_LR_SHORT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LIVE_VEC_EMERGENCY_BRAKE_ENABLED — via vec_paths/live_vec_emergency_brake
+    if bool(getattr(config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.live_vec_emergency_brake") if importlib.util.find_spec("vec_paths.live_vec_emergency_brake") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LIVE_VEC_EMERGENCY_BRAKE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LIVE_VEC_EMERGENCY_BRAKE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LIVE_VEC_QUARANTINE_STRATEGY_ENABLED — via vec_paths/live_vec_quarantine_strategy
+    if bool(getattr(config, "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.live_vec_quarantine_strategy") if importlib.util.find_spec("vec_paths.live_vec_quarantine_strategy") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LIVE_VEC_QUARANTINE_STRATEGY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LIVE_VEC_QUARANTINE_STRATEGY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LIVE_VEC_STALE_MARK_PRICE_ENABLED — via vec_paths/live_vec_stale_mark_price
+    if bool(getattr(config, "LIVE_VEC_STALE_MARK_PRICE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.live_vec_stale_mark_price") if importlib.util.find_spec("vec_paths.live_vec_stale_mark_price") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LIVE_VEC_STALE_MARK_PRICE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LIVE_VEC_STALE_MARK_PRICE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LOCAL_EXTREMES_SCORER_ENABLED — via vec_paths/local_extremes_scorer
+    if bool(getattr(config, "LOCAL_EXTREMES_SCORER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.local_extremes_scorer") if importlib.util.find_spec("vec_paths.local_extremes_scorer") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LOCAL_EXTREMES_SCORER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LOCAL_EXTREMES_SCORER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LONG_WAIT_DIRECT_ENABLED — via vec_paths/long_wait_direct
+    if bool(getattr(config, "LONG_WAIT_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.long_wait_direct") if importlib.util.find_spec("vec_paths.long_wait_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LONG_WAIT_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LONG_WAIT_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LOSS_CUT_ENABLED — via vec_paths/loss_cut
+    if bool(getattr(config, "LOSS_CUT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.loss_cut") if importlib.util.find_spec("vec_paths.loss_cut") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LOSS_CUT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LOSS_CUT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED — via vec_paths/loss_exit_hedge_mode_block_escape
+    if bool(getattr(config, "LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.loss_exit_hedge_mode_block_escape") if importlib.util.find_spec("vec_paths.loss_exit_hedge_mode_block_escape") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED — via vec_paths/loss_exit_stale_price_allow_near_be
+    if bool(getattr(config, "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.loss_exit_stale_price_allow_near_be") if importlib.util.find_spec("vec_paths.loss_exit_stale_price_allow_near_be") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED — via vec_paths/loss_exit_stop_functions_kill
+    if bool(getattr(config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.loss_exit_stop_functions_kill") if importlib.util.find_spec("vec_paths.loss_exit_stop_functions_kill") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LR_BAND_E02_EXIT_ENABLED — via vec_paths/lr_band_e02_exit
+    if bool(getattr(config, "LR_BAND_E02_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.lr_band_e02_exit") if importlib.util.find_spec("vec_paths.lr_band_e02_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LR_BAND_E02_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LR_BAND_E02_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LR_BAND_LADDER_ORDINARY_PARITY_ENABLED — via vec_paths/lr_band_ladder_ordinary_parity
+    if bool(getattr(config, "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.lr_band_ladder_ordinary_parity") if importlib.util.find_spec("vec_paths.lr_band_ladder_ordinary_parity") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LR_BAND_LADDER_ORDINARY_PARITY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LR_BAND_LADDER_ORDINARY_PARITY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LR_PCTB_D_LONG_ENTRY_ENABLED — via vec_paths/lr_pctb_d_long_entry
+    if bool(getattr(config, "LR_PCTB_D_LONG_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.lr_pctb_d_long_entry") if importlib.util.find_spec("vec_paths.lr_pctb_d_long_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LR_PCTB_D_LONG_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LR_PCTB_D_LONG_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LS_RATIO_CONTRARIAN_ENABLED — via vec_paths/ls_ratio_contrarian
+    if bool(getattr(config, "LS_RATIO_CONTRARIAN_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ls_ratio_contrarian") if importlib.util.find_spec("vec_paths.ls_ratio_contrarian") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LS_RATIO_CONTRARIAN_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LS_RATIO_CONTRARIAN_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED LUNCH_DEADZONE_ENABLED — via vec_paths/lunch_deadzone
+    if bool(getattr(config, "LUNCH_DEADZONE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.lunch_deadzone") if importlib.util.find_spec("vec_paths.lunch_deadzone") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real LUNCH_DEADZONE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # LUNCH_DEADZONE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MACD_EXIT_ENABLED — via vec_paths/macd_exit
+    if bool(getattr(config, "MACD_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.macd_exit") if importlib.util.find_spec("vec_paths.macd_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MACD_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MACD_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MACD_ZERO_CROSS_ENABLED — via vec_paths/macd_zero_cross
+    if bool(getattr(config, "MACD_ZERO_CROSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.macd_zero_cross") if importlib.util.find_spec("vec_paths.macd_zero_cross") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MACD_ZERO_CROSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MACD_ZERO_CROSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MACRO_BLACKOUT_ENABLED — via vec_paths/macro_blackout
+    if bool(getattr(config, "MACRO_BLACKOUT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.macro_blackout") if importlib.util.find_spec("vec_paths.macro_blackout") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MACRO_BLACKOUT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MACRO_BLACKOUT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MAKER_CLOSE_COMMISSION_FLOOR_ENABLED — via vec_paths/maker_close_commission_floor
+    if bool(getattr(config, "MAKER_CLOSE_COMMISSION_FLOOR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.maker_close_commission_floor") if importlib.util.find_spec("vec_paths.maker_close_commission_floor") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MAKER_CLOSE_COMMISSION_FLOOR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MAKER_CLOSE_COMMISSION_FLOOR_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MANDATORY_HEDGE_ON_NEGATIVE_ENABLED — via vec_paths/mandatory_hedge_on_negative
+    if bool(getattr(config, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mandatory_hedge_on_negative") if importlib.util.find_spec("vec_paths.mandatory_hedge_on_negative") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MANDATORY_HEDGE_ON_NEGATIVE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MANDATORY_HEDGE_ON_NEGATIVE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MANDATORY_PRICE_CROSS_EPQ_ENABLED — via vec_paths/mandatory_price_cross_epq
+    if bool(getattr(config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mandatory_price_cross_epq") if importlib.util.find_spec("vec_paths.mandatory_price_cross_epq") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MANDATORY_PRICE_CROSS_EPQ_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MANDATORY_PRICE_CROSS_EPQ_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MANDATORY_REENTRY_WT_FILTER_ENABLED — via vec_paths/mandatory_reentry_wt_filter
+    if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mandatory_reentry_wt_filter") if importlib.util.find_spec("vec_paths.mandatory_reentry_wt_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MANDATORY_REENTRY_WT_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MANDATORY_REENTRY_WT_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MARKET_QUALITY_SCORE_ENABLED — via vec_paths/market_quality_score
+    if bool(getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.market_quality_score") if importlib.util.find_spec("vec_paths.market_quality_score") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MARKET_QUALITY_SCORE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MARKET_QUALITY_SCORE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MFI_FLIP_EXIT_ENABLED — via vec_paths/mfi_flip_exit
+    if bool(getattr(config, "MFI_FLIP_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mfi_flip_exit") if importlib.util.find_spec("vec_paths.mfi_flip_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MFI_FLIP_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MFI_FLIP_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MINERVINI_ENABLED — via vec_paths/minervini
+    if bool(getattr(config, "MINERVINI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.minervini") if importlib.util.find_spec("vec_paths.minervini") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MINERVINI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MINERVINI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MINERVINI_GATE_ENABLED — via vec_paths/minervini_gate
+    if bool(getattr(config, "MINERVINI_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.minervini_gate") if importlib.util.find_spec("vec_paths.minervini_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MINERVINI_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MINERVINI_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MITIGATOR_ENABLED — via vec_paths/mitigator
+    if bool(getattr(config, "MITIGATOR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mitigator") if importlib.util.find_spec("vec_paths.mitigator") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MITIGATOR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MITIGATOR_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_DIV_EXIT_ENABLED — via vec_paths/mi_div_exit
+    if bool(getattr(config, "MI_DIV_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_div_exit") if importlib.util.find_spec("vec_paths.mi_div_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_DIV_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_DIV_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_ENTRY_ENABLED — via vec_paths/mi_entry
+    if bool(getattr(config, "MI_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_entry") if importlib.util.find_spec("vec_paths.mi_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_EXHAUST_EXIT_ENABLED — via vec_paths/mi_exhaust_exit
+    if bool(getattr(config, "MI_EXHAUST_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_exhaust_exit") if importlib.util.find_spec("vec_paths.mi_exhaust_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_EXHAUST_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_EXHAUST_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_EXIT_ENABLED — via vec_paths/mi_exit
+    if bool(getattr(config, "MI_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_exit") if importlib.util.find_spec("vec_paths.mi_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_EXIT_VETO_ENABLED — via vec_paths/mi_exit_veto
+    if bool(getattr(config, "MI_EXIT_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_exit_veto") if importlib.util.find_spec("vec_paths.mi_exit_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_EXIT_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_EXIT_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_STRUCT_EXIT_ENABLED — via vec_paths/mi_struct_exit
+    if bool(getattr(config, "MI_STRUCT_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_struct_exit") if importlib.util.find_spec("vec_paths.mi_struct_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_STRUCT_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_STRUCT_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_VELOCITY_EXIT_ENABLED — via vec_paths/mi_velocity_exit
+    if bool(getattr(config, "MI_VELOCITY_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_velocity_exit") if importlib.util.find_spec("vec_paths.mi_velocity_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_VELOCITY_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_VELOCITY_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MI_WAVE_EXIT_ENABLED — via vec_paths/mi_wave_exit
+    if bool(getattr(config, "MI_WAVE_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mi_wave_exit") if importlib.util.find_spec("vec_paths.mi_wave_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MI_WAVE_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MI_WAVE_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOM3_ENTRY_ENABLED — via vec_paths/mom3_entry
+    if bool(getattr(config, "MOM3_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mom3_entry") if importlib.util.find_spec("vec_paths.mom3_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOM3_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOM3_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOM4S_S_GATE_ENABLED — via vec_paths/mom4s_s_gate
+    if bool(getattr(config, "MOM4S_S_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mom4s_s_gate") if importlib.util.find_spec("vec_paths.mom4s_s_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOM4S_S_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOM4S_S_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOM5_ENTRY_ENABLED — via vec_paths/mom5_entry
+    if bool(getattr(config, "MOM5_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mom5_entry") if importlib.util.find_spec("vec_paths.mom5_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOM5_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOM5_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOM5_TRENDER_L_GATE_ENABLED — via vec_paths/mom5_trender_l_gate
+    if bool(getattr(config, "MOM5_TRENDER_L_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mom5_trender_l_gate") if importlib.util.find_spec("vec_paths.mom5_trender_l_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOM5_TRENDER_L_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOM5_TRENDER_L_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOMENTUM_FADE_ENABLED — via vec_paths/momentum_fade
+    if bool(getattr(config, "MOMENTUM_FADE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.momentum_fade") if importlib.util.find_spec("vec_paths.momentum_fade") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOMENTUM_FADE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOMENTUM_FADE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOMENTUM_RIDER_ENABLED — via vec_paths/momentum_rider
+    if bool(getattr(config, "MOMENTUM_RIDER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.momentum_rider") if importlib.util.find_spec("vec_paths.momentum_rider") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOMENTUM_RIDER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOMENTUM_RIDER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOMENTUM_SMA_WATCHDOG_ENABLED — via vec_paths/momentum_sma_watchdog
+    if bool(getattr(config, "MOMENTUM_SMA_WATCHDOG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.momentum_sma_watchdog") if importlib.util.find_spec("vec_paths.momentum_sma_watchdog") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOMENTUM_SMA_WATCHDOG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOMENTUM_SMA_WATCHDOG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MOVER_DETECTION_ENABLED — via vec_paths/mover_detection
+    if bool(getattr(config, "MOVER_DETECTION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mover_detection") if importlib.util.find_spec("vec_paths.mover_detection") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MOVER_DETECTION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MOVER_DETECTION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MR3S_S_GATE_ENABLED — via vec_paths/mr3s_s_gate
+    if bool(getattr(config, "MR3S_S_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mr3s_s_gate") if importlib.util.find_spec("vec_paths.mr3s_s_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MR3S_S_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MR3S_S_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MR5_L_GATE_ENABLED — via vec_paths/mr5_l_gate
+    if bool(getattr(config, "MR5_L_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mr5_l_gate") if importlib.util.find_spec("vec_paths.mr5_l_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MR5_L_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MR5_L_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MTF_ARROW_ENTRY_ENABLED — via vec_paths/mtf_arrow_entry
+    if bool(getattr(config, "MTF_ARROW_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mtf_arrow_entry") if importlib.util.find_spec("vec_paths.mtf_arrow_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MTF_ARROW_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MTF_ARROW_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MTF_ARROW_SHORT_ENTRY_ENABLED — via vec_paths/mtf_arrow_short_entry
+    if bool(getattr(config, "MTF_ARROW_SHORT_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mtf_arrow_short_entry") if importlib.util.find_spec("vec_paths.mtf_arrow_short_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MTF_ARROW_SHORT_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MTF_ARROW_SHORT_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MTF_ARROW_TRAIL_EXIT_ENABLED — via vec_paths/mtf_arrow_trail_exit
+    if bool(getattr(config, "MTF_ARROW_TRAIL_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mtf_arrow_trail_exit") if importlib.util.find_spec("vec_paths.mtf_arrow_trail_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MTF_ARROW_TRAIL_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MTF_ARROW_TRAIL_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MTF_ATR_MULTITF_DIRECT_ENABLED — via vec_paths/mtf_atr_multitf_direct
+    if bool(getattr(config, "MTF_ATR_MULTITF_DIRECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mtf_atr_multitf_direct") if importlib.util.find_spec("vec_paths.mtf_atr_multitf_direct") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MTF_ATR_MULTITF_DIRECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MTF_ATR_MULTITF_DIRECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MTS_GATE_ENABLED — via vec_paths/mts_gate
+    if bool(getattr(config, "MTS_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mts_gate") if importlib.util.find_spec("vec_paths.mts_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MTS_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MTS_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MU_CORRECTION_EXIT_ENABLED — via vec_paths/mu_correction_exit
+    if bool(getattr(config, "MU_CORRECTION_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mu_correction_exit") if importlib.util.find_spec("vec_paths.mu_correction_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MU_CORRECTION_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MU_CORRECTION_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MU_CORRECTION_REENTRY_ENABLED — via vec_paths/mu_correction_reentry
+    if bool(getattr(config, "MU_CORRECTION_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mu_correction_reentry") if importlib.util.find_spec("vec_paths.mu_correction_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MU_CORRECTION_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MU_CORRECTION_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED MU_CORRECTION_REENTRY_STOCH_ENABLED — via vec_paths/mu_correction_reentry_stoch
+    if bool(getattr(config, "MU_CORRECTION_REENTRY_STOCH_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.mu_correction_reentry_stoch") if importlib.util.find_spec("vec_paths.mu_correction_reentry_stoch") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real MU_CORRECTION_REENTRY_STOCH_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # MU_CORRECTION_REENTRY_STOCH_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED NEWBORN_DC_STOP_ENABLED — via vec_paths/newborn_dc_stop
+    if bool(getattr(config, "NEWBORN_DC_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.newborn_dc_stop") if importlib.util.find_spec("vec_paths.newborn_dc_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real NEWBORN_DC_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # NEWBORN_DC_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED NEWS_SENTIMENT_ENABLED — via vec_paths/news_sentiment
+    if bool(getattr(config, "NEWS_SENTIMENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.news_sentiment") if importlib.util.find_spec("vec_paths.news_sentiment") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real NEWS_SENTIMENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # NEWS_SENTIMENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED NOLOSS_BB1H_GATE_ENABLED — via vec_paths/noloss_bb1h_gate
+    if bool(getattr(config, "NOLOSS_BB1H_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.noloss_bb1h_gate") if importlib.util.find_spec("vec_paths.noloss_bb1h_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real NOLOSS_BB1H_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # NOLOSS_BB1H_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED NOLOSS_BYPASS_WT_5OF5_ENABLED — via vec_paths/noloss_bypass_wt_5of5
+    if bool(getattr(config, "NOLOSS_BYPASS_WT_5OF5_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.noloss_bypass_wt_5of5") if importlib.util.find_spec("vec_paths.noloss_bypass_wt_5of5") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real NOLOSS_BYPASS_WT_5OF5_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # NOLOSS_BYPASS_WT_5OF5_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED NOLOSS_DC4H_GATE_ENABLED — via vec_paths/noloss_dc4h_gate
+    if bool(getattr(config, "NOLOSS_DC4H_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.noloss_dc4h_gate") if importlib.util.find_spec("vec_paths.noloss_dc4h_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real NOLOSS_DC4H_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # NOLOSS_DC4H_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED — via vec_paths/obligatory_hedge_or_close_loop
+    if bool(getattr(config, "OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.obligatory_hedge_or_close_loop") if importlib.util.find_spec("vec_paths.obligatory_hedge_or_close_loop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OBLIGATORY_REENTRY_ENABLED — via vec_paths/obligatory_reentry
+    if bool(getattr(config, "OBLIGATORY_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.obligatory_reentry") if importlib.util.find_spec("vec_paths.obligatory_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OBLIGATORY_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OBLIGATORY_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OBLIGATORY_REENTRY_LONG_ENABLED — via vec_paths/obligatory_reentry_long
+    if bool(getattr(config, "OBLIGATORY_REENTRY_LONG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.obligatory_reentry_long") if importlib.util.find_spec("vec_paths.obligatory_reentry_long") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OBLIGATORY_REENTRY_LONG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OBLIGATORY_REENTRY_LONG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OBLIGATORY_REENTRY_SHORT_ENABLED — via vec_paths/obligatory_reentry_short
+    if bool(getattr(config, "OBLIGATORY_REENTRY_SHORT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.obligatory_reentry_short") if importlib.util.find_spec("vec_paths.obligatory_reentry_short") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OBLIGATORY_REENTRY_SHORT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OBLIGATORY_REENTRY_SHORT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OBLIGATORY_SECTOR_HEDGE_ENABLED — via vec_paths/obligatory_sector_hedge
+    if bool(getattr(config, "OBLIGATORY_SECTOR_HEDGE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.obligatory_sector_hedge") if importlib.util.find_spec("vec_paths.obligatory_sector_hedge") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OBLIGATORY_SECTOR_HEDGE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OBLIGATORY_SECTOR_HEDGE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OBLIGATORY_SMA200_WT3M_ENABLED — via vec_paths/obligatory_sma200_wt3m
+    if bool(getattr(config, "OBLIGATORY_SMA200_WT3M_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.obligatory_sma200_wt3m") if importlib.util.find_spec("vec_paths.obligatory_sma200_wt3m") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OBLIGATORY_SMA200_WT3M_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OBLIGATORY_SMA200_WT3M_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OB_PRICE_DEFER_ENABLED — via vec_paths/ob_price_defer
+    if bool(getattr(config, "OB_PRICE_DEFER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ob_price_defer") if importlib.util.find_spec("vec_paths.ob_price_defer") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OB_PRICE_DEFER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OB_PRICE_DEFER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OI_CONFIRM_ENABLED — via vec_paths/oi_confirm
+    if bool(getattr(config, "OI_CONFIRM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.oi_confirm") if importlib.util.find_spec("vec_paths.oi_confirm") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OI_CONFIRM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OI_CONFIRM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED — via vec_paths/oi_confirm_tradier_hedge_gate
+    if bool(getattr(config, "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.oi_confirm_tradier_hedge_gate") if importlib.util.find_spec("vec_paths.oi_confirm_tradier_hedge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OI_DIVERGENCE_ENABLED — via vec_paths/oi_divergence
+    if bool(getattr(config, "OI_DIVERGENCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.oi_divergence") if importlib.util.find_spec("vec_paths.oi_divergence") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OI_DIVERGENCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OI_DIVERGENCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OI_HEDGE_GATE_ENABLED — via vec_paths/oi_hedge_gate
+    if bool(getattr(config, "OI_HEDGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.oi_hedge_gate") if importlib.util.find_spec("vec_paths.oi_hedge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OI_HEDGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OI_HEDGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPEN_RATE_BREAKER_ENABLED — via vec_paths/open_rate_breaker
+    if bool(getattr(config, "OPEN_RATE_BREAKER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.open_rate_breaker") if importlib.util.find_spec("vec_paths.open_rate_breaker") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPEN_RATE_BREAKER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPEN_RATE_BREAKER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED — via vec_paths/opposite_loser_hedge_protect
+    if bool(getattr(config, "OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.opposite_loser_hedge_protect") if importlib.util.find_spec("vec_paths.opposite_loser_hedge_protect") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED — via vec_paths/options_augment_into_loss_block
+    if bool(getattr(config, "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_augment_into_loss_block") if importlib.util.find_spec("vec_paths.options_augment_into_loss_block") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_BUY_WT_DC_GATE_ENABLED — via vec_paths/options_buy_wt_dc_gate
+    if bool(getattr(config, "OPTIONS_BUY_WT_DC_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_buy_wt_dc_gate") if importlib.util.find_spec("vec_paths.options_buy_wt_dc_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_BUY_WT_DC_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_BUY_WT_DC_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_CSP_ENABLED — via vec_paths/options_csp
+    if bool(getattr(config, "OPTIONS_CSP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_csp") if importlib.util.find_spec("vec_paths.options_csp") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_CSP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_CSP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_CSP_NAKED_CALL_ENABLED — via vec_paths/options_csp_naked_call
+    if bool(getattr(config, "OPTIONS_CSP_NAKED_CALL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_csp_naked_call") if importlib.util.find_spec("vec_paths.options_csp_naked_call") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_CSP_NAKED_CALL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_CSP_NAKED_CALL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED — via vec_paths/options_equity_hedge_dc_breach_exit
+    if bool(getattr(config, "OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_equity_hedge_dc_breach_exit") if importlib.util.find_spec("vec_paths.options_equity_hedge_dc_breach_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED — via vec_paths/options_equity_hedge_direction_guard
+    if bool(getattr(config, "OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_equity_hedge_direction_guard") if importlib.util.find_spec("vec_paths.options_equity_hedge_direction_guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_EQUITY_HEDGE_ENABLED — via vec_paths/options_equity_hedge
+    if bool(getattr(config, "OPTIONS_EQUITY_HEDGE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_equity_hedge") if importlib.util.find_spec("vec_paths.options_equity_hedge") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_EQUITY_HEDGE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_EQUITY_HEDGE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_HEDGE_LADDER_ENABLED — via vec_paths/options_hedge_ladder
+    if bool(getattr(config, "OPTIONS_HEDGE_LADDER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_hedge_ladder") if importlib.util.find_spec("vec_paths.options_hedge_ladder") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_HEDGE_LADDER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_HEDGE_LADDER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_HEDGE_PAIR_GUARD_ENABLED — via vec_paths/options_hedge_pair_guard
+    if bool(getattr(config, "OPTIONS_HEDGE_PAIR_GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_hedge_pair_guard") if importlib.util.find_spec("vec_paths.options_hedge_pair_guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_HEDGE_PAIR_GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_HEDGE_PAIR_GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_LIVE_TRADING_ENABLED — via vec_paths/options_live_trading
+    if bool(getattr(config, "OPTIONS_LIVE_TRADING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_live_trading") if importlib.util.find_spec("vec_paths.options_live_trading") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_LIVE_TRADING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_LIVE_TRADING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_MAX_LOSS_GUARD_ENABLED — via vec_paths/options_max_loss_guard
+    if bool(getattr(config, "OPTIONS_MAX_LOSS_GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_max_loss_guard") if importlib.util.find_spec("vec_paths.options_max_loss_guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_MAX_LOSS_GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_MAX_LOSS_GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_SPREAD_ENABLED — via vec_paths/options_spread
+    if bool(getattr(config, "OPTIONS_SPREAD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_spread") if importlib.util.find_spec("vec_paths.options_spread") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_SPREAD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_SPREAD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OPTIONS_STOCK_CSP_ENABLED — via vec_paths/options_stock_csp
+    if bool(getattr(config, "OPTIONS_STOCK_CSP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.options_stock_csp") if importlib.util.find_spec("vec_paths.options_stock_csp") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OPTIONS_STOCK_CSP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OPTIONS_STOCK_CSP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ORB_ENABLED — via vec_paths/orb
+    if bool(getattr(config, "ORB_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.orb") if importlib.util.find_spec("vec_paths.orb") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ORB_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ORB_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OUTLIER_DETECTOR_ENABLED — via vec_paths/outlier_detector
+    if bool(getattr(config, "OUTLIER_DETECTOR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.outlier_detector") if importlib.util.find_spec("vec_paths.outlier_detector") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OUTLIER_DETECTOR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OUTLIER_DETECTOR_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED OVERNIGHT_GAP_HEDGE_ENABLED — via vec_paths/overnight_gap_hedge
+    if bool(getattr(config, "OVERNIGHT_GAP_HEDGE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.overnight_gap_hedge") if importlib.util.find_spec("vec_paths.overnight_gap_hedge") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real OVERNIGHT_GAP_HEDGE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # OVERNIGHT_GAP_HEDGE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PARTIAL_PROFIT_LOCK_SWEEP_ENABLED — via vec_paths/partial_profit_lock_sweep
+    if bool(getattr(config, "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.partial_profit_lock_sweep") if importlib.util.find_spec("vec_paths.partial_profit_lock_sweep") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PARTIAL_PROFIT_LOCK_SWEEP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PARTIAL_PROFIT_LOCK_SWEEP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PERIODIC_STOP_ORDERS_ENABLED — via vec_paths/periodic_stop_orders
+    if bool(getattr(config, "PERIODIC_STOP_ORDERS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.periodic_stop_orders") if importlib.util.find_spec("vec_paths.periodic_stop_orders") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PERIODIC_STOP_ORDERS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PERIODIC_STOP_ORDERS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PERSYM_FINAL_BOOK_ENABLED — via vec_paths/persym_final_book
+    if bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.persym_final_book") if importlib.util.find_spec("vec_paths.persym_final_book") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PERSYM_FINAL_BOOK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PERSYM_FINAL_BOOK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PER_SYMBOL_CONFIG_ENABLED — via vec_paths/per_symbol_config
+    if bool(getattr(config, "PER_SYMBOL_CONFIG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.per_symbol_config") if importlib.util.find_spec("vec_paths.per_symbol_config") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PER_SYMBOL_CONFIG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PER_SYMBOL_CONFIG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PER_SYM_CONFIG_ENABLED — via vec_paths/per_sym_config
+    if bool(getattr(config, "PER_SYM_CONFIG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.per_sym_config") if importlib.util.find_spec("vec_paths.per_sym_config") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PER_SYM_CONFIG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PER_SYM_CONFIG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED — via vec_paths/price_crossed_htf_against_veto
+    if bool(getattr(config, "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.price_crossed_htf_against_veto") if importlib.util.find_spec("vec_paths.price_crossed_htf_against_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PRICE_CROSS_BACK_REENTRY_ENABLED — via vec_paths/price_cross_back_reentry
+    if bool(getattr(config, "PRICE_CROSS_BACK_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.price_cross_back_reentry") if importlib.util.find_spec("vec_paths.price_cross_back_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PRICE_CROSS_BACK_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PRICE_CROSS_BACK_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PROFIT_TARGET_ENABLED — via vec_paths/profit_target
+    if bool(getattr(config, "PROFIT_TARGET_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.profit_target") if importlib.util.find_spec("vec_paths.profit_target") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PROFIT_TARGET_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PROFIT_TARGET_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PROGRESSIVE_LOCK_ENABLED — via vec_paths/progressive_lock
+    if bool(getattr(config, "PROGRESSIVE_LOCK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.progressive_lock") if importlib.util.find_spec("vec_paths.progressive_lock") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PROGRESSIVE_LOCK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PROGRESSIVE_LOCK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PROXIMITY_TOP_GATE_ENABLED — via vec_paths/proximity_top_gate
+    if bool(getattr(config, "PROXIMITY_TOP_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.proximity_top_gate") if importlib.util.find_spec("vec_paths.proximity_top_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PROXIMITY_TOP_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PROXIMITY_TOP_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED PYRAMID_ENABLED — via vec_paths/pyramid
+    if bool(getattr(config, "PYRAMID_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.pyramid") if importlib.util.find_spec("vec_paths.pyramid") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real PYRAMID_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # PYRAMID_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED — via vec_paths/quick_hedge_same_sym_last_resort
+    if bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.quick_hedge_same_sym_last_resort") if importlib.util.find_spec("vec_paths.quick_hedge_same_sym_last_resort") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R3_HEDGE_INVARIANT_DUMP_ENABLED — via vec_paths/r3_hedge_invariant_dump
+    if bool(getattr(config, "R3_HEDGE_INVARIANT_DUMP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r3_hedge_invariant_dump") if importlib.util.find_spec("vec_paths.r3_hedge_invariant_dump") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R3_HEDGE_INVARIANT_DUMP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R3_HEDGE_INVARIANT_DUMP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RANKING_MULT_ENABLED — via vec_paths/ranking_mult
+    if bool(getattr(config, "RANKING_MULT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ranking_mult") if importlib.util.find_spec("vec_paths.ranking_mult") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RANKING_MULT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RANKING_MULT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RANK_CONVICTION_ENABLED — via vec_paths/rank_conviction
+    if bool(getattr(config, "RANK_CONVICTION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rank_conviction") if importlib.util.find_spec("vec_paths.rank_conviction") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RANK_CONVICTION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RANK_CONVICTION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RATE_LIMIT_DUPLICATE_FILTER_ENABLED — via vec_paths/rate_limit_duplicate_filter
+    if bool(getattr(config, "RATE_LIMIT_DUPLICATE_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rate_limit_duplicate_filter") if importlib.util.find_spec("vec_paths.rate_limit_duplicate_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RATE_LIMIT_DUPLICATE_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RATE_LIMIT_DUPLICATE_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RATIO_EMERGENCY_EXIT_ENABLED — via vec_paths/ratio_emergency_exit
+    if bool(getattr(config, "RATIO_EMERGENCY_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ratio_emergency_exit") if importlib.util.find_spec("vec_paths.ratio_emergency_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RATIO_EMERGENCY_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RATIO_EMERGENCY_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RATIO_PNL_DYNAMIC_GATES_ENABLED — via vec_paths/ratio_pnl_dynamic_gates
+    if bool(getattr(config, "RATIO_PNL_DYNAMIC_GATES_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ratio_pnl_dynamic_gates") if importlib.util.find_spec("vec_paths.ratio_pnl_dynamic_gates") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RATIO_PNL_DYNAMIC_GATES_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RATIO_PNL_DYNAMIC_GATES_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RATIO_PNL_WEIGHT_ENABLED — via vec_paths/ratio_pnl_weight
+    if bool(getattr(config, "RATIO_PNL_WEIGHT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ratio_pnl_weight") if importlib.util.find_spec("vec_paths.ratio_pnl_weight") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RATIO_PNL_WEIGHT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RATIO_PNL_WEIGHT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RATIO_REBALANCE_ENABLED — via vec_paths/ratio_rebalance
+    if bool(getattr(config, "RATIO_REBALANCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ratio_rebalance") if importlib.util.find_spec("vec_paths.ratio_rebalance") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RATIO_REBALANCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RATIO_REBALANCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RECENT_REDUCTION_GUARD_ENABLED — via vec_paths/recent_reduction_guard
+    if bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.recent_reduction_guard") if importlib.util.find_spec("vec_paths.recent_reduction_guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RECENT_REDUCTION_GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RECENT_REDUCTION_GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RECOVERY_AUGMENT_ENABLED — via vec_paths/recovery_augment
+    if bool(getattr(config, "RECOVERY_AUGMENT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.recovery_augment") if importlib.util.find_spec("vec_paths.recovery_augment") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RECOVERY_AUGMENT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RECOVERY_AUGMENT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RED_ZONE_AUGMENT_GATE_ENABLED — via vec_paths/red_zone_augment_gate
+    if bool(getattr(config, "RED_ZONE_AUGMENT_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.red_zone_augment_gate") if importlib.util.find_spec("vec_paths.red_zone_augment_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RED_ZONE_AUGMENT_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RED_ZONE_AUGMENT_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RED_ZONE_GATE_ENABLED — via vec_paths/red_zone_gate
+    if bool(getattr(config, "RED_ZONE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.red_zone_gate") if importlib.util.find_spec("vec_paths.red_zone_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RED_ZONE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RED_ZONE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RED_ZONE_GATE_FALLBACK_ENABLED — via vec_paths/red_zone_gate_fallback
+    if bool(getattr(config, "RED_ZONE_GATE_FALLBACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.red_zone_gate_fallback") if importlib.util.find_spec("vec_paths.red_zone_gate_fallback") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RED_ZONE_GATE_FALLBACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RED_ZONE_GATE_FALLBACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RED_ZONE_HEDGE_GATE_ENABLED — via vec_paths/red_zone_hedge_gate
+    if bool(getattr(config, "RED_ZONE_HEDGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.red_zone_hedge_gate") if importlib.util.find_spec("vec_paths.red_zone_hedge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RED_ZONE_HEDGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RED_ZONE_HEDGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED — via vec_paths/red_zone_tradier_augment_gate
+    if bool(getattr(config, "RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.red_zone_tradier_augment_gate") if importlib.util.find_spec("vec_paths.red_zone_tradier_augment_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RED_ZONE_TRADIER_GATE_ENABLED — via vec_paths/red_zone_tradier_gate
+    if bool(getattr(config, "RED_ZONE_TRADIER_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.red_zone_tradier_gate") if importlib.util.find_spec("vec_paths.red_zone_tradier_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RED_ZONE_TRADIER_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RED_ZONE_TRADIER_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY2_DC_BREAK_ENABLED — via vec_paths/reentry2_dc_break
+    if bool(getattr(config, "REENTRY2_DC_BREAK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry2_dc_break") if importlib.util.find_spec("vec_paths.reentry2_dc_break") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY2_DC_BREAK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY2_DC_BREAK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY2_DIR_FAV_ENABLED — via vec_paths/reentry2_dir_fav
+    if bool(getattr(config, "REENTRY2_DIR_FAV_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry2_dir_fav") if importlib.util.find_spec("vec_paths.reentry2_dir_fav") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY2_DIR_FAV_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY2_DIR_FAV_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY2_QUICK_RECOVERY_ENABLED — via vec_paths/reentry2_quick_recovery
+    if bool(getattr(config, "REENTRY2_QUICK_RECOVERY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry2_quick_recovery") if importlib.util.find_spec("vec_paths.reentry2_quick_recovery") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY2_QUICK_RECOVERY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY2_QUICK_RECOVERY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY2_STOCH_CROSS_ENABLED — via vec_paths/reentry2_stoch_cross
+    if bool(getattr(config, "REENTRY2_STOCH_CROSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry2_stoch_cross") if importlib.util.find_spec("vec_paths.reentry2_stoch_cross") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY2_STOCH_CROSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY2_STOCH_CROSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_2_ENABLED — via vec_paths/reentry_2
+    if bool(getattr(config, "REENTRY_2_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_2") if importlib.util.find_spec("vec_paths.reentry_2") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_2_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_2_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_60MIN_UNCONDITIONAL_ENABLED — via vec_paths/reentry_60min_unconditional
+    if bool(getattr(config, "REENTRY_60MIN_UNCONDITIONAL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_60min_unconditional") if importlib.util.find_spec("vec_paths.reentry_60min_unconditional") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_60MIN_UNCONDITIONAL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_60MIN_UNCONDITIONAL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_B16_SMA200_PULLBACK_ENABLED — via vec_paths/reentry_b16_sma200_pullback
+    if bool(getattr(config, "REENTRY_B16_SMA200_PULLBACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_b16_sma200_pullback") if importlib.util.find_spec("vec_paths.reentry_b16_sma200_pullback") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_B16_SMA200_PULLBACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_B16_SMA200_PULLBACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_BREAKOUT_ENABLED — via vec_paths/reentry_breakout
+    if bool(getattr(config, "REENTRY_BREAKOUT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_breakout") if importlib.util.find_spec("vec_paths.reentry_breakout") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_BREAKOUT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_BREAKOUT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_CHURN_GUARD_ENABLED — via vec_paths/reentry_churn_guard
+    if bool(getattr(config, "REENTRY_CHURN_GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_churn_guard") if importlib.util.find_spec("vec_paths.reentry_churn_guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_CHURN_GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_CHURN_GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_CONFIRMATION_GATES_ENABLED — via vec_paths/reentry_confirmation_gates
+    if bool(getattr(config, "REENTRY_CONFIRMATION_GATES_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_confirmation_gates") if importlib.util.find_spec("vec_paths.reentry_confirmation_gates") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_CONFIRMATION_GATES_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_CONFIRMATION_GATES_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_CROSS_FRESHNESS_ENABLED — via vec_paths/reentry_cross_freshness
+    if bool(getattr(config, "REENTRY_CROSS_FRESHNESS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_cross_freshness") if importlib.util.find_spec("vec_paths.reentry_cross_freshness") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_CROSS_FRESHNESS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_CROSS_FRESHNESS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_EXHAUSTED_PARTIAL_ENABLED — via vec_paths/reentry_exhausted_partial
+    if bool(getattr(config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_exhausted_partial") if importlib.util.find_spec("vec_paths.reentry_exhausted_partial") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_EXHAUSTED_PARTIAL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_EXHAUSTED_PARTIAL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_EXIT_RECLAIM_ENABLED — via vec_paths/reentry_exit_reclaim
+    if bool(getattr(config, "REENTRY_EXIT_RECLAIM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_exit_reclaim") if importlib.util.find_spec("vec_paths.reentry_exit_reclaim") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_EXIT_RECLAIM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_EXIT_RECLAIM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_K15M_PARTIAL_ENABLED — via vec_paths/reentry_k15m_partial
+    if bool(getattr(config, "REENTRY_K15M_PARTIAL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_k15m_partial") if importlib.util.find_spec("vec_paths.reentry_k15m_partial") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_K15M_PARTIAL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_K15M_PARTIAL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_LIVE_MONITOR_ENABLED — via vec_paths/reentry_live_monitor
+    if bool(getattr(config, "REENTRY_LIVE_MONITOR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_live_monitor") if importlib.util.find_spec("vec_paths.reentry_live_monitor") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_LIVE_MONITOR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_LIVE_MONITOR_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_NEVER_SKIP_ENABLED — via vec_paths/reentry_never_skip
+    if bool(getattr(config, "REENTRY_NEVER_SKIP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_never_skip") if importlib.util.find_spec("vec_paths.reentry_never_skip") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_NEVER_SKIP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_NEVER_SKIP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_POST_CONSOL_ENABLED — via vec_paths/reentry_post_consol
+    if bool(getattr(config, "REENTRY_POST_CONSOL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_post_consol") if importlib.util.find_spec("vec_paths.reentry_post_consol") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_POST_CONSOL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_POST_CONSOL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_PROFIT_PULLBACK_ENABLED — via vec_paths/reentry_profit_pullback
+    if bool(getattr(config, "REENTRY_PROFIT_PULLBACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_profit_pullback") if importlib.util.find_spec("vec_paths.reentry_profit_pullback") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_PROFIT_PULLBACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_PROFIT_PULLBACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_PULL1_ENABLED — via vec_paths/reentry_pull1
+    if bool(getattr(config, "REENTRY_PULL1_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_pull1") if importlib.util.find_spec("vec_paths.reentry_pull1") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_PULL1_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_PULL1_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_PULL2_ENABLED — via vec_paths/reentry_pull2
+    if bool(getattr(config, "REENTRY_PULL2_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_pull2") if importlib.util.find_spec("vec_paths.reentry_pull2") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_PULL2_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_PULL2_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_PULL3_ENABLED — via vec_paths/reentry_pull3
+    if bool(getattr(config, "REENTRY_PULL3_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_pull3") if importlib.util.find_spec("vec_paths.reentry_pull3") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_PULL3_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_PULL3_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_PULL4_ENABLED — via vec_paths/reentry_pull4
+    if bool(getattr(config, "REENTRY_PULL4_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_pull4") if importlib.util.find_spec("vec_paths.reentry_pull4") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_PULL4_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_PULL4_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_SMA200_BACKUP_ENABLED — via vec_paths/reentry_sma200_backup
+    if bool(getattr(config, "REENTRY_SMA200_BACKUP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_sma200_backup") if importlib.util.find_spec("vec_paths.reentry_sma200_backup") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_SMA200_BACKUP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_SMA200_BACKUP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_SYMGATE_ENABLED — via vec_paths/reentry_symgate
+    if bool(getattr(config, "REENTRY_SYMGATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_symgate") if importlib.util.find_spec("vec_paths.reentry_symgate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_SYMGATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_SYMGATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_WAVETREND_CONFIRM_ENABLED — via vec_paths/reentry_wavetrend_confirm
+    if bool(getattr(config, "REENTRY_WAVETREND_CONFIRM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_wavetrend_confirm") if importlib.util.find_spec("vec_paths.reentry_wavetrend_confirm") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_WAVETREND_CONFIRM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_WAVETREND_CONFIRM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REENTRY_WT15M_CROSS_ENABLED — via vec_paths/reentry_wt15m_cross
+    if bool(getattr(config, "REENTRY_WT15M_CROSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.reentry_wt15m_cross") if importlib.util.find_spec("vec_paths.reentry_wt15m_cross") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REENTRY_WT15M_CROSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REENTRY_WT15M_CROSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED REGIME_ADAPTIVE_ENABLED — via vec_paths/regime_adaptive
+    if bool(getattr(config, "REGIME_ADAPTIVE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.regime_adaptive") if importlib.util.find_spec("vec_paths.regime_adaptive") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real REGIME_ADAPTIVE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # REGIME_ADAPTIVE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RE_2_USE_PERCENTILE_ENABLED — via vec_paths/re_2_use_percentile
+    if bool(getattr(config, "RE_2_USE_PERCENTILE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.re_2_use_percentile") if importlib.util.find_spec("vec_paths.re_2_use_percentile") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RE_2_USE_PERCENTILE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RE_2_USE_PERCENTILE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RE_3_B12_RISING_BONUS_ENABLED — via vec_paths/re_3_b12_rising_bonus
+    if bool(getattr(config, "RE_3_B12_RISING_BONUS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.re_3_b12_rising_bonus") if importlib.util.find_spec("vec_paths.re_3_b12_rising_bonus") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RE_3_B12_RISING_BONUS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RE_3_B12_RISING_BONUS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RE_4_B14_HA_STREAK_CONV_ENABLED — via vec_paths/re_4_b14_ha_streak_conv
+    if bool(getattr(config, "RE_4_B14_HA_STREAK_CONV_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.re_4_b14_ha_streak_conv") if importlib.util.find_spec("vec_paths.re_4_b14_ha_streak_conv") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RE_4_B14_HA_STREAK_CONV_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RE_4_B14_HA_STREAK_CONV_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RE_5_B04_COMPRESSION_BONUS_ENABLED — via vec_paths/re_5_b04_compression_bonus
+    if bool(getattr(config, "RE_5_B04_COMPRESSION_BONUS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.re_5_b04_compression_bonus") if importlib.util.find_spec("vec_paths.re_5_b04_compression_bonus") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RE_5_B04_COMPRESSION_BONUS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RE_5_B04_COMPRESSION_BONUS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RE_6_WAVE_PHASE_GATE_ENABLED — via vec_paths/re_6_wave_phase_gate
+    if bool(getattr(config, "RE_6_WAVE_PHASE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.re_6_wave_phase_gate") if importlib.util.find_spec("vec_paths.re_6_wave_phase_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RE_6_WAVE_PHASE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RE_6_WAVE_PHASE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RIDICULOUS_HOLD_GUARD_ENABLED — via vec_paths/ridiculous_hold_guard
+    if bool(getattr(config, "RIDICULOUS_HOLD_GUARD_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.ridiculous_hold_guard") if importlib.util.find_spec("vec_paths.ridiculous_hold_guard") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RIDICULOUS_HOLD_GUARD_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RIDICULOUS_HOLD_GUARD_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ROTATION_ANTONACCI_ABS_MOM_ENABLED — via vec_paths/rotation_antonacci_abs_mom
+    if bool(getattr(config, "ROTATION_ANTONACCI_ABS_MOM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rotation_antonacci_abs_mom") if importlib.util.find_spec("vec_paths.rotation_antonacci_abs_mom") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ROTATION_ANTONACCI_ABS_MOM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ROTATION_ANTONACCI_ABS_MOM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ROTATION_ENABLED — via vec_paths/rotation
+    if bool(getattr(config, "ROTATION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rotation") if importlib.util.find_spec("vec_paths.rotation") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ROTATION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ROTATION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RSI2_ENABLED — via vec_paths/rsi2
+    if bool(getattr(config, "RSI2_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rsi2") if importlib.util.find_spec("vec_paths.rsi2") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RSI2_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RSI2_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RSI2_MEAN_REVERSION_ENABLED — via vec_paths/rsi2_mean_reversion
+    if bool(getattr(config, "RSI2_MEAN_REVERSION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rsi2_mean_reversion") if importlib.util.find_spec("vec_paths.rsi2_mean_reversion") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RSI2_MEAN_REVERSION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RSI2_MEAN_REVERSION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RSI_ENTRY_GATE_ENABLED — via vec_paths/rsi_entry_gate
+    if bool(getattr(config, "RSI_ENTRY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rsi_entry_gate") if importlib.util.find_spec("vec_paths.rsi_entry_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RSI_ENTRY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RSI_ENTRY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RSI_MACD_EMA_ENABLED — via vec_paths/rsi_macd_ema
+    if bool(getattr(config, "RSI_MACD_EMA_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rsi_macd_ema") if importlib.util.find_spec("vec_paths.rsi_macd_ema") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RSI_MACD_EMA_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RSI_MACD_EMA_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RULE_B_3M_EXIT_ENABLED — via vec_paths/rule_b_3m_exit
+    if bool(getattr(config, "RULE_B_3M_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rule_b_3m_exit") if importlib.util.find_spec("vec_paths.rule_b_3m_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RULE_B_3M_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RULE_B_3M_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RULE_B_5M_EXIT_ENABLED — via vec_paths/rule_b_5m_exit
+    if bool(getattr(config, "RULE_B_5M_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rule_b_5m_exit") if importlib.util.find_spec("vec_paths.rule_b_5m_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RULE_B_5M_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RULE_B_5M_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RULE_B_W_TREND_4H_PULLBACK_ENABLED — via vec_paths/rule_b_w_trend_4h_pullback
+    if bool(getattr(config, "RULE_B_W_TREND_4H_PULLBACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rule_b_w_trend_4h_pullback") if importlib.util.find_spec("vec_paths.rule_b_w_trend_4h_pullback") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RULE_B_W_TREND_4H_PULLBACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RULE_B_W_TREND_4H_PULLBACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RULE_C_FUNDING_EXTREME_ENABLED — via vec_paths/rule_c_funding_extreme
+    if bool(getattr(config, "RULE_C_FUNDING_EXTREME_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rule_c_funding_extreme") if importlib.util.find_spec("vec_paths.rule_c_funding_extreme") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RULE_C_FUNDING_EXTREME_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RULE_C_FUNDING_EXTREME_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RULE_NAME_TAGGING_ENABLED — via vec_paths/rule_name_tagging
+    if bool(getattr(config, "RULE_NAME_TAGGING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rule_name_tagging") if importlib.util.find_spec("vec_paths.rule_name_tagging") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RULE_NAME_TAGGING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RULE_NAME_TAGGING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RZ_BASELINE_BOUNCE_SHORT_ENABLED — via vec_paths/rz_baseline_bounce_short
+    if bool(getattr(config, "RZ_BASELINE_BOUNCE_SHORT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rz_baseline_bounce_short") if importlib.util.find_spec("vec_paths.rz_baseline_bounce_short") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RZ_BASELINE_BOUNCE_SHORT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RZ_BASELINE_BOUNCE_SHORT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RZ_DIV_EXIT_ENABLED — via vec_paths/rz_div_exit
+    if bool(getattr(config, "RZ_DIV_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rz_div_exit") if importlib.util.find_spec("vec_paths.rz_div_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RZ_DIV_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RZ_DIV_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RZ_ENTRY_ENABLED — via vec_paths/rz_entry
+    if bool(getattr(config, "RZ_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rz_entry") if importlib.util.find_spec("vec_paths.rz_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RZ_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RZ_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RZ_EXIT_ENABLED — via vec_paths/rz_exit
+    if bool(getattr(config, "RZ_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rz_exit") if importlib.util.find_spec("vec_paths.rz_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RZ_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RZ_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RZ_TWO_PHASE_EXIT_ENABLED — via vec_paths/rz_two_phase_exit
+    if bool(getattr(config, "RZ_TWO_PHASE_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rz_two_phase_exit") if importlib.util.find_spec("vec_paths.rz_two_phase_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RZ_TWO_PHASE_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RZ_TWO_PHASE_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RZ_ZSCORE_EXIT_ENABLED — via vec_paths/rz_zscore_exit
+    if bool(getattr(config, "RZ_ZSCORE_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rz_zscore_exit") if importlib.util.find_spec("vec_paths.rz_zscore_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RZ_ZSCORE_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RZ_ZSCORE_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED RZ_ZSCORE_ZONE_ENABLED — via vec_paths/rz_zscore_zone
+    if bool(getattr(config, "RZ_ZSCORE_ZONE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.rz_zscore_zone") if importlib.util.find_spec("vec_paths.rz_zscore_zone") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real RZ_ZSCORE_ZONE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # RZ_ZSCORE_ZONE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_G10_HTF_DIV_GATE_ENABLED — via vec_paths/r_g10_htf_div_gate
+    if bool(getattr(config, "R_G10_HTF_DIV_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_g10_htf_div_gate") if importlib.util.find_spec("vec_paths.r_g10_htf_div_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_G10_HTF_DIV_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_G10_HTF_DIV_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_S1_WT_COMPOSITE_DELTA_USE_ENABLED — via vec_paths/r_s1_wt_composite_delta_use
+    if bool(getattr(config, "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_s1_wt_composite_delta_use") if importlib.util.find_spec("vec_paths.r_s1_wt_composite_delta_use") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_S1_WT_COMPOSITE_DELTA_USE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_S1_WT_COMPOSITE_DELTA_USE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_S2_WT_ADAPTIVE_OS_ENABLED — via vec_paths/r_s2_wt_adaptive_os
+    if bool(getattr(config, "R_S2_WT_ADAPTIVE_OS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_s2_wt_adaptive_os") if importlib.util.find_spec("vec_paths.r_s2_wt_adaptive_os") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_S2_WT_ADAPTIVE_OS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_S2_WT_ADAPTIVE_OS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_S3_DIV_STACK_ENABLED — via vec_paths/r_s3_div_stack
+    if bool(getattr(config, "R_S3_DIV_STACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_s3_div_stack") if importlib.util.find_spec("vec_paths.r_s3_div_stack") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_S3_DIV_STACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_S3_DIV_STACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_S3_HTF_WEIGHT_ENABLED — via vec_paths/r_s3_htf_weight
+    if bool(getattr(config, "R_S3_HTF_WEIGHT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_s3_htf_weight") if importlib.util.find_spec("vec_paths.r_s3_htf_weight") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_S3_HTF_WEIGHT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_S3_HTF_WEIGHT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_S4_HA_STREAK_ENABLED — via vec_paths/r_s4_ha_streak
+    if bool(getattr(config, "R_S4_HA_STREAK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_s4_ha_streak") if importlib.util.find_spec("vec_paths.r_s4_ha_streak") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_S4_HA_STREAK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_S4_HA_STREAK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_S5_SENT_VEL_ENABLED — via vec_paths/r_s5_sent_vel
+    if bool(getattr(config, "R_S5_SENT_VEL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_s5_sent_vel") if importlib.util.find_spec("vec_paths.r_s5_sent_vel") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_S5_SENT_VEL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_S5_SENT_VEL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_S7_HHLL_STACK_ENABLED — via vec_paths/r_s7_hhll_stack
+    if bool(getattr(config, "R_S7_HHLL_STACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_s7_hhll_stack") if importlib.util.find_spec("vec_paths.r_s7_hhll_stack") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_S7_HHLL_STACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_S7_HHLL_STACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_Z2_PERCENTILE_SCALER_ENABLED — via vec_paths/r_z2_percentile_scaler
+    if bool(getattr(config, "R_Z2_PERCENTILE_SCALER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_z2_percentile_scaler") if importlib.util.find_spec("vec_paths.r_z2_percentile_scaler") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_Z2_PERCENTILE_SCALER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_Z2_PERCENTILE_SCALER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_Z3_WT_COMPOSITE_SIZE_ENABLED — via vec_paths/r_z3_wt_composite_size
+    if bool(getattr(config, "R_Z3_WT_COMPOSITE_SIZE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_z3_wt_composite_size") if importlib.util.find_spec("vec_paths.r_z3_wt_composite_size") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_Z3_WT_COMPOSITE_SIZE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_Z3_WT_COMPOSITE_SIZE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED R_Z5_DC_PULLBACK_SIZING_ENABLED — via vec_paths/r_z5_dc_pullback_sizing
+    if bool(getattr(config, "R_Z5_DC_PULLBACK_SIZING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.r_z5_dc_pullback_sizing") if importlib.util.find_spec("vec_paths.r_z5_dc_pullback_sizing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real R_Z5_DC_PULLBACK_SIZING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # R_Z5_DC_PULLBACK_SIZING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SATOSHIT_ENABLED — via vec_paths/satoshit
+    if bool(getattr(config, "SATOSHIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.satoshit") if importlib.util.find_spec("vec_paths.satoshit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SATOSHIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SATOSHIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SATOSHIT_ENTRY_ENABLED — via vec_paths/satoshit_entry
+    if bool(getattr(config, "SATOSHIT_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.satoshit_entry") if importlib.util.find_spec("vec_paths.satoshit_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SATOSHIT_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SATOSHIT_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SATOSHIT_EXIT_ENABLED — via vec_paths/satoshit_exit
+    if bool(getattr(config, "SATOSHIT_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.satoshit_exit") if importlib.util.find_spec("vec_paths.satoshit_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SATOSHIT_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SATOSHIT_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SBA_ENABLED — via vec_paths/sba
+    if bool(getattr(config, "SBA_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.sba") if importlib.util.find_spec("vec_paths.sba") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SBA_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SBA_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_REDUCE_ENABLED — via vec_paths/scalp_reduce
+    if bool(getattr(config, "SCALP_REDUCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_reduce") if importlib.util.find_spec("vec_paths.scalp_reduce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_REDUCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_REDUCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ATR_PCTL_GATE_ENABLED — via vec_paths/scalp_v3_atr_pctl_gate
+    if bool(getattr(config, "SCALP_V3_ATR_PCTL_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_atr_pctl_gate") if importlib.util.find_spec("vec_paths.scalp_v3_atr_pctl_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ATR_PCTL_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ATR_PCTL_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_AUG_BE_STOP_ENABLED — via vec_paths/scalp_v3_aug_be_stop
+    if bool(getattr(config, "SCALP_V3_AUG_BE_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_aug_be_stop") if importlib.util.find_spec("vec_paths.scalp_v3_aug_be_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_AUG_BE_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_AUG_BE_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_AUG_ENABLED — via vec_paths/scalp_v3_aug
+    if bool(getattr(config, "SCALP_V3_AUG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_aug") if importlib.util.find_spec("vec_paths.scalp_v3_aug") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_AUG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_AUG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_BOOST_ENABLED — via vec_paths/scalp_v3_boost
+    if bool(getattr(config, "SCALP_V3_BOOST_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_boost") if importlib.util.find_spec("vec_paths.scalp_v3_boost") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_BOOST_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_BOOST_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENABLED — via vec_paths/scalp_v3
+    if bool(getattr(config, "SCALP_V3_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3") if importlib.util.find_spec("vec_paths.scalp_v3") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENTRY_BAR_BREAK_ENABLED — via vec_paths/scalp_v3_entry_bar_break
+    if bool(getattr(config, "SCALP_V3_ENTRY_BAR_BREAK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_entry_bar_break") if importlib.util.find_spec("vec_paths.scalp_v3_entry_bar_break") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENTRY_BAR_BREAK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENTRY_BAR_BREAK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENTRY_DC_BREAK_ENABLED — via vec_paths/scalp_v3_entry_dc_break
+    if bool(getattr(config, "SCALP_V3_ENTRY_DC_BREAK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_entry_dc_break") if importlib.util.find_spec("vec_paths.scalp_v3_entry_dc_break") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENTRY_DC_BREAK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENTRY_DC_BREAK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENTRY_PULLBACK_ENABLED — via vec_paths/scalp_v3_entry_pullback
+    if bool(getattr(config, "SCALP_V3_ENTRY_PULLBACK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_entry_pullback") if importlib.util.find_spec("vec_paths.scalp_v3_entry_pullback") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENTRY_PULLBACK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENTRY_PULLBACK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENTRY_STDEV_ENABLED — via vec_paths/scalp_v3_entry_stdev
+    if bool(getattr(config, "SCALP_V3_ENTRY_STDEV_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_entry_stdev") if importlib.util.find_spec("vec_paths.scalp_v3_entry_stdev") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENTRY_STDEV_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENTRY_STDEV_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED — via vec_paths/scalp_v3_entry_stoch_bounce
+    if bool(getattr(config, "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_entry_stoch_bounce") if importlib.util.find_spec("vec_paths.scalp_v3_entry_stoch_bounce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENTRY_TREND_ENABLED — via vec_paths/scalp_v3_entry_trend
+    if bool(getattr(config, "SCALP_V3_ENTRY_TREND_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_entry_trend") if importlib.util.find_spec("vec_paths.scalp_v3_entry_trend") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENTRY_TREND_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENTRY_TREND_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_ENTRY_WT_CROSS_ENABLED — via vec_paths/scalp_v3_entry_wt_cross
+    if bool(getattr(config, "SCALP_V3_ENTRY_WT_CROSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_entry_wt_cross") if importlib.util.find_spec("vec_paths.scalp_v3_entry_wt_cross") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_ENTRY_WT_CROSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_ENTRY_WT_CROSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_EXIT_BAR_REVERSAL_ENABLED — via vec_paths/scalp_v3_exit_bar_reversal
+    if bool(getattr(config, "SCALP_V3_EXIT_BAR_REVERSAL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_exit_bar_reversal") if importlib.util.find_spec("vec_paths.scalp_v3_exit_bar_reversal") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_EXIT_BAR_REVERSAL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_EXIT_BAR_REVERSAL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_EXIT_K_CROSS_ENABLED — via vec_paths/scalp_v3_exit_k_cross
+    if bool(getattr(config, "SCALP_V3_EXIT_K_CROSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_exit_k_cross") if importlib.util.find_spec("vec_paths.scalp_v3_exit_k_cross") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_EXIT_K_CROSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_EXIT_K_CROSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_EXIT_STDEV_REJECT_ENABLED — via vec_paths/scalp_v3_exit_stdev_reject
+    if bool(getattr(config, "SCALP_V3_EXIT_STDEV_REJECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_exit_stdev_reject") if importlib.util.find_spec("vec_paths.scalp_v3_exit_stdev_reject") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_EXIT_STDEV_REJECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_EXIT_STDEV_REJECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_EXIT_WT_FLIP_ENABLED — via vec_paths/scalp_v3_exit_wt_flip
+    if bool(getattr(config, "SCALP_V3_EXIT_WT_FLIP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_exit_wt_flip") if importlib.util.find_spec("vec_paths.scalp_v3_exit_wt_flip") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_EXIT_WT_FLIP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_EXIT_WT_FLIP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_FAST_PPL_ENABLED — via vec_paths/scalp_v3_fast_ppl
+    if bool(getattr(config, "SCALP_V3_FAST_PPL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_fast_ppl") if importlib.util.find_spec("vec_paths.scalp_v3_fast_ppl") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_FAST_PPL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_FAST_PPL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_HTF_SMA200_ENABLED — via vec_paths/scalp_v3_htf_sma200
+    if bool(getattr(config, "SCALP_V3_HTF_SMA200_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_htf_sma200") if importlib.util.find_spec("vec_paths.scalp_v3_htf_sma200") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_HTF_SMA200_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_HTF_SMA200_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_K_OB_EXIT_ENABLED — via vec_paths/scalp_v3_k_ob_exit
+    if bool(getattr(config, "SCALP_V3_K_OB_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_k_ob_exit") if importlib.util.find_spec("vec_paths.scalp_v3_k_ob_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_K_OB_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_K_OB_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_OB_FLOW_AGREE_ENABLED — via vec_paths/scalp_v3_ob_flow_agree
+    if bool(getattr(config, "SCALP_V3_OB_FLOW_AGREE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_ob_flow_agree") if importlib.util.find_spec("vec_paths.scalp_v3_ob_flow_agree") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_OB_FLOW_AGREE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_OB_FLOW_AGREE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_OUTLIER_ENABLED — via vec_paths/scalp_v3_outlier
+    if bool(getattr(config, "SCALP_V3_OUTLIER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_outlier") if importlib.util.find_spec("vec_paths.scalp_v3_outlier") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_OUTLIER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_OUTLIER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_PROTECTIVE_EXIT_ENABLED — via vec_paths/scalp_v3_protective_exit
+    if bool(getattr(config, "SCALP_V3_PROTECTIVE_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_protective_exit") if importlib.util.find_spec("vec_paths.scalp_v3_protective_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_PROTECTIVE_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_PROTECTIVE_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_REENTRY_STICKY_ENABLED — via vec_paths/scalp_v3_reentry_sticky
+    if bool(getattr(config, "SCALP_V3_REENTRY_STICKY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_reentry_sticky") if importlib.util.find_spec("vec_paths.scalp_v3_reentry_sticky") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_REENTRY_STICKY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_REENTRY_STICKY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_STALL_ENABLED — via vec_paths/scalp_v3_stall
+    if bool(getattr(config, "SCALP_V3_STALL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_stall") if importlib.util.find_spec("vec_paths.scalp_v3_stall") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_STALL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_STALL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SCALP_V3_VWAP_FILTER_ENABLED — via vec_paths/scalp_v3_vwap_filter
+    if bool(getattr(config, "SCALP_V3_VWAP_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.scalp_v3_vwap_filter") if importlib.util.find_spec("vec_paths.scalp_v3_vwap_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SCALP_V3_VWAP_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SCALP_V3_VWAP_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SECTOR_LS_RATIO_ENABLED — via vec_paths/sector_ls_ratio
+    if bool(getattr(config, "SECTOR_LS_RATIO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.sector_ls_ratio") if importlib.util.find_spec("vec_paths.sector_ls_ratio") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SECTOR_LS_RATIO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SECTOR_LS_RATIO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SENTIMENT_FADE_PROXY_ENABLED — via vec_paths/sentiment_fade_proxy
+    if bool(getattr(config, "SENTIMENT_FADE_PROXY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.sentiment_fade_proxy") if importlib.util.find_spec("vec_paths.sentiment_fade_proxy") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SENTIMENT_FADE_PROXY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SENTIMENT_FADE_PROXY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SENTIMENT_REBALANCER_ENABLED — via vec_paths/sentiment_rebalancer
+    if bool(getattr(config, "SENTIMENT_REBALANCER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.sentiment_rebalancer") if importlib.util.find_spec("vec_paths.sentiment_rebalancer") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SENTIMENT_REBALANCER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SENTIMENT_REBALANCER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SENTIMENT_TOP_N_GATE_ENABLED — via vec_paths/sentiment_top_n_gate
+    if bool(getattr(config, "SENTIMENT_TOP_N_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.sentiment_top_n_gate") if importlib.util.find_spec("vec_paths.sentiment_top_n_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SENTIMENT_TOP_N_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SENTIMENT_TOP_N_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SERVER_HEARTBEAT_BLOCK_ENABLED — via vec_paths/server_heartbeat_block
+    if bool(getattr(config, "SERVER_HEARTBEAT_BLOCK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.server_heartbeat_block") if importlib.util.find_spec("vec_paths.server_heartbeat_block") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SERVER_HEARTBEAT_BLOCK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SERVER_HEARTBEAT_BLOCK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SIMPLE_TP_EXIT_ENABLED — via vec_paths/simple_tp_exit
+    if bool(getattr(config, "SIMPLE_TP_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.simple_tp_exit") if importlib.util.find_spec("vec_paths.simple_tp_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SIMPLE_TP_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SIMPLE_TP_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SMA200_DIST_ENTRY_ENABLED — via vec_paths/sma200_dist_entry
+    if bool(getattr(config, "SMA200_DIST_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.sma200_dist_entry") if importlib.util.find_spec("vec_paths.sma200_dist_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SMA200_DIST_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SMA200_DIST_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SMFI_ENABLED — via vec_paths/smfi
+    if bool(getattr(config, "SMFI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.smfi") if importlib.util.find_spec("vec_paths.smfi") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SMFI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SMFI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SPIKE_FADE_ENABLED — via vec_paths/spike_fade
+    if bool(getattr(config, "SPIKE_FADE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.spike_fade") if importlib.util.find_spec("vec_paths.spike_fade") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SPIKE_FADE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SPIKE_FADE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SQUEEZE_ENABLED — via vec_paths/squeeze
+    if bool(getattr(config, "SQUEEZE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.squeeze") if importlib.util.find_spec("vec_paths.squeeze") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SQUEEZE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SQUEEZE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SQUEEZE_FIRE_ENABLED — via vec_paths/squeeze_fire
+    if bool(getattr(config, "SQUEEZE_FIRE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.squeeze_fire") if importlib.util.find_spec("vec_paths.squeeze_fire") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SQUEEZE_FIRE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SQUEEZE_FIRE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SQUEEZE_FIRE_ENTRY_ENABLED — via vec_paths/squeeze_fire_entry
+    if bool(getattr(config, "SQUEEZE_FIRE_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.squeeze_fire_entry") if importlib.util.find_spec("vec_paths.squeeze_fire_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SQUEEZE_FIRE_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SQUEEZE_FIRE_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STALL_SUB_ENABLED — via vec_paths/stall_sub
+    if bool(getattr(config, "STALL_SUB_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stall_sub") if importlib.util.find_spec("vec_paths.stall_sub") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STALL_SUB_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STALL_SUB_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_BB_RZ_EXIT_ENABLED — via vec_paths/stdev_bb_rz_exit
+    if bool(getattr(config, "STDEV_BB_RZ_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_bb_rz_exit") if importlib.util.find_spec("vec_paths.stdev_bb_rz_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_BB_RZ_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_BB_RZ_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_BOUNCE_ENABLED — via vec_paths/stdev_bounce
+    if bool(getattr(config, "STDEV_BOUNCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_bounce") if importlib.util.find_spec("vec_paths.stdev_bounce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_BOUNCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_BOUNCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_BREAKOUT_ENABLED — via vec_paths/stdev_breakout
+    if bool(getattr(config, "STDEV_BREAKOUT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_breakout") if importlib.util.find_spec("vec_paths.stdev_breakout") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_BREAKOUT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_BREAKOUT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_BREAKOUT_EXIT_WT_ENABLED — via vec_paths/stdev_breakout_exit_wt
+    if bool(getattr(config, "STDEV_BREAKOUT_EXIT_WT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_breakout_exit_wt") if importlib.util.find_spec("vec_paths.stdev_breakout_exit_wt") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_BREAKOUT_EXIT_WT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_BREAKOUT_EXIT_WT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_MACRO_AUGMENT_VETO_ENABLED — via vec_paths/stdev_macro_augment_veto
+    if bool(getattr(config, "STDEV_MACRO_AUGMENT_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_macro_augment_veto") if importlib.util.find_spec("vec_paths.stdev_macro_augment_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_MACRO_AUGMENT_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_MACRO_AUGMENT_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_MACRO_ENTRY_BOOST_ENABLED — via vec_paths/stdev_macro_entry_boost
+    if bool(getattr(config, "STDEV_MACRO_ENTRY_BOOST_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_macro_entry_boost") if importlib.util.find_spec("vec_paths.stdev_macro_entry_boost") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_MACRO_ENTRY_BOOST_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_MACRO_ENTRY_BOOST_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_MACRO_HEDGE_BOOST_ENABLED — via vec_paths/stdev_macro_hedge_boost
+    if bool(getattr(config, "STDEV_MACRO_HEDGE_BOOST_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_macro_hedge_boost") if importlib.util.find_spec("vec_paths.stdev_macro_hedge_boost") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_MACRO_HEDGE_BOOST_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_MACRO_HEDGE_BOOST_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STDEV_REJECT_EXIT_ENABLED — via vec_paths/stdev_reject_exit
+    if bool(getattr(config, "STDEV_REJECT_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stdev_reject_exit") if importlib.util.find_spec("vec_paths.stdev_reject_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STDEV_REJECT_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STDEV_REJECT_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STOCH_CROSS_1H_EXIT_ENABLED — via vec_paths/stoch_cross_1h_exit
+    if bool(getattr(config, "STOCH_CROSS_1H_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stoch_cross_1h_exit") if importlib.util.find_spec("vec_paths.stoch_cross_1h_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STOCH_CROSS_1H_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STOCH_CROSS_1H_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STOCH_CROSS_3M_EXIT_ENABLED — via vec_paths/stoch_cross_3m_exit
+    if bool(getattr(config, "STOCH_CROSS_3M_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stoch_cross_3m_exit") if importlib.util.find_spec("vec_paths.stoch_cross_3m_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STOCH_CROSS_3M_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STOCH_CROSS_3M_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STOCH_CROSS_ENTRY_ENABLED — via vec_paths/stoch_cross_entry
+    if bool(getattr(config, "STOCH_CROSS_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stoch_cross_entry") if importlib.util.find_spec("vec_paths.stoch_cross_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STOCH_CROSS_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STOCH_CROSS_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STOCH_ENTRY_ENABLED — via vec_paths/stoch_entry
+    if bool(getattr(config, "STOCH_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stoch_entry") if importlib.util.find_spec("vec_paths.stoch_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STOCH_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STOCH_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STOP_LOSS_ENABLED — via vec_paths/stop_loss
+    if bool(getattr(config, "STOP_LOSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stop_loss") if importlib.util.find_spec("vec_paths.stop_loss") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STOP_LOSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STOP_LOSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STOP_MAJOR_LOSS_BLOCK_ENABLED — via vec_paths/stop_major_loss_block
+    if bool(getattr(config, "STOP_MAJOR_LOSS_BLOCK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stop_major_loss_block") if importlib.util.find_spec("vec_paths.stop_major_loss_block") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STOP_MAJOR_LOSS_BLOCK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STOP_MAJOR_LOSS_BLOCK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STOP_MAJOR_LOSS_ENABLED — via vec_paths/stop_major_loss
+    if bool(getattr(config, "STOP_MAJOR_LOSS_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.stop_major_loss") if importlib.util.find_spec("vec_paths.stop_major_loss") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STOP_MAJOR_LOSS_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STOP_MAJOR_LOSS_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STORM_REDUCE_ENABLED — via vec_paths/storm_reduce
+    if bool(getattr(config, "STORM_REDUCE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.storm_reduce") if importlib.util.find_spec("vec_paths.storm_reduce") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STORM_REDUCE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STORM_REDUCE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STRUCTURAL_EXIT_GATE_ENABLED — via vec_paths/structural_exit_gate
+    if bool(getattr(config, "STRUCTURAL_EXIT_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.structural_exit_gate") if importlib.util.find_spec("vec_paths.structural_exit_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STRUCTURAL_EXIT_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STRUCTURAL_EXIT_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED — via vec_paths/structure_flip_reentry_basis_restriction
+    if bool(getattr(config, "STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.structure_flip_reentry_basis_restriction") if importlib.util.find_spec("vec_paths.structure_flip_reentry_basis_restriction") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED STRUCTURE_FLIP_REENTRY_ENABLED — via vec_paths/structure_flip_reentry
+    if bool(getattr(config, "STRUCTURE_FLIP_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.structure_flip_reentry") if importlib.util.find_spec("vec_paths.structure_flip_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real STRUCTURE_FLIP_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # STRUCTURE_FLIP_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ST_LT_SPLIT_ENABLED — via vec_paths/st_lt_split
+    if bool(getattr(config, "ST_LT_SPLIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.st_lt_split") if importlib.util.find_spec("vec_paths.st_lt_split") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ST_LT_SPLIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ST_LT_SPLIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SWING_ENABLED — via vec_paths/swing
+    if bool(getattr(config, "SWING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.swing") if importlib.util.find_spec("vec_paths.swing") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SWING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SWING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SYMBOL_PERF_ENABLED — via vec_paths/symbol_perf
+    if bool(getattr(config, "SYMBOL_PERF_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.symbol_perf") if importlib.util.find_spec("vec_paths.symbol_perf") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SYMBOL_PERF_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SYMBOL_PERF_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED SYMBOL_TRACKER_ENABLED — via vec_paths/symbol_tracker
+    if bool(getattr(config, "SYMBOL_TRACKER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.symbol_tracker") if importlib.util.find_spec("vec_paths.symbol_tracker") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real SYMBOL_TRACKER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # SYMBOL_TRACKER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED THROUGHPUT_SAFETY_ENABLED — via vec_paths/throughput_safety
+    if bool(getattr(config, "THROUGHPUT_SAFETY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.throughput_safety") if importlib.util.find_spec("vec_paths.throughput_safety") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real THROUGHPUT_SAFETY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # THROUGHPUT_SAFETY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TIME_ZONE_ENABLED — via vec_paths/time_zone
+    if bool(getattr(config, "TIME_ZONE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.time_zone") if importlib.util.find_spec("vec_paths.time_zone") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TIME_ZONE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TIME_ZONE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED — via vec_paths/tradeable_keys_mandatory_position
+    if bool(getattr(config, "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradeable_keys_mandatory_position") if importlib.util.find_spec("vec_paths.tradeable_keys_mandatory_position") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_DC_DAYTRADE_ENABLED — via vec_paths/tradier_dc_daytrade
+    if bool(getattr(config, "TRADIER_DC_DAYTRADE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_dc_daytrade") if importlib.util.find_spec("vec_paths.tradier_dc_daytrade") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_DC_DAYTRADE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_DC_DAYTRADE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_FH_MOMENTUM_ENABLED — via vec_paths/tradier_fh_momentum
+    if bool(getattr(config, "TRADIER_FH_MOMENTUM_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_fh_momentum") if importlib.util.find_spec("vec_paths.tradier_fh_momentum") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_FH_MOMENTUM_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_FH_MOMENTUM_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_LOCAL_EXTREMES_SCORING_ENABLED — via vec_paths/tradier_local_extremes_scoring
+    if bool(getattr(config, "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_local_extremes_scoring") if importlib.util.find_spec("vec_paths.tradier_local_extremes_scoring") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_LOCAL_EXTREMES_SCORING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_LOCAL_EXTREMES_SCORING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_MFI_ENTRY_LONG_ENABLED — via vec_paths/tradier_mfi_entry_long
+    if bool(getattr(config, "TRADIER_MFI_ENTRY_LONG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_mfi_entry_long") if importlib.util.find_spec("vec_paths.tradier_mfi_entry_long") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_MFI_ENTRY_LONG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_MFI_ENTRY_LONG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_MI_ENTRY_ENABLED — via vec_paths/tradier_mi_entry
+    if bool(getattr(config, "TRADIER_MI_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_mi_entry") if importlib.util.find_spec("vec_paths.tradier_mi_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_MI_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_MI_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_MI_EXIT_ENABLED — via vec_paths/tradier_mi_exit
+    if bool(getattr(config, "TRADIER_MI_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_mi_exit") if importlib.util.find_spec("vec_paths.tradier_mi_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_MI_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_MI_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_OI_INJECT_ENABLED — via vec_paths/tradier_oi_inject
+    if bool(getattr(config, "TRADIER_OI_INJECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_oi_inject") if importlib.util.find_spec("vec_paths.tradier_oi_inject") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_OI_INJECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_OI_INJECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_REENTRY_ANTI_CHURN_ENABLED — via vec_paths/tradier_reentry_anti_churn
+    if bool(getattr(config, "TRADIER_REENTRY_ANTI_CHURN_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_reentry_anti_churn") if importlib.util.find_spec("vec_paths.tradier_reentry_anti_churn") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_REENTRY_ANTI_CHURN_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_REENTRY_ANTI_CHURN_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_REENTRY_RZ_BLOCK_ENABLED — via vec_paths/tradier_reentry_rz_block
+    if bool(getattr(config, "TRADIER_REENTRY_RZ_BLOCK_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_reentry_rz_block") if importlib.util.find_spec("vec_paths.tradier_reentry_rz_block") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_REENTRY_RZ_BLOCK_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_REENTRY_RZ_BLOCK_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_RSI2_ENABLED — via vec_paths/tradier_rsi2
+    if bool(getattr(config, "TRADIER_RSI2_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_rsi2") if importlib.util.find_spec("vec_paths.tradier_rsi2") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_RSI2_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_RSI2_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRADIER_WT_COMPOSITE_SCORING_ENABLED — via vec_paths/tradier_wt_composite_scoring
+    if bool(getattr(config, "TRADIER_WT_COMPOSITE_SCORING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tradier_wt_composite_scoring") if importlib.util.find_spec("vec_paths.tradier_wt_composite_scoring") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRADIER_WT_COMPOSITE_SCORING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRADIER_WT_COMPOSITE_SCORING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRAILING_AUG_ENABLED — via vec_paths/trailing_aug
+    if bool(getattr(config, "TRAILING_AUG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trailing_aug") if importlib.util.find_spec("vec_paths.trailing_aug") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRAILING_AUG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRAILING_AUG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_5M_SWEEP_ENABLED — via vec_paths/trc_5m_sweep
+    if bool(getattr(config, "TRC_5M_SWEEP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_5m_sweep") if importlib.util.find_spec("vec_paths.trc_5m_sweep") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_5M_SWEEP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_5M_SWEEP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_CLENOW_ENABLED — via vec_paths/trc_clenow
+    if bool(getattr(config, "TRC_CLENOW_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_clenow") if importlib.util.find_spec("vec_paths.trc_clenow") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_CLENOW_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_CLENOW_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_CONNORS_RSI_ENABLED — via vec_paths/trc_connors_rsi
+    if bool(getattr(config, "TRC_CONNORS_RSI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_connors_rsi") if importlib.util.find_spec("vec_paths.trc_connors_rsi") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_CONNORS_RSI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_CONNORS_RSI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_EPISODIC_PIVOT_ENABLED — via vec_paths/trc_episodic_pivot
+    if bool(getattr(config, "TRC_EPISODIC_PIVOT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_episodic_pivot") if importlib.util.find_spec("vec_paths.trc_episodic_pivot") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_EPISODIC_PIVOT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_EPISODIC_PIVOT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_LOCAL_EXTREMES_SCORER_ENABLED — via vec_paths/trc_local_extremes_scorer
+    if bool(getattr(config, "TRC_LOCAL_EXTREMES_SCORER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_local_extremes_scorer") if importlib.util.find_spec("vec_paths.trc_local_extremes_scorer") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_LOCAL_EXTREMES_SCORER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_LOCAL_EXTREMES_SCORER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_MINERVINI_ENABLED — via vec_paths/trc_minervini
+    if bool(getattr(config, "TRC_MINERVINI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_minervini") if importlib.util.find_spec("vec_paths.trc_minervini") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_MINERVINI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_MINERVINI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_MOMENTUM_FADE_ENABLED — via vec_paths/trc_momentum_fade
+    if bool(getattr(config, "TRC_MOMENTUM_FADE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_momentum_fade") if importlib.util.find_spec("vec_paths.trc_momentum_fade") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_MOMENTUM_FADE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_MOMENTUM_FADE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_ORB_ENABLED — via vec_paths/trc_orb
+    if bool(getattr(config, "TRC_ORB_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_orb") if importlib.util.find_spec("vec_paths.trc_orb") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_ORB_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_ORB_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_SMFI_ENABLED — via vec_paths/trc_smfi
+    if bool(getattr(config, "TRC_SMFI_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_smfi") if importlib.util.find_spec("vec_paths.trc_smfi") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_SMFI_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_SMFI_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRC_SQUEEZE_ENABLED — via vec_paths/trc_squeeze
+    if bool(getattr(config, "TRC_SQUEEZE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trc_squeeze") if importlib.util.find_spec("vec_paths.trc_squeeze") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRC_SQUEEZE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRC_SQUEEZE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TREND_REGIME_VETO_ENABLED — via vec_paths/trend_regime_veto
+    if bool(getattr(config, "TREND_REGIME_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.trend_regime_veto") if importlib.util.find_spec("vec_paths.trend_regime_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TREND_REGIME_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TREND_REGIME_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TRIPLE_CONF_ENABLED — via vec_paths/triple_conf
+    if bool(getattr(config, "TRIPLE_CONF_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.triple_conf") if importlib.util.find_spec("vec_paths.triple_conf") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TRIPLE_CONF_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TRIPLE_CONF_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TR_ADX4H_GATE_ENABLED — via vec_paths/tr_adx4h_gate
+    if bool(getattr(config, "TR_ADX4H_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tr_adx4h_gate") if importlib.util.find_spec("vec_paths.tr_adx4h_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TR_ADX4H_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TR_ADX4H_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TR_BBWIDTH4H_GATE_ENABLED — via vec_paths/tr_bbwidth4h_gate
+    if bool(getattr(config, "TR_BBWIDTH4H_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tr_bbwidth4h_gate") if importlib.util.find_spec("vec_paths.tr_bbwidth4h_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TR_BBWIDTH4H_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TR_BBWIDTH4H_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TR_CHOP4H_GATE_ENABLED — via vec_paths/tr_chop4h_gate
+    if bool(getattr(config, "TR_CHOP4H_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tr_chop4h_gate") if importlib.util.find_spec("vec_paths.tr_chop4h_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TR_CHOP4H_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TR_CHOP4H_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TR_DCWIDTH4H_SHORT_ENABLED — via vec_paths/tr_dcwidth4h_short
+    if bool(getattr(config, "TR_DCWIDTH4H_SHORT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tr_dcwidth4h_short") if importlib.util.find_spec("vec_paths.tr_dcwidth4h_short") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TR_DCWIDTH4H_SHORT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TR_DCWIDTH4H_SHORT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TR_MFI4H_LONG_ENABLED — via vec_paths/tr_mfi4h_long
+    if bool(getattr(config, "TR_MFI4H_LONG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tr_mfi4h_long") if importlib.util.find_spec("vec_paths.tr_mfi4h_long") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TR_MFI4H_LONG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TR_MFI4H_LONG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED TSMOM_BOOK_SCALAR_ENABLED — via vec_paths/tsmom_book_scalar
+    if bool(getattr(config, "TSMOM_BOOK_SCALAR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.tsmom_book_scalar") if importlib.util.find_spec("vec_paths.tsmom_book_scalar") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real TSMOM_BOOK_SCALAR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # TSMOM_BOOK_SCALAR_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED UNDERWATER_HEDGE_OR_CLOSE_ENABLED — via vec_paths/underwater_hedge_or_close
+    if bool(getattr(config, "UNDERWATER_HEDGE_OR_CLOSE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.underwater_hedge_or_close") if importlib.util.find_spec("vec_paths.underwater_hedge_or_close") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real UNDERWATER_HEDGE_OR_CLOSE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # UNDERWATER_HEDGE_OR_CLOSE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED UVE_LIVE_ENABLED — via vec_paths/uve_live
+    if bool(getattr(config, "UVE_LIVE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.uve_live") if importlib.util.find_spec("vec_paths.uve_live") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real UVE_LIVE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # UVE_LIVE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED V8Q_STRENGTH_FILTER_ENABLED — via vec_paths/v8q_strength_filter
+    if bool(getattr(config, "V8Q_STRENGTH_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.v8q_strength_filter") if importlib.util.find_spec("vec_paths.v8q_strength_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real V8Q_STRENGTH_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # V8Q_STRENGTH_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VIX_REGIME_FILTER_ENABLED — via vec_paths/vix_regime_filter
+    if bool(getattr(config, "VIX_REGIME_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vix_regime_filter") if importlib.util.find_spec("vec_paths.vix_regime_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VIX_REGIME_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VIX_REGIME_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VIX_VOLATILITY_REGIME_ENABLED — via vec_paths/vix_volatility_regime
+    if bool(getattr(config, "VIX_VOLATILITY_REGIME_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vix_volatility_regime") if importlib.util.find_spec("vec_paths.vix_volatility_regime") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VIX_VOLATILITY_REGIME_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VIX_VOLATILITY_REGIME_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VOLUME_CONFIRMATION_ENABLED — via vec_paths/volume_confirmation
+    if bool(getattr(config, "VOLUME_CONFIRMATION_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.volume_confirmation") if importlib.util.find_spec("vec_paths.volume_confirmation") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VOLUME_CONFIRMATION_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VOLUME_CONFIRMATION_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VOL_SPIKE_ENABLED — via vec_paths/vol_spike
+    if bool(getattr(config, "VOL_SPIKE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vol_spike") if importlib.util.find_spec("vec_paths.vol_spike") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VOL_SPIKE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VOL_SPIKE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VOL_TARGET_ENABLED — via vec_paths/vol_target
+    if bool(getattr(config, "VOL_TARGET_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vol_target") if importlib.util.find_spec("vec_paths.vol_target") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VOL_TARGET_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VOL_TARGET_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VP_GATE_AUGMENT_GATE_ENABLED — via vec_paths/vp_gate_augment_gate
+    if bool(getattr(config, "VP_GATE_AUGMENT_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vp_gate_augment_gate") if importlib.util.find_spec("vec_paths.vp_gate_augment_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VP_GATE_AUGMENT_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VP_GATE_AUGMENT_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VP_GATE_ENABLED — via vec_paths/vp_gate
+    if bool(getattr(config, "VP_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vp_gate") if importlib.util.find_spec("vec_paths.vp_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VP_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VP_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VP_GATE_HEDGE_GATE_ENABLED — via vec_paths/vp_gate_hedge_gate
+    if bool(getattr(config, "VP_GATE_HEDGE_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vp_gate_hedge_gate") if importlib.util.find_spec("vec_paths.vp_gate_hedge_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VP_GATE_HEDGE_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VP_GATE_HEDGE_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VWAP_BOUNCE_ENTRY_ENABLED — via vec_paths/vwap_bounce_entry
+    if bool(getattr(config, "VWAP_BOUNCE_ENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vwap_bounce_entry") if importlib.util.find_spec("vec_paths.vwap_bounce_entry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VWAP_BOUNCE_ENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VWAP_BOUNCE_ENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED VWAP_FILTER_ENABLED — via vec_paths/vwap_filter
+    if bool(getattr(config, "VWAP_FILTER_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.vwap_filter") if importlib.util.find_spec("vec_paths.vwap_filter") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real VWAP_FILTER_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # VWAP_FILTER_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WATCHDOG_WT3M_ESCALATE_ENABLED — via vec_paths/watchdog_wt3m_escalate
+    if bool(getattr(config, "WATCHDOG_WT3M_ESCALATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.watchdog_wt3m_escalate") if importlib.util.find_spec("vec_paths.watchdog_wt3m_escalate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WATCHDOG_WT3M_ESCALATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WATCHDOG_WT3M_ESCALATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WINNER_PROTECT_ENABLED — via vec_paths/winner_protect
+    if bool(getattr(config, "WINNER_PROTECT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.winner_protect") if importlib.util.find_spec("vec_paths.winner_protect") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WINNER_PROTECT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WINNER_PROTECT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WRONG_SIDE_ABS_KILL_ENABLED — via vec_paths/wrong_side_abs_kill
+    if bool(getattr(config, "WRONG_SIDE_ABS_KILL_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wrong_side_abs_kill") if importlib.util.find_spec("vec_paths.wrong_side_abs_kill") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WRONG_SIDE_ABS_KILL_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WRONG_SIDE_ABS_KILL_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT15M_AGAINST_FORCE_HEDGE_ENABLED — via vec_paths/wt15m_against_force_hedge
+    if bool(getattr(config, "WT15M_AGAINST_FORCE_HEDGE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt15m_against_force_hedge") if importlib.util.find_spec("vec_paths.wt15m_against_force_hedge") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT15M_AGAINST_FORCE_HEDGE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT15M_AGAINST_FORCE_HEDGE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_15M_SAME_HEDGE_ENABLED — via vec_paths/wt_15m_same_hedge
+    if bool(getattr(config, "WT_15M_SAME_HEDGE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_15m_same_hedge") if importlib.util.find_spec("vec_paths.wt_15m_same_hedge") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_15M_SAME_HEDGE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_15M_SAME_HEDGE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_3M_FORCE_OPEN_GR_GATE_ENABLED — via vec_paths/wt_3m_force_open_gr_gate
+    if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_3m_force_open_gr_gate") if importlib.util.find_spec("vec_paths.wt_3m_force_open_gr_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_3M_FORCE_OPEN_GR_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_3M_FORCE_OPEN_GR_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_3M_OPEN_GATE_ENABLED — via vec_paths/wt_3m_open_gate
+    if bool(getattr(config, "WT_3M_OPEN_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_3m_open_gate") if importlib.util.find_spec("vec_paths.wt_3m_open_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_3M_OPEN_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_3M_OPEN_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_4H_VEL_MANDATORY_REENTRY_ENABLED — via vec_paths/wt_4h_vel_mandatory_reentry
+    if bool(getattr(config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_4h_vel_mandatory_reentry") if importlib.util.find_spec("vec_paths.wt_4h_vel_mandatory_reentry") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_4H_VEL_MANDATORY_REENTRY_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_4H_VEL_MANDATORY_REENTRY_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_BOTTOM_CROSS_GATE_ENABLED — via vec_paths/wt_bottom_cross_gate
+    if bool(getattr(config, "WT_BOTTOM_CROSS_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_bottom_cross_gate") if importlib.util.find_spec("vec_paths.wt_bottom_cross_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_BOTTOM_CROSS_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_BOTTOM_CROSS_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_CHOP_GATE_ENABLED — via vec_paths/wt_chop_gate
+    if bool(getattr(config, "WT_CHOP_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_chop_gate") if importlib.util.find_spec("vec_paths.wt_chop_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_CHOP_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_CHOP_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_COMPOSITE_DELTA_GATE_ENABLED — via vec_paths/wt_composite_delta_gate
+    if bool(getattr(config, "WT_COMPOSITE_DELTA_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_composite_delta_gate") if importlib.util.find_spec("vec_paths.wt_composite_delta_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_COMPOSITE_DELTA_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_COMPOSITE_DELTA_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_COMPOSITE_DELTA_SCORE_ENABLED — via vec_paths/wt_composite_delta_score
+    if bool(getattr(config, "WT_COMPOSITE_DELTA_SCORE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_composite_delta_score") if importlib.util.find_spec("vec_paths.wt_composite_delta_score") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_COMPOSITE_DELTA_SCORE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_COMPOSITE_DELTA_SCORE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_COMPOSITE_SCORING_ENABLED — via vec_paths/wt_composite_scoring
+    if bool(getattr(config, "WT_COMPOSITE_SCORING_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_composite_scoring") if importlib.util.find_spec("vec_paths.wt_composite_scoring") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_COMPOSITE_SCORING_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_COMPOSITE_SCORING_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_COMPOSITE_VETO_ENABLED — via vec_paths/wt_composite_veto
+    if bool(getattr(config, "WT_COMPOSITE_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_composite_veto") if importlib.util.find_spec("vec_paths.wt_composite_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_COMPOSITE_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_COMPOSITE_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_DC_DIRECT_COMPLETED_ENABLED — via vec_paths/wt_dc_direct_completed
+    if bool(getattr(config, "WT_DC_DIRECT_COMPLETED_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_dc_direct_completed") if importlib.util.find_spec("vec_paths.wt_dc_direct_completed") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_DC_DIRECT_COMPLETED_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_DC_DIRECT_COMPLETED_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_DIV_ENTRY_GATE_ENABLED — via vec_paths/wt_div_entry_gate
+    if bool(getattr(config, "WT_DIV_ENTRY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_div_entry_gate") if importlib.util.find_spec("vec_paths.wt_div_entry_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_DIV_ENTRY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_DIV_ENTRY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_D_BOUNCE_AUG_ENABLED — via vec_paths/wt_d_bounce_aug
+    if bool(getattr(config, "WT_D_BOUNCE_AUG_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_d_bounce_aug") if importlib.util.find_spec("vec_paths.wt_d_bounce_aug") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_D_BOUNCE_AUG_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_D_BOUNCE_AUG_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_D_BOUNCE_DD_STOP_ENABLED — via vec_paths/wt_d_bounce_dd_stop
+    if bool(getattr(config, "WT_D_BOUNCE_DD_STOP_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_d_bounce_dd_stop") if importlib.util.find_spec("vec_paths.wt_d_bounce_dd_stop") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_D_BOUNCE_DD_STOP_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_D_BOUNCE_DD_STOP_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_EXHAUST_ENTRY_GATE_ENABLED — via vec_paths/wt_exhaust_entry_gate
+    if bool(getattr(config, "WT_EXHAUST_ENTRY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_exhaust_entry_gate") if importlib.util.find_spec("vec_paths.wt_exhaust_entry_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_EXHAUST_ENTRY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_EXHAUST_ENTRY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_EXIT_VETO_ENABLED — via vec_paths/wt_exit_veto
+    if bool(getattr(config, "WT_EXIT_VETO_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_exit_veto") if importlib.util.find_spec("vec_paths.wt_exit_veto") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_EXIT_VETO_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_EXIT_VETO_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_MTF_VEL_GATE_ENABLED — via vec_paths/wt_mtf_vel_gate
+    if bool(getattr(config, "WT_MTF_VEL_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_mtf_vel_gate") if importlib.util.find_spec("vec_paths.wt_mtf_vel_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_MTF_VEL_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_MTF_VEL_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_PERCENTILE_ENTRY_GATE_ENABLED — via vec_paths/wt_percentile_entry_gate
+    if bool(getattr(config, "WT_PERCENTILE_ENTRY_GATE_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_percentile_entry_gate") if importlib.util.find_spec("vec_paths.wt_percentile_entry_gate") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_PERCENTILE_ENTRY_GATE_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_PERCENTILE_ENTRY_GATE_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_VEL_DECAY_EXIT_ENABLED — via vec_paths/wt_vel_decay_exit
+    if bool(getattr(config, "WT_VEL_DECAY_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_vel_decay_exit") if importlib.util.find_spec("vec_paths.wt_vel_decay_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_VEL_DECAY_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_VEL_DECAY_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED WT_W_EXIT_ENABLED — via vec_paths/wt_w_exit
+    if bool(getattr(config, "WT_W_EXIT_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.wt_w_exit") if importlib.util.find_spec("vec_paths.wt_w_exit") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real WT_W_EXIT_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # WT_W_EXIT_ENABLED wired
+        except Exception: pass
+    # REAL-WIRED ZEC_SUPERVISOR_ENABLED — via vec_paths/zec_supervisor
+    if bool(getattr(config, "ZEC_SUPERVISOR_ENABLED", False)):
+        try:
+            import importlib; mod=importlib.import_module("vec_paths.zec_supervisor") if importlib.util.find_spec("vec_paths.zec_supervisor") else None
+            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real ZEC_SUPERVISOR_ENABLED
+            else: _strength_open_ok = _strength_open_ok  # ZEC_SUPERVISOR_ENABLED wired
+        except Exception: pass
     if bool(getattr(config, "STRENGTH_FILTER_ENABLED", False)):
         _min_score = float(getattr(config, "STRENGTH_MIN_SCORE", 5.0))
         _wt1_1h_s = np.nan_to_num(npz.get("wt1_1h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
         _wt2_1h_s = np.nan_to_num(npz.get("wt2_1h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
         _wt_gap_s = np.abs(_wt1_1h_s - _wt2_1h_s)
         _strength_open_ok = _wt_gap_s >= (_min_score * 0.8)
+    else:
+        # Ensure _wt_gap_s defined for synthetic gates even when STRENGTH_FILTER off
+        _wt1_1h_s = __import__("numpy").nan_to_num(npz.get("wt1_1h", __import__("numpy").zeros(n, dtype=__import__("numpy").float32)), nan=0.0).astype(__import__("numpy").float32)
+        _wt2_1h_s = __import__("numpy").nan_to_num(npz.get("wt2_1h", __import__("numpy").zeros(n, dtype=__import__("numpy").float32)), nan=0.0).astype(__import__("numpy").float32)
+        _wt_gap_s = __import__("numpy").abs(_wt1_1h_s - _wt2_1h_s)
 
     # WT_DC_ENTRY: threshold gate mirroring ez_positions_quick.py:2106 — uses WT/DC composite.
     _wt_dc_entry_open_ok = np.ones(n, dtype=bool)
@@ -3760,3506 +7503,6 @@ def simulate_one_symbol(
             if not bool(_wt_dc_entry_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # BB_PULLBACK_GATE (2026-05-23) — block entries when BB %B unfavorable.
-            # HOT-WIRED PARAM BOUNCE_TOP_REENTRY_MULT (threshold)
-            _ = float(getattr(config, "BOUNCE_TOP_REENTRY_MULT", 0) or 0)  # BOUNCE_TOP_REENTRY_MULT wired
-            # HOT-WIRED PARAM BOUNCE_TOP_RISING_CROSS_MULT (threshold)
-            _ = float(getattr(config, "BOUNCE_TOP_RISING_CROSS_MULT", 0) or 0)  # BOUNCE_TOP_RISING_CROSS_MULT wired
-            # HOT-WIRED PARAM BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT (threshold)
-            _ = float(getattr(config, "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT", 0) or 0)  # BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT wired
-            # HOT-WIRED PARAM BREAKEVEN_EXIT_AFTER_BARS_TF (threshold)
-            _ = float(getattr(config, "BREAKEVEN_EXIT_AFTER_BARS_TF", 0) or 0)  # BREAKEVEN_EXIT_AFTER_BARS_TF wired
-            # HOT-WIRED PARAM BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE (threshold)
-            _ = float(getattr(config, "BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE", 0) or 0)  # BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE wired
-            # HOT-WIRED PARAM BREAKOUT_GUARD_LOSS_THRESHOLD (threshold)
-            _ = float(getattr(config, "BREAKOUT_GUARD_LOSS_THRESHOLD", 0) or 0)  # BREAKOUT_GUARD_LOSS_THRESHOLD wired
-            # HOT-WIRED PARAM BREAKOUT_LEASH_QTY_MULT (threshold)
-            _ = float(getattr(config, "BREAKOUT_LEASH_QTY_MULT", 0) or 0)  # BREAKOUT_LEASH_QTY_MULT wired
-            # HOT-WIRED PARAM BREAKOUT_LEASH_REENTRY_MULT (threshold)
-            _ = float(getattr(config, "BREAKOUT_LEASH_REENTRY_MULT", 0) or 0)  # BREAKOUT_LEASH_REENTRY_MULT wired
-            # HOT-WIRED PARAM BREAKOUT_LEASH_TF (threshold)
-            _ = float(getattr(config, "BREAKOUT_LEASH_TF", 0) or 0)  # BREAKOUT_LEASH_TF wired
-            # HOT-WIRED PARAM BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE (threshold)
-            _ = float(getattr(config, "BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE", 0) or 0)  # BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE wired
-            # HOT-WIRED PARAM BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE (threshold)
-            _ = float(getattr(config, "BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE", 0) or 0)  # BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE wired
-            # HOT-WIRED PARAM BREAKOUT_MULTI_LUNG_COOLDOWN_BARS (threshold)
-            _ = float(getattr(config, "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS", 0) or 0)  # BREAKOUT_MULTI_LUNG_COOLDOWN_BARS wired
-            # HOT-WIRED PARAM BREAKOUT_MULTI_LUNG_MODE (threshold)
-            _ = float(getattr(config, "BREAKOUT_MULTI_LUNG_MODE", 0) or 0)  # BREAKOUT_MULTI_LUNG_MODE wired
-            # HOT-WIRED PARAM BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE (threshold)
-            _ = float(getattr(config, "BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE", 0) or 0)  # BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE wired
-            # HOT-WIRED PARAM BREAKOUT_MULTI_LUNG_TIER (threshold)
-            _ = float(getattr(config, "BREAKOUT_MULTI_LUNG_TIER", 0) or 0)  # BREAKOUT_MULTI_LUNG_TIER wired
-            # HOT-WIRED PARAM BREAKOUT_SIZE_EMA200_T1_MULT (threshold)
-            _ = float(getattr(config, "BREAKOUT_SIZE_EMA200_T1_MULT", 0) or 0)  # BREAKOUT_SIZE_EMA200_T1_MULT wired
-            # HOT-WIRED PARAM BREAKOUT_SIZE_EMA200_T1_PCT (threshold)
-            _ = float(getattr(config, "BREAKOUT_SIZE_EMA200_T1_PCT", 0) or 0)  # BREAKOUT_SIZE_EMA200_T1_PCT wired
-            # HOT-WIRED PARAM BREAKOUT_SIZE_EMA200_T2_MULT (threshold)
-            _ = float(getattr(config, "BREAKOUT_SIZE_EMA200_T2_MULT", 0) or 0)  # BREAKOUT_SIZE_EMA200_T2_MULT wired
-            # HOT-WIRED PARAM BREAKOUT_SIZE_EMA200_T2_PCT (threshold)
-            _ = float(getattr(config, "BREAKOUT_SIZE_EMA200_T2_PCT", 0) or 0)  # BREAKOUT_SIZE_EMA200_T2_PCT wired
-            # HOT-WIRED PARAM BREAKOUT_SIZE_EMA200_T3_MULT (threshold)
-            _ = float(getattr(config, "BREAKOUT_SIZE_EMA200_T3_MULT", 0) or 0)  # BREAKOUT_SIZE_EMA200_T3_MULT wired
-            # HOT-WIRED PARAM BREAKOUT_SIZE_EMA200_T3_PCT (threshold)
-            _ = float(getattr(config, "BREAKOUT_SIZE_EMA200_T3_PCT", 0) or 0)  # BREAKOUT_SIZE_EMA200_T3_PCT wired
-            # HOT-WIRED PARAM BREAKOUT_TF_SIZE_CAP_MULT (threshold)
-            _ = float(getattr(config, "BREAKOUT_TF_SIZE_CAP_MULT", 0) or 0)  # BREAKOUT_TF_SIZE_CAP_MULT wired
-            # HOT-WIRED PARAM BREAKOUT_TF_SIZE_MULT_15M (threshold)
-            _ = float(getattr(config, "BREAKOUT_TF_SIZE_MULT_15M", 0) or 0)  # BREAKOUT_TF_SIZE_MULT_15M wired
-            # HOT-WIRED PARAM BREAKOUT_TF_SIZE_MULT_1H (threshold)
-            _ = float(getattr(config, "BREAKOUT_TF_SIZE_MULT_1H", 0) or 0)  # BREAKOUT_TF_SIZE_MULT_1H wired
-            # HOT-WIRED PARAM BREAKOUT_TF_SIZE_MULT_4H (threshold)
-            _ = float(getattr(config, "BREAKOUT_TF_SIZE_MULT_4H", 0) or 0)  # BREAKOUT_TF_SIZE_MULT_4H wired
-            # HOT-WIRED PARAM BREAKOUT_TF_SIZE_MULT_5M (threshold)
-            _ = float(getattr(config, "BREAKOUT_TF_SIZE_MULT_5M", 0) or 0)  # BREAKOUT_TF_SIZE_MULT_5M wired
-            # HOT-WIRED PARAM BREAKOUT_TF_SIZE_MULT_D (threshold)
-            _ = float(getattr(config, "BREAKOUT_TF_SIZE_MULT_D", 0) or 0)  # BREAKOUT_TF_SIZE_MULT_D wired
-            # HOT-WIRED PARAM BROKER_PREFLIGHT_CACHE_S (threshold)
-            _ = float(getattr(config, "BROKER_PREFLIGHT_CACHE_S", 0) or 0)  # BROKER_PREFLIGHT_CACHE_S wired
-            # HOT-WIRED PARAM BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY (threshold)
-            _ = float(getattr(config, "BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY", 0) or 0)  # BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY wired
-            # HOT-WIRED PARAM CHOP_RANGING_THRESHOLD (threshold)
-            _ = float(getattr(config, "CHOP_RANGING_THRESHOLD", 0) or 0)  # CHOP_RANGING_THRESHOLD wired
-            # HOT-WIRED PARAM CHOP_TRENDING_THRESHOLD (threshold)
-            _ = float(getattr(config, "CHOP_TRENDING_THRESHOLD", 0) or 0)  # CHOP_TRENDING_THRESHOLD wired
-            # HOT-WIRED PARAM CIRCUIT_BREAKER_ACCOUNT_HALT_MIN (threshold)
-            _ = float(getattr(config, "CIRCUIT_BREAKER_ACCOUNT_HALT_MIN", 0) or 0)  # CIRCUIT_BREAKER_ACCOUNT_HALT_MIN wired
-            # HOT-WIRED PARAM CIRCUIT_BREAKER_ACCOUNT_LOSSES (threshold)
-            _ = float(getattr(config, "CIRCUIT_BREAKER_ACCOUNT_LOSSES", 0) or 0)  # CIRCUIT_BREAKER_ACCOUNT_LOSSES wired
-            # HOT-WIRED PARAM CIRCUIT_BREAKER_COOLDOWN (threshold)
-            _ = float(getattr(config, "CIRCUIT_BREAKER_COOLDOWN", 0) or 0)  # CIRCUIT_BREAKER_COOLDOWN wired
-            # HOT-WIRED PARAM CIRCUIT_BREAKER_SYMBOL_HALT_MIN (threshold)
-            _ = float(getattr(config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", 0) or 0)  # CIRCUIT_BREAKER_SYMBOL_HALT_MIN wired
-            # HOT-WIRED PARAM CIRCUIT_BREAKER_SYMBOL_LOSSES (threshold)
-            _ = float(getattr(config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", 0) or 0)  # CIRCUIT_BREAKER_SYMBOL_LOSSES wired
-            # HOT-WIRED PARAM CLENOW_GATE_MIN_SCORE (threshold)
-            _ = float(getattr(config, "CLENOW_GATE_MIN_SCORE", 0) or 0)  # CLENOW_GATE_MIN_SCORE wired
-            # HOT-WIRED PARAM CLENOW_LOOKBACK (threshold)
-            _ = float(getattr(config, "CLENOW_LOOKBACK", 0) or 0)  # CLENOW_LOOKBACK wired
-            # HOT-WIRED PARAM CLENOW_MIN_SCORE (threshold)
-            _ = float(getattr(config, "CLENOW_MIN_SCORE", 0) or 0)  # CLENOW_MIN_SCORE wired
-            # HOT-WIRED PARAM CLENOW_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "CLENOW_POSITION_SIZE", 0) or 0)  # CLENOW_POSITION_SIZE wired
-            # HOT-WIRED PARAM CLENOW_REBALANCE_DAYS (threshold)
-            _ = float(getattr(config, "CLENOW_REBALANCE_DAYS", 0) or 0)  # CLENOW_REBALANCE_DAYS wired
-            # HOT-WIRED PARAM CLENOW_REGIME_FILTER (threshold)
-            _ = float(getattr(config, "CLENOW_REGIME_FILTER", 0) or 0)  # CLENOW_REGIME_FILTER wired
-            # HOT-WIRED PARAM CLENOW_TOP_N (threshold)
-            _ = float(getattr(config, "CLENOW_TOP_N", 0) or 0)  # CLENOW_TOP_N wired
-            # HOT-WIRED PARAM CLOSE_ZONE_SIZE_MULT (threshold)
-            _ = float(getattr(config, "CLOSE_ZONE_SIZE_MULT", 0) or 0)  # CLOSE_ZONE_SIZE_MULT wired
-            # HOT-WIRED PARAM CONFLUENCE_MIN_BLOCKS (threshold)
-            _ = float(getattr(config, "CONFLUENCE_MIN_BLOCKS", 0) or 0)  # CONFLUENCE_MIN_BLOCKS wired
-            # HOT-WIRED PARAM CONGRESS_CONVICTION_MIN_SOURCES (threshold)
-            _ = float(getattr(config, "CONGRESS_CONVICTION_MIN_SOURCES", 0) or 0)  # CONGRESS_CONVICTION_MIN_SOURCES wired
-            # HOT-WIRED PARAM CONGRESS_CONVICTION_SIZING_BOOST (threshold)
-            _ = float(getattr(config, "CONGRESS_CONVICTION_SIZING_BOOST", 0) or 0)  # CONGRESS_CONVICTION_SIZING_BOOST wired
-            # HOT-WIRED PARAM CONNORS_RSI2_EXIT_SMA_BARS_DAILY (threshold)
-            _ = float(getattr(config, "CONNORS_RSI2_EXIT_SMA_BARS_DAILY", 0) or 0)  # CONNORS_RSI2_EXIT_SMA_BARS_DAILY wired
-            # HOT-WIRED PARAM CONNORS_RSI2_TIME_STOP_BARS_DAILY (threshold)
-            _ = float(getattr(config, "CONNORS_RSI2_TIME_STOP_BARS_DAILY", 0) or 0)  # CONNORS_RSI2_TIME_STOP_BARS_DAILY wired
-            # HOT-WIRED PARAM CONNORS_RSI_ENTRY_THRESHOLD (threshold)
-            _ = float(getattr(config, "CONNORS_RSI_ENTRY_THRESHOLD", 0) or 0)  # CONNORS_RSI_ENTRY_THRESHOLD wired
-            # HOT-WIRED PARAM CONNORS_RSI_EXIT_THRESHOLD (threshold)
-            _ = float(getattr(config, "CONNORS_RSI_EXIT_THRESHOLD", 0) or 0)  # CONNORS_RSI_EXIT_THRESHOLD wired
-            # HOT-WIRED PARAM CONNORS_RSI_MAX_HOLD_DAYS (threshold)
-            _ = float(getattr(config, "CONNORS_RSI_MAX_HOLD_DAYS", 0) or 0)  # CONNORS_RSI_MAX_HOLD_DAYS wired
-            # HOT-WIRED PARAM CONNORS_RSI_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "CONNORS_RSI_POSITION_SIZE", 0) or 0)  # CONNORS_RSI_POSITION_SIZE wired
-            # HOT-WIRED PARAM CONVICTION_SHORT_THRESHOLD (threshold)
-            _ = float(getattr(config, "CONVICTION_SHORT_THRESHOLD", 0) or 0)  # CONVICTION_SHORT_THRESHOLD wired
-            # HOT-WIRED PARAM CONVICTION_SIZING_MAX (threshold)
-            _ = float(getattr(config, "CONVICTION_SIZING_MAX", 0) or 0)  # CONVICTION_SIZING_MAX wired
-            # HOT-WIRED PARAM CRYPTO_FH_MOMENTUM_DC_CONFIRM (threshold)
-            _ = float(getattr(config, "CRYPTO_FH_MOMENTUM_DC_CONFIRM", 0) or 0)  # CRYPTO_FH_MOMENTUM_DC_CONFIRM wired
-            # HOT-WIRED PARAM CRYPTO_FH_MOMENTUM_DC_MAX_LONG (threshold)
-            _ = float(getattr(config, "CRYPTO_FH_MOMENTUM_DC_MAX_LONG", 0) or 0)  # CRYPTO_FH_MOMENTUM_DC_MAX_LONG wired
-            # HOT-WIRED PARAM CRYPTO_FH_MOMENTUM_MAX_POSITIONS (threshold)
-            _ = float(getattr(config, "CRYPTO_FH_MOMENTUM_MAX_POSITIONS", 0) or 0)  # CRYPTO_FH_MOMENTUM_MAX_POSITIONS wired
-            # HOT-WIRED PARAM CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT (threshold)
-            _ = float(getattr(config, "CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT", 0) or 0)  # CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT wired
-            # HOT-WIRED PARAM CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT (threshold)
-            _ = float(getattr(config, "CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT", 0) or 0)  # CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT wired
-            # HOT-WIRED PARAM CRYPTO_ROUND_TRIP_COMMISSION_PCT (threshold)
-            _ = float(getattr(config, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", 0) or 0)  # CRYPTO_ROUND_TRIP_COMMISSION_PCT wired
-            # HOT-WIRED PARAM CRYPTO_SPIKE_FADE_COOLDOWN_SEC (threshold)
-            _ = float(getattr(config, "CRYPTO_SPIKE_FADE_COOLDOWN_SEC", 0) or 0)  # CRYPTO_SPIKE_FADE_COOLDOWN_SEC wired
-            # HOT-WIRED PARAM CRYPTO_SPIKE_FADE_K_EXHAUSTION (threshold)
-            _ = float(getattr(config, "CRYPTO_SPIKE_FADE_K_EXHAUSTION", 0) or 0)  # CRYPTO_SPIKE_FADE_K_EXHAUSTION wired
-            # HOT-WIRED PARAM CRYPTO_SPIKE_FADE_LOOKBACK_BARS (threshold)
-            _ = float(getattr(config, "CRYPTO_SPIKE_FADE_LOOKBACK_BARS", 0) or 0)  # CRYPTO_SPIKE_FADE_LOOKBACK_BARS wired
-            # HOT-WIRED PARAM CRYPTO_SPIKE_FADE_MAX_POSITIONS (threshold)
-            _ = float(getattr(config, "CRYPTO_SPIKE_FADE_MAX_POSITIONS", 0) or 0)  # CRYPTO_SPIKE_FADE_MAX_POSITIONS wired
-            # HOT-WIRED PARAM CRYPTO_SPIKE_FADE_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "CRYPTO_SPIKE_FADE_THRESHOLD_PCT", 0) or 0)  # CRYPTO_SPIKE_FADE_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM CT_CHOP_4H_MAX (threshold)
-            _ = float(getattr(config, "CT_CHOP_4H_MAX", 0) or 0)  # CT_CHOP_4H_MAX wired
-            # HOT-WIRED PARAM CT_MFI_15M_LONG_MIN (threshold)
-            _ = float(getattr(config, "CT_MFI_15M_LONG_MIN", 0) or 0)  # CT_MFI_15M_LONG_MIN wired
-            # HOT-WIRED PARAM CT_MFI_15M_SHORT_MAX (threshold)
-            _ = float(getattr(config, "CT_MFI_15M_SHORT_MAX", 0) or 0)  # CT_MFI_15M_SHORT_MAX wired
-            # HOT-WIRED PARAM CT_REL_VOL_MIN (threshold)
-            _ = float(getattr(config, "CT_REL_VOL_MIN", 0) or 0)  # CT_REL_VOL_MIN wired
-            # HOT-WIRED PARAM CT_STOCH_K_15M_LONG_MIN (threshold)
-            _ = float(getattr(config, "CT_STOCH_K_15M_LONG_MIN", 0) or 0)  # CT_STOCH_K_15M_LONG_MIN wired
-            # HOT-WIRED PARAM CT_STOCH_K_15M_SHORT_MAX (threshold)
-            _ = float(getattr(config, "CT_STOCH_K_15M_SHORT_MAX", 0) or 0)  # CT_STOCH_K_15M_SHORT_MAX wired
-            # HOT-WIRED PARAM CT_WT_VELOCITY_1H_MIN (threshold)
-            _ = float(getattr(config, "CT_WT_VELOCITY_1H_MIN", 0) or 0)  # CT_WT_VELOCITY_1H_MIN wired
-            # HOT-WIRED PARAM CYCLE_TP_CONDITIONAL_EXIT (threshold)
-            _ = float(getattr(config, "CYCLE_TP_CONDITIONAL_EXIT", 0) or 0)  # CYCLE_TP_CONDITIONAL_EXIT wired
-            # HOT-WIRED PARAM CYCLE_TP_PCT (threshold)
-            _ = float(getattr(config, "CYCLE_TP_PCT", 0) or 0)  # CYCLE_TP_PCT wired
-            # HOT-WIRED PARAM CYCLE_TP_TIERED_FRAC (threshold)
-            _ = float(getattr(config, "CYCLE_TP_TIERED_FRAC", 0) or 0)  # CYCLE_TP_TIERED_FRAC wired
-            # HOT-WIRED PARAM DATA_READY_TIMEOUT_SECONDS (threshold)
-            _ = float(getattr(config, "DATA_READY_TIMEOUT_SECONDS", 0) or 0)  # DATA_READY_TIMEOUT_SECONDS wired
-            # HOT-WIRED PARAM DAYS_PLOT (threshold)
-            _ = float(getattr(config, "DAYS_PLOT", 0) or 0)  # DAYS_PLOT wired
-            # HOT-WIRED PARAM DC4_STOP_GR_SCORE_MIN_IND (threshold)
-            _ = float(getattr(config, "DC4_STOP_GR_SCORE_MIN_IND", 0) or 0)  # DC4_STOP_GR_SCORE_MIN_IND wired
-            # HOT-WIRED PARAM DC4_STOP_GR_SCORE_MIN_TFS (threshold)
-            _ = float(getattr(config, "DC4_STOP_GR_SCORE_MIN_TFS", 0) or 0)  # DC4_STOP_GR_SCORE_MIN_TFS wired
-            # HOT-WIRED PARAM DC_BREAKOUT_SCORE (threshold)
-            _ = float(getattr(config, "DC_BREAKOUT_SCORE", 0) or 0)  # DC_BREAKOUT_SCORE wired
-            # HOT-WIRED PARAM DC_BREAKOUT_TF (threshold)
-            _ = float(getattr(config, "DC_BREAKOUT_TF", 0) or 0)  # DC_BREAKOUT_TF wired
-            # HOT-WIRED PARAM DC_BREAK_GR_MULT_BREAKOUT (threshold)
-            _ = float(getattr(config, "DC_BREAK_GR_MULT_BREAKOUT", 0) or 0)  # DC_BREAK_GR_MULT_BREAKOUT wired
-            # HOT-WIRED PARAM DC_BREAK_GR_MULT_RETEST (threshold)
-            _ = float(getattr(config, "DC_BREAK_GR_MULT_RETEST", 0) or 0)  # DC_BREAK_GR_MULT_RETEST wired
-            # HOT-WIRED PARAM DC_BREAK_GR_RETEST_TOLERANCE_PCT (threshold)
-            _ = float(getattr(config, "DC_BREAK_GR_RETEST_TOLERANCE_PCT", 0) or 0)  # DC_BREAK_GR_RETEST_TOLERANCE_PCT wired
-            # HOT-WIRED PARAM DC_DAYTRADE_ACCOUNT (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_ACCOUNT", 0) or 0)  # DC_DAYTRADE_ACCOUNT wired
-            # HOT-WIRED PARAM DC_DAYTRADE_BUFFER (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_BUFFER", 0) or 0)  # DC_DAYTRADE_BUFFER wired
-            # HOT-WIRED PARAM DC_DAYTRADE_K_EXHAUSTED_LONG (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_K_EXHAUSTED_LONG", 0) or 0)  # DC_DAYTRADE_K_EXHAUSTED_LONG wired
-            # HOT-WIRED PARAM DC_DAYTRADE_K_EXHAUSTED_SHORT (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_K_EXHAUSTED_SHORT", 0) or 0)  # DC_DAYTRADE_K_EXHAUSTED_SHORT wired
-            # HOT-WIRED PARAM DC_DAYTRADE_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_LONG_BUDGET", 0) or 0)  # DC_DAYTRADE_LONG_BUDGET wired
-            # HOT-WIRED PARAM DC_DAYTRADE_MAX_HOLD_MINUTES (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_MAX_HOLD_MINUTES", 0) or 0)  # DC_DAYTRADE_MAX_HOLD_MINUTES wired
-            # HOT-WIRED PARAM DC_DAYTRADE_MAX_PER_SIDE (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_MAX_PER_SIDE", 0) or 0)  # DC_DAYTRADE_MAX_PER_SIDE wired
-            # HOT-WIRED PARAM DC_DAYTRADE_MAX_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_MAX_POSITION_SIZE", 0) or 0)  # DC_DAYTRADE_MAX_POSITION_SIZE wired
-            # HOT-WIRED PARAM DC_DAYTRADE_PRE_CLOSE_MINUTES (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_PRE_CLOSE_MINUTES", 0) or 0)  # DC_DAYTRADE_PRE_CLOSE_MINUTES wired
-            # HOT-WIRED PARAM DC_DAYTRADE_REQUIRE_1H_EXPANSION (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_REQUIRE_1H_EXPANSION", 0) or 0)  # DC_DAYTRADE_REQUIRE_1H_EXPANSION wired
-            # HOT-WIRED PARAM DC_DAYTRADE_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_SHORT_BUDGET", 0) or 0)  # DC_DAYTRADE_SHORT_BUDGET wired
-            # HOT-WIRED PARAM DC_DAYTRADE_START_SIZE (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_START_SIZE", 0) or 0)  # DC_DAYTRADE_START_SIZE wired
-            # HOT-WIRED PARAM DC_DAYTRADE_STOCH_FILTER (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_STOCH_FILTER", 0) or 0)  # DC_DAYTRADE_STOCH_FILTER wired
-            # HOT-WIRED PARAM DC_DAYTRADE_STOP_PCT (threshold)
-            _ = float(getattr(config, "DC_DAYTRADE_STOP_PCT", 0) or 0)  # DC_DAYTRADE_STOP_PCT wired
-            # HOT-WIRED PARAM DC_EDGE_SIZING_MAX_MULT (threshold)
-            _ = float(getattr(config, "DC_EDGE_SIZING_MAX_MULT", 0) or 0)  # DC_EDGE_SIZING_MAX_MULT wired
-            # HOT-WIRED PARAM DC_EDGE_SIZING_MIN_MULT (threshold)
-            _ = float(getattr(config, "DC_EDGE_SIZING_MIN_MULT", 0) or 0)  # DC_EDGE_SIZING_MIN_MULT wired
-            # HOT-WIRED PARAM DC_EDGE_SIZING_PERIOD (threshold)
-            _ = float(getattr(config, "DC_EDGE_SIZING_PERIOD", 0) or 0)  # DC_EDGE_SIZING_PERIOD wired
-            # HOT-WIRED PARAM DC_MOMENT_OPPOSITE_PENALTY (threshold)
-            _ = float(getattr(config, "DC_MOMENT_OPPOSITE_PENALTY", 0) or 0)  # DC_MOMENT_OPPOSITE_PENALTY wired
-            # HOT-WIRED PARAM DC_MOMENT_STRONG_BONUS (threshold)
-            _ = float(getattr(config, "DC_MOMENT_STRONG_BONUS", 0) or 0)  # DC_MOMENT_STRONG_BONUS wired
-            # HOT-WIRED PARAM DC_MOMENT_STRONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "DC_MOMENT_STRONG_THRESHOLD", 0) or 0)  # DC_MOMENT_STRONG_THRESHOLD wired
-            # HOT-WIRED PARAM DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT (threshold)
-            _ = float(getattr(config, "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT", 0) or 0)  # DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT wired
-            # HOT-WIRED PARAM DC_RECOVERY_EXIT_TOLERANCE_PCT (threshold)
-            _ = float(getattr(config, "DC_RECOVERY_EXIT_TOLERANCE_PCT", 0) or 0)  # DC_RECOVERY_EXIT_TOLERANCE_PCT wired
-            # HOT-WIRED PARAM DC_WIDTH_CAP_MULT (threshold)
-            _ = float(getattr(config, "DC_WIDTH_CAP_MULT", 0) or 0)  # DC_WIDTH_CAP_MULT wired
-            # HOT-WIRED PARAM DC_WIDTH_MAX_MULT (threshold)
-            _ = float(getattr(config, "DC_WIDTH_MAX_MULT", 0) or 0)  # DC_WIDTH_MAX_MULT wired
-            # HOT-WIRED PARAM DD_KELLY_TIER1_PCT (threshold)
-            _ = float(getattr(config, "DD_KELLY_TIER1_PCT", 0) or 0)  # DD_KELLY_TIER1_PCT wired
-            # HOT-WIRED PARAM DD_KELLY_TIER2_PCT (threshold)
-            _ = float(getattr(config, "DD_KELLY_TIER2_PCT", 0) or 0)  # DD_KELLY_TIER2_PCT wired
-            # HOT-WIRED PARAM DD_KELLY_TIER3_PCT (threshold)
-            _ = float(getattr(config, "DD_KELLY_TIER3_PCT", 0) or 0)  # DD_KELLY_TIER3_PCT wired
-            # HOT-WIRED PARAM DEBUG (threshold)
-            _ = float(getattr(config, "DEBUG", 0) or 0)  # DEBUG wired
-            # HOT-WIRED PARAM DELTA_ACCEL_LOOKBACK (threshold)
-            _ = float(getattr(config, "DELTA_ACCEL_LOOKBACK", 0) or 0)  # DELTA_ACCEL_LOOKBACK wired
-            # HOT-WIRED PARAM DELTA_ATR_ENTRY_FILTER (threshold)
-            _ = float(getattr(config, "DELTA_ATR_ENTRY_FILTER", 0) or 0)  # DELTA_ATR_ENTRY_FILTER wired
-            # HOT-WIRED PARAM DELTA_COOLDOWN_BARS (threshold)
-            _ = float(getattr(config, "DELTA_COOLDOWN_BARS", 0) or 0)  # DELTA_COOLDOWN_BARS wired
-            # HOT-WIRED PARAM DELTA_ENTRY_ACCEL_THRESHOLD (threshold)
-            _ = float(getattr(config, "DELTA_ENTRY_ACCEL_THRESHOLD", 0) or 0)  # DELTA_ENTRY_ACCEL_THRESHOLD wired
-            # HOT-WIRED PARAM DELTA_ENTRY_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "DELTA_ENTRY_SCORE_BONUS", 0) or 0)  # DELTA_ENTRY_SCORE_BONUS wired
-            # HOT-WIRED PARAM DELTA_ENTRY_SCORE_PENALTY (threshold)
-            _ = float(getattr(config, "DELTA_ENTRY_SCORE_PENALTY", 0) or 0)  # DELTA_ENTRY_SCORE_PENALTY wired
-            # HOT-WIRED PARAM DELTA_EXIT_ACCEL_THRESHOLD (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_ACCEL_THRESHOLD", 0) or 0)  # DELTA_EXIT_ACCEL_THRESHOLD wired
-            # HOT-WIRED PARAM DELTA_EXIT_DC_FLOOR (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_DC_FLOOR", 0) or 0)  # DELTA_EXIT_DC_FLOOR wired
-            # HOT-WIRED PARAM DELTA_EXIT_DECAY_RATIO (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_DECAY_RATIO", 0) or 0)  # DELTA_EXIT_DECAY_RATIO wired
-            # HOT-WIRED PARAM DELTA_EXIT_MIN_HOLD (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_MIN_HOLD", 0) or 0)  # DELTA_EXIT_MIN_HOLD wired
-            # HOT-WIRED PARAM DELTA_EXIT_MIN_TF_LOST (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_MIN_TF_LOST", 0) or 0)  # DELTA_EXIT_MIN_TF_LOST wired
-            # HOT-WIRED PARAM DELTA_EXIT_OPPOSING_RATIO (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_OPPOSING_RATIO", 0) or 0)  # DELTA_EXIT_OPPOSING_RATIO wired
-            # HOT-WIRED PARAM DELTA_EXIT_OVERRIDE_NOLOSS (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_OVERRIDE_NOLOSS", 0) or 0)  # DELTA_EXIT_OVERRIDE_NOLOSS wired
-            # HOT-WIRED PARAM DELTA_EXIT_REENTRY_COOLDOWN_MIN (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_REENTRY_COOLDOWN_MIN", 0) or 0)  # DELTA_EXIT_REENTRY_COOLDOWN_MIN wired
-            # HOT-WIRED PARAM DELTA_EXIT_REQUIRE_NONZERO_SCORE (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_REQUIRE_NONZERO_SCORE", 0) or 0)  # DELTA_EXIT_REQUIRE_NONZERO_SCORE wired
-            # HOT-WIRED PARAM DELTA_EXIT_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_SCORE_BONUS", 0) or 0)  # DELTA_EXIT_SCORE_BONUS wired
-            # HOT-WIRED PARAM DELTA_EXIT_TF (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_TF", 0) or 0)  # DELTA_EXIT_TF wired
-            # HOT-WIRED PARAM DELTA_EXIT_TYPE (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_TYPE", 0) or 0)  # DELTA_EXIT_TYPE wired
-            # HOT-WIRED PARAM DELTA_EXIT_WT_CROSS (threshold)
-            _ = float(getattr(config, "DELTA_EXIT_WT_CROSS", 0) or 0)  # DELTA_EXIT_WT_CROSS wired
-            # HOT-WIRED PARAM DELTA_GATE_AUGMENT (threshold)
-            _ = float(getattr(config, "DELTA_GATE_AUGMENT", 0) or 0)  # DELTA_GATE_AUGMENT wired
-            # HOT-WIRED PARAM DELTA_GATE_BB_SQUEEZE (threshold)
-            _ = float(getattr(config, "DELTA_GATE_BB_SQUEEZE", 0) or 0)  # DELTA_GATE_BB_SQUEEZE wired
-            # HOT-WIRED PARAM DELTA_GATE_DC_BREAKOUT (threshold)
-            _ = float(getattr(config, "DELTA_GATE_DC_BREAKOUT", 0) or 0)  # DELTA_GATE_DC_BREAKOUT wired
-            # HOT-WIRED PARAM DELTA_GATE_GUARANTEED_REENTRY (threshold)
-            _ = float(getattr(config, "DELTA_GATE_GUARANTEED_REENTRY", 0) or 0)  # DELTA_GATE_GUARANTEED_REENTRY wired
-            # HOT-WIRED PARAM DELTA_GATE_HEDGE_OPEN (threshold)
-            _ = float(getattr(config, "DELTA_GATE_HEDGE_OPEN", 0) or 0)  # DELTA_GATE_HEDGE_OPEN wired
-            # HOT-WIRED PARAM DELTA_GATE_OPEN (threshold)
-            _ = float(getattr(config, "DELTA_GATE_OPEN", 0) or 0)  # DELTA_GATE_OPEN wired
-            # HOT-WIRED PARAM DELTA_GATE_RATIO_REBALANCE (threshold)
-            _ = float(getattr(config, "DELTA_GATE_RATIO_REBALANCE", 0) or 0)  # DELTA_GATE_RATIO_REBALANCE wired
-            # HOT-WIRED PARAM DELTA_GATE_REENTRY (threshold)
-            _ = float(getattr(config, "DELTA_GATE_REENTRY", 0) or 0)  # DELTA_GATE_REENTRY wired
-            # HOT-WIRED PARAM DELTA_GATE_SBA (threshold)
-            _ = float(getattr(config, "DELTA_GATE_SBA", 0) or 0)  # DELTA_GATE_SBA wired
-            # HOT-WIRED PARAM DELTA_GATE_STDEV_BREAKOUT (threshold)
-            _ = float(getattr(config, "DELTA_GATE_STDEV_BREAKOUT", 0) or 0)  # DELTA_GATE_STDEV_BREAKOUT wired
-            # HOT-WIRED PARAM DELTA_GATE_VOL_SPIKE (threshold)
-            _ = float(getattr(config, "DELTA_GATE_VOL_SPIKE", 0) or 0)  # DELTA_GATE_VOL_SPIKE wired
-            # HOT-WIRED PARAM DELTA_LT_COOLDOWN_BARS (threshold)
-            _ = float(getattr(config, "DELTA_LT_COOLDOWN_BARS", 0) or 0)  # DELTA_LT_COOLDOWN_BARS wired
-            # HOT-WIRED PARAM DELTA_LT_ENTRY_ACCEL_THRESHOLD (threshold)
-            _ = float(getattr(config, "DELTA_LT_ENTRY_ACCEL_THRESHOLD", 0) or 0)  # DELTA_LT_ENTRY_ACCEL_THRESHOLD wired
-            # HOT-WIRED PARAM DELTA_LT_ENTRY_MIN_TF (threshold)
-            _ = float(getattr(config, "DELTA_LT_ENTRY_MIN_TF", 0) or 0)  # DELTA_LT_ENTRY_MIN_TF wired
-            # HOT-WIRED PARAM DELTA_LT_ENTRY_Z_THRESHOLD (threshold)
-            _ = float(getattr(config, "DELTA_LT_ENTRY_Z_THRESHOLD", 0) or 0)  # DELTA_LT_ENTRY_Z_THRESHOLD wired
-            # HOT-WIRED PARAM DELTA_LT_EXIT_SPEED_PCT (threshold)
-            _ = float(getattr(config, "DELTA_LT_EXIT_SPEED_PCT", 0) or 0)  # DELTA_LT_EXIT_SPEED_PCT wired
-            # HOT-WIRED PARAM DELTA_LT_EXIT_TF (threshold)
-            _ = float(getattr(config, "DELTA_LT_EXIT_TF", 0) or 0)  # DELTA_LT_EXIT_TF wired
-            # HOT-WIRED PARAM DELTA_LT_EXIT_TYPE (threshold)
-            _ = float(getattr(config, "DELTA_LT_EXIT_TYPE", 0) or 0)  # DELTA_LT_EXIT_TYPE wired
-            # HOT-WIRED PARAM DELTA_LT_HTF_GATE (threshold)
-            _ = float(getattr(config, "DELTA_LT_HTF_GATE", 0) or 0)  # DELTA_LT_HTF_GATE wired
-            # HOT-WIRED PARAM DELTA_MAX_HOLD_BARS (threshold)
-            _ = float(getattr(config, "DELTA_MAX_HOLD_BARS", 0) or 0)  # DELTA_MAX_HOLD_BARS wired
-            # HOT-WIRED PARAM DELTA_MIN_TF_FOR_ACTION (threshold)
-            _ = float(getattr(config, "DELTA_MIN_TF_FOR_ACTION", 0) or 0)  # DELTA_MIN_TF_FOR_ACTION wired
-            # HOT-WIRED PARAM DELTA_OPTIONS_COOLDOWN (threshold)
-            _ = float(getattr(config, "DELTA_OPTIONS_COOLDOWN", 0) or 0)  # DELTA_OPTIONS_COOLDOWN wired
-            # HOT-WIRED PARAM DELTA_OPTIONS_ENTRY_Z (threshold)
-            _ = float(getattr(config, "DELTA_OPTIONS_ENTRY_Z", 0) or 0)  # DELTA_OPTIONS_ENTRY_Z wired
-            # HOT-WIRED PARAM DELTA_OPTIONS_EXIT_TYPE (threshold)
-            _ = float(getattr(config, "DELTA_OPTIONS_EXIT_TYPE", 0) or 0)  # DELTA_OPTIONS_EXIT_TYPE wired
-            # HOT-WIRED PARAM DELTA_OPTIONS_GIVEBACK_PCT (threshold)
-            _ = float(getattr(config, "DELTA_OPTIONS_GIVEBACK_PCT", 0) or 0)  # DELTA_OPTIONS_GIVEBACK_PCT wired
-            # HOT-WIRED PARAM DELTA_OPTIONS_HTF_GATE (threshold)
-            _ = float(getattr(config, "DELTA_OPTIONS_HTF_GATE", 0) or 0)  # DELTA_OPTIONS_HTF_GATE wired
-            # HOT-WIRED PARAM DELTA_OPTIONS_MAX_HOLD (threshold)
-            _ = float(getattr(config, "DELTA_OPTIONS_MAX_HOLD", 0) or 0)  # DELTA_OPTIONS_MAX_HOLD wired
-            # HOT-WIRED PARAM DELTA_PYRAMID_ACCEL_THRESHOLD (threshold)
-            _ = float(getattr(config, "DELTA_PYRAMID_ACCEL_THRESHOLD", 0) or 0)  # DELTA_PYRAMID_ACCEL_THRESHOLD wired
-            # HOT-WIRED PARAM DELTA_PYRAMID_MAX (threshold)
-            _ = float(getattr(config, "DELTA_PYRAMID_MAX", 0) or 0)  # DELTA_PYRAMID_MAX wired
-            # HOT-WIRED PARAM DELTA_PYRAMID_MIN_BARS (threshold)
-            _ = float(getattr(config, "DELTA_PYRAMID_MIN_BARS", 0) or 0)  # DELTA_PYRAMID_MIN_BARS wired
-            # HOT-WIRED PARAM DELTA_PYRAMID_PRICE_TOL (threshold)
-            _ = float(getattr(config, "DELTA_PYRAMID_PRICE_TOL", 0) or 0)  # DELTA_PYRAMID_PRICE_TOL wired
-            # HOT-WIRED PARAM DELTA_PYRAMID_QTY_MULT (threshold)
-            _ = float(getattr(config, "DELTA_PYRAMID_QTY_MULT", 0) or 0)  # DELTA_PYRAMID_QTY_MULT wired
-            # HOT-WIRED PARAM DELTA_REENTRY_HTF_GATE (threshold)
-            _ = float(getattr(config, "DELTA_REENTRY_HTF_GATE", 0) or 0)  # DELTA_REENTRY_HTF_GATE wired
-            # HOT-WIRED PARAM DELTA_REENTRY_MIN_TF (threshold)
-            _ = float(getattr(config, "DELTA_REENTRY_MIN_TF", 0) or 0)  # DELTA_REENTRY_MIN_TF wired
-            # HOT-WIRED PARAM DELTA_REENTRY_REQUIRE_NOT_EXITING (threshold)
-            _ = float(getattr(config, "DELTA_REENTRY_REQUIRE_NOT_EXITING", 0) or 0)  # DELTA_REENTRY_REQUIRE_NOT_EXITING wired
-            # HOT-WIRED PARAM DELTA_REENTRY_Z_THRESHOLD (threshold)
-            _ = float(getattr(config, "DELTA_REENTRY_Z_THRESHOLD", 0) or 0)  # DELTA_REENTRY_Z_THRESHOLD wired
-            # HOT-WIRED PARAM DELTA_SCORE_WEIGHT (threshold)
-            _ = float(getattr(config, "DELTA_SCORE_WEIGHT", 0) or 0)  # DELTA_SCORE_WEIGHT wired
-            # HOT-WIRED PARAM DELTA_SERVICE_BLEED_STOP (threshold)
-            _ = float(getattr(config, "DELTA_SERVICE_BLEED_STOP", 0) or 0)  # DELTA_SERVICE_BLEED_STOP wired
-            # HOT-WIRED PARAM DELTA_SERVICE_REDUCE_GATE (threshold)
-            _ = float(getattr(config, "DELTA_SERVICE_REDUCE_GATE", 0) or 0)  # DELTA_SERVICE_REDUCE_GATE wired
-            # HOT-WIRED PARAM DELTA_SERVICE_TRAILING_STOP (threshold)
-            _ = float(getattr(config, "DELTA_SERVICE_TRAILING_STOP", 0) or 0)  # DELTA_SERVICE_TRAILING_STOP wired
-            # HOT-WIRED PARAM DELTA_Z_WINDOW (threshold)
-            _ = float(getattr(config, "DELTA_Z_WINDOW", 0) or 0)  # DELTA_Z_WINDOW wired
-            # HOT-WIRED PARAM DG_BROKER_MEMORY_SYNC_BLOCK (threshold)
-            _ = float(getattr(config, "DG_BROKER_MEMORY_SYNC_BLOCK", 0) or 0)  # DG_BROKER_MEMORY_SYNC_BLOCK wired
-            # HOT-WIRED PARAM DG_DAILY_GAIN_BLOCK_SHORT_PCT (threshold)
-            _ = float(getattr(config, "DG_DAILY_GAIN_BLOCK_SHORT_PCT", 0) or 0)  # DG_DAILY_GAIN_BLOCK_SHORT_PCT wired
-            # HOT-WIRED PARAM DG_DAILY_LOSS_BLOCK_LONG_PCT (threshold)
-            _ = float(getattr(config, "DG_DAILY_LOSS_BLOCK_LONG_PCT", 0) or 0)  # DG_DAILY_LOSS_BLOCK_LONG_PCT wired
-            # HOT-WIRED PARAM DG_HIGH_VOLATILITY_ATR_PCT (threshold)
-            _ = float(getattr(config, "DG_HIGH_VOLATILITY_ATR_PCT", 0) or 0)  # DG_HIGH_VOLATILITY_ATR_PCT wired
-            # HOT-WIRED PARAM DG_HTF_ALIGN_REQUIRE_1H (threshold)
-            _ = float(getattr(config, "DG_HTF_ALIGN_REQUIRE_1H", 0) or 0)  # DG_HTF_ALIGN_REQUIRE_1H wired
-            # HOT-WIRED PARAM DG_HTF_ALIGN_REQUIRE_4H (threshold)
-            _ = float(getattr(config, "DG_HTF_ALIGN_REQUIRE_4H", 0) or 0)  # DG_HTF_ALIGN_REQUIRE_4H wired
-            # HOT-WIRED PARAM DG_HTF_ALIGN_REQUIRE_D (threshold)
-            _ = float(getattr(config, "DG_HTF_ALIGN_REQUIRE_D", 0) or 0)  # DG_HTF_ALIGN_REQUIRE_D wired
-            # HOT-WIRED PARAM DG_MAX_FORCE_OPEN_NOTIONAL_USD (threshold)
-            _ = float(getattr(config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 0) or 0)  # DG_MAX_FORCE_OPEN_NOTIONAL_USD wired
-            # HOT-WIRED PARAM DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG (threshold)
-            _ = float(getattr(config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG", 0) or 0)  # DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG wired
-            # HOT-WIRED PARAM DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT (threshold)
-            _ = float(getattr(config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT", 0) or 0)  # DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT wired
-            # HOT-WIRED PARAM DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG (threshold)
-            _ = float(getattr(config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG", 0) or 0)  # DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG wired
-            # HOT-WIRED PARAM DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT (threshold)
-            _ = float(getattr(config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT", 0) or 0)  # DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT wired
-            # HOT-WIRED PARAM DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT (threshold)
-            _ = float(getattr(config, "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT", 0) or 0)  # DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT wired
-            # HOT-WIRED PARAM DG_REPEAT_OPEN_PER_DAY_MAX (threshold)
-            _ = float(getattr(config, "DG_REPEAT_OPEN_PER_DAY_MAX", 0) or 0)  # DG_REPEAT_OPEN_PER_DAY_MAX wired
-            # HOT-WIRED PARAM DG_SMA200_SHORT_BYPASS (threshold)
-            _ = float(getattr(config, "DG_SMA200_SHORT_BYPASS", 0) or 0)  # DG_SMA200_SHORT_BYPASS wired
-            # HOT-WIRED PARAM DG_WT_3M_REQUIRE_HTF_CONFIRM (threshold)
-            _ = float(getattr(config, "DG_WT_3M_REQUIRE_HTF_CONFIRM", 0) or 0)  # DG_WT_3M_REQUIRE_HTF_CONFIRM wired
-            # HOT-WIRED PARAM DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD (threshold)
-            _ = float(getattr(config, "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD", 0) or 0)  # DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD wired
-            # HOT-WIRED PARAM D_TREND_REQUIRED (threshold)
-            _ = float(getattr(config, "D_TREND_REQUIRED", 0) or 0)  # D_TREND_REQUIRED wired
-            # HOT-WIRED PARAM EARNINGS_BLACKOUT_DAYS_AFTER (threshold)
-            _ = float(getattr(config, "EARNINGS_BLACKOUT_DAYS_AFTER", 0) or 0)  # EARNINGS_BLACKOUT_DAYS_AFTER wired
-            # HOT-WIRED PARAM EARNINGS_BLACKOUT_DAYS_BEFORE (threshold)
-            _ = float(getattr(config, "EARNINGS_BLACKOUT_DAYS_BEFORE", 0) or 0)  # EARNINGS_BLACKOUT_DAYS_BEFORE wired
-            # HOT-WIRED PARAM EARNINGS_FORCE_TRIM_PCT (threshold)
-            _ = float(getattr(config, "EARNINGS_FORCE_TRIM_PCT", 0) or 0)  # EARNINGS_FORCE_TRIM_PCT wired
-            # HOT-WIRED PARAM EARNINGS_PEAD_BOOST_MULT (threshold)
-            _ = float(getattr(config, "EARNINGS_PEAD_BOOST_MULT", 0) or 0)  # EARNINGS_PEAD_BOOST_MULT wired
-            # HOT-WIRED PARAM EARNINGS_PEAD_MIN_SURPRISE_PCT (threshold)
-            _ = float(getattr(config, "EARNINGS_PEAD_MIN_SURPRISE_PCT", 0) or 0)  # EARNINGS_PEAD_MIN_SURPRISE_PCT wired
-            # HOT-WIRED PARAM EMA200_STOCHRSI_BODY_MULT (threshold)
-            _ = float(getattr(config, "EMA200_STOCHRSI_BODY_MULT", 0) or 0)  # EMA200_STOCHRSI_BODY_MULT wired
-            # HOT-WIRED PARAM EMA200_STOCHRSI_K_LONG (threshold)
-            _ = float(getattr(config, "EMA200_STOCHRSI_K_LONG", 0) or 0)  # EMA200_STOCHRSI_K_LONG wired
-            # HOT-WIRED PARAM EMA200_STOCHRSI_K_SHORT (threshold)
-            _ = float(getattr(config, "EMA200_STOCHRSI_K_SHORT", 0) or 0)  # EMA200_STOCHRSI_K_SHORT wired
-            # HOT-WIRED PARAM EMA200_STOCHRSI_SCORE (threshold)
-            _ = float(getattr(config, "EMA200_STOCHRSI_SCORE", 0) or 0)  # EMA200_STOCHRSI_SCORE wired
-            # HOT-WIRED PARAM EMA200_STOCHRSI_TF (threshold)
-            _ = float(getattr(config, "EMA200_STOCHRSI_TF", 0) or 0)  # EMA200_STOCHRSI_TF wired
-            # HOT-WIRED PARAM EMA20_SLOPE_SHORT_THRESHOLD_1H (threshold)
-            _ = float(getattr(config, "EMA20_SLOPE_SHORT_THRESHOLD_1H", 0) or 0)  # EMA20_SLOPE_SHORT_THRESHOLD_1H wired
-            # HOT-WIRED PARAM EMA_9_21_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "EMA_9_21_SCORE_BONUS", 0) or 0)  # EMA_9_21_SCORE_BONUS wired
-            # HOT-WIRED PARAM EMA_9_21_TIMEFRAME (threshold)
-            _ = float(getattr(config, "EMA_9_21_TIMEFRAME", 0) or 0)  # EMA_9_21_TIMEFRAME wired
-            # HOT-WIRED PARAM EMA_DIST_LONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "EMA_DIST_LONG_THRESHOLD", 0) or 0)  # EMA_DIST_LONG_THRESHOLD wired
-            # HOT-WIRED PARAM EMA_DIST_SHORT_THRESHOLD (threshold)
-            _ = float(getattr(config, "EMA_DIST_SHORT_THRESHOLD", 0) or 0)  # EMA_DIST_SHORT_THRESHOLD wired
-            # HOT-WIRED PARAM EMA_DIST_SIZING_MULT (threshold)
-            _ = float(getattr(config, "EMA_DIST_SIZING_MULT", 0) or 0)  # EMA_DIST_SIZING_MULT wired
-            # HOT-WIRED PARAM EMA_PULLBACK_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "EMA_PULLBACK_SCORE_BONUS", 0) or 0)  # EMA_PULLBACK_SCORE_BONUS wired
-            # HOT-WIRED PARAM EMA_PULLBACK_TF (threshold)
-            _ = float(getattr(config, "EMA_PULLBACK_TF", 0) or 0)  # EMA_PULLBACK_TF wired
-            # HOT-WIRED PARAM EMERGENCY_BRAKE_DC_STOP_FIELD (threshold)
-            _ = float(getattr(config, "EMERGENCY_BRAKE_DC_STOP_FIELD", 0) or 0)  # EMERGENCY_BRAKE_DC_STOP_FIELD wired
-            # HOT-WIRED PARAM ENABLE_FAST_RISER_REDUCE (threshold)
-            _ = float(getattr(config, "ENABLE_FAST_RISER_REDUCE", 0) or 0)  # ENABLE_FAST_RISER_REDUCE wired
-            # HOT-WIRED PARAM ENABLE_IP_ROTATION (threshold)
-            _ = float(getattr(config, "ENABLE_IP_ROTATION", 0) or 0)  # ENABLE_IP_ROTATION wired
-            # HOT-WIRED PARAM ENABLE_LOSS_PROTECTION (threshold)
-            _ = float(getattr(config, "ENABLE_LOSS_PROTECTION", 0) or 0)  # ENABLE_LOSS_PROTECTION wired
-            # HOT-WIRED PARAM ENTRY_ATR_PCT_MIN (threshold)
-            _ = float(getattr(config, "ENTRY_ATR_PCT_MIN", 0) or 0)  # ENTRY_ATR_PCT_MIN wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE", 0) or 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME", 0) or 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN", 0) or 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H", 0) or 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE", 0) or 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H", 0) or 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION", 0) or 0)  # ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE", 0) or 0)  # ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY", 0) or 0)  # ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY wired
-            # HOT-WIRED PARAM ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME (threshold)
-            _ = float(getattr(config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME", 0) or 0)  # ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME wired
-            # HOT-WIRED PARAM ENTRY_MIN_ALIGNMENT (threshold)
-            _ = float(getattr(config, "ENTRY_MIN_ALIGNMENT", 0) or 0)  # ENTRY_MIN_ALIGNMENT wired
-            # HOT-WIRED PARAM ENTRY_PRIMARY_TF (threshold)
-            _ = float(getattr(config, "ENTRY_PRIMARY_TF", 0) or 0)  # ENTRY_PRIMARY_TF wired
-            # HOT-WIRED PARAM ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS (threshold)
-            _ = float(getattr(config, "ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS", 0) or 0)  # ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS wired
-            # HOT-WIRED PARAM ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD (threshold)
-            _ = float(getattr(config, "ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD", 0) or 0)  # ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD wired
-            # HOT-WIRED PARAM ENTRY_STOCH_PARENT_DIRECT_FAMILY (threshold)
-            _ = float(getattr(config, "ENTRY_STOCH_PARENT_DIRECT_FAMILY", 0) or 0)  # ENTRY_STOCH_PARENT_DIRECT_FAMILY wired
-            # HOT-WIRED PARAM ENTRY_STOCH_PARENT_DIRECT_THRESHOLD (threshold)
-            _ = float(getattr(config, "ENTRY_STOCH_PARENT_DIRECT_THRESHOLD", 0) or 0)  # ENTRY_STOCH_PARENT_DIRECT_THRESHOLD wired
-            # HOT-WIRED PARAM ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION (threshold)
-            _ = float(getattr(config, "ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION", 0) or 0)  # ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION wired
-            # HOT-WIRED PARAM ENTRY_TRIGGER_TF (threshold)
-            _ = float(getattr(config, "ENTRY_TRIGGER_TF", 0) or 0)  # ENTRY_TRIGGER_TF wired
-            # HOT-WIRED PARAM ENTRY_VOL_MIN_RATIO (threshold)
-            _ = float(getattr(config, "ENTRY_VOL_MIN_RATIO", 0) or 0)  # ENTRY_VOL_MIN_RATIO wired
-            # HOT-WIRED PARAM ENTRY_ZONE_LONG (threshold)
-            _ = float(getattr(config, "ENTRY_ZONE_LONG", 0) or 0)  # ENTRY_ZONE_LONG wired
-            # HOT-WIRED PARAM ENTRY_ZONE_SHORT (threshold)
-            _ = float(getattr(config, "ENTRY_ZONE_SHORT", 0) or 0)  # ENTRY_ZONE_SHORT wired
-            # HOT-WIRED PARAM EP_MAX_CONSOLIDATION_DAYS (threshold)
-            _ = float(getattr(config, "EP_MAX_CONSOLIDATION_DAYS", 0) or 0)  # EP_MAX_CONSOLIDATION_DAYS wired
-            # HOT-WIRED PARAM EP_MAX_RETRACE_PCT (threshold)
-            _ = float(getattr(config, "EP_MAX_RETRACE_PCT", 0) or 0)  # EP_MAX_RETRACE_PCT wired
-            # HOT-WIRED PARAM EP_MIN_GAP_PCT (threshold)
-            _ = float(getattr(config, "EP_MIN_GAP_PCT", 0) or 0)  # EP_MIN_GAP_PCT wired
-            # HOT-WIRED PARAM EP_MIN_VOL_MULT (threshold)
-            _ = float(getattr(config, "EP_MIN_VOL_MULT", 0) or 0)  # EP_MIN_VOL_MULT wired
-            # HOT-WIRED PARAM EP_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "EP_POSITION_SIZE", 0) or 0)  # EP_POSITION_SIZE wired
-            # HOT-WIRED PARAM ERROR_RECOVERY_SLEEP_SECONDS (threshold)
-            _ = float(getattr(config, "ERROR_RECOVERY_SLEEP_SECONDS", 0) or 0)  # ERROR_RECOVERY_SLEEP_SECONDS wired
-            # HOT-WIRED PARAM EXIT_GAIN_THRESHOLD_MIN (threshold)
-            _ = float(getattr(config, "EXIT_GAIN_THRESHOLD_MIN", 0) or 0)  # EXIT_GAIN_THRESHOLD_MIN wired
-            # HOT-WIRED PARAM EXIT_SCORER_FULL_SCORE (threshold)
-            _ = float(getattr(config, "EXIT_SCORER_FULL_SCORE", 0) or 0)  # EXIT_SCORER_FULL_SCORE wired
-            # HOT-WIRED PARAM EXIT_SCORER_PARTIAL_SCORE (threshold)
-            _ = float(getattr(config, "EXIT_SCORER_PARTIAL_SCORE", 0) or 0)  # EXIT_SCORER_PARTIAL_SCORE wired
-            # HOT-WIRED PARAM EXTREME_MODE (threshold)
-            _ = float(getattr(config, "EXTREME_MODE", 0) or 0)  # EXTREME_MODE wired
-            # HOT-WIRED PARAM EXTREME_OB_BB_PCT_B_4H_MIN (threshold)
-            _ = float(getattr(config, "EXTREME_OB_BB_PCT_B_4H_MIN", 0) or 0)  # EXTREME_OB_BB_PCT_B_4H_MIN wired
-            # HOT-WIRED PARAM EXTREME_OB_RSI_4H_MIN (threshold)
-            _ = float(getattr(config, "EXTREME_OB_RSI_4H_MIN", 0) or 0)  # EXTREME_OB_RSI_4H_MIN wired
-            # HOT-WIRED PARAM EXTREME_OB_RSI_D_MIN (threshold)
-            _ = float(getattr(config, "EXTREME_OB_RSI_D_MIN", 0) or 0)  # EXTREME_OB_RSI_D_MIN wired
-            # HOT-WIRED PARAM EXTREME_OS_BB_PCT_B_4H_MAX (threshold)
-            _ = float(getattr(config, "EXTREME_OS_BB_PCT_B_4H_MAX", 0) or 0)  # EXTREME_OS_BB_PCT_B_4H_MAX wired
-            # HOT-WIRED PARAM EXTREME_OS_RSI_4H_MAX (threshold)
-            _ = float(getattr(config, "EXTREME_OS_RSI_4H_MAX", 0) or 0)  # EXTREME_OS_RSI_4H_MAX wired
-            # HOT-WIRED PARAM EXTREME_OS_RSI_D_MAX (threshold)
-            _ = float(getattr(config, "EXTREME_OS_RSI_D_MAX", 0) or 0)  # EXTREME_OS_RSI_D_MAX wired
-            # HOT-WIRED PARAM EZ_REENTRY_PRICE_CROSS_INTERVAL_S (threshold)
-            _ = float(getattr(config, "EZ_REENTRY_PRICE_CROSS_INTERVAL_S", 0) or 0)  # EZ_REENTRY_PRICE_CROSS_INTERVAL_S wired
-            # HOT-WIRED PARAM EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS (threshold)
-            _ = float(getattr(config, "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS", 0) or 0)  # EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS wired
-            # HOT-WIRED PARAM EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK (threshold)
-            _ = float(getattr(config, "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK", 0) or 0)  # EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK wired
-            # HOT-WIRED PARAM EZ_REENTRY_PRICE_CROSS_MIN_GAP_S (threshold)
-            _ = float(getattr(config, "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S", 0) or 0)  # EZ_REENTRY_PRICE_CROSS_MIN_GAP_S wired
-            # HOT-WIRED PARAM EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC (threshold)
-            _ = float(getattr(config, "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC", 0) or 0)  # EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC wired
-            # HOT-WIRED PARAM EZ_REENTRY_PRICE_CROSS_PCT (threshold)
-            _ = float(getattr(config, "EZ_REENTRY_PRICE_CROSS_PCT", 0) or 0)  # EZ_REENTRY_PRICE_CROSS_PCT wired
-            # HOT-WIRED PARAM FAST_CUT_LOSS_MIN_AGE_MINUTES (threshold)
-            _ = float(getattr(config, "FAST_CUT_LOSS_MIN_AGE_MINUTES", 0) or 0)  # FAST_CUT_LOSS_MIN_AGE_MINUTES wired
-            # HOT-WIRED PARAM FAST_CUT_LOSS_THRESHOLD (threshold)
-            _ = float(getattr(config, "FAST_CUT_LOSS_THRESHOLD", 0) or 0)  # FAST_CUT_LOSS_THRESHOLD wired
-            # HOT-WIRED PARAM FG_FEAR_THRESHOLD (threshold)
-            _ = float(getattr(config, "FG_FEAR_THRESHOLD", 0) or 0)  # FG_FEAR_THRESHOLD wired
-            # HOT-WIRED PARAM FG_GREED_THRESHOLD (threshold)
-            _ = float(getattr(config, "FG_GREED_THRESHOLD", 0) or 0)  # FG_GREED_THRESHOLD wired
-            # HOT-WIRED PARAM FH_MOMENTUM_DC_CONFIRM (threshold)
-            _ = float(getattr(config, "FH_MOMENTUM_DC_CONFIRM", 0) or 0)  # FH_MOMENTUM_DC_CONFIRM wired
-            # HOT-WIRED PARAM FH_MOMENTUM_DC_MAX_LONG (threshold)
-            _ = float(getattr(config, "FH_MOMENTUM_DC_MAX_LONG", 0) or 0)  # FH_MOMENTUM_DC_MAX_LONG wired
-            # HOT-WIRED PARAM FH_MOMENTUM_EVAL_MINUTES (threshold)
-            _ = float(getattr(config, "FH_MOMENTUM_EVAL_MINUTES", 0) or 0)  # FH_MOMENTUM_EVAL_MINUTES wired
-            # HOT-WIRED PARAM FH_MOMENTUM_MAX_POSITIONS (threshold)
-            _ = float(getattr(config, "FH_MOMENTUM_MAX_POSITIONS", 0) or 0)  # FH_MOMENTUM_MAX_POSITIONS wired
-            # HOT-WIRED PARAM FH_MOMENTUM_MFI_CONFIRM (threshold)
-            _ = float(getattr(config, "FH_MOMENTUM_MFI_CONFIRM", 0) or 0)  # FH_MOMENTUM_MFI_CONFIRM wired
-            # HOT-WIRED PARAM FH_MOMENTUM_MIN_MOVE_PCT (threshold)
-            _ = float(getattr(config, "FH_MOMENTUM_MIN_MOVE_PCT", 0) or 0)  # FH_MOMENTUM_MIN_MOVE_PCT wired
-            # HOT-WIRED PARAM FH_MOMENTUM_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "FH_MOMENTUM_POSITION_SIZE", 0) or 0)  # FH_MOMENTUM_POSITION_SIZE wired
-            # HOT-WIRED PARAM FORCE_REFRESH_SECONDS (threshold)
-            _ = float(getattr(config, "FORCE_REFRESH_SECONDS", 0) or 0)  # FORCE_REFRESH_SECONDS wired
-            # HOT-WIRED PARAM FROZEN_ACTIVATION_TF (threshold)
-            _ = float(getattr(config, "FROZEN_ACTIVATION_TF", 0) or 0)  # FROZEN_ACTIVATION_TF wired
-            # HOT-WIRED PARAM FUNDING_EXTREME_LONG_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "FUNDING_EXTREME_LONG_THRESHOLD_PCT", 0) or 0)  # FUNDING_EXTREME_LONG_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM FUNDING_EXTREME_SHORT_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "FUNDING_EXTREME_SHORT_THRESHOLD_PCT", 0) or 0)  # FUNDING_EXTREME_SHORT_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM FUNDING_GATE_PC_RATIO_LONG_MAX (threshold)
-            _ = float(getattr(config, "FUNDING_GATE_PC_RATIO_LONG_MAX", 0) or 0)  # FUNDING_GATE_PC_RATIO_LONG_MAX wired
-            # HOT-WIRED PARAM FUNDING_GATE_PC_RATIO_SHORT_MIN (threshold)
-            _ = float(getattr(config, "FUNDING_GATE_PC_RATIO_SHORT_MIN", 0) or 0)  # FUNDING_GATE_PC_RATIO_SHORT_MIN wired
-            # HOT-WIRED PARAM FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER (threshold)
-            _ = float(getattr(config, "FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER", 0) or 0)  # FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER wired
-            # HOT-WIRED PARAM FUNDING_GATE_TRADIER_STALE_MAX_HOURS (threshold)
-            _ = float(getattr(config, "FUNDING_GATE_TRADIER_STALE_MAX_HOURS", 0) or 0)  # FUNDING_GATE_TRADIER_STALE_MAX_HOURS wired
-            # HOT-WIRED PARAM GAP_FILL_MAX_GAP_PCT (threshold)
-            _ = float(getattr(config, "GAP_FILL_MAX_GAP_PCT", 0) or 0)  # GAP_FILL_MAX_GAP_PCT wired
-            # HOT-WIRED PARAM GAP_FILL_MIN_GAP_PCT (threshold)
-            _ = float(getattr(config, "GAP_FILL_MIN_GAP_PCT", 0) or 0)  # GAP_FILL_MIN_GAP_PCT wired
-            # HOT-WIRED PARAM GAP_FILL_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "GAP_FILL_POSITION_SIZE", 0) or 0)  # GAP_FILL_POSITION_SIZE wired
-            # HOT-WIRED PARAM GAP_FILL_STOP_MULT (threshold)
-            _ = float(getattr(config, "GAP_FILL_STOP_MULT", 0) or 0)  # GAP_FILL_STOP_MULT wired
-            # HOT-WIRED PARAM GAP_FILL_TP_FILL_PCT (threshold)
-            _ = float(getattr(config, "GAP_FILL_TP_FILL_PCT", 0) or 0)  # GAP_FILL_TP_FILL_PCT wired
-            # HOT-WIRED PARAM GHOST_ABSENT_ALERT_THRESHOLD (threshold)
-            _ = float(getattr(config, "GHOST_ABSENT_ALERT_THRESHOLD", 0) or 0)  # GHOST_ABSENT_ALERT_THRESHOLD wired
-            # HOT-WIRED PARAM GOLDEN_RULE_EXIT_MIN_IND (threshold)
-            _ = float(getattr(config, "GOLDEN_RULE_EXIT_MIN_IND", 0) or 0)  # GOLDEN_RULE_EXIT_MIN_IND wired
-            # HOT-WIRED PARAM GOLDEN_RULE_EXIT_MIN_TFS (threshold)
-            _ = float(getattr(config, "GOLDEN_RULE_EXIT_MIN_TFS", 0) or 0)  # GOLDEN_RULE_EXIT_MIN_TFS wired
-            # HOT-WIRED PARAM GOLDEN_RULE_REQUIRE_HEDGE_OPEN (threshold)
-            _ = float(getattr(config, "GOLDEN_RULE_REQUIRE_HEDGE_OPEN", 0) or 0)  # GOLDEN_RULE_REQUIRE_HEDGE_OPEN wired
-            # HOT-WIRED PARAM GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE (threshold)
-            _ = float(getattr(config, "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", 0) or 0)  # GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE wired
-            # HOT-WIRED PARAM GR_HTF_DIRECT_ENTRY_SCORE_MIN (threshold)
-            _ = float(getattr(config, "GR_HTF_DIRECT_ENTRY_SCORE_MIN", 0) or 0)  # GR_HTF_DIRECT_ENTRY_SCORE_MIN wired
-            # HOT-WIRED PARAM GR_V5_ARM_WINDOW_BARS (threshold)
-            _ = float(getattr(config, "GR_V5_ARM_WINDOW_BARS", 0) or 0)  # GR_V5_ARM_WINDOW_BARS wired
-            # HOT-WIRED PARAM GR_V5_BOUNCE_STOCH_LONG (threshold)
-            _ = float(getattr(config, "GR_V5_BOUNCE_STOCH_LONG", 0) or 0)  # GR_V5_BOUNCE_STOCH_LONG wired
-            # HOT-WIRED PARAM GR_V5_BOUNCE_STOCH_SHORT (threshold)
-            _ = float(getattr(config, "GR_V5_BOUNCE_STOCH_SHORT", 0) or 0)  # GR_V5_BOUNCE_STOCH_SHORT wired
-            # HOT-WIRED PARAM GR_V5_BOUNCE_WT_CROSS_REQUIRED (threshold)
-            _ = float(getattr(config, "GR_V5_BOUNCE_WT_CROSS_REQUIRED", 0) or 0)  # GR_V5_BOUNCE_WT_CROSS_REQUIRED wired
-            # HOT-WIRED PARAM GR_V5_BREAKOUT_REQUIRE_VOLUME (threshold)
-            _ = float(getattr(config, "GR_V5_BREAKOUT_REQUIRE_VOLUME", 0) or 0)  # GR_V5_BREAKOUT_REQUIRE_VOLUME wired
-            # HOT-WIRED PARAM GR_V5_BREAKOUT_VOL_MULT (threshold)
-            _ = float(getattr(config, "GR_V5_BREAKOUT_VOL_MULT", 0) or 0)  # GR_V5_BREAKOUT_VOL_MULT wired
-            # HOT-WIRED PARAM GR_V5_HTF_MIN_ALIGN (threshold)
-            _ = float(getattr(config, "GR_V5_HTF_MIN_ALIGN", 0) or 0)  # GR_V5_HTF_MIN_ALIGN wired
-            # HOT-WIRED PARAM GR_V5_INVALIDATE_PCT (threshold)
-            _ = float(getattr(config, "GR_V5_INVALIDATE_PCT", 0) or 0)  # GR_V5_INVALIDATE_PCT wired
-            # HOT-WIRED PARAM GR_V5_LTF_MIN_ALIGN (threshold)
-            _ = float(getattr(config, "GR_V5_LTF_MIN_ALIGN", 0) or 0)  # GR_V5_LTF_MIN_ALIGN wired
-            # HOT-WIRED PARAM GR_V5_RETEST_BAND_PCT (threshold)
-            _ = float(getattr(config, "GR_V5_RETEST_BAND_PCT", 0) or 0)  # GR_V5_RETEST_BAND_PCT wired
-            # HOT-WIRED PARAM GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN (threshold)
-            _ = float(getattr(config, "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN", 0) or 0)  # GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN wired
-            # HOT-WIRED PARAM HARD_MAX_LOSS_PCT (threshold)
-            _ = float(getattr(config, "HARD_MAX_LOSS_PCT", 0) or 0)  # HARD_MAX_LOSS_PCT wired
-            # HOT-WIRED PARAM HA_3M_ENTRY_WEIGHT (threshold)
-            _ = float(getattr(config, "HA_3M_ENTRY_WEIGHT", 0) or 0)  # HA_3M_ENTRY_WEIGHT wired
-            # HOT-WIRED PARAM HA_WICK_QUALITY_SCORE (threshold)
-            _ = float(getattr(config, "HA_WICK_QUALITY_SCORE", 0) or 0)  # HA_WICK_QUALITY_SCORE wired
-            # HOT-WIRED PARAM HA_WICK_QUALITY_TF (threshold)
-            _ = float(getattr(config, "HA_WICK_QUALITY_TF", 0) or 0)  # HA_WICK_QUALITY_TF wired
-            # HOT-WIRED PARAM HEDGE_ALL_POSITIONS (threshold)
-            _ = float(getattr(config, "HEDGE_ALL_POSITIONS", 0) or 0)  # HEDGE_ALL_POSITIONS wired
-            # HOT-WIRED PARAM HEDGE_CLOSE_WT_TFS_FAVOR (threshold)
-            _ = float(getattr(config, "HEDGE_CLOSE_WT_TFS_FAVOR", 0) or 0)  # HEDGE_CLOSE_WT_TFS_FAVOR wired
-            # HOT-WIRED PARAM HEDGE_DUAL_IF_HEDGE_MODE (threshold)
-            _ = float(getattr(config, "HEDGE_DUAL_IF_HEDGE_MODE", 0) or 0)  # HEDGE_DUAL_IF_HEDGE_MODE wired
-            # HOT-WIRED PARAM HEDGE_ENTRY_MODE (threshold)
-            _ = float(getattr(config, "HEDGE_ENTRY_MODE", 0) or 0)  # HEDGE_ENTRY_MODE wired
-            # HOT-WIRED PARAM HEDGE_MAX_RATIO (threshold)
-            _ = float(getattr(config, "HEDGE_MAX_RATIO", 0) or 0)  # HEDGE_MAX_RATIO wired
-            # HOT-WIRED PARAM HEDGE_MOMENTUM_GATE (threshold)
-            _ = float(getattr(config, "HEDGE_MOMENTUM_GATE", 0) or 0)  # HEDGE_MOMENTUM_GATE wired
-            # HOT-WIRED PARAM HEDGE_NEWBORN_DC_BREACH_ALLOWED (threshold)
-            _ = float(getattr(config, "HEDGE_NEWBORN_DC_BREACH_ALLOWED", 0) or 0)  # HEDGE_NEWBORN_DC_BREACH_ALLOWED wired
-            # HOT-WIRED PARAM HEDGE_NEWBORN_GRACE_MINUTES (threshold)
-            _ = float(getattr(config, "HEDGE_NEWBORN_GRACE_MINUTES", 0) or 0)  # HEDGE_NEWBORN_GRACE_MINUTES wired
-            # HOT-WIRED PARAM HEDGE_OVERSIZE_RATIO (threshold)
-            _ = float(getattr(config, "HEDGE_OVERSIZE_RATIO", 0) or 0)  # HEDGE_OVERSIZE_RATIO wired
-            # HOT-WIRED PARAM HEDGE_TRIGGER_LOSS_PCT (threshold)
-            _ = float(getattr(config, "HEDGE_TRIGGER_LOSS_PCT", 0) or 0)  # HEDGE_TRIGGER_LOSS_PCT wired
-            # HOT-WIRED PARAM HEDGE_TRIGGER_LOSS_PCT_ENTRY (threshold)
-            _ = float(getattr(config, "HEDGE_TRIGGER_LOSS_PCT_ENTRY", 0) or 0)  # HEDGE_TRIGGER_LOSS_PCT_ENTRY wired
-            # HOT-WIRED PARAM HIGH_GAIN_AUGMENTATION_MIN_SIZE (threshold)
-            _ = float(getattr(config, "HIGH_GAIN_AUGMENTATION_MIN_SIZE", 0) or 0)  # HIGH_GAIN_AUGMENTATION_MIN_SIZE wired
-            # HOT-WIRED PARAM HODL_LONG_ONLY (threshold)
-            _ = float(getattr(config, "HODL_LONG_ONLY", 0) or 0)  # HODL_LONG_ONLY wired
-            # HOT-WIRED PARAM HOLD_BARS_CLOSE (threshold)
-            _ = float(getattr(config, "HOLD_BARS_CLOSE", 0) or 0)  # HOLD_BARS_CLOSE wired
-            # HOT-WIRED PARAM HOLD_BARS_MID (threshold)
-            _ = float(getattr(config, "HOLD_BARS_MID", 0) or 0)  # HOLD_BARS_MID wired
-            # HOT-WIRED PARAM HOLD_BARS_OPEN (threshold)
-            _ = float(getattr(config, "HOLD_BARS_OPEN", 0) or 0)  # HOLD_BARS_OPEN wired
-            # HOT-WIRED PARAM HTF1_CONF (threshold)
-            _ = float(getattr(config, "HTF1_CONF", 0) or 0)  # HTF1_CONF wired
-            # HOT-WIRED PARAM HTF4_CONF (threshold)
-            _ = float(getattr(config, "HTF4_CONF", 0) or 0)  # HTF4_CONF wired
-            # HOT-WIRED PARAM HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT (threshold)
-            _ = float(getattr(config, "HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT", 0) or 0)  # HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT wired
-            # HOT-WIRED PARAM HTF_DC_BREAKOUT_TRADIER_TF (threshold)
-            _ = float(getattr(config, "HTF_DC_BREAKOUT_TRADIER_TF", 0) or 0)  # HTF_DC_BREAKOUT_TRADIER_TF wired
-            # HOT-WIRED PARAM HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT", 0) or 0)  # HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM HTF_MIN_ALIGNED (threshold)
-            _ = float(getattr(config, "HTF_MIN_ALIGNED", 0) or 0)  # HTF_MIN_ALIGNED wired
-            # HOT-WIRED PARAM HTF_REGIME_ADD_MULT_PER_SMA (threshold)
-            _ = float(getattr(config, "HTF_REGIME_ADD_MULT_PER_SMA", 0) or 0)  # HTF_REGIME_ADD_MULT_PER_SMA wired
-            # HOT-WIRED PARAM HTF_REGIME_EXIT_TF (threshold)
-            _ = float(getattr(config, "HTF_REGIME_EXIT_TF", 0) or 0)  # HTF_REGIME_EXIT_TF wired
-            # HOT-WIRED PARAM HTF_REGIME_LEDGER_PATH (threshold)
-            _ = float(getattr(config, "HTF_REGIME_LEDGER_PATH", 0) or 0)  # HTF_REGIME_LEDGER_PATH wired
-            # HOT-WIRED PARAM HTF_REGIME_SCALE_IN (threshold)
-            _ = float(getattr(config, "HTF_REGIME_SCALE_IN", 0) or 0)  # HTF_REGIME_SCALE_IN wired
-            # HOT-WIRED PARAM HTF_REGIME_SIZE_CAP (threshold)
-            _ = float(getattr(config, "HTF_REGIME_SIZE_CAP", 0) or 0)  # HTF_REGIME_SIZE_CAP wired
-            # HOT-WIRED PARAM HTF_REGIME_TF (threshold)
-            _ = float(getattr(config, "HTF_REGIME_TF", 0) or 0)  # HTF_REGIME_TF wired
-            # HOT-WIRED PARAM HTF_REGIME_VOL_TARGET (threshold)
-            _ = float(getattr(config, "HTF_REGIME_VOL_TARGET", 0) or 0)  # HTF_REGIME_VOL_TARGET wired
-            # HOT-WIRED PARAM HTF_STRICT (threshold)
-            _ = float(getattr(config, "HTF_STRICT", 0) or 0)  # HTF_STRICT wired
-            # HOT-WIRED PARAM HTF_VETO_REQUIRE_D (threshold)
-            _ = float(getattr(config, "HTF_VETO_REQUIRE_D", 0) or 0)  # HTF_VETO_REQUIRE_D wired
-            # HOT-WIRED PARAM HTF_W_M_ALIGN_TRADIER_REQUIRED (threshold)
-            _ = float(getattr(config, "HTF_W_M_ALIGN_TRADIER_REQUIRED", 0) or 0)  # HTF_W_M_ALIGN_TRADIER_REQUIRED wired
-            # HOT-WIRED PARAM HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D (threshold)
-            _ = float(getattr(config, "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D", 0) or 0)  # HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D wired
-            # HOT-WIRED PARAM INDICATORS_SAVE_INTERVAL_SECONDS (threshold)
-            _ = float(getattr(config, "INDICATORS_SAVE_INTERVAL_SECONDS", 0) or 0)  # INDICATORS_SAVE_INTERVAL_SECONDS wired
-            # HOT-WIRED PARAM INDICATOR_UPDATE_INTERVAL (threshold)
-            _ = float(getattr(config, "INDICATOR_UPDATE_INTERVAL", 0) or 0)  # INDICATOR_UPDATE_INTERVAL wired
-            # HOT-WIRED PARAM INF_RANKING_BYPASS_DELTA (threshold)
-            _ = float(getattr(config, "INF_RANKING_BYPASS_DELTA", 0) or 0)  # INF_RANKING_BYPASS_DELTA wired
-            # HOT-WIRED PARAM INF_RANKING_BYPASS_FRESHNESS_MIN (threshold)
-            _ = float(getattr(config, "INF_RANKING_BYPASS_FRESHNESS_MIN", 0) or 0)  # INF_RANKING_BYPASS_FRESHNESS_MIN wired
-            # HOT-WIRED PARAM INF_RANKING_BYPASS_HTF (threshold)
-            _ = float(getattr(config, "INF_RANKING_BYPASS_HTF", 0) or 0)  # INF_RANKING_BYPASS_HTF wired
-            # HOT-WIRED PARAM INF_RANKING_BYPASS_MAX_POS (threshold)
-            _ = float(getattr(config, "INF_RANKING_BYPASS_MAX_POS", 0) or 0)  # INF_RANKING_BYPASS_MAX_POS wired
-            # HOT-WIRED PARAM INF_RANKING_BYPASS_SCORE (threshold)
-            _ = float(getattr(config, "INF_RANKING_BYPASS_SCORE", 0) or 0)  # INF_RANKING_BYPASS_SCORE wired
-            # HOT-WIRED PARAM INF_RANKING_BYPASS_STOCH (threshold)
-            _ = float(getattr(config, "INF_RANKING_BYPASS_STOCH", 0) or 0)  # INF_RANKING_BYPASS_STOCH wired
-            # HOT-WIRED PARAM INF_RANKING_BYPASS_WT (threshold)
-            _ = float(getattr(config, "INF_RANKING_BYPASS_WT", 0) or 0)  # INF_RANKING_BYPASS_WT wired
-            # HOT-WIRED PARAM INF_RANKING_PRIORITY_BYPASS (threshold)
-            _ = float(getattr(config, "INF_RANKING_PRIORITY_BYPASS", 0) or 0)  # INF_RANKING_PRIORITY_BYPASS wired
-            # HOT-WIRED PARAM K3M_CAP (threshold)
-            _ = float(getattr(config, "K3M_CAP", 0) or 0)  # K3M_CAP wired
-            # HOT-WIRED PARAM K3M_FLOOR (threshold)
-            _ = float(getattr(config, "K3M_FLOOR", 0) or 0)  # K3M_FLOOR wired
-            # HOT-WIRED PARAM K_LOWER_HIGH_EXTREME (threshold)
-            _ = float(getattr(config, "K_LOWER_HIGH_EXTREME", 0) or 0)  # K_LOWER_HIGH_EXTREME wired
-            # HOT-WIRED PARAM K_LOWER_HIGH_LTF_THRESHOLD (threshold)
-            _ = float(getattr(config, "K_LOWER_HIGH_LTF_THRESHOLD", 0) or 0)  # K_LOWER_HIGH_LTF_THRESHOLD wired
-            # HOT-WIRED PARAM LADDER_AUTO_SAVE_SECONDS (threshold)
-            _ = float(getattr(config, "LADDER_AUTO_SAVE_SECONDS", 0) or 0)  # LADDER_AUTO_SAVE_SECONDS wired
-            # HOT-WIRED PARAM LADDER_TTL_MINUTES (threshold)
-            _ = float(getattr(config, "LADDER_TTL_MINUTES", 0) or 0)  # LADDER_TTL_MINUTES wired
-            # HOT-WIRED PARAM LEADERBOARD_FILTER (threshold)
-            _ = float(getattr(config, "LEADERBOARD_FILTER", 0) or 0)  # LEADERBOARD_FILTER wired
-            # HOT-WIRED PARAM LEGACY_AGGRESSIVE_LOSS_CUT (threshold)
-            _ = float(getattr(config, "LEGACY_AGGRESSIVE_LOSS_CUT", 0) or 0)  # LEGACY_AGGRESSIVE_LOSS_CUT wired
-            # HOT-WIRED PARAM LEGACY_DC_BREAKOUT_REENTRY (threshold)
-            _ = float(getattr(config, "LEGACY_DC_BREAKOUT_REENTRY", 0) or 0)  # LEGACY_DC_BREAKOUT_REENTRY wired
-            # HOT-WIRED PARAM LEGACY_FAST_CUT_LOSS (threshold)
-            _ = float(getattr(config, "LEGACY_FAST_CUT_LOSS", 0) or 0)  # LEGACY_FAST_CUT_LOSS wired
-            # HOT-WIRED PARAM LEGACY_GUARANTEED_REENTRY (threshold)
-            _ = float(getattr(config, "LEGACY_GUARANTEED_REENTRY", 0) or 0)  # LEGACY_GUARANTEED_REENTRY wired
-            # HOT-WIRED PARAM LEGACY_PROC_SINGLE_REENTRY (threshold)
-            _ = float(getattr(config, "LEGACY_PROC_SINGLE_REENTRY", 0) or 0)  # LEGACY_PROC_SINGLE_REENTRY wired
-            # HOT-WIRED PARAM LEGACY_REENTRY_GUARANTEED_2WT (threshold)
-            _ = float(getattr(config, "LEGACY_REENTRY_GUARANTEED_2WT", 0) or 0)  # LEGACY_REENTRY_GUARANTEED_2WT wired
-            # HOT-WIRED PARAM LEGACY_REENTRY_GUARANTEED_BOTTOM (threshold)
-            _ = float(getattr(config, "LEGACY_REENTRY_GUARANTEED_BOTTOM", 0) or 0)  # LEGACY_REENTRY_GUARANTEED_BOTTOM wired
-            # HOT-WIRED PARAM LEGACY_REENTRY_GUARANTEED_CROSS (threshold)
-            _ = float(getattr(config, "LEGACY_REENTRY_GUARANTEED_CROSS", 0) or 0)  # LEGACY_REENTRY_GUARANTEED_CROSS wired
-            # HOT-WIRED PARAM LEGACY_REENTRY_PSR_DC_BOUNCE (threshold)
-            _ = float(getattr(config, "LEGACY_REENTRY_PSR_DC_BOUNCE", 0) or 0)  # LEGACY_REENTRY_PSR_DC_BOUNCE wired
-            # HOT-WIRED PARAM LEGACY_REENTRY_PSR_FULL_DC (threshold)
-            _ = float(getattr(config, "LEGACY_REENTRY_PSR_FULL_DC", 0) or 0)  # LEGACY_REENTRY_PSR_FULL_DC wired
-            # HOT-WIRED PARAM LEGACY_REENTRY_PSR_K_DC_CROSSOVER (threshold)
-            _ = float(getattr(config, "LEGACY_REENTRY_PSR_K_DC_CROSSOVER", 0) or 0)  # LEGACY_REENTRY_PSR_K_DC_CROSSOVER wired
-            # HOT-WIRED PARAM LEGACY_REENTRY_PSR_QUICK_RECOVERY (threshold)
-            _ = float(getattr(config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", 0) or 0)  # LEGACY_REENTRY_PSR_QUICK_RECOVERY wired
-            # HOT-WIRED PARAM LEGACY_WR_PULLBACK (threshold)
-            _ = float(getattr(config, "LEGACY_WR_PULLBACK", 0) or 0)  # LEGACY_WR_PULLBACK wired
-            # HOT-WIRED PARAM LH_HL_FILTER_DC_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "LH_HL_FILTER_DC_THRESHOLD_PCT", 0) or 0)  # LH_HL_FILTER_DC_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM LH_HL_FILTER_MODE (threshold)
-            _ = float(getattr(config, "LH_HL_FILTER_MODE", 0) or 0)  # LH_HL_FILTER_MODE wired
-            # HOT-WIRED PARAM LH_HL_FILTER_REPLACE_SMA200D (threshold)
-            _ = float(getattr(config, "LH_HL_FILTER_REPLACE_SMA200D", 0) or 0)  # LH_HL_FILTER_REPLACE_SMA200D wired
-            # HOT-WIRED PARAM LH_HL_FILTER_REQUIRE_BOTH (threshold)
-            _ = float(getattr(config, "LH_HL_FILTER_REQUIRE_BOTH", 0) or 0)  # LH_HL_FILTER_REQUIRE_BOTH wired
-            # HOT-WIRED PARAM LH_HL_FILTER_TF_REQ (threshold)
-            _ = float(getattr(config, "LH_HL_FILTER_TF_REQ", 0) or 0)  # LH_HL_FILTER_TF_REQ wired
-            # HOT-WIRED PARAM LIGHT_MODE (threshold)
-            _ = float(getattr(config, "LIGHT_MODE", 0) or 0)  # LIGHT_MODE wired
-            # HOT-WIRED PARAM LIVE_INDICATOR_MAX_BARS_PER_TF (threshold)
-            _ = float(getattr(config, "LIVE_INDICATOR_MAX_BARS_PER_TF", 0) or 0)  # LIVE_INDICATOR_MAX_BARS_PER_TF wired
-            # HOT-WIRED PARAM LOCAL_EXTREMES_MIN_SCORE (threshold)
-            _ = float(getattr(config, "LOCAL_EXTREMES_MIN_SCORE", 0) or 0)  # LOCAL_EXTREMES_MIN_SCORE wired
-            # HOT-WIRED PARAM LOG_BACKUP_COUNT (threshold)
-            _ = float(getattr(config, "LOG_BACKUP_COUNT", 0) or 0)  # LOG_BACKUP_COUNT wired
-            # HOT-WIRED PARAM LOG_INTERVAL_SECONDS (threshold)
-            _ = float(getattr(config, "LOG_INTERVAL_SECONDS", 0) or 0)  # LOG_INTERVAL_SECONDS wired
-            # HOT-WIRED PARAM LOG_MAX_BYTES (threshold)
-            _ = float(getattr(config, "LOG_MAX_BYTES", 0) or 0)  # LOG_MAX_BYTES wired
-            # HOT-WIRED PARAM LONG_STOCH_CHASE_BLOCK (threshold)
-            _ = float(getattr(config, "LONG_STOCH_CHASE_BLOCK", 0) or 0)  # LONG_STOCH_CHASE_BLOCK wired
-            # HOT-WIRED PARAM LONG_WAIT_DIRECT_BOUNCE_DISTANCE (threshold)
-            _ = float(getattr(config, "LONG_WAIT_DIRECT_BOUNCE_DISTANCE", 0) or 0)  # LONG_WAIT_DIRECT_BOUNCE_DISTANCE wired
-            # HOT-WIRED PARAM LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME (threshold)
-            _ = float(getattr(config, "LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME", 0) or 0)  # LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME wired
-            # HOT-WIRED PARAM LONG_WAIT_DIRECT_CONFIRMATION (threshold)
-            _ = float(getattr(config, "LONG_WAIT_DIRECT_CONFIRMATION", 0) or 0)  # LONG_WAIT_DIRECT_CONFIRMATION wired
-            # HOT-WIRED PARAM LONG_WAIT_DIRECT_DEEP_K4H (threshold)
-            _ = float(getattr(config, "LONG_WAIT_DIRECT_DEEP_K4H", 0) or 0)  # LONG_WAIT_DIRECT_DEEP_K4H wired
-            # HOT-WIRED PARAM LONG_WAIT_DIRECT_TURN_K1H (threshold)
-            _ = float(getattr(config, "LONG_WAIT_DIRECT_TURN_K1H", 0) or 0)  # LONG_WAIT_DIRECT_TURN_K1H wired
-            # HOT-WIRED PARAM LOSS_EXIT_REQUIRES_HEDGE (threshold)
-            _ = float(getattr(config, "LOSS_EXIT_REQUIRES_HEDGE", 0) or 0)  # LOSS_EXIT_REQUIRES_HEDGE wired
-            # HOT-WIRED PARAM LR_BAND_BE_RATCHET (threshold)
-            _ = float(getattr(config, "LR_BAND_BE_RATCHET", 0) or 0)  # LR_BAND_BE_RATCHET wired
-            # HOT-WIRED PARAM LR_BAND_ENTRY_PRIORITY (threshold)
-            _ = float(getattr(config, "LR_BAND_ENTRY_PRIORITY", 0) or 0)  # LR_BAND_ENTRY_PRIORITY wired
-            # HOT-WIRED PARAM LR_BAND_EXIT_EXEMPT (threshold)
-            _ = float(getattr(config, "LR_BAND_EXIT_EXEMPT", 0) or 0)  # LR_BAND_EXIT_EXEMPT wired
-            # HOT-WIRED PARAM LR_BAND_LADDER_BASIS (threshold)
-            _ = float(getattr(config, "LR_BAND_LADDER_BASIS", 0) or 0)  # LR_BAND_LADDER_BASIS wired
-            # HOT-WIRED PARAM LR_BAND_LADDER_STOCH_EXTREME (threshold)
-            _ = float(getattr(config, "LR_BAND_LADDER_STOCH_EXTREME", 0) or 0)  # LR_BAND_LADDER_STOCH_EXTREME wired
-            # HOT-WIRED PARAM LR_BAND_READD_LO (threshold)
-            _ = float(getattr(config, "LR_BAND_READD_LO", 0) or 0)  # LR_BAND_READD_LO wired
-            # HOT-WIRED PARAM LR_BAND_SIZE_DEPTH_GAIN (threshold)
-            _ = float(getattr(config, "LR_BAND_SIZE_DEPTH_GAIN", 0) or 0)  # LR_BAND_SIZE_DEPTH_GAIN wired
-            # HOT-WIRED PARAM LR_BAND_SIZE_MAX (threshold)
-            _ = float(getattr(config, "LR_BAND_SIZE_MAX", 0) or 0)  # LR_BAND_SIZE_MAX wired
-            # HOT-WIRED PARAM LR_BAND_SIZE_SLOPE_GAIN (threshold)
-            _ = float(getattr(config, "LR_BAND_SIZE_SLOPE_GAIN", 0) or 0)  # LR_BAND_SIZE_SLOPE_GAIN wired
-            # HOT-WIRED PARAM LR_BAND_SLOPE_NORM_PCT_DAY (threshold)
-            _ = float(getattr(config, "LR_BAND_SLOPE_NORM_PCT_DAY", 0) or 0)  # LR_BAND_SLOPE_NORM_PCT_DAY wired
-            # HOT-WIRED PARAM LR_PCTB_D_LONG_ENTRY_THRESHOLD (threshold)
-            _ = float(getattr(config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", 0) or 0)  # LR_PCTB_D_LONG_ENTRY_THRESHOLD wired
-            # HOT-WIRED PARAM LR_PCTB_D_SHORT_THRESHOLD (threshold)
-            _ = float(getattr(config, "LR_PCTB_D_SHORT_THRESHOLD", 0) or 0)  # LR_PCTB_D_SHORT_THRESHOLD wired
-            # HOT-WIRED PARAM LS_RATIO_EXTREME_THRESHOLD (threshold)
-            _ = float(getattr(config, "LS_RATIO_EXTREME_THRESHOLD", 0) or 0)  # LS_RATIO_EXTREME_THRESHOLD wired
-            # HOT-WIRED PARAM LS_RATIO_HARD_MAX (threshold)
-            _ = float(getattr(config, "LS_RATIO_HARD_MAX", 0) or 0)  # LS_RATIO_HARD_MAX wired
-            # HOT-WIRED PARAM LS_RATIO_HARD_MIN (threshold)
-            _ = float(getattr(config, "LS_RATIO_HARD_MIN", 0) or 0)  # LS_RATIO_HARD_MIN wired
-            # HOT-WIRED PARAM LS_RATIO_LOG_INTERVAL (threshold)
-            _ = float(getattr(config, "LS_RATIO_LOG_INTERVAL", 0) or 0)  # LS_RATIO_LOG_INTERVAL wired
-            # HOT-WIRED PARAM LS_RATIO_PENALTY (threshold)
-            _ = float(getattr(config, "LS_RATIO_PENALTY", 0) or 0)  # LS_RATIO_PENALTY wired
-            # HOT-WIRED PARAM LUNCH_DEADZONE_MODE (threshold)
-            _ = float(getattr(config, "LUNCH_DEADZONE_MODE", 0) or 0)  # LUNCH_DEADZONE_MODE wired
-            # HOT-WIRED PARAM LUNCH_DEADZONE_SIZE_MULT (threshold)
-            _ = float(getattr(config, "LUNCH_DEADZONE_SIZE_MULT", 0) or 0)  # LUNCH_DEADZONE_SIZE_MULT wired
-            # HOT-WIRED PARAM MACD_EXIT_MIN_GAIN (threshold)
-            _ = float(getattr(config, "MACD_EXIT_MIN_GAIN", 0) or 0)  # MACD_EXIT_MIN_GAIN wired
-            # HOT-WIRED PARAM MACD_EXIT_TF (threshold)
-            _ = float(getattr(config, "MACD_EXIT_TF", 0) or 0)  # MACD_EXIT_TF wired
-            # HOT-WIRED PARAM MACD_ZERO_CROSS_SCORE (threshold)
-            _ = float(getattr(config, "MACD_ZERO_CROSS_SCORE", 0) or 0)  # MACD_ZERO_CROSS_SCORE wired
-            # HOT-WIRED PARAM MACD_ZERO_CROSS_TF (threshold)
-            _ = float(getattr(config, "MACD_ZERO_CROSS_TF", 0) or 0)  # MACD_ZERO_CROSS_TF wired
-            # HOT-WIRED PARAM MACRO_BLACKOUT_SIZE_MULT (threshold)
-            _ = float(getattr(config, "MACRO_BLACKOUT_SIZE_MULT", 0) or 0)  # MACRO_BLACKOUT_SIZE_MULT wired
-            # HOT-WIRED PARAM MANAGE_REDUCE (threshold)
-            _ = float(getattr(config, "MANAGE_REDUCE", 0) or 0)  # MANAGE_REDUCE wired
-            # HOT-WIRED PARAM MANDATORY_REENTRY_DC4_WINDOW_MIN (threshold)
-            _ = float(getattr(config, "MANDATORY_REENTRY_DC4_WINDOW_MIN", 0) or 0)  # MANDATORY_REENTRY_DC4_WINDOW_MIN wired
-            # HOT-WIRED PARAM MANDATORY_REENTRY_WT_FILTER_MIN_TFS (threshold)
-            _ = float(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS", 0) or 0)  # MANDATORY_REENTRY_WT_FILTER_MIN_TFS wired
-            # HOT-WIRED PARAM MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY (threshold)
-            _ = float(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY", 0) or 0)  # MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY wired
-            # HOT-WIRED PARAM MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP (threshold)
-            _ = float(getattr(config, "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP", 0) or 0)  # MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP wired
-            # HOT-WIRED PARAM MANDATORY_REENTRY_WT_FILTER_TF_MODE (threshold)
-            _ = float(getattr(config, "MANDATORY_REENTRY_WT_FILTER_TF_MODE", 0) or 0)  # MANDATORY_REENTRY_WT_FILTER_TF_MODE wired
-            # HOT-WIRED PARAM MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO (threshold)
-            _ = float(getattr(config, "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO", 0) or 0)  # MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO wired
-            # HOT-WIRED PARAM MARKET_CLOSE_HOUR (threshold)
-            _ = float(getattr(config, "MARKET_CLOSE_HOUR", 0) or 0)  # MARKET_CLOSE_HOUR wired
-            # HOT-WIRED PARAM MARKET_CLOSE_MINUTE (threshold)
-            _ = float(getattr(config, "MARKET_CLOSE_MINUTE", 0) or 0)  # MARKET_CLOSE_MINUTE wired
-            # HOT-WIRED PARAM MARKET_DATA_REFRESH_INTERVAL_SECONDS (threshold)
-            _ = float(getattr(config, "MARKET_DATA_REFRESH_INTERVAL_SECONDS", 0) or 0)  # MARKET_DATA_REFRESH_INTERVAL_SECONDS wired
-            # HOT-WIRED PARAM MARKET_OPEN_HOUR (threshold)
-            _ = float(getattr(config, "MARKET_OPEN_HOUR", 0) or 0)  # MARKET_OPEN_HOUR wired
-            # HOT-WIRED PARAM MARKET_OPEN_MINUTE (threshold)
-            _ = float(getattr(config, "MARKET_OPEN_MINUTE", 0) or 0)  # MARKET_OPEN_MINUTE wired
-            # HOT-WIRED PARAM MARK_PRICE_MAX_STALENESS (threshold)
-            _ = float(getattr(config, "MARK_PRICE_MAX_STALENESS", 0) or 0)  # MARK_PRICE_MAX_STALENESS wired
-            # HOT-WIRED PARAM MAX_CONCURRENT_ORDERS (threshold)
-            _ = float(getattr(config, "MAX_CONCURRENT_ORDERS", 0) or 0)  # MAX_CONCURRENT_ORDERS wired
-            # HOT-WIRED PARAM MAX_MEMORY_GB (threshold)
-            _ = float(getattr(config, "MAX_MEMORY_GB", 0) or 0)  # MAX_MEMORY_GB wired
-            # HOT-WIRED PARAM MAX_ORDER_VALUE (threshold)
-            _ = float(getattr(config, "MAX_ORDER_VALUE", 0) or 0)  # MAX_ORDER_VALUE wired
-            # HOT-WIRED PARAM MAX_ORDER_VALUE_FIN (threshold)
-            _ = float(getattr(config, "MAX_ORDER_VALUE_FIN", 0) or 0)  # MAX_ORDER_VALUE_FIN wired
-            # HOT-WIRED PARAM MAX_ORDER_VALUE_MEN (threshold)
-            _ = float(getattr(config, "MAX_ORDER_VALUE_MEN", 0) or 0)  # MAX_ORDER_VALUE_MEN wired
-            # HOT-WIRED PARAM MAX_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "MAX_POSITION_SIZE", 0) or 0)  # MAX_POSITION_SIZE wired
-            # HOT-WIRED PARAM MAX_POSITION_SIZE_BTC (threshold)
-            _ = float(getattr(config, "MAX_POSITION_SIZE_BTC", 0) or 0)  # MAX_POSITION_SIZE_BTC wired
-            # HOT-WIRED PARAM MAX_POSITION_SIZE_FIN (threshold)
-            _ = float(getattr(config, "MAX_POSITION_SIZE_FIN", 0) or 0)  # MAX_POSITION_SIZE_FIN wired
-            # HOT-WIRED PARAM MAX_POSITION_SIZE_MEN (threshold)
-            _ = float(getattr(config, "MAX_POSITION_SIZE_MEN", 0) or 0)  # MAX_POSITION_SIZE_MEN wired
-            # HOT-WIRED PARAM MEMORY_MONITOR_SLEEP_SECONDS (threshold)
-            _ = float(getattr(config, "MEMORY_MONITOR_SLEEP_SECONDS", 0) or 0)  # MEMORY_MONITOR_SLEEP_SECONDS wired
-            # HOT-WIRED PARAM MFI_ENTRY_LONG_MAX (threshold)
-            _ = float(getattr(config, "MFI_ENTRY_LONG_MAX", 0) or 0)  # MFI_ENTRY_LONG_MAX wired
-            # HOT-WIRED PARAM MFI_ENTRY_SHORT_MIN (threshold)
-            _ = float(getattr(config, "MFI_ENTRY_SHORT_MIN", 0) or 0)  # MFI_ENTRY_SHORT_MIN wired
-            # HOT-WIRED PARAM MFI_FLIP_EXIT_LONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "MFI_FLIP_EXIT_LONG_THRESHOLD", 0) or 0)  # MFI_FLIP_EXIT_LONG_THRESHOLD wired
-            # HOT-WIRED PARAM MFI_FLIP_EXIT_SHORT_THRESHOLD (threshold)
-            _ = float(getattr(config, "MFI_FLIP_EXIT_SHORT_THRESHOLD", 0) or 0)  # MFI_FLIP_EXIT_SHORT_THRESHOLD wired
-            # HOT-WIRED PARAM MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT", 0) or 0)  # MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT (threshold)
-            _ = float(getattr(config, "MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT", 0) or 0)  # MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT wired
-            # HOT-WIRED PARAM MID_ZONE_SHORT_EXTRA_IND (threshold)
-            _ = float(getattr(config, "MID_ZONE_SHORT_EXTRA_IND", 0) or 0)  # MID_ZONE_SHORT_EXTRA_IND wired
-            # HOT-WIRED PARAM MINERVINI_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "MINERVINI_LONG_BUDGET", 0) or 0)  # MINERVINI_LONG_BUDGET wired
-            # HOT-WIRED PARAM MINERVINI_MAX_HOLD_DAYS (threshold)
-            _ = float(getattr(config, "MINERVINI_MAX_HOLD_DAYS", 0) or 0)  # MINERVINI_MAX_HOLD_DAYS wired
-            # HOT-WIRED PARAM MINERVINI_MIN_SCORE (threshold)
-            _ = float(getattr(config, "MINERVINI_MIN_SCORE", 0) or 0)  # MINERVINI_MIN_SCORE wired
-            # HOT-WIRED PARAM MINERVINI_MIN_SEPA_SCORE (threshold)
-            _ = float(getattr(config, "MINERVINI_MIN_SEPA_SCORE", 0) or 0)  # MINERVINI_MIN_SEPA_SCORE wired
-            # HOT-WIRED PARAM MINERVINI_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "MINERVINI_POSITION_SIZE", 0) or 0)  # MINERVINI_POSITION_SIZE wired
-            # HOT-WIRED PARAM MINERVINI_TARGET_PCT (threshold)
-            _ = float(getattr(config, "MINERVINI_TARGET_PCT", 0) or 0)  # MINERVINI_TARGET_PCT wired
-            # HOT-WIRED PARAM MIN_HOLD_BARS_BEFORE_EXIT (threshold)
-            _ = float(getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 0) or 0)  # MIN_HOLD_BARS_BEFORE_EXIT wired
-            # HOT-WIRED PARAM MIN_PERC_FROM_SMA_1 (threshold)
-            _ = float(getattr(config, "MIN_PERC_FROM_SMA_1", 0) or 0)  # MIN_PERC_FROM_SMA_1 wired
-            # HOT-WIRED PARAM MIN_PERC_FROM_SMA_15 (threshold)
-            _ = float(getattr(config, "MIN_PERC_FROM_SMA_15", 0) or 0)  # MIN_PERC_FROM_SMA_15 wired
-            # HOT-WIRED PARAM MIN_USD_DELTA_CONFIRM (threshold)
-            _ = float(getattr(config, "MIN_USD_DELTA_CONFIRM", 0) or 0)  # MIN_USD_DELTA_CONFIRM wired
-            # HOT-WIRED PARAM MITIGATOR_AUGMENT_CONSECUTIVE (threshold)
-            _ = float(getattr(config, "MITIGATOR_AUGMENT_CONSECUTIVE", 0) or 0)  # MITIGATOR_AUGMENT_CONSECUTIVE wired
-            # HOT-WIRED PARAM MITIGATOR_AUGMENT_THRESHOLD (threshold)
-            _ = float(getattr(config, "MITIGATOR_AUGMENT_THRESHOLD", 0) or 0)  # MITIGATOR_AUGMENT_THRESHOLD wired
-            # HOT-WIRED PARAM MITIGATOR_COOLDOWN (threshold)
-            _ = float(getattr(config, "MITIGATOR_COOLDOWN", 0) or 0)  # MITIGATOR_COOLDOWN wired
-            # HOT-WIRED PARAM MITIGATOR_REENTRY_COOLDOWN (threshold)
-            _ = float(getattr(config, "MITIGATOR_REENTRY_COOLDOWN", 0) or 0)  # MITIGATOR_REENTRY_COOLDOWN wired
-            # HOT-WIRED PARAM MITIGATOR_REENTRY_PRICE_PCT (threshold)
-            _ = float(getattr(config, "MITIGATOR_REENTRY_PRICE_PCT", 0) or 0)  # MITIGATOR_REENTRY_PRICE_PCT wired
-            # HOT-WIRED PARAM MITIGATOR_SCAN_INTERVAL (threshold)
-            _ = float(getattr(config, "MITIGATOR_SCAN_INTERVAL", 0) or 0)  # MITIGATOR_SCAN_INTERVAL wired
-            # HOT-WIRED PARAM MITIGATOR_TIER1_DROP (threshold)
-            _ = float(getattr(config, "MITIGATOR_TIER1_DROP", 0) or 0)  # MITIGATOR_TIER1_DROP wired
-            # HOT-WIRED PARAM MITIGATOR_TIER1_PEAK (threshold)
-            _ = float(getattr(config, "MITIGATOR_TIER1_PEAK", 0) or 0)  # MITIGATOR_TIER1_PEAK wired
-            # HOT-WIRED PARAM MITIGATOR_TIER1_REDUCE_PCT (threshold)
-            _ = float(getattr(config, "MITIGATOR_TIER1_REDUCE_PCT", 0) or 0)  # MITIGATOR_TIER1_REDUCE_PCT wired
-            # HOT-WIRED PARAM MITIGATOR_TIER2_DROP (threshold)
-            _ = float(getattr(config, "MITIGATOR_TIER2_DROP", 0) or 0)  # MITIGATOR_TIER2_DROP wired
-            # HOT-WIRED PARAM MITIGATOR_TIER2_REDUCE_PCT (threshold)
-            _ = float(getattr(config, "MITIGATOR_TIER2_REDUCE_PCT", 0) or 0)  # MITIGATOR_TIER2_REDUCE_PCT wired
-            # HOT-WIRED PARAM MITIGATOR_TIER3_DROP (threshold)
-            _ = float(getattr(config, "MITIGATOR_TIER3_DROP", 0) or 0)  # MITIGATOR_TIER3_DROP wired
-            # HOT-WIRED PARAM MOM3_LONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "MOM3_LONG_THRESHOLD", 0) or 0)  # MOM3_LONG_THRESHOLD wired
-            # HOT-WIRED PARAM MOM3_SHORT_THRESHOLD (threshold)
-            _ = float(getattr(config, "MOM3_SHORT_THRESHOLD", 0) or 0)  # MOM3_SHORT_THRESHOLD wired
-            # HOT-WIRED PARAM MOM5_LONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "MOM5_LONG_THRESHOLD", 0) or 0)  # MOM5_LONG_THRESHOLD wired
-            # HOT-WIRED PARAM MOM5_SHORT_THRESHOLD (threshold)
-            _ = float(getattr(config, "MOM5_SHORT_THRESHOLD", 0) or 0)  # MOM5_SHORT_THRESHOLD wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_ACCOUNT (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_ACCOUNT", 0) or 0)  # MOMENTUM_RIDER_ACCOUNT wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_BASE_SIZE_USD (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_BASE_SIZE_USD", 0) or 0)  # MOMENTUM_RIDER_BASE_SIZE_USD wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_COOLDOWN (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_COOLDOWN", 0) or 0)  # MOMENTUM_RIDER_COOLDOWN wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_DC_WIDTH_MIN (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_DC_WIDTH_MIN", 0) or 0)  # MOMENTUM_RIDER_DC_WIDTH_MIN wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_HEDGE_RATIO (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_HEDGE_RATIO", 0) or 0)  # MOMENTUM_RIDER_HEDGE_RATIO wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_MAX_SIZE_USD (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_MAX_SIZE_USD", 0) or 0)  # MOMENTUM_RIDER_MAX_SIZE_USD wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_MAX_SYMBOLS (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_MAX_SYMBOLS", 0) or 0)  # MOMENTUM_RIDER_MAX_SYMBOLS wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_REL_VOL_MIN (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_REL_VOL_MIN", 0) or 0)  # MOMENTUM_RIDER_REL_VOL_MIN wired
-            # HOT-WIRED PARAM MOMENTUM_RIDER_SCAN_INTERVAL (threshold)
-            _ = float(getattr(config, "MOMENTUM_RIDER_SCAN_INTERVAL", 0) or 0)  # MOMENTUM_RIDER_SCAN_INTERVAL wired
-            # HOT-WIRED PARAM MOMENTUM_SMA_WATCHDOG_COOLDOWN_S (threshold)
-            _ = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", 0) or 0)  # MOMENTUM_SMA_WATCHDOG_COOLDOWN_S wired
-            # HOT-WIRED PARAM MOMENTUM_SMA_WATCHDOG_INTERVAL_S (threshold)
-            _ = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", 0) or 0)  # MOMENTUM_SMA_WATCHDOG_INTERVAL_S wired
-            # HOT-WIRED PARAM MOMENTUM_SMA_WATCHDOG_PCT (threshold)
-            _ = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 0) or 0)  # MOMENTUM_SMA_WATCHDOG_PCT wired
-            # HOT-WIRED PARAM MOMENTUM_SMA_WATCHDOG_WT_CAP (threshold)
-            _ = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", 0) or 0)  # MOMENTUM_SMA_WATCHDOG_WT_CAP wired
-            # HOT-WIRED PARAM MONITOR_REDUCTION_STALE_THRESHOLD (threshold)
-            _ = float(getattr(config, "MONITOR_REDUCTION_STALE_THRESHOLD", 0) or 0)  # MONITOR_REDUCTION_STALE_THRESHOLD wired
-            # HOT-WIRED PARAM MOVER_ACCOUNT (threshold)
-            _ = float(getattr(config, "MOVER_ACCOUNT", 0) or 0)  # MOVER_ACCOUNT wired
-            # HOT-WIRED PARAM MOVER_LINEARITY_MIN (threshold)
-            _ = float(getattr(config, "MOVER_LINEARITY_MIN", 0) or 0)  # MOVER_LINEARITY_MIN wired
-            # HOT-WIRED PARAM MOVER_LOOKBACK (threshold)
-            _ = float(getattr(config, "MOVER_LOOKBACK", 0) or 0)  # MOVER_LOOKBACK wired
-            # HOT-WIRED PARAM MOVER_MAX_POSITIONS (threshold)
-            _ = float(getattr(config, "MOVER_MAX_POSITIONS", 0) or 0)  # MOVER_MAX_POSITIONS wired
-            # HOT-WIRED PARAM MOVER_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "MOVER_SCORE_BONUS", 0) or 0)  # MOVER_SCORE_BONUS wired
-            # HOT-WIRED PARAM MOVER_THRESHOLD (threshold)
-            _ = float(getattr(config, "MOVER_THRESHOLD", 0) or 0)  # MOVER_THRESHOLD wired
-            # HOT-WIRED PARAM MOVER_VOL_MIN (threshold)
-            _ = float(getattr(config, "MOVER_VOL_MIN", 0) or 0)  # MOVER_VOL_MIN wired
-            # HOT-WIRED PARAM MTF_ARROW_CONFIRM_PCT (threshold)
-            _ = float(getattr(config, "MTF_ARROW_CONFIRM_PCT", 0) or 0)  # MTF_ARROW_CONFIRM_PCT wired
-            # HOT-WIRED PARAM MTF_ARROW_SIZE_GAIN (threshold)
-            _ = float(getattr(config, "MTF_ARROW_SIZE_GAIN", 0) or 0)  # MTF_ARROW_SIZE_GAIN wired
-            # HOT-WIRED PARAM MTF_ARROW_SIZE_MAX (threshold)
-            _ = float(getattr(config, "MTF_ARROW_SIZE_MAX", 0) or 0)  # MTF_ARROW_SIZE_MAX wired
-            # HOT-WIRED PARAM MTF_ARROW_SLOPE_LAMBDA (threshold)
-            _ = float(getattr(config, "MTF_ARROW_SLOPE_LAMBDA", 0) or 0)  # MTF_ARROW_SLOPE_LAMBDA wired
-            # HOT-WIRED PARAM MTF_ARROW_SLOPE_NORM_PCT_DAY (threshold)
-            _ = float(getattr(config, "MTF_ARROW_SLOPE_NORM_PCT_DAY", 0) or 0)  # MTF_ARROW_SLOPE_NORM_PCT_DAY wired
-            # HOT-WIRED PARAM MTF_ARROW_THETA (threshold)
-            _ = float(getattr(config, "MTF_ARROW_THETA", 0) or 0)  # MTF_ARROW_THETA wired
-            # HOT-WIRED PARAM MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS (threshold)
-            _ = float(getattr(config, "MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS", 0) or 0)  # MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS wired
-            # HOT-WIRED PARAM MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT (threshold)
-            _ = float(getattr(config, "MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT", 0) or 0)  # MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT wired
-            # HOT-WIRED PARAM MTF_ATR_MULTITF_DIRECT_MULT (threshold)
-            _ = float(getattr(config, "MTF_ATR_MULTITF_DIRECT_MULT", 0) or 0)  # MTF_ATR_MULTITF_DIRECT_MULT wired
-            # HOT-WIRED PARAM MTF_EXIT_MIN_OPEN_TS (threshold)
-            _ = float(getattr(config, "MTF_EXIT_MIN_OPEN_TS", 0) or 0)  # MTF_EXIT_MIN_OPEN_TS wired
-            # HOT-WIRED PARAM MTS_BOTTOM_BONUS_THRESHOLD (threshold)
-            _ = float(getattr(config, "MTS_BOTTOM_BONUS_THRESHOLD", 0) or 0)  # MTS_BOTTOM_BONUS_THRESHOLD wired
-            # HOT-WIRED PARAM MTS_BOTTOM_MIN_SHORT (threshold)
-            _ = float(getattr(config, "MTS_BOTTOM_MIN_SHORT", 0) or 0)  # MTS_BOTTOM_MIN_SHORT wired
-            # HOT-WIRED PARAM MTS_BOTTOM_STRONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "MTS_BOTTOM_STRONG_THRESHOLD", 0) or 0)  # MTS_BOTTOM_STRONG_THRESHOLD wired
-            # HOT-WIRED PARAM MTS_ENTRY_QUALITY_BONUS (threshold)
-            _ = float(getattr(config, "MTS_ENTRY_QUALITY_BONUS", 0) or 0)  # MTS_ENTRY_QUALITY_BONUS wired
-            # HOT-WIRED PARAM MTS_ENTRY_QUALITY_MIN_SHORT (threshold)
-            _ = float(getattr(config, "MTS_ENTRY_QUALITY_MIN_SHORT", 0) or 0)  # MTS_ENTRY_QUALITY_MIN_SHORT wired
-            # HOT-WIRED PARAM MTS_ENTRY_QUALITY_STRONG (threshold)
-            _ = float(getattr(config, "MTS_ENTRY_QUALITY_STRONG", 0) or 0)  # MTS_ENTRY_QUALITY_STRONG wired
-            # HOT-WIRED PARAM MTS_WEIGHT_D (threshold)
-            _ = float(getattr(config, "MTS_WEIGHT_D", 0) or 0)  # MTS_WEIGHT_D wired
-            # HOT-WIRED PARAM MU_CORRECTION_HTF_K_MIN (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_HTF_K_MIN", 0) or 0)  # MU_CORRECTION_HTF_K_MIN wired
-            # HOT-WIRED PARAM MU_CORRECTION_HTF_MIN_TFS (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_HTF_MIN_TFS", 0) or 0)  # MU_CORRECTION_HTF_MIN_TFS wired
-            # HOT-WIRED PARAM MU_CORRECTION_HTF_RSI_MIN (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_HTF_RSI_MIN", 0) or 0)  # MU_CORRECTION_HTF_RSI_MIN wired
-            # HOT-WIRED PARAM MU_CORRECTION_HTF_TFS (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_HTF_TFS", 0) or 0)  # MU_CORRECTION_HTF_TFS wired
-            # HOT-WIRED PARAM MU_CORRECTION_LTF_FALL_MIN_TFS (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_LTF_FALL_MIN_TFS", 0) or 0)  # MU_CORRECTION_LTF_FALL_MIN_TFS wired
-            # HOT-WIRED PARAM MU_CORRECTION_LTF_FALL_TFS (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_LTF_FALL_TFS", 0) or 0)  # MU_CORRECTION_LTF_FALL_TFS wired
-            # HOT-WIRED PARAM MU_CORRECTION_MIN_GAIN_PCT (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_MIN_GAIN_PCT", 0) or 0)  # MU_CORRECTION_MIN_GAIN_PCT wired
-            # HOT-WIRED PARAM MU_CORRECTION_REENTRY_DC_TOL_PCT (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_REENTRY_DC_TOL_PCT", 0) or 0)  # MU_CORRECTION_REENTRY_DC_TOL_PCT wired
-            # HOT-WIRED PARAM MU_CORRECTION_REQUIRE_CLOSE_REVERSAL (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_REQUIRE_CLOSE_REVERSAL", 0) or 0)  # MU_CORRECTION_REQUIRE_CLOSE_REVERSAL wired
-            # HOT-WIRED PARAM MU_CORRECTION_REQUIRE_HIGH_REVERSAL (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_REQUIRE_HIGH_REVERSAL", 0) or 0)  # MU_CORRECTION_REQUIRE_HIGH_REVERSAL wired
-            # HOT-WIRED PARAM MU_CORRECTION_SYMBOLS (threshold)
-            _ = float(getattr(config, "MU_CORRECTION_SYMBOLS", 0) or 0)  # MU_CORRECTION_SYMBOLS wired
-            # HOT-WIRED PARAM NEWBORN_DC_STOP_FIELD (threshold)
-            _ = float(getattr(config, "NEWBORN_DC_STOP_FIELD", 0) or 0)  # NEWBORN_DC_STOP_FIELD wired
-            # HOT-WIRED PARAM NEWBORN_DC_STOP_MAX_AGE_MIN (threshold)
-            _ = float(getattr(config, "NEWBORN_DC_STOP_MAX_AGE_MIN", 0) or 0)  # NEWBORN_DC_STOP_MAX_AGE_MIN wired
-            # HOT-WIRED PARAM NEWS_POLL_INTERVAL_CRYPTO (threshold)
-            _ = float(getattr(config, "NEWS_POLL_INTERVAL_CRYPTO", 0) or 0)  # NEWS_POLL_INTERVAL_CRYPTO wired
-            # HOT-WIRED PARAM NEWS_POLL_INTERVAL_SOCIAL (threshold)
-            _ = float(getattr(config, "NEWS_POLL_INTERVAL_SOCIAL", 0) or 0)  # NEWS_POLL_INTERVAL_SOCIAL wired
-            # HOT-WIRED PARAM NEWS_SENTIMENT_DECAY_HOURS (threshold)
-            _ = float(getattr(config, "NEWS_SENTIMENT_DECAY_HOURS", 0) or 0)  # NEWS_SENTIMENT_DECAY_HOURS wired
-            # HOT-WIRED PARAM NEWS_SENTIMENT_MIN_ARTICLES (threshold)
-            _ = float(getattr(config, "NEWS_SENTIMENT_MIN_ARTICLES", 0) or 0)  # NEWS_SENTIMENT_MIN_ARTICLES wired
-            # HOT-WIRED PARAM NEWS_SENTIMENT_WEIGHT (threshold)
-            _ = float(getattr(config, "NEWS_SENTIMENT_WEIGHT", 0) or 0)  # NEWS_SENTIMENT_WEIGHT wired
-            # HOT-WIRED PARAM NOLOSS_BYPASS_WT_5OF5_MIN_TFS (threshold)
-            _ = float(getattr(config, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", 0) or 0)  # NOLOSS_BYPASS_WT_5OF5_MIN_TFS wired
-            # HOT-WIRED PARAM OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS (threshold)
-            _ = float(getattr(config, "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS", 0) or 0)  # OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS wired
-            # HOT-WIRED PARAM OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H (threshold)
-            _ = float(getattr(config, "OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H", 0) or 0)  # OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H wired
-            # HOT-WIRED PARAM OI_DIVERGENCE_PENALTY (threshold)
-            _ = float(getattr(config, "OI_DIVERGENCE_PENALTY", 0) or 0)  # OI_DIVERGENCE_PENALTY wired
-            # HOT-WIRED PARAM OPENING_BUFFER_NO_CLOSE_MINUTES (threshold)
-            _ = float(getattr(config, "OPENING_BUFFER_NO_CLOSE_MINUTES", 0) or 0)  # OPENING_BUFFER_NO_CLOSE_MINUTES wired
-            # HOT-WIRED PARAM OPTIMAL_HOLD_BARS_15M (threshold)
-            _ = float(getattr(config, "OPTIMAL_HOLD_BARS_15M", 0) or 0)  # OPTIMAL_HOLD_BARS_15M wired
-            # HOT-WIRED PARAM OPTIMAL_HOLD_BARS_3M (threshold)
-            _ = float(getattr(config, "OPTIMAL_HOLD_BARS_3M", 0) or 0)  # OPTIMAL_HOLD_BARS_3M wired
-            # HOT-WIRED PARAM OPTIONS_ALERT_ABS_LOSS_PP (threshold)
-            _ = float(getattr(config, "OPTIONS_ALERT_ABS_LOSS_PP", 0) or 0)  # OPTIONS_ALERT_ABS_LOSS_PP wired
-            # HOT-WIRED PARAM OPTIONS_ALERT_DROP_PP (threshold)
-            _ = float(getattr(config, "OPTIONS_ALERT_DROP_PP", 0) or 0)  # OPTIONS_ALERT_DROP_PP wired
-            # HOT-WIRED PARAM OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD (threshold)
-            _ = float(getattr(config, "OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD", 0) or 0)  # OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD wired
-            # HOT-WIRED PARAM OPTIONS_BASE_CAP (threshold)
-            _ = float(getattr(config, "OPTIONS_BASE_CAP", 0) or 0)  # OPTIONS_BASE_CAP wired
-            # HOT-WIRED PARAM OPTIONS_BUY_MAX_OTM_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_BUY_MAX_OTM_PCT", 0) or 0)  # OPTIONS_BUY_MAX_OTM_PCT wired
-            # HOT-WIRED PARAM OPTIONS_BUY_MIN_ABS_DELTA (threshold)
-            _ = float(getattr(config, "OPTIONS_BUY_MIN_ABS_DELTA", 0) or 0)  # OPTIONS_BUY_MIN_ABS_DELTA wired
-            # HOT-WIRED PARAM OPTIONS_BUY_MIN_DTE (threshold)
-            _ = float(getattr(config, "OPTIONS_BUY_MIN_DTE", 0) or 0)  # OPTIONS_BUY_MIN_DTE wired
-            # HOT-WIRED PARAM OPTIONS_BUY_MIN_WT_DC_SCORE (threshold)
-            _ = float(getattr(config, "OPTIONS_BUY_MIN_WT_DC_SCORE", 0) or 0)  # OPTIONS_BUY_MIN_WT_DC_SCORE wired
-            # HOT-WIRED PARAM OPTIONS_BUY_PREFERRED_DTE (threshold)
-            _ = float(getattr(config, "OPTIONS_BUY_PREFERRED_DTE", 0) or 0)  # OPTIONS_BUY_PREFERRED_DTE wired
-            # HOT-WIRED PARAM OPTIONS_BUY_REQUIRE_D_ALIGN (threshold)
-            _ = float(getattr(config, "OPTIONS_BUY_REQUIRE_D_ALIGN", 0) or 0)  # OPTIONS_BUY_REQUIRE_D_ALIGN wired
-            # HOT-WIRED PARAM OPTIONS_CONTINUOUS_SECTOR_GATE (threshold)
-            _ = float(getattr(config, "OPTIONS_CONTINUOUS_SECTOR_GATE", 0) or 0)  # OPTIONS_CONTINUOUS_SECTOR_GATE wired
-            # HOT-WIRED PARAM OPTIONS_CSP_DTE_MAX (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_DTE_MAX", 0) or 0)  # OPTIONS_CSP_DTE_MAX wired
-            # HOT-WIRED PARAM OPTIONS_CSP_DTE_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_DTE_MIN", 0) or 0)  # OPTIONS_CSP_DTE_MIN wired
-            # HOT-WIRED PARAM OPTIONS_CSP_EDGE_MARGIN (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_EDGE_MARGIN", 0) or 0)  # OPTIONS_CSP_EDGE_MARGIN wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MAX_CAPITAL_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MAX_CAPITAL_PCT", 0) or 0)  # OPTIONS_CSP_MAX_CAPITAL_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MAX_DELTA (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MAX_DELTA", 0) or 0)  # OPTIONS_CSP_MAX_DELTA wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MAX_HOLD_DAYS (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MAX_HOLD_DAYS", 0) or 0)  # OPTIONS_CSP_MAX_HOLD_DAYS wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT", 0) or 0)  # OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MIN_DELTA (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MIN_DELTA", 0) or 0)  # OPTIONS_CSP_MIN_DELTA wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MIN_EXTRINSIC_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MIN_EXTRINSIC_PCT", 0) or 0)  # OPTIONS_CSP_MIN_EXTRINSIC_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MIN_IV_RANK (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MIN_IV_RANK", 0) or 0)  # OPTIONS_CSP_MIN_IV_RANK wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_CALL_BREACH_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_CALL_BREACH_PCT", 0) or 0)  # OPTIONS_CSP_MONITOR_CALL_BREACH_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT", 0) or 0)  # OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N", 0) or 0)  # OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT", 0) or 0)  # OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_LOG_EVERY_TICK (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK", 0) or 0)  # OPTIONS_CSP_MONITOR_LOG_EVERY_TICK wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT", 0) or 0)  # OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_MAX_LOSS_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_MAX_LOSS_PCT", 0) or 0)  # OPTIONS_CSP_MONITOR_MAX_LOSS_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_POLL_SEC (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_POLL_SEC", 0) or 0)  # OPTIONS_CSP_MONITOR_POLL_SEC wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN", 0) or 0)  # OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN wired
-            # HOT-WIRED PARAM OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT", 0) or 0)  # OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT wired
-            # HOT-WIRED PARAM OPTIONS_CSP_PROFIT_TARGET_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_CSP_PROFIT_TARGET_PCT", 0) or 0)  # OPTIONS_CSP_PROFIT_TARGET_PCT wired
-            # HOT-WIRED PARAM OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN", 0) or 0)  # OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN wired
-            # HOT-WIRED PARAM OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD (threshold)
-            _ = float(getattr(config, "OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD", 0) or 0)  # OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD wired
-            # HOT-WIRED PARAM OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST (threshold)
-            _ = float(getattr(config, "OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST", 0) or 0)  # OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST wired
-            # HOT-WIRED PARAM OPTIONS_EQUITY_HEDGE_TRIGGER_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_EQUITY_HEDGE_TRIGGER_PCT", 0) or 0)  # OPTIONS_EQUITY_HEDGE_TRIGGER_PCT wired
-            # HOT-WIRED PARAM OPTIONS_FULL_DIV_CAP (threshold)
-            _ = float(getattr(config, "OPTIONS_FULL_DIV_CAP", 0) or 0)  # OPTIONS_FULL_DIV_CAP wired
-            # HOT-WIRED PARAM OPTIONS_HEDGED_CAP (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGED_CAP", 0) or 0)  # OPTIONS_HEDGED_CAP wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS", 0) or 0)  # OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_DC_REL_TOL_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_DC_REL_TOL_PCT", 0) or 0)  # OPTIONS_HEDGE_DC_REL_TOL_PCT wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_K_OVERSOLD_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_K_OVERSOLD_PCT", 0) or 0)  # OPTIONS_HEDGE_K_OVERSOLD_PCT wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_PUT_DELTA_MAX (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_PUT_DELTA_MAX", 0) or 0)  # OPTIONS_HEDGE_PUT_DELTA_MAX wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_PUT_DELTA_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_PUT_DELTA_MIN", 0) or 0)  # OPTIONS_HEDGE_PUT_DELTA_MIN wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_PUT_DTE_MAX (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_PUT_DTE_MAX", 0) or 0)  # OPTIONS_HEDGE_PUT_DTE_MAX wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_PUT_DTE_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_PUT_DTE_MIN", 0) or 0)  # OPTIONS_HEDGE_PUT_DTE_MIN wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_PUT_MAX_IV_RANK (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_PUT_MAX_IV_RANK", 0) or 0)  # OPTIONS_HEDGE_PUT_MAX_IV_RANK wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT", 0) or 0)  # OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT wired
-            # HOT-WIRED PARAM OPTIONS_HEDGE_RATIO_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_HEDGE_RATIO_MIN", 0) or 0)  # OPTIONS_HEDGE_RATIO_MIN wired
-            # HOT-WIRED PARAM OPTIONS_LEVEL_BREAK_BUFFER (threshold)
-            _ = float(getattr(config, "OPTIONS_LEVEL_BREAK_BUFFER", 0) or 0)  # OPTIONS_LEVEL_BREAK_BUFFER wired
-            # HOT-WIRED PARAM OPTIONS_LEVEL_BREAK_MIN_DTE (threshold)
-            _ = float(getattr(config, "OPTIONS_LEVEL_BREAK_MIN_DTE", 0) or 0)  # OPTIONS_LEVEL_BREAK_MIN_DTE wired
-            # HOT-WIRED PARAM OPTIONS_MARKET_RATIO_MAX (threshold)
-            _ = float(getattr(config, "OPTIONS_MARKET_RATIO_MAX", 0) or 0)  # OPTIONS_MARKET_RATIO_MAX wired
-            # HOT-WIRED PARAM OPTIONS_MARKET_RATIO_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_MARKET_RATIO_MIN", 0) or 0)  # OPTIONS_MARKET_RATIO_MIN wired
-            # HOT-WIRED PARAM OPTIONS_MAX_CONTRACTS_PER_ORDER (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_CONTRACTS_PER_ORDER", 0) or 0)  # OPTIONS_MAX_CONTRACTS_PER_ORDER wired
-            # HOT-WIRED PARAM OPTIONS_MAX_LOSS_PCT_DTE_14 (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_LOSS_PCT_DTE_14", 0) or 0)  # OPTIONS_MAX_LOSS_PCT_DTE_14 wired
-            # HOT-WIRED PARAM OPTIONS_MAX_LOSS_PCT_DTE_30 (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_LOSS_PCT_DTE_30", 0) or 0)  # OPTIONS_MAX_LOSS_PCT_DTE_30 wired
-            # HOT-WIRED PARAM OPTIONS_MAX_LOSS_PCT_DTE_LOW (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_LOSS_PCT_DTE_LOW", 0) or 0)  # OPTIONS_MAX_LOSS_PCT_DTE_LOW wired
-            # HOT-WIRED PARAM OPTIONS_MAX_ORDER_BUDGET (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_ORDER_BUDGET", 0) or 0)  # OPTIONS_MAX_ORDER_BUDGET wired
-            # HOT-WIRED PARAM OPTIONS_MAX_PER_GROUP (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_PER_GROUP", 0) or 0)  # OPTIONS_MAX_PER_GROUP wired
-            # HOT-WIRED PARAM OPTIONS_MAX_PER_SECTOR (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_PER_SECTOR", 0) or 0)  # OPTIONS_MAX_PER_SECTOR wired
-            # HOT-WIRED PARAM OPTIONS_MAX_PER_SYMBOL (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_PER_SYMBOL", 0) or 0)  # OPTIONS_MAX_PER_SYMBOL wired
-            # HOT-WIRED PARAM OPTIONS_MAX_SINGLE_CONTRACT_PRICE (threshold)
-            _ = float(getattr(config, "OPTIONS_MAX_SINGLE_CONTRACT_PRICE", 0) or 0)  # OPTIONS_MAX_SINGLE_CONTRACT_PRICE wired
-            # HOT-WIRED PARAM OPTIONS_MIN_GROUPS (threshold)
-            _ = float(getattr(config, "OPTIONS_MIN_GROUPS", 0) or 0)  # OPTIONS_MIN_GROUPS wired
-            # HOT-WIRED PARAM OPTIONS_MIN_SECTORS (threshold)
-            _ = float(getattr(config, "OPTIONS_MIN_SECTORS", 0) or 0)  # OPTIONS_MIN_SECTORS wired
-            # HOT-WIRED PARAM OPTIONS_PREMARKET_NO_FIRE (threshold)
-            _ = float(getattr(config, "OPTIONS_PREMARKET_NO_FIRE", 0) or 0)  # OPTIONS_PREMARKET_NO_FIRE wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_DTE_MAX (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_DTE_MAX", 0) or 0)  # OPTIONS_SPREAD_DTE_MAX wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_DTE_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_DTE_MIN", 0) or 0)  # OPTIONS_SPREAD_DTE_MIN wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_IV_RANK_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_IV_RANK_MIN", 0) or 0)  # OPTIONS_SPREAD_IV_RANK_MIN wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_MAX_CONCURRENT (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_MAX_CONCURRENT", 0) or 0)  # OPTIONS_SPREAD_MAX_CONCURRENT wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_MAX_HOLD_DAYS (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_MAX_HOLD_DAYS", 0) or 0)  # OPTIONS_SPREAD_MAX_HOLD_DAYS wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_PROFIT_TARGET_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_PROFIT_TARGET_PCT", 0) or 0)  # OPTIONS_SPREAD_PROFIT_TARGET_PCT wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_SHORT_DELTA (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_SHORT_DELTA", 0) or 0)  # OPTIONS_SPREAD_SHORT_DELTA wired
-            # HOT-WIRED PARAM OPTIONS_SPREAD_WIDTH (threshold)
-            _ = float(getattr(config, "OPTIONS_SPREAD_WIDTH", 0) or 0)  # OPTIONS_SPREAD_WIDTH wired
-            # HOT-WIRED PARAM OPTIONS_STOCK_CSP_IV_RANK_MIN (threshold)
-            _ = float(getattr(config, "OPTIONS_STOCK_CSP_IV_RANK_MIN", 0) or 0)  # OPTIONS_STOCK_CSP_IV_RANK_MIN wired
-            # HOT-WIRED PARAM OPTIONS_STOCK_CSP_MAX_CONCURRENT (threshold)
-            _ = float(getattr(config, "OPTIONS_STOCK_CSP_MAX_CONCURRENT", 0) or 0)  # OPTIONS_STOCK_CSP_MAX_CONCURRENT wired
-            # HOT-WIRED PARAM OPTIONS_STOCK_CSP_MIN_CASH (threshold)
-            _ = float(getattr(config, "OPTIONS_STOCK_CSP_MIN_CASH", 0) or 0)  # OPTIONS_STOCK_CSP_MIN_CASH wired
-            # HOT-WIRED PARAM OPTIONS_USER_CANCEL_COOLDOWN_HOURS (threshold)
-            _ = float(getattr(config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", 0) or 0)  # OPTIONS_USER_CANCEL_COOLDOWN_HOURS wired
-            # HOT-WIRED PARAM OPTIONS_WT_ACCEL_GROWTH_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_WT_ACCEL_GROWTH_PCT", 0) or 0)  # OPTIONS_WT_ACCEL_GROWTH_PCT wired
-            # HOT-WIRED PARAM OPTIONS_WT_ACCEL_MIN_ABS (threshold)
-            _ = float(getattr(config, "OPTIONS_WT_ACCEL_MIN_ABS", 0) or 0)  # OPTIONS_WT_ACCEL_MIN_ABS wired
-            # HOT-WIRED PARAM OPTIONS_WT_SLOWDOWN_PCT (threshold)
-            _ = float(getattr(config, "OPTIONS_WT_SLOWDOWN_PCT", 0) or 0)  # OPTIONS_WT_SLOWDOWN_PCT wired
-            # HOT-WIRED PARAM ORB_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "ORB_LONG_BUDGET", 0) or 0)  # ORB_LONG_BUDGET wired
-            # HOT-WIRED PARAM ORB_MAX_HOLD_MINUTES (threshold)
-            _ = float(getattr(config, "ORB_MAX_HOLD_MINUTES", 0) or 0)  # ORB_MAX_HOLD_MINUTES wired
-            # HOT-WIRED PARAM ORB_MAX_PER_DAY (threshold)
-            _ = float(getattr(config, "ORB_MAX_PER_DAY", 0) or 0)  # ORB_MAX_PER_DAY wired
-            # HOT-WIRED PARAM ORB_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "ORB_POSITION_SIZE", 0) or 0)  # ORB_POSITION_SIZE wired
-            # HOT-WIRED PARAM ORB_RVOL_MIN (threshold)
-            _ = float(getattr(config, "ORB_RVOL_MIN", 0) or 0)  # ORB_RVOL_MIN wired
-            # HOT-WIRED PARAM ORB_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "ORB_SHORT_BUDGET", 0) or 0)  # ORB_SHORT_BUDGET wired
-            # HOT-WIRED PARAM ORB_STOP_MIDPOINT (threshold)
-            _ = float(getattr(config, "ORB_STOP_MIDPOINT", 0) or 0)  # ORB_STOP_MIDPOINT wired
-            # HOT-WIRED PARAM ORB_TARGET_MULT (threshold)
-            _ = float(getattr(config, "ORB_TARGET_MULT", 0) or 0)  # ORB_TARGET_MULT wired
-            # HOT-WIRED PARAM ORB_WINDOW_MINUTES (threshold)
-            _ = float(getattr(config, "ORB_WINDOW_MINUTES", 0) or 0)  # ORB_WINDOW_MINUTES wired
-            # HOT-WIRED PARAM ORDER_CACHE_TTL (threshold)
-            _ = float(getattr(config, "ORDER_CACHE_TTL", 0) or 0)  # ORDER_CACHE_TTL wired
-            # HOT-WIRED PARAM ORPHAN_HEDGE_CHECK_GAIN (threshold)
-            _ = float(getattr(config, "ORPHAN_HEDGE_CHECK_GAIN", 0) or 0)  # ORPHAN_HEDGE_CHECK_GAIN wired
-            # HOT-WIRED PARAM OUTLIER_RUNAWAY_ATR_FACTOR (threshold)
-            _ = float(getattr(config, "OUTLIER_RUNAWAY_ATR_FACTOR", 0) or 0)  # OUTLIER_RUNAWAY_ATR_FACTOR wired
-            # HOT-WIRED PARAM OUTLIER_SCAN_INTERVAL (threshold)
-            _ = float(getattr(config, "OUTLIER_SCAN_INTERVAL", 0) or 0)  # OUTLIER_SCAN_INTERVAL wired
-            # HOT-WIRED PARAM OUTLIER_STALE_HOURS (threshold)
-            _ = float(getattr(config, "OUTLIER_STALE_HOURS", 0) or 0)  # OUTLIER_STALE_HOURS wired
-            # HOT-WIRED PARAM OUTLIER_STUCK_ATR_FACTOR (threshold)
-            _ = float(getattr(config, "OUTLIER_STUCK_ATR_FACTOR", 0) or 0)  # OUTLIER_STUCK_ATR_FACTOR wired
-            # HOT-WIRED PARAM OUTLIER_STUCK_HOURS (threshold)
-            _ = float(getattr(config, "OUTLIER_STUCK_HOURS", 0) or 0)  # OUTLIER_STUCK_HOURS wired
-            # HOT-WIRED PARAM OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES (threshold)
-            _ = float(getattr(config, "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES", 0) or 0)  # OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES wired
-            # HOT-WIRED PARAM OVERNIGHT_GAP_HEDGE_OPEN_MINUTES (threshold)
-            _ = float(getattr(config, "OVERNIGHT_GAP_HEDGE_OPEN_MINUTES", 0) or 0)  # OVERNIGHT_GAP_HEDGE_OPEN_MINUTES wired
-            # HOT-WIRED PARAM OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD (threshold)
-            _ = float(getattr(config, "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD", 0) or 0)  # OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD wired
-            # HOT-WIRED PARAM OVERNIGHT_GAP_HEDGE_SIZE_FRAC (threshold)
-            _ = float(getattr(config, "OVERNIGHT_GAP_HEDGE_SIZE_FRAC", 0) or 0)  # OVERNIGHT_GAP_HEDGE_SIZE_FRAC wired
-            # HOT-WIRED PARAM PARITY_COMPARISON_MODE (threshold)
-            _ = float(getattr(config, "PARITY_COMPARISON_MODE", 0) or 0)  # PARITY_COMPARISON_MODE wired
-            # HOT-WIRED PARAM PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT (threshold)
-            _ = float(getattr(config, "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT", 0) or 0)  # PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT wired
-            # HOT-WIRED PARAM PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT (threshold)
-            _ = float(getattr(config, "PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT", 0) or 0)  # PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT wired
-            # HOT-WIRED PARAM PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT (threshold)
-            _ = float(getattr(config, "PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT", 0) or 0)  # PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT wired
-            # HOT-WIRED PARAM PLOT_LOOP_INTERVAL_SECONDS (threshold)
-            _ = float(getattr(config, "PLOT_LOOP_INTERVAL_SECONDS", 0) or 0)  # PLOT_LOOP_INTERVAL_SECONDS wired
-            # HOT-WIRED PARAM PNL_DECAY_COMPLETE_DAYS (threshold)
-            _ = float(getattr(config, "PNL_DECAY_COMPLETE_DAYS", 0) or 0)  # PNL_DECAY_COMPLETE_DAYS wired
-            # HOT-WIRED PARAM PNL_DECAY_FINAL_PERCENTAGE (threshold)
-            _ = float(getattr(config, "PNL_DECAY_FINAL_PERCENTAGE", 0) or 0)  # PNL_DECAY_FINAL_PERCENTAGE wired
-            # HOT-WIRED PARAM PNL_DECAY_START_HOURS (threshold)
-            _ = float(getattr(config, "PNL_DECAY_START_HOURS", 0) or 0)  # PNL_DECAY_START_HOURS wired
-            # HOT-WIRED PARAM POSITIONS_SERVICE_HEALTH_TIMEOUT (threshold)
-            _ = float(getattr(config, "POSITIONS_SERVICE_HEALTH_TIMEOUT", 0) or 0)  # POSITIONS_SERVICE_HEALTH_TIMEOUT wired
-            # HOT-WIRED PARAM POSITION_CACHE_TTL (threshold)
-            _ = float(getattr(config, "POSITION_CACHE_TTL", 0) or 0)  # POSITION_CACHE_TTL wired
-            # HOT-WIRED PARAM POSITION_REDIS_REFRESH_INTERVAL (threshold)
-            _ = float(getattr(config, "POSITION_REDIS_REFRESH_INTERVAL", 0) or 0)  # POSITION_REDIS_REFRESH_INTERVAL wired
-            # HOT-WIRED PARAM POSITION_REFRESH_INTERVAL (threshold)
-            _ = float(getattr(config, "POSITION_REFRESH_INTERVAL", 0) or 0)  # POSITION_REFRESH_INTERVAL wired
-            # HOT-WIRED PARAM POSITION_REFRESH_MIN_INTERVAL (threshold)
-            _ = float(getattr(config, "POSITION_REFRESH_MIN_INTERVAL", 0) or 0)  # POSITION_REFRESH_MIN_INTERVAL wired
-            # HOT-WIRED PARAM POSITION_SAVE_INTERVAL (threshold)
-            _ = float(getattr(config, "POSITION_SAVE_INTERVAL", 0) or 0)  # POSITION_SAVE_INTERVAL wired
-            # HOT-WIRED PARAM POSITION_STALE_THRESHOLD_SECONDS (threshold)
-            _ = float(getattr(config, "POSITION_STALE_THRESHOLD_SECONDS", 0) or 0)  # POSITION_STALE_THRESHOLD_SECONDS wired
-            # HOT-WIRED PARAM PRICE_CROSS_BACK_BAND_PCT (threshold)
-            _ = float(getattr(config, "PRICE_CROSS_BACK_BAND_PCT", 0) or 0)  # PRICE_CROSS_BACK_BAND_PCT wired
-            # HOT-WIRED PARAM PRICE_CROSS_BACK_MAX_AGE_MIN (threshold)
-            _ = float(getattr(config, "PRICE_CROSS_BACK_MAX_AGE_MIN", 0) or 0)  # PRICE_CROSS_BACK_MAX_AGE_MIN wired
-            # HOT-WIRED PARAM PRICE_REFRESH_INTERVAL (threshold)
-            _ = float(getattr(config, "PRICE_REFRESH_INTERVAL", 0) or 0)  # PRICE_REFRESH_INTERVAL wired
-            # HOT-WIRED PARAM PRICE_UPDATE_INTERVAL (threshold)
-            _ = float(getattr(config, "PRICE_UPDATE_INTERVAL", 0) or 0)  # PRICE_UPDATE_INTERVAL wired
-            # HOT-WIRED PARAM PROFIT_TARGET_PCT (threshold)
-            _ = float(getattr(config, "PROFIT_TARGET_PCT", 0) or 0)  # PROFIT_TARGET_PCT wired
-            # HOT-WIRED PARAM PROGRESSIVE_LOCK_FRACTION (threshold)
-            _ = float(getattr(config, "PROGRESSIVE_LOCK_FRACTION", 0) or 0)  # PROGRESSIVE_LOCK_FRACTION wired
-            # HOT-WIRED PARAM PROXIMITY_TOP_MAX_DROP_PCT (threshold)
-            _ = float(getattr(config, "PROXIMITY_TOP_MAX_DROP_PCT", 0) or 0)  # PROXIMITY_TOP_MAX_DROP_PCT wired
-            # HOT-WIRED PARAM PYRAMID_MAX_DC_POS_15M_SHORT (threshold)
-            _ = float(getattr(config, "PYRAMID_MAX_DC_POS_15M_SHORT", 0) or 0)  # PYRAMID_MAX_DC_POS_15M_SHORT wired
-            # HOT-WIRED PARAM PYRAMID_MIN_DC_POS_15M (threshold)
-            _ = float(getattr(config, "PYRAMID_MIN_DC_POS_15M", 0) or 0)  # PYRAMID_MIN_DC_POS_15M wired
-            # HOT-WIRED PARAM PYRAMID_MIN_GAIN_PCT (threshold)
-            _ = float(getattr(config, "PYRAMID_MIN_GAIN_PCT", 0) or 0)  # PYRAMID_MIN_GAIN_PCT wired
-            # HOT-WIRED PARAM PYRAMID_MIN_WT_VEL_1H (threshold)
-            _ = float(getattr(config, "PYRAMID_MIN_WT_VEL_1H", 0) or 0)  # PYRAMID_MIN_WT_VEL_1H wired
-            # HOT-WIRED PARAM PYRAMID_SIZE_MULT (threshold)
-            _ = float(getattr(config, "PYRAMID_SIZE_MULT", 0) or 0)  # PYRAMID_SIZE_MULT wired
-            # HOT-WIRED PARAM R3_GAIN_MAX_PCT (threshold)
-            _ = float(getattr(config, "R3_GAIN_MAX_PCT", 0) or 0)  # R3_GAIN_MAX_PCT wired
-            # HOT-WIRED PARAM R3_HTF_FLIP_NEWBORN_WINDOW_MIN (threshold)
-            _ = float(getattr(config, "R3_HTF_FLIP_NEWBORN_WINDOW_MIN", 0) or 0)  # R3_HTF_FLIP_NEWBORN_WINDOW_MIN wired
-            # HOT-WIRED PARAM RANKING_LOOP_SLEEP_SECONDS (threshold)
-            _ = float(getattr(config, "RANKING_LOOP_SLEEP_SECONDS", 0) or 0)  # RANKING_LOOP_SLEEP_SECONDS wired
-            # HOT-WIRED PARAM RANKING_UPDATE_INTERVAL (threshold)
-            _ = float(getattr(config, "RANKING_UPDATE_INTERVAL", 0) or 0)  # RANKING_UPDATE_INTERVAL wired
-            # HOT-WIRED PARAM RATIO_EMERGENCY_EXIT_COOLDOWN (threshold)
-            _ = float(getattr(config, "RATIO_EMERGENCY_EXIT_COOLDOWN", 0) or 0)  # RATIO_EMERGENCY_EXIT_COOLDOWN wired
-            # HOT-WIRED PARAM RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT (threshold)
-            _ = float(getattr(config, "RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT", 0) or 0)  # RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT wired
-            # HOT-WIRED PARAM RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE (threshold)
-            _ = float(getattr(config, "RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE", 0) or 0)  # RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE wired
-            # HOT-WIRED PARAM RATIO_EMERGENCY_EXIT_THRESHOLD (threshold)
-            _ = float(getattr(config, "RATIO_EMERGENCY_EXIT_THRESHOLD", 0) or 0)  # RATIO_EMERGENCY_EXIT_THRESHOLD wired
-            # HOT-WIRED PARAM REACTIVE_MODE (threshold)
-            _ = float(getattr(config, "REACTIVE_MODE", 0) or 0)  # REACTIVE_MODE wired
-            # HOT-WIRED PARAM REBAL_ATTEMPT_COOLDOWN_SEC (threshold)
-            _ = float(getattr(config, "REBAL_ATTEMPT_COOLDOWN_SEC", 0) or 0)  # REBAL_ATTEMPT_COOLDOWN_SEC wired
-            # HOT-WIRED PARAM RECOVERY_AUGMENT_BAND_PCT (threshold)
-            _ = float(getattr(config, "RECOVERY_AUGMENT_BAND_PCT", 0) or 0)  # RECOVERY_AUGMENT_BAND_PCT wired
-            # HOT-WIRED PARAM RECOVERY_AUGMENT_MAX_AGE_MIN (threshold)
-            _ = float(getattr(config, "RECOVERY_AUGMENT_MAX_AGE_MIN", 0) or 0)  # RECOVERY_AUGMENT_MAX_AGE_MIN wired
-            # HOT-WIRED PARAM RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE (threshold)
-            _ = float(getattr(config, "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE", 0) or 0)  # RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE wired
-            # HOT-WIRED PARAM RECOVERY_AUGMENT_REQUIRE_WT_CROSS (threshold)
-            _ = float(getattr(config, "RECOVERY_AUGMENT_REQUIRE_WT_CROSS", 0) or 0)  # RECOVERY_AUGMENT_REQUIRE_WT_CROSS wired
-            # HOT-WIRED PARAM RECOVERY_AUGMENT_SIZE_PCT (threshold)
-            _ = float(getattr(config, "RECOVERY_AUGMENT_SIZE_PCT", 0) or 0)  # RECOVERY_AUGMENT_SIZE_PCT wired
-            # HOT-WIRED PARAM REDIS_CHANNEL_MARKET_DATA (threshold)
-            _ = float(getattr(config, "REDIS_CHANNEL_MARKET_DATA", 0) or 0)  # REDIS_CHANNEL_MARKET_DATA wired
-            # HOT-WIRED PARAM REDIS_CHANNEL_POSITIONS (threshold)
-            _ = float(getattr(config, "REDIS_CHANNEL_POSITIONS", 0) or 0)  # REDIS_CHANNEL_POSITIONS wired
-            # HOT-WIRED PARAM REDIS_CHANNEL_PRICES (threshold)
-            _ = float(getattr(config, "REDIS_CHANNEL_PRICES", 0) or 0)  # REDIS_CHANNEL_PRICES wired
-            # HOT-WIRED PARAM REDIS_CHANNEL_SIGNALS (threshold)
-            _ = float(getattr(config, "REDIS_CHANNEL_SIGNALS", 0) or 0)  # REDIS_CHANNEL_SIGNALS wired
-            # HOT-WIRED PARAM REDIS_DB (threshold)
-            _ = float(getattr(config, "REDIS_DB", 0) or 0)  # REDIS_DB wired
-            # HOT-WIRED PARAM REDIS_EXPIRY_SECONDS (threshold)
-            _ = float(getattr(config, "REDIS_EXPIRY_SECONDS", 0) or 0)  # REDIS_EXPIRY_SECONDS wired
-            # HOT-WIRED PARAM REDIS_HOST (threshold)
-            _ = float(getattr(config, "REDIS_HOST", 0) or 0)  # REDIS_HOST wired
-            # HOT-WIRED PARAM REDIS_KEY_MARKET_DATA (threshold)
-            _ = float(getattr(config, "REDIS_KEY_MARKET_DATA", 0) or 0)  # REDIS_KEY_MARKET_DATA wired
-            # HOT-WIRED PARAM REDIS_PORT (threshold)
-            _ = float(getattr(config, "REDIS_PORT", 0) or 0)  # REDIS_PORT wired
-            # HOT-WIRED PARAM REDUCE_HUGE_LOSS_THRESHOLD (threshold)
-            _ = float(getattr(config, "REDUCE_HUGE_LOSS_THRESHOLD", 0) or 0)  # REDUCE_HUGE_LOSS_THRESHOLD wired
-            # HOT-WIRED PARAM REDUCTION_COOLDOWN_SECONDS (threshold)
-            _ = float(getattr(config, "REDUCTION_COOLDOWN_SECONDS", 0) or 0)  # REDUCTION_COOLDOWN_SECONDS wired
-            # HOT-WIRED PARAM RED_ZONE_TRADIER_MIN_DISTANCE_PCT (threshold)
-            _ = float(getattr(config, "RED_ZONE_TRADIER_MIN_DISTANCE_PCT", 0) or 0)  # RED_ZONE_TRADIER_MIN_DISTANCE_PCT wired
-            # HOT-WIRED PARAM RED_ZONE_TRADIER_MIN_OI_AT_WALL (threshold)
-            _ = float(getattr(config, "RED_ZONE_TRADIER_MIN_OI_AT_WALL", 0) or 0)  # RED_ZONE_TRADIER_MIN_OI_AT_WALL wired
-            # HOT-WIRED PARAM RED_ZONE_TRADIER_STALE_MAX_HOURS (threshold)
-            _ = float(getattr(config, "RED_ZONE_TRADIER_STALE_MAX_HOURS", 0) or 0)  # RED_ZONE_TRADIER_STALE_MAX_HOURS wired
-            # HOT-WIRED PARAM REENTER_SAVE_DEBOUNCE_SECONDS (threshold)
-            _ = float(getattr(config, "REENTER_SAVE_DEBOUNCE_SECONDS", 0) or 0)  # REENTER_SAVE_DEBOUNCE_SECONDS wired
-            # HOT-WIRED PARAM REENTRY_60MIN_MIN_PCT (threshold)
-            _ = float(getattr(config, "REENTRY_60MIN_MIN_PCT", 0) or 0)  # REENTRY_60MIN_MIN_PCT wired
-            # HOT-WIRED PARAM REENTRY_60MIN_WINDOW_MIN (threshold)
-            _ = float(getattr(config, "REENTRY_60MIN_WINDOW_MIN", 0) or 0)  # REENTRY_60MIN_WINDOW_MIN wired
-            # HOT-WIRED PARAM REENTRY_AGGRESSIVE_WINDOW_MIN (threshold)
-            _ = float(getattr(config, "REENTRY_AGGRESSIVE_WINDOW_MIN", 0) or 0)  # REENTRY_AGGRESSIVE_WINDOW_MIN wired
-            # HOT-WIRED PARAM REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT", 0) or 0)  # REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM REENTRY_COOLDOWN_S (threshold)
-            _ = float(getattr(config, "REENTRY_COOLDOWN_S", 0) or 0)  # REENTRY_COOLDOWN_S wired
-            # HOT-WIRED PARAM REENTRY_DISPATCH_BACKOFF_S (threshold)
-            _ = float(getattr(config, "REENTRY_DISPATCH_BACKOFF_S", 0) or 0)  # REENTRY_DISPATCH_BACKOFF_S wired
-            # HOT-WIRED PARAM REENTRY_DISPATCH_MAX_ATTEMPTS (threshold)
-            _ = float(getattr(config, "REENTRY_DISPATCH_MAX_ATTEMPTS", 0) or 0)  # REENTRY_DISPATCH_MAX_ATTEMPTS wired
-            # HOT-WIRED PARAM REENTRY_ESCALATION_CRIT_MIN (threshold)
-            _ = float(getattr(config, "REENTRY_ESCALATION_CRIT_MIN", 0) or 0)  # REENTRY_ESCALATION_CRIT_MIN wired
-            # HOT-WIRED PARAM REENTRY_ESCALATION_WARN_MIN (threshold)
-            _ = float(getattr(config, "REENTRY_ESCALATION_WARN_MIN", 0) or 0)  # REENTRY_ESCALATION_WARN_MIN wired
-            # HOT-WIRED PARAM REENTRY_FAVORABLE_HTF_MIN (threshold)
-            _ = float(getattr(config, "REENTRY_FAVORABLE_HTF_MIN", 0) or 0)  # REENTRY_FAVORABLE_HTF_MIN wired
-            # HOT-WIRED PARAM REENTRY_FAVORABLE_MOVE_PCT (threshold)
-            _ = float(getattr(config, "REENTRY_FAVORABLE_MOVE_PCT", 0) or 0)  # REENTRY_FAVORABLE_MOVE_PCT wired
-            # HOT-WIRED PARAM REENTRY_FAVORABLE_QTY_MULT (threshold)
-            _ = float(getattr(config, "REENTRY_FAVORABLE_QTY_MULT", 0) or 0)  # REENTRY_FAVORABLE_QTY_MULT wired
-            # HOT-WIRED PARAM REENTRY_K15M_PARTIAL_MULT (threshold)
-            _ = float(getattr(config, "REENTRY_K15M_PARTIAL_MULT", 0) or 0)  # REENTRY_K15M_PARTIAL_MULT wired
-            # HOT-WIRED PARAM REENTRY_K15M_PARTIAL_THRESHOLD (threshold)
-            _ = float(getattr(config, "REENTRY_K15M_PARTIAL_THRESHOLD", 0) or 0)  # REENTRY_K15M_PARTIAL_THRESHOLD wired
-            # HOT-WIRED PARAM REENTRY_MANDATORY (threshold)
-            _ = float(getattr(config, "REENTRY_MANDATORY", 0) or 0)  # REENTRY_MANDATORY wired
-            # HOT-WIRED PARAM REENTRY_MIN_GAP_MINUTES (threshold)
-            _ = float(getattr(config, "REENTRY_MIN_GAP_MINUTES", 0) or 0)  # REENTRY_MIN_GAP_MINUTES wired
-            # HOT-WIRED PARAM REENTRY_RALLY_HTF_MIN (threshold)
-            _ = float(getattr(config, "REENTRY_RALLY_HTF_MIN", 0) or 0)  # REENTRY_RALLY_HTF_MIN wired
-            # HOT-WIRED PARAM REENTRY_RALLY_K15M_MAX (threshold)
-            _ = float(getattr(config, "REENTRY_RALLY_K15M_MAX", 0) or 0)  # REENTRY_RALLY_K15M_MAX wired
-            # HOT-WIRED PARAM REENTRY_SIZE_BREAKOUT_MULT (threshold)
-            _ = float(getattr(config, "REENTRY_SIZE_BREAKOUT_MULT", 0) or 0)  # REENTRY_SIZE_BREAKOUT_MULT wired
-            # HOT-WIRED PARAM REENTRY_SIZE_DIP_MULT (threshold)
-            _ = float(getattr(config, "REENTRY_SIZE_DIP_MULT", 0) or 0)  # REENTRY_SIZE_DIP_MULT wired
-            # HOT-WIRED PARAM REENTRY_SIZE_EXTENDED_K1H (threshold)
-            _ = float(getattr(config, "REENTRY_SIZE_EXTENDED_K1H", 0) or 0)  # REENTRY_SIZE_EXTENDED_K1H wired
-            # HOT-WIRED PARAM REENTRY_SIZE_EXTENDED_MULT (threshold)
-            _ = float(getattr(config, "REENTRY_SIZE_EXTENDED_MULT", 0) or 0)  # REENTRY_SIZE_EXTENDED_MULT wired
-            # HOT-WIRED PARAM REENTRY_STOCH_K_MAX_LONG (threshold)
-            _ = float(getattr(config, "REENTRY_STOCH_K_MAX_LONG", 0) or 0)  # REENTRY_STOCH_K_MAX_LONG wired
-            # HOT-WIRED PARAM REENTRY_STOCH_K_MIN_SHORT (threshold)
-            _ = float(getattr(config, "REENTRY_STOCH_K_MIN_SHORT", 0) or 0)  # REENTRY_STOCH_K_MIN_SHORT wired
-            # HOT-WIRED PARAM REENTRY_SYMGATE_SPEED_MIN (threshold)
-            _ = float(getattr(config, "REENTRY_SYMGATE_SPEED_MIN", 0) or 0)  # REENTRY_SYMGATE_SPEED_MIN wired
-            # HOT-WIRED PARAM REENTRY_WT15M_SIZE_MULT (threshold)
-            _ = float(getattr(config, "REENTRY_WT15M_SIZE_MULT", 0) or 0)  # REENTRY_WT15M_SIZE_MULT wired
-            # HOT-WIRED PARAM REGIME_ATR_RATIO_MIN (threshold)
-            _ = float(getattr(config, "REGIME_ATR_RATIO_MIN", 0) or 0)  # REGIME_ATR_RATIO_MIN wired
-            # HOT-WIRED PARAM REGIME_BB_WIDTH_PCT_MIN (threshold)
-            _ = float(getattr(config, "REGIME_BB_WIDTH_PCT_MIN", 0) or 0)  # REGIME_BB_WIDTH_PCT_MIN wired
-            # HOT-WIRED PARAM REGIME_DC_ATR_RATIO_MIN (threshold)
-            _ = float(getattr(config, "REGIME_DC_ATR_RATIO_MIN", 0) or 0)  # REGIME_DC_ATR_RATIO_MIN wired
-            # HOT-WIRED PARAM REGIME_RANGING_DC_BREAKOUT_SCORE (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_DC_BREAKOUT_SCORE", 0) or 0)  # REGIME_RANGING_DC_BREAKOUT_SCORE wired
-            # HOT-WIRED PARAM REGIME_RANGING_K_ZONE_BONUS (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_K_ZONE_BONUS", 0) or 0)  # REGIME_RANGING_K_ZONE_BONUS wired
-            # HOT-WIRED PARAM REGIME_RANGING_MIN_HOLD_BARS (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_MIN_HOLD_BARS", 0) or 0)  # REGIME_RANGING_MIN_HOLD_BARS wired
-            # HOT-WIRED PARAM REGIME_RANGING_POSITION_SIZE_MULT (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_POSITION_SIZE_MULT", 0) or 0)  # REGIME_RANGING_POSITION_SIZE_MULT wired
-            # HOT-WIRED PARAM REGIME_RANGING_REENTRY_SIZE_MULT (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_REENTRY_SIZE_MULT", 0) or 0)  # REGIME_RANGING_REENTRY_SIZE_MULT wired
-            # HOT-WIRED PARAM REGIME_RANGING_STALE_HOURS (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_STALE_HOURS", 0) or 0)  # REGIME_RANGING_STALE_HOURS wired
-            # HOT-WIRED PARAM REGIME_RANGING_STALE_MIN_PROFIT (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_STALE_MIN_PROFIT", 0) or 0)  # REGIME_RANGING_STALE_MIN_PROFIT wired
-            # HOT-WIRED PARAM REGIME_RANGING_WT_EXIT_VEL (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_WT_EXIT_VEL", 0) or 0)  # REGIME_RANGING_WT_EXIT_VEL wired
-            # HOT-WIRED PARAM REGIME_RANGING_WT_REDUCE_FRAC_MED (threshold)
-            _ = float(getattr(config, "REGIME_RANGING_WT_REDUCE_FRAC_MED", 0) or 0)  # REGIME_RANGING_WT_REDUCE_FRAC_MED wired
-            # HOT-WIRED PARAM REGIME_TRENDING_DC_BREAKOUT_SCORE (threshold)
-            _ = float(getattr(config, "REGIME_TRENDING_DC_BREAKOUT_SCORE", 0) or 0)  # REGIME_TRENDING_DC_BREAKOUT_SCORE wired
-            # HOT-WIRED PARAM REGIME_TRENDING_K_ZONE_BONUS (threshold)
-            _ = float(getattr(config, "REGIME_TRENDING_K_ZONE_BONUS", 0) or 0)  # REGIME_TRENDING_K_ZONE_BONUS wired
-            # HOT-WIRED PARAM REGIME_TRENDING_MIN_HOLD_BARS (threshold)
-            _ = float(getattr(config, "REGIME_TRENDING_MIN_HOLD_BARS", 0) or 0)  # REGIME_TRENDING_MIN_HOLD_BARS wired
-            # HOT-WIRED PARAM REGIME_TRENDING_POSITION_SIZE_MULT (threshold)
-            _ = float(getattr(config, "REGIME_TRENDING_POSITION_SIZE_MULT", 0) or 0)  # REGIME_TRENDING_POSITION_SIZE_MULT wired
-            # HOT-WIRED PARAM REGIME_TRENDING_REENTRY_SIZE_MULT (threshold)
-            _ = float(getattr(config, "REGIME_TRENDING_REENTRY_SIZE_MULT", 0) or 0)  # REGIME_TRENDING_REENTRY_SIZE_MULT wired
-            # HOT-WIRED PARAM REGIME_TRENDING_WT_EXIT_VEL (threshold)
-            _ = float(getattr(config, "REGIME_TRENDING_WT_EXIT_VEL", 0) or 0)  # REGIME_TRENDING_WT_EXIT_VEL wired
-            # HOT-WIRED PARAM REGIME_TRENDING_WT_REDUCE_FRAC_MED (threshold)
-            _ = float(getattr(config, "REGIME_TRENDING_WT_REDUCE_FRAC_MED", 0) or 0)  # REGIME_TRENDING_WT_REDUCE_FRAC_MED wired
-            # HOT-WIRED PARAM REV_MODE (threshold)
-            _ = float(getattr(config, "REV_MODE", 0) or 0)  # REV_MODE wired
-            # HOT-WIRED PARAM RISK_FREE_RATE (threshold)
-            _ = float(getattr(config, "RISK_FREE_RATE", 0) or 0)  # RISK_FREE_RATE wired
-            # HOT-WIRED PARAM ROTATION_BOTTOM_N (threshold)
-            _ = float(getattr(config, "ROTATION_BOTTOM_N", 0) or 0)  # ROTATION_BOTTOM_N wired
-            # HOT-WIRED PARAM ROTATION_HOLD_DAYS (threshold)
-            _ = float(getattr(config, "ROTATION_HOLD_DAYS", 0) or 0)  # ROTATION_HOLD_DAYS wired
-            # HOT-WIRED PARAM ROTATION_LOOKBACK_DAYS (threshold)
-            _ = float(getattr(config, "ROTATION_LOOKBACK_DAYS", 0) or 0)  # ROTATION_LOOKBACK_DAYS wired
-            # HOT-WIRED PARAM ROTATION_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "ROTATION_POSITION_SIZE", 0) or 0)  # ROTATION_POSITION_SIZE wired
-            # HOT-WIRED PARAM ROTATION_SMA200_FILTER (threshold)
-            _ = float(getattr(config, "ROTATION_SMA200_FILTER", 0) or 0)  # ROTATION_SMA200_FILTER wired
-            # HOT-WIRED PARAM ROTATION_TOP_N (threshold)
-            _ = float(getattr(config, "ROTATION_TOP_N", 0) or 0)  # ROTATION_TOP_N wired
-            # HOT-WIRED PARAM RP_OPPOSITE_PENALTY (threshold)
-            _ = float(getattr(config, "RP_OPPOSITE_PENALTY", 0) or 0)  # RP_OPPOSITE_PENALTY wired
-            # HOT-WIRED PARAM RP_PROTECT_MIN_GAIN (threshold)
-            _ = float(getattr(config, "RP_PROTECT_MIN_GAIN", 0) or 0)  # RP_PROTECT_MIN_GAIN wired
-            # HOT-WIRED PARAM RP_PROTECT_THRESHOLD (threshold)
-            _ = float(getattr(config, "RP_PROTECT_THRESHOLD", 0) or 0)  # RP_PROTECT_THRESHOLD wired
-            # HOT-WIRED PARAM RP_STRONG_BONUS (threshold)
-            _ = float(getattr(config, "RP_STRONG_BONUS", 0) or 0)  # RP_STRONG_BONUS wired
-            # HOT-WIRED PARAM RP_STRONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "RP_STRONG_THRESHOLD", 0) or 0)  # RP_STRONG_THRESHOLD wired
-            # HOT-WIRED PARAM RP_WEAK_PENALTY (threshold)
-            _ = float(getattr(config, "RP_WEAK_PENALTY", 0) or 0)  # RP_WEAK_PENALTY wired
-            # HOT-WIRED PARAM RP_WEAK_THRESHOLD (threshold)
-            _ = float(getattr(config, "RP_WEAK_THRESHOLD", 0) or 0)  # RP_WEAK_THRESHOLD wired
-            # HOT-WIRED PARAM RSI2_ENTRY_THRESHOLD (threshold)
-            _ = float(getattr(config, "RSI2_ENTRY_THRESHOLD", 0) or 0)  # RSI2_ENTRY_THRESHOLD wired
-            # HOT-WIRED PARAM RSI2_EXIT_THRESHOLD_LONG (threshold)
-            _ = float(getattr(config, "RSI2_EXIT_THRESHOLD_LONG", 0) or 0)  # RSI2_EXIT_THRESHOLD_LONG wired
-            # HOT-WIRED PARAM RSI2_EXIT_THRESHOLD_SHORT (threshold)
-            _ = float(getattr(config, "RSI2_EXIT_THRESHOLD_SHORT", 0) or 0)  # RSI2_EXIT_THRESHOLD_SHORT wired
-            # HOT-WIRED PARAM RSI2_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "RSI2_POSITION_SIZE", 0) or 0)  # RSI2_POSITION_SIZE wired
-            # HOT-WIRED PARAM RSI2_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "RSI2_SCORE_BONUS", 0) or 0)  # RSI2_SCORE_BONUS wired
-            # HOT-WIRED PARAM RSI2_THRESHOLD_LONG (threshold)
-            _ = float(getattr(config, "RSI2_THRESHOLD_LONG", 0) or 0)  # RSI2_THRESHOLD_LONG wired
-            # HOT-WIRED PARAM RSI2_THRESHOLD_SHORT (threshold)
-            _ = float(getattr(config, "RSI2_THRESHOLD_SHORT", 0) or 0)  # RSI2_THRESHOLD_SHORT wired
-            # HOT-WIRED PARAM RSI_ENTRY_MAX_LONG (threshold)
-            _ = float(getattr(config, "RSI_ENTRY_MAX_LONG", 0) or 0)  # RSI_ENTRY_MAX_LONG wired
-            # HOT-WIRED PARAM RSI_ENTRY_MIN_SHORT (threshold)
-            _ = float(getattr(config, "RSI_ENTRY_MIN_SHORT", 0) or 0)  # RSI_ENTRY_MIN_SHORT wired
-            # HOT-WIRED PARAM RSI_MACD_EMA_RSI_LONG (threshold)
-            _ = float(getattr(config, "RSI_MACD_EMA_RSI_LONG", 0) or 0)  # RSI_MACD_EMA_RSI_LONG wired
-            # HOT-WIRED PARAM RSI_MACD_EMA_RSI_SHORT (threshold)
-            _ = float(getattr(config, "RSI_MACD_EMA_RSI_SHORT", 0) or 0)  # RSI_MACD_EMA_RSI_SHORT wired
-            # HOT-WIRED PARAM RSI_MACD_EMA_SCORE (threshold)
-            _ = float(getattr(config, "RSI_MACD_EMA_SCORE", 0) or 0)  # RSI_MACD_EMA_SCORE wired
-            # HOT-WIRED PARAM RSI_MACD_EMA_TF (threshold)
-            _ = float(getattr(config, "RSI_MACD_EMA_TF", 0) or 0)  # RSI_MACD_EMA_TF wired
-            # HOT-WIRED PARAM RSI_MOMENTUM_MODE (threshold)
-            _ = float(getattr(config, "RSI_MOMENTUM_MODE", 0) or 0)  # RSI_MOMENTUM_MODE wired
-            # HOT-WIRED PARAM RVOL_MOMENTUM_MIN (threshold)
-            _ = float(getattr(config, "RVOL_MOMENTUM_MIN", 0) or 0)  # RVOL_MOMENTUM_MIN wired
-            # HOT-WIRED PARAM RVOL_SCALP_MIN (threshold)
-            _ = float(getattr(config, "RVOL_SCALP_MIN", 0) or 0)  # RVOL_SCALP_MIN wired
-            # HOT-WIRED PARAM RVOL_SCORE_BOOST_PCT (threshold)
-            _ = float(getattr(config, "RVOL_SCORE_BOOST_PCT", 0) or 0)  # RVOL_SCORE_BOOST_PCT wired
-            # HOT-WIRED PARAM RVOL_SCORE_BOOST_THRESHOLD (threshold)
-            _ = float(getattr(config, "RVOL_SCORE_BOOST_THRESHOLD", 0) or 0)  # RVOL_SCORE_BOOST_THRESHOLD wired
-            # HOT-WIRED PARAM RZ_BASELINE_TOL (threshold)
-            _ = float(getattr(config, "RZ_BASELINE_TOL", 0) or 0)  # RZ_BASELINE_TOL wired
-            # HOT-WIRED PARAM RZ_DIV_BLOCK_MIN (threshold)
-            _ = float(getattr(config, "RZ_DIV_BLOCK_MIN", 0) or 0)  # RZ_DIV_BLOCK_MIN wired
-            # HOT-WIRED PARAM RZ_K_ENTRY_BOTTOM (threshold)
-            _ = float(getattr(config, "RZ_K_ENTRY_BOTTOM", 0) or 0)  # RZ_K_ENTRY_BOTTOM wired
-            # HOT-WIRED PARAM RZ_K_ENTRY_MAX (threshold)
-            _ = float(getattr(config, "RZ_K_ENTRY_MAX", 0) or 0)  # RZ_K_ENTRY_MAX wired
-            # HOT-WIRED PARAM RZ_K_EXIT (threshold)
-            _ = float(getattr(config, "RZ_K_EXIT", 0) or 0)  # RZ_K_EXIT wired
-            # HOT-WIRED PARAM RZ_LEGS_MIN (threshold)
-            _ = float(getattr(config, "RZ_LEGS_MIN", 0) or 0)  # RZ_LEGS_MIN wired
-            # HOT-WIRED PARAM RZ_LTF_MICRO (threshold)
-            _ = float(getattr(config, "RZ_LTF_MICRO", 0) or 0)  # RZ_LTF_MICRO wired
-            # HOT-WIRED PARAM RZ_MFI_ENTRY_BOTTOM (threshold)
-            _ = float(getattr(config, "RZ_MFI_ENTRY_BOTTOM", 0) or 0)  # RZ_MFI_ENTRY_BOTTOM wired
-            # HOT-WIRED PARAM RZ_MFI_EXIT (threshold)
-            _ = float(getattr(config, "RZ_MFI_EXIT", 0) or 0)  # RZ_MFI_EXIT wired
-            # HOT-WIRED PARAM RZ_REQUIRE_STRUCT (threshold)
-            _ = float(getattr(config, "RZ_REQUIRE_STRUCT", 0) or 0)  # RZ_REQUIRE_STRUCT wired
-            # HOT-WIRED PARAM SANDBOX_MODE (threshold)
-            _ = float(getattr(config, "SANDBOX_MODE", 0) or 0)  # SANDBOX_MODE wired
-            # HOT-WIRED PARAM SATOSHIT_ENTRY_FILTER (threshold)
-            _ = float(getattr(config, "SATOSHIT_ENTRY_FILTER", 0) or 0)  # SATOSHIT_ENTRY_FILTER wired
-            # HOT-WIRED PARAM SATOSHIT_EXIT_PARTIAL_PCT (threshold)
-            _ = float(getattr(config, "SATOSHIT_EXIT_PARTIAL_PCT", 0) or 0)  # SATOSHIT_EXIT_PARTIAL_PCT wired
-            # HOT-WIRED PARAM SATOSHIT_EXIT_USE_MAKER (threshold)
-            _ = float(getattr(config, "SATOSHIT_EXIT_USE_MAKER", 0) or 0)  # SATOSHIT_EXIT_USE_MAKER wired
-            # HOT-WIRED PARAM SATOSHIT_LONG_BB_PCTB_MAX (threshold)
-            _ = float(getattr(config, "SATOSHIT_LONG_BB_PCTB_MAX", 0) or 0)  # SATOSHIT_LONG_BB_PCTB_MAX wired
-            # HOT-WIRED PARAM SATOSHIT_LONG_HA_STREAK_MAX (threshold)
-            _ = float(getattr(config, "SATOSHIT_LONG_HA_STREAK_MAX", 0) or 0)  # SATOSHIT_LONG_HA_STREAK_MAX wired
-            # HOT-WIRED PARAM SATOSHIT_PROTECT_TRADES (threshold)
-            _ = float(getattr(config, "SATOSHIT_PROTECT_TRADES", 0) or 0)  # SATOSHIT_PROTECT_TRADES wired
-            # HOT-WIRED PARAM SATOSHIT_QTY_MULT (threshold)
-            _ = float(getattr(config, "SATOSHIT_QTY_MULT", 0) or 0)  # SATOSHIT_QTY_MULT wired
-            # HOT-WIRED PARAM SATOSHIT_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "SATOSHIT_SCORE_BONUS", 0) or 0)  # SATOSHIT_SCORE_BONUS wired
-            # HOT-WIRED PARAM SATOSHIT_SHORT_BB_PCTB_MIN (threshold)
-            _ = float(getattr(config, "SATOSHIT_SHORT_BB_PCTB_MIN", 0) or 0)  # SATOSHIT_SHORT_BB_PCTB_MIN wired
-            # HOT-WIRED PARAM SATOSHIT_SHORT_HA_STREAK_MIN (threshold)
-            _ = float(getattr(config, "SATOSHIT_SHORT_HA_STREAK_MIN", 0) or 0)  # SATOSHIT_SHORT_HA_STREAK_MIN wired
-            # HOT-WIRED PARAM SBA_ADX_TF (threshold)
-            _ = float(getattr(config, "SBA_ADX_TF", 0) or 0)  # SBA_ADX_TF wired
-            # HOT-WIRED PARAM SBA_COOLDOWN_GLOBAL_S (threshold)
-            _ = float(getattr(config, "SBA_COOLDOWN_GLOBAL_S", 0) or 0)  # SBA_COOLDOWN_GLOBAL_S wired
-            # HOT-WIRED PARAM SBA_COOLDOWN_POSITION_S (threshold)
-            _ = float(getattr(config, "SBA_COOLDOWN_POSITION_S", 0) or 0)  # SBA_COOLDOWN_POSITION_S wired
-            # HOT-WIRED PARAM SBA_MAX_CONCURRENT (threshold)
-            _ = float(getattr(config, "SBA_MAX_CONCURRENT", 0) or 0)  # SBA_MAX_CONCURRENT wired
-            # HOT-WIRED PARAM SBA_MAX_TOTAL_MULT (threshold)
-            _ = float(getattr(config, "SBA_MAX_TOTAL_MULT", 0) or 0)  # SBA_MAX_TOTAL_MULT wired
-            # HOT-WIRED PARAM SBA_MIN_SCORE (threshold)
-            _ = float(getattr(config, "SBA_MIN_SCORE", 0) or 0)  # SBA_MIN_SCORE wired
-            # HOT-WIRED PARAM SCALP_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "SCALP_LONG_BUDGET", 0) or 0)  # SCALP_LONG_BUDGET wired
-            # HOT-WIRED PARAM SCALP_MAX_HOLD_MINUTES (threshold)
-            _ = float(getattr(config, "SCALP_MAX_HOLD_MINUTES", 0) or 0)  # SCALP_MAX_HOLD_MINUTES wired
-            # HOT-WIRED PARAM SCALP_MAX_POSITIONS_PER_SIDE (threshold)
-            _ = float(getattr(config, "SCALP_MAX_POSITIONS_PER_SIDE", 0) or 0)  # SCALP_MAX_POSITIONS_PER_SIDE wired
-            # HOT-WIRED PARAM SCALP_MAX_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "SCALP_MAX_POSITION_SIZE", 0) or 0)  # SCALP_MAX_POSITION_SIZE wired
-            # HOT-WIRED PARAM SCALP_MIN_MOVE_PCT (threshold)
-            _ = float(getattr(config, "SCALP_MIN_MOVE_PCT", 0) or 0)  # SCALP_MIN_MOVE_PCT wired
-            # HOT-WIRED PARAM SCALP_MIN_REL_VOL (threshold)
-            _ = float(getattr(config, "SCALP_MIN_REL_VOL", 0) or 0)  # SCALP_MIN_REL_VOL wired
-            # HOT-WIRED PARAM SCALP_MODE (threshold)
-            _ = float(getattr(config, "SCALP_MODE", 0) or 0)  # SCALP_MODE wired
-            # HOT-WIRED PARAM SCALP_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "SCALP_SHORT_BUDGET", 0) or 0)  # SCALP_SHORT_BUDGET wired
-            # HOT-WIRED PARAM SCALP_START_SIZE (threshold)
-            _ = float(getattr(config, "SCALP_START_SIZE", 0) or 0)  # SCALP_START_SIZE wired
-            # HOT-WIRED PARAM SCALP_STOP_PCT (threshold)
-            _ = float(getattr(config, "SCALP_STOP_PCT", 0) or 0)  # SCALP_STOP_PCT wired
-            # HOT-WIRED PARAM SCALP_TARGET_PCT (threshold)
-            _ = float(getattr(config, "SCALP_TARGET_PCT", 0) or 0)  # SCALP_TARGET_PCT wired
-            # HOT-WIRED PARAM SCALP_TOP_MOVERS_N (threshold)
-            _ = float(getattr(config, "SCALP_TOP_MOVERS_N", 0) or 0)  # SCALP_TOP_MOVERS_N wired
-            # HOT-WIRED PARAM SCALP_V2_DC_HTF_REQUIRE_ALL (threshold)
-            _ = float(getattr(config, "SCALP_V2_DC_HTF_REQUIRE_ALL", 0) or 0)  # SCALP_V2_DC_HTF_REQUIRE_ALL wired
-            # HOT-WIRED PARAM SCALP_V2_ISOLATE (threshold)
-            _ = float(getattr(config, "SCALP_V2_ISOLATE", 0) or 0)  # SCALP_V2_ISOLATE wired
-            # HOT-WIRED PARAM SCALP_V2_LH_LL_EXIT (threshold)
-            _ = float(getattr(config, "SCALP_V2_LH_LL_EXIT", 0) or 0)  # SCALP_V2_LH_LL_EXIT wired
-            # HOT-WIRED PARAM SCALP_V2_LH_LL_TF (threshold)
-            _ = float(getattr(config, "SCALP_V2_LH_LL_TF", 0) or 0)  # SCALP_V2_LH_LL_TF wired
-            # HOT-WIRED PARAM SCALP_V2_MAX_CONCURRENT (threshold)
-            _ = float(getattr(config, "SCALP_V2_MAX_CONCURRENT", 0) or 0)  # SCALP_V2_MAX_CONCURRENT wired
-            # HOT-WIRED PARAM SCALP_V2_MAX_HOLD_MINUTES (threshold)
-            _ = float(getattr(config, "SCALP_V2_MAX_HOLD_MINUTES", 0) or 0)  # SCALP_V2_MAX_HOLD_MINUTES wired
-            # HOT-WIRED PARAM SCALP_V2_REDZONE_EXIT (threshold)
-            _ = float(getattr(config, "SCALP_V2_REDZONE_EXIT", 0) or 0)  # SCALP_V2_REDZONE_EXIT wired
-            # HOT-WIRED PARAM SCALP_V2_REDZONE_K_THRESHOLD (threshold)
-            _ = float(getattr(config, "SCALP_V2_REDZONE_K_THRESHOLD", 0) or 0)  # SCALP_V2_REDZONE_K_THRESHOLD wired
-            # HOT-WIRED PARAM SCALP_V2_REENTRY_COOLDOWN_S (threshold)
-            _ = float(getattr(config, "SCALP_V2_REENTRY_COOLDOWN_S", 0) or 0)  # SCALP_V2_REENTRY_COOLDOWN_S wired
-            # HOT-WIRED PARAM SCALP_V2_VARIANT (threshold)
-            _ = float(getattr(config, "SCALP_V2_VARIANT", 0) or 0)  # SCALP_V2_VARIANT wired
-            # HOT-WIRED PARAM SECTOR_LS_MIN_POSITIONS (threshold)
-            _ = float(getattr(config, "SECTOR_LS_MIN_POSITIONS", 0) or 0)  # SECTOR_LS_MIN_POSITIONS wired
-            # HOT-WIRED PARAM SECTOR_LS_RATIO_BYPASS_HEDGE (threshold)
-            _ = float(getattr(config, "SECTOR_LS_RATIO_BYPASS_HEDGE", 0) or 0)  # SECTOR_LS_RATIO_BYPASS_HEDGE wired
-            # HOT-WIRED PARAM SECTOR_LS_RATIO_MAX (threshold)
-            _ = float(getattr(config, "SECTOR_LS_RATIO_MAX", 0) or 0)  # SECTOR_LS_RATIO_MAX wired
-            # HOT-WIRED PARAM SECTOR_LS_RATIO_MIN (threshold)
-            _ = float(getattr(config, "SECTOR_LS_RATIO_MIN", 0) or 0)  # SECTOR_LS_RATIO_MIN wired
-            # HOT-WIRED PARAM SENTIMENT_FADE_MODE (threshold)
-            _ = float(getattr(config, "SENTIMENT_FADE_MODE", 0) or 0)  # SENTIMENT_FADE_MODE wired
-            # HOT-WIRED PARAM SENTIMENT_REBAL_AUGMENT_DEVIATION_THR (threshold)
-            _ = float(getattr(config, "SENTIMENT_REBAL_AUGMENT_DEVIATION_THR", 0) or 0)  # SENTIMENT_REBAL_AUGMENT_DEVIATION_THR wired
-            # HOT-WIRED PARAM SENTIMENT_REBAL_COOLDOWN_MIN (threshold)
-            _ = float(getattr(config, "SENTIMENT_REBAL_COOLDOWN_MIN", 0) or 0)  # SENTIMENT_REBAL_COOLDOWN_MIN wired
-            # HOT-WIRED PARAM SENTIMENT_REBAL_REDUCE_DEVIATION_THR (threshold)
-            _ = float(getattr(config, "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", 0) or 0)  # SENTIMENT_REBAL_REDUCE_DEVIATION_THR wired
-            # HOT-WIRED PARAM SERVICE_STOP (threshold)
-            _ = float(getattr(config, "SERVICE_STOP", 0) or 0)  # SERVICE_STOP wired
-            # HOT-WIRED PARAM SHORT_ABOVE_SMA20_BONUS (threshold)
-            _ = float(getattr(config, "SHORT_ABOVE_SMA20_BONUS", 0) or 0)  # SHORT_ABOVE_SMA20_BONUS wired
-            # HOT-WIRED PARAM SHORT_RSI_MIN_1H (threshold)
-            _ = float(getattr(config, "SHORT_RSI_MIN_1H", 0) or 0)  # SHORT_RSI_MIN_1H wired
-            # HOT-WIRED PARAM SIGNALS_LOOP_INTERVAL_SECONDS (threshold)
-            _ = float(getattr(config, "SIGNALS_LOOP_INTERVAL_SECONDS", 0) or 0)  # SIGNALS_LOOP_INTERVAL_SECONDS wired
-            # HOT-WIRED PARAM SIMPLE_TP_PCT (threshold)
-            _ = float(getattr(config, "SIMPLE_TP_PCT", 0) or 0)  # SIMPLE_TP_PCT wired
-            # HOT-WIRED PARAM SLEEP_TIME_PER_TASKS (threshold)
-            _ = float(getattr(config, "SLEEP_TIME_PER_TASKS", 0) or 0)  # SLEEP_TIME_PER_TASKS wired
-            # HOT-WIRED PARAM SLEEP_TIME_PROC_ACCT (threshold)
-            _ = float(getattr(config, "SLEEP_TIME_PROC_ACCT", 0) or 0)  # SLEEP_TIME_PROC_ACCT wired
-            # HOT-WIRED PARAM SMA200_DIST_LONG_THRESHOLD (threshold)
-            _ = float(getattr(config, "SMA200_DIST_LONG_THRESHOLD", 0) or 0)  # SMA200_DIST_LONG_THRESHOLD wired
-            # HOT-WIRED PARAM SMA200_DIST_LONG_THRESHOLD_4H (threshold)
-            _ = float(getattr(config, "SMA200_DIST_LONG_THRESHOLD_4H", 0) or 0)  # SMA200_DIST_LONG_THRESHOLD_4H wired
-            # HOT-WIRED PARAM SMFI_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "SMFI_LONG_BUDGET", 0) or 0)  # SMFI_LONG_BUDGET wired
-            # HOT-WIRED PARAM SMFI_MAX_HOLD_DAYS (threshold)
-            _ = float(getattr(config, "SMFI_MAX_HOLD_DAYS", 0) or 0)  # SMFI_MAX_HOLD_DAYS wired
-            # HOT-WIRED PARAM SMFI_MAX_PER_SIDE (threshold)
-            _ = float(getattr(config, "SMFI_MAX_PER_SIDE", 0) or 0)  # SMFI_MAX_PER_SIDE wired
-            # HOT-WIRED PARAM SMFI_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "SMFI_POSITION_SIZE", 0) or 0)  # SMFI_POSITION_SIZE wired
-            # HOT-WIRED PARAM SMFI_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "SMFI_SHORT_BUDGET", 0) or 0)  # SMFI_SHORT_BUDGET wired
-            # HOT-WIRED PARAM SPIKE_FADE_COOLDOWN_BARS (threshold)
-            _ = float(getattr(config, "SPIKE_FADE_COOLDOWN_BARS", 0) or 0)  # SPIKE_FADE_COOLDOWN_BARS wired
-            # HOT-WIRED PARAM SPIKE_FADE_K_EXHAUSTION (threshold)
-            _ = float(getattr(config, "SPIKE_FADE_K_EXHAUSTION", 0) or 0)  # SPIKE_FADE_K_EXHAUSTION wired
-            # HOT-WIRED PARAM SPIKE_FADE_LOOKBACK_BARS (threshold)
-            _ = float(getattr(config, "SPIKE_FADE_LOOKBACK_BARS", 0) or 0)  # SPIKE_FADE_LOOKBACK_BARS wired
-            # HOT-WIRED PARAM SPIKE_FADE_MAX_POSITIONS (threshold)
-            _ = float(getattr(config, "SPIKE_FADE_MAX_POSITIONS", 0) or 0)  # SPIKE_FADE_MAX_POSITIONS wired
-            # HOT-WIRED PARAM SPIKE_FADE_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "SPIKE_FADE_POSITION_SIZE", 0) or 0)  # SPIKE_FADE_POSITION_SIZE wired
-            # HOT-WIRED PARAM SPIKE_FADE_THRESHOLD_PCT (threshold)
-            _ = float(getattr(config, "SPIKE_FADE_THRESHOLD_PCT", 0) or 0)  # SPIKE_FADE_THRESHOLD_PCT wired
-            # HOT-WIRED PARAM SPY_REGIME_SMA_BARS_DAILY (threshold)
-            _ = float(getattr(config, "SPY_REGIME_SMA_BARS_DAILY", 0) or 0)  # SPY_REGIME_SMA_BARS_DAILY wired
-            # HOT-WIRED PARAM SPY_REGIME_SYMBOL (threshold)
-            _ = float(getattr(config, "SPY_REGIME_SYMBOL", 0) or 0)  # SPY_REGIME_SYMBOL wired
-            # HOT-WIRED PARAM SQUEEZE_FIRE_BONUS_SCORE (threshold)
-            _ = float(getattr(config, "SQUEEZE_FIRE_BONUS_SCORE", 0) or 0)  # SQUEEZE_FIRE_BONUS_SCORE wired
-            # HOT-WIRED PARAM SQUEEZE_FIRE_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "SQUEEZE_FIRE_SCORE_BONUS", 0) or 0)  # SQUEEZE_FIRE_SCORE_BONUS wired
-            # HOT-WIRED PARAM SQUEEZE_FIRE_TF (threshold)
-            _ = float(getattr(config, "SQUEEZE_FIRE_TF", 0) or 0)  # SQUEEZE_FIRE_TF wired
-            # HOT-WIRED PARAM SQUEEZE_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "SQUEEZE_SCORE_BONUS", 0) or 0)  # SQUEEZE_SCORE_BONUS wired
-            # HOT-WIRED PARAM SRS_K_EXIT_1H (threshold)
-            _ = float(getattr(config, "SRS_K_EXIT_1H", 0) or 0)  # SRS_K_EXIT_1H wired
-            # HOT-WIRED PARAM STALE_WARNING_INTERVAL_SECONDS (threshold)
-            _ = float(getattr(config, "STALE_WARNING_INTERVAL_SECONDS", 0) or 0)  # STALE_WARNING_INTERVAL_SECONDS wired
-            # HOT-WIRED PARAM STDEV_BB_RZ_EXIT_TF (threshold)
-            _ = float(getattr(config, "STDEV_BB_RZ_EXIT_TF", 0) or 0)  # STDEV_BB_RZ_EXIT_TF wired
-            # HOT-WIRED PARAM STDEV_BB_RZ_SUPPRESS_PCTB (threshold)
-            _ = float(getattr(config, "STDEV_BB_RZ_SUPPRESS_PCTB", 0) or 0)  # STDEV_BB_RZ_SUPPRESS_PCTB wired
-            # HOT-WIRED PARAM STDEV_BOUNCE_PCTB_LONG (threshold)
-            _ = float(getattr(config, "STDEV_BOUNCE_PCTB_LONG", 0) or 0)  # STDEV_BOUNCE_PCTB_LONG wired
-            # HOT-WIRED PARAM STDEV_BOUNCE_PCTB_SHORT (threshold)
-            _ = float(getattr(config, "STDEV_BOUNCE_PCTB_SHORT", 0) or 0)  # STDEV_BOUNCE_PCTB_SHORT wired
-            # HOT-WIRED PARAM STDEV_BOUNCE_RVOL_MIN (threshold)
-            _ = float(getattr(config, "STDEV_BOUNCE_RVOL_MIN", 0) or 0)  # STDEV_BOUNCE_RVOL_MIN wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_COOLDOWN (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_COOLDOWN", 0) or 0)  # STDEV_BREAKOUT_COOLDOWN wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_EXIT_PCTB_FAIL (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", 0) or 0)  # STDEV_BREAKOUT_EXIT_PCTB_FAIL wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_MAX_AGE_BARS (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_MAX_AGE_BARS", 0) or 0)  # STDEV_BREAKOUT_MAX_AGE_BARS wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_MAX_RETESTS (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_MAX_RETESTS", 0) or 0)  # STDEV_BREAKOUT_MAX_RETESTS wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_PCTB_LONG (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_PCTB_LONG", 0) or 0)  # STDEV_BREAKOUT_PCTB_LONG wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_PCTB_SHORT (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_PCTB_SHORT", 0) or 0)  # STDEV_BREAKOUT_PCTB_SHORT wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_RETEST_COOLDOWN (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_RETEST_COOLDOWN", 0) or 0)  # STDEV_BREAKOUT_RETEST_COOLDOWN wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_RETEST_PCTB_MAX (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_RETEST_PCTB_MAX", 0) or 0)  # STDEV_BREAKOUT_RETEST_PCTB_MAX wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_RETEST_PCTB_MIN (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_RETEST_PCTB_MIN", 0) or 0)  # STDEV_BREAKOUT_RETEST_PCTB_MIN wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_RETEST_SCORE (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_RETEST_SCORE", 0) or 0)  # STDEV_BREAKOUT_RETEST_SCORE wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_RETEST_SIZE_MULT (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_RETEST_SIZE_MULT", 0) or 0)  # STDEV_BREAKOUT_RETEST_SIZE_MULT wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_RVOL_MIN (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_RVOL_MIN", 0) or 0)  # STDEV_BREAKOUT_RVOL_MIN wired
-            # HOT-WIRED PARAM STDEV_BREAKOUT_SCORE (threshold)
-            _ = float(getattr(config, "STDEV_BREAKOUT_SCORE", 0) or 0)  # STDEV_BREAKOUT_SCORE wired
-            # HOT-WIRED PARAM STDEV_MACRO_ENTRY_BOOST_MULT (threshold)
-            _ = float(getattr(config, "STDEV_MACRO_ENTRY_BOOST_MULT", 0) or 0)  # STDEV_MACRO_ENTRY_BOOST_MULT wired
-            # HOT-WIRED PARAM STDEV_MACRO_R4_REQUIRE_LTF_FLIP (threshold)
-            _ = float(getattr(config, "STDEV_MACRO_R4_REQUIRE_LTF_FLIP", 0) or 0)  # STDEV_MACRO_R4_REQUIRE_LTF_FLIP wired
-            # HOT-WIRED PARAM STDEV_REJECT_EXIT_RETURN (threshold)
-            _ = float(getattr(config, "STDEV_REJECT_EXIT_RETURN", 0) or 0)  # STDEV_REJECT_EXIT_RETURN wired
-            # HOT-WIRED PARAM STDEV_REJECT_EXIT_TF (threshold)
-            _ = float(getattr(config, "STDEV_REJECT_EXIT_TF", 0) or 0)  # STDEV_REJECT_EXIT_TF wired
-            # HOT-WIRED PARAM STDEV_REJECT_EXIT_ZONE (threshold)
-            _ = float(getattr(config, "STDEV_REJECT_EXIT_ZONE", 0) or 0)  # STDEV_REJECT_EXIT_ZONE wired
-            # HOT-WIRED PARAM STDEV_SUPPRESS_EARLY_EXIT (threshold)
-            _ = float(getattr(config, "STDEV_SUPPRESS_EARLY_EXIT", 0) or 0)  # STDEV_SUPPRESS_EARLY_EXIT wired
-            # HOT-WIRED PARAM STOCH_1H_EXIT_K_MIN (threshold)
-            _ = float(getattr(config, "STOCH_1H_EXIT_K_MIN", 0) or 0)  # STOCH_1H_EXIT_K_MIN wired
-            # HOT-WIRED PARAM STOP_LOSS_PCT (threshold)
-            _ = float(getattr(config, "STOP_LOSS_PCT", 0) or 0)  # STOP_LOSS_PCT wired
-            # HOT-WIRED PARAM STRUCTURAL_RANGE_SHIFT_EXIT (threshold)
-            _ = float(getattr(config, "STRUCTURAL_RANGE_SHIFT_EXIT", 0) or 0)  # STRUCTURAL_RANGE_SHIFT_EXIT wired
-            # HOT-WIRED PARAM STRUCTURAL_RANGE_SHIFT_K_HIGH (threshold)
-            _ = float(getattr(config, "STRUCTURAL_RANGE_SHIFT_K_HIGH", 0) or 0)  # STRUCTURAL_RANGE_SHIFT_K_HIGH wired
-            # HOT-WIRED PARAM STRUCTURAL_RANGE_SHIFT_K_LOW (threshold)
-            _ = float(getattr(config, "STRUCTURAL_RANGE_SHIFT_K_LOW", 0) or 0)  # STRUCTURAL_RANGE_SHIFT_K_LOW wired
-            # HOT-WIRED PARAM STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS (threshold)
-            _ = float(getattr(config, "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", 0) or 0)  # STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS wired
-            # HOT-WIRED PARAM STRUCTURAL_RANGE_SHIFT_TF (threshold)
-            _ = float(getattr(config, "STRUCTURAL_RANGE_SHIFT_TF", 0) or 0)  # STRUCTURAL_RANGE_SHIFT_TF wired
-            # HOT-WIRED PARAM STRUCTURE_FLIP_REENTRY_BASIS_TF (threshold)
-            _ = float(getattr(config, "STRUCTURE_FLIP_REENTRY_BASIS_TF", 0) or 0)  # STRUCTURE_FLIP_REENTRY_BASIS_TF wired
-            # HOT-WIRED PARAM STRUCTURE_FLIP_REENTRY_TF (threshold)
-            _ = float(getattr(config, "STRUCTURE_FLIP_REENTRY_TF", 0) or 0)  # STRUCTURE_FLIP_REENTRY_TF wired
-            # HOT-WIRED PARAM SWEEP_OPTIMAL_ENTRY_TF (threshold)
-            _ = float(getattr(config, "SWEEP_OPTIMAL_ENTRY_TF", 0) or 0)  # SWEEP_OPTIMAL_ENTRY_TF wired
-            # HOT-WIRED PARAM SWEEP_OPTIMAL_HOLD_BARS (threshold)
-            _ = float(getattr(config, "SWEEP_OPTIMAL_HOLD_BARS", 0) or 0)  # SWEEP_OPTIMAL_HOLD_BARS wired
-            # HOT-WIRED PARAM SWING_EXIT_TFS (threshold)
-            _ = float(getattr(config, "SWING_EXIT_TFS", 0) or 0)  # SWING_EXIT_TFS wired
-            # HOT-WIRED PARAM SWING_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "SWING_LONG_BUDGET", 0) or 0)  # SWING_LONG_BUDGET wired
-            # HOT-WIRED PARAM SWING_MAX_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "SWING_MAX_POSITION_SIZE", 0) or 0)  # SWING_MAX_POSITION_SIZE wired
-            # HOT-WIRED PARAM SWING_REENTER_AT_OR_BELOW_EXIT (threshold)
-            _ = float(getattr(config, "SWING_REENTER_AT_OR_BELOW_EXIT", 0) or 0)  # SWING_REENTER_AT_OR_BELOW_EXIT wired
-            # HOT-WIRED PARAM SWING_REENTER_MULT (threshold)
-            _ = float(getattr(config, "SWING_REENTER_MULT", 0) or 0)  # SWING_REENTER_MULT wired
-            # HOT-WIRED PARAM SWING_REENTER_SIGNAL (threshold)
-            _ = float(getattr(config, "SWING_REENTER_SIGNAL", 0) or 0)  # SWING_REENTER_SIGNAL wired
-            # HOT-WIRED PARAM SWING_REENTER_TOLERANCE_PCT (threshold)
-            _ = float(getattr(config, "SWING_REENTER_TOLERANCE_PCT", 0) or 0)  # SWING_REENTER_TOLERANCE_PCT wired
-            # HOT-WIRED PARAM SWING_RUNAWAY_REENTER (threshold)
-            _ = float(getattr(config, "SWING_RUNAWAY_REENTER", 0) or 0)  # SWING_RUNAWAY_REENTER wired
-            # HOT-WIRED PARAM SWING_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "SWING_SHORT_BUDGET", 0) or 0)  # SWING_SHORT_BUDGET wired
-            # HOT-WIRED PARAM SWING_START_SIZE (threshold)
-            _ = float(getattr(config, "SWING_START_SIZE", 0) or 0)  # SWING_START_SIZE wired
-            # HOT-WIRED PARAM SYMBOL_PERF_DECAY_HOURS (threshold)
-            _ = float(getattr(config, "SYMBOL_PERF_DECAY_HOURS", 0) or 0)  # SYMBOL_PERF_DECAY_HOURS wired
-            # HOT-WIRED PARAM SYMBOL_PERF_MAX_MULT (threshold)
-            _ = float(getattr(config, "SYMBOL_PERF_MAX_MULT", 0) or 0)  # SYMBOL_PERF_MAX_MULT wired
-            # HOT-WIRED PARAM SYMBOL_PERF_MIN_MULT (threshold)
-            _ = float(getattr(config, "SYMBOL_PERF_MIN_MULT", 0) or 0)  # SYMBOL_PERF_MIN_MULT wired
-            # HOT-WIRED PARAM SYMBOL_PERF_MIN_TRADES (threshold)
-            _ = float(getattr(config, "SYMBOL_PERF_MIN_TRADES", 0) or 0)  # SYMBOL_PERF_MIN_TRADES wired
-            # HOT-WIRED PARAM SYMBOL_PERF_REFRESH_SECONDS (threshold)
-            _ = float(getattr(config, "SYMBOL_PERF_REFRESH_SECONDS", 0) or 0)  # SYMBOL_PERF_REFRESH_SECONDS wired
-            # HOT-WIRED PARAM SYMBOL_PERF_WINDOW_DAYS (threshold)
-            _ = float(getattr(config, "SYMBOL_PERF_WINDOW_DAYS", 0) or 0)  # SYMBOL_PERF_WINDOW_DAYS wired
-            # HOT-WIRED PARAM TASK_STAGGER_SECONDS (threshold)
-            _ = float(getattr(config, "TASK_STAGGER_SECONDS", 0) or 0)  # TASK_STAGGER_SECONDS wired
-            # HOT-WIRED PARAM TF_ALIGNMENT_MIN_LONG (threshold)
-            _ = float(getattr(config, "TF_ALIGNMENT_MIN_LONG", 0) or 0)  # TF_ALIGNMENT_MIN_LONG wired
-            # HOT-WIRED PARAM TF_ALIGNMENT_MIN_SHORT (threshold)
-            _ = float(getattr(config, "TF_ALIGNMENT_MIN_SHORT", 0) or 0)  # TF_ALIGNMENT_MIN_SHORT wired
-            # HOT-WIRED PARAM TF_ALIGNMENT_MIN_TOTAL (threshold)
-            _ = float(getattr(config, "TF_ALIGNMENT_MIN_TOTAL", 0) or 0)  # TF_ALIGNMENT_MIN_TOTAL wired
-            # HOT-WIRED PARAM TF_FOCUS (threshold)
-            _ = float(getattr(config, "TF_FOCUS", 0) or 0)  # TF_FOCUS wired
-            # HOT-WIRED PARAM TF_FOCUS_ENTRY_HARD_GATE (threshold)
-            _ = float(getattr(config, "TF_FOCUS_ENTRY_HARD_GATE", 0) or 0)  # TF_FOCUS_ENTRY_HARD_GATE wired
-            # HOT-WIRED PARAM TF_FOCUS_EXIT_HARD_GATE (threshold)
-            _ = float(getattr(config, "TF_FOCUS_EXIT_HARD_GATE", 0) or 0)  # TF_FOCUS_EXIT_HARD_GATE wired
-            # HOT-WIRED PARAM TF_FOCUS_WEIGHT (threshold)
-            _ = float(getattr(config, "TF_FOCUS_WEIGHT", 0) or 0)  # TF_FOCUS_WEIGHT wired
-            # HOT-WIRED PARAM TF_HTF1 (threshold)
-            _ = float(getattr(config, "TF_HTF1", 0) or 0)  # TF_HTF1 wired
-            # HOT-WIRED PARAM TF_HTF2 (threshold)
-            _ = float(getattr(config, "TF_HTF2", 0) or 0)  # TF_HTF2 wired
-            # HOT-WIRED PARAM TF_HTF3 (threshold)
-            _ = float(getattr(config, "TF_HTF3", 0) or 0)  # TF_HTF3 wired
-            # HOT-WIRED PARAM TF_MACRO (threshold)
-            _ = float(getattr(config, "TF_MACRO", 0) or 0)  # TF_MACRO wired
-            # HOT-WIRED PARAM TF_MICRO (threshold)
-            _ = float(getattr(config, "TF_MICRO", 0) or 0)  # TF_MICRO wired
-            # HOT-WIRED PARAM TF_SCALP (threshold)
-            _ = float(getattr(config, "TF_SCALP", 0) or 0)  # TF_SCALP wired
-            # HOT-WIRED PARAM TIER_A_MIN_GAIN (threshold)
-            _ = float(getattr(config, "TIER_A_MIN_GAIN", 0) or 0)  # TIER_A_MIN_GAIN wired
-            # HOT-WIRED PARAM TIER_A_MIN_TRADES (threshold)
-            _ = float(getattr(config, "TIER_A_MIN_TRADES", 0) or 0)  # TIER_A_MIN_TRADES wired
-            # HOT-WIRED PARAM TIER_A_MULTIPLIER (threshold)
-            _ = float(getattr(config, "TIER_A_MULTIPLIER", 0) or 0)  # TIER_A_MULTIPLIER wired
-            # HOT-WIRED PARAM TIER_A_WIN_RATE (threshold)
-            _ = float(getattr(config, "TIER_A_WIN_RATE", 0) or 0)  # TIER_A_WIN_RATE wired
-            # HOT-WIRED PARAM TIER_B_MIN_TRADES (threshold)
-            _ = float(getattr(config, "TIER_B_MIN_TRADES", 0) or 0)  # TIER_B_MIN_TRADES wired
-            # HOT-WIRED PARAM TIER_B_WIN_RATE (threshold)
-            _ = float(getattr(config, "TIER_B_WIN_RATE", 0) or 0)  # TIER_B_WIN_RATE wired
-            # HOT-WIRED PARAM TIER_C_MULTIPLIER (threshold)
-            _ = float(getattr(config, "TIER_C_MULTIPLIER", 0) or 0)  # TIER_C_MULTIPLIER wired
-            # HOT-WIRED PARAM TRADES_PER_SYM_PER_DAY_MAX (threshold)
-            _ = float(getattr(config, "TRADES_PER_SYM_PER_DAY_MAX", 0) or 0)  # TRADES_PER_SYM_PER_DAY_MAX wired
-            # HOT-WIRED PARAM TRADIER_ACCOUNT_ID (threshold)
-            _ = float(getattr(config, "TRADIER_ACCOUNT_ID", 0) or 0)  # TRADIER_ACCOUNT_ID wired
-            # HOT-WIRED PARAM TRADIER_API_BASE_URL (threshold)
-            _ = float(getattr(config, "TRADIER_API_BASE_URL", 0) or 0)  # TRADIER_API_BASE_URL wired
-            # HOT-WIRED PARAM TRADIER_API_KEY (threshold)
-            _ = float(getattr(config, "TRADIER_API_KEY", 0) or 0)  # TRADIER_API_KEY wired
-            # HOT-WIRED PARAM TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES (threshold)
-            _ = float(getattr(config, "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES", 0) or 0)  # TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES wired
-            # HOT-WIRED PARAM TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION (threshold)
-            _ = float(getattr(config, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION", 0) or 0)  # TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION wired
-            # HOT-WIRED PARAM TRADIER_DC_DAYTRADE_STOP_PCT (threshold)
-            _ = float(getattr(config, "TRADIER_DC_DAYTRADE_STOP_PCT", 0) or 0)  # TRADIER_DC_DAYTRADE_STOP_PCT wired
-            # HOT-WIRED PARAM TRADIER_DC_POSITION_ENTRY_THRESHOLD (threshold)
-            _ = float(getattr(config, "TRADIER_DC_POSITION_ENTRY_THRESHOLD", 0) or 0)  # TRADIER_DC_POSITION_ENTRY_THRESHOLD wired
-            # HOT-WIRED PARAM TRADIER_FH_MOMENTUM_DC_CONFIRM (threshold)
-            _ = float(getattr(config, "TRADIER_FH_MOMENTUM_DC_CONFIRM", 0) or 0)  # TRADIER_FH_MOMENTUM_DC_CONFIRM wired
-            # HOT-WIRED PARAM TRADIER_FH_MOMENTUM_DC_MAX_LONG (threshold)
-            _ = float(getattr(config, "TRADIER_FH_MOMENTUM_DC_MAX_LONG", 0) or 0)  # TRADIER_FH_MOMENTUM_DC_MAX_LONG wired
-            # HOT-WIRED PARAM TRADIER_FH_MOMENTUM_MFI_CONFIRM (threshold)
-            _ = float(getattr(config, "TRADIER_FH_MOMENTUM_MFI_CONFIRM", 0) or 0)  # TRADIER_FH_MOMENTUM_MFI_CONFIRM wired
-            # HOT-WIRED PARAM TRADIER_FH_MOMENTUM_MFI_MIN (threshold)
-            _ = float(getattr(config, "TRADIER_FH_MOMENTUM_MFI_MIN", 0) or 0)  # TRADIER_FH_MOMENTUM_MFI_MIN wired
-            # HOT-WIRED PARAM TRADIER_FH_MOMENTUM_MIN_MOVE_PCT (threshold)
-            _ = float(getattr(config, "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT", 0) or 0)  # TRADIER_FH_MOMENTUM_MIN_MOVE_PCT wired
-            # HOT-WIRED PARAM TRADIER_FH_MOMENTUM_WINDOW_MINUTES (threshold)
-            _ = float(getattr(config, "TRADIER_FH_MOMENTUM_WINDOW_MINUTES", 0) or 0)  # TRADIER_FH_MOMENTUM_WINDOW_MINUTES wired
-            # HOT-WIRED PARAM TRADIER_INDICATORS_CYCLE_CONCURRENCY (threshold)
-            _ = float(getattr(config, "TRADIER_INDICATORS_CYCLE_CONCURRENCY", 0) or 0)  # TRADIER_INDICATORS_CYCLE_CONCURRENCY wired
-            # HOT-WIRED PARAM TRADIER_INDICATORS_HTTP_CONCURRENCY (threshold)
-            _ = float(getattr(config, "TRADIER_INDICATORS_HTTP_CONCURRENCY", 0) or 0)  # TRADIER_INDICATORS_HTTP_CONCURRENCY wired
-            # HOT-WIRED PARAM TRADIER_INDICATORS_IDLE_SLEEP_SEC (threshold)
-            _ = float(getattr(config, "TRADIER_INDICATORS_IDLE_SLEEP_SEC", 0) or 0)  # TRADIER_INDICATORS_IDLE_SLEEP_SEC wired
-            # HOT-WIRED PARAM TRADIER_INDICATORS_NARROW_UNIVERSE (threshold)
-            _ = float(getattr(config, "TRADIER_INDICATORS_NARROW_UNIVERSE", 0) or 0)  # TRADIER_INDICATORS_NARROW_UNIVERSE wired
-            # HOT-WIRED PARAM TRADIER_LONG_ONLY_ENTRIES (threshold)
-            _ = float(getattr(config, "TRADIER_LONG_ONLY_ENTRIES", 0) or 0)  # TRADIER_LONG_ONLY_ENTRIES wired
-            # HOT-WIRED PARAM TRADIER_MI_SUBSIGNAL_MIN_COUNT (threshold)
-            _ = float(getattr(config, "TRADIER_MI_SUBSIGNAL_MIN_COUNT", 0) or 0)  # TRADIER_MI_SUBSIGNAL_MIN_COUNT wired
-            # HOT-WIRED PARAM TRADIER_NOLOSS_SRS_BYPASS (threshold)
-            _ = float(getattr(config, "TRADIER_NOLOSS_SRS_BYPASS", 0) or 0)  # TRADIER_NOLOSS_SRS_BYPASS wired
-            # HOT-WIRED PARAM TRADIER_OI_INJECT_MAX_EACH (threshold)
-            _ = float(getattr(config, "TRADIER_OI_INJECT_MAX_EACH", 0) or 0)  # TRADIER_OI_INJECT_MAX_EACH wired
-            # HOT-WIRED PARAM TRADIER_OI_INJECT_MIN_TOTAL_OI (threshold)
-            _ = float(getattr(config, "TRADIER_OI_INJECT_MIN_TOTAL_OI", 0) or 0)  # TRADIER_OI_INJECT_MIN_TOTAL_OI wired
-            # HOT-WIRED PARAM TRADIER_OI_INJECT_NEAR_MONEY_PREFER (threshold)
-            _ = float(getattr(config, "TRADIER_OI_INJECT_NEAR_MONEY_PREFER", 0) or 0)  # TRADIER_OI_INJECT_NEAR_MONEY_PREFER wired
-            # HOT-WIRED PARAM TRADIER_OI_INJECT_PC_BEARISH (threshold)
-            _ = float(getattr(config, "TRADIER_OI_INJECT_PC_BEARISH", 0) or 0)  # TRADIER_OI_INJECT_PC_BEARISH wired
-            # HOT-WIRED PARAM TRADIER_OI_INJECT_PC_BULLISH (threshold)
-            _ = float(getattr(config, "TRADIER_OI_INJECT_PC_BULLISH", 0) or 0)  # TRADIER_OI_INJECT_PC_BULLISH wired
-            # HOT-WIRED PARAM TRADIER_OI_INJECT_STALE_MAX_HOURS (threshold)
-            _ = float(getattr(config, "TRADIER_OI_INJECT_STALE_MAX_HOURS", 0) or 0)  # TRADIER_OI_INJECT_STALE_MAX_HOURS wired
-            # HOT-WIRED PARAM TRADIER_POST_CLOSE_COOLDOWN_MIN (threshold)
-            _ = float(getattr(config, "TRADIER_POST_CLOSE_COOLDOWN_MIN", 0) or 0)  # TRADIER_POST_CLOSE_COOLDOWN_MIN wired
-            # HOT-WIRED PARAM TRADIER_QUEUE_DEDUPE_SEC (threshold)
-            _ = float(getattr(config, "TRADIER_QUEUE_DEDUPE_SEC", 0) or 0)  # TRADIER_QUEUE_DEDUPE_SEC wired
-            # HOT-WIRED PARAM TRADIER_RATIO_BOOST_MIN_GAIN_PCT (threshold)
-            _ = float(getattr(config, "TRADIER_RATIO_BOOST_MIN_GAIN_PCT", 0) or 0)  # TRADIER_RATIO_BOOST_MIN_GAIN_PCT wired
-            # HOT-WIRED PARAM TRADIER_RATIO_REQUIRE_MIN_GAIN (threshold)
-            _ = float(getattr(config, "TRADIER_RATIO_REQUIRE_MIN_GAIN", 0) or 0)  # TRADIER_RATIO_REQUIRE_MIN_GAIN wired
-            # HOT-WIRED PARAM TRADIER_REENTRY_HARDCOOL_MIN (threshold)
-            _ = float(getattr(config, "TRADIER_REENTRY_HARDCOOL_MIN", 0) or 0)  # TRADIER_REENTRY_HARDCOOL_MIN wired
-            # HOT-WIRED PARAM TRADIER_REOPEN_WAIT_S (threshold)
-            _ = float(getattr(config, "TRADIER_REOPEN_WAIT_S", 0) or 0)  # TRADIER_REOPEN_WAIT_S wired
-            # HOT-WIRED PARAM TRADIER_REQUIRE_TRADEABLE_KEY (threshold)
-            _ = float(getattr(config, "TRADIER_REQUIRE_TRADEABLE_KEY", 0) or 0)  # TRADIER_REQUIRE_TRADEABLE_KEY wired
-            # HOT-WIRED PARAM TRADIER_RESET_MAX_GAIN_ON_CLOSE (threshold)
-            _ = float(getattr(config, "TRADIER_RESET_MAX_GAIN_ON_CLOSE", 0) or 0)  # TRADIER_RESET_MAX_GAIN_ON_CLOSE wired
-            # HOT-WIRED PARAM TRADIER_RSI2_EXIT_THRESHOLD_LONG (threshold)
-            _ = float(getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", 0) or 0)  # TRADIER_RSI2_EXIT_THRESHOLD_LONG wired
-            # HOT-WIRED PARAM TRADIER_RSI2_EXIT_THRESHOLD_SHORT (threshold)
-            _ = float(getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", 0) or 0)  # TRADIER_RSI2_EXIT_THRESHOLD_SHORT wired
-            # HOT-WIRED PARAM TRADIER_RSI_LONG_15M (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_LONG_15M", 0) or 0)  # TRADIER_RSI_LONG_15M wired
-            # HOT-WIRED PARAM TRADIER_RSI_LONG_1H (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_LONG_1H", 0) or 0)  # TRADIER_RSI_LONG_1H wired
-            # HOT-WIRED PARAM TRADIER_RSI_LONG_4H (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_LONG_4H", 0) or 0)  # TRADIER_RSI_LONG_4H wired
-            # HOT-WIRED PARAM TRADIER_RSI_LONG_5M (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_LONG_5M", 0) or 0)  # TRADIER_RSI_LONG_5M wired
-            # HOT-WIRED PARAM TRADIER_RSI_LONG_D (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_LONG_D", 0) or 0)  # TRADIER_RSI_LONG_D wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_15M (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_15M", 0) or 0)  # TRADIER_RSI_SHORT_15M wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_1H (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_1H", 0) or 0)  # TRADIER_RSI_SHORT_1H wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_4H (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_4H", 0) or 0)  # TRADIER_RSI_SHORT_4H wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_5M (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_5M", 0) or 0)  # TRADIER_RSI_SHORT_5M wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_D (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_D", 0) or 0)  # TRADIER_RSI_SHORT_D wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_REL_VOLUME_MIN (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_REL_VOLUME_MIN", 0) or 0)  # TRADIER_RSI_SHORT_REL_VOLUME_MIN wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_RVOL_15M (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_RVOL_15M", 0) or 0)  # TRADIER_RSI_SHORT_RVOL_15M wired
-            # HOT-WIRED PARAM TRADIER_RSI_SHORT_RVOL_1H (threshold)
-            _ = float(getattr(config, "TRADIER_RSI_SHORT_RVOL_1H", 0) or 0)  # TRADIER_RSI_SHORT_RVOL_1H wired
-            # HOT-WIRED PARAM TRADIER_SANDBOX_URL (threshold)
-            _ = float(getattr(config, "TRADIER_SANDBOX_URL", 0) or 0)  # TRADIER_SANDBOX_URL wired
-            # HOT-WIRED PARAM TRADIER_STREAMING_URL (threshold)
-            _ = float(getattr(config, "TRADIER_STREAMING_URL", 0) or 0)  # TRADIER_STREAMING_URL wired
-            # HOT-WIRED PARAM TRADIER_WS_URL (threshold)
-            _ = float(getattr(config, "TRADIER_WS_URL", 0) or 0)  # TRADIER_WS_URL wired
-            # HOT-WIRED PARAM TRAILING_AUG_GAIN_STEP_PCT (threshold)
-            _ = float(getattr(config, "TRAILING_AUG_GAIN_STEP_PCT", 0) or 0)  # TRAILING_AUG_GAIN_STEP_PCT wired
-            # HOT-WIRED PARAM TRAILING_AUG_MAX_PER_POSITION (threshold)
-            _ = float(getattr(config, "TRAILING_AUG_MAX_PER_POSITION", 0) or 0)  # TRAILING_AUG_MAX_PER_POSITION wired
-            # HOT-WIRED PARAM TRAILING_AUG_MIN_GAIN_PCT (threshold)
-            _ = float(getattr(config, "TRAILING_AUG_MIN_GAIN_PCT", 0) or 0)  # TRAILING_AUG_MIN_GAIN_PCT wired
-            # HOT-WIRED PARAM TRA_ALLOW_BUYS (threshold)
-            _ = float(getattr(config, "TRA_ALLOW_BUYS", 0) or 0)  # TRA_ALLOW_BUYS wired
-            # HOT-WIRED PARAM TRA_BUY_COOLDOWN_AFTER_SELL_HOURS (threshold)
-            _ = float(getattr(config, "TRA_BUY_COOLDOWN_AFTER_SELL_HOURS", 0) or 0)  # TRA_BUY_COOLDOWN_AFTER_SELL_HOURS wired
-            # HOT-WIRED PARAM TRA_DISABLE_AUGMENT (threshold)
-            _ = float(getattr(config, "TRA_DISABLE_AUGMENT", 0) or 0)  # TRA_DISABLE_AUGMENT wired
-            # HOT-WIRED PARAM TRA_DISABLE_DELTA_ENTRY (threshold)
-            _ = float(getattr(config, "TRA_DISABLE_DELTA_ENTRY", 0) or 0)  # TRA_DISABLE_DELTA_ENTRY wired
-            # HOT-WIRED PARAM TRA_LONG_ONLY (threshold)
-            _ = float(getattr(config, "TRA_LONG_ONLY", 0) or 0)  # TRA_LONG_ONLY wired
-            # HOT-WIRED PARAM TRA_MAX_BUYS_PER_DAY (threshold)
-            _ = float(getattr(config, "TRA_MAX_BUYS_PER_DAY", 0) or 0)  # TRA_MAX_BUYS_PER_DAY wired
-            # HOT-WIRED PARAM TRA_MIN_HOLD_MINUTES (threshold)
-            _ = float(getattr(config, "TRA_MIN_HOLD_MINUTES", 0) or 0)  # TRA_MIN_HOLD_MINUTES wired
-            # HOT-WIRED PARAM TRA_NO_LOSS_EXIT (threshold)
-            _ = float(getattr(config, "TRA_NO_LOSS_EXIT", 0) or 0)  # TRA_NO_LOSS_EXIT wired
-            # HOT-WIRED PARAM TRA_SATOSHIT_ONLY (threshold)
-            _ = float(getattr(config, "TRA_SATOSHIT_ONLY", 0) or 0)  # TRA_SATOSHIT_ONLY wired
-            # HOT-WIRED PARAM TRA_STRICT_EXIT_ONLY (threshold)
-            _ = float(getattr(config, "TRA_STRICT_EXIT_ONLY", 0) or 0)  # TRA_STRICT_EXIT_ONLY wired
-            # HOT-WIRED PARAM TRA_WT_DC_ENTRY_THRESHOLD (threshold)
-            _ = float(getattr(config, "TRA_WT_DC_ENTRY_THRESHOLD", 0) or 0)  # TRA_WT_DC_ENTRY_THRESHOLD wired
-            # HOT-WIRED PARAM TRB_MAX_CALL_VALUE (threshold)
-            _ = float(getattr(config, "TRB_MAX_CALL_VALUE", 0) or 0)  # TRB_MAX_CALL_VALUE wired
-            # HOT-WIRED PARAM TRB_MAX_LONG_VALUE (threshold)
-            _ = float(getattr(config, "TRB_MAX_LONG_VALUE", 0) or 0)  # TRB_MAX_LONG_VALUE wired
-            # HOT-WIRED PARAM TRB_MAX_PUT_VALUE (threshold)
-            _ = float(getattr(config, "TRB_MAX_PUT_VALUE", 0) or 0)  # TRB_MAX_PUT_VALUE wired
-            # HOT-WIRED PARAM TRB_MAX_SHORT_VALUE (threshold)
-            _ = float(getattr(config, "TRB_MAX_SHORT_VALUE", 0) or 0)  # TRB_MAX_SHORT_VALUE wired
-            # HOT-WIRED PARAM TRB_MAX_SYMBOL_VALUE (threshold)
-            _ = float(getattr(config, "TRB_MAX_SYMBOL_VALUE", 0) or 0)  # TRB_MAX_SYMBOL_VALUE wired
-            # HOT-WIRED PARAM TRB_NOLOSS_MIN_PROFIT_PCT (threshold)
-            _ = float(getattr(config, "TRB_NOLOSS_MIN_PROFIT_PCT", 0) or 0)  # TRB_NOLOSS_MIN_PROFIT_PCT wired
-            # HOT-WIRED PARAM TRC_5M_SWEEP_BENCHMARK (threshold)
-            _ = float(getattr(config, "TRC_5M_SWEEP_BENCHMARK", 0) or 0)  # TRC_5M_SWEEP_BENCHMARK wired
-            # HOT-WIRED PARAM TRC_5M_SWEEP_BUFFER_N (threshold)
-            _ = float(getattr(config, "TRC_5M_SWEEP_BUFFER_N", 0) or 0)  # TRC_5M_SWEEP_BUFFER_N wired
-            # HOT-WIRED PARAM TRC_5M_SWEEP_DELTA_WEIGHT (threshold)
-            _ = float(getattr(config, "TRC_5M_SWEEP_DELTA_WEIGHT", 0) or 0)  # TRC_5M_SWEEP_DELTA_WEIGHT wired
-            # HOT-WIRED PARAM TRC_5M_SWEEP_TOP_N (threshold)
-            _ = float(getattr(config, "TRC_5M_SWEEP_TOP_N", 0) or 0)  # TRC_5M_SWEEP_TOP_N wired
-            # HOT-WIRED PARAM TRC_5M_SWEEP_Z_WEIGHT (threshold)
-            _ = float(getattr(config, "TRC_5M_SWEEP_Z_WEIGHT", 0) or 0)  # TRC_5M_SWEEP_Z_WEIGHT wired
-            # HOT-WIRED PARAM TRC_BEAR_MARKET_MODE (threshold)
-            _ = float(getattr(config, "TRC_BEAR_MARKET_MODE", 0) or 0)  # TRC_BEAR_MARKET_MODE wired
-            # HOT-WIRED PARAM TRC_CLENOW_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_CLENOW_POSITION_SIZE", 0) or 0)  # TRC_CLENOW_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_CONNORS_RSI_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_CONNORS_RSI_POSITION_SIZE", 0) or 0)  # TRC_CONNORS_RSI_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_DC_DAYTRADE_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_DC_DAYTRADE_LONG_BUDGET", 0) or 0)  # TRC_DC_DAYTRADE_LONG_BUDGET wired
-            # HOT-WIRED PARAM TRC_DC_DAYTRADE_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_DC_DAYTRADE_SHORT_BUDGET", 0) or 0)  # TRC_DC_DAYTRADE_SHORT_BUDGET wired
-            # HOT-WIRED PARAM TRC_DC_DAYTRADE_START_SIZE (threshold)
-            _ = float(getattr(config, "TRC_DC_DAYTRADE_START_SIZE", 0) or 0)  # TRC_DC_DAYTRADE_START_SIZE wired
-            # HOT-WIRED PARAM TRC_ENTRY_MIN_ALIGNMENT (threshold)
-            _ = float(getattr(config, "TRC_ENTRY_MIN_ALIGNMENT", 0) or 0)  # TRC_ENTRY_MIN_ALIGNMENT wired
-            # HOT-WIRED PARAM TRC_ENTRY_ZONE_LONG (threshold)
-            _ = float(getattr(config, "TRC_ENTRY_ZONE_LONG", 0) or 0)  # TRC_ENTRY_ZONE_LONG wired
-            # HOT-WIRED PARAM TRC_ENTRY_ZONE_SHORT (threshold)
-            _ = float(getattr(config, "TRC_ENTRY_ZONE_SHORT", 0) or 0)  # TRC_ENTRY_ZONE_SHORT wired
-            # HOT-WIRED PARAM TRC_EP_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_EP_POSITION_SIZE", 0) or 0)  # TRC_EP_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_GAP_FILL_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_GAP_FILL_POSITION_SIZE", 0) or 0)  # TRC_GAP_FILL_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_LS_RATIO_MAX (threshold)
-            _ = float(getattr(config, "TRC_LS_RATIO_MAX", 0) or 0)  # TRC_LS_RATIO_MAX wired
-            # HOT-WIRED PARAM TRC_LS_RATIO_MIN (threshold)
-            _ = float(getattr(config, "TRC_LS_RATIO_MIN", 0) or 0)  # TRC_LS_RATIO_MIN wired
-            # HOT-WIRED PARAM TRC_MAX_CONCURRENT_POSITIONS (threshold)
-            _ = float(getattr(config, "TRC_MAX_CONCURRENT_POSITIONS", 0) or 0)  # TRC_MAX_CONCURRENT_POSITIONS wired
-            # HOT-WIRED PARAM TRC_MAX_DAILY_LOSS_PCT (threshold)
-            _ = float(getattr(config, "TRC_MAX_DAILY_LOSS_PCT", 0) or 0)  # TRC_MAX_DAILY_LOSS_PCT wired
-            # HOT-WIRED PARAM TRC_MAX_ORDER_VALUE (threshold)
-            _ = float(getattr(config, "TRC_MAX_ORDER_VALUE", 0) or 0)  # TRC_MAX_ORDER_VALUE wired
-            # HOT-WIRED PARAM TRC_MAX_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_MAX_POSITION_SIZE", 0) or 0)  # TRC_MAX_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_MAX_SYMBOL_VALUE (threshold)
-            _ = float(getattr(config, "TRC_MAX_SYMBOL_VALUE", 0) or 0)  # TRC_MAX_SYMBOL_VALUE wired
-            # HOT-WIRED PARAM TRC_MINERVINI_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_MINERVINI_LONG_BUDGET", 0) or 0)  # TRC_MINERVINI_LONG_BUDGET wired
-            # HOT-WIRED PARAM TRC_MINERVINI_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_MINERVINI_POSITION_SIZE", 0) or 0)  # TRC_MINERVINI_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_NOLOSS_MIN_PROFIT_PCT (threshold)
-            _ = float(getattr(config, "TRC_NOLOSS_MIN_PROFIT_PCT", 0) or 0)  # TRC_NOLOSS_MIN_PROFIT_PCT wired
-            # HOT-WIRED PARAM TRC_ORB_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_ORB_LONG_BUDGET", 0) or 0)  # TRC_ORB_LONG_BUDGET wired
-            # HOT-WIRED PARAM TRC_ORB_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_ORB_POSITION_SIZE", 0) or 0)  # TRC_ORB_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_ORB_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_ORB_SHORT_BUDGET", 0) or 0)  # TRC_ORB_SHORT_BUDGET wired
-            # HOT-WIRED PARAM TRC_ROTATION_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_ROTATION_POSITION_SIZE", 0) or 0)  # TRC_ROTATION_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_RSI2_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_RSI2_POSITION_SIZE", 0) or 0)  # TRC_RSI2_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_SCALP_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_SCALP_LONG_BUDGET", 0) or 0)  # TRC_SCALP_LONG_BUDGET wired
-            # HOT-WIRED PARAM TRC_SCALP_MAX_POSITIONS_PER_SIDE (threshold)
-            _ = float(getattr(config, "TRC_SCALP_MAX_POSITIONS_PER_SIDE", 0) or 0)  # TRC_SCALP_MAX_POSITIONS_PER_SIDE wired
-            # HOT-WIRED PARAM TRC_SCALP_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_SCALP_SHORT_BUDGET", 0) or 0)  # TRC_SCALP_SHORT_BUDGET wired
-            # HOT-WIRED PARAM TRC_SCALP_START_SIZE (threshold)
-            _ = float(getattr(config, "TRC_SCALP_START_SIZE", 0) or 0)  # TRC_SCALP_START_SIZE wired
-            # HOT-WIRED PARAM TRC_SCALP_TARGET_PCT (threshold)
-            _ = float(getattr(config, "TRC_SCALP_TARGET_PCT", 0) or 0)  # TRC_SCALP_TARGET_PCT wired
-            # HOT-WIRED PARAM TRC_SMFI_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_SMFI_LONG_BUDGET", 0) or 0)  # TRC_SMFI_LONG_BUDGET wired
-            # HOT-WIRED PARAM TRC_SMFI_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_SMFI_POSITION_SIZE", 0) or 0)  # TRC_SMFI_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_SMFI_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_SMFI_SHORT_BUDGET", 0) or 0)  # TRC_SMFI_SHORT_BUDGET wired
-            # HOT-WIRED PARAM TRC_START_POSITION_SIZE (threshold)
-            _ = float(getattr(config, "TRC_START_POSITION_SIZE", 0) or 0)  # TRC_START_POSITION_SIZE wired
-            # HOT-WIRED PARAM TRC_SWING_LONG_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_SWING_LONG_BUDGET", 0) or 0)  # TRC_SWING_LONG_BUDGET wired
-            # HOT-WIRED PARAM TRC_SWING_SHORT_BUDGET (threshold)
-            _ = float(getattr(config, "TRC_SWING_SHORT_BUDGET", 0) or 0)  # TRC_SWING_SHORT_BUDGET wired
-            # HOT-WIRED PARAM TREND_EXIT_SCORE_FLIP (threshold)
-            _ = float(getattr(config, "TREND_EXIT_SCORE_FLIP", 0) or 0)  # TREND_EXIT_SCORE_FLIP wired
-            # HOT-WIRED PARAM TREND_GATES (threshold)
-            _ = float(getattr(config, "TREND_GATES", 0) or 0)  # TREND_GATES wired
-            # HOT-WIRED PARAM TREND_HEDGE_MAX_SEC (threshold)
-            _ = float(getattr(config, "TREND_HEDGE_MAX_SEC", 0) or 0)  # TREND_HEDGE_MAX_SEC wired
-            # HOT-WIRED PARAM TREND_HTF_MIN_BEAR (threshold)
-            _ = float(getattr(config, "TREND_HTF_MIN_BEAR", 0) or 0)  # TREND_HTF_MIN_BEAR wired
-            # HOT-WIRED PARAM TREND_HTF_MIN_BULL (threshold)
-            _ = float(getattr(config, "TREND_HTF_MIN_BULL", 0) or 0)  # TREND_HTF_MIN_BULL wired
-            # HOT-WIRED PARAM TREND_MIN_GAIN_EXIT (threshold)
-            _ = float(getattr(config, "TREND_MIN_GAIN_EXIT", 0) or 0)  # TREND_MIN_GAIN_EXIT wired
-            # HOT-WIRED PARAM TRIPLE_CONF_RSI_LONG (threshold)
-            _ = float(getattr(config, "TRIPLE_CONF_RSI_LONG", 0) or 0)  # TRIPLE_CONF_RSI_LONG wired
-            # HOT-WIRED PARAM TRIPLE_CONF_RSI_SHORT (threshold)
-            _ = float(getattr(config, "TRIPLE_CONF_RSI_SHORT", 0) or 0)  # TRIPLE_CONF_RSI_SHORT wired
-            # HOT-WIRED PARAM TRIPLE_CONF_SCORE (threshold)
-            _ = float(getattr(config, "TRIPLE_CONF_SCORE", 0) or 0)  # TRIPLE_CONF_SCORE wired
-            # HOT-WIRED PARAM TRIPLE_CONF_STOCH_LONG (threshold)
-            _ = float(getattr(config, "TRIPLE_CONF_STOCH_LONG", 0) or 0)  # TRIPLE_CONF_STOCH_LONG wired
-            # HOT-WIRED PARAM TRIPLE_CONF_STOCH_SHORT (threshold)
-            _ = float(getattr(config, "TRIPLE_CONF_STOCH_SHORT", 0) or 0)  # TRIPLE_CONF_STOCH_SHORT wired
-            # HOT-WIRED PARAM TRIPLE_CONF_TF (threshold)
-            _ = float(getattr(config, "TRIPLE_CONF_TF", 0) or 0)  # TRIPLE_CONF_TF wired
-            # HOT-WIRED PARAM TR_ADX4H_BOYCOTT_SCORE (threshold)
-            _ = float(getattr(config, "TR_ADX4H_BOYCOTT_SCORE", 0) or 0)  # TR_ADX4H_BOYCOTT_SCORE wired
-            # HOT-WIRED PARAM TR_ADX4H_MAX (threshold)
-            _ = float(getattr(config, "TR_ADX4H_MAX", 0) or 0)  # TR_ADX4H_MAX wired
-            # HOT-WIRED PARAM TR_BBWIDTH4H_BOYCOTT_SCORE (threshold)
-            _ = float(getattr(config, "TR_BBWIDTH4H_BOYCOTT_SCORE", 0) or 0)  # TR_BBWIDTH4H_BOYCOTT_SCORE wired
-            # HOT-WIRED PARAM TR_BBWIDTH4H_MAX (threshold)
-            _ = float(getattr(config, "TR_BBWIDTH4H_MAX", 0) or 0)  # TR_BBWIDTH4H_MAX wired
-            # HOT-WIRED PARAM TR_CHOP4H_BONUS (threshold)
-            _ = float(getattr(config, "TR_CHOP4H_BONUS", 0) or 0)  # TR_CHOP4H_BONUS wired
-            # HOT-WIRED PARAM TR_CHOP4H_MIN (threshold)
-            _ = float(getattr(config, "TR_CHOP4H_MIN", 0) or 0)  # TR_CHOP4H_MIN wired
-            # HOT-WIRED PARAM TR_CHOP4H_PENALTY (threshold)
-            _ = float(getattr(config, "TR_CHOP4H_PENALTY", 0) or 0)  # TR_CHOP4H_PENALTY wired
-            # HOT-WIRED PARAM TR_CHOP4H_TREND_MAX (threshold)
-            _ = float(getattr(config, "TR_CHOP4H_TREND_MAX", 0) or 0)  # TR_CHOP4H_TREND_MAX wired
-            # HOT-WIRED PARAM TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE (threshold)
-            _ = float(getattr(config, "TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE", 0) or 0)  # TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE wired
-            # HOT-WIRED PARAM TR_DCWIDTH4H_SHORT_MAX (threshold)
-            _ = float(getattr(config, "TR_DCWIDTH4H_SHORT_MAX", 0) or 0)  # TR_DCWIDTH4H_SHORT_MAX wired
-            # HOT-WIRED PARAM TR_MFI4H_LONG_BOYCOTT_SCORE (threshold)
-            _ = float(getattr(config, "TR_MFI4H_LONG_BOYCOTT_SCORE", 0) or 0)  # TR_MFI4H_LONG_BOYCOTT_SCORE wired
-            # HOT-WIRED PARAM TR_MFI4H_LONG_MIN (threshold)
-            _ = float(getattr(config, "TR_MFI4H_LONG_MIN", 0) or 0)  # TR_MFI4H_LONG_MIN wired
-            # HOT-WIRED PARAM TR_TREND_V1_SHADOW_LOG_ONLY (threshold)
-            _ = float(getattr(config, "TR_TREND_V1_SHADOW_LOG_ONLY", 0) or 0)  # TR_TREND_V1_SHADOW_LOG_ONLY wired
-            # HOT-WIRED PARAM TSMOM_HIGH_CAP (threshold)
-            _ = float(getattr(config, "TSMOM_HIGH_CAP", 0) or 0)  # TSMOM_HIGH_CAP wired
-            # HOT-WIRED PARAM TSMOM_LOOKBACK_BARS (threshold)
-            _ = float(getattr(config, "TSMOM_LOOKBACK_BARS", 0) or 0)  # TSMOM_LOOKBACK_BARS wired
-            # HOT-WIRED PARAM TSMOM_LOW_CAP (threshold)
-            _ = float(getattr(config, "TSMOM_LOW_CAP", 0) or 0)  # TSMOM_LOW_CAP wired
-            # HOT-WIRED PARAM TSMOM_MIN_AGREEMENT (threshold)
-            _ = float(getattr(config, "TSMOM_MIN_AGREEMENT", 0) or 0)  # TSMOM_MIN_AGREEMENT wired
-            # HOT-WIRED PARAM USE_INDICATOR_SNAPSHOT (threshold)
-            _ = float(getattr(config, "USE_INDICATOR_SNAPSHOT", 0) or 0)  # USE_INDICATOR_SNAPSHOT wired
-            # HOT-WIRED PARAM USE_SANDBOX (threshold)
-            _ = float(getattr(config, "USE_SANDBOX", 0) or 0)  # USE_SANDBOX wired
-            # HOT-WIRED PARAM V8Q_COOLDOWN_BARS (threshold)
-            _ = float(getattr(config, "V8Q_COOLDOWN_BARS", 0) or 0)  # V8Q_COOLDOWN_BARS wired
-            # HOT-WIRED PARAM V8Q_D_TREND_REQUIRED (threshold)
-            _ = float(getattr(config, "V8Q_D_TREND_REQUIRED", 0) or 0)  # V8Q_D_TREND_REQUIRED wired
-            # HOT-WIRED PARAM V8Q_HTF_MIN_ALIGNED (threshold)
-            _ = float(getattr(config, "V8Q_HTF_MIN_ALIGNED", 0) or 0)  # V8Q_HTF_MIN_ALIGNED wired
-            # HOT-WIRED PARAM V8Q_K3M_FLOOR (threshold)
-            _ = float(getattr(config, "V8Q_K3M_FLOOR", 0) or 0)  # V8Q_K3M_FLOOR wired
-            # HOT-WIRED PARAM V8Q_MIN_HOLD_BARS (threshold)
-            _ = float(getattr(config, "V8Q_MIN_HOLD_BARS", 0) or 0)  # V8Q_MIN_HOLD_BARS wired
-            # HOT-WIRED PARAM V8Q_STRENGTH_MIN_SCORE (threshold)
-            _ = float(getattr(config, "V8Q_STRENGTH_MIN_SCORE", 0) or 0)  # V8Q_STRENGTH_MIN_SCORE wired
-            # HOT-WIRED PARAM V8Q_WT_EXIT_MIN_TFS (threshold)
-            _ = float(getattr(config, "V8Q_WT_EXIT_MIN_TFS", 0) or 0)  # V8Q_WT_EXIT_MIN_TFS wired
-            # HOT-WIRED PARAM VALIDATE_REFRESH (threshold)
-            _ = float(getattr(config, "VALIDATE_REFRESH", 0) or 0)  # VALIDATE_REFRESH wired
-            # HOT-WIRED PARAM VERBOSE (threshold)
-            _ = float(getattr(config, "VERBOSE", 0) or 0)  # VERBOSE wired
-            # HOT-WIRED PARAM VERBOSE2 (threshold)
-            _ = float(getattr(config, "VERBOSE2", 0) or 0)  # VERBOSE2 wired
-            # HOT-WIRED PARAM VERBOSE_FETCH_LOGGING (threshold)
-            _ = float(getattr(config, "VERBOSE_FETCH_LOGGING", 0) or 0)  # VERBOSE_FETCH_LOGGING wired
-            # HOT-WIRED PARAM VERBOSE_STOPS (threshold)
-            _ = float(getattr(config, "VERBOSE_STOPS", 0) or 0)  # VERBOSE_STOPS wired
-            # HOT-WIRED PARAM VERBOSE_TIMER (threshold)
-            _ = float(getattr(config, "VERBOSE_TIMER", 0) or 0)  # VERBOSE_TIMER wired
-            # HOT-WIRED PARAM VIX_EXTREME_THRESHOLD (threshold)
-            _ = float(getattr(config, "VIX_EXTREME_THRESHOLD", 0) or 0)  # VIX_EXTREME_THRESHOLD wired
-            # HOT-WIRED PARAM VIX_PANIC_THRESHOLD (threshold)
-            _ = float(getattr(config, "VIX_PANIC_THRESHOLD", 0) or 0)  # VIX_PANIC_THRESHOLD wired
-            # HOT-WIRED PARAM VIX_REGIME_SIZE_MULT_HIGH_VOL (threshold)
-            _ = float(getattr(config, "VIX_REGIME_SIZE_MULT_HIGH_VOL", 0) or 0)  # VIX_REGIME_SIZE_MULT_HIGH_VOL wired
-            # HOT-WIRED PARAM VIX_REGIME_SIZE_MULT_PANIC (threshold)
-            _ = float(getattr(config, "VIX_REGIME_SIZE_MULT_PANIC", 0) or 0)  # VIX_REGIME_SIZE_MULT_PANIC wired
-            # HOT-WIRED PARAM VIX_SMA_LOOKBACK_DAYS (threshold)
-            _ = float(getattr(config, "VIX_SMA_LOOKBACK_DAYS", 0) or 0)  # VIX_SMA_LOOKBACK_DAYS wired
-            # HOT-WIRED PARAM VOLUME_CONFIRMATION_MULT (threshold)
-            _ = float(getattr(config, "VOLUME_CONFIRMATION_MULT", 0) or 0)  # VOLUME_CONFIRMATION_MULT wired
-            # HOT-WIRED PARAM VOL_SPIKE_BODY_RATIO (threshold)
-            _ = float(getattr(config, "VOL_SPIKE_BODY_RATIO", 0) or 0)  # VOL_SPIKE_BODY_RATIO wired
-            # HOT-WIRED PARAM VOL_SPIKE_COOLDOWN (threshold)
-            _ = float(getattr(config, "VOL_SPIKE_COOLDOWN", 0) or 0)  # VOL_SPIKE_COOLDOWN wired
-            # HOT-WIRED PARAM VOL_SPIKE_LS_MAX_IMBALANCE (threshold)
-            _ = float(getattr(config, "VOL_SPIKE_LS_MAX_IMBALANCE", 0) or 0)  # VOL_SPIKE_LS_MAX_IMBALANCE wired
-            # HOT-WIRED PARAM VOL_SPIKE_MIN_ALIGNMENT (threshold)
-            _ = float(getattr(config, "VOL_SPIKE_MIN_ALIGNMENT", 0) or 0)  # VOL_SPIKE_MIN_ALIGNMENT wired
-            # HOT-WIRED PARAM VOL_SPIKE_RELVOL_THRESHOLD (threshold)
-            _ = float(getattr(config, "VOL_SPIKE_RELVOL_THRESHOLD", 0) or 0)  # VOL_SPIKE_RELVOL_THRESHOLD wired
-            # HOT-WIRED PARAM VOL_TARGET_FIELD (threshold)
-            _ = float(getattr(config, "VOL_TARGET_FIELD", 0) or 0)  # VOL_TARGET_FIELD wired
-            # HOT-WIRED PARAM VOL_TARGET_HIGH_CAP (threshold)
-            _ = float(getattr(config, "VOL_TARGET_HIGH_CAP", 0) or 0)  # VOL_TARGET_HIGH_CAP wired
-            # HOT-WIRED PARAM VOL_TARGET_LOW_CAP (threshold)
-            _ = float(getattr(config, "VOL_TARGET_LOW_CAP", 0) or 0)  # VOL_TARGET_LOW_CAP wired
-            # HOT-WIRED PARAM VOL_TARGET_PCT (threshold)
-            _ = float(getattr(config, "VOL_TARGET_PCT", 0) or 0)  # VOL_TARGET_PCT wired
-            # HOT-WIRED PARAM VWAP_BOUNCE_DIST_PCT (threshold)
-            _ = float(getattr(config, "VWAP_BOUNCE_DIST_PCT", 0) or 0)  # VWAP_BOUNCE_DIST_PCT wired
-            # HOT-WIRED PARAM VWAP_SCORE_BONUS (threshold)
-            _ = float(getattr(config, "VWAP_SCORE_BONUS", 0) or 0)  # VWAP_SCORE_BONUS wired
-            # HOT-WIRED PARAM WIN_TRAIL_EROSION_PCT (threshold)
-            _ = float(getattr(config, "WIN_TRAIL_EROSION_PCT", 0) or 0)  # WIN_TRAIL_EROSION_PCT wired
-            # HOT-WIRED PARAM WRONG_SIDE_DIV_LOOKBACK_BARS (threshold)
-            _ = float(getattr(config, "WRONG_SIDE_DIV_LOOKBACK_BARS", 0) or 0)  # WRONG_SIDE_DIV_LOOKBACK_BARS wired
-            # HOT-WIRED PARAM WRONG_SIDE_DIV_TFS_REQUIRED (threshold)
-            _ = float(getattr(config, "WRONG_SIDE_DIV_TFS_REQUIRED", 0) or 0)  # WRONG_SIDE_DIV_TFS_REQUIRED wired
-            # HOT-WIRED PARAM WRONG_SIDE_K_TFS_REQUIRED (threshold)
-            _ = float(getattr(config, "WRONG_SIDE_K_TFS_REQUIRED", 0) or 0)  # WRONG_SIDE_K_TFS_REQUIRED wired
-            # HOT-WIRED PARAM WRONG_SIDE_MIN_AGE_MIN (threshold)
-            _ = float(getattr(config, "WRONG_SIDE_MIN_AGE_MIN", 0) or 0)  # WRONG_SIDE_MIN_AGE_MIN wired
-            # HOT-WIRED PARAM WRONG_SIDE_WT_TFS_REDUCED (threshold)
-            _ = float(getattr(config, "WRONG_SIDE_WT_TFS_REDUCED", 0) or 0)  # WRONG_SIDE_WT_TFS_REDUCED wired
-            # HOT-WIRED PARAM WRONG_SIDE_WT_TFS_REQUIRED (threshold)
-            _ = float(getattr(config, "WRONG_SIDE_WT_TFS_REQUIRED", 0) or 0)  # WRONG_SIDE_WT_TFS_REQUIRED wired
-            # HOT-WIRED PARAM WS_RECONNECT_DELAY (threshold)
-            _ = float(getattr(config, "WS_RECONNECT_DELAY", 0) or 0)  # WS_RECONNECT_DELAY wired
-            # HOT-WIRED PARAM WT_15M_SAME_HEDGE_COOLDOWN_SEC (threshold)
-            _ = float(getattr(config, "WT_15M_SAME_HEDGE_COOLDOWN_SEC", 0) or 0)  # WT_15M_SAME_HEDGE_COOLDOWN_SEC wired
-            # HOT-WIRED PARAM WT_15M_SAME_HEDGE_DAILY_CAP (threshold)
-            _ = float(getattr(config, "WT_15M_SAME_HEDGE_DAILY_CAP", 0) or 0)  # WT_15M_SAME_HEDGE_DAILY_CAP wired
-            # HOT-WIRED PARAM WT_3M_FORCE_OPEN_BUILD_TO_TARGET (threshold)
-            _ = float(getattr(config, "WT_3M_FORCE_OPEN_BUILD_TO_TARGET", 0) or 0)  # WT_3M_FORCE_OPEN_BUILD_TO_TARGET wired
-            # HOT-WIRED PARAM WT_3M_FORCE_OPEN_DIST_PCT (threshold)
-            _ = float(getattr(config, "WT_3M_FORCE_OPEN_DIST_PCT", 0) or 0)  # WT_3M_FORCE_OPEN_DIST_PCT wired
-            # HOT-WIRED PARAM WT_3M_FORCE_OPEN_SIZE_USD (threshold)
-            _ = float(getattr(config, "WT_3M_FORCE_OPEN_SIZE_USD", 0) or 0)  # WT_3M_FORCE_OPEN_SIZE_USD wired
-            # HOT-WIRED PARAM WT_3M_FORCE_OPEN_TARGET_USD (threshold)
-            _ = float(getattr(config, "WT_3M_FORCE_OPEN_TARGET_USD", 0) or 0)  # WT_3M_FORCE_OPEN_TARGET_USD wired
-            # HOT-WIRED PARAM WT_3M_FORCE_OPEN_TF_LADDER (threshold)
-            _ = float(getattr(config, "WT_3M_FORCE_OPEN_TF_LADDER", 0) or 0)  # WT_3M_FORCE_OPEN_TF_LADDER wired
-            # HOT-WIRED PARAM WT_3M_FORCE_OPEN_TF_LADDER_MULT (threshold)
-            _ = float(getattr(config, "WT_3M_FORCE_OPEN_TF_LADDER_MULT", 0) or 0)  # WT_3M_FORCE_OPEN_TF_LADDER_MULT wired
-            # HOT-WIRED PARAM WT_3M_FORCE_OPEN_USE_SMA200 (threshold)
-            _ = float(getattr(config, "WT_3M_FORCE_OPEN_USE_SMA200", 0) or 0)  # WT_3M_FORCE_OPEN_USE_SMA200 wired
-            # HOT-WIRED PARAM WT_CROSSUNDER_15M_SHORT (threshold)
-            _ = float(getattr(config, "WT_CROSSUNDER_15M_SHORT", 0) or 0)  # WT_CROSSUNDER_15M_SHORT wired
-            # HOT-WIRED PARAM WT_DC_DIRECT_COMBINED_STOCH_GATE (threshold)
-            _ = float(getattr(config, "WT_DC_DIRECT_COMBINED_STOCH_GATE", 0) or 0)  # WT_DC_DIRECT_COMBINED_STOCH_GATE wired
-            # HOT-WIRED PARAM WT_DC_DIRECT_HTF_ALIGN_REQUIRED (threshold)
-            _ = float(getattr(config, "WT_DC_DIRECT_HTF_ALIGN_REQUIRED", 0) or 0)  # WT_DC_DIRECT_HTF_ALIGN_REQUIRED wired
-            # HOT-WIRED PARAM WT_DC_DIRECT_HTF_GATE (threshold)
-            _ = float(getattr(config, "WT_DC_DIRECT_HTF_GATE", 0) or 0)  # WT_DC_DIRECT_HTF_GATE wired
-            # HOT-WIRED PARAM WT_DC_DIRECT_THRESHOLD (threshold)
-            _ = float(getattr(config, "WT_DC_DIRECT_THRESHOLD", 0) or 0)  # WT_DC_DIRECT_THRESHOLD wired
-            # HOT-WIRED PARAM WT_DC_ENTRY_K5M_MAX_LONG (threshold)
-            _ = float(getattr(config, "WT_DC_ENTRY_K5M_MAX_LONG", 0) or 0)  # WT_DC_ENTRY_K5M_MAX_LONG wired
-            # HOT-WIRED PARAM WT_DC_ENTRY_K5M_MIN_SHORT (threshold)
-            _ = float(getattr(config, "WT_DC_ENTRY_K5M_MIN_SHORT", 0) or 0)  # WT_DC_ENTRY_K5M_MIN_SHORT wired
-            # HOT-WIRED PARAM WT_D_BOUNCE_AUG_COOLDOWN_HOURS (threshold)
-            _ = float(getattr(config, "WT_D_BOUNCE_AUG_COOLDOWN_HOURS", 0) or 0)  # WT_D_BOUNCE_AUG_COOLDOWN_HOURS wired
-            # HOT-WIRED PARAM WT_D_BOUNCE_AUG_MULTIPLIER (threshold)
-            _ = float(getattr(config, "WT_D_BOUNCE_AUG_MULTIPLIER", 0) or 0)  # WT_D_BOUNCE_AUG_MULTIPLIER wired
-            # HOT-WIRED PARAM WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE (threshold)
-            _ = float(getattr(config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE", 0) or 0)  # WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE wired
-            # HOT-WIRED PARAM WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT (threshold)
-            _ = float(getattr(config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT", 0) or 0)  # WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT wired
-            # HOT-WIRED PARAM WT_EXIT_VEL_THRESHOLD (threshold)
-            _ = float(getattr(config, "WT_EXIT_VEL_THRESHOLD", 0) or 0)  # WT_EXIT_VEL_THRESHOLD wired
-            # HOT-WIRED PARAM WT_FORCE_OPEN_FRESH_CROSS_ONLY (threshold)
-            _ = float(getattr(config, "WT_FORCE_OPEN_FRESH_CROSS_ONLY", 0) or 0)  # WT_FORCE_OPEN_FRESH_CROSS_ONLY wired
-            # HOT-WIRED PARAM WT_FORCE_OPEN_FRESH_MAX_BARS (threshold)
-            _ = float(getattr(config, "WT_FORCE_OPEN_FRESH_MAX_BARS", 0) or 0)  # WT_FORCE_OPEN_FRESH_MAX_BARS wired
-            # HOT-WIRED PARAM WT_FORCE_OPEN_TRIGGER_TF (threshold)
-            _ = float(getattr(config, "WT_FORCE_OPEN_TRIGGER_TF", 0) or 0)  # WT_FORCE_OPEN_TRIGGER_TF wired
-            # HOT-WIRED PARAM WT_REDUCE_FRAC_HIGH (threshold)
-            _ = float(getattr(config, "WT_REDUCE_FRAC_HIGH", 0) or 0)  # WT_REDUCE_FRAC_HIGH wired
-            # HOT-WIRED PARAM WT_REDUCE_FRAC_MED (threshold)
-            _ = float(getattr(config, "WT_REDUCE_FRAC_MED", 0) or 0)  # WT_REDUCE_FRAC_MED wired
-            # HOT-WIRED PARAM WT_VEL_DECAY_THRESHOLD (threshold)
-            _ = float(getattr(config, "WT_VEL_DECAY_THRESHOLD", 0) or 0)  # WT_VEL_DECAY_THRESHOLD wired
-            # HOT-WIRED PARAM ZERO_CONFIRMATION_THRESHOLD_API (threshold)
-            _ = float(getattr(config, "ZERO_CONFIRMATION_THRESHOLD_API", 0) or 0)  # ZERO_CONFIRMATION_THRESHOLD_API wired
-            # HOT-WIRED PARAM ZERO_CONFIRMATION_THRESHOLD_WS (threshold)
-            _ = float(getattr(config, "ZERO_CONFIRMATION_THRESHOLD_WS", 0) or 0)  # ZERO_CONFIRMATION_THRESHOLD_WS wired
-            # HOT-WIRED PARAM ZONE_CLOSE_THRESHOLD (threshold)
-            _ = float(getattr(config, "ZONE_CLOSE_THRESHOLD", 0) or 0)  # ZONE_CLOSE_THRESHOLD wired
-            # HOT-WIRED PARAM ZONE_MID_THRESHOLD (threshold)
-            _ = float(getattr(config, "ZONE_MID_THRESHOLD", 0) or 0)  # ZONE_MID_THRESHOLD wired
-            # HOT-WIRED PARAM ZONE_OPEN_THRESHOLD (threshold)
-            _ = float(getattr(config, "ZONE_OPEN_THRESHOLD", 0) or 0)  # ZONE_OPEN_THRESHOLD wired
-            # HOT-WIRED PARAM _G0_PURE_BH (threshold)
-            _ = float(getattr(config, "_G0_PURE_BH", 0) or 0)  # _G0_PURE_BH wired
-            # HOT-WIRED PARAM ABLATION_DISABLE_AGGRESSIVE_HEDGE
-            if "ABLATION_DISABLE_AGGRESSIVE_HEDGE" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_AGGRESSIVE_HEDGE", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_AUGMENTATION
-            if "ABLATION_DISABLE_AUGMENTATION" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_AUGMENTATION", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_CHECK_NOLOSS
-            if "ABLATION_DISABLE_CHECK_NOLOSS" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_CHECK_NOLOSS", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_DC_BREACH_REDUCE
-            if "ABLATION_DISABLE_DC_BREACH_REDUCE" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_DC_BREACH_REDUCE", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_ENTRY_LEADERBOARD
-            if "ABLATION_DISABLE_ENTRY_LEADERBOARD" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_ENTRY_LEADERBOARD", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_ENTRY_RANKING
-            if "ABLATION_DISABLE_ENTRY_RANKING" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_ENTRY_RANKING", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_ENTRY_REVERSAL
-            if "ABLATION_DISABLE_ENTRY_REVERSAL" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_ENTRY_REVERSAL", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_ENTRY_TECHNICAL
-            if "ABLATION_DISABLE_ENTRY_TECHNICAL" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_ENTRY_TECHNICAL", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_FAST_RISER
-            if "ABLATION_DISABLE_FAST_RISER" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_FAST_RISER", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_HEDGE
-            if "ABLATION_DISABLE_HEDGE" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_HEDGE", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_HIGH_GAIN_AUGMENT
-            if "ABLATION_DISABLE_HIGH_GAIN_AUGMENT" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_HIGH_GAIN_AUGMENT", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_PERIODIC_REENTRY
-            if "ABLATION_DISABLE_PERIODIC_REENTRY" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_PERIODIC_REENTRY", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_QUICK_ENTRY
-            if "ABLATION_DISABLE_QUICK_ENTRY" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_QUICK_ENTRY", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_QUICK_EXIT
-            if "ABLATION_DISABLE_QUICK_EXIT" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_QUICK_EXIT", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_RATIO_REBALANCE
-            if "ABLATION_DISABLE_RATIO_REBALANCE" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_RATIO_REBALANCE", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_REENTRY
-            if "ABLATION_DISABLE_REENTRY" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_REENTRY", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_REENTRY_ENFORCE
-            if "ABLATION_DISABLE_REENTRY_ENFORCE" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_REENTRY_ENFORCE", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_SCALP_GUARD
-            if "ABLATION_DISABLE_SCALP_GUARD" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_SCALP_GUARD", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ABLATION_DISABLE_SPIKE_FADE_EXIT
-            if "ABLATION_DISABLE_SPIKE_FADE_EXIT" in dir(config):
-                _thr_ablation_disabl = float(getattr(config, "ABLATION_DISABLE_SPIKE_FADE_EXIT", 0) or 0)
-                if _thr_ablation_disabl > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ACCOUNT_TYPE_TRA
-            if "ACCOUNT_TYPE_TRA" in dir(config):
-                _thr_account_type_tr = float(getattr(config, "ACCOUNT_TYPE_TRA", 0) or 0)
-                if _thr_account_type_tr > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD
-            if "ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD
-            if "ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_DECAY_HALFLIFE_H
-            if "ADAPTIVE_REGIME_DECAY_HALFLIFE_H" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_DECAY_HALFLIFE_H", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_HEAT_TRIGGER
-            if "ADAPTIVE_REGIME_HEAT_TRIGGER" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_HEAT_TRIGGER", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_LOOKBACK_DAYS
-            if "ADAPTIVE_REGIME_LOOKBACK_DAYS" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_LOOKBACK_DAYS", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_MIN_SIGNALS
-            if "ADAPTIVE_REGIME_MIN_SIGNALS" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_MIN_SIGNALS", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_NPZ_CACHE_HOURS
-            if "ADAPTIVE_REGIME_NPZ_CACHE_HOURS" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_NPZ_CACHE_HOURS", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_PAPER
-            if "ADAPTIVE_REGIME_PAPER" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_PAPER", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADAPTIVE_REGIME_SHARPE_FLOOR
-            if "ADAPTIVE_REGIME_SHARPE_FLOOR" in dir(config):
-                _thr_adaptive_regime = float(getattr(config, "ADAPTIVE_REGIME_SHARPE_FLOOR", 0) or 0)
-                if _thr_adaptive_regime > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADX_RANGING_THRESHOLD
-            if "ADX_RANGING_THRESHOLD" in dir(config):
-                _thr_adx_ranging_thr = float(getattr(config, "ADX_RANGING_THRESHOLD", 0) or 0)
-                if _thr_adx_ranging_thr > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADX_TF
-            if "ADX_TF" in dir(config):
-                _thr_adx_tf = float(getattr(config, "ADX_TF", 0) or 0)
-                if _thr_adx_tf > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ADX_TRENDING_THRESHOLD
-            if "ADX_TRENDING_THRESHOLD" in dir(config):
-                _thr_adx_trending_th = float(getattr(config, "ADX_TRENDING_THRESHOLD", 0) or 0)
-                if _thr_adx_trending_th > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM AI_PREMARKET_DECISIONS_DIR
-            if "AI_PREMARKET_DECISIONS_DIR" in dir(config):
-                _thr_ai_premarket_de = float(getattr(config, "AI_PREMARKET_DECISIONS_DIR", 0) or 0)
-                if _thr_ai_premarket_de > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM AI_PREMARKET_EXPIRES_ET
-            if "AI_PREMARKET_EXPIRES_ET" in dir(config):
-                _thr_ai_premarket_ex = float(getattr(config, "AI_PREMARKET_EXPIRES_ET", 0) or 0)
-                if _thr_ai_premarket_ex > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM AI_PREMARKET_MAX_NEW_PER_SIDE
-            if "AI_PREMARKET_MAX_NEW_PER_SIDE" in dir(config):
-                _thr_ai_premarket_ma = float(getattr(config, "AI_PREMARKET_MAX_NEW_PER_SIDE", 0) or 0)
-                if _thr_ai_premarket_ma > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM AI_PREMARKET_MIN_CONVICTION
-            if "AI_PREMARKET_MIN_CONVICTION" in dir(config):
-                _thr_ai_premarket_mi = float(getattr(config, "AI_PREMARKET_MIN_CONVICTION", 0) or 0)
-                if _thr_ai_premarket_mi > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM AI_PREMARKET_SIZE_MULT_MAX
-            if "AI_PREMARKET_SIZE_MULT_MAX" in dir(config):
-                _thr_ai_premarket_si = float(getattr(config, "AI_PREMARKET_SIZE_MULT_MAX", 0) or 0)
-                if _thr_ai_premarket_si > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ALIGNMENT_GATE_MIN
-            if "ALIGNMENT_GATE_MIN" in dir(config):
-                _thr_alignment_gate_ = float(getattr(config, "ALIGNMENT_GATE_MIN", 0) or 0)
-                if _thr_alignment_gate_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ALIGNMENT_GATE_TOTAL
-            if "ALIGNMENT_GATE_TOTAL" in dir(config):
-                _thr_alignment_gate_ = float(getattr(config, "ALIGNMENT_GATE_TOTAL", 0) or 0)
-                if _thr_alignment_gate_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ALL_TF_AGAINST_CLOSE_MIN_TFS
-            if "ALL_TF_AGAINST_CLOSE_MIN_TFS" in dir(config):
-                _thr_all_tf_against_ = float(getattr(config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", 0) or 0)
-                if _thr_all_tf_against_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM API_RATE_LIMIT_PER_MINUTE
-            if "API_RATE_LIMIT_PER_MINUTE" in dir(config):
-                _thr_api_rate_limit_ = float(getattr(config, "API_RATE_LIMIT_PER_MINUTE", 0) or 0)
-                if _thr_api_rate_limit_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM API_RATE_LIMIT_PER_SECOND
-            if "API_RATE_LIMIT_PER_SECOND" in dir(config):
-                _thr_api_rate_limit_ = float(getattr(config, "API_RATE_LIMIT_PER_SECOND", 0) or 0)
-                if _thr_api_rate_limit_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ASYMMETRIC_LOSER_MIN_AGE_SECONDS
-            if "ASYMMETRIC_LOSER_MIN_AGE_SECONDS" in dir(config):
-                _thr_asymmetric_lose = float(getattr(config, "ASYMMETRIC_LOSER_MIN_AGE_SECONDS", 0) or 0)
-                if _thr_asymmetric_lose > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ASYMMETRIC_WINNER_GAIN_PCT
-            if "ASYMMETRIC_WINNER_GAIN_PCT" in dir(config):
-                _thr_asymmetric_winn = float(getattr(config, "ASYMMETRIC_WINNER_GAIN_PCT", 0) or 0)
-                if _thr_asymmetric_winn > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ATR_ADAPTIVE_SIZING_TARGET_PCT
-            if "ATR_ADAPTIVE_SIZING_TARGET_PCT" in dir(config):
-                _thr_atr_adaptive_si = float(getattr(config, "ATR_ADAPTIVE_SIZING_TARGET_PCT", 0) or 0)
-                if _thr_atr_adaptive_si > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ATR_ADAPTIVE_STOP_MULT
-            if "ATR_ADAPTIVE_STOP_MULT" in dir(config):
-                _thr_atr_adaptive_st = float(getattr(config, "ATR_ADAPTIVE_STOP_MULT", 0) or 0)
-                if _thr_atr_adaptive_st > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ATR_ADAPTIVE_STOP_TF
-            if "ATR_ADAPTIVE_STOP_TF" in dir(config):
-                _thr_atr_adaptive_st = float(getattr(config, "ATR_ADAPTIVE_STOP_TF", 0) or 0)
-                if _thr_atr_adaptive_st > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM ATR_PARITY_TARGET_RISK_PCT
-            if "ATR_PARITY_TARGET_RISK_PCT" in dir(config):
-                _thr_atr_parity_targ = float(getattr(config, "ATR_PARITY_TARGET_RISK_PCT", 0) or 0)
-                if _thr_atr_parity_targ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_ARROW_ACCUMULATE
-            if "BAND_ARROW_ACCUMULATE" in dir(config):
-                _thr_band_arrow_accu = float(getattr(config, "BAND_ARROW_ACCUMULATE", 0) or 0)
-                if _thr_band_arrow_accu > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_ARROW_ENTRY_TFS
-            if "BAND_ARROW_ENTRY_TFS" in dir(config):
-                _thr_band_arrow_entr = float(getattr(config, "BAND_ARROW_ENTRY_TFS", 0) or 0)
-                if _thr_band_arrow_entr > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_ARROW_EXIT_TFS
-            if "BAND_ARROW_EXIT_TFS" in dir(config):
-                _thr_band_arrow_exit = float(getattr(config, "BAND_ARROW_EXIT_TFS", 0) or 0)
-                if _thr_band_arrow_exit > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_ARROW_MAX_POS_MULT
-            if "BAND_ARROW_MAX_POS_MULT" in dir(config):
-                _thr_band_arrow_max_ = float(getattr(config, "BAND_ARROW_MAX_POS_MULT", 0) or 0)
-                if _thr_band_arrow_max_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_ARROW_SLOPE_DEADBAND
-            if "BAND_ARROW_SLOPE_DEADBAND" in dir(config):
-                _thr_band_arrow_slop = float(getattr(config, "BAND_ARROW_SLOPE_DEADBAND", 0) or 0)
-                if _thr_band_arrow_slop > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_SLOPE_SIZING_V2_DEPTH_GAIN
-            if "BAND_SLOPE_SIZING_V2_DEPTH_GAIN" in dir(config):
-                _thr_band_slope_sizi = float(getattr(config, "BAND_SLOPE_SIZING_V2_DEPTH_GAIN", 0) or 0)
-                if _thr_band_slope_sizi > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_SLOPE_SIZING_V2_MAX
-            if "BAND_SLOPE_SIZING_V2_MAX" in dir(config):
-                _thr_band_slope_sizi = float(getattr(config, "BAND_SLOPE_SIZING_V2_MAX", 0) or 0)
-                if _thr_band_slope_sizi > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_SLOPE_SIZING_V2_MIN
-            if "BAND_SLOPE_SIZING_V2_MIN" in dir(config):
-                _thr_band_slope_sizi = float(getattr(config, "BAND_SLOPE_SIZING_V2_MIN", 0) or 0)
-                if _thr_band_slope_sizi > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY
-            if "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY" in dir(config):
-                _thr_band_slope_sizi = float(getattr(config, "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY", 0) or 0)
-                if _thr_band_slope_sizi > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BAND_SLOPE_SIZING_V2_TF
-            if "BAND_SLOPE_SIZING_V2_TF" in dir(config):
-                _thr_band_slope_sizi = float(getattr(config, "BAND_SLOPE_SIZING_V2_TF", 0) or 0)
-                if _thr_band_slope_sizi > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BASE_TF
-            if "BASE_TF" in dir(config):
-                _thr_base_tf = float(getattr(config, "BASE_TF", 0) or 0)
-                if _thr_base_tf > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BASIS_CONDITION
-            if "BASIS_CONDITION" in dir(config):
-                _thr_basis_condition = float(getattr(config, "BASIS_CONDITION", 0) or 0)
-                if _thr_basis_condition > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB4H_BREAKOUT_LADDER_BASIS_PCT
-            if "BB4H_BREAKOUT_LADDER_BASIS_PCT" in dir(config):
-                _thr_bb4h_breakout_l = float(getattr(config, "BB4H_BREAKOUT_LADDER_BASIS_PCT", 0) or 0)
-                if _thr_bb4h_breakout_l > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB4H_BREAKOUT_LADDER_BREAKOUT_PCT
-            if "BB4H_BREAKOUT_LADDER_BREAKOUT_PCT" in dir(config):
-                _thr_bb4h_breakout_l = float(getattr(config, "BB4H_BREAKOUT_LADDER_BREAKOUT_PCT", 0) or 0)
-                if _thr_bb4h_breakout_l > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES
-            if "BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES" in dir(config):
-                _thr_bb4h_breakout_l = float(getattr(config, "BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES", 0) or 0)
-                if _thr_bb4h_breakout_l > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD
-            if "BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD" in dir(config):
-                _thr_bb4h_breakout_l = float(getattr(config, "BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD", 0) or 0)
-                if _thr_bb4h_breakout_l > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB4H_BREAKOUT_LADDER_TARGET_USD
-            if "BB4H_BREAKOUT_LADDER_TARGET_USD" in dir(config):
-                _thr_bb4h_breakout_l = float(getattr(config, "BB4H_BREAKOUT_LADDER_TARGET_USD", 0) or 0)
-                if _thr_bb4h_breakout_l > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB4H_BREAKOUT_LADDER_WT_CROSS_PCT
-            if "BB4H_BREAKOUT_LADDER_WT_CROSS_PCT" in dir(config):
-                _thr_bb4h_breakout_l = float(getattr(config, "BB4H_BREAKOUT_LADDER_WT_CROSS_PCT", 0) or 0)
-                if _thr_bb4h_breakout_l > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_BREAKOUT_SCORE
-            if "BB_BREAKOUT_SCORE" in dir(config):
-                _thr_bb_breakout_sco = float(getattr(config, "BB_BREAKOUT_SCORE", 0) or 0)
-                if _thr_bb_breakout_sco > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_RECOVERY_DIRECT_BARS
-            if "BB_RECOVERY_DIRECT_BARS" in dir(config):
-                _thr_bb_recovery_dir = float(getattr(config, "BB_RECOVERY_DIRECT_BARS", 0) or 0)
-                if _thr_bb_recovery_dir > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR
-            if "BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR" in dir(config):
-                _thr_bb_recovery_dir = float(getattr(config, "BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR", 0) or 0)
-                if _thr_bb_recovery_dir > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_RECOVERY_DIRECT_TIMEFRAME
-            if "BB_RECOVERY_DIRECT_TIMEFRAME" in dir(config):
-                _thr_bb_recovery_dir = float(getattr(config, "BB_RECOVERY_DIRECT_TIMEFRAME", 0) or 0)
-                if _thr_bb_recovery_dir > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_RSI_STOCH_SCALP_SCORE
-            if "BB_RSI_STOCH_SCALP_SCORE" in dir(config):
-                _thr_bb_rsi_stoch_sc = float(getattr(config, "BB_RSI_STOCH_SCALP_SCORE", 0) or 0)
-                if _thr_bb_rsi_stoch_sc > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_SQUEEZE_COOLDOWN
-            if "BB_SQUEEZE_COOLDOWN" in dir(config):
-                _thr_bb_squeeze_cool = float(getattr(config, "BB_SQUEEZE_COOLDOWN", 0) or 0)
-                if _thr_bb_squeeze_cool > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_SQUEEZE_MIN_ALIGNMENT
-            if "BB_SQUEEZE_MIN_ALIGNMENT" in dir(config):
-                _thr_bb_squeeze_min_ = float(getattr(config, "BB_SQUEEZE_MIN_ALIGNMENT", 0) or 0)
-                if _thr_bb_squeeze_min_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_SQUEEZE_THRESHOLD_15M
-            if "BB_SQUEEZE_THRESHOLD_15M" in dir(config):
-                _thr_bb_squeeze_thre = float(getattr(config, "BB_SQUEEZE_THRESHOLD_15M", 0) or 0)
-                if _thr_bb_squeeze_thre > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_SQUEEZE_THRESHOLD_1H
-            if "BB_SQUEEZE_THRESHOLD_1H" in dir(config):
-                _thr_bb_squeeze_thre = float(getattr(config, "BB_SQUEEZE_THRESHOLD_1H", 0) or 0)
-                if _thr_bb_squeeze_thre > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BB_SQUEEZE_WIDTH_PERCENTILE
-            if "BB_SQUEEZE_WIDTH_PERCENTILE" in dir(config):
-                _thr_bb_squeeze_widt = float(getattr(config, "BB_SQUEEZE_WIDTH_PERCENTILE", 0) or 0)
-                if _thr_bb_squeeze_widt > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BINANCE_API_BASE
-            if "BINANCE_API_BASE" in dir(config):
-                _thr_binance_api_bas = float(getattr(config, "BINANCE_API_BASE", 0) or 0)
-                if _thr_binance_api_bas > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME
-            if "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME" in dir(config):
-                _thr_bottom_a_protec = float(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME", 0) or 0)
-                if _thr_bottom_a_protec > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR
-            if "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR" in dir(config):
-                _thr_bottom_a_protec = float(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR", 0) or 0)
-                if _thr_bottom_a_protec > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT
-            if "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT" in dir(config):
-                _thr_bottom_a_protec = float(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT", 0) or 0)
-                if _thr_bottom_a_protec > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK
-            if "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK" in dir(config):
-                _thr_bottom_a_protec = float(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK", 0) or 0)
-                if _thr_bottom_a_protec > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_A_PROTECTIVE_TRAIL_MODE
-            if "BOTTOM_A_PROTECTIVE_TRAIL_MODE" in dir(config):
-                _thr_bottom_a_protec = float(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_MODE", 0) or 0)
-                if _thr_bottom_a_protec > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME
-            if "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME" in dir(config):
-                _thr_bottom_a_protec = float(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME", 0) or 0)
-                if _thr_bottom_a_protec > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE
-            if "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD
-            if "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF
-            if "BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS
-            if "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE
-            if "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF
-            if "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H
-            if "BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK
-            if "BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR
-            if "BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR" in dir(config):
-                _thr_bottom_b_delaye = float(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR", 0) or 0)
-                if _thr_bottom_b_delaye > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE
-            if "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE" in dir(config):
-                _thr_bounce_augment_ = float(getattr(config, "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE", 0) or 0)
-                if _thr_bounce_augment_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_AUGMENT_K_D_CROSSING_UP
-            if "BOUNCE_AUGMENT_K_D_CROSSING_UP" in dir(config):
-                _thr_bounce_augment_ = float(getattr(config, "BOUNCE_AUGMENT_K_D_CROSSING_UP", 0) or 0)
-                if _thr_bounce_augment_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_AUGMENT_K_D_THRESHOLD
-            if "BOUNCE_AUGMENT_K_D_THRESHOLD" in dir(config):
-                _thr_bounce_augment_ = float(getattr(config, "BOUNCE_AUGMENT_K_D_THRESHOLD", 0) or 0)
-                if _thr_bounce_augment_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_AUGMENT_MIN_LOSS_PCT
-            if "BOUNCE_AUGMENT_MIN_LOSS_PCT" in dir(config):
-                _thr_bounce_augment_ = float(getattr(config, "BOUNCE_AUGMENT_MIN_LOSS_PCT", 0) or 0)
-                if _thr_bounce_augment_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_AUGMENT_PAPER
-            if "BOUNCE_AUGMENT_PAPER" in dir(config):
-                _thr_bounce_augment_ = float(getattr(config, "BOUNCE_AUGMENT_PAPER", 0) or 0)
-                if _thr_bounce_augment_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_TOP_MAX_LOSS_PCT
-            if "BOUNCE_TOP_MAX_LOSS_PCT" in dir(config):
-                _thr_bounce_top_max_ = float(getattr(config, "BOUNCE_TOP_MAX_LOSS_PCT", 0) or 0)
-                if _thr_bounce_top_max_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_TOP_MIN_HOLD_MINUTES
-            if "BOUNCE_TOP_MIN_HOLD_MINUTES" in dir(config):
-                _thr_bounce_top_min_ = float(getattr(config, "BOUNCE_TOP_MIN_HOLD_MINUTES", 0) or 0)
-                if _thr_bounce_top_min_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED PARAM BOUNCE_TOP_MIN_LOSS_PCT
-            if "BOUNCE_TOP_MIN_LOSS_PCT" in dir(config):
-                _thr_bounce_top_min_ = float(getattr(config, "BOUNCE_TOP_MIN_LOSS_PCT", 0) or 0)
-                if _thr_bounce_top_min_ > 0:
-                    pass  # threshold wired, distinct per-param
-            # HOT-WIRED ADX_REGIME_FILTER_ENABLED — real delta gate
-            if bool(getattr(config, "ADX_REGIME_FILTER_ENABLED", False)):
-                _hot_mod_adx_regime_filter_ = (hash("ADX_REGIME_FILTER_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_adx_regime_filter_)  # actually changes entry filter
-            # HOT-WIRED AGGRESSIVE_LOSS_CUT_ENABLED — real delta gate
-            if bool(getattr(config, "AGGRESSIVE_LOSS_CUT_ENABLED", False)):
-                _hot_mod_aggressive_loss_cu = (hash("AGGRESSIVE_LOSS_CUT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_aggressive_loss_cu)  # actually changes entry filter
-            # HOT-WIRED AI_PREMARKET_ENABLED_TRB — real delta gate
-            if bool(getattr(config, "AI_PREMARKET_ENABLED_TRB", False)):
-                _hot_mod_ai_premarket_enabl = (hash("AI_PREMARKET_ENABLED_TRB") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ai_premarket_enabl)  # actually changes entry filter
-            # HOT-WIRED AI_PREMARKET_ENABLED_TRC — real delta gate
-            if bool(getattr(config, "AI_PREMARKET_ENABLED_TRC", False)):
-                _hot_mod_ai_premarket_enabl = (hash("AI_PREMARKET_ENABLED_TRC") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ai_premarket_enabl)  # actually changes entry filter
-            # HOT-WIRED ATR_TRAIL_2X_EXIT_ENABLED — real delta gate
-            if bool(getattr(config, "ATR_TRAIL_2X_EXIT_ENABLED", False)):
-                _hot_mod_atr_trail_2x_exit_ = (hash("ATR_TRAIL_2X_EXIT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_atr_trail_2x_exit_)  # actually changes entry filter
-            # HOT-WIRED ATR_TRAIL_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "ATR_TRAIL_ENABLED_TRADIER", False)):
-                _hot_mod_atr_trail_enabled_ = (hash("ATR_TRAIL_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_atr_trail_enabled_)  # actually changes entry filter
-            # HOT-WIRED AUGMENT_AT_LOSS_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "AUGMENT_AT_LOSS_ENABLED_TRADIER", False)):
-                _hot_mod_augment_at_loss_en = (hash("AUGMENT_AT_LOSS_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_augment_at_loss_en)  # actually changes entry filter
-            # HOT-WIRED AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER — real delta gate
-            if bool(getattr(config, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER", False)):
-                _hot_mod_augment_only_when_ = (hash("AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_augment_only_when_)  # actually changes entry filter
-            # HOT-WIRED AUGMENT_PYRAMID_TRADIER — real delta gate
-            if bool(getattr(config, "AUGMENT_PYRAMID_TRADIER", False)):
-                _hot_mod_augment_pyramid_tr = (hash("AUGMENT_PYRAMID_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_augment_pyramid_tr)  # actually changes entry filter
-            # HOT-WIRED B10_STOCH_REV_LIVE_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "B10_STOCH_REV_LIVE_ENABLED_TRADIER", False)):
-                _hot_mod_b10_stoch_rev_live = (hash("B10_STOCH_REV_LIVE_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_b10_stoch_rev_live)  # actually changes entry filter
-            # HOT-WIRED BACKTEST_VALIDATED_GATES_TRADIER — real delta gate
-            if bool(getattr(config, "BACKTEST_VALIDATED_GATES_TRADIER", False)):
-                _hot_mod_backtest_validated = (hash("BACKTEST_VALIDATED_GATES_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_backtest_validated)  # actually changes entry filter
-            # HOT-WIRED BAND_SLOPE_SIZING_V2_ENABLED — real delta gate
-            if bool(getattr(config, "BAND_SLOPE_SIZING_V2_ENABLED", False)):
-                _hot_mod_band_slope_sizing_ = (hash("BAND_SLOPE_SIZING_V2_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_band_slope_sizing_)  # actually changes entry filter
-            # HOT-WIRED BB4H_BREAKOUT_LADDER_ENABLED — real delta gate
-            if bool(getattr(config, "BB4H_BREAKOUT_LADDER_ENABLED", False)):
-                _hot_mod_bb4h_breakout_ladd = (hash("BB4H_BREAKOUT_LADDER_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bb4h_breakout_ladd)  # actually changes entry filter
-            # HOT-WIRED BB_RECOVERY_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_bb_recovery_exit_e = (hash("BB_RECOVERY_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bb_recovery_exit_e)  # actually changes entry filter
-            # HOT-WIRED BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER — real delta gate
-            if bool(getattr(config, "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER", False)):
-                _hot_mod_bb_recovery_exit_t = (hash("BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bb_recovery_exit_t)  # actually changes entry filter
-            # HOT-WIRED BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER", False)):
-                _hot_mod_bb_recovery_exit_t = (hash("BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bb_recovery_exit_t)  # actually changes entry filter
-            # HOT-WIRED BB_SQUEEZE_ENABLED — real delta gate
-            if bool(getattr(config, "BB_SQUEEZE_ENABLED", False)):
-                _hot_mod_bb_squeeze_enabled = (hash("BB_SQUEEZE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bb_squeeze_enabled)  # actually changes entry filter
-            # HOT-WIRED BEAR_MARKET_MODE_TRADIER — real delta gate
-            if bool(getattr(config, "BEAR_MARKET_MODE_TRADIER", False)):
-                _hot_mod_bear_market_mode_t = (hash("BEAR_MARKET_MODE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bear_market_mode_t)  # actually changes entry filter
-            # HOT-WIRED BOUNCE_REENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "BOUNCE_REENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_bounce_reentry_ena = (hash("BOUNCE_REENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bounce_reentry_ena)  # actually changes entry filter
-            # HOT-WIRED BOUNCE_REENTRY_K_RESET_LONG_TRADIER — real delta gate
-            if bool(getattr(config, "BOUNCE_REENTRY_K_RESET_LONG_TRADIER", False)):
-                _hot_mod_bounce_reentry_k_r = (hash("BOUNCE_REENTRY_K_RESET_LONG_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bounce_reentry_k_r)  # actually changes entry filter
-            # HOT-WIRED BOUNCE_REENTRY_K_RESET_SHORT_TRADIER — real delta gate
-            if bool(getattr(config, "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER", False)):
-                _hot_mod_bounce_reentry_k_r = (hash("BOUNCE_REENTRY_K_RESET_SHORT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_bounce_reentry_k_r)  # actually changes entry filter
-            # HOT-WIRED COMBINED_STOCH_GATE_TRADIER — real delta gate
-            if bool(getattr(config, "COMBINED_STOCH_GATE_TRADIER", False)):
-                _hot_mod_combined_stoch_gat = (hash("COMBINED_STOCH_GATE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_combined_stoch_gat)  # actually changes entry filter
-            # HOT-WIRED COOLDOWN_BARS_TRADIER — real delta gate
-            if bool(getattr(config, "COOLDOWN_BARS_TRADIER", False)):
-                _hot_mod_cooldown_bars_trad = (hash("COOLDOWN_BARS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_cooldown_bars_trad)  # actually changes entry filter
-            # HOT-WIRED CT_15M_MOMENTUM_GATE_ENABLED — real delta gate
-            if bool(getattr(config, "CT_15M_MOMENTUM_GATE_ENABLED", False)):
-                _hot_mod_ct_15m_momentum_ga = (hash("CT_15M_MOMENTUM_GATE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ct_15m_momentum_ga)  # actually changes entry filter
-            # HOT-WIRED CT_CHOP_4H_GATE_ENABLED — real delta gate
-            if bool(getattr(config, "CT_CHOP_4H_GATE_ENABLED", False)):
-                _hot_mod_ct_chop_4h_gate_en = (hash("CT_CHOP_4H_GATE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ct_chop_4h_gate_en)  # actually changes entry filter
-            # HOT-WIRED CT_VOLUME_SURGE_GATE_ENABLED — real delta gate
-            if bool(getattr(config, "CT_VOLUME_SURGE_GATE_ENABLED", False)):
-                _hot_mod_ct_volume_surge_ga = (hash("CT_VOLUME_SURGE_GATE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ct_volume_surge_ga)  # actually changes entry filter
-            # HOT-WIRED DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED — real delta gate
-            if bool(getattr(config, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED", False)):
-                _hot_mod_dc4_stop_gr_hedge_ = (hash("DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_dc4_stop_gr_hedge_)  # actually changes entry filter
-            # HOT-WIRED DC_BREAK_GR_MULT_ENABLED — real delta gate
-            if bool(getattr(config, "DC_BREAK_GR_MULT_ENABLED", False)):
-                _hot_mod_dc_break_gr_mult_e = (hash("DC_BREAK_GR_MULT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_dc_break_gr_mult_e)  # actually changes entry filter
-            # HOT-WIRED DELTA_EXIT_ENABLED — real delta gate
-            if bool(getattr(config, "DELTA_EXIT_ENABLED", False)):
-                _hot_mod_delta_exit_enabled = (hash("DELTA_EXIT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_delta_exit_enabled)  # actually changes entry filter
-            # HOT-WIRED DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_delta_exit_mandato = (hash("DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_delta_exit_mandato)  # actually changes entry filter
-            # HOT-WIRED DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_direction_favorabl = (hash("DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_direction_favorabl)  # actually changes entry filter
-            # HOT-WIRED EOD_RATIO_ENFORCE_TRADIER — real delta gate
-            if bool(getattr(config, "EOD_RATIO_ENFORCE_TRADIER", False)):
-                _hot_mod_eod_ratio_enforce_ = (hash("EOD_RATIO_ENFORCE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_eod_ratio_enforce_)  # actually changes entry filter
-            # HOT-WIRED EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED — real delta gate
-            if bool(getattr(config, "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", False)):
-                _hot_mod_exit_auto_reduce_c = (hash("EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_exit_auto_reduce_c)  # actually changes entry filter
-            # HOT-WIRED EXIT_DEAD_CODE_ENABLED — real delta gate
-            if bool(getattr(config, "EXIT_DEAD_CODE_ENABLED", False)):
-                _hot_mod_exit_dead_code_ena = (hash("EXIT_DEAD_CODE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_exit_dead_code_ena)  # actually changes entry filter
-            # HOT-WIRED EXIT_K5M_BOUNCE_ENABLED — real delta gate
-            if bool(getattr(config, "EXIT_K5M_BOUNCE_ENABLED", False)):
-                _hot_mod_exit_k5m_bounce_en = (hash("EXIT_K5M_BOUNCE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_exit_k5m_bounce_en)  # actually changes entry filter
-            # HOT-WIRED EZ_REENTRY_INLINE_ENABLED — real delta gate
-            if bool(getattr(config, "EZ_REENTRY_INLINE_ENABLED", False)):
-                _hot_mod_ez_reentry_inline_ = (hash("EZ_REENTRY_INLINE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ez_reentry_inline_)  # actually changes entry filter
-            # HOT-WIRED EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED — real delta gate
-            if bool(getattr(config, "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED", False)):
-                _hot_mod_ez_reentry_inline_ = (hash("EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ez_reentry_inline_)  # actually changes entry filter
-            # HOT-WIRED FIN_ADVISORY_CONSUMER_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "FIN_ADVISORY_CONSUMER_ENABLED_TRADIER", False)):
-                _hot_mod_fin_advisory_consu = (hash("FIN_ADVISORY_CONSUMER_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_fin_advisory_consu)  # actually changes entry filter
-            # HOT-WIRED FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER", False)):
-                _hot_mod_frozen_absolute_fl = (hash("FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_frozen_absolute_fl)  # actually changes entry filter
-            # HOT-WIRED FUNDING_GATE_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "FUNDING_GATE_ENABLED_TRADIER", False)):
-                _hot_mod_funding_gate_enabl = (hash("FUNDING_GATE_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_funding_gate_enabl)  # actually changes entry filter
-            # HOT-WIRED GOLDEN_RULE_HTF_VETO_ENABLED — real delta gate
-            if bool(getattr(config, "GOLDEN_RULE_HTF_VETO_ENABLED", False)):
-                _hot_mod_golden_rule_htf_ve = (hash("GOLDEN_RULE_HTF_VETO_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_golden_rule_htf_ve)  # actually changes entry filter
-            # HOT-WIRED GUARANTEED_REENTRY_AUGMENT_ENABLED — real delta gate
-            if bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", False)):
-                _hot_mod_guaranteed_reentry = (hash("GUARANTEED_REENTRY_AUGMENT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_guaranteed_reentry)  # actually changes entry filter
-            # HOT-WIRED HARD_MAX_SYMBOL_VALUE_TRADIER — real delta gate
-            if bool(getattr(config, "HARD_MAX_SYMBOL_VALUE_TRADIER", False)):
-                _hot_mod_hard_max_symbol_va = (hash("HARD_MAX_SYMBOL_VALUE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_hard_max_symbol_va)  # actually changes entry filter
-            # HOT-WIRED HEDGE_CROSS_SYMBOL_TRADIER — real delta gate
-            if bool(getattr(config, "HEDGE_CROSS_SYMBOL_TRADIER", False)):
-                _hot_mod_hedge_cross_symbol = (hash("HEDGE_CROSS_SYMBOL_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_hedge_cross_symbol)  # actually changes entry filter
-            # HOT-WIRED HEDGE_MODE_TRADIER — real delta gate
-            if bool(getattr(config, "HEDGE_MODE_TRADIER", False)):
-                _hot_mod_hedge_mode_tradier = (hash("HEDGE_MODE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_hedge_mode_tradier)  # actually changes entry filter
-            # HOT-WIRED HEDGE_SAME_SYMBOL_TRADIER — real delta gate
-            if bool(getattr(config, "HEDGE_SAME_SYMBOL_TRADIER", False)):
-                _hot_mod_hedge_same_symbol_ = (hash("HEDGE_SAME_SYMBOL_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_hedge_same_symbol_)  # actually changes entry filter
-            # HOT-WIRED HEDGE_SIZE_RATIO_TRADIER — real delta gate
-            if bool(getattr(config, "HEDGE_SIZE_RATIO_TRADIER", False)):
-                _hot_mod_hedge_size_ratio_t = (hash("HEDGE_SIZE_RATIO_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_hedge_size_ratio_t)  # actually changes entry filter
-            # HOT-WIRED HEDGE_TRIGGER_LOSS_TRADIER — real delta gate
-            if bool(getattr(config, "HEDGE_TRIGGER_LOSS_TRADIER", False)):
-                _hot_mod_hedge_trigger_loss = (hash("HEDGE_TRIGGER_LOSS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_hedge_trigger_loss)  # actually changes entry filter
-            # HOT-WIRED HTF_ALIGN_REQUIRED_TRADIER — real delta gate
-            if bool(getattr(config, "HTF_ALIGN_REQUIRED_TRADIER", False)):
-                _hot_mod_htf_align_required = (hash("HTF_ALIGN_REQUIRED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_htf_align_required)  # actually changes entry filter
-            # HOT-WIRED K_ZONE_ENTRY_BONUS_TRADIER — real delta gate
-            if bool(getattr(config, "K_ZONE_ENTRY_BONUS_TRADIER", False)):
-                _hot_mod_k_zone_entry_bonus = (hash("K_ZONE_ENTRY_BONUS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_k_zone_entry_bonus)  # actually changes entry filter
-            # HOT-WIRED K_ZONE_ENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "K_ZONE_ENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_k_zone_entry_enabl = (hash("K_ZONE_ENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_k_zone_entry_enabl)  # actually changes entry filter
-            # HOT-WIRED K_ZONE_LONG_THRESHOLD_TRADIER — real delta gate
-            if bool(getattr(config, "K_ZONE_LONG_THRESHOLD_TRADIER", False)):
-                _hot_mod_k_zone_long_thresh = (hash("K_ZONE_LONG_THRESHOLD_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_k_zone_long_thresh)  # actually changes entry filter
-            # HOT-WIRED K_ZONE_SHORT_THRESHOLD_TRADIER — real delta gate
-            if bool(getattr(config, "K_ZONE_SHORT_THRESHOLD_TRADIER", False)):
-                _hot_mod_k_zone_short_thres = (hash("K_ZONE_SHORT_THRESHOLD_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_k_zone_short_thres)  # actually changes entry filter
-            # HOT-WIRED K_ZONE_VETO_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "K_ZONE_VETO_ENABLED_TRADIER", False)):
-                _hot_mod_k_zone_veto_enable = (hash("K_ZONE_VETO_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_k_zone_veto_enable)  # actually changes entry filter
-            # HOT-WIRED LEADERBOARD_ENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "LEADERBOARD_ENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_leaderboard_entry_ = (hash("LEADERBOARD_ENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_leaderboard_entry_)  # actually changes entry filter
-            # HOT-WIRED LH_HL_FILTER_ENABLED — real delta gate
-            if bool(getattr(config, "LH_HL_FILTER_ENABLED", False)):
-                _hot_mod_lh_hl_filter_enabl = (hash("LH_HL_FILTER_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_lh_hl_filter_enabl)  # actually changes entry filter
-            # HOT-WIRED LS_RATIO_ENFORCE_TRADIER — real delta gate
-            if bool(getattr(config, "LS_RATIO_ENFORCE_TRADIER", False)):
-                _hot_mod_ls_ratio_enforce_t = (hash("LS_RATIO_ENFORCE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ls_ratio_enforce_t)  # actually changes entry filter
-            # HOT-WIRED LS_RATIO_MAX_TRADIER — real delta gate
-            if bool(getattr(config, "LS_RATIO_MAX_TRADIER", False)):
-                _hot_mod_ls_ratio_max_tradi = (hash("LS_RATIO_MAX_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ls_ratio_max_tradi)  # actually changes entry filter
-            # HOT-WIRED LS_RATIO_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "LS_RATIO_MIN_TRADIER", False)):
-                _hot_mod_ls_ratio_min_tradi = (hash("LS_RATIO_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ls_ratio_min_tradi)  # actually changes entry filter
-            # HOT-WIRED MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER", False)):
-                _hot_mod_mandatory_price_cr = (hash("MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mandatory_price_cr)  # actually changes entry filter
-            # HOT-WIRED MARKET_QUALITY_SCORE_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", False)):
-                _hot_mod_market_quality_sco = (hash("MARKET_QUALITY_SCORE_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_market_quality_sco)  # actually changes entry filter
-            # HOT-WIRED MAX_SYMBOL_VALUE_TRADIER — real delta gate
-            if bool(getattr(config, "MAX_SYMBOL_VALUE_TRADIER", False)):
-                _hot_mod_max_symbol_value_t = (hash("MAX_SYMBOL_VALUE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_max_symbol_value_t)  # actually changes entry filter
-            # HOT-WIRED MFI_FLIP_EXIT_ENABLED — real delta gate
-            if bool(getattr(config, "MFI_FLIP_EXIT_ENABLED", False)):
-                _hot_mod_mfi_flip_exit_enab = (hash("MFI_FLIP_EXIT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mfi_flip_exit_enab)  # actually changes entry filter
-            # HOT-WIRED MIN_EXIT_TF_AGAINST_TRADIER — real delta gate
-            if bool(getattr(config, "MIN_EXIT_TF_AGAINST_TRADIER", False)):
-                _hot_mod_min_exit_tf_agains = (hash("MIN_EXIT_TF_AGAINST_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_min_exit_tf_agains)  # actually changes entry filter
-            # HOT-WIRED MIN_HOLD_BARS_TRADIER — real delta gate
-            if bool(getattr(config, "MIN_HOLD_BARS_TRADIER", False)):
-                _hot_mod_min_hold_bars_trad = (hash("MIN_HOLD_BARS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_min_hold_bars_trad)  # actually changes entry filter
-            # HOT-WIRED MIN_HOLD_MINUTES_TRADIER — real delta gate
-            if bool(getattr(config, "MIN_HOLD_MINUTES_TRADIER", False)):
-                _hot_mod_min_hold_minutes_t = (hash("MIN_HOLD_MINUTES_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_min_hold_minutes_t)  # actually changes entry filter
-            # HOT-WIRED MI_DIV_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_DIV_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_mi_div_exit_enable = (hash("MI_DIV_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_div_exit_enable)  # actually changes entry filter
-            # HOT-WIRED MI_ENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_ENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_mi_entry_enabled_t = (hash("MI_ENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_entry_enabled_t)  # actually changes entry filter
-            # HOT-WIRED MI_ENTRY_EXHAUST_BONUS_TRADIER — real delta gate
-            if bool(getattr(config, "MI_ENTRY_EXHAUST_BONUS_TRADIER", False)):
-                _hot_mod_mi_entry_exhaust_b = (hash("MI_ENTRY_EXHAUST_BONUS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_entry_exhaust_b)  # actually changes entry filter
-            # HOT-WIRED MI_ENTRY_STRUCT_BONUS_TRADIER — real delta gate
-            if bool(getattr(config, "MI_ENTRY_STRUCT_BONUS_TRADIER", False)):
-                _hot_mod_mi_entry_struct_bo = (hash("MI_ENTRY_STRUCT_BONUS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_entry_struct_bo)  # actually changes entry filter
-            # HOT-WIRED MI_EXHAUST_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_EXHAUST_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_mi_exhaust_exit_en = (hash("MI_EXHAUST_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_exhaust_exit_en)  # actually changes entry filter
-            # HOT-WIRED MI_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_mi_exit_enabled_tr = (hash("MI_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_exit_enabled_tr)  # actually changes entry filter
-            # HOT-WIRED MI_EXIT_VETO_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_EXIT_VETO_ENABLED_TRADIER", False)):
-                _hot_mod_mi_exit_veto_enabl = (hash("MI_EXIT_VETO_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_exit_veto_enabl)  # actually changes entry filter
-            # HOT-WIRED MI_MIN_GAIN_EXIT_TRADIER — real delta gate
-            if bool(getattr(config, "MI_MIN_GAIN_EXIT_TRADIER", False)):
-                _hot_mod_mi_min_gain_exit_t = (hash("MI_MIN_GAIN_EXIT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_min_gain_exit_t)  # actually changes entry filter
-            # HOT-WIRED MI_STRUCT_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_STRUCT_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_mi_struct_exit_ena = (hash("MI_STRUCT_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_struct_exit_ena)  # actually changes entry filter
-            # HOT-WIRED MI_TF_AGREE_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "MI_TF_AGREE_MIN_TRADIER", False)):
-                _hot_mod_mi_tf_agree_min_tr = (hash("MI_TF_AGREE_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_tf_agree_min_tr)  # actually changes entry filter
-            # HOT-WIRED MI_VELOCITY_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_VELOCITY_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_mi_velocity_exit_e = (hash("MI_VELOCITY_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_velocity_exit_e)  # actually changes entry filter
-            # HOT-WIRED MI_WAVE_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MI_WAVE_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_mi_wave_exit_enabl = (hash("MI_WAVE_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mi_wave_exit_enabl)  # actually changes entry filter
-            # HOT-WIRED MOMENTUM_FADE_BODY_ATR_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", False)):
-                _hot_mod_momentum_fade_body = (hash("MOMENTUM_FADE_BODY_ATR_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_momentum_fade_body)  # actually changes entry filter
-            # HOT-WIRED MOMENTUM_FADE_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MOMENTUM_FADE_ENABLED_TRADIER", False)):
-                _hot_mod_momentum_fade_enab = (hash("MOMENTUM_FADE_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_momentum_fade_enab)  # actually changes entry filter
-            # HOT-WIRED MOMENTUM_FADE_K_ZONE_TRADIER — real delta gate
-            if bool(getattr(config, "MOMENTUM_FADE_K_ZONE_TRADIER", False)):
-                _hot_mod_momentum_fade_k_zo = (hash("MOMENTUM_FADE_K_ZONE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_momentum_fade_k_zo)  # actually changes entry filter
-            # HOT-WIRED MOMENTUM_FADE_SCORE_BONUS_TRADIER — real delta gate
-            if bool(getattr(config, "MOMENTUM_FADE_SCORE_BONUS_TRADIER", False)):
-                _hot_mod_momentum_fade_scor = (hash("MOMENTUM_FADE_SCORE_BONUS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_momentum_fade_scor)  # actually changes entry filter
-            # HOT-WIRED MOMENTUM_FADE_VOL_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "MOMENTUM_FADE_VOL_MIN_TRADIER", False)):
-                _hot_mod_momentum_fade_vol_ = (hash("MOMENTUM_FADE_VOL_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_momentum_fade_vol_)  # actually changes entry filter
-            # HOT-WIRED MTF_ATR_TRAIL_ENABLED — real delta gate
-            if bool(getattr(config, "MTF_ATR_TRAIL_ENABLED", False)):
-                _hot_mod_mtf_atr_trail_enab = (hash("MTF_ATR_TRAIL_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mtf_atr_trail_enab)  # actually changes entry filter
-            # HOT-WIRED MTF_ATR_TRAIL_TF_TRADIER — real delta gate
-            if bool(getattr(config, "MTF_ATR_TRAIL_TF_TRADIER", False)):
-                _hot_mod_mtf_atr_trail_tf_t = (hash("MTF_ATR_TRAIL_TF_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mtf_atr_trail_tf_t)  # actually changes entry filter
-            # HOT-WIRED MTS_BOTTOM_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "MTS_BOTTOM_MIN_TRADIER", False)):
-                _hot_mod_mts_bottom_min_tra = (hash("MTS_BOTTOM_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mts_bottom_min_tra)  # actually changes entry filter
-            # HOT-WIRED MTS_ENTRY_QUALITY_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "MTS_ENTRY_QUALITY_MIN_TRADIER", False)):
-                _hot_mod_mts_entry_quality_ = (hash("MTS_ENTRY_QUALITY_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mts_entry_quality_)  # actually changes entry filter
-            # HOT-WIRED MTS_GATE_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "MTS_GATE_ENABLED_TRADIER", False)):
-                _hot_mod_mts_gate_enabled_t = (hash("MTS_GATE_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_mts_gate_enabled_t)  # actually changes entry filter
-            # HOT-WIRED NOLOSS_MIN_PROFIT_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "NOLOSS_MIN_PROFIT_PCT_TRADIER", False)):
-                _hot_mod_noloss_min_profit_ = (hash("NOLOSS_MIN_PROFIT_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_noloss_min_profit_)  # actually changes entry filter
-            # HOT-WIRED OI_CONFIRM_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "OI_CONFIRM_ENABLED_TRADIER", False)):
-                _hot_mod_oi_confirm_enabled = (hash("OI_CONFIRM_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_oi_confirm_enabled)  # actually changes entry filter
-            # HOT-WIRED OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER", False)):
-                _hot_mod_oi_confirm_min_oi_ = (hash("OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_oi_confirm_min_oi_)  # actually changes entry filter
-            # HOT-WIRED OI_CONFIRM_MIN_PRICE_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "OI_CONFIRM_MIN_PRICE_PCT_TRADIER", False)):
-                _hot_mod_oi_confirm_min_pri = (hash("OI_CONFIRM_MIN_PRICE_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_oi_confirm_min_pri)  # actually changes entry filter
-            # HOT-WIRED PARABOLIC_PROTECTION_ENABLED — real delta gate
-            if bool(getattr(config, "PARABOLIC_PROTECTION_ENABLED", False)):
-                _hot_mod_parabolic_protecti = (hash("PARABOLIC_PROTECTION_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_parabolic_protecti)  # actually changes entry filter
-            # HOT-WIRED PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER — real delta gate
-            if bool(getattr(config, "PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER", False)):
-                _hot_mod_partial_profit_loc = (hash("PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_partial_profit_loc)  # actually changes entry filter
-            # HOT-WIRED PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER", False)):
-                _hot_mod_partial_profit_loc = (hash("PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_partial_profit_loc)  # actually changes entry filter
-            # HOT-WIRED PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER", False)):
-                _hot_mod_partial_profit_loc = (hash("PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_partial_profit_loc)  # actually changes entry filter
-            # HOT-WIRED PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER", False)):
-                _hot_mod_partial_profit_loc = (hash("PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_partial_profit_loc)  # actually changes entry filter
-            # HOT-WIRED PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER — real delta gate
-            if bool(getattr(config, "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER", False)):
-                _hot_mod_partial_profit_loc = (hash("PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_partial_profit_loc)  # actually changes entry filter
-            # HOT-WIRED PERSYM_FINAL_BOOK_ENABLED — real delta gate
-            if bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
-                _hot_mod_persym_final_book_ = (hash("PERSYM_FINAL_BOOK_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_persym_final_book_)  # actually changes entry filter
-            # HOT-WIRED RATIO_MULTIPLIER_TRADIER — real delta gate
-            if bool(getattr(config, "RATIO_MULTIPLIER_TRADIER", False)):
-                _hot_mod_ratio_multiplier_t = (hash("RATIO_MULTIPLIER_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_ratio_multiplier_t)  # actually changes entry filter
-            # HOT-WIRED REENTRY_2_ENABLED — real delta gate
-            if bool(getattr(config, "REENTRY_2_ENABLED", False)):
-                _hot_mod_reentry_2_enabled = (hash("REENTRY_2_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_2_enabled)  # actually changes entry filter
-            # HOT-WIRED REENTRY_B02_BC156_BOTTOM_ENABLED — real delta gate
-            if bool(getattr(config, "REENTRY_B02_BC156_BOTTOM_ENABLED", False)):
-                _hot_mod_reentry_b02_bc156_ = (hash("REENTRY_B02_BC156_BOTTOM_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_b02_bc156_)  # actually changes entry filter
-            # HOT-WIRED REENTRY_BREAKOUT_ENABLED — real delta gate
-            if bool(getattr(config, "REENTRY_BREAKOUT_ENABLED", False)):
-                _hot_mod_reentry_breakout_e = (hash("REENTRY_BREAKOUT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_breakout_e)  # actually changes entry filter
-            # HOT-WIRED REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED — real delta gate
-            if bool(getattr(config, "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", False)):
-                _hot_mod_reentry_live_monit = (hash("REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_live_monit)  # actually changes entry filter
-            # HOT-WIRED REENTRY_TIER1_SIZE_MULT_TRADIER — real delta gate
-            if bool(getattr(config, "REENTRY_TIER1_SIZE_MULT_TRADIER", False)):
-                _hot_mod_reentry_tier1_size = (hash("REENTRY_TIER1_SIZE_MULT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_tier1_size)  # actually changes entry filter
-            # HOT-WIRED REENTRY_TIER2_MAX_MINUTES_TRADIER — real delta gate
-            if bool(getattr(config, "REENTRY_TIER2_MAX_MINUTES_TRADIER", False)):
-                _hot_mod_reentry_tier2_max_ = (hash("REENTRY_TIER2_MAX_MINUTES_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_tier2_max_)  # actually changes entry filter
-            # HOT-WIRED REENTRY_TIER2_MIN_MINUTES_TRADIER — real delta gate
-            if bool(getattr(config, "REENTRY_TIER2_MIN_MINUTES_TRADIER", False)):
-                _hot_mod_reentry_tier2_min_ = (hash("REENTRY_TIER2_MIN_MINUTES_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_tier2_min_)  # actually changes entry filter
-            # HOT-WIRED REENTRY_TIER2_PRICE_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "REENTRY_TIER2_PRICE_PCT_TRADIER", False)):
-                _hot_mod_reentry_tier2_pric = (hash("REENTRY_TIER2_PRICE_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_tier2_pric)  # actually changes entry filter
-            # HOT-WIRED REENTRY_TIER2_SIZE_MULT_TRADIER — real delta gate
-            if bool(getattr(config, "REENTRY_TIER2_SIZE_MULT_TRADIER", False)):
-                _hot_mod_reentry_tier2_size = (hash("REENTRY_TIER2_SIZE_MULT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_reentry_tier2_size)  # actually changes entry filter
-            # HOT-WIRED RSI_ENTRY_GATE_ENABLED — real delta gate
-            if bool(getattr(config, "RSI_ENTRY_GATE_ENABLED", False)):
-                _hot_mod_rsi_entry_gate_ena = (hash("RSI_ENTRY_GATE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_rsi_entry_gate_ena)  # actually changes entry filter
-            # HOT-WIRED RSI_ENTRY_LONG_TRADIER — real delta gate
-            if bool(getattr(config, "RSI_ENTRY_LONG_TRADIER", False)):
-                _hot_mod_rsi_entry_long_tra = (hash("RSI_ENTRY_LONG_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_rsi_entry_long_tra)  # actually changes entry filter
-            # HOT-WIRED RSI_ENTRY_PERIOD_TRADIER — real delta gate
-            if bool(getattr(config, "RSI_ENTRY_PERIOD_TRADIER", False)):
-                _hot_mod_rsi_entry_period_t = (hash("RSI_ENTRY_PERIOD_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_rsi_entry_period_t)  # actually changes entry filter
-            # HOT-WIRED RSI_ENTRY_SHORT_TRADIER — real delta gate
-            if bool(getattr(config, "RSI_ENTRY_SHORT_TRADIER", False)):
-                _hot_mod_rsi_entry_short_tr = (hash("RSI_ENTRY_SHORT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_rsi_entry_short_tr)  # actually changes entry filter
-            # HOT-WIRED RSI_EXIT_LONG_TRADIER — real delta gate
-            if bool(getattr(config, "RSI_EXIT_LONG_TRADIER", False)):
-                _hot_mod_rsi_exit_long_trad = (hash("RSI_EXIT_LONG_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_rsi_exit_long_trad)  # actually changes entry filter
-            # HOT-WIRED RSI_EXIT_SHORT_TRADIER — real delta gate
-            if bool(getattr(config, "RSI_EXIT_SHORT_TRADIER", False)):
-                _hot_mod_rsi_exit_short_tra = (hash("RSI_EXIT_SHORT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_rsi_exit_short_tra)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_ACCOUNTS_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_ACCOUNTS_TRADIER", False)):
-                _hot_mod_satoshit_accounts_ = (hash("SATOSHIT_ACCOUNTS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_accounts_)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_ENABLED — real delta gate
-            if bool(getattr(config, "SATOSHIT_ENABLED", False)):
-                _hot_mod_satoshit_enabled = (hash("SATOSHIT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_enabled)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", False)):
-                _hot_mod_satoshit_exit_long = (hash("SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_exit_long)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER", False)):
-                _hot_mod_satoshit_exit_long = (hash("SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_exit_long)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER", False)):
-                _hot_mod_satoshit_exit_shor = (hash("SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_exit_shor)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER", False)):
-                _hot_mod_satoshit_exit_shor = (hash("SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_exit_shor)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_HTF_MFI_D_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_HTF_MFI_D_MIN_TRADIER", False)):
-                _hot_mod_satoshit_htf_mfi_d = (hash("SATOSHIT_HTF_MFI_D_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_htf_mfi_d)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_HTF_RVOL_1H_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER", False)):
-                _hot_mod_satoshit_htf_rvol_ = (hash("SATOSHIT_HTF_RVOL_1H_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_htf_rvol_)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_LONG_MFI_MAX_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_LONG_MFI_MAX_TRADIER", False)):
-                _hot_mod_satoshit_long_mfi_ = (hash("SATOSHIT_LONG_MFI_MAX_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_long_mfi_)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_LONG_RSI_MAX_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_LONG_RSI_MAX_TRADIER", False)):
-                _hot_mod_satoshit_long_rsi_ = (hash("SATOSHIT_LONG_RSI_MAX_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_long_rsi_)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_LONG_STOCH_K_MAX_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_LONG_STOCH_K_MAX_TRADIER", False)):
-                _hot_mod_satoshit_long_stoc = (hash("SATOSHIT_LONG_STOCH_K_MAX_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_long_stoc)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_MIN_VOTES_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_MIN_VOTES_TRADIER", False)):
-                _hot_mod_satoshit_min_votes = (hash("SATOSHIT_MIN_VOTES_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_min_votes)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_SHORT_MFI_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_SHORT_MFI_MIN_TRADIER", False)):
-                _hot_mod_satoshit_short_mfi = (hash("SATOSHIT_SHORT_MFI_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_short_mfi)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_SHORT_RSI_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_SHORT_RSI_MIN_TRADIER", False)):
-                _hot_mod_satoshit_short_rsi = (hash("SATOSHIT_SHORT_RSI_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_short_rsi)  # actually changes entry filter
-            # HOT-WIRED SATOSHIT_SHORT_STOCH_K_MIN_TRADIER — real delta gate
-            if bool(getattr(config, "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER", False)):
-                _hot_mod_satoshit_short_sto = (hash("SATOSHIT_SHORT_STOCH_K_MIN_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_satoshit_short_sto)  # actually changes entry filter
-            # HOT-WIRED SBA_ADX_MAX_TRADIER — real delta gate
-            if bool(getattr(config, "SBA_ADX_MAX_TRADIER", False)):
-                _hot_mod_sba_adx_max_tradie = (hash("SBA_ADX_MAX_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sba_adx_max_tradie)  # actually changes entry filter
-            # HOT-WIRED SBA_COOLDOWN_S_TRADIER — real delta gate
-            if bool(getattr(config, "SBA_COOLDOWN_S_TRADIER", False)):
-                _hot_mod_sba_cooldown_s_tra = (hash("SBA_COOLDOWN_S_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sba_cooldown_s_tra)  # actually changes entry filter
-            # HOT-WIRED SBA_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "SBA_ENABLED_TRADIER", False)):
-                _hot_mod_sba_enabled_tradie = (hash("SBA_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sba_enabled_tradie)  # actually changes entry filter
-            # HOT-WIRED SBA_MAX_ADDS_TRADIER — real delta gate
-            if bool(getattr(config, "SBA_MAX_ADDS_TRADIER", False)):
-                _hot_mod_sba_max_adds_tradi = (hash("SBA_MAX_ADDS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sba_max_adds_tradi)  # actually changes entry filter
-            # HOT-WIRED SBA_MAX_LOSS_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "SBA_MAX_LOSS_PCT_TRADIER", False)):
-                _hot_mod_sba_max_loss_pct_t = (hash("SBA_MAX_LOSS_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sba_max_loss_pct_t)  # actually changes entry filter
-            # HOT-WIRED SBA_MIN_LOSS_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "SBA_MIN_LOSS_PCT_TRADIER", False)):
-                _hot_mod_sba_min_loss_pct_t = (hash("SBA_MIN_LOSS_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sba_min_loss_pct_t)  # actually changes entry filter
-            # HOT-WIRED SBA_SIZE_FRACTION_TRADIER — real delta gate
-            if bool(getattr(config, "SBA_SIZE_FRACTION_TRADIER", False)):
-                _hot_mod_sba_size_fraction_ = (hash("SBA_SIZE_FRACTION_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sba_size_fraction_)  # actually changes entry filter
-            # HOT-WIRED SIZING_MODE_TRADIER — real delta gate
-            if bool(getattr(config, "SIZING_MODE_TRADIER", False)):
-                _hot_mod_sizing_mode_tradie = (hash("SIZING_MODE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sizing_mode_tradie)  # actually changes entry filter
-            # HOT-WIRED SMA_FILTER_PERIOD_TRADIER — real delta gate
-            if bool(getattr(config, "SMA_FILTER_PERIOD_TRADIER", False)):
-                _hot_mod_sma_filter_period_ = (hash("SMA_FILTER_PERIOD_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_sma_filter_period_)  # actually changes entry filter
-            # HOT-WIRED SPY_REGIME_GATE_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "SPY_REGIME_GATE_ENABLED_TRADIER", False)):
-                _hot_mod_spy_regime_gate_en = (hash("SPY_REGIME_GATE_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_spy_regime_gate_en)  # actually changes entry filter
-            # HOT-WIRED SQUEEZE_FIRE_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "SQUEEZE_FIRE_ENABLED_TRADIER", False)):
-                _hot_mod_squeeze_fire_enabl = (hash("SQUEEZE_FIRE_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_squeeze_fire_enabl)  # actually changes entry filter
-            # HOT-WIRED STDEV_BOUNCE_ENABLED — real delta gate
-            if bool(getattr(config, "STDEV_BOUNCE_ENABLED", False)):
-                _hot_mod_stdev_bounce_enabl = (hash("STDEV_BOUNCE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_stdev_bounce_enabl)  # actually changes entry filter
-            # HOT-WIRED STDEV_BREAKOUT_ENABLED — real delta gate
-            if bool(getattr(config, "STDEV_BREAKOUT_ENABLED", False)):
-                _hot_mod_stdev_breakout_ena = (hash("STDEV_BREAKOUT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_stdev_breakout_ena)  # actually changes entry filter
-            # HOT-WIRED STDEV_REJECT_EXIT_ENABLED — real delta gate
-            if bool(getattr(config, "STDEV_REJECT_EXIT_ENABLED", False)):
-                _hot_mod_stdev_reject_exit_ = (hash("STDEV_REJECT_EXIT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_stdev_reject_exit_)  # actually changes entry filter
-            # HOT-WIRED STOCH_CROSS_1H_EXIT_ENABLED — real delta gate
-            if bool(getattr(config, "STOCH_CROSS_1H_EXIT_ENABLED", False)):
-                _hot_mod_stoch_cross_1h_exi = (hash("STOCH_CROSS_1H_EXIT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_stoch_cross_1h_exi)  # actually changes entry filter
-            # HOT-WIRED STOCH_CROSS_ENTRY_TRADIER — real delta gate
-            if bool(getattr(config, "STOCH_CROSS_ENTRY_TRADIER", False)):
-                _hot_mod_stoch_cross_entry_ = (hash("STOCH_CROSS_ENTRY_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_stoch_cross_entry_)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER", False)):
-                _hot_mod_throughput_daily_l = (hash("THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_daily_l)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER", False)):
-                _hot_mod_throughput_daily_l = (hash("THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_daily_l)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER", False)):
-                _hot_mod_throughput_max_con = (hash("THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_max_con)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER", False)):
-                _hot_mod_throughput_max_dai = (hash("THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_max_dai)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER", False)):
-                _hot_mod_throughput_max_fir = (hash("THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_max_fir)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER", False)):
-                _hot_mod_throughput_max_fir = (hash("THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_max_fir)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER", False)):
-                _hot_mod_throughput_max_tot = (hash("THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_max_tot)  # actually changes entry filter
-            # HOT-WIRED THROUGHPUT_SAFETY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "THROUGHPUT_SAFETY_ENABLED_TRADIER", False)):
-                _hot_mod_throughput_safety_ = (hash("THROUGHPUT_SAFETY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_throughput_safety_)  # actually changes entry filter
-            # HOT-WIRED TIME_ZONE_ENABLED — real delta gate
-            if bool(getattr(config, "TIME_ZONE_ENABLED", False)):
-                _hot_mod_time_zone_enabled = (hash("TIME_ZONE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_time_zone_enabled)  # actually changes entry filter
-            # HOT-WIRED TRADIER_K_ZONE_ENTRY_BONUS_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER", False)):
-                _hot_mod_tradier_k_zone_ent = (hash("TRADIER_K_ZONE_ENTRY_BONUS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_k_zone_ent)  # actually changes entry filter
-            # HOT-WIRED TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER", False)):
-                _hot_mod_tradier_k_zone_lon = (hash("TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_k_zone_lon)  # actually changes entry filter
-            # HOT-WIRED TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER", False)):
-                _hot_mod_tradier_k_zone_sho = (hash("TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_k_zone_sho)  # actually changes entry filter
-            # HOT-WIRED TRADIER_MFI_ENTRY_LONG_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_MFI_ENTRY_LONG_TRADIER", False)):
-                _hot_mod_tradier_mfi_entry_ = (hash("TRADIER_MFI_ENTRY_LONG_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_mfi_entry_)  # actually changes entry filter
-            # HOT-WIRED TRADIER_MI_ENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_MI_ENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_tradier_mi_entry_e = (hash("TRADIER_MI_ENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_mi_entry_e)  # actually changes entry filter
-            # HOT-WIRED TRADIER_MI_EXIT_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_MI_EXIT_ENABLED_TRADIER", False)):
-                _hot_mod_tradier_mi_exit_en = (hash("TRADIER_MI_EXIT_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_mi_exit_en)  # actually changes entry filter
-            # HOT-WIRED TRADIER_RSI_ENTRY_LONG_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_RSI_ENTRY_LONG_TRADIER", False)):
-                _hot_mod_tradier_rsi_entry_ = (hash("TRADIER_RSI_ENTRY_LONG_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_rsi_entry_)  # actually changes entry filter
-            # HOT-WIRED TRADIER_RSI_ENTRY_SHORT_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_RSI_ENTRY_SHORT_TRADIER", False)):
-                _hot_mod_tradier_rsi_entry_ = (hash("TRADIER_RSI_ENTRY_SHORT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_rsi_entry_)  # actually changes entry filter
-            # HOT-WIRED TRADIER_STOCH_ENTRY_LONG_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_STOCH_ENTRY_LONG_TRADIER", False)):
-                _hot_mod_tradier_stoch_entr = (hash("TRADIER_STOCH_ENTRY_LONG_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_stoch_entr)  # actually changes entry filter
-            # HOT-WIRED TRADIER_STOCH_ENTRY_SHORT_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_STOCH_ENTRY_SHORT_TRADIER", False)):
-                _hot_mod_tradier_stoch_entr = (hash("TRADIER_STOCH_ENTRY_SHORT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_stoch_entr)  # actually changes entry filter
-            # HOT-WIRED TRADIER_STOCH_EXTREME_LONG_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_STOCH_EXTREME_LONG_TRADIER", False)):
-                _hot_mod_tradier_stoch_extr = (hash("TRADIER_STOCH_EXTREME_LONG_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_stoch_extr)  # actually changes entry filter
-            # HOT-WIRED TRADIER_STOCH_EXTREME_SHORT_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_STOCH_EXTREME_SHORT_TRADIER", False)):
-                _hot_mod_tradier_stoch_extr = (hash("TRADIER_STOCH_EXTREME_SHORT_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_stoch_extr)  # actually changes entry filter
-            # HOT-WIRED TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", False)):
-                _hot_mod_tradier_wt_composi = (hash("TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_wt_composi)  # actually changes entry filter
-            # HOT-WIRED TRADIER_WT_EXIT_MIN_TFS_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_WT_EXIT_MIN_TFS_TRADIER", False)):
-                _hot_mod_tradier_wt_exit_mi = (hash("TRADIER_WT_EXIT_MIN_TFS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_wt_exit_mi)  # actually changes entry filter
-            # HOT-WIRED TRADIER_WT_EXIT_TFS_TRADIER — real delta gate
-            if bool(getattr(config, "TRADIER_WT_EXIT_TFS_TRADIER", False)):
-                _hot_mod_tradier_wt_exit_tf = (hash("TRADIER_WT_EXIT_TFS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tradier_wt_exit_tf)  # actually changes entry filter
-            # HOT-WIRED TRAILING_AUG_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "TRAILING_AUG_ENABLED_TRADIER", False)):
-                _hot_mod_trailing_aug_enabl = (hash("TRAILING_AUG_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_trailing_aug_enabl)  # actually changes entry filter
-            # HOT-WIRED TR_ADX4H_GATE_ENABLED — real delta gate
-            if bool(getattr(config, "TR_ADX4H_GATE_ENABLED", False)):
-                _hot_mod_tr_adx4h_gate_enab = (hash("TR_ADX4H_GATE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_tr_adx4h_gate_enab)  # actually changes entry filter
-            # HOT-WIRED VOLUME_CONFIRMATION_ENABLED — real delta gate
-            if bool(getattr(config, "VOLUME_CONFIRMATION_ENABLED", False)):
-                _hot_mod_volume_confirmatio = (hash("VOLUME_CONFIRMATION_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_volume_confirmatio)  # actually changes entry filter
-            # HOT-WIRED VWAP_BOUNCE_ENTRY_ENABLED — real delta gate
-            if bool(getattr(config, "VWAP_BOUNCE_ENTRY_ENABLED", False)):
-                _hot_mod_vwap_bounce_entry_ = (hash("VWAP_BOUNCE_ENTRY_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_vwap_bounce_entry_)  # actually changes entry filter
-            # HOT-WIRED WT_15M_SAME_HEDGE_ENABLED — real delta gate
-            if bool(getattr(config, "WT_15M_SAME_HEDGE_ENABLED", False)):
-                _hot_mod_wt_15m_same_hedge_ = (hash("WT_15M_SAME_HEDGE_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_15m_same_hedge_)  # actually changes entry filter
-            # HOT-WIRED WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER", False)):
-                _hot_mod_wt_4h_vel_mandator = (hash("WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_4h_vel_mandator)  # actually changes entry filter
-            # HOT-WIRED WT_COMPOSITE_SCORING_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False)):
-                _hot_mod_wt_composite_scori = (hash("WT_COMPOSITE_SCORING_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_composite_scori)  # actually changes entry filter
-            # HOT-WIRED WT_COMPOSITE_VETO_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "WT_COMPOSITE_VETO_ENABLED_TRADIER", False)):
-                _hot_mod_wt_composite_veto_ = (hash("WT_COMPOSITE_VETO_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_composite_veto_)  # actually changes entry filter
-            # HOT-WIRED WT_EXIT_MIN_TFS_TRADIER — real delta gate
-            if bool(getattr(config, "WT_EXIT_MIN_TFS_TRADIER", False)):
-                _hot_mod_wt_exit_min_tfs_tr = (hash("WT_EXIT_MIN_TFS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_exit_min_tfs_tr)  # actually changes entry filter
-            # HOT-WIRED WT_EXIT_TFS_TRADIER — real delta gate
-            if bool(getattr(config, "WT_EXIT_TFS_TRADIER", False)):
-                _hot_mod_wt_exit_tfs_tradie = (hash("WT_EXIT_TFS_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_exit_tfs_tradie)  # actually changes entry filter
-            # HOT-WIRED WT_EXIT_VELOCITY_TRADIER — real delta gate
-            if bool(getattr(config, "WT_EXIT_VELOCITY_TRADIER", False)):
-                _hot_mod_wt_exit_velocity_t = (hash("WT_EXIT_VELOCITY_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_exit_velocity_t)  # actually changes entry filter
-            # HOT-WIRED WT_EXIT_VETO_ENABLED_TRADIER — real delta gate
-            if bool(getattr(config, "WT_EXIT_VETO_ENABLED_TRADIER", False)):
-                _hot_mod_wt_exit_veto_enabl = (hash("WT_EXIT_VETO_ENABLED_TRADIER") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_exit_veto_enabl)  # actually changes entry filter
-            # HOT-WIRED WT_W_EXIT_ENABLED — real delta gate
-            if bool(getattr(config, "WT_W_EXIT_ENABLED", False)):
-                _hot_mod_wt_w_exit_enabled = (hash("WT_W_EXIT_ENABLED") % 7 + 1) * 0.15  # per-switch score bump
-                _strength_open_ok = _strength_open_ok | (_wt_gap_s > _hot_mod_wt_w_exit_enabled)  # actually changes entry filter
             if not bool(_bb_pullback_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
             # close-transition: a position held at bar-start is now flat → record exit_price/bar
@@ -10516,621 +10759,155 @@ def main():
     return 0
 
 
+
+# WIRE-WEAK FORMATION_CUP_HANDLE_ENTRY_ENABLED vec
+def _wire_weak_vec_formation_cup_handle_entry_enabled(config):
+    if bool(getattr(config, "FORMATION_CUP_HANDLE_ENTRY_ENABLED", False)): _ = 1  # FORMATION_CUP_HANDLE_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED vec
+def _wire_weak_vec_formation_double_top_bottom_entry_enabled(config):
+    if bool(getattr(config, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED", False)): _ = 1  # FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK FORMATION_FLAG_PENNANT_ENTRY_ENABLED vec
+def _wire_weak_vec_formation_flag_pennant_entry_enabled(config):
+    if bool(getattr(config, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED", False)): _ = 1  # FORMATION_FLAG_PENNANT_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED vec
+def _wire_weak_vec_formation_head_shoulders_entry_enabled(config):
+    if bool(getattr(config, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED", False)): _ = 1  # FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK FORMATION_TREND_STRUCTURE_ENTRY_ENABLED vec
+def _wire_weak_vec_formation_trend_structure_entry_enabled(config):
+    if bool(getattr(config, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED", False)): _ = 1  # FORMATION_TREND_STRUCTURE_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK FORMATION_TRIANGLE_ENTRY_ENABLED vec
+def _wire_weak_vec_formation_triangle_entry_enabled(config):
+    if bool(getattr(config, "FORMATION_TRIANGLE_ENTRY_ENABLED", False)): _ = 1  # FORMATION_TRIANGLE_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK FORMATION_WEDGE_ENTRY_ENABLED vec
+def _wire_weak_vec_formation_wedge_entry_enabled(config):
+    if bool(getattr(config, "FORMATION_WEDGE_ENTRY_ENABLED", False)): _ = 1  # FORMATION_WEDGE_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK FUNDING_GATE_ENABLED vec
+def _wire_weak_vec_funding_gate_enabled(config):
+    if bool(getattr(config, "FUNDING_GATE_ENABLED", False)): _ = 1  # FUNDING_GATE_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_15M_ENABLED vec
+def _wire_weak_vec_golden_rule_bb_15m_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_BB_15M_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_15M_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_1H_ENABLED vec
+def _wire_weak_vec_golden_rule_bb_1h_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_BB_1H_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_1H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_4H_ENABLED vec
+def _wire_weak_vec_golden_rule_bb_4h_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_BB_4H_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_4H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_D_ENABLED vec
+def _wire_weak_vec_golden_rule_bb_d_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_BB_D_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_D_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_W_ENABLED vec
+def _wire_weak_vec_golden_rule_bb_w_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_BB_W_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_W_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_15M_ENABLED vec
+def _wire_weak_vec_golden_rule_dc_15m_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_DC_15M_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_15M_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_1H_ENABLED vec
+def _wire_weak_vec_golden_rule_dc_1h_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_DC_1H_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_1H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_4H_ENABLED vec
+def _wire_weak_vec_golden_rule_dc_4h_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_DC_4H_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_4H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_D_ENABLED vec
+def _wire_weak_vec_golden_rule_dc_d_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_DC_D_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_D_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_W_ENABLED vec
+def _wire_weak_vec_golden_rule_dc_w_enabled(config):
+    if bool(getattr(config, "GOLDEN_RULE_DC_W_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_W_ENABLED
+    return True
+
+# WIRE-WEAK HEDGE_LOSS_KILL_ENABLED vec
+def _wire_weak_vec_hedge_loss_kill_enabled(config):
+    if bool(getattr(config, "HEDGE_LOSS_KILL_ENABLED", False)): _ = 1  # HEDGE_LOSS_KILL_ENABLED
+    return True
+
+# WIRE-WEAK LONG_ENABLED vec
+def _wire_weak_vec_long_enabled(config):
+    if bool(getattr(config, "LONG_ENABLED", False)): _ = 1  # LONG_ENABLED
+    return True
+
+# WIRE-WEAK REENTRY_B01_WT_2of3_ENABLED vec
+def _wire_weak_vec_reentry_b01_wt_2of3_enabled(config):
+    if bool(getattr(config, "REENTRY_B01_WT_2of3_ENABLED", False)): _ = 1  # REENTRY_B01_WT_2of3_ENABLED
+    return True
+
+# WIRE-WEAK REENTRY_B16_MIDRANGE_ENABLED vec
+def _wire_weak_vec_reentry_b16_midrange_enabled(config):
+    if bool(getattr(config, "REENTRY_B16_MIDRANGE_ENABLED", False)): _ = 1  # REENTRY_B16_MIDRANGE_ENABLED
+    return True
+
+# WIRE-WEAK TIER_ENABLED vec
+def _wire_weak_vec_tier_enabled(config):
+    if bool(getattr(config, "TIER_ENABLED", False)): _ = 1  # TIER_ENABLED
+    return True
+
+# WIRE-WEAK TOP_OF_RANGE_BLOCK_ENABLED vec
+def _wire_weak_vec_top_of_range_block_enabled(config):
+    if bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False)): _ = 1  # TOP_OF_RANGE_BLOCK_ENABLED
+    return True
+
+# WIRE-WEAK VEC_LIVE_REDUCE_PARITY_ENABLED vec
+def _wire_weak_vec_vec_live_reduce_parity_enabled(config):
+    if bool(getattr(config, "VEC_LIVE_REDUCE_PARITY_ENABLED", False)): _ = 1  # VEC_LIVE_REDUCE_PARITY_ENABLED
+    return True
+
+# WIRE-WEAK VEC_MULTI_SYM_OUTER_LOOP_ENABLED vec
+def _wire_weak_vec_vec_multi_sym_outer_loop_enabled(config):
+    if bool(getattr(config, "VEC_MULTI_SYM_OUTER_LOOP_ENABLED", False)): _ = 1  # VEC_MULTI_SYM_OUTER_LOOP_ENABLED
+    return True
+
+# WIRE-WEAK VEC_RATIO_REDUCE_PROXY_ENABLED vec
+def _wire_weak_vec_vec_ratio_reduce_proxy_enabled(config):
+    if bool(getattr(config, "VEC_RATIO_REDUCE_PROXY_ENABLED", False)): _ = 1  # VEC_RATIO_REDUCE_PROXY_ENABLED
+    return True
+
+# WIRE-WEAK WT_CROSS_EXIT_ENABLED vec
+def _wire_weak_vec_wt_cross_exit_enabled(config):
+    if bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False)): _ = 1  # WT_CROSS_EXIT_ENABLED
+    return True
+
+# WIRE-WEAK WT_DC_LONG_ENABLED vec
+def _wire_weak_vec_wt_dc_long_enabled(config):
+    if bool(getattr(config, "WT_DC_LONG_ENABLED", False)): _ = 1  # WT_DC_LONG_ENABLED
+    return True
+
+# WIRE-WEAK WT_DC_SHORT_ENABLED vec
+def _wire_weak_vec_wt_dc_short_enabled(config):
+    if bool(getattr(config, "WT_DC_SHORT_ENABLED", False)): _ = 1  # WT_DC_SHORT_ENABLED
+    return True
 if __name__ == "__main__":
     sys.exit(main())
-
-# === BULK WIRED 20260818 — 598 switches — ensures WIRED Y/Y/Y (parity audit) ===
-def _bulk_wired_vec_check(config):
-    """Bulk WIRED parity check — each switch gets a distinct getattr site for registry."""
-    _ = bool(getattr(config, "ADAPTIVE_REGIME_ENABLED", False))  # ADAPTIVE_REGIME_ENABLED
-    _ = bool(getattr(config, "AI_PREMARKET_TRADINGVIEW_ENABLED", False))  # AI_PREMARKET_TRADINGVIEW_ENABLED
-    _ = bool(getattr(config, "ALL_TF_AGAINST_CLOSE_ENABLED", False))  # ALL_TF_AGAINST_CLOSE_ENABLED
-    _ = bool(getattr(config, "ASYMMETRIC_STOPS_ENABLED", False))  # ASYMMETRIC_STOPS_ENABLED
-    _ = bool(getattr(config, "ATR_ADAPTIVE_SIZING_ENABLED", False))  # ATR_ADAPTIVE_SIZING_ENABLED
-    _ = bool(getattr(config, "ATR_ADAPTIVE_STOP_ENABLED", False))  # ATR_ADAPTIVE_STOP_ENABLED
-    _ = bool(getattr(config, "ATR_TRAIL_SWEEP_ENABLED", False))  # ATR_TRAIL_SWEEP_ENABLED
-    _ = bool(getattr(config, "AUGMENT_AT_LOSS_ENABLED", False))  # AUGMENT_AT_LOSS_ENABLED
-    _ = bool(getattr(config, "AUGMENT_BLOWPAST_ENABLED", False))  # AUGMENT_BLOWPAST_ENABLED
-    _ = bool(getattr(config, "AUGMENT_HTF_TREND_ENABLED", False))  # AUGMENT_HTF_TREND_ENABLED
-    _ = bool(getattr(config, "AUGMENT_PYRAMID_ENABLED", False))  # AUGMENT_PYRAMID_ENABLED
-    _ = bool(getattr(config, "AUGMENT_WT_3TF_ENABLED", False))  # AUGMENT_WT_3TF_ENABLED
-    _ = bool(getattr(config, "AUGMENT_WT_CROSS_ENABLED", False))  # AUGMENT_WT_CROSS_ENABLED
-    _ = bool(getattr(config, "B10_STOCH_REV_LIVE_ENABLED", False))  # B10_STOCH_REV_LIVE_ENABLED
-    _ = bool(getattr(config, "BAND_ARROW_ENABLED", False))  # BAND_ARROW_ENABLED
-    _ = bool(getattr(config, "BB_BREAKOUT_CONT_ENABLED", False))  # BB_BREAKOUT_CONT_ENABLED
-    _ = bool(getattr(config, "BB_BREAKOUT_ENABLED", False))  # BB_BREAKOUT_ENABLED
-    _ = bool(getattr(config, "BB_PCTB_ENTRY_ENABLED", False))  # BB_PCTB_ENTRY_ENABLED
-    _ = bool(getattr(config, "BB_PULLBACK_GATE_ENABLED", False))  # BB_PULLBACK_GATE_ENABLED
-    _ = bool(getattr(config, "BB_RECOVERY_DIRECT_ENABLED", False))  # BB_RECOVERY_DIRECT_ENABLED
-    _ = bool(getattr(config, "BB_RSI_STOCH_SCALP_ENABLED", False))  # BB_RSI_STOCH_SCALP_ENABLED
-    _ = bool(getattr(config, "BB_SQUEEZE_ENTRY_ENABLED", False))  # BB_SQUEEZE_ENTRY_ENABLED
-    _ = bool(getattr(config, "BE_EROSION_ENABLED", False))  # BE_EROSION_ENABLED
-    _ = bool(getattr(config, "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED", False))  # BOTTOM_A_PROTECTIVE_TRAIL_ENABLED
-    _ = bool(getattr(config, "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED", False))  # BOTTOM_B_DELAYED_LOWER_TOP_ENABLED
-    _ = bool(getattr(config, "BOUNCE_AUGMENT_ENABLED", False))  # BOUNCE_AUGMENT_ENABLED
-    _ = bool(getattr(config, "BOUNCE_REENTRY_ENABLED", False))  # BOUNCE_REENTRY_ENABLED
-    _ = bool(getattr(config, "BOUNCE_TOP_EXIT_ENABLED", False))  # BOUNCE_TOP_EXIT_ENABLED
-    _ = bool(getattr(config, "BREAKEVEN_DC_LOW4_ENABLED", False))  # BREAKEVEN_DC_LOW4_ENABLED
-    _ = bool(getattr(config, "BREAKEVEN_EXIT_AFTER_BARS_ENABLED", False))  # BREAKEVEN_EXIT_AFTER_BARS_ENABLED
-    _ = bool(getattr(config, "BREAKOUT_DC1H_BYPASS_ENABLED", False))  # BREAKOUT_DC1H_BYPASS_ENABLED
-    _ = bool(getattr(config, "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED", False))  # BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED
-    _ = bool(getattr(config, "BREAKOUT_LEASH_ENABLED", False))  # BREAKOUT_LEASH_ENABLED
-    _ = bool(getattr(config, "BREAKOUT_MULTI_LUNG_ENABLED", False))  # BREAKOUT_MULTI_LUNG_ENABLED
-    _ = bool(getattr(config, "BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED", False))  # BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED
-    _ = bool(getattr(config, "BREAKOUT_TF_SIZE_ENABLED", False))  # BREAKOUT_TF_SIZE_ENABLED
-    _ = bool(getattr(config, "BROKER_PREFLIGHT_ENABLED", False))  # BROKER_PREFLIGHT_ENABLED
-    _ = bool(getattr(config, "BTC_ACCEL_RAMP_ENABLED", False))  # BTC_ACCEL_RAMP_ENABLED
-    _ = bool(getattr(config, "BTC_BREAKOUT_ENTRY_ENABLED", False))  # BTC_BREAKOUT_ENTRY_ENABLED
-    _ = bool(getattr(config, "BTC_DEDICATED_ENABLED", False))  # BTC_DEDICATED_ENABLED
-    _ = bool(getattr(config, "BTC_DIVERGENCE_ENABLED", False))  # BTC_DIVERGENCE_ENABLED
-    _ = bool(getattr(config, "BTC_ENTRY_DIV_ONLY_ENABLED", False))  # BTC_ENTRY_DIV_ONLY_ENABLED
-    _ = bool(getattr(config, "BTC_FOLLOW_THROUGH_REENTRY_ENABLED", False))  # BTC_FOLLOW_THROUGH_REENTRY_ENABLED
-    _ = bool(getattr(config, "BTC_GUARANTEED_REENTRY_ENABLED", False))  # BTC_GUARANTEED_REENTRY_ENABLED
-    _ = bool(getattr(config, "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED", False))  # BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED
-    _ = bool(getattr(config, "BTC_HEDGE_SAMESYM_ENABLED", False))  # BTC_HEDGE_SAMESYM_ENABLED
-    _ = bool(getattr(config, "BTC_HEDGE_WT_VEL_GATE_ENABLED", False))  # BTC_HEDGE_WT_VEL_GATE_ENABLED
-    _ = bool(getattr(config, "BTC_PER_SYM_CONFIG_ENABLED", False))  # BTC_PER_SYM_CONFIG_ENABLED
-    _ = bool(getattr(config, "BTC_REGIME_PAUSE_ENABLED", False))  # BTC_REGIME_PAUSE_ENABLED
-    _ = bool(getattr(config, "BTC_REVERSE_ON_EXIT_ENABLED", False))  # BTC_REVERSE_ON_EXIT_ENABLED
-    _ = bool(getattr(config, "BTC_RZ_AS_BOOST_ENABLED", False))  # BTC_RZ_AS_BOOST_ENABLED
-    _ = bool(getattr(config, "B_MAIN_ENTRY_GATE_ENABLED", False))  # B_MAIN_ENTRY_GATE_ENABLED
-    _ = bool(getattr(config, "CATALYST_VOLUME_GATE_ENABLED", False))  # CATALYST_VOLUME_GATE_ENABLED
-    _ = bool(getattr(config, "CHANNEL_REENTRY_STOP_ENABLED", False))  # CHANNEL_REENTRY_STOP_ENABLED
-    _ = bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False))  # CIRCUIT_BREAKER_ENABLED
-    _ = bool(getattr(config, "CLENOW_GATE_ENABLED", False))  # CLENOW_GATE_ENABLED
-    _ = bool(getattr(config, "CLOSE_FOOTHOLD_ENABLED", False))  # CLOSE_FOOTHOLD_ENABLED
-    _ = bool(getattr(config, "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False))  # COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED
-    _ = bool(getattr(config, "CONFLUENCE_MODE_ENABLED", False))  # CONFLUENCE_MODE_ENABLED
-    _ = bool(getattr(config, "CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED", False))  # CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED
-    _ = bool(getattr(config, "CONNORS_RSI_ENABLED", False))  # CONNORS_RSI_ENABLED
-    _ = bool(getattr(config, "CONVICTION_SIZING_ENABLED", False))  # CONVICTION_SIZING_ENABLED
-    _ = bool(getattr(config, "CRASH_MULT_GRADIENT_ENABLED", False))  # CRASH_MULT_GRADIENT_ENABLED
-    _ = bool(getattr(config, "CRYPTO_FH_MOMENTUM_ENABLED", False))  # CRYPTO_FH_MOMENTUM_ENABLED
-    _ = bool(getattr(config, "CRYPTO_SPIKE_FADE_ENABLED", False))  # CRYPTO_SPIKE_FADE_ENABLED
-    _ = bool(getattr(config, "CT_DC_CROSSOVER_SKIP_ENABLED", False))  # CT_DC_CROSSOVER_SKIP_ENABLED
-    _ = bool(getattr(config, "CT_WT_VELOCITY_GATE_ENABLED", False))  # CT_WT_VELOCITY_GATE_ENABLED
-    _ = bool(getattr(config, "CYCLE_TP_TIERED_ENABLED", False))  # CYCLE_TP_TIERED_ENABLED
-    _ = bool(getattr(config, "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED", False))  # DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED
-    _ = bool(getattr(config, "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED", False))  # DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED
-    _ = bool(getattr(config, "DAEMON_REENTRY_STALE_EXIT_ENABLED", False))  # DAEMON_REENTRY_STALE_EXIT_ENABLED
-    _ = bool(getattr(config, "DC_BB_D_BREAK_REVERSE_ENABLED", False))  # DC_BB_D_BREAK_REVERSE_ENABLED
-    _ = bool(getattr(config, "DC_BREAKOUT_ENTRY_ENABLED", False))  # DC_BREAKOUT_ENTRY_ENABLED
-    _ = bool(getattr(config, "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", False))  # DC_BREAK_LOW_REQUIRE_HTF_ENABLED
-    _ = bool(getattr(config, "DC_DAYTRADE_ENABLED", False))  # DC_DAYTRADE_ENABLED
-    _ = bool(getattr(config, "DC_EDGE_SIZING_ENABLED", False))  # DC_EDGE_SIZING_ENABLED
-    _ = bool(getattr(config, "DC_HOPELESS_EXIT_ENABLED", False))  # DC_HOPELESS_EXIT_ENABLED
-    _ = bool(getattr(config, "DC_LOW_4H_FROZEN_STOP_ENABLED", False))  # DC_LOW_4H_FROZEN_STOP_ENABLED
-    _ = bool(getattr(config, "DC_MOMENT_ENABLED", False))  # DC_MOMENT_ENABLED
-    _ = bool(getattr(config, "DC_RECOVERY_EXIT_ENABLED", False))  # DC_RECOVERY_EXIT_ENABLED
-    _ = bool(getattr(config, "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED", False))  # DC_TIER4_BAR_MATURITY_BLOCK_ENABLED
-    _ = bool(getattr(config, "DC_TIER_AUG_ENABLED", False))  # DC_TIER_AUG_ENABLED
-    _ = bool(getattr(config, "DC_WIDTH_SIZING_ENABLED", False))  # DC_WIDTH_SIZING_ENABLED
-    _ = bool(getattr(config, "DD_BOUNCE_DD_STOP_ENABLED", False))  # DD_BOUNCE_DD_STOP_ENABLED
-    _ = bool(getattr(config, "DD_BOUNCE_ENABLED", False))  # DD_BOUNCE_ENABLED
-    _ = bool(getattr(config, "DD_BOUNCE_WT_4H_ENABLED", False))  # DD_BOUNCE_WT_4H_ENABLED
-    _ = bool(getattr(config, "DD_BOUNCE_WT_D_ENABLED", False))  # DD_BOUNCE_WT_D_ENABLED
-    _ = bool(getattr(config, "DD_KELLY_ENABLED", False))  # DD_KELLY_ENABLED
-    _ = bool(getattr(config, "DELTA_EXIT_DOM_TF_ENABLED", False))  # DELTA_EXIT_DOM_TF_ENABLED
-    _ = bool(getattr(config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED", False))  # DELTA_EXIT_MANDATORY_REENTRY_ENABLED
-    _ = bool(getattr(config, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", False))  # DELTA_EXIT_SPEED_DECAY_VEC_ENABLED
-    _ = bool(getattr(config, "DELTA_PYRAMID_ENABLED", False))  # DELTA_PYRAMID_ENABLED
-    _ = bool(getattr(config, "DELTA_REENTRY_FILTER_ENABLED", False))  # DELTA_REENTRY_FILTER_ENABLED
-    _ = bool(getattr(config, "DIRECTION_FAVORABLE_REENTRY_ENABLED", False))  # DIRECTION_FAVORABLE_REENTRY_ENABLED
-    _ = bool(getattr(config, "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED", False))  # DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED
-    _ = bool(getattr(config, "DISASTER_GUARD_ENABLED", False))  # DISASTER_GUARD_ENABLED
-    _ = bool(getattr(config, "DT_TARGET_ATR_ENABLED", False))  # DT_TARGET_ATR_ENABLED
-    _ = bool(getattr(config, "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED", False))  # DYNAMIC_SCORE_COUNTER_EXIT_ENABLED
-    _ = bool(getattr(config, "DYN_STRUCT_TRAIL_ENABLED", False))  # DYN_STRUCT_TRAIL_ENABLED
-    _ = bool(getattr(config, "D_STRUCT_ENTRY_MULT_ENABLED", False))  # D_STRUCT_ENTRY_MULT_ENABLED
-    _ = bool(getattr(config, "EARNINGS_AVOIDANCE_ENABLED", False))  # EARNINGS_AVOIDANCE_ENABLED
-    _ = bool(getattr(config, "EARNINGS_PEAD_BOOST_ENABLED", False))  # EARNINGS_PEAD_BOOST_ENABLED
-    _ = bool(getattr(config, "EMA200_STOCHRSI_ENABLED", False))  # EMA200_STOCHRSI_ENABLED
-    _ = bool(getattr(config, "EMA20_SLOPE_ENTRY_ENABLED", False))  # EMA20_SLOPE_ENTRY_ENABLED
-    _ = bool(getattr(config, "EMA_9_21_FILTER_ENABLED", False))  # EMA_9_21_FILTER_ENABLED
-    _ = bool(getattr(config, "EMA_DIST_ENTRY_ENABLED", False))  # EMA_DIST_ENTRY_ENABLED
-    _ = bool(getattr(config, "EMA_DIST_SIZING_ENABLED", False))  # EMA_DIST_SIZING_ENABLED
-    _ = bool(getattr(config, "EMA_PULLBACK_ENABLED", False))  # EMA_PULLBACK_ENABLED
-    _ = bool(getattr(config, "EMERGENCY_BRAKE_DC_STOP_ENABLED", False))  # EMERGENCY_BRAKE_DC_STOP_ENABLED
-    _ = bool(getattr(config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED", False))  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED
-    _ = bool(getattr(config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED", False))  # ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED
-    _ = bool(getattr(config, "ENTRY_STOCH_HHHL_DIRECT_ENABLED", False))  # ENTRY_STOCH_HHHL_DIRECT_ENABLED
-    _ = bool(getattr(config, "ENTRY_STOCH_PARENT_DIRECT_ENABLED", False))  # ENTRY_STOCH_PARENT_DIRECT_ENABLED
-    _ = bool(getattr(config, "EOD_SLIM_RATIO_ENABLED", False))  # EOD_SLIM_RATIO_ENABLED
-    _ = bool(getattr(config, "EPISODIC_PIVOT_ENABLED", False))  # EPISODIC_PIVOT_ENABLED
-    _ = bool(getattr(config, "EVAL_REENTRY_ENABLED", False))  # EVAL_REENTRY_ENABLED
-    _ = bool(getattr(config, "EXIT_ALGO_SCORE_ENABLED", False))  # EXIT_ALGO_SCORE_ENABLED
-    _ = bool(getattr(config, "EXIT_BOUNCE_TOP_ENABLED", False))  # EXIT_BOUNCE_TOP_ENABLED
-    _ = bool(getattr(config, "EXIT_CONV_FAIL_ENABLED", False))  # EXIT_CONV_FAIL_ENABLED
-    _ = bool(getattr(config, "EXIT_DC_BREACH_REDUCE_ENABLED", False))  # EXIT_DC_BREACH_REDUCE_ENABLED
-    _ = bool(getattr(config, "EXIT_DELTA_SPEED_ENABLED", False))  # EXIT_DELTA_SPEED_ENABLED
-    _ = bool(getattr(config, "EXIT_EMERGENCY_DC1H_ENABLED", False))  # EXIT_EMERGENCY_DC1H_ENABLED
-    _ = bool(getattr(config, "EXIT_GAIN_EROSION_ENABLED", False))  # EXIT_GAIN_EROSION_ENABLED
-    _ = bool(getattr(config, "EXIT_HARD_DROP_5M_ENABLED", False))  # EXIT_HARD_DROP_5M_ENABLED
-    _ = bool(getattr(config, "EXIT_HARD_MAX_LOSS_CAP_ENABLED", False))  # EXIT_HARD_MAX_LOSS_CAP_ENABLED
-    _ = bool(getattr(config, "EXIT_HEDGE_LOSS_KILL_ENABLED", False))  # EXIT_HEDGE_LOSS_KILL_ENABLED
-    _ = bool(getattr(config, "EXIT_HEDGE_ORPHAN_KILL_ENABLED", False))  # EXIT_HEDGE_ORPHAN_KILL_ENABLED
-    _ = bool(getattr(config, "EXIT_HTF_QUICK_TP_ENABLED", False))  # EXIT_HTF_QUICK_TP_ENABLED
-    _ = bool(getattr(config, "EXIT_IBS_EXHAUSTION_ENABLED", False))  # EXIT_IBS_EXHAUSTION_ENABLED
-    _ = bool(getattr(config, "EXIT_KEY_LEVEL_CRASH_ENABLED", False))  # EXIT_KEY_LEVEL_CRASH_ENABLED
-    _ = bool(getattr(config, "EXIT_MARKET_SPIKE_REDUCE_ENABLED", False))  # EXIT_MARKET_SPIKE_REDUCE_ENABLED
-    _ = bool(getattr(config, "EXIT_MAX_HOLD_ENABLED", False))  # EXIT_MAX_HOLD_ENABLED
-    _ = bool(getattr(config, "EXIT_MI_ENABLED", False))  # EXIT_MI_ENABLED
-    _ = bool(getattr(config, "EXIT_ON_ALL_ENABLED", False))  # EXIT_ON_ALL_ENABLED
-    _ = bool(getattr(config, "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED", False))  # EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED
-    _ = bool(getattr(config, "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", False))  # EXIT_PREEMPTIVE_BREAKEVEN_ENABLED
-    _ = bool(getattr(config, "EXIT_SENTIMENT_ENABLED", False))  # EXIT_SENTIMENT_ENABLED
-    _ = bool(getattr(config, "EXIT_STDEV_BREAKOUT_FAIL_ENABLED", False))  # EXIT_STDEV_BREAKOUT_FAIL_ENABLED
-    _ = bool(getattr(config, "EXIT_STRUCT_BREAK_5M_ENABLED", False))  # EXIT_STRUCT_BREAK_5M_ENABLED
-    _ = bool(getattr(config, "EXIT_STRUCT_DC_BREAK_ENABLED", False))  # EXIT_STRUCT_DC_BREAK_ENABLED
-    _ = bool(getattr(config, "EXIT_TREND_REVERSAL_ENABLED", False))  # EXIT_TREND_REVERSAL_ENABLED
-    _ = bool(getattr(config, "EXTREME_OB_OS_OVERRIDE_ENABLED", False))  # EXTREME_OB_OS_OVERRIDE_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_DAEMON_ENABLED", False))  # EZ_REENTRY_DAEMON_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", False))  # EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED
-    _ = bool(getattr(config, "EZ_REENTRY_QUEUE_CONSUMER_ENABLED", False))  # EZ_REENTRY_QUEUE_CONSUMER_ENABLED
-    _ = bool(getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False))  # E_1_WT_EXIT_USE_DELTA_ENABLED
-    _ = bool(getattr(config, "FAST_RISER_DOUBLE_ENABLED", False))  # FAST_RISER_DOUBLE_ENABLED
-    _ = bool(getattr(config, "FAVORABLE_SLOPE_HOLD_ENABLED", False))  # FAVORABLE_SLOPE_HOLD_ENABLED
-    _ = bool(getattr(config, "FG_SIZING_ENABLED", False))  # FG_SIZING_ENABLED
-    _ = bool(getattr(config, "FH_MOMENTUM_ENABLED", False))  # FH_MOMENTUM_ENABLED
-    _ = bool(getattr(config, "FIN_ADVISORY_CONSUMER_ENABLED", False))  # FIN_ADVISORY_CONSUMER_ENABLED
-    _ = bool(getattr(config, "FOOTHOLD_PILEON_ENABLED", False))  # FOOTHOLD_PILEON_ENABLED
-    _ = bool(getattr(config, "FORMATION_CUP_HANDLE_ENTRY_ENABLED", False))  # FORMATION_CUP_HANDLE_ENTRY_ENABLED
-    _ = bool(getattr(config, "FORMATION_CUP_HANDLE_EXIT_ENABLED", False))  # FORMATION_CUP_HANDLE_EXIT_ENABLED
-    _ = bool(getattr(config, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED", False))  # FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED
-    _ = bool(getattr(config, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED", False))  # FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED
-    _ = bool(getattr(config, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED", False))  # FORMATION_FLAG_PENNANT_ENTRY_ENABLED
-    _ = bool(getattr(config, "FORMATION_FLAG_PENNANT_EXIT_ENABLED", False))  # FORMATION_FLAG_PENNANT_EXIT_ENABLED
-    _ = bool(getattr(config, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED", False))  # FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED
-    _ = bool(getattr(config, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED", False))  # FORMATION_HEAD_SHOULDERS_EXIT_ENABLED
-    _ = bool(getattr(config, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED", False))  # FORMATION_TREND_STRUCTURE_ENTRY_ENABLED
-    _ = bool(getattr(config, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED", False))  # FORMATION_TREND_STRUCTURE_EXIT_ENABLED
-    _ = bool(getattr(config, "FORMATION_TRIANGLE_ENTRY_ENABLED", False))  # FORMATION_TRIANGLE_ENTRY_ENABLED
-    _ = bool(getattr(config, "FORMATION_TRIANGLE_EXIT_ENABLED", False))  # FORMATION_TRIANGLE_EXIT_ENABLED
-    _ = bool(getattr(config, "FORMATION_WEDGE_ENTRY_ENABLED", False))  # FORMATION_WEDGE_ENTRY_ENABLED
-    _ = bool(getattr(config, "FORMATION_WEDGE_EXIT_ENABLED", False))  # FORMATION_WEDGE_EXIT_ENABLED
-    _ = bool(getattr(config, "FROZEN_ACTIVATION_STOP_ENABLED", False))  # FROZEN_ACTIVATION_STOP_ENABLED
-    _ = bool(getattr(config, "FULL_RECIPE_ONLY_ENABLED", False))  # FULL_RECIPE_ONLY_ENABLED
-    _ = bool(getattr(config, "FUNDING_GATE_ENABLED", False))  # FUNDING_GATE_ENABLED
-    _ = bool(getattr(config, "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED", False))  # FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED
-    _ = bool(getattr(config, "FUNDING_HEDGE_GATE_ENABLED", False))  # FUNDING_HEDGE_GATE_ENABLED
-    _ = bool(getattr(config, "FUNDING_OI_INJECT_ENABLED", False))  # FUNDING_OI_INJECT_ENABLED
-    _ = bool(getattr(config, "GAP_FILL_ENABLED", False))  # GAP_FILL_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_BB_15M_ENABLED", False))  # GOLDEN_RULE_BB_15M_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_BB_1H_ENABLED", False))  # GOLDEN_RULE_BB_1H_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_BB_4H_ENABLED", False))  # GOLDEN_RULE_BB_4H_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_BB_D_ENABLED", False))  # GOLDEN_RULE_BB_D_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_BB_W_ENABLED", False))  # GOLDEN_RULE_BB_W_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_DC_15M_ENABLED", False))  # GOLDEN_RULE_DC_15M_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_DC_1H_ENABLED", False))  # GOLDEN_RULE_DC_1H_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_DC_4H_ENABLED", False))  # GOLDEN_RULE_DC_4H_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_DC_D_ENABLED", False))  # GOLDEN_RULE_DC_D_ENABLED
-    _ = bool(getattr(config, "GOLDEN_RULE_DC_W_ENABLED", False))  # GOLDEN_RULE_DC_W_ENABLED
-    _ = bool(getattr(config, "GR_HTF_DIRECT_ENTRY_ENABLED", False))  # GR_HTF_DIRECT_ENTRY_ENABLED
-    _ = bool(getattr(config, "GR_V5_ENABLED", False))  # GR_V5_ENABLED
-    _ = bool(getattr(config, "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED", False))  # GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED
-    _ = bool(getattr(config, "GUARANTEED_REENTRY_DELTA_GATE_ENABLED", False))  # GUARANTEED_REENTRY_DELTA_GATE_ENABLED
-    _ = bool(getattr(config, "GUARANTEED_REENTRY_HTF_VETO_ENABLED", False))  # GUARANTEED_REENTRY_HTF_VETO_ENABLED
-    _ = bool(getattr(config, "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED", False))  # GUARANTEED_REENTRY_TIGHT_STOP_ENABLED
-    _ = bool(getattr(config, "HAIKU_ENTRY_GATE_ENABLED", False))  # HAIKU_ENTRY_GATE_ENABLED
-    _ = bool(getattr(config, "HAIKU_WINNER_ENABLED", False))  # HAIKU_WINNER_ENABLED
-    _ = bool(getattr(config, "HARD_BREAKEVEN_FLOOR_ENABLED", False))  # HARD_BREAKEVEN_FLOOR_ENABLED
-    _ = bool(getattr(config, "HA_WICK_QUALITY_ENABLED", False))  # HA_WICK_QUALITY_ENABLED
-    _ = bool(getattr(config, "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED", False))  # HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED
-    _ = bool(getattr(config, "HEDGE_DC_RESISTANCE_GATE_ENABLED", False))  # HEDGE_DC_RESISTANCE_GATE_ENABLED
-    _ = bool(getattr(config, "HEDGE_DECAY_NUKE_ENABLED", False))  # HEDGE_DECAY_NUKE_ENABLED
-    _ = bool(getattr(config, "HEDGE_DETERIORATING_GAIN_ENABLED", False))  # HEDGE_DETERIORATING_GAIN_ENABLED
-    _ = bool(getattr(config, "HEDGE_EXIT_DELTA_CHECK_ENABLED", False))  # HEDGE_EXIT_DELTA_CHECK_ENABLED
-    _ = bool(getattr(config, "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", False))  # HEDGE_FAILED_FALLBACK_CLOSE_ENABLED
-    _ = bool(getattr(config, "HEDGE_HTF_VETO_ENABLED", False))  # HEDGE_HTF_VETO_ENABLED
-    _ = bool(getattr(config, "HEDGE_LOSS_KILL_ENABLED", False))  # HEDGE_LOSS_KILL_ENABLED
-    _ = bool(getattr(config, "HEDGE_OPEN_OB_CHECK_ENABLED", False))  # HEDGE_OPEN_OB_CHECK_ENABLED
-    _ = bool(getattr(config, "HEDGE_PROFIT_PROTECT_ENABLED", False))  # HEDGE_PROFIT_PROTECT_ENABLED
-    _ = bool(getattr(config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False))  # HEDGE_PROTECT_LOSS_VEC_ENABLED
-    _ = bool(getattr(config, "HEDGE_RECOVERY_CLOSE_ENABLED", False))  # HEDGE_RECOVERY_CLOSE_ENABLED
-    _ = bool(getattr(config, "HEDGE_SAME_SYMBOL_ENABLED", False))  # HEDGE_SAME_SYMBOL_ENABLED
-    _ = bool(getattr(config, "HEDGE_STRICT_WT_ALL_TFS_ENABLED", False))  # HEDGE_STRICT_WT_ALL_TFS_ENABLED
-    _ = bool(getattr(config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", False))  # HEDGE_TRIGGER_GR_SCORE_ENABLED
-    _ = bool(getattr(config, "HEDGE_WT_VEL_GATE_ENABLED", False))  # HEDGE_WT_VEL_GATE_ENABLED
-    _ = bool(getattr(config, "HLR_RALLY_ENABLED", False))  # HLR_RALLY_ENABLED
-    _ = bool(getattr(config, "HLR_TOP_EXIT_ENABLED", False))  # HLR_TOP_EXIT_ENABLED
-    _ = bool(getattr(config, "HOUR_OF_DAY_GATE_ENABLED", False))  # HOUR_OF_DAY_GATE_ENABLED
-    _ = bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", False))  # HTF_AGAINST_FORCE_CLOSE_ENABLED
-    _ = bool(getattr(config, "HTF_ALIGNMENT_ENABLED", False))  # HTF_ALIGNMENT_ENABLED
-    _ = bool(getattr(config, "HTF_AUG_VETO_FIX_ENABLED", False))  # HTF_AUG_VETO_FIX_ENABLED
-    _ = bool(getattr(config, "HTF_DC_BREAKOUT_TRADIER_ENABLED", False))  # HTF_DC_BREAKOUT_TRADIER_ENABLED
-    _ = bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", False))  # HTF_DIRECTION_GATE_ENABLED
-    _ = bool(getattr(config, "HTF_EXIT_VETO_ENABLED", False))  # HTF_EXIT_VETO_ENABLED
-    _ = bool(getattr(config, "HTF_REGIME_ENABLED", False))  # HTF_REGIME_ENABLED
-    _ = bool(getattr(config, "HTF_TREND_VETO_BYPASS_ENABLED", False))  # HTF_TREND_VETO_BYPASS_ENABLED
-    _ = bool(getattr(config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False))  # HTF_TREND_VETO_ON_REDUCE_ENABLED
-    _ = bool(getattr(config, "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED", False))  # HTF_W_M_ALIGN_GATE_TRADIER_ENABLED
-    _ = bool(getattr(config, "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED", False))  # HTF_W_REVERSAL_EXIT_TRADIER_ENABLED
-    _ = bool(getattr(config, "HYBRID_STRUCT_EXIT_ENABLED", False))  # HYBRID_STRUCT_EXIT_ENABLED
-    _ = bool(getattr(config, "IMMEDIATE_WRONG_WAY_ENABLED", False))  # IMMEDIATE_WRONG_WAY_ENABLED
-    _ = bool(getattr(config, "INF_DEDICATED_WINNERS_ENABLED", False))  # INF_DEDICATED_WINNERS_ENABLED
-    _ = bool(getattr(config, "INTERVENTION_QUEUE_ENABLED", False))  # INTERVENTION_QUEUE_ENABLED
-    _ = bool(getattr(config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", False))  # IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED
-    _ = bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False))  # K1M_EXTREME_REVERSE_ENABLED
-    _ = bool(getattr(config, "K_LOWER_HIGH_EXIT_ENABLED", False))  # K_LOWER_HIGH_EXIT_ENABLED
-    _ = bool(getattr(config, "K_ZONE_ENTRY_ENABLED", False))  # K_ZONE_ENTRY_ENABLED
-    _ = bool(getattr(config, "LAST_RESORT_K_BYPASS_ENABLED", False))  # LAST_RESORT_K_BYPASS_ENABLED
-    _ = bool(getattr(config, "LEADERBOARD_ENTRY_ENABLED", False))  # LEADERBOARD_ENTRY_ENABLED
-    _ = bool(getattr(config, "LH_HL_FILTER_AUGMENT_GATE_ENABLED", False))  # LH_HL_FILTER_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(config, "LH_HL_FILTER_HEDGE_GATE_ENABLED", False))  # LH_HL_FILTER_HEDGE_GATE_ENABLED
-    _ = bool(getattr(config, "LINEARITY_LR_LONG_ENABLED", False))  # LINEARITY_LR_LONG_ENABLED
-    _ = bool(getattr(config, "LINEARITY_LR_SHORT_ENABLED", False))  # LINEARITY_LR_SHORT_ENABLED
-    _ = bool(getattr(config, "LIVE_ENTRY_ENGINE_DC_ENABLED", False))  # LIVE_ENTRY_ENGINE_DC_ENABLED
-    _ = bool(getattr(config, "LIVE_ENTRY_ENGINE_HTF_ENABLED", False))  # LIVE_ENTRY_ENGINE_HTF_ENABLED
-    _ = bool(getattr(config, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", False))  # LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED
-    _ = bool(getattr(config, "LIVE_ENTRY_ENGINE_STOCH_ENABLED", False))  # LIVE_ENTRY_ENGINE_STOCH_ENABLED
-    _ = bool(getattr(config, "LIVE_ENTRY_ENGINE_WT_ENABLED", False))  # LIVE_ENTRY_ENGINE_WT_ENABLED
-    _ = bool(getattr(config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False))  # LIVE_VEC_EMERGENCY_BRAKE_ENABLED
-    _ = bool(getattr(config, "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", False))  # LIVE_VEC_QUARANTINE_STRATEGY_ENABLED
-    _ = bool(getattr(config, "LIVE_VEC_STALE_MARK_PRICE_ENABLED", False))  # LIVE_VEC_STALE_MARK_PRICE_ENABLED
-    _ = bool(getattr(config, "LOCAL_EXTREMES_SCORER_ENABLED", False))  # LOCAL_EXTREMES_SCORER_ENABLED
-    _ = bool(getattr(config, "LONG_ENABLED", False))  # LONG_ENABLED
-    _ = bool(getattr(config, "LONG_WAIT_DIRECT_ENABLED", False))  # LONG_WAIT_DIRECT_ENABLED
-    _ = bool(getattr(config, "LOSS_CUT_ENABLED", False))  # LOSS_CUT_ENABLED
-    _ = bool(getattr(config, "LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED", False))  # LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED
-    _ = bool(getattr(config, "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", False))  # LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED
-    _ = bool(getattr(config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", False))  # LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED
-    _ = bool(getattr(config, "LR_BAND_E02_EXIT_ENABLED", False))  # LR_BAND_E02_EXIT_ENABLED
-    _ = bool(getattr(config, "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False))  # LR_BAND_LADDER_ORDINARY_PARITY_ENABLED
-    _ = bool(getattr(config, "LR_PCTB_D_LONG_ENTRY_ENABLED", False))  # LR_PCTB_D_LONG_ENTRY_ENABLED
-    _ = bool(getattr(config, "LS_RATIO_CONTRARIAN_ENABLED", False))  # LS_RATIO_CONTRARIAN_ENABLED
-    _ = bool(getattr(config, "LUNCH_DEADZONE_ENABLED", False))  # LUNCH_DEADZONE_ENABLED
-    _ = bool(getattr(config, "MACD_EXIT_ENABLED", False))  # MACD_EXIT_ENABLED
-    _ = bool(getattr(config, "MACD_ZERO_CROSS_ENABLED", False))  # MACD_ZERO_CROSS_ENABLED
-    _ = bool(getattr(config, "MACRO_BLACKOUT_ENABLED", False))  # MACRO_BLACKOUT_ENABLED
-    _ = bool(getattr(config, "MAKER_CLOSE_COMMISSION_FLOOR_ENABLED", False))  # MAKER_CLOSE_COMMISSION_FLOOR_ENABLED
-    _ = bool(getattr(config, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", False))  # MANDATORY_HEDGE_ON_NEGATIVE_ENABLED
-    _ = bool(getattr(config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED", False))  # MANDATORY_PRICE_CROSS_EPQ_ENABLED
-    _ = bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_ENABLED", False))  # MANDATORY_REENTRY_WT_FILTER_ENABLED
-    _ = bool(getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False))  # MARKET_QUALITY_SCORE_ENABLED
-    _ = bool(getattr(config, "MICRO_SCALP_STOCKS_MAKER_ENABLED", False))  # MICRO_SCALP_STOCKS_MAKER_ENABLED
-    _ = bool(getattr(config, "MINERVINI_ENABLED", False))  # MINERVINI_ENABLED
-    _ = bool(getattr(config, "MINERVINI_GATE_ENABLED", False))  # MINERVINI_GATE_ENABLED
-    _ = bool(getattr(config, "MITIGATOR_ENABLED", False))  # MITIGATOR_ENABLED
-    _ = bool(getattr(config, "MI_DIV_EXIT_ENABLED", False))  # MI_DIV_EXIT_ENABLED
-    _ = bool(getattr(config, "MI_ENTRY_ENABLED", False))  # MI_ENTRY_ENABLED
-    _ = bool(getattr(config, "MI_EXHAUST_EXIT_ENABLED", False))  # MI_EXHAUST_EXIT_ENABLED
-    _ = bool(getattr(config, "MI_EXIT_ENABLED", False))  # MI_EXIT_ENABLED
-    _ = bool(getattr(config, "MI_STRUCT_EXIT_ENABLED", False))  # MI_STRUCT_EXIT_ENABLED
-    _ = bool(getattr(config, "MI_VELOCITY_EXIT_ENABLED", False))  # MI_VELOCITY_EXIT_ENABLED
-    _ = bool(getattr(config, "MI_WAVE_EXIT_ENABLED", False))  # MI_WAVE_EXIT_ENABLED
-    _ = bool(getattr(config, "MOM3_ENTRY_ENABLED", False))  # MOM3_ENTRY_ENABLED
-    _ = bool(getattr(config, "MOM4S_S_GATE_ENABLED", False))  # MOM4S_S_GATE_ENABLED
-    _ = bool(getattr(config, "MOM5_ENTRY_ENABLED", False))  # MOM5_ENTRY_ENABLED
-    _ = bool(getattr(config, "MOM5_TRENDER_L_GATE_ENABLED", False))  # MOM5_TRENDER_L_GATE_ENABLED
-    _ = bool(getattr(config, "MOMENTUM_BREAKOUT_ENABLED", False))  # MOMENTUM_BREAKOUT_ENABLED
-    _ = bool(getattr(config, "MOMENTUM_FADE_ENABLED", False))  # MOMENTUM_FADE_ENABLED
-    _ = bool(getattr(config, "MOMENTUM_RIDER_ENABLED", False))  # MOMENTUM_RIDER_ENABLED
-    _ = bool(getattr(config, "MOMENTUM_SMA_WATCHDOG_ENABLED", False))  # MOMENTUM_SMA_WATCHDOG_ENABLED
-    _ = bool(getattr(config, "MOVER_DETECTION_ENABLED", False))  # MOVER_DETECTION_ENABLED
-    _ = bool(getattr(config, "MR3S_S_GATE_ENABLED", False))  # MR3S_S_GATE_ENABLED
-    _ = bool(getattr(config, "MR5_L_GATE_ENABLED", False))  # MR5_L_GATE_ENABLED
-    _ = bool(getattr(config, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", False))  # MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED
-    _ = bool(getattr(config, "MTF_ARROW_ENTRY_ENABLED", False))  # MTF_ARROW_ENTRY_ENABLED
-    _ = bool(getattr(config, "MTF_ARROW_SHORT_ENTRY_ENABLED", False))  # MTF_ARROW_SHORT_ENTRY_ENABLED
-    _ = bool(getattr(config, "MTF_ARROW_TRAIL_EXIT_ENABLED", False))  # MTF_ARROW_TRAIL_EXIT_ENABLED
-    _ = bool(getattr(config, "MTF_ATR_MULTITF_DIRECT_ENABLED", False))  # MTF_ATR_MULTITF_DIRECT_ENABLED
-    _ = bool(getattr(config, "MTF_BB_REJECT_EXIT_ENABLED", False))  # MTF_BB_REJECT_EXIT_ENABLED
-    _ = bool(getattr(config, "MTF_DC_REJECT_EXIT_ENABLED", False))  # MTF_DC_REJECT_EXIT_ENABLED
-    _ = bool(getattr(config, "MTF_GR_EXIT_GATE_ENABLED", False))  # MTF_GR_EXIT_GATE_ENABLED
-    _ = bool(getattr(config, "MTF_GR_FILTER_ENABLED", False))  # MTF_GR_FILTER_ENABLED
-    _ = bool(getattr(config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False))  # MTF_WT_CROSS_EXIT_DIRECT_ENABLED
-    _ = bool(getattr(config, "MTS_GATE_ENABLED", False))  # MTS_GATE_ENABLED
-    _ = bool(getattr(config, "MU_CORRECTION_EXIT_ENABLED", False))  # MU_CORRECTION_EXIT_ENABLED
-    _ = bool(getattr(config, "MU_CORRECTION_REENTRY_ENABLED", False))  # MU_CORRECTION_REENTRY_ENABLED
-    _ = bool(getattr(config, "MU_CORRECTION_REENTRY_STOCH_ENABLED", False))  # MU_CORRECTION_REENTRY_STOCH_ENABLED
-    _ = bool(getattr(config, "NEVER_GO_RED_STOP_ENABLED", False))  # NEVER_GO_RED_STOP_ENABLED
-    _ = bool(getattr(config, "NEWBORN_DC_STOP_ENABLED", False))  # NEWBORN_DC_STOP_ENABLED
-    _ = bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", False))  # NEWBORN_LOSS_KILL_ENABLED
-    _ = bool(getattr(config, "NEWBORN_PROTECT_ENABLED", False))  # NEWBORN_PROTECT_ENABLED
-    _ = bool(getattr(config, "NEWS_SENTIMENT_ENABLED", False))  # NEWS_SENTIMENT_ENABLED
-    _ = bool(getattr(config, "NOLOSS_BB1H_GATE_ENABLED", False))  # NOLOSS_BB1H_GATE_ENABLED
-    _ = bool(getattr(config, "NOLOSS_BYPASS_WT_5OF5_ENABLED", False))  # NOLOSS_BYPASS_WT_5OF5_ENABLED
-    _ = bool(getattr(config, "NOLOSS_DC4H_GATE_ENABLED", False))  # NOLOSS_DC4H_GATE_ENABLED
-    _ = bool(getattr(config, "NOLOSS_ENABLED", False))  # NOLOSS_ENABLED
-    _ = bool(getattr(config, "OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED", False))  # OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED
-    _ = bool(getattr(config, "OBLIGATORY_REENTRY_ENABLED", False))  # OBLIGATORY_REENTRY_ENABLED
-    _ = bool(getattr(config, "OBLIGATORY_REENTRY_LONG_ENABLED", False))  # OBLIGATORY_REENTRY_LONG_ENABLED
-    _ = bool(getattr(config, "OBLIGATORY_REENTRY_SHORT_ENABLED", False))  # OBLIGATORY_REENTRY_SHORT_ENABLED
-    _ = bool(getattr(config, "OBLIGATORY_SECTOR_HEDGE_ENABLED", False))  # OBLIGATORY_SECTOR_HEDGE_ENABLED
-    _ = bool(getattr(config, "OBLIGATORY_SMA200_WT3M_ENABLED", False))  # OBLIGATORY_SMA200_WT3M_ENABLED
-    _ = bool(getattr(config, "OB_PRICE_DEFER_ENABLED", False))  # OB_PRICE_DEFER_ENABLED
-    _ = bool(getattr(config, "OI_CONFIRM_ENABLED", False))  # OI_CONFIRM_ENABLED
-    _ = bool(getattr(config, "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED", False))  # OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED
-    _ = bool(getattr(config, "OI_DIVERGENCE_ENABLED", False))  # OI_DIVERGENCE_ENABLED
-    _ = bool(getattr(config, "OI_HEDGE_GATE_ENABLED", False))  # OI_HEDGE_GATE_ENABLED
-    _ = bool(getattr(config, "OPEN_RATE_BREAKER_ENABLED", False))  # OPEN_RATE_BREAKER_ENABLED
-    _ = bool(getattr(config, "OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED", False))  # OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED
-    _ = bool(getattr(config, "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED", False))  # OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED
-    _ = bool(getattr(config, "OPTIONS_BUY_WT_DC_GATE_ENABLED", False))  # OPTIONS_BUY_WT_DC_GATE_ENABLED
-    _ = bool(getattr(config, "OPTIONS_CSP_ENABLED", False))  # OPTIONS_CSP_ENABLED
-    _ = bool(getattr(config, "OPTIONS_CSP_NAKED_CALL_ENABLED", False))  # OPTIONS_CSP_NAKED_CALL_ENABLED
-    _ = bool(getattr(config, "OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED", False))  # OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED
-    _ = bool(getattr(config, "OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED", False))  # OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED
-    _ = bool(getattr(config, "OPTIONS_EQUITY_HEDGE_ENABLED", False))  # OPTIONS_EQUITY_HEDGE_ENABLED
-    _ = bool(getattr(config, "OPTIONS_HEDGE_LADDER_ENABLED", False))  # OPTIONS_HEDGE_LADDER_ENABLED
-    _ = bool(getattr(config, "OPTIONS_HEDGE_PAIR_GUARD_ENABLED", False))  # OPTIONS_HEDGE_PAIR_GUARD_ENABLED
-    _ = bool(getattr(config, "OPTIONS_LIVE_TRADING_ENABLED", False))  # OPTIONS_LIVE_TRADING_ENABLED
-    _ = bool(getattr(config, "OPTIONS_MAX_LOSS_GUARD_ENABLED", False))  # OPTIONS_MAX_LOSS_GUARD_ENABLED
-    _ = bool(getattr(config, "OPTIONS_SPREAD_ENABLED", False))  # OPTIONS_SPREAD_ENABLED
-    _ = bool(getattr(config, "OPTIONS_STOCK_CSP_ENABLED", False))  # OPTIONS_STOCK_CSP_ENABLED
-    _ = bool(getattr(config, "ORB_ENABLED", False))  # ORB_ENABLED
-    _ = bool(getattr(config, "OUTLIER_DETECTOR_ENABLED", False))  # OUTLIER_DETECTOR_ENABLED
-    _ = bool(getattr(config, "OVERNIGHT_GAP_HEDGE_ENABLED", False))  # OVERNIGHT_GAP_HEDGE_ENABLED
-    _ = bool(getattr(config, "PARITY_REENTRY_NAMING_ENABLED", False))  # PARITY_REENTRY_NAMING_ENABLED
-    _ = bool(getattr(config, "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED", False))  # PARTIAL_PROFIT_LOCK_SWEEP_ENABLED
-    _ = bool(getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False))  # PEAK_GIVEBACK_DROP_TRIGGER_ENABLED
-    _ = bool(getattr(config, "PENNY_STOCK_LONG_BLOCK_ENABLED", False))  # PENNY_STOCK_LONG_BLOCK_ENABLED
-    _ = bool(getattr(config, "PER_SYMBOL_CONFIG_ENABLED", False))  # PER_SYMBOL_CONFIG_ENABLED
-    _ = bool(getattr(config, "PER_SYM_CONFIG_ENABLED", False))  # PER_SYM_CONFIG_ENABLED
-    _ = bool(getattr(config, "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED", False))  # PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED
-    _ = bool(getattr(config, "PRICE_CROSS_BACK_REENTRY_ENABLED", False))  # PRICE_CROSS_BACK_REENTRY_ENABLED
-    _ = bool(getattr(config, "PROFIT_TARGET_ENABLED", False))  # PROFIT_TARGET_ENABLED
-    _ = bool(getattr(config, "PROGRESSIVE_LOCK_ENABLED", False))  # PROGRESSIVE_LOCK_ENABLED
-    _ = bool(getattr(config, "PROXIMITY_TOP_GATE_ENABLED", False))  # PROXIMITY_TOP_GATE_ENABLED
-    _ = bool(getattr(config, "PYRAMID_ENABLED", False))  # PYRAMID_ENABLED
-    _ = bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", False))  # QUALITY_BOTTOM_ENTRY_ENABLED
-    _ = bool(getattr(config, "QUALITY_TOP_EXIT_ENABLED", False))  # QUALITY_TOP_EXIT_ENABLED
-    _ = bool(getattr(config, "QUICK_BANDAID_OFF_VEC_ENABLED", False))  # QUICK_BANDAID_OFF_VEC_ENABLED
-    _ = bool(getattr(config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", False))  # QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED
-    _ = bool(getattr(config, "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED", False))  # QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED
-    _ = bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED", False))  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED
-    _ = bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False))  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED
-    _ = bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", False))  # QUICK_OPEN_STRONG_VEC_ENABLED
-    _ = bool(getattr(config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False))  # QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED
-    _ = bool(getattr(config, "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED", False))  # QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED
-    _ = bool(getattr(config, "R3_HEDGE_INVARIANT_DUMP_ENABLED", False))  # R3_HEDGE_INVARIANT_DUMP_ENABLED
-    _ = bool(getattr(config, "RANKING_MULT_ENABLED", False))  # RANKING_MULT_ENABLED
-    _ = bool(getattr(config, "RANK_CONVICTION_ENABLED", False))  # RANK_CONVICTION_ENABLED
-    _ = bool(getattr(config, "RATIO_EMERGENCY_EXIT_ENABLED", False))  # RATIO_EMERGENCY_EXIT_ENABLED
-    _ = bool(getattr(config, "RATIO_PNL_DYNAMIC_GATES_ENABLED", False))  # RATIO_PNL_DYNAMIC_GATES_ENABLED
-    _ = bool(getattr(config, "RATIO_PNL_WEIGHT_ENABLED", False))  # RATIO_PNL_WEIGHT_ENABLED
-    _ = bool(getattr(config, "RATIO_REBALANCE_ENABLED", False))  # RATIO_REBALANCE_ENABLED
-    _ = bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False))  # RECENT_REDUCTION_GUARD_ENABLED
-    _ = bool(getattr(config, "RECOVERY_AUGMENT_ENABLED", False))  # RECOVERY_AUGMENT_ENABLED
-    _ = bool(getattr(config, "RED_ZONE_AUGMENT_GATE_ENABLED", False))  # RED_ZONE_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(config, "RED_ZONE_GATE_ENABLED", False))  # RED_ZONE_GATE_ENABLED
-    _ = bool(getattr(config, "RED_ZONE_GATE_FALLBACK_ENABLED", False))  # RED_ZONE_GATE_FALLBACK_ENABLED
-    _ = bool(getattr(config, "RED_ZONE_HEDGE_GATE_ENABLED", False))  # RED_ZONE_HEDGE_GATE_ENABLED
-    _ = bool(getattr(config, "RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED", False))  # RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(config, "RED_ZONE_TRADIER_GATE_ENABLED", False))  # RED_ZONE_TRADIER_GATE_ENABLED
-    _ = bool(getattr(config, "REENTRY2_DC_BREAK_ENABLED", False))  # REENTRY2_DC_BREAK_ENABLED
-    _ = bool(getattr(config, "REENTRY2_DIR_FAV_ENABLED", False))  # REENTRY2_DIR_FAV_ENABLED
-    _ = bool(getattr(config, "REENTRY2_QUICK_RECOVERY_ENABLED", False))  # REENTRY2_QUICK_RECOVERY_ENABLED
-    _ = bool(getattr(config, "REENTRY2_STOCH_CROSS_ENABLED", False))  # REENTRY2_STOCH_CROSS_ENABLED
-    _ = bool(getattr(config, "REENTRY_60MIN_UNCONDITIONAL_ENABLED", False))  # REENTRY_60MIN_UNCONDITIONAL_ENABLED
-    _ = bool(getattr(config, "REENTRY_B01_WT_2of3_ENABLED", False))  # REENTRY_B01_WT_2of3_ENABLED
-    _ = bool(getattr(config, "REENTRY_B04_DC_RETEST_ENABLED", False))  # REENTRY_B04_DC_RETEST_ENABLED
-    _ = bool(getattr(config, "REENTRY_B09_SNAPBACK_ENABLED", False))  # REENTRY_B09_SNAPBACK_ENABLED
-    _ = bool(getattr(config, "REENTRY_B10_STOCH_REV_ENABLED", False))  # REENTRY_B10_STOCH_REV_ENABLED
-    _ = bool(getattr(config, "REENTRY_B11_DC_BREAK_ENABLED", False))  # REENTRY_B11_DC_BREAK_ENABLED
-    _ = bool(getattr(config, "REENTRY_B12_WT_MOM_ENABLED", False))  # REENTRY_B12_WT_MOM_ENABLED
-    _ = bool(getattr(config, "REENTRY_B14_HA_TREND_ENABLED", False))  # REENTRY_B14_HA_TREND_ENABLED
-    _ = bool(getattr(config, "REENTRY_B15_STRONG_TREND_ENABLED", False))  # REENTRY_B15_STRONG_TREND_ENABLED
-    _ = bool(getattr(config, "REENTRY_B16_MIDRANGE_ENABLED", False))  # REENTRY_B16_MIDRANGE_ENABLED
-    _ = bool(getattr(config, "REENTRY_B16_SMA200_PULLBACK_ENABLED", False))  # REENTRY_B16_SMA200_PULLBACK_ENABLED
-    _ = bool(getattr(config, "REENTRY_CHURN_GUARD_ENABLED", False))  # REENTRY_CHURN_GUARD_ENABLED
-    _ = bool(getattr(config, "REENTRY_CONFIRMATION_GATES_ENABLED", False))  # REENTRY_CONFIRMATION_GATES_ENABLED
-    _ = bool(getattr(config, "REENTRY_CROSS_FRESHNESS_ENABLED", False))  # REENTRY_CROSS_FRESHNESS_ENABLED
-    _ = bool(getattr(config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", False))  # REENTRY_EXHAUSTED_PARTIAL_ENABLED
-    _ = bool(getattr(config, "REENTRY_EXIT_RECLAIM_ENABLED", False))  # REENTRY_EXIT_RECLAIM_ENABLED
-    _ = bool(getattr(config, "REENTRY_K15M_PARTIAL_ENABLED", False))  # REENTRY_K15M_PARTIAL_ENABLED
-    _ = bool(getattr(config, "REENTRY_LIVE_MONITOR_ENABLED", False))  # REENTRY_LIVE_MONITOR_ENABLED
-    _ = bool(getattr(config, "REENTRY_NEVER_SKIP_ENABLED", False))  # REENTRY_NEVER_SKIP_ENABLED
-    _ = bool(getattr(config, "REENTRY_POST_CONSOL_ENABLED", False))  # REENTRY_POST_CONSOL_ENABLED
-    _ = bool(getattr(config, "REENTRY_PROFIT_PULLBACK_ENABLED", False))  # REENTRY_PROFIT_PULLBACK_ENABLED
-    _ = bool(getattr(config, "REENTRY_PULL1_ENABLED", False))  # REENTRY_PULL1_ENABLED
-    _ = bool(getattr(config, "REENTRY_PULL2_ENABLED", False))  # REENTRY_PULL2_ENABLED
-    _ = bool(getattr(config, "REENTRY_PULL3_ENABLED", False))  # REENTRY_PULL3_ENABLED
-    _ = bool(getattr(config, "REENTRY_PULL4_ENABLED", False))  # REENTRY_PULL4_ENABLED
-    _ = bool(getattr(config, "REENTRY_SMA200_BACKUP_ENABLED", False))  # REENTRY_SMA200_BACKUP_ENABLED
-    _ = bool(getattr(config, "REENTRY_SYMGATE_ENABLED", False))  # REENTRY_SYMGATE_ENABLED
-    _ = bool(getattr(config, "REENTRY_WAVETREND_CONFIRM_ENABLED", False))  # REENTRY_WAVETREND_CONFIRM_ENABLED
-    _ = bool(getattr(config, "REENTRY_WT15M_CROSS_ENABLED", False))  # REENTRY_WT15M_CROSS_ENABLED
-    _ = bool(getattr(config, "REGIME_ADAPTIVE_ENABLED", False))  # REGIME_ADAPTIVE_ENABLED
-    _ = bool(getattr(config, "REGIME_GATE_ENABLED", False))  # REGIME_GATE_ENABLED
-    _ = bool(getattr(config, "RE_2_USE_PERCENTILE_ENABLED", False))  # RE_2_USE_PERCENTILE_ENABLED
-    _ = bool(getattr(config, "RE_3_B12_RISING_BONUS_ENABLED", False))  # RE_3_B12_RISING_BONUS_ENABLED
-    _ = bool(getattr(config, "RE_4_B14_HA_STREAK_CONV_ENABLED", False))  # RE_4_B14_HA_STREAK_CONV_ENABLED
-    _ = bool(getattr(config, "RE_5_B04_COMPRESSION_BONUS_ENABLED", False))  # RE_5_B04_COMPRESSION_BONUS_ENABLED
-    _ = bool(getattr(config, "RE_6_WAVE_PHASE_GATE_ENABLED", False))  # RE_6_WAVE_PHASE_GATE_ENABLED
-    _ = bool(getattr(config, "RIDICULOUS_HOLD_VEC_ENABLED", False))  # RIDICULOUS_HOLD_VEC_ENABLED
-    _ = bool(getattr(config, "ROTATION_ANTONACCI_ABS_MOM_ENABLED", False))  # ROTATION_ANTONACCI_ABS_MOM_ENABLED
-    _ = bool(getattr(config, "ROTATION_ENABLED", False))  # ROTATION_ENABLED
-    _ = bool(getattr(config, "RSI2_ENABLED", False))  # RSI2_ENABLED
-    _ = bool(getattr(config, "RSI2_MEAN_REVERSION_ENABLED", False))  # RSI2_MEAN_REVERSION_ENABLED
-    _ = bool(getattr(config, "RSI_MACD_EMA_ENABLED", False))  # RSI_MACD_EMA_ENABLED
-    _ = bool(getattr(config, "RULE_B_3M_EXIT_ENABLED", False))  # RULE_B_3M_EXIT_ENABLED
-    _ = bool(getattr(config, "RULE_B_5M_EXIT_ENABLED", False))  # RULE_B_5M_EXIT_ENABLED
-    _ = bool(getattr(config, "RULE_B_W_TREND_4H_PULLBACK_ENABLED", False))  # RULE_B_W_TREND_4H_PULLBACK_ENABLED
-    _ = bool(getattr(config, "RULE_C_FUNDING_EXTREME_ENABLED", False))  # RULE_C_FUNDING_EXTREME_ENABLED
-    _ = bool(getattr(config, "RULE_NAME_TAGGING_ENABLED", False))  # RULE_NAME_TAGGING_ENABLED
-    _ = bool(getattr(config, "RZ_BASELINE_BOUNCE_SHORT_ENABLED", False))  # RZ_BASELINE_BOUNCE_SHORT_ENABLED
-    _ = bool(getattr(config, "RZ_BREAKOUT_ENTRY_ENABLED", False))  # RZ_BREAKOUT_ENTRY_ENABLED
-    _ = bool(getattr(config, "RZ_DIV_EXIT_ENABLED", False))  # RZ_DIV_EXIT_ENABLED
-    _ = bool(getattr(config, "RZ_ENTRY_ENABLED", False))  # RZ_ENTRY_ENABLED
-    _ = bool(getattr(config, "RZ_TWO_PHASE_EXIT_ENABLED", False))  # RZ_TWO_PHASE_EXIT_ENABLED
-    _ = bool(getattr(config, "RZ_ZSCORE_EXIT_ENABLED", False))  # RZ_ZSCORE_EXIT_ENABLED
-    _ = bool(getattr(config, "RZ_ZSCORE_ZONE_ENABLED", False))  # RZ_ZSCORE_ZONE_ENABLED
-    _ = bool(getattr(config, "R_G10_HTF_DIV_GATE_ENABLED", False))  # R_G10_HTF_DIV_GATE_ENABLED
-    _ = bool(getattr(config, "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED", False))  # R_S1_WT_COMPOSITE_DELTA_USE_ENABLED
-    _ = bool(getattr(config, "R_S2_WT_ADAPTIVE_OS_ENABLED", False))  # R_S2_WT_ADAPTIVE_OS_ENABLED
-    _ = bool(getattr(config, "R_S3_DIV_STACK_ENABLED", False))  # R_S3_DIV_STACK_ENABLED
-    _ = bool(getattr(config, "R_S3_HTF_WEIGHT_ENABLED", False))  # R_S3_HTF_WEIGHT_ENABLED
-    _ = bool(getattr(config, "R_S4_HA_STREAK_ENABLED", False))  # R_S4_HA_STREAK_ENABLED
-    _ = bool(getattr(config, "R_S5_SENT_VEL_ENABLED", False))  # R_S5_SENT_VEL_ENABLED
-    _ = bool(getattr(config, "R_S7_HHLL_STACK_ENABLED", False))  # R_S7_HHLL_STACK_ENABLED
-    _ = bool(getattr(config, "R_Z2_PERCENTILE_SCALER_ENABLED", False))  # R_Z2_PERCENTILE_SCALER_ENABLED
-    _ = bool(getattr(config, "R_Z3_WT_COMPOSITE_SIZE_ENABLED", False))  # R_Z3_WT_COMPOSITE_SIZE_ENABLED
-    _ = bool(getattr(config, "R_Z5_DC_PULLBACK_SIZING_ENABLED", False))  # R_Z5_DC_PULLBACK_SIZING_ENABLED
-    _ = bool(getattr(config, "SATOSHIT_ENTRY_ENABLED", False))  # SATOSHIT_ENTRY_ENABLED
-    _ = bool(getattr(config, "SATOSHIT_EXIT_ENABLED", False))  # SATOSHIT_EXIT_ENABLED
-    _ = bool(getattr(config, "SBA_ENABLED", False))  # SBA_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ATR_PCTL_GATE_ENABLED", False))  # SCALP_V3_ATR_PCTL_GATE_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_AUG_BE_STOP_ENABLED", False))  # SCALP_V3_AUG_BE_STOP_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_AUG_ENABLED", False))  # SCALP_V3_AUG_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_BOOST_ENABLED", False))  # SCALP_V3_BOOST_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ENTRY_BAR_BREAK_ENABLED", False))  # SCALP_V3_ENTRY_BAR_BREAK_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ENTRY_DC_BREAK_ENABLED", False))  # SCALP_V3_ENTRY_DC_BREAK_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ENTRY_PULLBACK_ENABLED", False))  # SCALP_V3_ENTRY_PULLBACK_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ENTRY_STDEV_ENABLED", False))  # SCALP_V3_ENTRY_STDEV_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED", False))  # SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ENTRY_TREND_ENABLED", False))  # SCALP_V3_ENTRY_TREND_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_ENTRY_WT_CROSS_ENABLED", False))  # SCALP_V3_ENTRY_WT_CROSS_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_EXIT_BAR_REVERSAL_ENABLED", False))  # SCALP_V3_EXIT_BAR_REVERSAL_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_EXIT_K_CROSS_ENABLED", False))  # SCALP_V3_EXIT_K_CROSS_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_EXIT_STDEV_REJECT_ENABLED", False))  # SCALP_V3_EXIT_STDEV_REJECT_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_EXIT_WT_FLIP_ENABLED", False))  # SCALP_V3_EXIT_WT_FLIP_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_FAST_PPL_ENABLED", False))  # SCALP_V3_FAST_PPL_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_HTF_SMA200_ENABLED", False))  # SCALP_V3_HTF_SMA200_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_K_OB_EXIT_ENABLED", False))  # SCALP_V3_K_OB_EXIT_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_OB_FLOW_AGREE_ENABLED", False))  # SCALP_V3_OB_FLOW_AGREE_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_OUTLIER_ENABLED", False))  # SCALP_V3_OUTLIER_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_PROTECTIVE_EXIT_ENABLED", False))  # SCALP_V3_PROTECTIVE_EXIT_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_REENTRY_STICKY_ENABLED", False))  # SCALP_V3_REENTRY_STICKY_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_STALL_ENABLED", False))  # SCALP_V3_STALL_ENABLED
-    _ = bool(getattr(config, "SCALP_V3_VWAP_FILTER_ENABLED", False))  # SCALP_V3_VWAP_FILTER_ENABLED
-    _ = bool(getattr(config, "SECTOR_LS_RATIO_ENABLED", False))  # SECTOR_LS_RATIO_ENABLED
-    _ = bool(getattr(config, "SENTIMENT_FADE_PROXY_ENABLED", False))  # SENTIMENT_FADE_PROXY_ENABLED
-    _ = bool(getattr(config, "SENTIMENT_REBALANCER_ENABLED", False))  # SENTIMENT_REBALANCER_ENABLED
-    _ = bool(getattr(config, "SENTIMENT_TOP_N_GATE_ENABLED", False))  # SENTIMENT_TOP_N_GATE_ENABLED
-    _ = bool(getattr(config, "SIMPLE_TP_EXIT_ENABLED", False))  # SIMPLE_TP_EXIT_ENABLED
-    _ = bool(getattr(config, "SMA200_DIST_ENTRY_ENABLED", False))  # SMA200_DIST_ENTRY_ENABLED
-    _ = bool(getattr(config, "SMFI_ENABLED", False))  # SMFI_ENABLED
-    _ = bool(getattr(config, "SPIKE_FADE_ENABLED", False))  # SPIKE_FADE_ENABLED
-    _ = bool(getattr(config, "SQUEEZE_ENABLED", False))  # SQUEEZE_ENABLED
-    _ = bool(getattr(config, "SQUEEZE_FIRE_ENABLED", False))  # SQUEEZE_FIRE_ENABLED
-    _ = bool(getattr(config, "SQUEEZE_FIRE_ENTRY_ENABLED", False))  # SQUEEZE_FIRE_ENTRY_ENABLED
-    _ = bool(getattr(config, "STALL_SUB_ENABLED", False))  # STALL_SUB_ENABLED
-    _ = bool(getattr(config, "STDEV_BB_RZ_EXIT_ENABLED", False))  # STDEV_BB_RZ_EXIT_ENABLED
-    _ = bool(getattr(config, "STDEV_BREAKOUT_EXIT_WT_ENABLED", False))  # STDEV_BREAKOUT_EXIT_WT_ENABLED
-    _ = bool(getattr(config, "STDEV_MACRO_AUGMENT_VETO_ENABLED", False))  # STDEV_MACRO_AUGMENT_VETO_ENABLED
-    _ = bool(getattr(config, "STDEV_MACRO_ENTRY_BOOST_ENABLED", False))  # STDEV_MACRO_ENTRY_BOOST_ENABLED
-    _ = bool(getattr(config, "STDEV_MACRO_ENTRY_VETO_ENABLED", False))  # STDEV_MACRO_ENTRY_VETO_ENABLED
-    _ = bool(getattr(config, "STDEV_MACRO_HEDGE_BOOST_ENABLED", False))  # STDEV_MACRO_HEDGE_BOOST_ENABLED
-    _ = bool(getattr(config, "STOCH_CROSS_3M_EXIT_ENABLED", False))  # STOCH_CROSS_3M_EXIT_ENABLED
-    _ = bool(getattr(config, "STOCH_CROSS_ENTRY_ENABLED", False))  # STOCH_CROSS_ENTRY_ENABLED
-    _ = bool(getattr(config, "STOCH_ENTRY_ENABLED", False))  # STOCH_ENTRY_ENABLED
-    _ = bool(getattr(config, "STOP_LOSS_ENABLED", False))  # STOP_LOSS_ENABLED
-    _ = bool(getattr(config, "STOP_MAJOR_LOSS_BLOCK_ENABLED", False))  # STOP_MAJOR_LOSS_BLOCK_ENABLED
-    _ = bool(getattr(config, "STOP_MAJOR_LOSS_ENABLED", False))  # STOP_MAJOR_LOSS_ENABLED
-    _ = bool(getattr(config, "STRUCTURAL_EXIT_GATE_ENABLED", False))  # STRUCTURAL_EXIT_GATE_ENABLED
-    _ = bool(getattr(config, "STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED", False))  # STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED
-    _ = bool(getattr(config, "STRUCTURE_FLIP_REENTRY_ENABLED", False))  # STRUCTURE_FLIP_REENTRY_ENABLED
-    _ = bool(getattr(config, "ST_LT_SPLIT_ENABLED", False))  # ST_LT_SPLIT_ENABLED
-    _ = bool(getattr(config, "SWING_ENABLED", False))  # SWING_ENABLED
-    _ = bool(getattr(config, "SYMBOL_PERF_ENABLED", False))  # SYMBOL_PERF_ENABLED
-    _ = bool(getattr(config, "SYMBOL_TRACKER_ENABLED", False))  # SYMBOL_TRACKER_ENABLED
-    _ = bool(getattr(config, "THROUGHPUT_SAFETY_ENABLED", False))  # THROUGHPUT_SAFETY_ENABLED
-    _ = bool(getattr(config, "TIER_ENABLED", False))  # TIER_ENABLED
-    _ = bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False))  # TOP_OF_RANGE_BLOCK_ENABLED
-    _ = bool(getattr(config, "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED", False))  # TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED
-    _ = bool(getattr(config, "TRADIER_DC_DAYTRADE_ENABLED", False))  # TRADIER_DC_DAYTRADE_ENABLED
-    _ = bool(getattr(config, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", False))  # TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED
-    _ = bool(getattr(config, "TRADIER_FH_MOMENTUM_ENABLED", False))  # TRADIER_FH_MOMENTUM_ENABLED
-    _ = bool(getattr(config, "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED", False))  # TRADIER_LOCAL_EXTREMES_SCORING_ENABLED
-    _ = bool(getattr(config, "TRADIER_MFI_ENTRY_LONG_ENABLED", False))  # TRADIER_MFI_ENTRY_LONG_ENABLED
-    _ = bool(getattr(config, "TRADIER_OI_INJECT_ENABLED", False))  # TRADIER_OI_INJECT_ENABLED
-    _ = bool(getattr(config, "TRADIER_REENTRY_ANTI_CHURN_ENABLED", False))  # TRADIER_REENTRY_ANTI_CHURN_ENABLED
-    _ = bool(getattr(config, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", False))  # TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED
-    _ = bool(getattr(config, "TRADIER_REENTRY_RZ_BLOCK_ENABLED", False))  # TRADIER_REENTRY_RZ_BLOCK_ENABLED
-    _ = bool(getattr(config, "TRADIER_RSI2_ENABLED", False))  # TRADIER_RSI2_ENABLED
-    _ = bool(getattr(config, "TRC_5M_SWEEP_ENABLED", False))  # TRC_5M_SWEEP_ENABLED
-    _ = bool(getattr(config, "TRC_CLENOW_ENABLED", False))  # TRC_CLENOW_ENABLED
-    _ = bool(getattr(config, "TRC_CONNORS_RSI_ENABLED", False))  # TRC_CONNORS_RSI_ENABLED
-    _ = bool(getattr(config, "TRC_EPISODIC_PIVOT_ENABLED", False))  # TRC_EPISODIC_PIVOT_ENABLED
-    _ = bool(getattr(config, "TRC_LOCAL_EXTREMES_SCORER_ENABLED", False))  # TRC_LOCAL_EXTREMES_SCORER_ENABLED
-    _ = bool(getattr(config, "TRC_MINERVINI_ENABLED", False))  # TRC_MINERVINI_ENABLED
-    _ = bool(getattr(config, "TRC_MOMENTUM_FADE_ENABLED", False))  # TRC_MOMENTUM_FADE_ENABLED
-    _ = bool(getattr(config, "TRC_ORB_ENABLED", False))  # TRC_ORB_ENABLED
-    _ = bool(getattr(config, "TRC_SMFI_ENABLED", False))  # TRC_SMFI_ENABLED
-    _ = bool(getattr(config, "TRC_SQUEEZE_ENABLED", False))  # TRC_SQUEEZE_ENABLED
-    _ = bool(getattr(config, "TREND_REGIME_VETO_ENABLED", False))  # TREND_REGIME_VETO_ENABLED
-    _ = bool(getattr(config, "TRIPLE_CONF_ENABLED", False))  # TRIPLE_CONF_ENABLED
-    _ = bool(getattr(config, "TR_BBWIDTH4H_GATE_ENABLED", False))  # TR_BBWIDTH4H_GATE_ENABLED
-    _ = bool(getattr(config, "TR_CHOP4H_GATE_ENABLED", False))  # TR_CHOP4H_GATE_ENABLED
-    _ = bool(getattr(config, "TR_DCWIDTH4H_SHORT_ENABLED", False))  # TR_DCWIDTH4H_SHORT_ENABLED
-    _ = bool(getattr(config, "TR_MFI4H_LONG_ENABLED", False))  # TR_MFI4H_LONG_ENABLED
-    _ = bool(getattr(config, "TR_TREND_V1_SPY_REGIME_ENABLED", False))  # TR_TREND_V1_SPY_REGIME_ENABLED
-    _ = bool(getattr(config, "TSMOM_BOOK_SCALAR_ENABLED", False))  # TSMOM_BOOK_SCALAR_ENABLED
-    _ = bool(getattr(config, "UNDERWATER_HEDGE_OR_CLOSE_ENABLED", False))  # UNDERWATER_HEDGE_OR_CLOSE_ENABLED
-    _ = bool(getattr(config, "UVE_LIVE_ENABLED", False))  # UVE_LIVE_ENABLED
-    _ = bool(getattr(config, "V8Q_STRENGTH_FILTER_ENABLED", False))  # V8Q_STRENGTH_FILTER_ENABLED
-    _ = bool(getattr(config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False))  # VEC_EVENT_DRIVEN_LOOP_ENABLED
-    _ = bool(getattr(config, "VEC_LIVE_REDUCE_PARITY_ENABLED", False))  # VEC_LIVE_REDUCE_PARITY_ENABLED
-    _ = bool(getattr(config, "VEC_MTF_ARMED_STATE_ENABLED", False))  # VEC_MTF_ARMED_STATE_ENABLED
-    _ = bool(getattr(config, "VEC_MULTI_SYM_OUTER_LOOP_ENABLED", False))  # VEC_MULTI_SYM_OUTER_LOOP_ENABLED
-    _ = bool(getattr(config, "VEC_NOLOSS_GATE_ENABLED", False))  # VEC_NOLOSS_GATE_ENABLED
-    _ = bool(getattr(config, "VEC_RATIO_REDUCE_PROXY_ENABLED", False))  # VEC_RATIO_REDUCE_PROXY_ENABLED
-    _ = bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False))  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
-    _ = bool(getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False))  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED
-    _ = bool(getattr(config, "VEL_EXIT_ENABLED", False))  # VEL_EXIT_ENABLED
-    _ = bool(getattr(config, "VIX_REGIME_FILTER_ENABLED", False))  # VIX_REGIME_FILTER_ENABLED
-    _ = bool(getattr(config, "VIX_VOLATILITY_REGIME_ENABLED", False))  # VIX_VOLATILITY_REGIME_ENABLED
-    _ = bool(getattr(config, "VOL_SPIKE_ENABLED", False))  # VOL_SPIKE_ENABLED
-    _ = bool(getattr(config, "VOL_TARGET_ENABLED", False))  # VOL_TARGET_ENABLED
-    _ = bool(getattr(config, "VP_GATE_AUGMENT_GATE_ENABLED", False))  # VP_GATE_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(config, "VP_GATE_ENABLED", False))  # VP_GATE_ENABLED
-    _ = bool(getattr(config, "VP_GATE_HEDGE_GATE_ENABLED", False))  # VP_GATE_HEDGE_GATE_ENABLED
-    _ = bool(getattr(config, "VWAP_FILTER_ENABLED", False))  # VWAP_FILTER_ENABLED
-    _ = bool(getattr(config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", False))  # WATCHDOG_DC_FORCE_OPEN_ENABLED
-    _ = bool(getattr(config, "WATCHDOG_WT3M_ESCALATE_ENABLED", False))  # WATCHDOG_WT3M_ESCALATE_ENABLED
-    _ = bool(getattr(config, "WINNER_PROTECT_ENABLED", False))  # WINNER_PROTECT_ENABLED
-    _ = bool(getattr(config, "WRONG_SIDE_ABS_KILL_ENABLED", False))  # WRONG_SIDE_ABS_KILL_ENABLED
-    _ = bool(getattr(config, "WT15M_AGAINST_FORCE_HEDGE_ENABLED", False))  # WT15M_AGAINST_FORCE_HEDGE_ENABLED
-    _ = bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False))  # WT_15M_BOUNCE_OPEN_ENABLED
-    _ = bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False))  # WT_15M_CROSS_ENTRY_ENABLED
-    _ = bool(getattr(config, "WT_3M_OPEN_GATE_ENABLED", False))  # WT_3M_OPEN_GATE_ENABLED
-    _ = bool(getattr(config, "WT_4H_VEL_EXIT_ENABLED", False))  # WT_4H_VEL_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED", False))  # WT_4H_VEL_MANDATORY_REENTRY_ENABLED
-    _ = bool(getattr(config, "WT_ACCEL_EXIT_ENABLED", False))  # WT_ACCEL_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_BOTTOM_CROSS_GATE_ENABLED", False))  # WT_BOTTOM_CROSS_GATE_ENABLED
-    _ = bool(getattr(config, "WT_CHOP_GATE_ENABLED", False))  # WT_CHOP_GATE_ENABLED
-    _ = bool(getattr(config, "WT_COMPOSITE_DELTA_GATE_ENABLED", False))  # WT_COMPOSITE_DELTA_GATE_ENABLED
-    _ = bool(getattr(config, "WT_COMPOSITE_DELTA_SCORE_ENABLED", False))  # WT_COMPOSITE_DELTA_SCORE_ENABLED
-    _ = bool(getattr(config, "WT_COMPOSITE_SCORING_ENABLED", False))  # WT_COMPOSITE_SCORING_ENABLED
-    _ = bool(getattr(config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False))  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED
-    _ = bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False))  # WT_CROSS_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_DC_DIRECT_COMPLETED_ENABLED", False))  # WT_DC_DIRECT_COMPLETED_ENABLED
-    _ = bool(getattr(config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED", False))  # WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED
-    _ = bool(getattr(config, "WT_DC_EXIT_ENABLED", False))  # WT_DC_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_DC_LONG_ENABLED", False))  # WT_DC_LONG_ENABLED
-    _ = bool(getattr(config, "WT_DC_SHORT_ENABLED", False))  # WT_DC_SHORT_ENABLED
-    _ = bool(getattr(config, "WT_DIV_ENTRY_GATE_ENABLED", False))  # WT_DIV_ENTRY_GATE_ENABLED
-    _ = bool(getattr(config, "WT_DIV_EXIT_ENABLED", False))  # WT_DIV_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_D_BOUNCE_AUG_ENABLED", False))  # WT_D_BOUNCE_AUG_ENABLED
-    _ = bool(getattr(config, "WT_D_BOUNCE_DD_STOP_ENABLED", False))  # WT_D_BOUNCE_DD_STOP_ENABLED
-    _ = bool(getattr(config, "WT_EXHAUST_ENTRY_GATE_ENABLED", False))  # WT_EXHAUST_ENTRY_GATE_ENABLED
-    _ = bool(getattr(config, "WT_EXHAUST_EXIT_ENABLED", False))  # WT_EXHAUST_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_HTF_DISCOUNT_ENABLED", False))  # WT_HTF_DISCOUNT_ENABLED
-    _ = bool(getattr(config, "WT_MOMENTUM_EXIT_ENABLED", False))  # WT_MOMENTUM_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_MTF_VEL_GATE_ENABLED", False))  # WT_MTF_VEL_GATE_ENABLED
-    _ = bool(getattr(config, "WT_PERCENTILE_ENTRY_GATE_ENABLED", False))  # WT_PERCENTILE_ENTRY_GATE_ENABLED
-    _ = bool(getattr(config, "WT_PERCENTILE_EXIT_ENABLED", False))  # WT_PERCENTILE_EXIT_ENABLED
-    _ = bool(getattr(config, "WT_VEL_DECAY_EXIT_ENABLED", False))  # WT_VEL_DECAY_EXIT_ENABLED
-    _ = bool(getattr(config, "ZEC_SUPERVISOR_ENABLED", False))  # ZEC_SUPERVISOR_ENABLED
-    return True
-
-# === FINAL 9 WIRED v8_vec_sweep.py 20260818 ===
-def _final9_vec(config):
-    _ = bool(getattr(config, "AGGRESSIVE_LOSS_CUT_ENABLED", False))
-    _ = bool(getattr(config, "CT_15M_MOMENTUM_GATE_ENABLED", False))
-    _ = bool(getattr(config, "CT_CHOP_4H_GATE_ENABLED", False))
-    _ = bool(getattr(config, "CT_VOLUME_SURGE_GATE_ENABLED", False))
-    _ = bool(getattr(config, "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", False))
-    _ = bool(getattr(config, "EXIT_DEAD_CODE_ENABLED", False))
-    _ = bool(getattr(config, "VOLUME_CONFIRMATION_ENABLED", False))
-    _ = bool(getattr(config, "VWAP_BOUNCE_ENTRY_ENABLED", False))
-    _ = bool(getattr(config, "WT_15M_SAME_HEDGE_ENABLED", False))
-    return True

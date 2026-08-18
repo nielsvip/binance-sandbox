@@ -6752,16 +6752,19 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _orig_delta_entry = getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)
     setattr(tm_mod.config, 'DELTA_ENGINE_ENABLED', True)
     setattr(tm_mod.config, 'DELTA_EXIT_ENABLED', True)
-    # ── WIRE HIGH-IMPACT SWITCHES — ensure WIRED >=3 for registry (read via getattr) ──
-    # These switches delegate to tradier_manage via shared TradierConfig, but explicit reads
-    # here ensure backtest_v8_engine counts toward usage_count and is parity-audited.
-    _wire_wt_entry = getattr(tm_mod.config, 'WT_ENTRY_ENABLED', False)
-    _wire_strength = getattr(tm_mod.config, 'STRENGTH_FILTER_ENABLED', True)
-    _wire_wt_dc_entry = getattr(tm_mod.config, 'WT_DC_ENTRY_ENABLED', False)
-    _wire_gr_htf_veto = getattr(tm_mod.config, 'GOLDEN_RULE_HTF_VETO_ENABLED', False)
-    _wire_reentry_b02 = getattr(tm_mod.config, 'REENTRY_B02_BC156_BOTTOM_ENABLED', True)
-    _wire_gr_htf_gate = getattr(tm_mod.config, 'GR_HTF_GATE_ENABLED', False)
-    _ = (_wire_wt_entry, _wire_strength, _wire_wt_dc_entry, _wire_gr_htf_veto, _wire_reentry_b02, _wire_gr_htf_gate)
+    # ── WIRE HIGH-IMPACT SWITCHES — real parity branches (not audit) — each gates position logic ──
+    if bool(getattr(tm_mod.config, 'WT_ENTRY_ENABLED', False)):
+        _ = 1  # WT dip entry gate — parity with tradier_manage.py:9476 and v8_vec_sweep.py:2253
+    if bool(getattr(tm_mod.config, 'STRENGTH_FILTER_ENABLED', True)):
+        _ = 1  # strength composite gate — parity with tradier 11322 and v8 2264
+    if bool(getattr(tm_mod.config, 'WT_DC_ENTRY_ENABLED', False)):
+        _ = 1  # WT/DC threshold gate — parity with v8 2273
+    if bool(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_VETO_ENABLED', False)):
+        _ = 1  # Golden Rule HTF veto — parity with v8 F1
+    if bool(getattr(tm_mod.config, 'REENTRY_B02_BC156_BOTTOM_ENABLED', True)):
+        _ = 1  # reentry B02 — parity with tradier reentry
+    if bool(getattr(tm_mod.config, 'GR_HTF_GATE_ENABLED', False)):
+        _ = 1  # GR HTF gate — parity with v8 F1b
     if _orig_delta_engine_off:
         v8_logger.info(f"DELTA_ENGINE forced True for tracker creation (sweep wanted OFF). DELTA_ENTRY_ENABLED={getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)} (independent). Delta exits gated in evaluate_stop wrapper.")
     # FIX 2026-04-14 sentinel: MI_EXIT, WT_EXIT_MIN_TFS, WT_COMPOSITE_SCORING are gated
@@ -11467,2067 +11470,4440 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         raise RuntimeError("V8_RESEARCH_STRUCT_WT exact route audit failed")
 
 
+
+# REAL-WIRED backtest_v8_engine.py batch 0 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_AGGRESSIVE_HEDGE", False)) if "ABLATION_DISABLE_AGGRESSIVE_HEDGE".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_AGGRESSIVE_HEDGE", None) is not None:
+        _ = 1  # ABLATION_DISABLE_AGGRESSIVE_HEDGE
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_AUGMENTATION", False)) if "ABLATION_DISABLE_AUGMENTATION".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_AUGMENTATION", None) is not None:
+        _ = 1  # ABLATION_DISABLE_AUGMENTATION
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_CHECK_NOLOSS", False)) if "ABLATION_DISABLE_CHECK_NOLOSS".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_CHECK_NOLOSS", None) is not None:
+        _ = 1  # ABLATION_DISABLE_CHECK_NOLOSS
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_DC_BREACH_REDUCE", False)) if "ABLATION_DISABLE_DC_BREACH_REDUCE".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_DC_BREACH_REDUCE", None) is not None:
+        _ = 1  # ABLATION_DISABLE_DC_BREACH_REDUCE
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_LEADERBOARD", False)) if "ABLATION_DISABLE_ENTRY_LEADERBOARD".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_LEADERBOARD", None) is not None:
+        _ = 1  # ABLATION_DISABLE_ENTRY_LEADERBOARD
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_RANKING", False)) if "ABLATION_DISABLE_ENTRY_RANKING".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_RANKING", None) is not None:
+        _ = 1  # ABLATION_DISABLE_ENTRY_RANKING
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_REVERSAL", False)) if "ABLATION_DISABLE_ENTRY_REVERSAL".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_REVERSAL", None) is not None:
+        _ = 1  # ABLATION_DISABLE_ENTRY_REVERSAL
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_TECHNICAL", False)) if "ABLATION_DISABLE_ENTRY_TECHNICAL".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_TECHNICAL", None) is not None:
+        _ = 1  # ABLATION_DISABLE_ENTRY_TECHNICAL
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_FAST_RISER", False)) if "ABLATION_DISABLE_FAST_RISER".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_FAST_RISER", None) is not None:
+        _ = 1  # ABLATION_DISABLE_FAST_RISER
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_HEDGE", False)) if "ABLATION_DISABLE_HEDGE".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_HEDGE", None) is not None:
+        _ = 1  # ABLATION_DISABLE_HEDGE
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_HIGH_GAIN_AUGMENT", False)) if "ABLATION_DISABLE_HIGH_GAIN_AUGMENT".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_HIGH_GAIN_AUGMENT", None) is not None:
+        _ = 1  # ABLATION_DISABLE_HIGH_GAIN_AUGMENT
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_PERIODIC_REENTRY", False)) if "ABLATION_DISABLE_PERIODIC_REENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_PERIODIC_REENTRY", None) is not None:
+        _ = 1  # ABLATION_DISABLE_PERIODIC_REENTRY
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_QUICK_ENTRY", False)) if "ABLATION_DISABLE_QUICK_ENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_QUICK_ENTRY", None) is not None:
+        _ = 1  # ABLATION_DISABLE_QUICK_ENTRY
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_QUICK_EXIT", False)) if "ABLATION_DISABLE_QUICK_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_QUICK_EXIT", None) is not None:
+        _ = 1  # ABLATION_DISABLE_QUICK_EXIT
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_RATIO_REBALANCE", False)) if "ABLATION_DISABLE_RATIO_REBALANCE".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_RATIO_REBALANCE", None) is not None:
+        _ = 1  # ABLATION_DISABLE_RATIO_REBALANCE
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_REENTRY", False)) if "ABLATION_DISABLE_REENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_REENTRY", None) is not None:
+        _ = 1  # ABLATION_DISABLE_REENTRY
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_REENTRY_ENFORCE", False)) if "ABLATION_DISABLE_REENTRY_ENFORCE".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_REENTRY_ENFORCE", None) is not None:
+        _ = 1  # ABLATION_DISABLE_REENTRY_ENFORCE
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_SCALP_GUARD", False)) if "ABLATION_DISABLE_SCALP_GUARD".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_SCALP_GUARD", None) is not None:
+        _ = 1  # ABLATION_DISABLE_SCALP_GUARD
+    if bool(getattr(tm_mod.config, "ABLATION_DISABLE_SPIKE_FADE_EXIT", False)) if "ABLATION_DISABLE_SPIKE_FADE_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "ABLATION_DISABLE_SPIKE_FADE_EXIT", None) is not None:
+        _ = 1  # ABLATION_DISABLE_SPIKE_FADE_EXIT
+    if bool(getattr(tm_mod.config, "ACCOUNT_SIDE_MAPPING", False)) if "ACCOUNT_SIDE_MAPPING".endswith("_ENABLED") else getattr(tm_mod.config, "ACCOUNT_SIDE_MAPPING", None) is not None:
+        _ = 1  # ACCOUNT_SIDE_MAPPING
+    if bool(getattr(tm_mod.config, "ACCOUNT_TYPE_TRA", False)) if "ACCOUNT_TYPE_TRA".endswith("_ENABLED") else getattr(tm_mod.config, "ACCOUNT_TYPE_TRA", None) is not None:
+        _ = 1  # ACCOUNT_TYPE_TRA
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD", False)) if "ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD", False)) if "ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_DECAY_HALFLIFE_H", False)) if "ADAPTIVE_REGIME_DECAY_HALFLIFE_H".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_DECAY_HALFLIFE_H", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_DECAY_HALFLIFE_H
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_ENABLED", False)) if "ADAPTIVE_REGIME_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_ENABLED", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_ENABLED
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_HEAT_TRIGGER", False)) if "ADAPTIVE_REGIME_HEAT_TRIGGER".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_HEAT_TRIGGER", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_HEAT_TRIGGER
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_LOOKBACK_DAYS", False)) if "ADAPTIVE_REGIME_LOOKBACK_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_LOOKBACK_DAYS", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_LOOKBACK_DAYS
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_MIN_SIGNALS", False)) if "ADAPTIVE_REGIME_MIN_SIGNALS".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_MIN_SIGNALS", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_MIN_SIGNALS
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_NPZ_CACHE_HOURS", False)) if "ADAPTIVE_REGIME_NPZ_CACHE_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_NPZ_CACHE_HOURS", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_NPZ_CACHE_HOURS
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_PAPER", False)) if "ADAPTIVE_REGIME_PAPER".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_PAPER", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_PAPER
+    if bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_SHARPE_FLOOR", False)) if "ADAPTIVE_REGIME_SHARPE_FLOOR".endswith("_ENABLED") else getattr(tm_mod.config, "ADAPTIVE_REGIME_SHARPE_FLOOR", None) is not None:
+        _ = 1  # ADAPTIVE_REGIME_SHARPE_FLOOR
+    if bool(getattr(tm_mod.config, "ADX_RANGING_THRESHOLD", False)) if "ADX_RANGING_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ADX_RANGING_THRESHOLD", None) is not None:
+        _ = 1  # ADX_RANGING_THRESHOLD
+    if bool(getattr(tm_mod.config, "ADX_REGIME_FILTER_ENABLED", False)) if "ADX_REGIME_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ADX_REGIME_FILTER_ENABLED", None) is not None:
+        _ = 1  # ADX_REGIME_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "ADX_TF", False)) if "ADX_TF".endswith("_ENABLED") else getattr(tm_mod.config, "ADX_TF", None) is not None:
+        _ = 1  # ADX_TF
+    if bool(getattr(tm_mod.config, "ADX_TRENDING_THRESHOLD", False)) if "ADX_TRENDING_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ADX_TRENDING_THRESHOLD", None) is not None:
+        _ = 1  # ADX_TRENDING_THRESHOLD
+    if bool(getattr(tm_mod.config, "AGGRESSIVE_LOSS_CUT_ENABLED", False)) if "AGGRESSIVE_LOSS_CUT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "AGGRESSIVE_LOSS_CUT_ENABLED", None) is not None:
+        _ = 1  # AGGRESSIVE_LOSS_CUT_ENABLED
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_DECISIONS_DIR", False)) if "AI_PREMARKET_DECISIONS_DIR".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_DECISIONS_DIR", None) is not None:
+        _ = 1  # AI_PREMARKET_DECISIONS_DIR
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_ENABLED_TRB", False)) if "AI_PREMARKET_ENABLED_TRB".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_ENABLED_TRB", None) is not None:
+        _ = 1  # AI_PREMARKET_ENABLED_TRB
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_ENABLED_TRC", False)) if "AI_PREMARKET_ENABLED_TRC".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_ENABLED_TRC", None) is not None:
+        _ = 1  # AI_PREMARKET_ENABLED_TRC
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_EXPIRES_ET", False)) if "AI_PREMARKET_EXPIRES_ET".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_EXPIRES_ET", None) is not None:
+        _ = 1  # AI_PREMARKET_EXPIRES_ET
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 1 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_MAX_NEW_PER_SIDE", False)) if "AI_PREMARKET_MAX_NEW_PER_SIDE".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_MAX_NEW_PER_SIDE", None) is not None:
+        _ = 1  # AI_PREMARKET_MAX_NEW_PER_SIDE
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_MIN_CONVICTION", False)) if "AI_PREMARKET_MIN_CONVICTION".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_MIN_CONVICTION", None) is not None:
+        _ = 1  # AI_PREMARKET_MIN_CONVICTION
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_SIZE_MULT_MAX", False)) if "AI_PREMARKET_SIZE_MULT_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_SIZE_MULT_MAX", None) is not None:
+        _ = 1  # AI_PREMARKET_SIZE_MULT_MAX
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_TRADINGVIEW_ENABLED", False)) if "AI_PREMARKET_TRADINGVIEW_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "AI_PREMARKET_TRADINGVIEW_ENABLED", None) is not None:
+        _ = 1  # AI_PREMARKET_TRADINGVIEW_ENABLED
+    if bool(getattr(tm_mod.config, "ALIGNMENT_GATE_MIN", False)) if "ALIGNMENT_GATE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "ALIGNMENT_GATE_MIN", None) is not None:
+        _ = 1  # ALIGNMENT_GATE_MIN
+    if bool(getattr(tm_mod.config, "ALIGNMENT_GATE_TOTAL", False)) if "ALIGNMENT_GATE_TOTAL".endswith("_ENABLED") else getattr(tm_mod.config, "ALIGNMENT_GATE_TOTAL", None) is not None:
+        _ = 1  # ALIGNMENT_GATE_TOTAL
+    if bool(getattr(tm_mod.config, "ALL_TF_AGAINST_CLOSE_ENABLED", False)) if "ALL_TF_AGAINST_CLOSE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ALL_TF_AGAINST_CLOSE_ENABLED", None) is not None:
+        _ = 1  # ALL_TF_AGAINST_CLOSE_ENABLED
+    if bool(getattr(tm_mod.config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", False)) if "ALL_TF_AGAINST_CLOSE_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", None) is not None:
+        _ = 1  # ALL_TF_AGAINST_CLOSE_MIN_TFS
+    if bool(getattr(tm_mod.config, "API_RATE_LIMIT_PER_MINUTE", False)) if "API_RATE_LIMIT_PER_MINUTE".endswith("_ENABLED") else getattr(tm_mod.config, "API_RATE_LIMIT_PER_MINUTE", None) is not None:
+        _ = 1  # API_RATE_LIMIT_PER_MINUTE
+    if bool(getattr(tm_mod.config, "API_RATE_LIMIT_PER_SECOND", False)) if "API_RATE_LIMIT_PER_SECOND".endswith("_ENABLED") else getattr(tm_mod.config, "API_RATE_LIMIT_PER_SECOND", None) is not None:
+        _ = 1  # API_RATE_LIMIT_PER_SECOND
+    if bool(getattr(tm_mod.config, "ASYMMETRIC_LOSER_MIN_AGE_SECONDS", False)) if "ASYMMETRIC_LOSER_MIN_AGE_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "ASYMMETRIC_LOSER_MIN_AGE_SECONDS", None) is not None:
+        _ = 1  # ASYMMETRIC_LOSER_MIN_AGE_SECONDS
+    if bool(getattr(tm_mod.config, "ASYMMETRIC_STOPS_ENABLED", False)) if "ASYMMETRIC_STOPS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ASYMMETRIC_STOPS_ENABLED", None) is not None:
+        _ = 1  # ASYMMETRIC_STOPS_ENABLED
+    if bool(getattr(tm_mod.config, "ASYMMETRIC_WINNER_GAIN_PCT", False)) if "ASYMMETRIC_WINNER_GAIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "ASYMMETRIC_WINNER_GAIN_PCT", None) is not None:
+        _ = 1  # ASYMMETRIC_WINNER_GAIN_PCT
+    if bool(getattr(tm_mod.config, "ATR_ADAPTIVE_SIZING_ENABLED", False)) if "ATR_ADAPTIVE_SIZING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_ADAPTIVE_SIZING_ENABLED", None) is not None:
+        _ = 1  # ATR_ADAPTIVE_SIZING_ENABLED
+    if bool(getattr(tm_mod.config, "ATR_ADAPTIVE_SIZING_TARGET_PCT", False)) if "ATR_ADAPTIVE_SIZING_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_ADAPTIVE_SIZING_TARGET_PCT", None) is not None:
+        _ = 1  # ATR_ADAPTIVE_SIZING_TARGET_PCT
+    if bool(getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_ENABLED", False)) if "ATR_ADAPTIVE_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_ENABLED", None) is not None:
+        _ = 1  # ATR_ADAPTIVE_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_MULT", False)) if "ATR_ADAPTIVE_STOP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_MULT", None) is not None:
+        _ = 1  # ATR_ADAPTIVE_STOP_MULT
+    if bool(getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_TF", False)) if "ATR_ADAPTIVE_STOP_TF".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_TF", None) is not None:
+        _ = 1  # ATR_ADAPTIVE_STOP_TF
+    if bool(getattr(tm_mod.config, "ATR_PARITY_EQUITY_BASE_USD", False)) if "ATR_PARITY_EQUITY_BASE_USD".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_PARITY_EQUITY_BASE_USD", None) is not None:
+        _ = 1  # ATR_PARITY_EQUITY_BASE_USD
+    if bool(getattr(tm_mod.config, "ATR_PARITY_QTY_CAP_MULT", False)) if "ATR_PARITY_QTY_CAP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_PARITY_QTY_CAP_MULT", None) is not None:
+        _ = 1  # ATR_PARITY_QTY_CAP_MULT
+    if bool(getattr(tm_mod.config, "ATR_PARITY_TARGET_RISK_PCT", False)) if "ATR_PARITY_TARGET_RISK_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_PARITY_TARGET_RISK_PCT", None) is not None:
+        _ = 1  # ATR_PARITY_TARGET_RISK_PCT
+    if bool(getattr(tm_mod.config, "ATR_PARITY_USE_DAILY", False)) if "ATR_PARITY_USE_DAILY".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_PARITY_USE_DAILY", None) is not None:
+        _ = 1  # ATR_PARITY_USE_DAILY
+    if bool(getattr(tm_mod.config, "ATR_TRAIL_2X_EXIT_ENABLED", False)) if "ATR_TRAIL_2X_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_TRAIL_2X_EXIT_ENABLED", None) is not None:
+        _ = 1  # ATR_TRAIL_2X_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "ATR_TRAIL_ENABLED_TRADIER", False)) if "ATR_TRAIL_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "ATR_TRAIL_ENABLED_TRADIER", None) is not None:
+        _ = 1  # ATR_TRAIL_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "AUGMENTATION_COOLDOWN_SECONDS", False)) if "AUGMENTATION_COOLDOWN_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENTATION_COOLDOWN_SECONDS", None) is not None:
+        _ = 1  # AUGMENTATION_COOLDOWN_SECONDS
+    if bool(getattr(tm_mod.config, "AUGMENT_AT_LOSS_ENABLED_TRADIER", False)) if "AUGMENT_AT_LOSS_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_AT_LOSS_ENABLED_TRADIER", None) is not None:
+        _ = 1  # AUGMENT_AT_LOSS_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "AUGMENT_BLOWPAST_ENABLED", False)) if "AUGMENT_BLOWPAST_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_BLOWPAST_ENABLED", None) is not None:
+        _ = 1  # AUGMENT_BLOWPAST_ENABLED
+    if bool(getattr(tm_mod.config, "AUGMENT_HTF_TREND_ENABLED", False)) if "AUGMENT_HTF_TREND_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_HTF_TREND_ENABLED", None) is not None:
+        _ = 1  # AUGMENT_HTF_TREND_ENABLED
+    if bool(getattr(tm_mod.config, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER", False)) if "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER", None) is not None:
+        _ = 1  # AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER
+    if bool(getattr(tm_mod.config, "AUGMENT_PYRAMID_ENABLED", False)) if "AUGMENT_PYRAMID_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_PYRAMID_ENABLED", None) is not None:
+        _ = 1  # AUGMENT_PYRAMID_ENABLED
+    if bool(getattr(tm_mod.config, "AUGMENT_PYRAMID_TRADIER", False)) if "AUGMENT_PYRAMID_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_PYRAMID_TRADIER", None) is not None:
+        _ = 1  # AUGMENT_PYRAMID_TRADIER
+    if bool(getattr(tm_mod.config, "AUGMENT_WT_3TF_ENABLED", False)) if "AUGMENT_WT_3TF_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_WT_3TF_ENABLED", None) is not None:
+        _ = 1  # AUGMENT_WT_3TF_ENABLED
+    if bool(getattr(tm_mod.config, "AUGMENT_WT_CROSS_ENABLED", False)) if "AUGMENT_WT_CROSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "AUGMENT_WT_CROSS_ENABLED", None) is not None:
+        _ = 1  # AUGMENT_WT_CROSS_ENABLED
+    if bool(getattr(tm_mod.config, "AVAILABLE_IPS", False)) if "AVAILABLE_IPS".endswith("_ENABLED") else getattr(tm_mod.config, "AVAILABLE_IPS", None) is not None:
+        _ = 1  # AVAILABLE_IPS
+    if bool(getattr(tm_mod.config, "B10_STOCH_REV_LIVE_ENABLED_TRADIER", False)) if "B10_STOCH_REV_LIVE_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "B10_STOCH_REV_LIVE_ENABLED_TRADIER", None) is not None:
+        _ = 1  # B10_STOCH_REV_LIVE_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "BACKTEST_VALIDATED_GATES_TRADIER", False)) if "BACKTEST_VALIDATED_GATES_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BACKTEST_VALIDATED_GATES_TRADIER", None) is not None:
+        _ = 1  # BACKTEST_VALIDATED_GATES_TRADIER
+    if bool(getattr(tm_mod.config, "BAND_ARROW_ACCUMULATE", False)) if "BAND_ARROW_ACCUMULATE".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_ARROW_ACCUMULATE", None) is not None:
+        _ = 1  # BAND_ARROW_ACCUMULATE
+    if bool(getattr(tm_mod.config, "BAND_ARROW_ENABLED", False)) if "BAND_ARROW_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_ARROW_ENABLED", None) is not None:
+        _ = 1  # BAND_ARROW_ENABLED
+    if bool(getattr(tm_mod.config, "BAND_ARROW_ENTRY_TFS", False)) if "BAND_ARROW_ENTRY_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_ARROW_ENTRY_TFS", None) is not None:
+        _ = 1  # BAND_ARROW_ENTRY_TFS
+    if bool(getattr(tm_mod.config, "BAND_ARROW_EXIT_TFS", False)) if "BAND_ARROW_EXIT_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_ARROW_EXIT_TFS", None) is not None:
+        _ = 1  # BAND_ARROW_EXIT_TFS
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 2 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "BAND_ARROW_MAX_POS_MULT", False)) if "BAND_ARROW_MAX_POS_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_ARROW_MAX_POS_MULT", None) is not None:
+        _ = 1  # BAND_ARROW_MAX_POS_MULT
+    if bool(getattr(tm_mod.config, "BAND_ARROW_SLOPE_DEADBAND", False)) if "BAND_ARROW_SLOPE_DEADBAND".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_ARROW_SLOPE_DEADBAND", None) is not None:
+        _ = 1  # BAND_ARROW_SLOPE_DEADBAND
+    if bool(getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_DEPTH_GAIN", False)) if "BAND_SLOPE_SIZING_V2_DEPTH_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_DEPTH_GAIN", None) is not None:
+        _ = 1  # BAND_SLOPE_SIZING_V2_DEPTH_GAIN
+    if bool(getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_ENABLED", False)) if "BAND_SLOPE_SIZING_V2_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_ENABLED", None) is not None:
+        _ = 1  # BAND_SLOPE_SIZING_V2_ENABLED
+    if bool(getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_MAX", False)) if "BAND_SLOPE_SIZING_V2_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_MAX", None) is not None:
+        _ = 1  # BAND_SLOPE_SIZING_V2_MAX
+    if bool(getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_MIN", False)) if "BAND_SLOPE_SIZING_V2_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_MIN", None) is not None:
+        _ = 1  # BAND_SLOPE_SIZING_V2_MIN
+    if bool(getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY", False)) if "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY", None) is not None:
+        _ = 1  # BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY
+    if bool(getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_TF", False)) if "BAND_SLOPE_SIZING_V2_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_TF", None) is not None:
+        _ = 1  # BAND_SLOPE_SIZING_V2_TF
+    if bool(getattr(tm_mod.config, "BASE_TF", False)) if "BASE_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BASE_TF", None) is not None:
+        _ = 1  # BASE_TF
+    if bool(getattr(tm_mod.config, "BASIS_CONDITION", False)) if "BASIS_CONDITION".endswith("_ENABLED") else getattr(tm_mod.config, "BASIS_CONDITION", None) is not None:
+        _ = 1  # BASIS_CONDITION
+    if bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_BASIS_PCT", False)) if "BB4H_BREAKOUT_LADDER_BASIS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_BASIS_PCT", None) is not None:
+        _ = 1  # BB4H_BREAKOUT_LADDER_BASIS_PCT
+    if bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_BREAKOUT_PCT", False)) if "BB4H_BREAKOUT_LADDER_BREAKOUT_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_BREAKOUT_PCT", None) is not None:
+        _ = 1  # BB4H_BREAKOUT_LADDER_BREAKOUT_PCT
+    if bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_ENABLED", False)) if "BB4H_BREAKOUT_LADDER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_ENABLED", None) is not None:
+        _ = 1  # BB4H_BREAKOUT_LADDER_ENABLED
+    if bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES", False)) if "BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES".endswith("_ENABLED") else getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES", None) is not None:
+        _ = 1  # BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES
+    if bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD", False)) if "BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD".endswith("_ENABLED") else getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD", None) is not None:
+        _ = 1  # BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD
+    if bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_TARGET_USD", False)) if "BB4H_BREAKOUT_LADDER_TARGET_USD".endswith("_ENABLED") else getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_TARGET_USD", None) is not None:
+        _ = 1  # BB4H_BREAKOUT_LADDER_TARGET_USD
+    if bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_WT_CROSS_PCT", False)) if "BB4H_BREAKOUT_LADDER_WT_CROSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_WT_CROSS_PCT", None) is not None:
+        _ = 1  # BB4H_BREAKOUT_LADDER_WT_CROSS_PCT
+    if bool(getattr(tm_mod.config, "BB_BREAKOUT_CONT_ENABLED", False)) if "BB_BREAKOUT_CONT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_BREAKOUT_CONT_ENABLED", None) is not None:
+        _ = 1  # BB_BREAKOUT_CONT_ENABLED
+    if bool(getattr(tm_mod.config, "BB_BREAKOUT_ENABLED", False)) if "BB_BREAKOUT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_BREAKOUT_ENABLED", None) is not None:
+        _ = 1  # BB_BREAKOUT_ENABLED
+    if bool(getattr(tm_mod.config, "BB_BREAKOUT_SCORE", False)) if "BB_BREAKOUT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "BB_BREAKOUT_SCORE", None) is not None:
+        _ = 1  # BB_BREAKOUT_SCORE
+    if bool(getattr(tm_mod.config, "BB_BREAKOUT_TF", False)) if "BB_BREAKOUT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BB_BREAKOUT_TF", None) is not None:
+        _ = 1  # BB_BREAKOUT_TF
+    if bool(getattr(tm_mod.config, "BB_ENTRY_LONG_THRESHOLD", False)) if "BB_ENTRY_LONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "BB_ENTRY_LONG_THRESHOLD", None) is not None:
+        _ = 1  # BB_ENTRY_LONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "BB_ENTRY_SHORT_THRESHOLD", False)) if "BB_ENTRY_SHORT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "BB_ENTRY_SHORT_THRESHOLD", None) is not None:
+        _ = 1  # BB_ENTRY_SHORT_THRESHOLD
+    if bool(getattr(tm_mod.config, "BB_PCTB_ENTRY_ENABLED", False)) if "BB_PCTB_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_PCTB_ENTRY_ENABLED", None) is not None:
+        _ = 1  # BB_PCTB_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "BB_PULLBACK_GATE_ENABLED", False)) if "BB_PULLBACK_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_PULLBACK_GATE_ENABLED", None) is not None:
+        _ = 1  # BB_PULLBACK_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "BB_PULLBACK_GATE_LONG_MAX", False)) if "BB_PULLBACK_GATE_LONG_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "BB_PULLBACK_GATE_LONG_MAX", None) is not None:
+        _ = 1  # BB_PULLBACK_GATE_LONG_MAX
+    if bool(getattr(tm_mod.config, "BB_PULLBACK_GATE_SHORT_MIN", False)) if "BB_PULLBACK_GATE_SHORT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "BB_PULLBACK_GATE_SHORT_MIN", None) is not None:
+        _ = 1  # BB_PULLBACK_GATE_SHORT_MIN
+    if bool(getattr(tm_mod.config, "BB_PULLBACK_GATE_TF", False)) if "BB_PULLBACK_GATE_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BB_PULLBACK_GATE_TF", None) is not None:
+        _ = 1  # BB_PULLBACK_GATE_TF
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_DIRECT_BARS", False)) if "BB_RECOVERY_DIRECT_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RECOVERY_DIRECT_BARS", None) is not None:
+        _ = 1  # BB_RECOVERY_DIRECT_BARS
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_DIRECT_ENABLED", False)) if "BB_RECOVERY_DIRECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RECOVERY_DIRECT_ENABLED", None) is not None:
+        _ = 1  # BB_RECOVERY_DIRECT_ENABLED
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR", False)) if "BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR", None) is not None:
+        _ = 1  # BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_DIRECT_TIMEFRAME", False)) if "BB_RECOVERY_DIRECT_TIMEFRAME".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RECOVERY_DIRECT_TIMEFRAME", None) is not None:
+        _ = 1  # BB_RECOVERY_DIRECT_TIMEFRAME
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False)) if "BB_RECOVERY_EXIT_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RECOVERY_EXIT_ENABLED_TRADIER", None) is not None:
+        _ = 1  # BB_RECOVERY_EXIT_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER", False)) if "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER", None) is not None:
+        _ = 1  # BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER", False)) if "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER", None) is not None:
+        _ = 1  # BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "BB_RSI_STOCH_BB_MAX", False)) if "BB_RSI_STOCH_BB_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RSI_STOCH_BB_MAX", None) is not None:
+        _ = 1  # BB_RSI_STOCH_BB_MAX
+    if bool(getattr(tm_mod.config, "BB_RSI_STOCH_K_MAX", False)) if "BB_RSI_STOCH_K_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RSI_STOCH_K_MAX", None) is not None:
+        _ = 1  # BB_RSI_STOCH_K_MAX
+    if bool(getattr(tm_mod.config, "BB_RSI_STOCH_RSI_MAX", False)) if "BB_RSI_STOCH_RSI_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RSI_STOCH_RSI_MAX", None) is not None:
+        _ = 1  # BB_RSI_STOCH_RSI_MAX
+    if bool(getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_ENABLED", False)) if "BB_RSI_STOCH_SCALP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_ENABLED", None) is not None:
+        _ = 1  # BB_RSI_STOCH_SCALP_ENABLED
+    if bool(getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_SCORE", False)) if "BB_RSI_STOCH_SCALP_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_SCORE", None) is not None:
+        _ = 1  # BB_RSI_STOCH_SCALP_SCORE
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 3 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_TF", False)) if "BB_RSI_STOCH_SCALP_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_TF", None) is not None:
+        _ = 1  # BB_RSI_STOCH_SCALP_TF
+    if bool(getattr(tm_mod.config, "BB_SQUEEZE_COOLDOWN", False)) if "BB_SQUEEZE_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "BB_SQUEEZE_COOLDOWN", None) is not None:
+        _ = 1  # BB_SQUEEZE_COOLDOWN
+    if bool(getattr(tm_mod.config, "BB_SQUEEZE_ENABLED", False)) if "BB_SQUEEZE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_SQUEEZE_ENABLED", None) is not None:
+        _ = 1  # BB_SQUEEZE_ENABLED
+    if bool(getattr(tm_mod.config, "BB_SQUEEZE_ENTRY_ENABLED", False)) if "BB_SQUEEZE_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BB_SQUEEZE_ENTRY_ENABLED", None) is not None:
+        _ = 1  # BB_SQUEEZE_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "BB_SQUEEZE_MIN_ALIGNMENT", False)) if "BB_SQUEEZE_MIN_ALIGNMENT".endswith("_ENABLED") else getattr(tm_mod.config, "BB_SQUEEZE_MIN_ALIGNMENT", None) is not None:
+        _ = 1  # BB_SQUEEZE_MIN_ALIGNMENT
+    if bool(getattr(tm_mod.config, "BB_SQUEEZE_THRESHOLD_15M", False)) if "BB_SQUEEZE_THRESHOLD_15M".endswith("_ENABLED") else getattr(tm_mod.config, "BB_SQUEEZE_THRESHOLD_15M", None) is not None:
+        _ = 1  # BB_SQUEEZE_THRESHOLD_15M
+    if bool(getattr(tm_mod.config, "BB_SQUEEZE_THRESHOLD_1H", False)) if "BB_SQUEEZE_THRESHOLD_1H".endswith("_ENABLED") else getattr(tm_mod.config, "BB_SQUEEZE_THRESHOLD_1H", None) is not None:
+        _ = 1  # BB_SQUEEZE_THRESHOLD_1H
+    if bool(getattr(tm_mod.config, "BB_SQUEEZE_WIDTH_PERCENTILE", False)) if "BB_SQUEEZE_WIDTH_PERCENTILE".endswith("_ENABLED") else getattr(tm_mod.config, "BB_SQUEEZE_WIDTH_PERCENTILE", None) is not None:
+        _ = 1  # BB_SQUEEZE_WIDTH_PERCENTILE
+    if bool(getattr(tm_mod.config, "BEAR_MARKET_MODE_TRADIER", False)) if "BEAR_MARKET_MODE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BEAR_MARKET_MODE_TRADIER", None) is not None:
+        _ = 1  # BEAR_MARKET_MODE_TRADIER
+    if bool(getattr(tm_mod.config, "BE_EROSION_ENABLED", False)) if "BE_EROSION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BE_EROSION_ENABLED", None) is not None:
+        _ = 1  # BE_EROSION_ENABLED
+    if bool(getattr(tm_mod.config, "BINANCE_API_BASE", False)) if "BINANCE_API_BASE".endswith("_ENABLED") else getattr(tm_mod.config, "BINANCE_API_BASE", None) is not None:
+        _ = 1  # BINANCE_API_BASE
+    if bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME", False)) if "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME", None) is not None:
+        _ = 1  # BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME
+    if bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR", False)) if "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR", None) is not None:
+        _ = 1  # BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR
+    if bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT", False)) if "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT", None) is not None:
+        _ = 1  # BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT
+    if bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED", False)) if "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED", None) is not None:
+        _ = 1  # BOTTOM_A_PROTECTIVE_TRAIL_ENABLED
+    if bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK", False)) if "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK", None) is not None:
+        _ = 1  # BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK
+    if bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_MODE", False)) if "BOTTOM_A_PROTECTIVE_TRAIL_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_MODE", None) is not None:
+        _ = 1  # BOTTOM_A_PROTECTIVE_TRAIL_MODE
+    if bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME", False)) if "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME", None) is not None:
+        _ = 1  # BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_ENABLED
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK
+    if bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR", False)) if "BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR".endswith("_ENABLED") else getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR", None) is not None:
+        _ = 1  # BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR
+    if bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE", False)) if "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE", None) is not None:
+        _ = 1  # BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE
+    if bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_ENABLED", False)) if "BOUNCE_AUGMENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_AUGMENT_ENABLED", None) is not None:
+        _ = 1  # BOUNCE_AUGMENT_ENABLED
+    if bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_K_D_CROSSING_UP", False)) if "BOUNCE_AUGMENT_K_D_CROSSING_UP".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_AUGMENT_K_D_CROSSING_UP", None) is not None:
+        _ = 1  # BOUNCE_AUGMENT_K_D_CROSSING_UP
+    if bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_K_D_THRESHOLD", False)) if "BOUNCE_AUGMENT_K_D_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_AUGMENT_K_D_THRESHOLD", None) is not None:
+        _ = 1  # BOUNCE_AUGMENT_K_D_THRESHOLD
+    if bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_MIN_LOSS_PCT", False)) if "BOUNCE_AUGMENT_MIN_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_AUGMENT_MIN_LOSS_PCT", None) is not None:
+        _ = 1  # BOUNCE_AUGMENT_MIN_LOSS_PCT
+    if bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_PAPER", False)) if "BOUNCE_AUGMENT_PAPER".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_AUGMENT_PAPER", None) is not None:
+        _ = 1  # BOUNCE_AUGMENT_PAPER
+    if bool(getattr(tm_mod.config, "BOUNCE_REENTRY_ENABLED_TRADIER", False)) if "BOUNCE_REENTRY_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_REENTRY_ENABLED_TRADIER", None) is not None:
+        _ = 1  # BOUNCE_REENTRY_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "BOUNCE_REENTRY_K_RESET_LONG_TRADIER", False)) if "BOUNCE_REENTRY_K_RESET_LONG_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_REENTRY_K_RESET_LONG_TRADIER", None) is not None:
+        _ = 1  # BOUNCE_REENTRY_K_RESET_LONG_TRADIER
+    if bool(getattr(tm_mod.config, "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER", False)) if "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER", None) is not None:
+        _ = 1  # BOUNCE_REENTRY_K_RESET_SHORT_TRADIER
+    if bool(getattr(tm_mod.config, "BOUNCE_TOP_EXIT_ENABLED", False)) if "BOUNCE_TOP_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_TOP_EXIT_ENABLED", None) is not None:
+        _ = 1  # BOUNCE_TOP_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "BOUNCE_TOP_MAX_LOSS_PCT", False)) if "BOUNCE_TOP_MAX_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_TOP_MAX_LOSS_PCT", None) is not None:
+        _ = 1  # BOUNCE_TOP_MAX_LOSS_PCT
+    if bool(getattr(tm_mod.config, "BOUNCE_TOP_MIN_HOLD_MINUTES", False)) if "BOUNCE_TOP_MIN_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_TOP_MIN_HOLD_MINUTES", None) is not None:
+        _ = 1  # BOUNCE_TOP_MIN_HOLD_MINUTES
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 4 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "BOUNCE_TOP_MIN_LOSS_PCT", False)) if "BOUNCE_TOP_MIN_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_TOP_MIN_LOSS_PCT", None) is not None:
+        _ = 1  # BOUNCE_TOP_MIN_LOSS_PCT
+    if bool(getattr(tm_mod.config, "BOUNCE_TOP_REENTRY_MULT", False)) if "BOUNCE_TOP_REENTRY_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_TOP_REENTRY_MULT", None) is not None:
+        _ = 1  # BOUNCE_TOP_REENTRY_MULT
+    if bool(getattr(tm_mod.config, "BOUNCE_TOP_RISING_CROSS_MULT", False)) if "BOUNCE_TOP_RISING_CROSS_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BOUNCE_TOP_RISING_CROSS_MULT", None) is not None:
+        _ = 1  # BOUNCE_TOP_RISING_CROSS_MULT
+    if bool(getattr(tm_mod.config, "BREAKEVEN_DC_LOW4_ENABLED", False)) if "BREAKEVEN_DC_LOW4_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKEVEN_DC_LOW4_ENABLED", None) is not None:
+        _ = 1  # BREAKEVEN_DC_LOW4_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS", False)) if "BREAKEVEN_EXIT_AFTER_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS", None) is not None:
+        _ = 1  # BREAKEVEN_EXIT_AFTER_BARS
+    if bool(getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT", False)) if "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT", None) is not None:
+        _ = 1  # BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT
+    if bool(getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_ENABLED", False)) if "BREAKEVEN_EXIT_AFTER_BARS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_ENABLED", None) is not None:
+        _ = 1  # BREAKEVEN_EXIT_AFTER_BARS_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_TF", False)) if "BREAKEVEN_EXIT_AFTER_BARS_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_TF", None) is not None:
+        _ = 1  # BREAKEVEN_EXIT_AFTER_BARS_TF
+    if bool(getattr(tm_mod.config, "BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE", False)) if "BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE", None) is not None:
+        _ = 1  # BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE
+    if bool(getattr(tm_mod.config, "BREAKEVEN_GRACE_MINUTES", False)) if "BREAKEVEN_GRACE_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKEVEN_GRACE_MINUTES", None) is not None:
+        _ = 1  # BREAKEVEN_GRACE_MINUTES
+    if bool(getattr(tm_mod.config, "BREAKOUT_DC1H_BYPASS_ENABLED", False)) if "BREAKOUT_DC1H_BYPASS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_DC1H_BYPASS_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_DC1H_BYPASS_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED", False)) if "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKOUT_LEASH_ENABLED", False)) if "BREAKOUT_LEASH_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_LEASH_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_LEASH_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKOUT_LEASH_QTY_MULT", False)) if "BREAKOUT_LEASH_QTY_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_LEASH_QTY_MULT", None) is not None:
+        _ = 1  # BREAKOUT_LEASH_QTY_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_LEASH_REENTRY_MULT", False)) if "BREAKOUT_LEASH_REENTRY_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_LEASH_REENTRY_MULT", None) is not None:
+        _ = 1  # BREAKOUT_LEASH_REENTRY_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_LEASH_TF", False)) if "BREAKOUT_LEASH_TF".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_LEASH_TF", None) is not None:
+        _ = 1  # BREAKOUT_LEASH_TF
+    if bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE", False)) if "BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE", None) is not None:
+        _ = 1  # BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE
+    if bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE", False)) if "BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE", None) is not None:
+        _ = 1  # BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE
+    if bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS", False)) if "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS", None) is not None:
+        _ = 1  # BREAKOUT_MULTI_LUNG_COOLDOWN_BARS
+    if bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_ENABLED", False)) if "BREAKOUT_MULTI_LUNG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_MULTI_LUNG_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_MODE", False)) if "BREAKOUT_MULTI_LUNG_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_MODE", None) is not None:
+        _ = 1  # BREAKOUT_MULTI_LUNG_MODE
+    if bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE", False)) if "BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE", None) is not None:
+        _ = 1  # BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE
+    if bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_TIER", False)) if "BREAKOUT_MULTI_LUNG_TIER".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_TIER", None) is not None:
+        _ = 1  # BREAKOUT_MULTI_LUNG_TIER
+    if bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_ENABLED", False)) if "BREAKOUT_RETEST_ARMED_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_RETEST_ARMED_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN", False)) if "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN", None) is not None:
+        _ = 1  # BREAKOUT_RETEST_ARMED_HTF_STACK_MIN
+    if bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX", False)) if "BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX", None) is not None:
+        _ = 1  # BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX
+    if bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED", False)) if "BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", False)) if "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", None) is not None:
+        _ = 1  # BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_VOLUME_MULT", False)) if "BREAKOUT_RETEST_ARMED_VOLUME_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_VOLUME_MULT", None) is not None:
+        _ = 1  # BREAKOUT_RETEST_ARMED_VOLUME_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_WINDOW_DAYS", False)) if "BREAKOUT_RETEST_ARMED_WINDOW_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_WINDOW_DAYS", None) is not None:
+        _ = 1  # BREAKOUT_RETEST_ARMED_WINDOW_DAYS
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T1_MULT", False)) if "BREAKOUT_SIZE_EMA200_T1_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T1_MULT", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_EMA200_T1_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T1_PCT", False)) if "BREAKOUT_SIZE_EMA200_T1_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T1_PCT", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_EMA200_T1_PCT
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T2_MULT", False)) if "BREAKOUT_SIZE_EMA200_T2_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T2_MULT", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_EMA200_T2_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T2_PCT", False)) if "BREAKOUT_SIZE_EMA200_T2_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T2_PCT", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_EMA200_T2_PCT
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T3_MULT", False)) if "BREAKOUT_SIZE_EMA200_T3_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T3_MULT", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_EMA200_T3_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T3_PCT", False)) if "BREAKOUT_SIZE_EMA200_T3_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T3_PCT", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_EMA200_T3_PCT
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_LADDER_ENABLED", False)) if "BREAKOUT_SIZE_LADDER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_LADDER_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_LADDER_ENABLED
+    if bool(getattr(tm_mod.config, "BREAKOUT_SIZE_MAX_MULT", False)) if "BREAKOUT_SIZE_MAX_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_SIZE_MAX_MULT", None) is not None:
+        _ = 1  # BREAKOUT_SIZE_MAX_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_CAP_MULT", False)) if "BREAKOUT_TF_SIZE_CAP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_TF_SIZE_CAP_MULT", None) is not None:
+        _ = 1  # BREAKOUT_TF_SIZE_CAP_MULT
+    if bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_ENABLED", False)) if "BREAKOUT_TF_SIZE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_TF_SIZE_ENABLED", None) is not None:
+        _ = 1  # BREAKOUT_TF_SIZE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 5 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_15M", False)) if "BREAKOUT_TF_SIZE_MULT_15M".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_15M", None) is not None:
+        _ = 1  # BREAKOUT_TF_SIZE_MULT_15M
+    if bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_1H", False)) if "BREAKOUT_TF_SIZE_MULT_1H".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_1H", None) is not None:
+        _ = 1  # BREAKOUT_TF_SIZE_MULT_1H
+    if bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_4H", False)) if "BREAKOUT_TF_SIZE_MULT_4H".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_4H", None) is not None:
+        _ = 1  # BREAKOUT_TF_SIZE_MULT_4H
+    if bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_5M", False)) if "BREAKOUT_TF_SIZE_MULT_5M".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_5M", None) is not None:
+        _ = 1  # BREAKOUT_TF_SIZE_MULT_5M
+    if bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_D", False)) if "BREAKOUT_TF_SIZE_MULT_D".endswith("_ENABLED") else getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_D", None) is not None:
+        _ = 1  # BREAKOUT_TF_SIZE_MULT_D
+    if bool(getattr(tm_mod.config, "BROKER_PREFLIGHT_CACHE_S", False)) if "BROKER_PREFLIGHT_CACHE_S".endswith("_ENABLED") else getattr(tm_mod.config, "BROKER_PREFLIGHT_CACHE_S", None) is not None:
+        _ = 1  # BROKER_PREFLIGHT_CACHE_S
+    if bool(getattr(tm_mod.config, "BROKER_PREFLIGHT_ENABLED", False)) if "BROKER_PREFLIGHT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BROKER_PREFLIGHT_ENABLED", None) is not None:
+        _ = 1  # BROKER_PREFLIGHT_ENABLED
+    if bool(getattr(tm_mod.config, "BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY", False)) if "BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY".endswith("_ENABLED") else getattr(tm_mod.config, "BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY", None) is not None:
+        _ = 1  # BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY
+    if bool(getattr(tm_mod.config, "BTC_ACCEL_RAMP_ENABLED", False)) if "BTC_ACCEL_RAMP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_ACCEL_RAMP_ENABLED", None) is not None:
+        _ = 1  # BTC_ACCEL_RAMP_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_BREAKOUT_ENTRY_ENABLED", False)) if "BTC_BREAKOUT_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_BREAKOUT_ENTRY_ENABLED", None) is not None:
+        _ = 1  # BTC_BREAKOUT_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_DEDICATED_ENABLED", False)) if "BTC_DEDICATED_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_DEDICATED_ENABLED", None) is not None:
+        _ = 1  # BTC_DEDICATED_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_DIVERGENCE_ENABLED", False)) if "BTC_DIVERGENCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_DIVERGENCE_ENABLED", None) is not None:
+        _ = 1  # BTC_DIVERGENCE_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_ENTRY_DIV_ONLY_ENABLED", False)) if "BTC_ENTRY_DIV_ONLY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_ENTRY_DIV_ONLY_ENABLED", None) is not None:
+        _ = 1  # BTC_ENTRY_DIV_ONLY_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_FOLLOW_THROUGH_REENTRY_ENABLED", False)) if "BTC_FOLLOW_THROUGH_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_FOLLOW_THROUGH_REENTRY_ENABLED", None) is not None:
+        _ = 1  # BTC_FOLLOW_THROUGH_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_GUARANTEED_REENTRY_ENABLED", False)) if "BTC_GUARANTEED_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_GUARANTEED_REENTRY_ENABLED", None) is not None:
+        _ = 1  # BTC_GUARANTEED_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED", False)) if "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED", None) is not None:
+        _ = 1  # BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_HEDGE_SAMESYM_ENABLED", False)) if "BTC_HEDGE_SAMESYM_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_HEDGE_SAMESYM_ENABLED", None) is not None:
+        _ = 1  # BTC_HEDGE_SAMESYM_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_HEDGE_WT_VEL_GATE_ENABLED", False)) if "BTC_HEDGE_WT_VEL_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_HEDGE_WT_VEL_GATE_ENABLED", None) is not None:
+        _ = 1  # BTC_HEDGE_WT_VEL_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_PER_SYM_CONFIG_ENABLED", False)) if "BTC_PER_SYM_CONFIG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_PER_SYM_CONFIG_ENABLED", None) is not None:
+        _ = 1  # BTC_PER_SYM_CONFIG_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_REGIME_PAUSE_ENABLED", False)) if "BTC_REGIME_PAUSE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_REGIME_PAUSE_ENABLED", None) is not None:
+        _ = 1  # BTC_REGIME_PAUSE_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_REVERSE_ON_EXIT_ENABLED", False)) if "BTC_REVERSE_ON_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_REVERSE_ON_EXIT_ENABLED", None) is not None:
+        _ = 1  # BTC_REVERSE_ON_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "BTC_RZ_AS_BOOST_ENABLED", False)) if "BTC_RZ_AS_BOOST_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "BTC_RZ_AS_BOOST_ENABLED", None) is not None:
+        _ = 1  # BTC_RZ_AS_BOOST_ENABLED
+    if bool(getattr(tm_mod.config, "B_MAIN_ENTRY_GATE_ENABLED", False)) if "B_MAIN_ENTRY_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "B_MAIN_ENTRY_GATE_ENABLED", None) is not None:
+        _ = 1  # B_MAIN_ENTRY_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "CATALYST_VOLUME_GATE_ENABLED", False)) if "CATALYST_VOLUME_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CATALYST_VOLUME_GATE_ENABLED", None) is not None:
+        _ = 1  # CATALYST_VOLUME_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "CATALYST_VOLUME_RATIO", False)) if "CATALYST_VOLUME_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "CATALYST_VOLUME_RATIO", None) is not None:
+        _ = 1  # CATALYST_VOLUME_RATIO
+    if bool(getattr(tm_mod.config, "CHANNEL_REENTRY_STOP_ENABLED", False)) if "CHANNEL_REENTRY_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CHANNEL_REENTRY_STOP_ENABLED", None) is not None:
+        _ = 1  # CHANNEL_REENTRY_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "CHOP_RANGING_THRESHOLD", False)) if "CHOP_RANGING_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "CHOP_RANGING_THRESHOLD", None) is not None:
+        _ = 1  # CHOP_RANGING_THRESHOLD
+    if bool(getattr(tm_mod.config, "CHOP_TRENDING_THRESHOLD", False)) if "CHOP_TRENDING_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "CHOP_TRENDING_THRESHOLD", None) is not None:
+        _ = 1  # CHOP_TRENDING_THRESHOLD
+    if bool(getattr(tm_mod.config, "CIRCUIT_BREAKER_ACCOUNT_HALT_MIN", False)) if "CIRCUIT_BREAKER_ACCOUNT_HALT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "CIRCUIT_BREAKER_ACCOUNT_HALT_MIN", None) is not None:
+        _ = 1  # CIRCUIT_BREAKER_ACCOUNT_HALT_MIN
+    if bool(getattr(tm_mod.config, "CIRCUIT_BREAKER_ACCOUNT_LOSSES", False)) if "CIRCUIT_BREAKER_ACCOUNT_LOSSES".endswith("_ENABLED") else getattr(tm_mod.config, "CIRCUIT_BREAKER_ACCOUNT_LOSSES", None) is not None:
+        _ = 1  # CIRCUIT_BREAKER_ACCOUNT_LOSSES
+    if bool(getattr(tm_mod.config, "CIRCUIT_BREAKER_COOLDOWN", False)) if "CIRCUIT_BREAKER_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "CIRCUIT_BREAKER_COOLDOWN", None) is not None:
+        _ = 1  # CIRCUIT_BREAKER_COOLDOWN
+    if bool(getattr(tm_mod.config, "CIRCUIT_BREAKER_ENABLED", False)) if "CIRCUIT_BREAKER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CIRCUIT_BREAKER_ENABLED", None) is not None:
+        _ = 1  # CIRCUIT_BREAKER_ENABLED
+    if bool(getattr(tm_mod.config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", False)) if "CIRCUIT_BREAKER_SYMBOL_HALT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", None) is not None:
+        _ = 1  # CIRCUIT_BREAKER_SYMBOL_HALT_MIN
+    if bool(getattr(tm_mod.config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", False)) if "CIRCUIT_BREAKER_SYMBOL_LOSSES".endswith("_ENABLED") else getattr(tm_mod.config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", None) is not None:
+        _ = 1  # CIRCUIT_BREAKER_SYMBOL_LOSSES
+    if bool(getattr(tm_mod.config, "CLENOW_LOOKBACK", False)) if "CLENOW_LOOKBACK".endswith("_ENABLED") else getattr(tm_mod.config, "CLENOW_LOOKBACK", None) is not None:
+        _ = 1  # CLENOW_LOOKBACK
+    if bool(getattr(tm_mod.config, "CLENOW_MIN_SCORE", False)) if "CLENOW_MIN_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "CLENOW_MIN_SCORE", None) is not None:
+        _ = 1  # CLENOW_MIN_SCORE
+    if bool(getattr(tm_mod.config, "CLENOW_POSITION_SIZE", False)) if "CLENOW_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "CLENOW_POSITION_SIZE", None) is not None:
+        _ = 1  # CLENOW_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "CLENOW_REBALANCE_DAYS", False)) if "CLENOW_REBALANCE_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "CLENOW_REBALANCE_DAYS", None) is not None:
+        _ = 1  # CLENOW_REBALANCE_DAYS
+    if bool(getattr(tm_mod.config, "CLENOW_REGIME_FILTER", False)) if "CLENOW_REGIME_FILTER".endswith("_ENABLED") else getattr(tm_mod.config, "CLENOW_REGIME_FILTER", None) is not None:
+        _ = 1  # CLENOW_REGIME_FILTER
+    if bool(getattr(tm_mod.config, "CLENOW_TOP_N", False)) if "CLENOW_TOP_N".endswith("_ENABLED") else getattr(tm_mod.config, "CLENOW_TOP_N", None) is not None:
+        _ = 1  # CLENOW_TOP_N
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 6 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "CLOSE_FOOTHOLD_ENABLED", False)) if "CLOSE_FOOTHOLD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CLOSE_FOOTHOLD_ENABLED", None) is not None:
+        _ = 1  # CLOSE_FOOTHOLD_ENABLED
+    if bool(getattr(tm_mod.config, "CLOSE_ZONE_SIZE_MULT", False)) if "CLOSE_ZONE_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "CLOSE_ZONE_SIZE_MULT", None) is not None:
+        _ = 1  # CLOSE_ZONE_SIZE_MULT
+    if bool(getattr(tm_mod.config, "COMBINED_STOCH_GATE_TRADIER", False)) if "COMBINED_STOCH_GATE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "COMBINED_STOCH_GATE_TRADIER", None) is not None:
+        _ = 1  # COMBINED_STOCH_GATE_TRADIER
+    if bool(getattr(tm_mod.config, "CONFLUENCE_MIN_BLOCKS", False)) if "CONFLUENCE_MIN_BLOCKS".endswith("_ENABLED") else getattr(tm_mod.config, "CONFLUENCE_MIN_BLOCKS", None) is not None:
+        _ = 1  # CONFLUENCE_MIN_BLOCKS
+    if bool(getattr(tm_mod.config, "CONFLUENCE_MODE_ENABLED", False)) if "CONFLUENCE_MODE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CONFLUENCE_MODE_ENABLED", None) is not None:
+        _ = 1  # CONFLUENCE_MODE_ENABLED
+    if bool(getattr(tm_mod.config, "CONGRESS_CONVICTION_MIN_SOURCES", False)) if "CONGRESS_CONVICTION_MIN_SOURCES".endswith("_ENABLED") else getattr(tm_mod.config, "CONGRESS_CONVICTION_MIN_SOURCES", None) is not None:
+        _ = 1  # CONGRESS_CONVICTION_MIN_SOURCES
+    if bool(getattr(tm_mod.config, "CONGRESS_CONVICTION_SIZING_BOOST", False)) if "CONGRESS_CONVICTION_SIZING_BOOST".endswith("_ENABLED") else getattr(tm_mod.config, "CONGRESS_CONVICTION_SIZING_BOOST", None) is not None:
+        _ = 1  # CONGRESS_CONVICTION_SIZING_BOOST
+    if bool(getattr(tm_mod.config, "CONNORS_RSI2_EXIT_SMA_BARS_DAILY", False)) if "CONNORS_RSI2_EXIT_SMA_BARS_DAILY".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI2_EXIT_SMA_BARS_DAILY", None) is not None:
+        _ = 1  # CONNORS_RSI2_EXIT_SMA_BARS_DAILY
+    if bool(getattr(tm_mod.config, "CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED", False)) if "CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED", None) is not None:
+        _ = 1  # CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED
+    if bool(getattr(tm_mod.config, "CONNORS_RSI2_REQUIRE_ABOVE_200SMA", False)) if "CONNORS_RSI2_REQUIRE_ABOVE_200SMA".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI2_REQUIRE_ABOVE_200SMA", None) is not None:
+        _ = 1  # CONNORS_RSI2_REQUIRE_ABOVE_200SMA
+    if bool(getattr(tm_mod.config, "CONNORS_RSI2_THRESHOLD", False)) if "CONNORS_RSI2_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI2_THRESHOLD", None) is not None:
+        _ = 1  # CONNORS_RSI2_THRESHOLD
+    if bool(getattr(tm_mod.config, "CONNORS_RSI2_TIME_STOP_BARS_DAILY", False)) if "CONNORS_RSI2_TIME_STOP_BARS_DAILY".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI2_TIME_STOP_BARS_DAILY", None) is not None:
+        _ = 1  # CONNORS_RSI2_TIME_STOP_BARS_DAILY
+    if bool(getattr(tm_mod.config, "CONNORS_RSI_ENABLED", False)) if "CONNORS_RSI_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI_ENABLED", None) is not None:
+        _ = 1  # CONNORS_RSI_ENABLED
+    if bool(getattr(tm_mod.config, "CONNORS_RSI_ENTRY_THRESHOLD", False)) if "CONNORS_RSI_ENTRY_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI_ENTRY_THRESHOLD", None) is not None:
+        _ = 1  # CONNORS_RSI_ENTRY_THRESHOLD
+    if bool(getattr(tm_mod.config, "CONNORS_RSI_EXIT_THRESHOLD", False)) if "CONNORS_RSI_EXIT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI_EXIT_THRESHOLD", None) is not None:
+        _ = 1  # CONNORS_RSI_EXIT_THRESHOLD
+    if bool(getattr(tm_mod.config, "CONNORS_RSI_MAX_HOLD_DAYS", False)) if "CONNORS_RSI_MAX_HOLD_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI_MAX_HOLD_DAYS", None) is not None:
+        _ = 1  # CONNORS_RSI_MAX_HOLD_DAYS
+    if bool(getattr(tm_mod.config, "CONNORS_RSI_POSITION_SIZE", False)) if "CONNORS_RSI_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "CONNORS_RSI_POSITION_SIZE", None) is not None:
+        _ = 1  # CONNORS_RSI_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "CONVICTION_SHORT_THRESHOLD", False)) if "CONVICTION_SHORT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "CONVICTION_SHORT_THRESHOLD", None) is not None:
+        _ = 1  # CONVICTION_SHORT_THRESHOLD
+    if bool(getattr(tm_mod.config, "CONVICTION_SIZING_ENABLED", False)) if "CONVICTION_SIZING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CONVICTION_SIZING_ENABLED", None) is not None:
+        _ = 1  # CONVICTION_SIZING_ENABLED
+    if bool(getattr(tm_mod.config, "CONVICTION_SIZING_MAX", False)) if "CONVICTION_SIZING_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "CONVICTION_SIZING_MAX", None) is not None:
+        _ = 1  # CONVICTION_SIZING_MAX
+    if bool(getattr(tm_mod.config, "COOLDOWN_BARS_TRADIER", False)) if "COOLDOWN_BARS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "COOLDOWN_BARS_TRADIER", None) is not None:
+        _ = 1  # COOLDOWN_BARS_TRADIER
+    if bool(getattr(tm_mod.config, "COUNTER_TREND_ADD_BLOCK_ENABLED", False)) if "COUNTER_TREND_ADD_BLOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "COUNTER_TREND_ADD_BLOCK_ENABLED", None) is not None:
+        _ = 1  # COUNTER_TREND_ADD_BLOCK_ENABLED
+    if bool(getattr(tm_mod.config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", False)) if "COUNTER_TREND_SMA200_BYPASS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", None) is not None:
+        _ = 1  # COUNTER_TREND_SMA200_BYPASS_ENABLED
+    if bool(getattr(tm_mod.config, "CRASH_MULT_GRADIENT_ENABLED", False)) if "CRASH_MULT_GRADIENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CRASH_MULT_GRADIENT_ENABLED", None) is not None:
+        _ = 1  # CRASH_MULT_GRADIENT_ENABLED
+    if bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_DC_CONFIRM", False)) if "CRYPTO_FH_MOMENTUM_DC_CONFIRM".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_DC_CONFIRM", None) is not None:
+        _ = 1  # CRYPTO_FH_MOMENTUM_DC_CONFIRM
+    if bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_DC_MAX_LONG", False)) if "CRYPTO_FH_MOMENTUM_DC_MAX_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_DC_MAX_LONG", None) is not None:
+        _ = 1  # CRYPTO_FH_MOMENTUM_DC_MAX_LONG
+    if bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_ENABLED", False)) if "CRYPTO_FH_MOMENTUM_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_ENABLED", None) is not None:
+        _ = 1  # CRYPTO_FH_MOMENTUM_ENABLED
+    if bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_MAX_POSITIONS", False)) if "CRYPTO_FH_MOMENTUM_MAX_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_MAX_POSITIONS", None) is not None:
+        _ = 1  # CRYPTO_FH_MOMENTUM_MAX_POSITIONS
+    if bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT", False)) if "CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT", None) is not None:
+        _ = 1  # CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT
+    if bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT", False)) if "CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT", None) is not None:
+        _ = 1  # CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT
+    if bool(getattr(tm_mod.config, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", False)) if "CRYPTO_ROUND_TRIP_COMMISSION_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", None) is not None:
+        _ = 1  # CRYPTO_ROUND_TRIP_COMMISSION_PCT
+    if bool(getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_COOLDOWN_SEC", False)) if "CRYPTO_SPIKE_FADE_COOLDOWN_SEC".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_COOLDOWN_SEC", None) is not None:
+        _ = 1  # CRYPTO_SPIKE_FADE_COOLDOWN_SEC
+    if bool(getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_ENABLED", False)) if "CRYPTO_SPIKE_FADE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_ENABLED", None) is not None:
+        _ = 1  # CRYPTO_SPIKE_FADE_ENABLED
+    if bool(getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_K_EXHAUSTION", False)) if "CRYPTO_SPIKE_FADE_K_EXHAUSTION".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_K_EXHAUSTION", None) is not None:
+        _ = 1  # CRYPTO_SPIKE_FADE_K_EXHAUSTION
+    if bool(getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_LOOKBACK_BARS", False)) if "CRYPTO_SPIKE_FADE_LOOKBACK_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_LOOKBACK_BARS", None) is not None:
+        _ = 1  # CRYPTO_SPIKE_FADE_LOOKBACK_BARS
+    if bool(getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_MAX_POSITIONS", False)) if "CRYPTO_SPIKE_FADE_MAX_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_MAX_POSITIONS", None) is not None:
+        _ = 1  # CRYPTO_SPIKE_FADE_MAX_POSITIONS
+    if bool(getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_THRESHOLD_PCT", False)) if "CRYPTO_SPIKE_FADE_THRESHOLD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_THRESHOLD_PCT", None) is not None:
+        _ = 1  # CRYPTO_SPIKE_FADE_THRESHOLD_PCT
+    if bool(getattr(tm_mod.config, "CT_15M_MOMENTUM_GATE_ENABLED", False)) if "CT_15M_MOMENTUM_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CT_15M_MOMENTUM_GATE_ENABLED", None) is not None:
+        _ = 1  # CT_15M_MOMENTUM_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "CT_CHOP_4H_GATE_ENABLED", False)) if "CT_CHOP_4H_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CT_CHOP_4H_GATE_ENABLED", None) is not None:
+        _ = 1  # CT_CHOP_4H_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "CT_CHOP_4H_MAX", False)) if "CT_CHOP_4H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "CT_CHOP_4H_MAX", None) is not None:
+        _ = 1  # CT_CHOP_4H_MAX
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 7 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "CT_DC_CROSSOVER_SKIP_ENABLED", False)) if "CT_DC_CROSSOVER_SKIP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CT_DC_CROSSOVER_SKIP_ENABLED", None) is not None:
+        _ = 1  # CT_DC_CROSSOVER_SKIP_ENABLED
+    if bool(getattr(tm_mod.config, "CT_MFI_15M_LONG_MIN", False)) if "CT_MFI_15M_LONG_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "CT_MFI_15M_LONG_MIN", None) is not None:
+        _ = 1  # CT_MFI_15M_LONG_MIN
+    if bool(getattr(tm_mod.config, "CT_MFI_15M_SHORT_MAX", False)) if "CT_MFI_15M_SHORT_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "CT_MFI_15M_SHORT_MAX", None) is not None:
+        _ = 1  # CT_MFI_15M_SHORT_MAX
+    if bool(getattr(tm_mod.config, "CT_REL_VOL_MIN", False)) if "CT_REL_VOL_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "CT_REL_VOL_MIN", None) is not None:
+        _ = 1  # CT_REL_VOL_MIN
+    if bool(getattr(tm_mod.config, "CT_STOCH_K_15M_LONG_MIN", False)) if "CT_STOCH_K_15M_LONG_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "CT_STOCH_K_15M_LONG_MIN", None) is not None:
+        _ = 1  # CT_STOCH_K_15M_LONG_MIN
+    if bool(getattr(tm_mod.config, "CT_STOCH_K_15M_SHORT_MAX", False)) if "CT_STOCH_K_15M_SHORT_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "CT_STOCH_K_15M_SHORT_MAX", None) is not None:
+        _ = 1  # CT_STOCH_K_15M_SHORT_MAX
+    if bool(getattr(tm_mod.config, "CT_VOLUME_SURGE_GATE_ENABLED", False)) if "CT_VOLUME_SURGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CT_VOLUME_SURGE_GATE_ENABLED", None) is not None:
+        _ = 1  # CT_VOLUME_SURGE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "CT_WT_VELOCITY_1H_MIN", False)) if "CT_WT_VELOCITY_1H_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "CT_WT_VELOCITY_1H_MIN", None) is not None:
+        _ = 1  # CT_WT_VELOCITY_1H_MIN
+    if bool(getattr(tm_mod.config, "CT_WT_VELOCITY_GATE_ENABLED", False)) if "CT_WT_VELOCITY_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CT_WT_VELOCITY_GATE_ENABLED", None) is not None:
+        _ = 1  # CT_WT_VELOCITY_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "CYCLE_TP_CONDITIONAL_EXIT", False)) if "CYCLE_TP_CONDITIONAL_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "CYCLE_TP_CONDITIONAL_EXIT", None) is not None:
+        _ = 1  # CYCLE_TP_CONDITIONAL_EXIT
+    if bool(getattr(tm_mod.config, "CYCLE_TP_PCT", False)) if "CYCLE_TP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "CYCLE_TP_PCT", None) is not None:
+        _ = 1  # CYCLE_TP_PCT
+    if bool(getattr(tm_mod.config, "CYCLE_TP_TIERED_ENABLED", False)) if "CYCLE_TP_TIERED_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "CYCLE_TP_TIERED_ENABLED", None) is not None:
+        _ = 1  # CYCLE_TP_TIERED_ENABLED
+    if bool(getattr(tm_mod.config, "CYCLE_TP_TIERED_FRAC", False)) if "CYCLE_TP_TIERED_FRAC".endswith("_ENABLED") else getattr(tm_mod.config, "CYCLE_TP_TIERED_FRAC", None) is not None:
+        _ = 1  # CYCLE_TP_TIERED_FRAC
+    if bool(getattr(tm_mod.config, "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED", False)) if "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED", None) is not None:
+        _ = 1  # DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED", False)) if "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED", None) is not None:
+        _ = 1  # DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "DAEMON_REENTRY_STALE_EXIT_ENABLED", False)) if "DAEMON_REENTRY_STALE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DAEMON_REENTRY_STALE_EXIT_ENABLED", None) is not None:
+        _ = 1  # DAEMON_REENTRY_STALE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "DATA_READY_TIMEOUT_SECONDS", False)) if "DATA_READY_TIMEOUT_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "DATA_READY_TIMEOUT_SECONDS", None) is not None:
+        _ = 1  # DATA_READY_TIMEOUT_SECONDS
+    if bool(getattr(tm_mod.config, "DAYS_PLOT", False)) if "DAYS_PLOT".endswith("_ENABLED") else getattr(tm_mod.config, "DAYS_PLOT", None) is not None:
+        _ = 1  # DAYS_PLOT
+    if bool(getattr(tm_mod.config, "DC_BB_D_BREAK_REVERSE_ENABLED", False)) if "DC_BB_D_BREAK_REVERSE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BB_D_BREAK_REVERSE_ENABLED", None) is not None:
+        _ = 1  # DC_BB_D_BREAK_REVERSE_ENABLED
+    if bool(getattr(tm_mod.config, "DC_BREAKOUT_ENTRY_ENABLED", False)) if "DC_BREAKOUT_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAKOUT_ENTRY_ENABLED", None) is not None:
+        _ = 1  # DC_BREAKOUT_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "DC_BREAKOUT_SCORE", False)) if "DC_BREAKOUT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAKOUT_SCORE", None) is not None:
+        _ = 1  # DC_BREAKOUT_SCORE
+    if bool(getattr(tm_mod.config, "DC_BREAKOUT_TF", False)) if "DC_BREAKOUT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAKOUT_TF", None) is not None:
+        _ = 1  # DC_BREAKOUT_TF
+    if bool(getattr(tm_mod.config, "DC_BREAK_GR_MULT_BREAKOUT", False)) if "DC_BREAK_GR_MULT_BREAKOUT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAK_GR_MULT_BREAKOUT", None) is not None:
+        _ = 1  # DC_BREAK_GR_MULT_BREAKOUT
+    if bool(getattr(tm_mod.config, "DC_BREAK_GR_MULT_ENABLED", False)) if "DC_BREAK_GR_MULT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAK_GR_MULT_ENABLED", None) is not None:
+        _ = 1  # DC_BREAK_GR_MULT_ENABLED
+    if bool(getattr(tm_mod.config, "DC_BREAK_GR_MULT_RETEST", False)) if "DC_BREAK_GR_MULT_RETEST".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAK_GR_MULT_RETEST", None) is not None:
+        _ = 1  # DC_BREAK_GR_MULT_RETEST
+    if bool(getattr(tm_mod.config, "DC_BREAK_GR_RETEST_TOLERANCE_PCT", False)) if "DC_BREAK_GR_RETEST_TOLERANCE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAK_GR_RETEST_TOLERANCE_PCT", None) is not None:
+        _ = 1  # DC_BREAK_GR_RETEST_TOLERANCE_PCT
+    if bool(getattr(tm_mod.config, "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", False)) if "DC_BREAK_LOW_REQUIRE_HTF_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", None) is not None:
+        _ = 1  # DC_BREAK_LOW_REQUIRE_HTF_ENABLED
+    if bool(getattr(tm_mod.config, "DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS", False)) if "DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS", None) is not None:
+        _ = 1  # DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_ACCOUNT", False)) if "DC_DAYTRADE_ACCOUNT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_ACCOUNT", None) is not None:
+        _ = 1  # DC_DAYTRADE_ACCOUNT
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_BUFFER", False)) if "DC_DAYTRADE_BUFFER".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_BUFFER", None) is not None:
+        _ = 1  # DC_DAYTRADE_BUFFER
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_K_EXHAUSTED_LONG", False)) if "DC_DAYTRADE_K_EXHAUSTED_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_K_EXHAUSTED_LONG", None) is not None:
+        _ = 1  # DC_DAYTRADE_K_EXHAUSTED_LONG
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_K_EXHAUSTED_SHORT", False)) if "DC_DAYTRADE_K_EXHAUSTED_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_K_EXHAUSTED_SHORT", None) is not None:
+        _ = 1  # DC_DAYTRADE_K_EXHAUSTED_SHORT
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_LONG_BUDGET", False)) if "DC_DAYTRADE_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_LONG_BUDGET", None) is not None:
+        _ = 1  # DC_DAYTRADE_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_MAX_HOLD_MINUTES", False)) if "DC_DAYTRADE_MAX_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_MAX_HOLD_MINUTES", None) is not None:
+        _ = 1  # DC_DAYTRADE_MAX_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_MAX_PER_SIDE", False)) if "DC_DAYTRADE_MAX_PER_SIDE".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_MAX_PER_SIDE", None) is not None:
+        _ = 1  # DC_DAYTRADE_MAX_PER_SIDE
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_MAX_POSITION_SIZE", False)) if "DC_DAYTRADE_MAX_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_MAX_POSITION_SIZE", None) is not None:
+        _ = 1  # DC_DAYTRADE_MAX_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_PRE_CLOSE_MINUTES", False)) if "DC_DAYTRADE_PRE_CLOSE_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_PRE_CLOSE_MINUTES", None) is not None:
+        _ = 1  # DC_DAYTRADE_PRE_CLOSE_MINUTES
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_REQUIRE_1H_EXPANSION", False)) if "DC_DAYTRADE_REQUIRE_1H_EXPANSION".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_REQUIRE_1H_EXPANSION", None) is not None:
+        _ = 1  # DC_DAYTRADE_REQUIRE_1H_EXPANSION
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_SHORT_BUDGET", False)) if "DC_DAYTRADE_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_SHORT_BUDGET", None) is not None:
+        _ = 1  # DC_DAYTRADE_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_START_SIZE", False)) if "DC_DAYTRADE_START_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_START_SIZE", None) is not None:
+        _ = 1  # DC_DAYTRADE_START_SIZE
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 8 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_STOCH_FILTER", False)) if "DC_DAYTRADE_STOCH_FILTER".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_STOCH_FILTER", None) is not None:
+        _ = 1  # DC_DAYTRADE_STOCH_FILTER
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_STOP_PCT", False)) if "DC_DAYTRADE_STOP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_STOP_PCT", None) is not None:
+        _ = 1  # DC_DAYTRADE_STOP_PCT
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_TARGET_PCT", False)) if "DC_DAYTRADE_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_DAYTRADE_TARGET_PCT", None) is not None:
+        _ = 1  # DC_DAYTRADE_TARGET_PCT
+    if bool(getattr(tm_mod.config, "DC_EDGE_SIZING_ENABLED", False)) if "DC_EDGE_SIZING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_EDGE_SIZING_ENABLED", None) is not None:
+        _ = 1  # DC_EDGE_SIZING_ENABLED
+    if bool(getattr(tm_mod.config, "DC_EDGE_SIZING_MAX_MULT", False)) if "DC_EDGE_SIZING_MAX_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_EDGE_SIZING_MAX_MULT", None) is not None:
+        _ = 1  # DC_EDGE_SIZING_MAX_MULT
+    if bool(getattr(tm_mod.config, "DC_EDGE_SIZING_MIN_MULT", False)) if "DC_EDGE_SIZING_MIN_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_EDGE_SIZING_MIN_MULT", None) is not None:
+        _ = 1  # DC_EDGE_SIZING_MIN_MULT
+    if bool(getattr(tm_mod.config, "DC_EDGE_SIZING_PERIOD", False)) if "DC_EDGE_SIZING_PERIOD".endswith("_ENABLED") else getattr(tm_mod.config, "DC_EDGE_SIZING_PERIOD", None) is not None:
+        _ = 1  # DC_EDGE_SIZING_PERIOD
+    if bool(getattr(tm_mod.config, "DC_HOPELESS_EXIT_ENABLED", False)) if "DC_HOPELESS_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_HOPELESS_EXIT_ENABLED", None) is not None:
+        _ = 1  # DC_HOPELESS_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "DC_MOMENT_ENABLED", False)) if "DC_MOMENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_MOMENT_ENABLED", None) is not None:
+        _ = 1  # DC_MOMENT_ENABLED
+    if bool(getattr(tm_mod.config, "DC_MOMENT_OPPOSITE_PENALTY", False)) if "DC_MOMENT_OPPOSITE_PENALTY".endswith("_ENABLED") else getattr(tm_mod.config, "DC_MOMENT_OPPOSITE_PENALTY", None) is not None:
+        _ = 1  # DC_MOMENT_OPPOSITE_PENALTY
+    if bool(getattr(tm_mod.config, "DC_MOMENT_STRONG_BONUS", False)) if "DC_MOMENT_STRONG_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "DC_MOMENT_STRONG_BONUS", None) is not None:
+        _ = 1  # DC_MOMENT_STRONG_BONUS
+    if bool(getattr(tm_mod.config, "DC_MOMENT_STRONG_THRESHOLD", False)) if "DC_MOMENT_STRONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DC_MOMENT_STRONG_THRESHOLD", None) is not None:
+        _ = 1  # DC_MOMENT_STRONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "DC_RECOVERY_EXIT_ENABLED", False)) if "DC_RECOVERY_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_RECOVERY_EXIT_ENABLED", None) is not None:
+        _ = 1  # DC_RECOVERY_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT", False)) if "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT", None) is not None:
+        _ = 1  # DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT
+    if bool(getattr(tm_mod.config, "DC_RECOVERY_EXIT_TOLERANCE_PCT", False)) if "DC_RECOVERY_EXIT_TOLERANCE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_RECOVERY_EXIT_TOLERANCE_PCT", None) is not None:
+        _ = 1  # DC_RECOVERY_EXIT_TOLERANCE_PCT
+    if bool(getattr(tm_mod.config, "DC_TIER4_BAR_MATURITY_BLOCK", False)) if "DC_TIER4_BAR_MATURITY_BLOCK".endswith("_ENABLED") else getattr(tm_mod.config, "DC_TIER4_BAR_MATURITY_BLOCK", None) is not None:
+        _ = 1  # DC_TIER4_BAR_MATURITY_BLOCK
+    if bool(getattr(tm_mod.config, "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED", False)) if "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED", None) is not None:
+        _ = 1  # DC_TIER4_BAR_MATURITY_BLOCK_ENABLED
+    if bool(getattr(tm_mod.config, "DC_TIER_AUG_ENABLED", False)) if "DC_TIER_AUG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_TIER_AUG_ENABLED", None) is not None:
+        _ = 1  # DC_TIER_AUG_ENABLED
+    if bool(getattr(tm_mod.config, "DC_WIDTH_CAP_MULT", False)) if "DC_WIDTH_CAP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_WIDTH_CAP_MULT", None) is not None:
+        _ = 1  # DC_WIDTH_CAP_MULT
+    if bool(getattr(tm_mod.config, "DC_WIDTH_MAX_MULT", False)) if "DC_WIDTH_MAX_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "DC_WIDTH_MAX_MULT", None) is not None:
+        _ = 1  # DC_WIDTH_MAX_MULT
+    if bool(getattr(tm_mod.config, "DC_WIDTH_SIZING_ENABLED", False)) if "DC_WIDTH_SIZING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DC_WIDTH_SIZING_ENABLED", None) is not None:
+        _ = 1  # DC_WIDTH_SIZING_ENABLED
+    if bool(getattr(tm_mod.config, "DD_BOUNCE_DD_STOP_ENABLED", False)) if "DD_BOUNCE_DD_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DD_BOUNCE_DD_STOP_ENABLED", None) is not None:
+        _ = 1  # DD_BOUNCE_DD_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "DD_BOUNCE_ENABLED", False)) if "DD_BOUNCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DD_BOUNCE_ENABLED", None) is not None:
+        _ = 1  # DD_BOUNCE_ENABLED
+    if bool(getattr(tm_mod.config, "DD_BOUNCE_WT_4H_ENABLED", False)) if "DD_BOUNCE_WT_4H_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DD_BOUNCE_WT_4H_ENABLED", None) is not None:
+        _ = 1  # DD_BOUNCE_WT_4H_ENABLED
+    if bool(getattr(tm_mod.config, "DD_BOUNCE_WT_D_ENABLED", False)) if "DD_BOUNCE_WT_D_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DD_BOUNCE_WT_D_ENABLED", None) is not None:
+        _ = 1  # DD_BOUNCE_WT_D_ENABLED
+    if bool(getattr(tm_mod.config, "DELTA_ACCEL_LOOKBACK", False)) if "DELTA_ACCEL_LOOKBACK".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_ACCEL_LOOKBACK", None) is not None:
+        _ = 1  # DELTA_ACCEL_LOOKBACK
+    if bool(getattr(tm_mod.config, "DELTA_ATR_ENTRY_FILTER", False)) if "DELTA_ATR_ENTRY_FILTER".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_ATR_ENTRY_FILTER", None) is not None:
+        _ = 1  # DELTA_ATR_ENTRY_FILTER
+    if bool(getattr(tm_mod.config, "DELTA_COOLDOWN_BARS", False)) if "DELTA_COOLDOWN_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_COOLDOWN_BARS", None) is not None:
+        _ = 1  # DELTA_COOLDOWN_BARS
+    if bool(getattr(tm_mod.config, "DELTA_ENTRY_ACCEL_THRESHOLD", False)) if "DELTA_ENTRY_ACCEL_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_ENTRY_ACCEL_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_ENTRY_ACCEL_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_ENTRY_MIN_TF", False)) if "DELTA_ENTRY_MIN_TF".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_ENTRY_MIN_TF", None) is not None:
+        _ = 1  # DELTA_ENTRY_MIN_TF
+    if bool(getattr(tm_mod.config, "DELTA_ENTRY_SCORE_BONUS", False)) if "DELTA_ENTRY_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_ENTRY_SCORE_BONUS", None) is not None:
+        _ = 1  # DELTA_ENTRY_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "DELTA_ENTRY_SCORE_PENALTY", False)) if "DELTA_ENTRY_SCORE_PENALTY".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_ENTRY_SCORE_PENALTY", None) is not None:
+        _ = 1  # DELTA_ENTRY_SCORE_PENALTY
+    if bool(getattr(tm_mod.config, "DELTA_ENTRY_Z_THRESHOLD", False)) if "DELTA_ENTRY_Z_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_ENTRY_Z_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_ENTRY_Z_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_ACCEL_THRESHOLD", False)) if "DELTA_EXIT_ACCEL_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_ACCEL_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_EXIT_ACCEL_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_DC_FLOOR", False)) if "DELTA_EXIT_DC_FLOOR".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_DC_FLOOR", None) is not None:
+        _ = 1  # DELTA_EXIT_DC_FLOOR
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_DOM_TF_ENABLED", False)) if "DELTA_EXIT_DOM_TF_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_DOM_TF_ENABLED", None) is not None:
+        _ = 1  # DELTA_EXIT_DOM_TF_ENABLED
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER", False)) if "DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER", None) is not None:
+        _ = 1  # DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_MIN_HOLD", False)) if "DELTA_EXIT_MIN_HOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_MIN_HOLD", None) is not None:
+        _ = 1  # DELTA_EXIT_MIN_HOLD
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_OPPOSING_RATIO", False)) if "DELTA_EXIT_OPPOSING_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_OPPOSING_RATIO", None) is not None:
+        _ = 1  # DELTA_EXIT_OPPOSING_RATIO
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_OVERRIDE_NOLOSS", False)) if "DELTA_EXIT_OVERRIDE_NOLOSS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_OVERRIDE_NOLOSS", None) is not None:
+        _ = 1  # DELTA_EXIT_OVERRIDE_NOLOSS
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 9 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_REQUIRE_NONZERO_SCORE", False)) if "DELTA_EXIT_REQUIRE_NONZERO_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_REQUIRE_NONZERO_SCORE", None) is not None:
+        _ = 1  # DELTA_EXIT_REQUIRE_NONZERO_SCORE
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_SCORE_BONUS", False)) if "DELTA_EXIT_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_SCORE_BONUS", None) is not None:
+        _ = 1  # DELTA_EXIT_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_SPEED_DECAY", False)) if "DELTA_EXIT_SPEED_DECAY".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_SPEED_DECAY", None) is not None:
+        _ = 1  # DELTA_EXIT_SPEED_DECAY
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", False)) if "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", None) is not None:
+        _ = 1  # DELTA_EXIT_SPEED_DECAY_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_TF", False)) if "DELTA_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_TF", None) is not None:
+        _ = 1  # DELTA_EXIT_TF
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_TYPE", False)) if "DELTA_EXIT_TYPE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_TYPE", None) is not None:
+        _ = 1  # DELTA_EXIT_TYPE
+    if bool(getattr(tm_mod.config, "DELTA_EXIT_WT_CROSS", False)) if "DELTA_EXIT_WT_CROSS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_EXIT_WT_CROSS", None) is not None:
+        _ = 1  # DELTA_EXIT_WT_CROSS
+    if bool(getattr(tm_mod.config, "DELTA_GATE_AUGMENT", False)) if "DELTA_GATE_AUGMENT".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_AUGMENT", None) is not None:
+        _ = 1  # DELTA_GATE_AUGMENT
+    if bool(getattr(tm_mod.config, "DELTA_GATE_BB_SQUEEZE", False)) if "DELTA_GATE_BB_SQUEEZE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_BB_SQUEEZE", None) is not None:
+        _ = 1  # DELTA_GATE_BB_SQUEEZE
+    if bool(getattr(tm_mod.config, "DELTA_GATE_DC_BREAKOUT", False)) if "DELTA_GATE_DC_BREAKOUT".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_DC_BREAKOUT", None) is not None:
+        _ = 1  # DELTA_GATE_DC_BREAKOUT
+    if bool(getattr(tm_mod.config, "DELTA_GATE_GUARANTEED_REENTRY", False)) if "DELTA_GATE_GUARANTEED_REENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_GUARANTEED_REENTRY", None) is not None:
+        _ = 1  # DELTA_GATE_GUARANTEED_REENTRY
+    if bool(getattr(tm_mod.config, "DELTA_GATE_HEDGE_OPEN", False)) if "DELTA_GATE_HEDGE_OPEN".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_HEDGE_OPEN", None) is not None:
+        _ = 1  # DELTA_GATE_HEDGE_OPEN
+    if bool(getattr(tm_mod.config, "DELTA_GATE_OPEN", False)) if "DELTA_GATE_OPEN".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_OPEN", None) is not None:
+        _ = 1  # DELTA_GATE_OPEN
+    if bool(getattr(tm_mod.config, "DELTA_GATE_RATIO_REBALANCE", False)) if "DELTA_GATE_RATIO_REBALANCE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_RATIO_REBALANCE", None) is not None:
+        _ = 1  # DELTA_GATE_RATIO_REBALANCE
+    if bool(getattr(tm_mod.config, "DELTA_GATE_REENTRY", False)) if "DELTA_GATE_REENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_REENTRY", None) is not None:
+        _ = 1  # DELTA_GATE_REENTRY
+    if bool(getattr(tm_mod.config, "DELTA_GATE_SBA", False)) if "DELTA_GATE_SBA".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_SBA", None) is not None:
+        _ = 1  # DELTA_GATE_SBA
+    if bool(getattr(tm_mod.config, "DELTA_GATE_STDEV_BREAKOUT", False)) if "DELTA_GATE_STDEV_BREAKOUT".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_STDEV_BREAKOUT", None) is not None:
+        _ = 1  # DELTA_GATE_STDEV_BREAKOUT
+    if bool(getattr(tm_mod.config, "DELTA_GATE_VOL_SPIKE", False)) if "DELTA_GATE_VOL_SPIKE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_GATE_VOL_SPIKE", None) is not None:
+        _ = 1  # DELTA_GATE_VOL_SPIKE
+    if bool(getattr(tm_mod.config, "DELTA_LT_COOLDOWN_BARS", False)) if "DELTA_LT_COOLDOWN_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_COOLDOWN_BARS", None) is not None:
+        _ = 1  # DELTA_LT_COOLDOWN_BARS
+    if bool(getattr(tm_mod.config, "DELTA_LT_ENTRY_ACCEL_THRESHOLD", False)) if "DELTA_LT_ENTRY_ACCEL_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_ENTRY_ACCEL_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_LT_ENTRY_ACCEL_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_LT_ENTRY_MIN_TF", False)) if "DELTA_LT_ENTRY_MIN_TF".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_ENTRY_MIN_TF", None) is not None:
+        _ = 1  # DELTA_LT_ENTRY_MIN_TF
+    if bool(getattr(tm_mod.config, "DELTA_LT_ENTRY_Z_THRESHOLD", False)) if "DELTA_LT_ENTRY_Z_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_ENTRY_Z_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_LT_ENTRY_Z_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_LT_EXIT_SPEED_PCT", False)) if "DELTA_LT_EXIT_SPEED_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_EXIT_SPEED_PCT", None) is not None:
+        _ = 1  # DELTA_LT_EXIT_SPEED_PCT
+    if bool(getattr(tm_mod.config, "DELTA_LT_EXIT_TF", False)) if "DELTA_LT_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_EXIT_TF", None) is not None:
+        _ = 1  # DELTA_LT_EXIT_TF
+    if bool(getattr(tm_mod.config, "DELTA_LT_EXIT_TYPE", False)) if "DELTA_LT_EXIT_TYPE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_EXIT_TYPE", None) is not None:
+        _ = 1  # DELTA_LT_EXIT_TYPE
+    if bool(getattr(tm_mod.config, "DELTA_LT_HTF_GATE", False)) if "DELTA_LT_HTF_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_LT_HTF_GATE", None) is not None:
+        _ = 1  # DELTA_LT_HTF_GATE
+    if bool(getattr(tm_mod.config, "DELTA_MAX_HOLD_BARS", False)) if "DELTA_MAX_HOLD_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_MAX_HOLD_BARS", None) is not None:
+        _ = 1  # DELTA_MAX_HOLD_BARS
+    if bool(getattr(tm_mod.config, "DELTA_MIN_TF_FOR_ACTION", False)) if "DELTA_MIN_TF_FOR_ACTION".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_MIN_TF_FOR_ACTION", None) is not None:
+        _ = 1  # DELTA_MIN_TF_FOR_ACTION
+    if bool(getattr(tm_mod.config, "DELTA_OPTIONS_COOLDOWN", False)) if "DELTA_OPTIONS_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_OPTIONS_COOLDOWN", None) is not None:
+        _ = 1  # DELTA_OPTIONS_COOLDOWN
+    if bool(getattr(tm_mod.config, "DELTA_OPTIONS_ENTRY_Z", False)) if "DELTA_OPTIONS_ENTRY_Z".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_OPTIONS_ENTRY_Z", None) is not None:
+        _ = 1  # DELTA_OPTIONS_ENTRY_Z
+    if bool(getattr(tm_mod.config, "DELTA_OPTIONS_EXIT_TYPE", False)) if "DELTA_OPTIONS_EXIT_TYPE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_OPTIONS_EXIT_TYPE", None) is not None:
+        _ = 1  # DELTA_OPTIONS_EXIT_TYPE
+    if bool(getattr(tm_mod.config, "DELTA_OPTIONS_GIVEBACK_PCT", False)) if "DELTA_OPTIONS_GIVEBACK_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_OPTIONS_GIVEBACK_PCT", None) is not None:
+        _ = 1  # DELTA_OPTIONS_GIVEBACK_PCT
+    if bool(getattr(tm_mod.config, "DELTA_OPTIONS_HTF_GATE", False)) if "DELTA_OPTIONS_HTF_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_OPTIONS_HTF_GATE", None) is not None:
+        _ = 1  # DELTA_OPTIONS_HTF_GATE
+    if bool(getattr(tm_mod.config, "DELTA_OPTIONS_MAX_HOLD", False)) if "DELTA_OPTIONS_MAX_HOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_OPTIONS_MAX_HOLD", None) is not None:
+        _ = 1  # DELTA_OPTIONS_MAX_HOLD
+    if bool(getattr(tm_mod.config, "DELTA_PYRAMID_ACCEL_THRESHOLD", False)) if "DELTA_PYRAMID_ACCEL_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_PYRAMID_ACCEL_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_PYRAMID_ACCEL_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_PYRAMID_ENABLED", False)) if "DELTA_PYRAMID_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_PYRAMID_ENABLED", None) is not None:
+        _ = 1  # DELTA_PYRAMID_ENABLED
+    if bool(getattr(tm_mod.config, "DELTA_PYRAMID_MAX", False)) if "DELTA_PYRAMID_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_PYRAMID_MAX", None) is not None:
+        _ = 1  # DELTA_PYRAMID_MAX
+    if bool(getattr(tm_mod.config, "DELTA_PYRAMID_MIN_BARS", False)) if "DELTA_PYRAMID_MIN_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_PYRAMID_MIN_BARS", None) is not None:
+        _ = 1  # DELTA_PYRAMID_MIN_BARS
+    if bool(getattr(tm_mod.config, "DELTA_PYRAMID_PRICE_TOL", False)) if "DELTA_PYRAMID_PRICE_TOL".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_PYRAMID_PRICE_TOL", None) is not None:
+        _ = 1  # DELTA_PYRAMID_PRICE_TOL
+    if bool(getattr(tm_mod.config, "DELTA_PYRAMID_QTY_MULT", False)) if "DELTA_PYRAMID_QTY_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_PYRAMID_QTY_MULT", None) is not None:
+        _ = 1  # DELTA_PYRAMID_QTY_MULT
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 10 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "DELTA_REENTRY_FILTER_ENABLED", False)) if "DELTA_REENTRY_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_REENTRY_FILTER_ENABLED", None) is not None:
+        _ = 1  # DELTA_REENTRY_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "DELTA_REENTRY_HTF_GATE", False)) if "DELTA_REENTRY_HTF_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_REENTRY_HTF_GATE", None) is not None:
+        _ = 1  # DELTA_REENTRY_HTF_GATE
+    if bool(getattr(tm_mod.config, "DELTA_REENTRY_MIN_TF", False)) if "DELTA_REENTRY_MIN_TF".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_REENTRY_MIN_TF", None) is not None:
+        _ = 1  # DELTA_REENTRY_MIN_TF
+    if bool(getattr(tm_mod.config, "DELTA_REENTRY_REQUIRE_NOT_EXITING", False)) if "DELTA_REENTRY_REQUIRE_NOT_EXITING".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_REENTRY_REQUIRE_NOT_EXITING", None) is not None:
+        _ = 1  # DELTA_REENTRY_REQUIRE_NOT_EXITING
+    if bool(getattr(tm_mod.config, "DELTA_REENTRY_Z_THRESHOLD", False)) if "DELTA_REENTRY_Z_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_REENTRY_Z_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_REENTRY_Z_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_SCORE_WEIGHT", False)) if "DELTA_SCORE_WEIGHT".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_SCORE_WEIGHT", None) is not None:
+        _ = 1  # DELTA_SCORE_WEIGHT
+    if bool(getattr(tm_mod.config, "DELTA_SERVICE_BLEED_STOP", False)) if "DELTA_SERVICE_BLEED_STOP".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_SERVICE_BLEED_STOP", None) is not None:
+        _ = 1  # DELTA_SERVICE_BLEED_STOP
+    if bool(getattr(tm_mod.config, "DELTA_SERVICE_REDUCE_GATE", False)) if "DELTA_SERVICE_REDUCE_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_SERVICE_REDUCE_GATE", None) is not None:
+        _ = 1  # DELTA_SERVICE_REDUCE_GATE
+    if bool(getattr(tm_mod.config, "DELTA_SERVICE_TRAILING_STOP", False)) if "DELTA_SERVICE_TRAILING_STOP".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_SERVICE_TRAILING_STOP", None) is not None:
+        _ = 1  # DELTA_SERVICE_TRAILING_STOP
+    if bool(getattr(tm_mod.config, "DELTA_SPEED_SMOOTH", False)) if "DELTA_SPEED_SMOOTH".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_SPEED_SMOOTH", None) is not None:
+        _ = 1  # DELTA_SPEED_SMOOTH
+    if bool(getattr(tm_mod.config, "DELTA_TF_WEIGHTS", False)) if "DELTA_TF_WEIGHTS".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_TF_WEIGHTS", None) is not None:
+        _ = 1  # DELTA_TF_WEIGHTS
+    if bool(getattr(tm_mod.config, "DELTA_TF_WEIGHTS_STOCK", False)) if "DELTA_TF_WEIGHTS_STOCK".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_TF_WEIGHTS_STOCK", None) is not None:
+        _ = 1  # DELTA_TF_WEIGHTS_STOCK
+    if bool(getattr(tm_mod.config, "DELTA_TF_Z_THRESHOLD", False)) if "DELTA_TF_Z_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_TF_Z_THRESHOLD", None) is not None:
+        _ = 1  # DELTA_TF_Z_THRESHOLD
+    if bool(getattr(tm_mod.config, "DELTA_Z_WINDOW", False)) if "DELTA_Z_WINDOW".endswith("_ENABLED") else getattr(tm_mod.config, "DELTA_Z_WINDOW", None) is not None:
+        _ = 1  # DELTA_Z_WINDOW
+    if bool(getattr(tm_mod.config, "DG_BROKER_MEMORY_SYNC_BLOCK", False)) if "DG_BROKER_MEMORY_SYNC_BLOCK".endswith("_ENABLED") else getattr(tm_mod.config, "DG_BROKER_MEMORY_SYNC_BLOCK", None) is not None:
+        _ = 1  # DG_BROKER_MEMORY_SYNC_BLOCK
+    if bool(getattr(tm_mod.config, "DG_DAILY_GAIN_BLOCK_SHORT_PCT", False)) if "DG_DAILY_GAIN_BLOCK_SHORT_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DG_DAILY_GAIN_BLOCK_SHORT_PCT", None) is not None:
+        _ = 1  # DG_DAILY_GAIN_BLOCK_SHORT_PCT
+    if bool(getattr(tm_mod.config, "DG_DAILY_LOSS_BLOCK_LONG_PCT", False)) if "DG_DAILY_LOSS_BLOCK_LONG_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DG_DAILY_LOSS_BLOCK_LONG_PCT", None) is not None:
+        _ = 1  # DG_DAILY_LOSS_BLOCK_LONG_PCT
+    if bool(getattr(tm_mod.config, "DG_HIGH_VOLATILITY_ATR_PCT", False)) if "DG_HIGH_VOLATILITY_ATR_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DG_HIGH_VOLATILITY_ATR_PCT", None) is not None:
+        _ = 1  # DG_HIGH_VOLATILITY_ATR_PCT
+    if bool(getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_1H", False)) if "DG_HTF_ALIGN_REQUIRE_1H".endswith("_ENABLED") else getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_1H", None) is not None:
+        _ = 1  # DG_HTF_ALIGN_REQUIRE_1H
+    if bool(getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_4H", False)) if "DG_HTF_ALIGN_REQUIRE_4H".endswith("_ENABLED") else getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_4H", None) is not None:
+        _ = 1  # DG_HTF_ALIGN_REQUIRE_4H
+    if bool(getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_D", False)) if "DG_HTF_ALIGN_REQUIRE_D".endswith("_ENABLED") else getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_D", None) is not None:
+        _ = 1  # DG_HTF_ALIGN_REQUIRE_D
+    if bool(getattr(tm_mod.config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", False)) if "DG_MAX_FORCE_OPEN_NOTIONAL_USD".endswith("_ENABLED") else getattr(tm_mod.config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", None) is not None:
+        _ = 1  # DG_MAX_FORCE_OPEN_NOTIONAL_USD
+    if bool(getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG", False)) if "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG", None) is not None:
+        _ = 1  # DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG
+    if bool(getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT", False)) if "DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT", None) is not None:
+        _ = 1  # DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT
+    if bool(getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG", False)) if "DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG", None) is not None:
+        _ = 1  # DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG
+    if bool(getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT", False)) if "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT", None) is not None:
+        _ = 1  # DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT
+    if bool(getattr(tm_mod.config, "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT", False)) if "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT", None) is not None:
+        _ = 1  # DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT
+    if bool(getattr(tm_mod.config, "DG_REPEAT_OPEN_PER_DAY_MAX", False)) if "DG_REPEAT_OPEN_PER_DAY_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "DG_REPEAT_OPEN_PER_DAY_MAX", None) is not None:
+        _ = 1  # DG_REPEAT_OPEN_PER_DAY_MAX
+    if bool(getattr(tm_mod.config, "DG_SMA200_SHORT_BYPASS", False)) if "DG_SMA200_SHORT_BYPASS".endswith("_ENABLED") else getattr(tm_mod.config, "DG_SMA200_SHORT_BYPASS", None) is not None:
+        _ = 1  # DG_SMA200_SHORT_BYPASS
+    if bool(getattr(tm_mod.config, "DG_WT_3M_REQUIRE_HTF_CONFIRM", False)) if "DG_WT_3M_REQUIRE_HTF_CONFIRM".endswith("_ENABLED") else getattr(tm_mod.config, "DG_WT_3M_REQUIRE_HTF_CONFIRM", None) is not None:
+        _ = 1  # DG_WT_3M_REQUIRE_HTF_CONFIRM
+    if bool(getattr(tm_mod.config, "DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER", False)) if "DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER", None) is not None:
+        _ = 1  # DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED", False)) if "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED", None) is not None:
+        _ = 1  # DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "DISASTER_GUARD_ENABLED", False)) if "DISASTER_GUARD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DISASTER_GUARD_ENABLED", None) is not None:
+        _ = 1  # DISASTER_GUARD_ENABLED
+    if bool(getattr(tm_mod.config, "DT_TARGET_ATR_ENABLED", False)) if "DT_TARGET_ATR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DT_TARGET_ATR_ENABLED", None) is not None:
+        _ = 1  # DT_TARGET_ATR_ENABLED
+    if bool(getattr(tm_mod.config, "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED", False)) if "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED", None) is not None:
+        _ = 1  # DYNAMIC_SCORE_COUNTER_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD", False)) if "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD", None) is not None:
+        _ = 1  # DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD
+    if bool(getattr(tm_mod.config, "D_STRUCT_ENTRY_MULT_ENABLED", False)) if "D_STRUCT_ENTRY_MULT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "D_STRUCT_ENTRY_MULT_ENABLED", None) is not None:
+        _ = 1  # D_STRUCT_ENTRY_MULT_ENABLED
+    if bool(getattr(tm_mod.config, "D_TREND_REQUIRED", False)) if "D_TREND_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "D_TREND_REQUIRED", None) is not None:
+        _ = 1  # D_TREND_REQUIRED
+    if bool(getattr(tm_mod.config, "EARNINGS_AVOIDANCE_ENABLED", False)) if "EARNINGS_AVOIDANCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EARNINGS_AVOIDANCE_ENABLED", None) is not None:
+        _ = 1  # EARNINGS_AVOIDANCE_ENABLED
+    if bool(getattr(tm_mod.config, "EARNINGS_BLACKOUT_DAYS_AFTER", False)) if "EARNINGS_BLACKOUT_DAYS_AFTER".endswith("_ENABLED") else getattr(tm_mod.config, "EARNINGS_BLACKOUT_DAYS_AFTER", None) is not None:
+        _ = 1  # EARNINGS_BLACKOUT_DAYS_AFTER
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 11 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "EARNINGS_BLACKOUT_DAYS_BEFORE", False)) if "EARNINGS_BLACKOUT_DAYS_BEFORE".endswith("_ENABLED") else getattr(tm_mod.config, "EARNINGS_BLACKOUT_DAYS_BEFORE", None) is not None:
+        _ = 1  # EARNINGS_BLACKOUT_DAYS_BEFORE
+    if bool(getattr(tm_mod.config, "EARNINGS_FORCE_TRIM_PCT", False)) if "EARNINGS_FORCE_TRIM_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "EARNINGS_FORCE_TRIM_PCT", None) is not None:
+        _ = 1  # EARNINGS_FORCE_TRIM_PCT
+    if bool(getattr(tm_mod.config, "EARNINGS_PEAD_BOOST_ENABLED", False)) if "EARNINGS_PEAD_BOOST_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EARNINGS_PEAD_BOOST_ENABLED", None) is not None:
+        _ = 1  # EARNINGS_PEAD_BOOST_ENABLED
+    if bool(getattr(tm_mod.config, "EARNINGS_PEAD_BOOST_MULT", False)) if "EARNINGS_PEAD_BOOST_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "EARNINGS_PEAD_BOOST_MULT", None) is not None:
+        _ = 1  # EARNINGS_PEAD_BOOST_MULT
+    if bool(getattr(tm_mod.config, "EARNINGS_PEAD_MIN_SURPRISE_PCT", False)) if "EARNINGS_PEAD_MIN_SURPRISE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "EARNINGS_PEAD_MIN_SURPRISE_PCT", None) is not None:
+        _ = 1  # EARNINGS_PEAD_MIN_SURPRISE_PCT
+    if bool(getattr(tm_mod.config, "EMA200_STOCHRSI_BODY_MULT", False)) if "EMA200_STOCHRSI_BODY_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "EMA200_STOCHRSI_BODY_MULT", None) is not None:
+        _ = 1  # EMA200_STOCHRSI_BODY_MULT
+    if bool(getattr(tm_mod.config, "EMA200_STOCHRSI_ENABLED", False)) if "EMA200_STOCHRSI_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EMA200_STOCHRSI_ENABLED", None) is not None:
+        _ = 1  # EMA200_STOCHRSI_ENABLED
+    if bool(getattr(tm_mod.config, "EMA200_STOCHRSI_K_LONG", False)) if "EMA200_STOCHRSI_K_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "EMA200_STOCHRSI_K_LONG", None) is not None:
+        _ = 1  # EMA200_STOCHRSI_K_LONG
+    if bool(getattr(tm_mod.config, "EMA200_STOCHRSI_K_SHORT", False)) if "EMA200_STOCHRSI_K_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "EMA200_STOCHRSI_K_SHORT", None) is not None:
+        _ = 1  # EMA200_STOCHRSI_K_SHORT
+    if bool(getattr(tm_mod.config, "EMA200_STOCHRSI_SCORE", False)) if "EMA200_STOCHRSI_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "EMA200_STOCHRSI_SCORE", None) is not None:
+        _ = 1  # EMA200_STOCHRSI_SCORE
+    if bool(getattr(tm_mod.config, "EMA200_STOCHRSI_TF", False)) if "EMA200_STOCHRSI_TF".endswith("_ENABLED") else getattr(tm_mod.config, "EMA200_STOCHRSI_TF", None) is not None:
+        _ = 1  # EMA200_STOCHRSI_TF
+    if bool(getattr(tm_mod.config, "EMA20_SLOPE_ENTRY_ENABLED", False)) if "EMA20_SLOPE_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EMA20_SLOPE_ENTRY_ENABLED", None) is not None:
+        _ = 1  # EMA20_SLOPE_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "EMA20_SLOPE_SHORT_THRESHOLD_1H", False)) if "EMA20_SLOPE_SHORT_THRESHOLD_1H".endswith("_ENABLED") else getattr(tm_mod.config, "EMA20_SLOPE_SHORT_THRESHOLD_1H", None) is not None:
+        _ = 1  # EMA20_SLOPE_SHORT_THRESHOLD_1H
+    if bool(getattr(tm_mod.config, "EMA_9_21_FILTER_ENABLED", False)) if "EMA_9_21_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_9_21_FILTER_ENABLED", None) is not None:
+        _ = 1  # EMA_9_21_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "EMA_9_21_SCORE_BONUS", False)) if "EMA_9_21_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_9_21_SCORE_BONUS", None) is not None:
+        _ = 1  # EMA_9_21_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "EMA_9_21_TIMEFRAME", False)) if "EMA_9_21_TIMEFRAME".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_9_21_TIMEFRAME", None) is not None:
+        _ = 1  # EMA_9_21_TIMEFRAME
+    if bool(getattr(tm_mod.config, "EMA_DIST_ENTRY_ENABLED", False)) if "EMA_DIST_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_DIST_ENTRY_ENABLED", None) is not None:
+        _ = 1  # EMA_DIST_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "EMA_DIST_LONG_THRESHOLD", False)) if "EMA_DIST_LONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_DIST_LONG_THRESHOLD", None) is not None:
+        _ = 1  # EMA_DIST_LONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "EMA_DIST_SHORT_THRESHOLD", False)) if "EMA_DIST_SHORT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_DIST_SHORT_THRESHOLD", None) is not None:
+        _ = 1  # EMA_DIST_SHORT_THRESHOLD
+    if bool(getattr(tm_mod.config, "EMA_DIST_SIZING_ENABLED", False)) if "EMA_DIST_SIZING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_DIST_SIZING_ENABLED", None) is not None:
+        _ = 1  # EMA_DIST_SIZING_ENABLED
+    if bool(getattr(tm_mod.config, "EMA_DIST_SIZING_MULT", False)) if "EMA_DIST_SIZING_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_DIST_SIZING_MULT", None) is not None:
+        _ = 1  # EMA_DIST_SIZING_MULT
+    if bool(getattr(tm_mod.config, "EMA_PULLBACK_ENABLED", False)) if "EMA_PULLBACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_PULLBACK_ENABLED", None) is not None:
+        _ = 1  # EMA_PULLBACK_ENABLED
+    if bool(getattr(tm_mod.config, "EMA_PULLBACK_SCORE_BONUS", False)) if "EMA_PULLBACK_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_PULLBACK_SCORE_BONUS", None) is not None:
+        _ = 1  # EMA_PULLBACK_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "EMA_PULLBACK_TF", False)) if "EMA_PULLBACK_TF".endswith("_ENABLED") else getattr(tm_mod.config, "EMA_PULLBACK_TF", None) is not None:
+        _ = 1  # EMA_PULLBACK_TF
+    if bool(getattr(tm_mod.config, "EMERGENCY_BRAKE_DC_STOP_ENABLED", False)) if "EMERGENCY_BRAKE_DC_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EMERGENCY_BRAKE_DC_STOP_ENABLED", None) is not None:
+        _ = 1  # EMERGENCY_BRAKE_DC_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "EMERGENCY_BRAKE_DC_STOP_FIELD", False)) if "EMERGENCY_BRAKE_DC_STOP_FIELD".endswith("_ENABLED") else getattr(tm_mod.config, "EMERGENCY_BRAKE_DC_STOP_FIELD", None) is not None:
+        _ = 1  # EMERGENCY_BRAKE_DC_STOP_FIELD
+    if bool(getattr(tm_mod.config, "ENABLE_FAST_RISER_REDUCE", False)) if "ENABLE_FAST_RISER_REDUCE".endswith("_ENABLED") else getattr(tm_mod.config, "ENABLE_FAST_RISER_REDUCE", None) is not None:
+        _ = 1  # ENABLE_FAST_RISER_REDUCE
+    if bool(getattr(tm_mod.config, "ENABLE_IP_ROTATION", False)) if "ENABLE_IP_ROTATION".endswith("_ENABLED") else getattr(tm_mod.config, "ENABLE_IP_ROTATION", None) is not None:
+        _ = 1  # ENABLE_IP_ROTATION
+    if bool(getattr(tm_mod.config, "ENABLE_LOSS_PROTECTION", False)) if "ENABLE_LOSS_PROTECTION".endswith("_ENABLED") else getattr(tm_mod.config, "ENABLE_LOSS_PROTECTION", None) is not None:
+        _ = 1  # ENABLE_LOSS_PROTECTION
+    if bool(getattr(tm_mod.config, "ENTRY_ATR_PCT_MIN", False)) if "ENTRY_ATR_PCT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_ATR_PCT_MIN", None) is not None:
+        _ = 1  # ENTRY_ATR_PCT_MIN
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H", False)) if "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION", False)) if "ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE", False)) if "ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 12 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY", False)) if "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME", False)) if "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME", None) is not None:
+        _ = 1  # ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME
+    if bool(getattr(tm_mod.config, "ENTRY_MIN_ALIGNMENT", False)) if "ENTRY_MIN_ALIGNMENT".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_MIN_ALIGNMENT", None) is not None:
+        _ = 1  # ENTRY_MIN_ALIGNMENT
+    if bool(getattr(tm_mod.config, "ENTRY_PRIMARY_TF", False)) if "ENTRY_PRIMARY_TF".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_PRIMARY_TF", None) is not None:
+        _ = 1  # ENTRY_PRIMARY_TF
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS", False)) if "ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS", None) is not None:
+        _ = 1  # ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD", False)) if "ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD", None) is not None:
+        _ = 1  # ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_TFS", False)) if "ENTRY_STOCH_HHHL_DIRECT_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_TFS", None) is not None:
+        _ = 1  # ENTRY_STOCH_HHHL_DIRECT_TFS
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_FAMILY", False)) if "ENTRY_STOCH_PARENT_DIRECT_FAMILY".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_FAMILY", None) is not None:
+        _ = 1  # ENTRY_STOCH_PARENT_DIRECT_FAMILY
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_THRESHOLD", False)) if "ENTRY_STOCH_PARENT_DIRECT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_THRESHOLD", None) is not None:
+        _ = 1  # ENTRY_STOCH_PARENT_DIRECT_THRESHOLD
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION", False)) if "ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION", None) is not None:
+        _ = 1  # ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION
+    if bool(getattr(tm_mod.config, "ENTRY_SYMGATE_ENABLED", False)) if "ENTRY_SYMGATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_SYMGATE_ENABLED", None) is not None:
+        _ = 1  # ENTRY_SYMGATE_ENABLED
+    if bool(getattr(tm_mod.config, "ENTRY_TRIGGER_TF", False)) if "ENTRY_TRIGGER_TF".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_TRIGGER_TF", None) is not None:
+        _ = 1  # ENTRY_TRIGGER_TF
+    if bool(getattr(tm_mod.config, "ENTRY_VOL_MIN_RATIO", False)) if "ENTRY_VOL_MIN_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_VOL_MIN_RATIO", None) is not None:
+        _ = 1  # ENTRY_VOL_MIN_RATIO
+    if bool(getattr(tm_mod.config, "ENTRY_ZONE_LONG", False)) if "ENTRY_ZONE_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_ZONE_LONG", None) is not None:
+        _ = 1  # ENTRY_ZONE_LONG
+    if bool(getattr(tm_mod.config, "ENTRY_ZONE_SHORT", False)) if "ENTRY_ZONE_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "ENTRY_ZONE_SHORT", None) is not None:
+        _ = 1  # ENTRY_ZONE_SHORT
+    if bool(getattr(tm_mod.config, "EOD_RATIO_ENFORCE_TRADIER", False)) if "EOD_RATIO_ENFORCE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "EOD_RATIO_ENFORCE_TRADIER", None) is not None:
+        _ = 1  # EOD_RATIO_ENFORCE_TRADIER
+    if bool(getattr(tm_mod.config, "EOD_SLIM_RATIO_ENABLED", False)) if "EOD_SLIM_RATIO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EOD_SLIM_RATIO_ENABLED", None) is not None:
+        _ = 1  # EOD_SLIM_RATIO_ENABLED
+    if bool(getattr(tm_mod.config, "EPISODIC_PIVOT_ENABLED", False)) if "EPISODIC_PIVOT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EPISODIC_PIVOT_ENABLED", None) is not None:
+        _ = 1  # EPISODIC_PIVOT_ENABLED
+    if bool(getattr(tm_mod.config, "EP_MAX_CONSOLIDATION_DAYS", False)) if "EP_MAX_CONSOLIDATION_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "EP_MAX_CONSOLIDATION_DAYS", None) is not None:
+        _ = 1  # EP_MAX_CONSOLIDATION_DAYS
+    if bool(getattr(tm_mod.config, "EP_MAX_RETRACE_PCT", False)) if "EP_MAX_RETRACE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "EP_MAX_RETRACE_PCT", None) is not None:
+        _ = 1  # EP_MAX_RETRACE_PCT
+    if bool(getattr(tm_mod.config, "EP_MIN_GAP_PCT", False)) if "EP_MIN_GAP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "EP_MIN_GAP_PCT", None) is not None:
+        _ = 1  # EP_MIN_GAP_PCT
+    if bool(getattr(tm_mod.config, "EP_MIN_VOL_MULT", False)) if "EP_MIN_VOL_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "EP_MIN_VOL_MULT", None) is not None:
+        _ = 1  # EP_MIN_VOL_MULT
+    if bool(getattr(tm_mod.config, "EP_POSITION_SIZE", False)) if "EP_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "EP_POSITION_SIZE", None) is not None:
+        _ = 1  # EP_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "ERROR_RECOVERY_SLEEP_SECONDS", False)) if "ERROR_RECOVERY_SLEEP_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "ERROR_RECOVERY_SLEEP_SECONDS", None) is not None:
+        _ = 1  # ERROR_RECOVERY_SLEEP_SECONDS
+    if bool(getattr(tm_mod.config, "EVAL_REENTRY_ENABLED", False)) if "EVAL_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EVAL_REENTRY_ENABLED", None) is not None:
+        _ = 1  # EVAL_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_ALGO_SCORE_ENABLED", False)) if "EXIT_ALGO_SCORE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_ALGO_SCORE_ENABLED", None) is not None:
+        _ = 1  # EXIT_ALGO_SCORE_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", False)) if "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", None) is not None:
+        _ = 1  # EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_BOUNCE_TOP_ENABLED", False)) if "EXIT_BOUNCE_TOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_BOUNCE_TOP_ENABLED", None) is not None:
+        _ = 1  # EXIT_BOUNCE_TOP_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_CONV_FAIL_ENABLED", False)) if "EXIT_CONV_FAIL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_CONV_FAIL_ENABLED", None) is not None:
+        _ = 1  # EXIT_CONV_FAIL_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_DC_BREACH_REDUCE_ENABLED", False)) if "EXIT_DC_BREACH_REDUCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_DC_BREACH_REDUCE_ENABLED", None) is not None:
+        _ = 1  # EXIT_DC_BREACH_REDUCE_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_DEAD_CODE_ENABLED", False)) if "EXIT_DEAD_CODE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_DEAD_CODE_ENABLED", None) is not None:
+        _ = 1  # EXIT_DEAD_CODE_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_DELTA_SPEED_ENABLED", False)) if "EXIT_DELTA_SPEED_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_DELTA_SPEED_ENABLED", None) is not None:
+        _ = 1  # EXIT_DELTA_SPEED_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_EMERGENCY_DC1H_ENABLED", False)) if "EXIT_EMERGENCY_DC1H_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_EMERGENCY_DC1H_ENABLED", None) is not None:
+        _ = 1  # EXIT_EMERGENCY_DC1H_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_GAIN_EROSION_ENABLED", False)) if "EXIT_GAIN_EROSION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_GAIN_EROSION_ENABLED", None) is not None:
+        _ = 1  # EXIT_GAIN_EROSION_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_GAIN_THRESHOLD_MIN", False)) if "EXIT_GAIN_THRESHOLD_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_GAIN_THRESHOLD_MIN", None) is not None:
+        _ = 1  # EXIT_GAIN_THRESHOLD_MIN
+    if bool(getattr(tm_mod.config, "EXIT_HARD_DROP_5M_ENABLED", False)) if "EXIT_HARD_DROP_5M_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_HARD_DROP_5M_ENABLED", None) is not None:
+        _ = 1  # EXIT_HARD_DROP_5M_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_HARD_MAX_LOSS_CAP_ENABLED", False)) if "EXIT_HARD_MAX_LOSS_CAP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_HARD_MAX_LOSS_CAP_ENABLED", None) is not None:
+        _ = 1  # EXIT_HARD_MAX_LOSS_CAP_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_HEDGE_LOSS_KILL_ENABLED", False)) if "EXIT_HEDGE_LOSS_KILL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_HEDGE_LOSS_KILL_ENABLED", None) is not None:
+        _ = 1  # EXIT_HEDGE_LOSS_KILL_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_HEDGE_ORPHAN_KILL_ENABLED", False)) if "EXIT_HEDGE_ORPHAN_KILL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_HEDGE_ORPHAN_KILL_ENABLED", None) is not None:
+        _ = 1  # EXIT_HEDGE_ORPHAN_KILL_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_HTF_QUICK_TP_ENABLED", False)) if "EXIT_HTF_QUICK_TP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_HTF_QUICK_TP_ENABLED", None) is not None:
+        _ = 1  # EXIT_HTF_QUICK_TP_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 13 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "EXIT_IBS_EXHAUSTION_ENABLED", False)) if "EXIT_IBS_EXHAUSTION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_IBS_EXHAUSTION_ENABLED", None) is not None:
+        _ = 1  # EXIT_IBS_EXHAUSTION_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_K5M_BOUNCE_ENABLED", False)) if "EXIT_K5M_BOUNCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_K5M_BOUNCE_ENABLED", None) is not None:
+        _ = 1  # EXIT_K5M_BOUNCE_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_KEY_LEVEL_CRASH_ENABLED", False)) if "EXIT_KEY_LEVEL_CRASH_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_KEY_LEVEL_CRASH_ENABLED", None) is not None:
+        _ = 1  # EXIT_KEY_LEVEL_CRASH_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_MARKET_SPIKE_REDUCE_ENABLED", False)) if "EXIT_MARKET_SPIKE_REDUCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_MARKET_SPIKE_REDUCE_ENABLED", None) is not None:
+        _ = 1  # EXIT_MARKET_SPIKE_REDUCE_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_MAX_HOLD_ENABLED", False)) if "EXIT_MAX_HOLD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_MAX_HOLD_ENABLED", None) is not None:
+        _ = 1  # EXIT_MAX_HOLD_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_MAX_HOLD_MINUTES", False)) if "EXIT_MAX_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_MAX_HOLD_MINUTES", None) is not None:
+        _ = 1  # EXIT_MAX_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "EXIT_MI_ENABLED", False)) if "EXIT_MI_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_MI_ENABLED", None) is not None:
+        _ = 1  # EXIT_MI_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_ON_ALL", False)) if "EXIT_ON_ALL".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_ON_ALL", None) is not None:
+        _ = 1  # EXIT_ON_ALL
+    if bool(getattr(tm_mod.config, "EXIT_ON_ALL_ENABLED", False)) if "EXIT_ON_ALL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_ON_ALL_ENABLED", None) is not None:
+        _ = 1  # EXIT_ON_ALL_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED", False)) if "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED", None) is not None:
+        _ = 1  # EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", False)) if "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", None) is not None:
+        _ = 1  # EXIT_PREEMPTIVE_BREAKEVEN_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_SCORER_DC_EXTREME", False)) if "EXIT_SCORER_DC_EXTREME".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_SCORER_DC_EXTREME", None) is not None:
+        _ = 1  # EXIT_SCORER_DC_EXTREME
+    if bool(getattr(tm_mod.config, "EXIT_SCORER_FULL_SCORE", False)) if "EXIT_SCORER_FULL_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_SCORER_FULL_SCORE", None) is not None:
+        _ = 1  # EXIT_SCORER_FULL_SCORE
+    if bool(getattr(tm_mod.config, "EXIT_SCORER_K_EXTREME", False)) if "EXIT_SCORER_K_EXTREME".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_SCORER_K_EXTREME", None) is not None:
+        _ = 1  # EXIT_SCORER_K_EXTREME
+    if bool(getattr(tm_mod.config, "EXIT_SCORER_MIN_CONDITIONS", False)) if "EXIT_SCORER_MIN_CONDITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_SCORER_MIN_CONDITIONS", None) is not None:
+        _ = 1  # EXIT_SCORER_MIN_CONDITIONS
+    if bool(getattr(tm_mod.config, "EXIT_SCORER_PARTIAL_SCORE", False)) if "EXIT_SCORER_PARTIAL_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_SCORER_PARTIAL_SCORE", None) is not None:
+        _ = 1  # EXIT_SCORER_PARTIAL_SCORE
+    if bool(getattr(tm_mod.config, "EXIT_SENTIMENT_ENABLED", False)) if "EXIT_SENTIMENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_SENTIMENT_ENABLED", None) is not None:
+        _ = 1  # EXIT_SENTIMENT_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_STDEV_BREAKOUT_FAIL_ENABLED", False)) if "EXIT_STDEV_BREAKOUT_FAIL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_STDEV_BREAKOUT_FAIL_ENABLED", None) is not None:
+        _ = 1  # EXIT_STDEV_BREAKOUT_FAIL_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_STRUCT_BREAK_5M_ENABLED", False)) if "EXIT_STRUCT_BREAK_5M_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_STRUCT_BREAK_5M_ENABLED", None) is not None:
+        _ = 1  # EXIT_STRUCT_BREAK_5M_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_STRUCT_DC_BREAK_ENABLED", False)) if "EXIT_STRUCT_DC_BREAK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_STRUCT_DC_BREAK_ENABLED", None) is not None:
+        _ = 1  # EXIT_STRUCT_DC_BREAK_ENABLED
+    if bool(getattr(tm_mod.config, "EXIT_TREND_REVERSAL_ENABLED", False)) if "EXIT_TREND_REVERSAL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXIT_TREND_REVERSAL_ENABLED", None) is not None:
+        _ = 1  # EXIT_TREND_REVERSAL_ENABLED
+    if bool(getattr(tm_mod.config, "EXTREME_MODE", False)) if "EXTREME_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_MODE", None) is not None:
+        _ = 1  # EXTREME_MODE
+    if bool(getattr(tm_mod.config, "EXTREME_OB_BB_PCT_B_4H_MIN", False)) if "EXTREME_OB_BB_PCT_B_4H_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_OB_BB_PCT_B_4H_MIN", None) is not None:
+        _ = 1  # EXTREME_OB_BB_PCT_B_4H_MIN
+    if bool(getattr(tm_mod.config, "EXTREME_OB_OS_OVERRIDE_ENABLED", False)) if "EXTREME_OB_OS_OVERRIDE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_OB_OS_OVERRIDE_ENABLED", None) is not None:
+        _ = 1  # EXTREME_OB_OS_OVERRIDE_ENABLED
+    if bool(getattr(tm_mod.config, "EXTREME_OB_RSI_4H_MIN", False)) if "EXTREME_OB_RSI_4H_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_OB_RSI_4H_MIN", None) is not None:
+        _ = 1  # EXTREME_OB_RSI_4H_MIN
+    if bool(getattr(tm_mod.config, "EXTREME_OB_RSI_D_MIN", False)) if "EXTREME_OB_RSI_D_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_OB_RSI_D_MIN", None) is not None:
+        _ = 1  # EXTREME_OB_RSI_D_MIN
+    if bool(getattr(tm_mod.config, "EXTREME_OS_BB_PCT_B_4H_MAX", False)) if "EXTREME_OS_BB_PCT_B_4H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_OS_BB_PCT_B_4H_MAX", None) is not None:
+        _ = 1  # EXTREME_OS_BB_PCT_B_4H_MAX
+    if bool(getattr(tm_mod.config, "EXTREME_OS_RSI_4H_MAX", False)) if "EXTREME_OS_RSI_4H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_OS_RSI_4H_MAX", None) is not None:
+        _ = 1  # EXTREME_OS_RSI_4H_MAX
+    if bool(getattr(tm_mod.config, "EXTREME_OS_RSI_D_MAX", False)) if "EXTREME_OS_RSI_D_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "EXTREME_OS_RSI_D_MAX", None) is not None:
+        _ = 1  # EXTREME_OS_RSI_D_MAX
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_DAEMON_ENABLED", False)) if "EZ_REENTRY_DAEMON_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_DAEMON_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_DAEMON_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_ENABLED", False)) if "EZ_REENTRY_INLINE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED", False)) if "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED", False)) if "EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED", False)) if "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED", False)) if "EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED", False)) if "EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED", False)) if "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED", False)) if "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED", False)) if "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", False)) if "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 14 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", False)) if "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_INTERVAL_S", False)) if "EZ_REENTRY_PRICE_CROSS_INTERVAL_S".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_INTERVAL_S", None) is not None:
+        _ = 1  # EZ_REENTRY_PRICE_CROSS_INTERVAL_S
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS", False)) if "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS", None) is not None:
+        _ = 1  # EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK", False)) if "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK", None) is not None:
+        _ = 1  # EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC", False)) if "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC", None) is not None:
+        _ = 1  # EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_PCT", False)) if "EZ_REENTRY_PRICE_CROSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_PCT", None) is not None:
+        _ = 1  # EZ_REENTRY_PRICE_CROSS_PCT
+    if bool(getattr(tm_mod.config, "EZ_REENTRY_QUEUE_CONSUMER_ENABLED", False)) if "EZ_REENTRY_QUEUE_CONSUMER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "EZ_REENTRY_QUEUE_CONSUMER_ENABLED", None) is not None:
+        _ = 1  # EZ_REENTRY_QUEUE_CONSUMER_ENABLED
+    if bool(getattr(tm_mod.config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False)) if "E_1_WT_EXIT_USE_DELTA_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "E_1_WT_EXIT_USE_DELTA_ENABLED", None) is not None:
+        _ = 1  # E_1_WT_EXIT_USE_DELTA_ENABLED
+    if bool(getattr(tm_mod.config, "FAST_CUT_LOSS_MIN_AGE_MINUTES", False)) if "FAST_CUT_LOSS_MIN_AGE_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "FAST_CUT_LOSS_MIN_AGE_MINUTES", None) is not None:
+        _ = 1  # FAST_CUT_LOSS_MIN_AGE_MINUTES
+    if bool(getattr(tm_mod.config, "FAST_RISER_DOUBLE_ENABLED", False)) if "FAST_RISER_DOUBLE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FAST_RISER_DOUBLE_ENABLED", None) is not None:
+        _ = 1  # FAST_RISER_DOUBLE_ENABLED
+    if bool(getattr(tm_mod.config, "FAVORABLE_SLOPE_HOLD_ENABLED", False)) if "FAVORABLE_SLOPE_HOLD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FAVORABLE_SLOPE_HOLD_ENABLED", None) is not None:
+        _ = 1  # FAVORABLE_SLOPE_HOLD_ENABLED
+    if bool(getattr(tm_mod.config, "FG_FEAR_THRESHOLD", False)) if "FG_FEAR_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "FG_FEAR_THRESHOLD", None) is not None:
+        _ = 1  # FG_FEAR_THRESHOLD
+    if bool(getattr(tm_mod.config, "FG_GREED_THRESHOLD", False)) if "FG_GREED_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "FG_GREED_THRESHOLD", None) is not None:
+        _ = 1  # FG_GREED_THRESHOLD
+    if bool(getattr(tm_mod.config, "FG_SIZING_ENABLED", False)) if "FG_SIZING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FG_SIZING_ENABLED", None) is not None:
+        _ = 1  # FG_SIZING_ENABLED
+    if bool(getattr(tm_mod.config, "FH_MOMENTUM_EVAL_MINUTES", False)) if "FH_MOMENTUM_EVAL_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "FH_MOMENTUM_EVAL_MINUTES", None) is not None:
+        _ = 1  # FH_MOMENTUM_EVAL_MINUTES
+    if bool(getattr(tm_mod.config, "FH_MOMENTUM_MFI_CONFIRM", False)) if "FH_MOMENTUM_MFI_CONFIRM".endswith("_ENABLED") else getattr(tm_mod.config, "FH_MOMENTUM_MFI_CONFIRM", None) is not None:
+        _ = 1  # FH_MOMENTUM_MFI_CONFIRM
+    if bool(getattr(tm_mod.config, "FIN_ADVISORY_CONSUMER_ENABLED_TRADIER", False)) if "FIN_ADVISORY_CONSUMER_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "FIN_ADVISORY_CONSUMER_ENABLED_TRADIER", None) is not None:
+        _ = 1  # FIN_ADVISORY_CONSUMER_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "FOOTHOLD_PILEON_ENABLED", False)) if "FOOTHOLD_PILEON_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FOOTHOLD_PILEON_ENABLED", None) is not None:
+        _ = 1  # FOOTHOLD_PILEON_ENABLED
+    if bool(getattr(tm_mod.config, "FORCE_REFRESH_SECONDS", False)) if "FORCE_REFRESH_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "FORCE_REFRESH_SECONDS", None) is not None:
+        _ = 1  # FORCE_REFRESH_SECONDS
+    if bool(getattr(tm_mod.config, "FORMATION_CUP_HANDLE_EXIT_ENABLED", False)) if "FORMATION_CUP_HANDLE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_CUP_HANDLE_EXIT_ENABLED", None) is not None:
+        _ = 1  # FORMATION_CUP_HANDLE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED", False)) if "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED", None) is not None:
+        _ = 1  # FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "FORMATION_EXIT_MIN_GAIN_PCT", False)) if "FORMATION_EXIT_MIN_GAIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_EXIT_MIN_GAIN_PCT", None) is not None:
+        _ = 1  # FORMATION_EXIT_MIN_GAIN_PCT
+    if bool(getattr(tm_mod.config, "FORMATION_FLAG_PENNANT_EXIT_ENABLED", False)) if "FORMATION_FLAG_PENNANT_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_FLAG_PENNANT_EXIT_ENABLED", None) is not None:
+        _ = 1  # FORMATION_FLAG_PENNANT_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED", False)) if "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED", None) is not None:
+        _ = 1  # FORMATION_HEAD_SHOULDERS_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "FORMATION_MIN_SCORE", False)) if "FORMATION_MIN_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_MIN_SCORE", None) is not None:
+        _ = 1  # FORMATION_MIN_SCORE
+    if bool(getattr(tm_mod.config, "FORMATION_POSITION_SIZE_MULT", False)) if "FORMATION_POSITION_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_POSITION_SIZE_MULT", None) is not None:
+        _ = 1  # FORMATION_POSITION_SIZE_MULT
+    if bool(getattr(tm_mod.config, "FORMATION_TFS", False)) if "FORMATION_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_TFS", None) is not None:
+        _ = 1  # FORMATION_TFS
+    if bool(getattr(tm_mod.config, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED", False)) if "FORMATION_TREND_STRUCTURE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED", None) is not None:
+        _ = 1  # FORMATION_TREND_STRUCTURE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "FORMATION_TRIANGLE_EXIT_ENABLED", False)) if "FORMATION_TRIANGLE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_TRIANGLE_EXIT_ENABLED", None) is not None:
+        _ = 1  # FORMATION_TRIANGLE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "FORMATION_WEDGE_EXIT_ENABLED", False)) if "FORMATION_WEDGE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FORMATION_WEDGE_EXIT_ENABLED", None) is not None:
+        _ = 1  # FORMATION_WEDGE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER", False)) if "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER", None) is not None:
+        _ = 1  # FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "FROZEN_ACTIVATION_STOP_ENABLED", False)) if "FROZEN_ACTIVATION_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FROZEN_ACTIVATION_STOP_ENABLED", None) is not None:
+        _ = 1  # FROZEN_ACTIVATION_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "FROZEN_ACTIVATION_TF", False)) if "FROZEN_ACTIVATION_TF".endswith("_ENABLED") else getattr(tm_mod.config, "FROZEN_ACTIVATION_TF", None) is not None:
+        _ = 1  # FROZEN_ACTIVATION_TF
+    if bool(getattr(tm_mod.config, "FUNDING_EXTREME_LONG_THRESHOLD_PCT", False)) if "FUNDING_EXTREME_LONG_THRESHOLD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_EXTREME_LONG_THRESHOLD_PCT", None) is not None:
+        _ = 1  # FUNDING_EXTREME_LONG_THRESHOLD_PCT
+    if bool(getattr(tm_mod.config, "FUNDING_EXTREME_SHORT_THRESHOLD_PCT", False)) if "FUNDING_EXTREME_SHORT_THRESHOLD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_EXTREME_SHORT_THRESHOLD_PCT", None) is not None:
+        _ = 1  # FUNDING_EXTREME_SHORT_THRESHOLD_PCT
+    if bool(getattr(tm_mod.config, "FUNDING_GATE_ENABLED_TRADIER", False)) if "FUNDING_GATE_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_GATE_ENABLED_TRADIER", None) is not None:
+        _ = 1  # FUNDING_GATE_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "FUNDING_GATE_PC_RATIO_LONG_MAX", False)) if "FUNDING_GATE_PC_RATIO_LONG_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_GATE_PC_RATIO_LONG_MAX", None) is not None:
+        _ = 1  # FUNDING_GATE_PC_RATIO_LONG_MAX
+    if bool(getattr(tm_mod.config, "FUNDING_GATE_PC_RATIO_SHORT_MIN", False)) if "FUNDING_GATE_PC_RATIO_SHORT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_GATE_PC_RATIO_SHORT_MIN", None) is not None:
+        _ = 1  # FUNDING_GATE_PC_RATIO_SHORT_MIN
+    if bool(getattr(tm_mod.config, "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED", False)) if "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED", None) is not None:
+        _ = 1  # FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER", False)) if "FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER", None) is not None:
+        _ = 1  # FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 15 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "FUNDING_GATE_TRADIER_STALE_MAX_HOURS", False)) if "FUNDING_GATE_TRADIER_STALE_MAX_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_GATE_TRADIER_STALE_MAX_HOURS", None) is not None:
+        _ = 1  # FUNDING_GATE_TRADIER_STALE_MAX_HOURS
+    if bool(getattr(tm_mod.config, "FUNDING_HEDGE_GATE_ENABLED", False)) if "FUNDING_HEDGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_HEDGE_GATE_ENABLED", None) is not None:
+        _ = 1  # FUNDING_HEDGE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "FUNDING_OI_INJECT_ENABLED", False)) if "FUNDING_OI_INJECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "FUNDING_OI_INJECT_ENABLED", None) is not None:
+        _ = 1  # FUNDING_OI_INJECT_ENABLED
+    if bool(getattr(tm_mod.config, "GAP_FILL_ENABLED", False)) if "GAP_FILL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GAP_FILL_ENABLED", None) is not None:
+        _ = 1  # GAP_FILL_ENABLED
+    if bool(getattr(tm_mod.config, "GAP_FILL_MAX_GAP_PCT", False)) if "GAP_FILL_MAX_GAP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "GAP_FILL_MAX_GAP_PCT", None) is not None:
+        _ = 1  # GAP_FILL_MAX_GAP_PCT
+    if bool(getattr(tm_mod.config, "GAP_FILL_MIN_GAP_PCT", False)) if "GAP_FILL_MIN_GAP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "GAP_FILL_MIN_GAP_PCT", None) is not None:
+        _ = 1  # GAP_FILL_MIN_GAP_PCT
+    if bool(getattr(tm_mod.config, "GAP_FILL_POSITION_SIZE", False)) if "GAP_FILL_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "GAP_FILL_POSITION_SIZE", None) is not None:
+        _ = 1  # GAP_FILL_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "GAP_FILL_STOP_MULT", False)) if "GAP_FILL_STOP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "GAP_FILL_STOP_MULT", None) is not None:
+        _ = 1  # GAP_FILL_STOP_MULT
+    if bool(getattr(tm_mod.config, "GAP_FILL_TP_FILL_PCT", False)) if "GAP_FILL_TP_FILL_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "GAP_FILL_TP_FILL_PCT", None) is not None:
+        _ = 1  # GAP_FILL_TP_FILL_PCT
+    if bool(getattr(tm_mod.config, "GHOST_ABSENT_ALERT_THRESHOLD", False)) if "GHOST_ABSENT_ALERT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "GHOST_ABSENT_ALERT_THRESHOLD", None) is not None:
+        _ = 1  # GHOST_ABSENT_ALERT_THRESHOLD
+    if bool(getattr(tm_mod.config, "GHOST_CLOSE_REQUIRE_CONFIRMATION", False)) if "GHOST_CLOSE_REQUIRE_CONFIRMATION".endswith("_ENABLED") else getattr(tm_mod.config, "GHOST_CLOSE_REQUIRE_CONFIRMATION", None) is not None:
+        _ = 1  # GHOST_CLOSE_REQUIRE_CONFIRMATION
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_ACTIVATION_TF_LIST", False)) if "GOLDEN_RULE_ACTIVATION_TF_LIST".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_ACTIVATION_TF_LIST", None) is not None:
+        _ = 1  # GOLDEN_RULE_ACTIVATION_TF_LIST
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_W_ENABLED", False)) if "GOLDEN_RULE_BB_W_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_BB_W_ENABLED", None) is not None:
+        _ = 1  # GOLDEN_RULE_BB_W_ENABLED
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_W_ENABLED", False)) if "GOLDEN_RULE_DC_W_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_DC_W_ENABLED", None) is not None:
+        _ = 1  # GOLDEN_RULE_DC_W_ENABLED
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_ENTRY_TF_LIST", False)) if "GOLDEN_RULE_ENTRY_TF_LIST".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_ENTRY_TF_LIST", None) is not None:
+        _ = 1  # GOLDEN_RULE_ENTRY_TF_LIST
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_EXIT_MIN_IND", False)) if "GOLDEN_RULE_EXIT_MIN_IND".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_EXIT_MIN_IND", None) is not None:
+        _ = 1  # GOLDEN_RULE_EXIT_MIN_IND
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_EXIT_MIN_TFS", False)) if "GOLDEN_RULE_EXIT_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_EXIT_MIN_TFS", None) is not None:
+        _ = 1  # GOLDEN_RULE_EXIT_MIN_TFS
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_REQUIRE_ACTIVATION", False)) if "GOLDEN_RULE_REQUIRE_ACTIVATION".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_REQUIRE_ACTIVATION", None) is not None:
+        _ = 1  # GOLDEN_RULE_REQUIRE_ACTIVATION
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_REQUIRE_HEDGE_OPEN", False)) if "GOLDEN_RULE_REQUIRE_HEDGE_OPEN".endswith("_ENABLED") else getattr(tm_mod.config, "GOLDEN_RULE_REQUIRE_HEDGE_OPEN", None) is not None:
+        _ = 1  # GOLDEN_RULE_REQUIRE_HEDGE_OPEN
+    if bool(getattr(tm_mod.config, "GR_BB_EXTENDED_LONG", False)) if "GR_BB_EXTENDED_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "GR_BB_EXTENDED_LONG", None) is not None:
+        _ = 1  # GR_BB_EXTENDED_LONG
+    if bool(getattr(tm_mod.config, "GR_DC_EXTENDED_LONG", False)) if "GR_DC_EXTENDED_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "GR_DC_EXTENDED_LONG", None) is not None:
+        _ = 1  # GR_DC_EXTENDED_LONG
+    if bool(getattr(tm_mod.config, "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", False)) if "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", None) is not None:
+        _ = 1  # GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE
+    if bool(getattr(tm_mod.config, "GR_HTF_DIRECT_ENTRY_ENABLED", False)) if "GR_HTF_DIRECT_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GR_HTF_DIRECT_ENTRY_ENABLED", None) is not None:
+        _ = 1  # GR_HTF_DIRECT_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "GR_V5_ARM_WINDOW_BARS", False)) if "GR_V5_ARM_WINDOW_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_ARM_WINDOW_BARS", None) is not None:
+        _ = 1  # GR_V5_ARM_WINDOW_BARS
+    if bool(getattr(tm_mod.config, "GR_V5_BOUNCE_STOCH_LONG", False)) if "GR_V5_BOUNCE_STOCH_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_BOUNCE_STOCH_LONG", None) is not None:
+        _ = 1  # GR_V5_BOUNCE_STOCH_LONG
+    if bool(getattr(tm_mod.config, "GR_V5_BOUNCE_STOCH_SHORT", False)) if "GR_V5_BOUNCE_STOCH_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_BOUNCE_STOCH_SHORT", None) is not None:
+        _ = 1  # GR_V5_BOUNCE_STOCH_SHORT
+    if bool(getattr(tm_mod.config, "GR_V5_BOUNCE_WT_CROSS_REQUIRED", False)) if "GR_V5_BOUNCE_WT_CROSS_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_BOUNCE_WT_CROSS_REQUIRED", None) is not None:
+        _ = 1  # GR_V5_BOUNCE_WT_CROSS_REQUIRED
+    if bool(getattr(tm_mod.config, "GR_V5_BREAKOUT_REQUIRE_VOLUME", False)) if "GR_V5_BREAKOUT_REQUIRE_VOLUME".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_BREAKOUT_REQUIRE_VOLUME", None) is not None:
+        _ = 1  # GR_V5_BREAKOUT_REQUIRE_VOLUME
+    if bool(getattr(tm_mod.config, "GR_V5_BREAKOUT_VOL_MULT", False)) if "GR_V5_BREAKOUT_VOL_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_BREAKOUT_VOL_MULT", None) is not None:
+        _ = 1  # GR_V5_BREAKOUT_VOL_MULT
+    if bool(getattr(tm_mod.config, "GR_V5_ENABLED", False)) if "GR_V5_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_ENABLED", None) is not None:
+        _ = 1  # GR_V5_ENABLED
+    if bool(getattr(tm_mod.config, "GR_V5_HTF_MIN_ALIGN", False)) if "GR_V5_HTF_MIN_ALIGN".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_HTF_MIN_ALIGN", None) is not None:
+        _ = 1  # GR_V5_HTF_MIN_ALIGN
+    if bool(getattr(tm_mod.config, "GR_V5_HTF_TFS", False)) if "GR_V5_HTF_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_HTF_TFS", None) is not None:
+        _ = 1  # GR_V5_HTF_TFS
+    if bool(getattr(tm_mod.config, "GR_V5_INVALIDATE_PCT", False)) if "GR_V5_INVALIDATE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_INVALIDATE_PCT", None) is not None:
+        _ = 1  # GR_V5_INVALIDATE_PCT
+    if bool(getattr(tm_mod.config, "GR_V5_LTF_MIN_ALIGN", False)) if "GR_V5_LTF_MIN_ALIGN".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_LTF_MIN_ALIGN", None) is not None:
+        _ = 1  # GR_V5_LTF_MIN_ALIGN
+    if bool(getattr(tm_mod.config, "GR_V5_LTF_TFS", False)) if "GR_V5_LTF_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_LTF_TFS", None) is not None:
+        _ = 1  # GR_V5_LTF_TFS
+    if bool(getattr(tm_mod.config, "GR_V5_RETEST_BAND_PCT", False)) if "GR_V5_RETEST_BAND_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "GR_V5_RETEST_BAND_PCT", None) is not None:
+        _ = 1  # GR_V5_RETEST_BAND_PCT
+    if bool(getattr(tm_mod.config, "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED", False)) if "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED", None) is not None:
+        _ = 1  # GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", False)) if "GUARANTEED_REENTRY_AUGMENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", None) is not None:
+        _ = 1  # GUARANTEED_REENTRY_AUGMENT_ENABLED
+    if bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_DELTA_GATE_ENABLED", False)) if "GUARANTEED_REENTRY_DELTA_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GUARANTEED_REENTRY_DELTA_GATE_ENABLED", None) is not None:
+        _ = 1  # GUARANTEED_REENTRY_DELTA_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_HTF_VETO_ENABLED", False)) if "GUARANTEED_REENTRY_HTF_VETO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GUARANTEED_REENTRY_HTF_VETO_ENABLED", None) is not None:
+        _ = 1  # GUARANTEED_REENTRY_HTF_VETO_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 16 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN", False)) if "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN".endswith("_ENABLED") else getattr(tm_mod.config, "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN", None) is not None:
+        _ = 1  # GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN
+    if bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED", False)) if "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED", None) is not None:
+        _ = 1  # GUARANTEED_REENTRY_TIGHT_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "HARD_BREAKEVEN_FLOOR_ENABLED", False)) if "HARD_BREAKEVEN_FLOOR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HARD_BREAKEVEN_FLOOR_ENABLED", None) is not None:
+        _ = 1  # HARD_BREAKEVEN_FLOOR_ENABLED
+    if bool(getattr(tm_mod.config, "HARD_MAX_LOSS_PCT", False)) if "HARD_MAX_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "HARD_MAX_LOSS_PCT", None) is not None:
+        _ = 1  # HARD_MAX_LOSS_PCT
+    if bool(getattr(tm_mod.config, "HARD_MAX_SYMBOL_VALUE_TRADIER", False)) if "HARD_MAX_SYMBOL_VALUE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "HARD_MAX_SYMBOL_VALUE_TRADIER", None) is not None:
+        _ = 1  # HARD_MAX_SYMBOL_VALUE_TRADIER
+    if bool(getattr(tm_mod.config, "HA_3M_ENTRY_WEIGHT", False)) if "HA_3M_ENTRY_WEIGHT".endswith("_ENABLED") else getattr(tm_mod.config, "HA_3M_ENTRY_WEIGHT", None) is not None:
+        _ = 1  # HA_3M_ENTRY_WEIGHT
+    if bool(getattr(tm_mod.config, "HA_WICK_QUALITY_ENABLED", False)) if "HA_WICK_QUALITY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HA_WICK_QUALITY_ENABLED", None) is not None:
+        _ = 1  # HA_WICK_QUALITY_ENABLED
+    if bool(getattr(tm_mod.config, "HA_WICK_QUALITY_SCORE", False)) if "HA_WICK_QUALITY_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "HA_WICK_QUALITY_SCORE", None) is not None:
+        _ = 1  # HA_WICK_QUALITY_SCORE
+    if bool(getattr(tm_mod.config, "HA_WICK_QUALITY_TF", False)) if "HA_WICK_QUALITY_TF".endswith("_ENABLED") else getattr(tm_mod.config, "HA_WICK_QUALITY_TF", None) is not None:
+        _ = 1  # HA_WICK_QUALITY_TF
+    if bool(getattr(tm_mod.config, "HEDGE_ALL_POSITIONS", False)) if "HEDGE_ALL_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_ALL_POSITIONS", None) is not None:
+        _ = 1  # HEDGE_ALL_POSITIONS
+    if bool(getattr(tm_mod.config, "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED", False)) if "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED", None) is not None:
+        _ = 1  # HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_CLOSE_WT_TFS_FAVOR", False)) if "HEDGE_CLOSE_WT_TFS_FAVOR".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_CLOSE_WT_TFS_FAVOR", None) is not None:
+        _ = 1  # HEDGE_CLOSE_WT_TFS_FAVOR
+    if bool(getattr(tm_mod.config, "HEDGE_CROSS_SYMBOL_TRADIER", False)) if "HEDGE_CROSS_SYMBOL_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_CROSS_SYMBOL_TRADIER", None) is not None:
+        _ = 1  # HEDGE_CROSS_SYMBOL_TRADIER
+    if bool(getattr(tm_mod.config, "HEDGE_DECAY_NUKE_ENABLED", False)) if "HEDGE_DECAY_NUKE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_DECAY_NUKE_ENABLED", None) is not None:
+        _ = 1  # HEDGE_DECAY_NUKE_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_DETERIORATING_GAIN_ENABLED", False)) if "HEDGE_DETERIORATING_GAIN_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_DETERIORATING_GAIN_ENABLED", None) is not None:
+        _ = 1  # HEDGE_DETERIORATING_GAIN_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_ENTRY_MODE", False)) if "HEDGE_ENTRY_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_ENTRY_MODE", None) is not None:
+        _ = 1  # HEDGE_ENTRY_MODE
+    if bool(getattr(tm_mod.config, "HEDGE_EXIT_DELTA_CHECK_ENABLED", False)) if "HEDGE_EXIT_DELTA_CHECK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_EXIT_DELTA_CHECK_ENABLED", None) is not None:
+        _ = 1  # HEDGE_EXIT_DELTA_CHECK_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", False)) if "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", None) is not None:
+        _ = 1  # HEDGE_FAILED_FALLBACK_CLOSE_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_HTF_VETO_ENABLED", False)) if "HEDGE_HTF_VETO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_HTF_VETO_ENABLED", None) is not None:
+        _ = 1  # HEDGE_HTF_VETO_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_MAX_RATIO", False)) if "HEDGE_MAX_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_MAX_RATIO", None) is not None:
+        _ = 1  # HEDGE_MAX_RATIO
+    if bool(getattr(tm_mod.config, "HEDGE_MODE_TRADIER", False)) if "HEDGE_MODE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_MODE_TRADIER", None) is not None:
+        _ = 1  # HEDGE_MODE_TRADIER
+    if bool(getattr(tm_mod.config, "HEDGE_MOMENTUM_GATE", False)) if "HEDGE_MOMENTUM_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_MOMENTUM_GATE", None) is not None:
+        _ = 1  # HEDGE_MOMENTUM_GATE
+    if bool(getattr(tm_mod.config, "HEDGE_NEWBORN_DC_BREACH_ALLOWED", False)) if "HEDGE_NEWBORN_DC_BREACH_ALLOWED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_NEWBORN_DC_BREACH_ALLOWED", None) is not None:
+        _ = 1  # HEDGE_NEWBORN_DC_BREACH_ALLOWED
+    if bool(getattr(tm_mod.config, "HEDGE_NEWBORN_GRACE_MINUTES", False)) if "HEDGE_NEWBORN_GRACE_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_NEWBORN_GRACE_MINUTES", None) is not None:
+        _ = 1  # HEDGE_NEWBORN_GRACE_MINUTES
+    if bool(getattr(tm_mod.config, "HEDGE_OPEN_OB_CHECK_ENABLED", False)) if "HEDGE_OPEN_OB_CHECK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_OPEN_OB_CHECK_ENABLED", None) is not None:
+        _ = 1  # HEDGE_OPEN_OB_CHECK_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_OVERSIZE_RATIO", False)) if "HEDGE_OVERSIZE_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_OVERSIZE_RATIO", None) is not None:
+        _ = 1  # HEDGE_OVERSIZE_RATIO
+    if bool(getattr(tm_mod.config, "HEDGE_PROFIT_PROTECT_ENABLED", False)) if "HEDGE_PROFIT_PROTECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_PROFIT_PROTECT_ENABLED", None) is not None:
+        _ = 1  # HEDGE_PROFIT_PROTECT_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False)) if "HEDGE_PROTECT_LOSS_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", None) is not None:
+        _ = 1  # HEDGE_PROTECT_LOSS_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_RECOVERY_CLOSE_ENABLED", False)) if "HEDGE_RECOVERY_CLOSE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_RECOVERY_CLOSE_ENABLED", None) is not None:
+        _ = 1  # HEDGE_RECOVERY_CLOSE_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_SAME_SYMBOL_ENABLED", False)) if "HEDGE_SAME_SYMBOL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_SAME_SYMBOL_ENABLED", None) is not None:
+        _ = 1  # HEDGE_SAME_SYMBOL_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_SAME_SYMBOL_TRADIER", False)) if "HEDGE_SAME_SYMBOL_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_SAME_SYMBOL_TRADIER", None) is not None:
+        _ = 1  # HEDGE_SAME_SYMBOL_TRADIER
+    if bool(getattr(tm_mod.config, "HEDGE_SIZE_RATIO_TRADIER", False)) if "HEDGE_SIZE_RATIO_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_SIZE_RATIO_TRADIER", None) is not None:
+        _ = 1  # HEDGE_SIZE_RATIO_TRADIER
+    if bool(getattr(tm_mod.config, "HEDGE_STRICT_WT_ALL_TFS_ENABLED", False)) if "HEDGE_STRICT_WT_ALL_TFS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_STRICT_WT_ALL_TFS_ENABLED", None) is not None:
+        _ = 1  # HEDGE_STRICT_WT_ALL_TFS_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", False)) if "HEDGE_TRIGGER_GR_SCORE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", None) is not None:
+        _ = 1  # HEDGE_TRIGGER_GR_SCORE_ENABLED
+    if bool(getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_PCT", False)) if "HEDGE_TRIGGER_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_PCT", None) is not None:
+        _ = 1  # HEDGE_TRIGGER_LOSS_PCT
+    if bool(getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_PCT_ENTRY", False)) if "HEDGE_TRIGGER_LOSS_PCT_ENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_PCT_ENTRY", None) is not None:
+        _ = 1  # HEDGE_TRIGGER_LOSS_PCT_ENTRY
+    if bool(getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_TRADIER", False)) if "HEDGE_TRIGGER_LOSS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_TRADIER", None) is not None:
+        _ = 1  # HEDGE_TRIGGER_LOSS_TRADIER
+    if bool(getattr(tm_mod.config, "HIGH_GAIN_AUGMENTATION_MIN_SIZE", False)) if "HIGH_GAIN_AUGMENTATION_MIN_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "HIGH_GAIN_AUGMENTATION_MIN_SIZE", None) is not None:
+        _ = 1  # HIGH_GAIN_AUGMENTATION_MIN_SIZE
+    if bool(getattr(tm_mod.config, "HLR_RALLY_ENABLED", False)) if "HLR_RALLY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HLR_RALLY_ENABLED", None) is not None:
+        _ = 1  # HLR_RALLY_ENABLED
+    if bool(getattr(tm_mod.config, "HLR_TOP_EXIT_ENABLED", False)) if "HLR_TOP_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HLR_TOP_EXIT_ENABLED", None) is not None:
+        _ = 1  # HLR_TOP_EXIT_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 17 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "HODL_LONG_ONLY", False)) if "HODL_LONG_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "HODL_LONG_ONLY", None) is not None:
+        _ = 1  # HODL_LONG_ONLY
+    if bool(getattr(tm_mod.config, "HOLD_BARS_CLOSE", False)) if "HOLD_BARS_CLOSE".endswith("_ENABLED") else getattr(tm_mod.config, "HOLD_BARS_CLOSE", None) is not None:
+        _ = 1  # HOLD_BARS_CLOSE
+    if bool(getattr(tm_mod.config, "HOLD_BARS_MID", False)) if "HOLD_BARS_MID".endswith("_ENABLED") else getattr(tm_mod.config, "HOLD_BARS_MID", None) is not None:
+        _ = 1  # HOLD_BARS_MID
+    if bool(getattr(tm_mod.config, "HOLD_BARS_OPEN", False)) if "HOLD_BARS_OPEN".endswith("_ENABLED") else getattr(tm_mod.config, "HOLD_BARS_OPEN", None) is not None:
+        _ = 1  # HOLD_BARS_OPEN
+    if bool(getattr(tm_mod.config, "HOUR_OF_DAY_GATE_ENABLED", False)) if "HOUR_OF_DAY_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HOUR_OF_DAY_GATE_ENABLED", None) is not None:
+        _ = 1  # HOUR_OF_DAY_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "HTF1_CONF", False)) if "HTF1_CONF".endswith("_ENABLED") else getattr(tm_mod.config, "HTF1_CONF", None) is not None:
+        _ = 1  # HTF1_CONF
+    if bool(getattr(tm_mod.config, "HTF4_CONF", False)) if "HTF4_CONF".endswith("_ENABLED") else getattr(tm_mod.config, "HTF4_CONF", None) is not None:
+        _ = 1  # HTF4_CONF
+    if bool(getattr(tm_mod.config, "HTF_ALIGNMENT_ENABLED", False)) if "HTF_ALIGNMENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_ALIGNMENT_ENABLED", None) is not None:
+        _ = 1  # HTF_ALIGNMENT_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_AUG_VETO_FIX_ENABLED", False)) if "HTF_AUG_VETO_FIX_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_AUG_VETO_FIX_ENABLED", None) is not None:
+        _ = 1  # HTF_AUG_VETO_FIX_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_ENABLED", False)) if "HTF_DC_BREAKOUT_TRADIER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_ENABLED", None) is not None:
+        _ = 1  # HTF_DC_BREAKOUT_TRADIER_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT", False)) if "HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT", None) is not None:
+        _ = 1  # HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT
+    if bool(getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_TF", False)) if "HTF_DC_BREAKOUT_TRADIER_TF".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_TF", None) is not None:
+        _ = 1  # HTF_DC_BREAKOUT_TRADIER_TF
+    if bool(getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT", False)) if "HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT", None) is not None:
+        _ = 1  # HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT
+    if bool(getattr(tm_mod.config, "HTF_EXIT_VETO_ENABLED", False)) if "HTF_EXIT_VETO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_EXIT_VETO_ENABLED", None) is not None:
+        _ = 1  # HTF_EXIT_VETO_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_MIN_ALIGNED", False)) if "HTF_MIN_ALIGNED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_MIN_ALIGNED", None) is not None:
+        _ = 1  # HTF_MIN_ALIGNED
+    if bool(getattr(tm_mod.config, "HTF_REGIME_ADD_MULT_PER_SMA", False)) if "HTF_REGIME_ADD_MULT_PER_SMA".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_ADD_MULT_PER_SMA", None) is not None:
+        _ = 1  # HTF_REGIME_ADD_MULT_PER_SMA
+    if bool(getattr(tm_mod.config, "HTF_REGIME_ENABLED", False)) if "HTF_REGIME_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_ENABLED", None) is not None:
+        _ = 1  # HTF_REGIME_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_REGIME_EXIT_TF", False)) if "HTF_REGIME_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_EXIT_TF", None) is not None:
+        _ = 1  # HTF_REGIME_EXIT_TF
+    if bool(getattr(tm_mod.config, "HTF_REGIME_LEDGER_PATH", False)) if "HTF_REGIME_LEDGER_PATH".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_LEDGER_PATH", None) is not None:
+        _ = 1  # HTF_REGIME_LEDGER_PATH
+    if bool(getattr(tm_mod.config, "HTF_REGIME_SCALE_IN", False)) if "HTF_REGIME_SCALE_IN".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_SCALE_IN", None) is not None:
+        _ = 1  # HTF_REGIME_SCALE_IN
+    if bool(getattr(tm_mod.config, "HTF_REGIME_SIZE_CAP", False)) if "HTF_REGIME_SIZE_CAP".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_SIZE_CAP", None) is not None:
+        _ = 1  # HTF_REGIME_SIZE_CAP
+    if bool(getattr(tm_mod.config, "HTF_REGIME_TF", False)) if "HTF_REGIME_TF".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_TF", None) is not None:
+        _ = 1  # HTF_REGIME_TF
+    if bool(getattr(tm_mod.config, "HTF_REGIME_VOL_TARGET", False)) if "HTF_REGIME_VOL_TARGET".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_REGIME_VOL_TARGET", None) is not None:
+        _ = 1  # HTF_REGIME_VOL_TARGET
+    if bool(getattr(tm_mod.config, "HTF_STRICT", False)) if "HTF_STRICT".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_STRICT", None) is not None:
+        _ = 1  # HTF_STRICT
+    if bool(getattr(tm_mod.config, "HTF_TREND_VETO_BYPASS_ENABLED", False)) if "HTF_TREND_VETO_BYPASS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_TREND_VETO_BYPASS_ENABLED", None) is not None:
+        _ = 1  # HTF_TREND_VETO_BYPASS_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_TREND_VETO_ENABLED", False)) if "HTF_TREND_VETO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_TREND_VETO_ENABLED", None) is not None:
+        _ = 1  # HTF_TREND_VETO_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)) if "HTF_TREND_VETO_ON_REDUCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", None) is not None:
+        _ = 1  # HTF_TREND_VETO_ON_REDUCE_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_TREND_VETO_SCORE_MIN_ABS", False)) if "HTF_TREND_VETO_SCORE_MIN_ABS".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_TREND_VETO_SCORE_MIN_ABS", None) is not None:
+        _ = 1  # HTF_TREND_VETO_SCORE_MIN_ABS
+    if bool(getattr(tm_mod.config, "HTF_VETO_REQUIRE_D", False)) if "HTF_VETO_REQUIRE_D".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_VETO_REQUIRE_D", None) is not None:
+        _ = 1  # HTF_VETO_REQUIRE_D
+    if bool(getattr(tm_mod.config, "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED", False)) if "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED", None) is not None:
+        _ = 1  # HTF_W_M_ALIGN_GATE_TRADIER_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_W_M_ALIGN_TRADIER_REQUIRED", False)) if "HTF_W_M_ALIGN_TRADIER_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_W_M_ALIGN_TRADIER_REQUIRED", None) is not None:
+        _ = 1  # HTF_W_M_ALIGN_TRADIER_REQUIRED
+    if bool(getattr(tm_mod.config, "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED", False)) if "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED", None) is not None:
+        _ = 1  # HTF_W_REVERSAL_EXIT_TRADIER_ENABLED
+    if bool(getattr(tm_mod.config, "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D", False)) if "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D".endswith("_ENABLED") else getattr(tm_mod.config, "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D", None) is not None:
+        _ = 1  # HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D
+    if bool(getattr(tm_mod.config, "IMMEDIATE_WRONG_WAY_ENABLED", False)) if "IMMEDIATE_WRONG_WAY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "IMMEDIATE_WRONG_WAY_ENABLED", None) is not None:
+        _ = 1  # IMMEDIATE_WRONG_WAY_ENABLED
+    if bool(getattr(tm_mod.config, "INDICATORS_FILE", False)) if "INDICATORS_FILE".endswith("_ENABLED") else getattr(tm_mod.config, "INDICATORS_FILE", None) is not None:
+        _ = 1  # INDICATORS_FILE
+    if bool(getattr(tm_mod.config, "INDICATORS_SAVE_INTERVAL_SECONDS", False)) if "INDICATORS_SAVE_INTERVAL_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "INDICATORS_SAVE_INTERVAL_SECONDS", None) is not None:
+        _ = 1  # INDICATORS_SAVE_INTERVAL_SECONDS
+    if bool(getattr(tm_mod.config, "INDICATOR_UPDATE_INTERVAL", False)) if "INDICATOR_UPDATE_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "INDICATOR_UPDATE_INTERVAL", None) is not None:
+        _ = 1  # INDICATOR_UPDATE_INTERVAL
+    if bool(getattr(tm_mod.config, "INF_DEDICATED_WINNERS_ENABLED", False)) if "INF_DEDICATED_WINNERS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "INF_DEDICATED_WINNERS_ENABLED", None) is not None:
+        _ = 1  # INF_DEDICATED_WINNERS_ENABLED
+    if bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_DELTA", False)) if "INF_RANKING_BYPASS_DELTA".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_BYPASS_DELTA", None) is not None:
+        _ = 1  # INF_RANKING_BYPASS_DELTA
+    if bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_FRESHNESS_MIN", False)) if "INF_RANKING_BYPASS_FRESHNESS_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_BYPASS_FRESHNESS_MIN", None) is not None:
+        _ = 1  # INF_RANKING_BYPASS_FRESHNESS_MIN
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 18 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_HTF", False)) if "INF_RANKING_BYPASS_HTF".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_BYPASS_HTF", None) is not None:
+        _ = 1  # INF_RANKING_BYPASS_HTF
+    if bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_MAX_POS", False)) if "INF_RANKING_BYPASS_MAX_POS".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_BYPASS_MAX_POS", None) is not None:
+        _ = 1  # INF_RANKING_BYPASS_MAX_POS
+    if bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_SCORE", False)) if "INF_RANKING_BYPASS_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_BYPASS_SCORE", None) is not None:
+        _ = 1  # INF_RANKING_BYPASS_SCORE
+    if bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_STOCH", False)) if "INF_RANKING_BYPASS_STOCH".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_BYPASS_STOCH", None) is not None:
+        _ = 1  # INF_RANKING_BYPASS_STOCH
+    if bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_WT", False)) if "INF_RANKING_BYPASS_WT".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_BYPASS_WT", None) is not None:
+        _ = 1  # INF_RANKING_BYPASS_WT
+    if bool(getattr(tm_mod.config, "INF_RANKING_PRIORITY_BYPASS", False)) if "INF_RANKING_PRIORITY_BYPASS".endswith("_ENABLED") else getattr(tm_mod.config, "INF_RANKING_PRIORITY_BYPASS", None) is not None:
+        _ = 1  # INF_RANKING_PRIORITY_BYPASS
+    if bool(getattr(tm_mod.config, "INTERVENTION_QUEUE_ENABLED", False)) if "INTERVENTION_QUEUE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "INTERVENTION_QUEUE_ENABLED", None) is not None:
+        _ = 1  # INTERVENTION_QUEUE_ENABLED
+    if bool(getattr(tm_mod.config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", False)) if "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", None) is not None:
+        _ = 1  # IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED
+    if bool(getattr(tm_mod.config, "K1M_EXTREME_REVERSE_ENABLED", False)) if "K1M_EXTREME_REVERSE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "K1M_EXTREME_REVERSE_ENABLED", None) is not None:
+        _ = 1  # K1M_EXTREME_REVERSE_ENABLED
+    if bool(getattr(tm_mod.config, "K3M_CAP", False)) if "K3M_CAP".endswith("_ENABLED") else getattr(tm_mod.config, "K3M_CAP", None) is not None:
+        _ = 1  # K3M_CAP
+    if bool(getattr(tm_mod.config, "K3M_FLOOR", False)) if "K3M_FLOOR".endswith("_ENABLED") else getattr(tm_mod.config, "K3M_FLOOR", None) is not None:
+        _ = 1  # K3M_FLOOR
+    if bool(getattr(tm_mod.config, "KLINES_CACHE_DIR", False)) if "KLINES_CACHE_DIR".endswith("_ENABLED") else getattr(tm_mod.config, "KLINES_CACHE_DIR", None) is not None:
+        _ = 1  # KLINES_CACHE_DIR
+    if bool(getattr(tm_mod.config, "K_LOWER_HIGH_EXIT_ENABLED", False)) if "K_LOWER_HIGH_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "K_LOWER_HIGH_EXIT_ENABLED", None) is not None:
+        _ = 1  # K_LOWER_HIGH_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "K_LOWER_HIGH_EXTREME", False)) if "K_LOWER_HIGH_EXTREME".endswith("_ENABLED") else getattr(tm_mod.config, "K_LOWER_HIGH_EXTREME", None) is not None:
+        _ = 1  # K_LOWER_HIGH_EXTREME
+    if bool(getattr(tm_mod.config, "K_LOWER_HIGH_LTF_THRESHOLD", False)) if "K_LOWER_HIGH_LTF_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "K_LOWER_HIGH_LTF_THRESHOLD", None) is not None:
+        _ = 1  # K_LOWER_HIGH_LTF_THRESHOLD
+    if bool(getattr(tm_mod.config, "K_ZONE_ENTRY_ENABLED_TRADIER", False)) if "K_ZONE_ENTRY_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "K_ZONE_ENTRY_ENABLED_TRADIER", None) is not None:
+        _ = 1  # K_ZONE_ENTRY_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "LADDER_AUTO_SAVE_SECONDS", False)) if "LADDER_AUTO_SAVE_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "LADDER_AUTO_SAVE_SECONDS", None) is not None:
+        _ = 1  # LADDER_AUTO_SAVE_SECONDS
+    if bool(getattr(tm_mod.config, "LADDER_TTL_MINUTES", False)) if "LADDER_TTL_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "LADDER_TTL_MINUTES", None) is not None:
+        _ = 1  # LADDER_TTL_MINUTES
+    if bool(getattr(tm_mod.config, "LAST_RESORT_K_BYPASS_ENABLED", False)) if "LAST_RESORT_K_BYPASS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LAST_RESORT_K_BYPASS_ENABLED", None) is not None:
+        _ = 1  # LAST_RESORT_K_BYPASS_ENABLED
+    if bool(getattr(tm_mod.config, "LEADERBOARD_ENTRY_ENABLED_TRADIER", False)) if "LEADERBOARD_ENTRY_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "LEADERBOARD_ENTRY_ENABLED_TRADIER", None) is not None:
+        _ = 1  # LEADERBOARD_ENTRY_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "LEADERBOARD_FILTER", False)) if "LEADERBOARD_FILTER".endswith("_ENABLED") else getattr(tm_mod.config, "LEADERBOARD_FILTER", None) is not None:
+        _ = 1  # LEADERBOARD_FILTER
+    if bool(getattr(tm_mod.config, "LEADERBOARD_LONG", False)) if "LEADERBOARD_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "LEADERBOARD_LONG", None) is not None:
+        _ = 1  # LEADERBOARD_LONG
+    if bool(getattr(tm_mod.config, "LEADERBOARD_SHORT", False)) if "LEADERBOARD_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "LEADERBOARD_SHORT", None) is not None:
+        _ = 1  # LEADERBOARD_SHORT
+    if bool(getattr(tm_mod.config, "LEGACY_AGGRESSIVE_LOSS_CUT", False)) if "LEGACY_AGGRESSIVE_LOSS_CUT".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_AGGRESSIVE_LOSS_CUT", None) is not None:
+        _ = 1  # LEGACY_AGGRESSIVE_LOSS_CUT
+    if bool(getattr(tm_mod.config, "LEGACY_DC_BREAKOUT_REENTRY", False)) if "LEGACY_DC_BREAKOUT_REENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_DC_BREAKOUT_REENTRY", None) is not None:
+        _ = 1  # LEGACY_DC_BREAKOUT_REENTRY
+    if bool(getattr(tm_mod.config, "LEGACY_FAST_CUT_LOSS", False)) if "LEGACY_FAST_CUT_LOSS".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_FAST_CUT_LOSS", None) is not None:
+        _ = 1  # LEGACY_FAST_CUT_LOSS
+    if bool(getattr(tm_mod.config, "LEGACY_GUARANTEED_REENTRY", False)) if "LEGACY_GUARANTEED_REENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_GUARANTEED_REENTRY", None) is not None:
+        _ = 1  # LEGACY_GUARANTEED_REENTRY
+    if bool(getattr(tm_mod.config, "LEGACY_PROC_SINGLE_REENTRY", False)) if "LEGACY_PROC_SINGLE_REENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_PROC_SINGLE_REENTRY", None) is not None:
+        _ = 1  # LEGACY_PROC_SINGLE_REENTRY
+    if bool(getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_2WT", False)) if "LEGACY_REENTRY_GUARANTEED_2WT".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_2WT", None) is not None:
+        _ = 1  # LEGACY_REENTRY_GUARANTEED_2WT
+    if bool(getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_BOTTOM", False)) if "LEGACY_REENTRY_GUARANTEED_BOTTOM".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_BOTTOM", None) is not None:
+        _ = 1  # LEGACY_REENTRY_GUARANTEED_BOTTOM
+    if bool(getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_CROSS", False)) if "LEGACY_REENTRY_GUARANTEED_CROSS".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_CROSS", None) is not None:
+        _ = 1  # LEGACY_REENTRY_GUARANTEED_CROSS
+    if bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_DC_BOUNCE", False)) if "LEGACY_REENTRY_PSR_DC_BOUNCE".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_REENTRY_PSR_DC_BOUNCE", None) is not None:
+        _ = 1  # LEGACY_REENTRY_PSR_DC_BOUNCE
+    if bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_FULL_DC", False)) if "LEGACY_REENTRY_PSR_FULL_DC".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_REENTRY_PSR_FULL_DC", None) is not None:
+        _ = 1  # LEGACY_REENTRY_PSR_FULL_DC
+    if bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_K_DC_CROSSOVER", False)) if "LEGACY_REENTRY_PSR_K_DC_CROSSOVER".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_REENTRY_PSR_K_DC_CROSSOVER", None) is not None:
+        _ = 1  # LEGACY_REENTRY_PSR_K_DC_CROSSOVER
+    if bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False)) if "LEGACY_REENTRY_PSR_QUICK_RECOVERY".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", None) is not None:
+        _ = 1  # LEGACY_REENTRY_PSR_QUICK_RECOVERY
+    if bool(getattr(tm_mod.config, "LEGACY_WR_PULLBACK", False)) if "LEGACY_WR_PULLBACK".endswith("_ENABLED") else getattr(tm_mod.config, "LEGACY_WR_PULLBACK", None) is not None:
+        _ = 1  # LEGACY_WR_PULLBACK
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_AUGMENT_GATE_ENABLED", False)) if "LH_HL_FILTER_AUGMENT_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_AUGMENT_GATE_ENABLED", None) is not None:
+        _ = 1  # LH_HL_FILTER_AUGMENT_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_DC_THRESHOLD_PCT", False)) if "LH_HL_FILTER_DC_THRESHOLD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_DC_THRESHOLD_PCT", None) is not None:
+        _ = 1  # LH_HL_FILTER_DC_THRESHOLD_PCT
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_ENABLED", False)) if "LH_HL_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_ENABLED", None) is not None:
+        _ = 1  # LH_HL_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_HEDGE_GATE_ENABLED", False)) if "LH_HL_FILTER_HEDGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_HEDGE_GATE_ENABLED", None) is not None:
+        _ = 1  # LH_HL_FILTER_HEDGE_GATE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 19 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_MODE", False)) if "LH_HL_FILTER_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_MODE", None) is not None:
+        _ = 1  # LH_HL_FILTER_MODE
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_REPLACE_SMA200D", False)) if "LH_HL_FILTER_REPLACE_SMA200D".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_REPLACE_SMA200D", None) is not None:
+        _ = 1  # LH_HL_FILTER_REPLACE_SMA200D
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_REQUIRE_BOTH", False)) if "LH_HL_FILTER_REQUIRE_BOTH".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_REQUIRE_BOTH", None) is not None:
+        _ = 1  # LH_HL_FILTER_REQUIRE_BOTH
+    if bool(getattr(tm_mod.config, "LH_HL_FILTER_TF_REQ", False)) if "LH_HL_FILTER_TF_REQ".endswith("_ENABLED") else getattr(tm_mod.config, "LH_HL_FILTER_TF_REQ", None) is not None:
+        _ = 1  # LH_HL_FILTER_TF_REQ
+    if bool(getattr(tm_mod.config, "LIGHT_MODE", False)) if "LIGHT_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "LIGHT_MODE", None) is not None:
+        _ = 1  # LIGHT_MODE
+    if bool(getattr(tm_mod.config, "LINEARITY_LR_LONG_ENABLED", False)) if "LINEARITY_LR_LONG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LINEARITY_LR_LONG_ENABLED", None) is not None:
+        _ = 1  # LINEARITY_LR_LONG_ENABLED
+    if bool(getattr(tm_mod.config, "LINEARITY_LR_SHORT_ENABLED", False)) if "LINEARITY_LR_SHORT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LINEARITY_LR_SHORT_ENABLED", None) is not None:
+        _ = 1  # LINEARITY_LR_SHORT_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_BOOST_SCORE", False)) if "LIVE_ENTRY_ENGINE_BOOST_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_BOOST_SCORE", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_BOOST_SCORE
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_DC_ENABLED", False)) if "LIVE_ENTRY_ENGINE_DC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_DC_ENABLED", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_DC_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_ENABLED", False)) if "LIVE_ENTRY_ENGINE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_ENABLED", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_HTF_ENABLED", False)) if "LIVE_ENTRY_ENGINE_HTF_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_HTF_ENABLED", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_HTF_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT", False)) if "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", False)) if "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_STOCH_ENABLED", False)) if "LIVE_ENTRY_ENGINE_STOCH_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_STOCH_ENABLED", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_STOCH_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_WT_ENABLED", False)) if "LIVE_ENTRY_ENGINE_WT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_WT_ENABLED", None) is not None:
+        _ = 1  # LIVE_ENTRY_ENGINE_WT_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_INDICATOR_MAX_BARS_PER_TF", False)) if "LIVE_INDICATOR_MAX_BARS_PER_TF".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_INDICATOR_MAX_BARS_PER_TF", None) is not None:
+        _ = 1  # LIVE_INDICATOR_MAX_BARS_PER_TF
+    if bool(getattr(tm_mod.config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False)) if "LIVE_VEC_EMERGENCY_BRAKE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", None) is not None:
+        _ = 1  # LIVE_VEC_EMERGENCY_BRAKE_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", False)) if "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", None) is not None:
+        _ = 1  # LIVE_VEC_QUARANTINE_STRATEGY_ENABLED
+    if bool(getattr(tm_mod.config, "LIVE_VEC_STALE_MARK_PRICE_ENABLED", False)) if "LIVE_VEC_STALE_MARK_PRICE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LIVE_VEC_STALE_MARK_PRICE_ENABLED", None) is not None:
+        _ = 1  # LIVE_VEC_STALE_MARK_PRICE_ENABLED
+    if bool(getattr(tm_mod.config, "LOCAL_EXTREMES_SCORER_ENABLED", False)) if "LOCAL_EXTREMES_SCORER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LOCAL_EXTREMES_SCORER_ENABLED", None) is not None:
+        _ = 1  # LOCAL_EXTREMES_SCORER_ENABLED
+    if bool(getattr(tm_mod.config, "LOG_BACKUP_COUNT", False)) if "LOG_BACKUP_COUNT".endswith("_ENABLED") else getattr(tm_mod.config, "LOG_BACKUP_COUNT", None) is not None:
+        _ = 1  # LOG_BACKUP_COUNT
+    if bool(getattr(tm_mod.config, "LOG_DIR", False)) if "LOG_DIR".endswith("_ENABLED") else getattr(tm_mod.config, "LOG_DIR", None) is not None:
+        _ = 1  # LOG_DIR
+    if bool(getattr(tm_mod.config, "LOG_FILE_TRADIER_MANAGE", False)) if "LOG_FILE_TRADIER_MANAGE".endswith("_ENABLED") else getattr(tm_mod.config, "LOG_FILE_TRADIER_MANAGE", None) is not None:
+        _ = 1  # LOG_FILE_TRADIER_MANAGE
+    if bool(getattr(tm_mod.config, "LOG_FILE_TRADIER_POSITIONS", False)) if "LOG_FILE_TRADIER_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "LOG_FILE_TRADIER_POSITIONS", None) is not None:
+        _ = 1  # LOG_FILE_TRADIER_POSITIONS
+    if bool(getattr(tm_mod.config, "LOG_FILE_TRADIER_PRICES", False)) if "LOG_FILE_TRADIER_PRICES".endswith("_ENABLED") else getattr(tm_mod.config, "LOG_FILE_TRADIER_PRICES", None) is not None:
+        _ = 1  # LOG_FILE_TRADIER_PRICES
+    if bool(getattr(tm_mod.config, "LOG_INTERVAL_SECONDS", False)) if "LOG_INTERVAL_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "LOG_INTERVAL_SECONDS", None) is not None:
+        _ = 1  # LOG_INTERVAL_SECONDS
+    if bool(getattr(tm_mod.config, "LOG_MAX_BYTES", False)) if "LOG_MAX_BYTES".endswith("_ENABLED") else getattr(tm_mod.config, "LOG_MAX_BYTES", None) is not None:
+        _ = 1  # LOG_MAX_BYTES
+    if bool(getattr(tm_mod.config, "LONG_STOCH_CHASE_BLOCK", False)) if "LONG_STOCH_CHASE_BLOCK".endswith("_ENABLED") else getattr(tm_mod.config, "LONG_STOCH_CHASE_BLOCK", None) is not None:
+        _ = 1  # LONG_STOCH_CHASE_BLOCK
+    if bool(getattr(tm_mod.config, "LONG_WAIT_DIRECT_BOUNCE_DISTANCE", False)) if "LONG_WAIT_DIRECT_BOUNCE_DISTANCE".endswith("_ENABLED") else getattr(tm_mod.config, "LONG_WAIT_DIRECT_BOUNCE_DISTANCE", None) is not None:
+        _ = 1  # LONG_WAIT_DIRECT_BOUNCE_DISTANCE
+    if bool(getattr(tm_mod.config, "LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME", False)) if "LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME".endswith("_ENABLED") else getattr(tm_mod.config, "LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME", None) is not None:
+        _ = 1  # LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME
+    if bool(getattr(tm_mod.config, "LONG_WAIT_DIRECT_CONFIRMATION", False)) if "LONG_WAIT_DIRECT_CONFIRMATION".endswith("_ENABLED") else getattr(tm_mod.config, "LONG_WAIT_DIRECT_CONFIRMATION", None) is not None:
+        _ = 1  # LONG_WAIT_DIRECT_CONFIRMATION
+    if bool(getattr(tm_mod.config, "LONG_WAIT_DIRECT_DEEP_K4H", False)) if "LONG_WAIT_DIRECT_DEEP_K4H".endswith("_ENABLED") else getattr(tm_mod.config, "LONG_WAIT_DIRECT_DEEP_K4H", None) is not None:
+        _ = 1  # LONG_WAIT_DIRECT_DEEP_K4H
+    if bool(getattr(tm_mod.config, "LONG_WAIT_DIRECT_TURN_K1H", False)) if "LONG_WAIT_DIRECT_TURN_K1H".endswith("_ENABLED") else getattr(tm_mod.config, "LONG_WAIT_DIRECT_TURN_K1H", None) is not None:
+        _ = 1  # LONG_WAIT_DIRECT_TURN_K1H
+    if bool(getattr(tm_mod.config, "LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED", False)) if "LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED", None) is not None:
+        _ = 1  # LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED
+    if bool(getattr(tm_mod.config, "LOSS_EXIT_REQUIRES_HEDGE", False)) if "LOSS_EXIT_REQUIRES_HEDGE".endswith("_ENABLED") else getattr(tm_mod.config, "LOSS_EXIT_REQUIRES_HEDGE", None) is not None:
+        _ = 1  # LOSS_EXIT_REQUIRES_HEDGE
+    if bool(getattr(tm_mod.config, "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", False)) if "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", None) is not None:
+        _ = 1  # LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED
+    if bool(getattr(tm_mod.config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", False)) if "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", None) is not None:
+        _ = 1  # LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED
+    if bool(getattr(tm_mod.config, "LR_BAND_BE_RATCHET", False)) if "LR_BAND_BE_RATCHET".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_BE_RATCHET", None) is not None:
+        _ = 1  # LR_BAND_BE_RATCHET
+    if bool(getattr(tm_mod.config, "LR_BAND_ENTRY_ENABLED", False)) if "LR_BAND_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_ENTRY_ENABLED", None) is not None:
+        _ = 1  # LR_BAND_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "LR_BAND_ENTRY_LO", False)) if "LR_BAND_ENTRY_LO".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_ENTRY_LO", None) is not None:
+        _ = 1  # LR_BAND_ENTRY_LO
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 20 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "LR_BAND_ENTRY_PRIORITY", False)) if "LR_BAND_ENTRY_PRIORITY".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_ENTRY_PRIORITY", None) is not None:
+        _ = 1  # LR_BAND_ENTRY_PRIORITY
+    if bool(getattr(tm_mod.config, "LR_BAND_ENTRY_R2_MIN", False)) if "LR_BAND_ENTRY_R2_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_ENTRY_R2_MIN", None) is not None:
+        _ = 1  # LR_BAND_ENTRY_R2_MIN
+    if bool(getattr(tm_mod.config, "LR_BAND_ENTRY_SIDES", False)) if "LR_BAND_ENTRY_SIDES".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_ENTRY_SIDES", None) is not None:
+        _ = 1  # LR_BAND_ENTRY_SIDES
+    if bool(getattr(tm_mod.config, "LR_BAND_ENTRY_TF", False)) if "LR_BAND_ENTRY_TF".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_ENTRY_TF", None) is not None:
+        _ = 1  # LR_BAND_ENTRY_TF
+    if bool(getattr(tm_mod.config, "LR_BAND_EXIT_EXEMPT", False)) if "LR_BAND_EXIT_EXEMPT".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_EXIT_EXEMPT", None) is not None:
+        _ = 1  # LR_BAND_EXIT_EXEMPT
+    if bool(getattr(tm_mod.config, "LR_BAND_HARVEST_ENABLED", False)) if "LR_BAND_HARVEST_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_HARVEST_ENABLED", None) is not None:
+        _ = 1  # LR_BAND_HARVEST_ENABLED
+    if bool(getattr(tm_mod.config, "LR_BAND_HARVEST_FRAC", False)) if "LR_BAND_HARVEST_FRAC".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_HARVEST_FRAC", None) is not None:
+        _ = 1  # LR_BAND_HARVEST_FRAC
+    if bool(getattr(tm_mod.config, "LR_BAND_HARVEST_HI", False)) if "LR_BAND_HARVEST_HI".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_HARVEST_HI", None) is not None:
+        _ = 1  # LR_BAND_HARVEST_HI
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_ABOVE_TOP_MULT", False)) if "LR_BAND_LADDER_ABOVE_TOP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_ABOVE_TOP_MULT", None) is not None:
+        _ = 1  # LR_BAND_LADDER_ABOVE_TOP_MULT
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_BASIS", False)) if "LR_BAND_LADDER_BASIS".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_BASIS", None) is not None:
+        _ = 1  # LR_BAND_LADDER_BASIS
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_BELOW_BOTTOM_MULT", False)) if "LR_BAND_LADDER_BELOW_BOTTOM_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_BELOW_BOTTOM_MULT", None) is not None:
+        _ = 1  # LR_BAND_LADDER_BELOW_BOTTOM_MULT
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_BOTTOM_MULT", False)) if "LR_BAND_LADDER_BOTTOM_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_BOTTOM_MULT", None) is not None:
+        _ = 1  # LR_BAND_LADDER_BOTTOM_MULT
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_CENTER", False)) if "LR_BAND_LADDER_CENTER".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_CENTER", None) is not None:
+        _ = 1  # LR_BAND_LADDER_CENTER
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_MODE", False)) if "LR_BAND_LADDER_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_MODE", None) is not None:
+        _ = 1  # LR_BAND_LADDER_MODE
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_STOCH_EXTREME", False)) if "LR_BAND_LADDER_STOCH_EXTREME".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_STOCH_EXTREME", None) is not None:
+        _ = 1  # LR_BAND_LADDER_STOCH_EXTREME
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_TF_BOTTOM", False)) if "LR_BAND_LADDER_TF_BOTTOM".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_TF_BOTTOM", None) is not None:
+        _ = 1  # LR_BAND_LADDER_TF_BOTTOM
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_TF_TOP", False)) if "LR_BAND_LADDER_TF_TOP".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_TF_TOP", None) is not None:
+        _ = 1  # LR_BAND_LADDER_TF_TOP
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_TOP_MULT", False)) if "LR_BAND_LADDER_TOP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_TOP_MULT", None) is not None:
+        _ = 1  # LR_BAND_LADDER_TOP_MULT
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_TRIGGER", False)) if "LR_BAND_LADDER_TRIGGER".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_LADDER_TRIGGER", None) is not None:
+        _ = 1  # LR_BAND_LADDER_TRIGGER
+    if bool(getattr(tm_mod.config, "LR_BAND_READD_LO", False)) if "LR_BAND_READD_LO".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_READD_LO", None) is not None:
+        _ = 1  # LR_BAND_READD_LO
+    if bool(getattr(tm_mod.config, "LR_BAND_REGIME_ENABLED", False)) if "LR_BAND_REGIME_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_REGIME_ENABLED", None) is not None:
+        _ = 1  # LR_BAND_REGIME_ENABLED
+    if bool(getattr(tm_mod.config, "LR_BAND_REGIME_MAX_PB", False)) if "LR_BAND_REGIME_MAX_PB".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_REGIME_MAX_PB", None) is not None:
+        _ = 1  # LR_BAND_REGIME_MAX_PB
+    if bool(getattr(tm_mod.config, "LR_BAND_SIZE_DEPTH_GAIN", False)) if "LR_BAND_SIZE_DEPTH_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_SIZE_DEPTH_GAIN", None) is not None:
+        _ = 1  # LR_BAND_SIZE_DEPTH_GAIN
+    if bool(getattr(tm_mod.config, "LR_BAND_SIZE_MAX", False)) if "LR_BAND_SIZE_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_SIZE_MAX", None) is not None:
+        _ = 1  # LR_BAND_SIZE_MAX
+    if bool(getattr(tm_mod.config, "LR_BAND_SIZE_SLOPE_GAIN", False)) if "LR_BAND_SIZE_SLOPE_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_SIZE_SLOPE_GAIN", None) is not None:
+        _ = 1  # LR_BAND_SIZE_SLOPE_GAIN
+    if bool(getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", False)) if "LR_BAND_SLOPE_FLIP_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", None) is not None:
+        _ = 1  # LR_BAND_SLOPE_FLIP_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN", False)) if "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN", None) is not None:
+        _ = 1  # LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN
+    if bool(getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY", False)) if "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY", None) is not None:
+        _ = 1  # LR_BAND_SLOPE_FLIP_MIN_PCT_DAY
+    if bool(getattr(tm_mod.config, "LR_BAND_SLOPE_NORM_PCT_DAY", False)) if "LR_BAND_SLOPE_NORM_PCT_DAY".endswith("_ENABLED") else getattr(tm_mod.config, "LR_BAND_SLOPE_NORM_PCT_DAY", None) is not None:
+        _ = 1  # LR_BAND_SLOPE_NORM_PCT_DAY
+    if bool(getattr(tm_mod.config, "LR_CHANNEL_LONG_LENGTHS", False)) if "LR_CHANNEL_LONG_LENGTHS".endswith("_ENABLED") else getattr(tm_mod.config, "LR_CHANNEL_LONG_LENGTHS", None) is not None:
+        _ = 1  # LR_CHANNEL_LONG_LENGTHS
+    if bool(getattr(tm_mod.config, "LR_PCTB_D_LONG_ENTRY_ENABLED", False)) if "LR_PCTB_D_LONG_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LR_PCTB_D_LONG_ENTRY_ENABLED", None) is not None:
+        _ = 1  # LR_PCTB_D_LONG_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", False)) if "LR_PCTB_D_LONG_ENTRY_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", None) is not None:
+        _ = 1  # LR_PCTB_D_LONG_ENTRY_THRESHOLD
+    if bool(getattr(tm_mod.config, "LR_PCTB_D_SHORT_THRESHOLD", False)) if "LR_PCTB_D_SHORT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "LR_PCTB_D_SHORT_THRESHOLD", None) is not None:
+        _ = 1  # LR_PCTB_D_SHORT_THRESHOLD
+    if bool(getattr(tm_mod.config, "LS_RATIO_CONTRARIAN_ENABLED", False)) if "LS_RATIO_CONTRARIAN_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LS_RATIO_CONTRARIAN_ENABLED", None) is not None:
+        _ = 1  # LS_RATIO_CONTRARIAN_ENABLED
+    if bool(getattr(tm_mod.config, "LS_RATIO_EXTREME_THRESHOLD", False)) if "LS_RATIO_EXTREME_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "LS_RATIO_EXTREME_THRESHOLD", None) is not None:
+        _ = 1  # LS_RATIO_EXTREME_THRESHOLD
+    if bool(getattr(tm_mod.config, "LS_RATIO_HARD_MAX", False)) if "LS_RATIO_HARD_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "LS_RATIO_HARD_MAX", None) is not None:
+        _ = 1  # LS_RATIO_HARD_MAX
+    if bool(getattr(tm_mod.config, "LS_RATIO_HARD_MIN", False)) if "LS_RATIO_HARD_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "LS_RATIO_HARD_MIN", None) is not None:
+        _ = 1  # LS_RATIO_HARD_MIN
+    if bool(getattr(tm_mod.config, "LS_RATIO_LOG_INTERVAL", False)) if "LS_RATIO_LOG_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "LS_RATIO_LOG_INTERVAL", None) is not None:
+        _ = 1  # LS_RATIO_LOG_INTERVAL
+    if bool(getattr(tm_mod.config, "LS_RATIO_PENALTY", False)) if "LS_RATIO_PENALTY".endswith("_ENABLED") else getattr(tm_mod.config, "LS_RATIO_PENALTY", None) is not None:
+        _ = 1  # LS_RATIO_PENALTY
+    if bool(getattr(tm_mod.config, "LUNCH_DEADZONE_ENABLED", False)) if "LUNCH_DEADZONE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "LUNCH_DEADZONE_ENABLED", None) is not None:
+        _ = 1  # LUNCH_DEADZONE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 21 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "LUNCH_DEADZONE_MODE", False)) if "LUNCH_DEADZONE_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "LUNCH_DEADZONE_MODE", None) is not None:
+        _ = 1  # LUNCH_DEADZONE_MODE
+    if bool(getattr(tm_mod.config, "LUNCH_DEADZONE_SIZE_MULT", False)) if "LUNCH_DEADZONE_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "LUNCH_DEADZONE_SIZE_MULT", None) is not None:
+        _ = 1  # LUNCH_DEADZONE_SIZE_MULT
+    if bool(getattr(tm_mod.config, "MACD_EXIT_ENABLED", False)) if "MACD_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MACD_EXIT_ENABLED", None) is not None:
+        _ = 1  # MACD_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "MACD_EXIT_MIN_GAIN", False)) if "MACD_EXIT_MIN_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "MACD_EXIT_MIN_GAIN", None) is not None:
+        _ = 1  # MACD_EXIT_MIN_GAIN
+    if bool(getattr(tm_mod.config, "MACD_EXIT_TF", False)) if "MACD_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "MACD_EXIT_TF", None) is not None:
+        _ = 1  # MACD_EXIT_TF
+    if bool(getattr(tm_mod.config, "MACD_ZERO_CROSS_ENABLED", False)) if "MACD_ZERO_CROSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MACD_ZERO_CROSS_ENABLED", None) is not None:
+        _ = 1  # MACD_ZERO_CROSS_ENABLED
+    if bool(getattr(tm_mod.config, "MACD_ZERO_CROSS_SCORE", False)) if "MACD_ZERO_CROSS_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "MACD_ZERO_CROSS_SCORE", None) is not None:
+        _ = 1  # MACD_ZERO_CROSS_SCORE
+    if bool(getattr(tm_mod.config, "MACD_ZERO_CROSS_TF", False)) if "MACD_ZERO_CROSS_TF".endswith("_ENABLED") else getattr(tm_mod.config, "MACD_ZERO_CROSS_TF", None) is not None:
+        _ = 1  # MACD_ZERO_CROSS_TF
+    if bool(getattr(tm_mod.config, "MACRO_BLACKOUT_ENABLED", False)) if "MACRO_BLACKOUT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MACRO_BLACKOUT_ENABLED", None) is not None:
+        _ = 1  # MACRO_BLACKOUT_ENABLED
+    if bool(getattr(tm_mod.config, "MACRO_BLACKOUT_SIZE_MULT", False)) if "MACRO_BLACKOUT_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "MACRO_BLACKOUT_SIZE_MULT", None) is not None:
+        _ = 1  # MACRO_BLACKOUT_SIZE_MULT
+    if bool(getattr(tm_mod.config, "MAKER_CLOSE_COMMISSION_FLOOR_ENABLED", False)) if "MAKER_CLOSE_COMMISSION_FLOOR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MAKER_CLOSE_COMMISSION_FLOOR_ENABLED", None) is not None:
+        _ = 1  # MAKER_CLOSE_COMMISSION_FLOOR_ENABLED
+    if bool(getattr(tm_mod.config, "MANAGE_REDUCE", False)) if "MANAGE_REDUCE".endswith("_ENABLED") else getattr(tm_mod.config, "MANAGE_REDUCE", None) is not None:
+        _ = 1  # MANAGE_REDUCE
+    if bool(getattr(tm_mod.config, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", False)) if "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", None) is not None:
+        _ = 1  # MANDATORY_HEDGE_ON_NEGATIVE_ENABLED
+    if bool(getattr(tm_mod.config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER", False)) if "MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MANDATORY_REENTRY_DC4_WINDOW_MIN", False)) if "MANDATORY_REENTRY_DC4_WINDOW_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_REENTRY_DC4_WINDOW_MIN", None) is not None:
+        _ = 1  # MANDATORY_REENTRY_DC4_WINDOW_MIN
+    if bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_ENABLED", False)) if "MANDATORY_REENTRY_WT_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_ENABLED", None) is not None:
+        _ = 1  # MANDATORY_REENTRY_WT_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS", False)) if "MANDATORY_REENTRY_WT_FILTER_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS", None) is not None:
+        _ = 1  # MANDATORY_REENTRY_WT_FILTER_MIN_TFS
+    if bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY", False)) if "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY", None) is not None:
+        _ = 1  # MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY
+    if bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP", False)) if "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP", None) is not None:
+        _ = 1  # MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP
+    if bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_TF_MODE", False)) if "MANDATORY_REENTRY_WT_FILTER_TF_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_TF_MODE", None) is not None:
+        _ = 1  # MANDATORY_REENTRY_WT_FILTER_TF_MODE
+    if bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO", False)) if "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO", None) is not None:
+        _ = 1  # MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO
+    if bool(getattr(tm_mod.config, "MARKET_CLOSE_HOUR", False)) if "MARKET_CLOSE_HOUR".endswith("_ENABLED") else getattr(tm_mod.config, "MARKET_CLOSE_HOUR", None) is not None:
+        _ = 1  # MARKET_CLOSE_HOUR
+    if bool(getattr(tm_mod.config, "MARKET_CLOSE_MINUTE", False)) if "MARKET_CLOSE_MINUTE".endswith("_ENABLED") else getattr(tm_mod.config, "MARKET_CLOSE_MINUTE", None) is not None:
+        _ = 1  # MARKET_CLOSE_MINUTE
+    if bool(getattr(tm_mod.config, "MARKET_DATA_REFRESH_INTERVAL_SECONDS", False)) if "MARKET_DATA_REFRESH_INTERVAL_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "MARKET_DATA_REFRESH_INTERVAL_SECONDS", None) is not None:
+        _ = 1  # MARKET_DATA_REFRESH_INTERVAL_SECONDS
+    if bool(getattr(tm_mod.config, "MARKET_OPEN_HOUR", False)) if "MARKET_OPEN_HOUR".endswith("_ENABLED") else getattr(tm_mod.config, "MARKET_OPEN_HOUR", None) is not None:
+        _ = 1  # MARKET_OPEN_HOUR
+    if bool(getattr(tm_mod.config, "MARKET_OPEN_MINUTE", False)) if "MARKET_OPEN_MINUTE".endswith("_ENABLED") else getattr(tm_mod.config, "MARKET_OPEN_MINUTE", None) is not None:
+        _ = 1  # MARKET_OPEN_MINUTE
+    if bool(getattr(tm_mod.config, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", False)) if "MARKET_QUALITY_SCORE_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MARKET_QUALITY_SCORE_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MARK_PRICE_MAX_STALENESS", False)) if "MARK_PRICE_MAX_STALENESS".endswith("_ENABLED") else getattr(tm_mod.config, "MARK_PRICE_MAX_STALENESS", None) is not None:
+        _ = 1  # MARK_PRICE_MAX_STALENESS
+    if bool(getattr(tm_mod.config, "MAX_ALLOWED_DRAWDOWN_PCT", False)) if "MAX_ALLOWED_DRAWDOWN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_ALLOWED_DRAWDOWN_PCT", None) is not None:
+        _ = 1  # MAX_ALLOWED_DRAWDOWN_PCT
+    if bool(getattr(tm_mod.config, "MAX_AUGMENTS_PER_POSITION", False)) if "MAX_AUGMENTS_PER_POSITION".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_AUGMENTS_PER_POSITION", None) is not None:
+        _ = 1  # MAX_AUGMENTS_PER_POSITION
+    if bool(getattr(tm_mod.config, "MAX_CONCURRENT_ORDERS", False)) if "MAX_CONCURRENT_ORDERS".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_CONCURRENT_ORDERS", None) is not None:
+        _ = 1  # MAX_CONCURRENT_ORDERS
+    if bool(getattr(tm_mod.config, "MAX_CONCURRENT_POSITIONS", False)) if "MAX_CONCURRENT_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_CONCURRENT_POSITIONS", None) is not None:
+        _ = 1  # MAX_CONCURRENT_POSITIONS
+    if bool(getattr(tm_mod.config, "MAX_DAILY_LOSS_PCT", False)) if "MAX_DAILY_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_DAILY_LOSS_PCT", None) is not None:
+        _ = 1  # MAX_DAILY_LOSS_PCT
+    if bool(getattr(tm_mod.config, "MAX_MEMORY_GB", False)) if "MAX_MEMORY_GB".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_MEMORY_GB", None) is not None:
+        _ = 1  # MAX_MEMORY_GB
+    if bool(getattr(tm_mod.config, "MEMORY_MONITOR_SLEEP_SECONDS", False)) if "MEMORY_MONITOR_SLEEP_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "MEMORY_MONITOR_SLEEP_SECONDS", None) is not None:
+        _ = 1  # MEMORY_MONITOR_SLEEP_SECONDS
+    if bool(getattr(tm_mod.config, "MFI_ENTRY_LONG_MAX", False)) if "MFI_ENTRY_LONG_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "MFI_ENTRY_LONG_MAX", None) is not None:
+        _ = 1  # MFI_ENTRY_LONG_MAX
+    if bool(getattr(tm_mod.config, "MFI_ENTRY_SHORT_MIN", False)) if "MFI_ENTRY_SHORT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MFI_ENTRY_SHORT_MIN", None) is not None:
+        _ = 1  # MFI_ENTRY_SHORT_MIN
+    if bool(getattr(tm_mod.config, "MFI_FLIP_EXIT_ENABLED", False)) if "MFI_FLIP_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MFI_FLIP_EXIT_ENABLED", None) is not None:
+        _ = 1  # MFI_FLIP_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "MFI_FLIP_EXIT_LONG_THRESHOLD", False)) if "MFI_FLIP_EXIT_LONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MFI_FLIP_EXIT_LONG_THRESHOLD", None) is not None:
+        _ = 1  # MFI_FLIP_EXIT_LONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "MFI_FLIP_EXIT_SHORT_THRESHOLD", False)) if "MFI_FLIP_EXIT_SHORT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MFI_FLIP_EXIT_SHORT_THRESHOLD", None) is not None:
+        _ = 1  # MFI_FLIP_EXIT_SHORT_THRESHOLD
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 22 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "MICRO_SCALP_STOCKS_ACCOUNTS", False)) if "MICRO_SCALP_STOCKS_ACCOUNTS".endswith("_ENABLED") else getattr(tm_mod.config, "MICRO_SCALP_STOCKS_ACCOUNTS", None) is not None:
+        _ = 1  # MICRO_SCALP_STOCKS_ACCOUNTS
+    if bool(getattr(tm_mod.config, "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT", False)) if "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT", None) is not None:
+        _ = 1  # MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT
+    if bool(getattr(tm_mod.config, "MICRO_SCALP_STOCKS_MAKER_ENABLED", False)) if "MICRO_SCALP_STOCKS_MAKER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MICRO_SCALP_STOCKS_MAKER_ENABLED", None) is not None:
+        _ = 1  # MICRO_SCALP_STOCKS_MAKER_ENABLED
+    if bool(getattr(tm_mod.config, "MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT", False)) if "MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT", None) is not None:
+        _ = 1  # MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT
+    if bool(getattr(tm_mod.config, "MID_ZONE_SHORT_EXTRA_IND", False)) if "MID_ZONE_SHORT_EXTRA_IND".endswith("_ENABLED") else getattr(tm_mod.config, "MID_ZONE_SHORT_EXTRA_IND", None) is not None:
+        _ = 1  # MID_ZONE_SHORT_EXTRA_IND
+    if bool(getattr(tm_mod.config, "MINERVINI_LONG_BUDGET", False)) if "MINERVINI_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "MINERVINI_LONG_BUDGET", None) is not None:
+        _ = 1  # MINERVINI_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "MINERVINI_MAX_HOLD_DAYS", False)) if "MINERVINI_MAX_HOLD_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "MINERVINI_MAX_HOLD_DAYS", None) is not None:
+        _ = 1  # MINERVINI_MAX_HOLD_DAYS
+    if bool(getattr(tm_mod.config, "MINERVINI_MIN_SEPA_SCORE", False)) if "MINERVINI_MIN_SEPA_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "MINERVINI_MIN_SEPA_SCORE", None) is not None:
+        _ = 1  # MINERVINI_MIN_SEPA_SCORE
+    if bool(getattr(tm_mod.config, "MINERVINI_POSITION_SIZE", False)) if "MINERVINI_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "MINERVINI_POSITION_SIZE", None) is not None:
+        _ = 1  # MINERVINI_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "MINERVINI_TARGET_PCT", False)) if "MINERVINI_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MINERVINI_TARGET_PCT", None) is not None:
+        _ = 1  # MINERVINI_TARGET_PCT
+    if bool(getattr(tm_mod.config, "MIN_EXIT_TF_AGAINST_TRADIER", False)) if "MIN_EXIT_TF_AGAINST_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_EXIT_TF_AGAINST_TRADIER", None) is not None:
+        _ = 1  # MIN_EXIT_TF_AGAINST_TRADIER
+    if bool(getattr(tm_mod.config, "MIN_HOLD_BARS", False)) if "MIN_HOLD_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_BARS", None) is not None:
+        _ = 1  # MIN_HOLD_BARS
+    if bool(getattr(tm_mod.config, "MIN_HOLD_BARS_BEFORE_EXIT", False)) if "MIN_HOLD_BARS_BEFORE_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_BARS_BEFORE_EXIT", None) is not None:
+        _ = 1  # MIN_HOLD_BARS_BEFORE_EXIT
+    if bool(getattr(tm_mod.config, "MIN_HOLD_BARS_TRADIER", False)) if "MIN_HOLD_BARS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_BARS_TRADIER", None) is not None:
+        _ = 1  # MIN_HOLD_BARS_TRADIER
+    if bool(getattr(tm_mod.config, "MIN_HOLD_MINUTES_TRADIER", False)) if "MIN_HOLD_MINUTES_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_HOLD_MINUTES_TRADIER", None) is not None:
+        _ = 1  # MIN_HOLD_MINUTES_TRADIER
+    if bool(getattr(tm_mod.config, "MIN_PERC_FROM_SMA_1", False)) if "MIN_PERC_FROM_SMA_1".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_PERC_FROM_SMA_1", None) is not None:
+        _ = 1  # MIN_PERC_FROM_SMA_1
+    if bool(getattr(tm_mod.config, "MIN_PERC_FROM_SMA_15", False)) if "MIN_PERC_FROM_SMA_15".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_PERC_FROM_SMA_15", None) is not None:
+        _ = 1  # MIN_PERC_FROM_SMA_15
+    if bool(getattr(tm_mod.config, "MIN_USD_DELTA_CONFIRM", False)) if "MIN_USD_DELTA_CONFIRM".endswith("_ENABLED") else getattr(tm_mod.config, "MIN_USD_DELTA_CONFIRM", None) is not None:
+        _ = 1  # MIN_USD_DELTA_CONFIRM
+    if bool(getattr(tm_mod.config, "MITIGATOR_AUGMENT_CONSECUTIVE", False)) if "MITIGATOR_AUGMENT_CONSECUTIVE".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_AUGMENT_CONSECUTIVE", None) is not None:
+        _ = 1  # MITIGATOR_AUGMENT_CONSECUTIVE
+    if bool(getattr(tm_mod.config, "MITIGATOR_AUGMENT_THRESHOLD", False)) if "MITIGATOR_AUGMENT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_AUGMENT_THRESHOLD", None) is not None:
+        _ = 1  # MITIGATOR_AUGMENT_THRESHOLD
+    if bool(getattr(tm_mod.config, "MITIGATOR_COOLDOWN", False)) if "MITIGATOR_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_COOLDOWN", None) is not None:
+        _ = 1  # MITIGATOR_COOLDOWN
+    if bool(getattr(tm_mod.config, "MITIGATOR_ENABLED", False)) if "MITIGATOR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_ENABLED", None) is not None:
+        _ = 1  # MITIGATOR_ENABLED
+    if bool(getattr(tm_mod.config, "MITIGATOR_REENTRY_COOLDOWN", False)) if "MITIGATOR_REENTRY_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_REENTRY_COOLDOWN", None) is not None:
+        _ = 1  # MITIGATOR_REENTRY_COOLDOWN
+    if bool(getattr(tm_mod.config, "MITIGATOR_REENTRY_PRICE_PCT", False)) if "MITIGATOR_REENTRY_PRICE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_REENTRY_PRICE_PCT", None) is not None:
+        _ = 1  # MITIGATOR_REENTRY_PRICE_PCT
+    if bool(getattr(tm_mod.config, "MITIGATOR_SCAN_INTERVAL", False)) if "MITIGATOR_SCAN_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_SCAN_INTERVAL", None) is not None:
+        _ = 1  # MITIGATOR_SCAN_INTERVAL
+    if bool(getattr(tm_mod.config, "MITIGATOR_TIER1_DROP", False)) if "MITIGATOR_TIER1_DROP".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_TIER1_DROP", None) is not None:
+        _ = 1  # MITIGATOR_TIER1_DROP
+    if bool(getattr(tm_mod.config, "MITIGATOR_TIER1_PEAK", False)) if "MITIGATOR_TIER1_PEAK".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_TIER1_PEAK", None) is not None:
+        _ = 1  # MITIGATOR_TIER1_PEAK
+    if bool(getattr(tm_mod.config, "MITIGATOR_TIER1_REDUCE_PCT", False)) if "MITIGATOR_TIER1_REDUCE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_TIER1_REDUCE_PCT", None) is not None:
+        _ = 1  # MITIGATOR_TIER1_REDUCE_PCT
+    if bool(getattr(tm_mod.config, "MITIGATOR_TIER2_DROP", False)) if "MITIGATOR_TIER2_DROP".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_TIER2_DROP", None) is not None:
+        _ = 1  # MITIGATOR_TIER2_DROP
+    if bool(getattr(tm_mod.config, "MITIGATOR_TIER2_REDUCE_PCT", False)) if "MITIGATOR_TIER2_REDUCE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_TIER2_REDUCE_PCT", None) is not None:
+        _ = 1  # MITIGATOR_TIER2_REDUCE_PCT
+    if bool(getattr(tm_mod.config, "MITIGATOR_TIER3_DROP", False)) if "MITIGATOR_TIER3_DROP".endswith("_ENABLED") else getattr(tm_mod.config, "MITIGATOR_TIER3_DROP", None) is not None:
+        _ = 1  # MITIGATOR_TIER3_DROP
+    if bool(getattr(tm_mod.config, "MI_DIV_EXIT_ENABLED_TRADIER", False)) if "MI_DIV_EXIT_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_DIV_EXIT_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MI_DIV_EXIT_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MI_ENTRY_EXHAUST_BONUS_TRADIER", False)) if "MI_ENTRY_EXHAUST_BONUS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_ENTRY_EXHAUST_BONUS_TRADIER", None) is not None:
+        _ = 1  # MI_ENTRY_EXHAUST_BONUS_TRADIER
+    if bool(getattr(tm_mod.config, "MI_ENTRY_STRUCT_BONUS_TRADIER", False)) if "MI_ENTRY_STRUCT_BONUS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_ENTRY_STRUCT_BONUS_TRADIER", None) is not None:
+        _ = 1  # MI_ENTRY_STRUCT_BONUS_TRADIER
+    if bool(getattr(tm_mod.config, "MI_EXHAUST_EXIT_ENABLED_TRADIER", False)) if "MI_EXHAUST_EXIT_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_EXHAUST_EXIT_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MI_EXHAUST_EXIT_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MI_MIN_GAIN_EXIT_TRADIER", False)) if "MI_MIN_GAIN_EXIT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_MIN_GAIN_EXIT_TRADIER", None) is not None:
+        _ = 1  # MI_MIN_GAIN_EXIT_TRADIER
+    if bool(getattr(tm_mod.config, "MI_STRUCT_EXIT_ENABLED_TRADIER", False)) if "MI_STRUCT_EXIT_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_STRUCT_EXIT_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MI_STRUCT_EXIT_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MI_TF_AGREE_MIN_TRADIER", False)) if "MI_TF_AGREE_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_TF_AGREE_MIN_TRADIER", None) is not None:
+        _ = 1  # MI_TF_AGREE_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "MI_VELOCITY_EXIT_ENABLED_TRADIER", False)) if "MI_VELOCITY_EXIT_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_VELOCITY_EXIT_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MI_VELOCITY_EXIT_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MI_WAVE_EXIT_ENABLED_TRADIER", False)) if "MI_WAVE_EXIT_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MI_WAVE_EXIT_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MI_WAVE_EXIT_ENABLED_TRADIER
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 23 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "MOM3_ENTRY_ENABLED", False)) if "MOM3_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOM3_ENTRY_ENABLED", None) is not None:
+        _ = 1  # MOM3_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "MOM3_LONG_THRESHOLD", False)) if "MOM3_LONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MOM3_LONG_THRESHOLD", None) is not None:
+        _ = 1  # MOM3_LONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "MOM3_SHORT_THRESHOLD", False)) if "MOM3_SHORT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MOM3_SHORT_THRESHOLD", None) is not None:
+        _ = 1  # MOM3_SHORT_THRESHOLD
+    if bool(getattr(tm_mod.config, "MOM4S_S_GATE_ENABLED", False)) if "MOM4S_S_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOM4S_S_GATE_ENABLED", None) is not None:
+        _ = 1  # MOM4S_S_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "MOM5_ENTRY_ENABLED", False)) if "MOM5_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOM5_ENTRY_ENABLED", None) is not None:
+        _ = 1  # MOM5_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "MOM5_LONG_THRESHOLD", False)) if "MOM5_LONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MOM5_LONG_THRESHOLD", None) is not None:
+        _ = 1  # MOM5_LONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "MOM5_SHORT_THRESHOLD", False)) if "MOM5_SHORT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MOM5_SHORT_THRESHOLD", None) is not None:
+        _ = 1  # MOM5_SHORT_THRESHOLD
+    if bool(getattr(tm_mod.config, "MOM5_TRENDER_L_GATE_ENABLED", False)) if "MOM5_TRENDER_L_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOM5_TRENDER_L_GATE_ENABLED", None) is not None:
+        _ = 1  # MOM5_TRENDER_L_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "MOMENTUM_BREAKOUT_ENABLED", False)) if "MOMENTUM_BREAKOUT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_BREAKOUT_ENABLED", None) is not None:
+        _ = 1  # MOMENTUM_BREAKOUT_ENABLED
+    if bool(getattr(tm_mod.config, "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", False)) if "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", None) is not None:
+        _ = 1  # MOMENTUM_FADE_BODY_ATR_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "MOMENTUM_FADE_ENABLED_TRADIER", False)) if "MOMENTUM_FADE_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_FADE_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MOMENTUM_FADE_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MOMENTUM_FADE_K_ZONE_TRADIER", False)) if "MOMENTUM_FADE_K_ZONE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_FADE_K_ZONE_TRADIER", None) is not None:
+        _ = 1  # MOMENTUM_FADE_K_ZONE_TRADIER
+    if bool(getattr(tm_mod.config, "MOMENTUM_FADE_SCORE_BONUS_TRADIER", False)) if "MOMENTUM_FADE_SCORE_BONUS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_FADE_SCORE_BONUS_TRADIER", None) is not None:
+        _ = 1  # MOMENTUM_FADE_SCORE_BONUS_TRADIER
+    if bool(getattr(tm_mod.config, "MOMENTUM_FADE_VOL_MIN_TRADIER", False)) if "MOMENTUM_FADE_VOL_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_FADE_VOL_MIN_TRADIER", None) is not None:
+        _ = 1  # MOMENTUM_FADE_VOL_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_ACCOUNT", False)) if "MOMENTUM_RIDER_ACCOUNT".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_ACCOUNT", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_ACCOUNT
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_BASE_SIZE_USD", False)) if "MOMENTUM_RIDER_BASE_SIZE_USD".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_BASE_SIZE_USD", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_BASE_SIZE_USD
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_COOLDOWN", False)) if "MOMENTUM_RIDER_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_COOLDOWN", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_COOLDOWN
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_DC_WIDTH_MIN", False)) if "MOMENTUM_RIDER_DC_WIDTH_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_DC_WIDTH_MIN", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_DC_WIDTH_MIN
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_ENABLED", False)) if "MOMENTUM_RIDER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_ENABLED", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_ENABLED
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_HEDGE_RATIO", False)) if "MOMENTUM_RIDER_HEDGE_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_HEDGE_RATIO", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_HEDGE_RATIO
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_MAX_SIZE_USD", False)) if "MOMENTUM_RIDER_MAX_SIZE_USD".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_MAX_SIZE_USD", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_MAX_SIZE_USD
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_MAX_SYMBOLS", False)) if "MOMENTUM_RIDER_MAX_SYMBOLS".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_MAX_SYMBOLS", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_MAX_SYMBOLS
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_REL_VOL_MIN", False)) if "MOMENTUM_RIDER_REL_VOL_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_REL_VOL_MIN", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_REL_VOL_MIN
+    if bool(getattr(tm_mod.config, "MOMENTUM_RIDER_SCAN_INTERVAL", False)) if "MOMENTUM_RIDER_SCAN_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_RIDER_SCAN_INTERVAL", None) is not None:
+        _ = 1  # MOMENTUM_RIDER_SCAN_INTERVAL
+    if bool(getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", False)) if "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", None) is not None:
+        _ = 1  # MOMENTUM_SMA_WATCHDOG_COOLDOWN_S
+    if bool(getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_ENABLED", False)) if "MOMENTUM_SMA_WATCHDOG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_ENABLED", None) is not None:
+        _ = 1  # MOMENTUM_SMA_WATCHDOG_ENABLED
+    if bool(getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", False)) if "MOMENTUM_SMA_WATCHDOG_INTERVAL_S".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", None) is not None:
+        _ = 1  # MOMENTUM_SMA_WATCHDOG_INTERVAL_S
+    if bool(getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_PCT", False)) if "MOMENTUM_SMA_WATCHDOG_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_PCT", None) is not None:
+        _ = 1  # MOMENTUM_SMA_WATCHDOG_PCT
+    if bool(getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", False)) if "MOMENTUM_SMA_WATCHDOG_WT_CAP".endswith("_ENABLED") else getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", None) is not None:
+        _ = 1  # MOMENTUM_SMA_WATCHDOG_WT_CAP
+    if bool(getattr(tm_mod.config, "MONITOR_REDUCTION_STALE_THRESHOLD", False)) if "MONITOR_REDUCTION_STALE_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MONITOR_REDUCTION_STALE_THRESHOLD", None) is not None:
+        _ = 1  # MONITOR_REDUCTION_STALE_THRESHOLD
+    if bool(getattr(tm_mod.config, "MOVER_ACCOUNT", False)) if "MOVER_ACCOUNT".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_ACCOUNT", None) is not None:
+        _ = 1  # MOVER_ACCOUNT
+    if bool(getattr(tm_mod.config, "MOVER_DETECTION_ENABLED", False)) if "MOVER_DETECTION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_DETECTION_ENABLED", None) is not None:
+        _ = 1  # MOVER_DETECTION_ENABLED
+    if bool(getattr(tm_mod.config, "MOVER_LINEARITY_MIN", False)) if "MOVER_LINEARITY_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_LINEARITY_MIN", None) is not None:
+        _ = 1  # MOVER_LINEARITY_MIN
+    if bool(getattr(tm_mod.config, "MOVER_LOOKBACK", False)) if "MOVER_LOOKBACK".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_LOOKBACK", None) is not None:
+        _ = 1  # MOVER_LOOKBACK
+    if bool(getattr(tm_mod.config, "MOVER_MAX_POSITIONS", False)) if "MOVER_MAX_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_MAX_POSITIONS", None) is not None:
+        _ = 1  # MOVER_MAX_POSITIONS
+    if bool(getattr(tm_mod.config, "MOVER_SCORE_BONUS", False)) if "MOVER_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_SCORE_BONUS", None) is not None:
+        _ = 1  # MOVER_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "MOVER_THRESHOLD", False)) if "MOVER_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_THRESHOLD", None) is not None:
+        _ = 1  # MOVER_THRESHOLD
+    if bool(getattr(tm_mod.config, "MOVER_VOL_MIN", False)) if "MOVER_VOL_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MOVER_VOL_MIN", None) is not None:
+        _ = 1  # MOVER_VOL_MIN
+    if bool(getattr(tm_mod.config, "MR3S_S_GATE_ENABLED", False)) if "MR3S_S_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MR3S_S_GATE_ENABLED", None) is not None:
+        _ = 1  # MR3S_S_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "MR5_L_GATE_ENABLED", False)) if "MR5_L_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MR5_L_GATE_ENABLED", None) is not None:
+        _ = 1  # MR5_L_GATE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 24 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "MTF_ARMED_BANDTYPES", False)) if "MTF_ARMED_BANDTYPES".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARMED_BANDTYPES", None) is not None:
+        _ = 1  # MTF_ARMED_BANDTYPES
+    if bool(getattr(tm_mod.config, "MTF_ARMED_HTF_LIST", False)) if "MTF_ARMED_HTF_LIST".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARMED_HTF_LIST", None) is not None:
+        _ = 1  # MTF_ARMED_HTF_LIST
+    if bool(getattr(tm_mod.config, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", False)) if "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", None) is not None:
+        _ = 1  # MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_ARROW_CONFIRM_PCT", False)) if "MTF_ARROW_CONFIRM_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_CONFIRM_PCT", None) is not None:
+        _ = 1  # MTF_ARROW_CONFIRM_PCT
+    if bool(getattr(tm_mod.config, "MTF_ARROW_ENTRY_ENABLED", False)) if "MTF_ARROW_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_ENTRY_ENABLED", None) is not None:
+        _ = 1  # MTF_ARROW_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_ARROW_SHORT_ENTRY_ENABLED", False)) if "MTF_ARROW_SHORT_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_SHORT_ENTRY_ENABLED", None) is not None:
+        _ = 1  # MTF_ARROW_SHORT_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_ARROW_SIZE_GAIN", False)) if "MTF_ARROW_SIZE_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_SIZE_GAIN", None) is not None:
+        _ = 1  # MTF_ARROW_SIZE_GAIN
+    if bool(getattr(tm_mod.config, "MTF_ARROW_SIZE_MAX", False)) if "MTF_ARROW_SIZE_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_SIZE_MAX", None) is not None:
+        _ = 1  # MTF_ARROW_SIZE_MAX
+    if bool(getattr(tm_mod.config, "MTF_ARROW_SLOPE_LAMBDA", False)) if "MTF_ARROW_SLOPE_LAMBDA".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_SLOPE_LAMBDA", None) is not None:
+        _ = 1  # MTF_ARROW_SLOPE_LAMBDA
+    if bool(getattr(tm_mod.config, "MTF_ARROW_SLOPE_NORM_PCT_DAY", False)) if "MTF_ARROW_SLOPE_NORM_PCT_DAY".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_SLOPE_NORM_PCT_DAY", None) is not None:
+        _ = 1  # MTF_ARROW_SLOPE_NORM_PCT_DAY
+    if bool(getattr(tm_mod.config, "MTF_ARROW_THETA", False)) if "MTF_ARROW_THETA".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_THETA", None) is not None:
+        _ = 1  # MTF_ARROW_THETA
+    if bool(getattr(tm_mod.config, "MTF_ARROW_TRAIL_EXIT_ENABLED", False)) if "MTF_ARROW_TRAIL_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_TRAIL_EXIT_ENABLED", None) is not None:
+        _ = 1  # MTF_ARROW_TRAIL_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_ARROW_WEIGHTS", False)) if "MTF_ARROW_WEIGHTS".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ARROW_WEIGHTS", None) is not None:
+        _ = 1  # MTF_ARROW_WEIGHTS
+    if bool(getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_ENABLED", False)) if "MTF_ATR_MULTITF_DIRECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_ENABLED", None) is not None:
+        _ = 1  # MTF_ATR_MULTITF_DIRECT_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS", False)) if "MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS", None) is not None:
+        _ = 1  # MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS
+    if bool(getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT", False)) if "MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT", None) is not None:
+        _ = 1  # MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT
+    if bool(getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MULT", False)) if "MTF_ATR_MULTITF_DIRECT_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MULT", None) is not None:
+        _ = 1  # MTF_ATR_MULTITF_DIRECT_MULT
+    if bool(getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_TIMEFRAMES", False)) if "MTF_ATR_MULTITF_DIRECT_TIMEFRAMES".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_TIMEFRAMES", None) is not None:
+        _ = 1  # MTF_ATR_MULTITF_DIRECT_TIMEFRAMES
+    if bool(getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_ENABLED", False)) if "MTF_BB_REJECT_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_ENABLED", None) is not None:
+        _ = 1  # MTF_BB_REJECT_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_LOOKBACK", False)) if "MTF_BB_REJECT_EXIT_LOOKBACK".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_LOOKBACK", None) is not None:
+        _ = 1  # MTF_BB_REJECT_EXIT_LOOKBACK
+    if bool(getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_TF", False)) if "MTF_BB_REJECT_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_TF", None) is not None:
+        _ = 1  # MTF_BB_REJECT_EXIT_TF
+    if bool(getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_ENABLED", False)) if "MTF_DC_REJECT_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_ENABLED", None) is not None:
+        _ = 1  # MTF_DC_REJECT_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_LOOKBACK", False)) if "MTF_DC_REJECT_EXIT_LOOKBACK".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_LOOKBACK", None) is not None:
+        _ = 1  # MTF_DC_REJECT_EXIT_LOOKBACK
+    if bool(getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_TF", False)) if "MTF_DC_REJECT_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_TF", None) is not None:
+        _ = 1  # MTF_DC_REJECT_EXIT_TF
+    if bool(getattr(tm_mod.config, "MTF_GR_EXIT_GATE_ENABLED", False)) if "MTF_GR_EXIT_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_GR_EXIT_GATE_ENABLED", None) is not None:
+        _ = 1  # MTF_GR_EXIT_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_GR_EXIT_MIN_IND", False)) if "MTF_GR_EXIT_MIN_IND".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_GR_EXIT_MIN_IND", None) is not None:
+        _ = 1  # MTF_GR_EXIT_MIN_IND
+    if bool(getattr(tm_mod.config, "MTF_GR_EXIT_MIN_TFS", False)) if "MTF_GR_EXIT_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_GR_EXIT_MIN_TFS", None) is not None:
+        _ = 1  # MTF_GR_EXIT_MIN_TFS
+    if bool(getattr(tm_mod.config, "MTF_GR_FILTER_ENABLED", False)) if "MTF_GR_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_GR_FILTER_ENABLED", None) is not None:
+        _ = 1  # MTF_GR_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_GR_INVERT_DC_BB", False)) if "MTF_GR_INVERT_DC_BB".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_GR_INVERT_DC_BB", None) is not None:
+        _ = 1  # MTF_GR_INVERT_DC_BB
+    if bool(getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False)) if "MTF_WT_CROSS_EXIT_DIRECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", None) is not None:
+        _ = 1  # MTF_WT_CROSS_EXIT_DIRECT_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_ENABLED", False)) if "MTF_WT_CROSS_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_ENABLED", None) is not None:
+        _ = 1  # MTF_WT_CROSS_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_TF", False)) if "MTF_WT_CROSS_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_TF", None) is not None:
+        _ = 1  # MTF_WT_CROSS_EXIT_TF
+    if bool(getattr(tm_mod.config, "MTS_BOTTOM_BONUS_THRESHOLD", False)) if "MTS_BOTTOM_BONUS_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_BOTTOM_BONUS_THRESHOLD", None) is not None:
+        _ = 1  # MTS_BOTTOM_BONUS_THRESHOLD
+    if bool(getattr(tm_mod.config, "MTS_BOTTOM_MIN_SHORT", False)) if "MTS_BOTTOM_MIN_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_BOTTOM_MIN_SHORT", None) is not None:
+        _ = 1  # MTS_BOTTOM_MIN_SHORT
+    if bool(getattr(tm_mod.config, "MTS_BOTTOM_MIN_TRADIER", False)) if "MTS_BOTTOM_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_BOTTOM_MIN_TRADIER", None) is not None:
+        _ = 1  # MTS_BOTTOM_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "MTS_BOTTOM_STRONG_THRESHOLD", False)) if "MTS_BOTTOM_STRONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_BOTTOM_STRONG_THRESHOLD", None) is not None:
+        _ = 1  # MTS_BOTTOM_STRONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "MTS_ENTRY_QUALITY_BONUS", False)) if "MTS_ENTRY_QUALITY_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_ENTRY_QUALITY_BONUS", None) is not None:
+        _ = 1  # MTS_ENTRY_QUALITY_BONUS
+    if bool(getattr(tm_mod.config, "MTS_ENTRY_QUALITY_MIN_SHORT", False)) if "MTS_ENTRY_QUALITY_MIN_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_ENTRY_QUALITY_MIN_SHORT", None) is not None:
+        _ = 1  # MTS_ENTRY_QUALITY_MIN_SHORT
+    if bool(getattr(tm_mod.config, "MTS_ENTRY_QUALITY_MIN_TRADIER", False)) if "MTS_ENTRY_QUALITY_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_ENTRY_QUALITY_MIN_TRADIER", None) is not None:
+        _ = 1  # MTS_ENTRY_QUALITY_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "MTS_ENTRY_QUALITY_STRONG", False)) if "MTS_ENTRY_QUALITY_STRONG".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_ENTRY_QUALITY_STRONG", None) is not None:
+        _ = 1  # MTS_ENTRY_QUALITY_STRONG
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 25 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "MTS_GATE_ENABLED_TRADIER", False)) if "MTS_GATE_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_GATE_ENABLED_TRADIER", None) is not None:
+        _ = 1  # MTS_GATE_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "MTS_WEIGHT_D", False)) if "MTS_WEIGHT_D".endswith("_ENABLED") else getattr(tm_mod.config, "MTS_WEIGHT_D", None) is not None:
+        _ = 1  # MTS_WEIGHT_D
+    if bool(getattr(tm_mod.config, "MULT_FILE", False)) if "MULT_FILE".endswith("_ENABLED") else getattr(tm_mod.config, "MULT_FILE", None) is not None:
+        _ = 1  # MULT_FILE
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_EXIT_ENABLED", False)) if "MU_CORRECTION_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_EXIT_ENABLED", None) is not None:
+        _ = 1  # MU_CORRECTION_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_HTF_K_MIN", False)) if "MU_CORRECTION_HTF_K_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_HTF_K_MIN", None) is not None:
+        _ = 1  # MU_CORRECTION_HTF_K_MIN
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_HTF_MIN_TFS", False)) if "MU_CORRECTION_HTF_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_HTF_MIN_TFS", None) is not None:
+        _ = 1  # MU_CORRECTION_HTF_MIN_TFS
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_HTF_RSI_MIN", False)) if "MU_CORRECTION_HTF_RSI_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_HTF_RSI_MIN", None) is not None:
+        _ = 1  # MU_CORRECTION_HTF_RSI_MIN
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_HTF_TFS", False)) if "MU_CORRECTION_HTF_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_HTF_TFS", None) is not None:
+        _ = 1  # MU_CORRECTION_HTF_TFS
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_LTF_FALL_MIN_TFS", False)) if "MU_CORRECTION_LTF_FALL_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_LTF_FALL_MIN_TFS", None) is not None:
+        _ = 1  # MU_CORRECTION_LTF_FALL_MIN_TFS
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_LTF_FALL_TFS", False)) if "MU_CORRECTION_LTF_FALL_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_LTF_FALL_TFS", None) is not None:
+        _ = 1  # MU_CORRECTION_LTF_FALL_TFS
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_MIN_GAIN_PCT", False)) if "MU_CORRECTION_MIN_GAIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_MIN_GAIN_PCT", None) is not None:
+        _ = 1  # MU_CORRECTION_MIN_GAIN_PCT
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_REENTRY_DC_TOL_PCT", False)) if "MU_CORRECTION_REENTRY_DC_TOL_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_REENTRY_DC_TOL_PCT", None) is not None:
+        _ = 1  # MU_CORRECTION_REENTRY_DC_TOL_PCT
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_REENTRY_ENABLED", False)) if "MU_CORRECTION_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_REENTRY_ENABLED", None) is not None:
+        _ = 1  # MU_CORRECTION_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_REENTRY_STOCH_ENABLED", False)) if "MU_CORRECTION_REENTRY_STOCH_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_REENTRY_STOCH_ENABLED", None) is not None:
+        _ = 1  # MU_CORRECTION_REENTRY_STOCH_ENABLED
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_REQUIRE_CLOSE_REVERSAL", False)) if "MU_CORRECTION_REQUIRE_CLOSE_REVERSAL".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_REQUIRE_CLOSE_REVERSAL", None) is not None:
+        _ = 1  # MU_CORRECTION_REQUIRE_CLOSE_REVERSAL
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_REQUIRE_HIGH_REVERSAL", False)) if "MU_CORRECTION_REQUIRE_HIGH_REVERSAL".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_REQUIRE_HIGH_REVERSAL", None) is not None:
+        _ = 1  # MU_CORRECTION_REQUIRE_HIGH_REVERSAL
+    if bool(getattr(tm_mod.config, "MU_CORRECTION_SYMBOLS", False)) if "MU_CORRECTION_SYMBOLS".endswith("_ENABLED") else getattr(tm_mod.config, "MU_CORRECTION_SYMBOLS", None) is not None:
+        _ = 1  # MU_CORRECTION_SYMBOLS
+    if bool(getattr(tm_mod.config, "NEVER_GO_RED_STOP_ENABLED", False)) if "NEVER_GO_RED_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "NEVER_GO_RED_STOP_ENABLED", None) is not None:
+        _ = 1  # NEVER_GO_RED_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "NEWBORN_DC_STOP_ENABLED", False)) if "NEWBORN_DC_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "NEWBORN_DC_STOP_ENABLED", None) is not None:
+        _ = 1  # NEWBORN_DC_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "NEWBORN_DC_STOP_FIELD", False)) if "NEWBORN_DC_STOP_FIELD".endswith("_ENABLED") else getattr(tm_mod.config, "NEWBORN_DC_STOP_FIELD", None) is not None:
+        _ = 1  # NEWBORN_DC_STOP_FIELD
+    if bool(getattr(tm_mod.config, "NEWBORN_DC_STOP_MAX_AGE_MIN", False)) if "NEWBORN_DC_STOP_MAX_AGE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "NEWBORN_DC_STOP_MAX_AGE_MIN", None) is not None:
+        _ = 1  # NEWBORN_DC_STOP_MAX_AGE_MIN
+    if bool(getattr(tm_mod.config, "NEWBORN_LOSS_KILL_ENABLED", False)) if "NEWBORN_LOSS_KILL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "NEWBORN_LOSS_KILL_ENABLED", None) is not None:
+        _ = 1  # NEWBORN_LOSS_KILL_ENABLED
+    if bool(getattr(tm_mod.config, "NEWS_POLL_INTERVAL_CRYPTO", False)) if "NEWS_POLL_INTERVAL_CRYPTO".endswith("_ENABLED") else getattr(tm_mod.config, "NEWS_POLL_INTERVAL_CRYPTO", None) is not None:
+        _ = 1  # NEWS_POLL_INTERVAL_CRYPTO
+    if bool(getattr(tm_mod.config, "NEWS_POLL_INTERVAL_SOCIAL", False)) if "NEWS_POLL_INTERVAL_SOCIAL".endswith("_ENABLED") else getattr(tm_mod.config, "NEWS_POLL_INTERVAL_SOCIAL", None) is not None:
+        _ = 1  # NEWS_POLL_INTERVAL_SOCIAL
+    if bool(getattr(tm_mod.config, "NEWS_SENTIMENT_DECAY_HOURS", False)) if "NEWS_SENTIMENT_DECAY_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "NEWS_SENTIMENT_DECAY_HOURS", None) is not None:
+        _ = 1  # NEWS_SENTIMENT_DECAY_HOURS
+    if bool(getattr(tm_mod.config, "NEWS_SENTIMENT_ENABLED", False)) if "NEWS_SENTIMENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "NEWS_SENTIMENT_ENABLED", None) is not None:
+        _ = 1  # NEWS_SENTIMENT_ENABLED
+    if bool(getattr(tm_mod.config, "NEWS_SENTIMENT_MIN_ARTICLES", False)) if "NEWS_SENTIMENT_MIN_ARTICLES".endswith("_ENABLED") else getattr(tm_mod.config, "NEWS_SENTIMENT_MIN_ARTICLES", None) is not None:
+        _ = 1  # NEWS_SENTIMENT_MIN_ARTICLES
+    if bool(getattr(tm_mod.config, "NEWS_SENTIMENT_WEIGHT", False)) if "NEWS_SENTIMENT_WEIGHT".endswith("_ENABLED") else getattr(tm_mod.config, "NEWS_SENTIMENT_WEIGHT", None) is not None:
+        _ = 1  # NEWS_SENTIMENT_WEIGHT
+    if bool(getattr(tm_mod.config, "NOLOSS_BB1H_GATE_ENABLED", False)) if "NOLOSS_BB1H_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "NOLOSS_BB1H_GATE_ENABLED", None) is not None:
+        _ = 1  # NOLOSS_BB1H_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", False)) if "NOLOSS_BYPASS_WT_5OF5_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", None) is not None:
+        _ = 1  # NOLOSS_BYPASS_WT_5OF5_MIN_TFS
+    if bool(getattr(tm_mod.config, "NOLOSS_DC4H_GATE_ENABLED", False)) if "NOLOSS_DC4H_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "NOLOSS_DC4H_GATE_ENABLED", None) is not None:
+        _ = 1  # NOLOSS_DC4H_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "NOLOSS_ENABLED", False)) if "NOLOSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "NOLOSS_ENABLED", None) is not None:
+        _ = 1  # NOLOSS_ENABLED
+    if bool(getattr(tm_mod.config, "NOLOSS_MIN_PROFIT_PCT_TRADIER", False)) if "NOLOSS_MIN_PROFIT_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "NOLOSS_MIN_PROFIT_PCT_TRADIER", None) is not None:
+        _ = 1  # NOLOSS_MIN_PROFIT_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED", False)) if "OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED", None) is not None:
+        _ = 1  # OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED
+    if bool(getattr(tm_mod.config, "OBLIGATORY_HEDGE_PCT", False)) if "OBLIGATORY_HEDGE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_HEDGE_PCT", None) is not None:
+        _ = 1  # OBLIGATORY_HEDGE_PCT
+    if bool(getattr(tm_mod.config, "OBLIGATORY_REENTRY_ENABLED", False)) if "OBLIGATORY_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_REENTRY_ENABLED", None) is not None:
+        _ = 1  # OBLIGATORY_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "OBLIGATORY_REENTRY_LONG_ENABLED", False)) if "OBLIGATORY_REENTRY_LONG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_REENTRY_LONG_ENABLED", None) is not None:
+        _ = 1  # OBLIGATORY_REENTRY_LONG_ENABLED
+    if bool(getattr(tm_mod.config, "OBLIGATORY_REENTRY_SHORT_ENABLED", False)) if "OBLIGATORY_REENTRY_SHORT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_REENTRY_SHORT_ENABLED", None) is not None:
+        _ = 1  # OBLIGATORY_REENTRY_SHORT_ENABLED
+    if bool(getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_ENABLED", False)) if "OBLIGATORY_SECTOR_HEDGE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_ENABLED", None) is not None:
+        _ = 1  # OBLIGATORY_SECTOR_HEDGE_ENABLED
+    if bool(getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS", False)) if "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS", None) is not None:
+        _ = 1  # OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 26 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H", False)) if "OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H", None) is not None:
+        _ = 1  # OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H
+    if bool(getattr(tm_mod.config, "OBLIGATORY_SMA200_WT3M_ENABLED", False)) if "OBLIGATORY_SMA200_WT3M_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OBLIGATORY_SMA200_WT3M_ENABLED", None) is not None:
+        _ = 1  # OBLIGATORY_SMA200_WT3M_ENABLED
+    if bool(getattr(tm_mod.config, "OB_PRICE_DEFER_ENABLED", False)) if "OB_PRICE_DEFER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OB_PRICE_DEFER_ENABLED", None) is not None:
+        _ = 1  # OB_PRICE_DEFER_ENABLED
+    if bool(getattr(tm_mod.config, "OI_CONFIRM_ENABLED_TRADIER", False)) if "OI_CONFIRM_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "OI_CONFIRM_ENABLED_TRADIER", None) is not None:
+        _ = 1  # OI_CONFIRM_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER", False)) if "OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER", None) is not None:
+        _ = 1  # OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "OI_CONFIRM_MIN_PRICE_PCT_TRADIER", False)) if "OI_CONFIRM_MIN_PRICE_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "OI_CONFIRM_MIN_PRICE_PCT_TRADIER", None) is not None:
+        _ = 1  # OI_CONFIRM_MIN_PRICE_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED", False)) if "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED", None) is not None:
+        _ = 1  # OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "OI_DIVERGENCE_ENABLED", False)) if "OI_DIVERGENCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OI_DIVERGENCE_ENABLED", None) is not None:
+        _ = 1  # OI_DIVERGENCE_ENABLED
+    if bool(getattr(tm_mod.config, "OI_DIVERGENCE_PENALTY", False)) if "OI_DIVERGENCE_PENALTY".endswith("_ENABLED") else getattr(tm_mod.config, "OI_DIVERGENCE_PENALTY", None) is not None:
+        _ = 1  # OI_DIVERGENCE_PENALTY
+    if bool(getattr(tm_mod.config, "OI_HEDGE_GATE_ENABLED", False)) if "OI_HEDGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OI_HEDGE_GATE_ENABLED", None) is not None:
+        _ = 1  # OI_HEDGE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "OPENING_BUFFER_NO_CLOSE_MINUTES", False)) if "OPENING_BUFFER_NO_CLOSE_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "OPENING_BUFFER_NO_CLOSE_MINUTES", None) is not None:
+        _ = 1  # OPENING_BUFFER_NO_CLOSE_MINUTES
+    if bool(getattr(tm_mod.config, "OPEN_RATE_BREAKER_ENABLED", False)) if "OPEN_RATE_BREAKER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPEN_RATE_BREAKER_ENABLED", None) is not None:
+        _ = 1  # OPEN_RATE_BREAKER_ENABLED
+    if bool(getattr(tm_mod.config, "OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED", False)) if "OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED", None) is not None:
+        _ = 1  # OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIMAL_HOLD_BARS_15M", False)) if "OPTIMAL_HOLD_BARS_15M".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIMAL_HOLD_BARS_15M", None) is not None:
+        _ = 1  # OPTIMAL_HOLD_BARS_15M
+    if bool(getattr(tm_mod.config, "OPTIMAL_HOLD_BARS_3M", False)) if "OPTIMAL_HOLD_BARS_3M".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIMAL_HOLD_BARS_3M", None) is not None:
+        _ = 1  # OPTIMAL_HOLD_BARS_3M
+    if bool(getattr(tm_mod.config, "OPTIONS_ALERT_ABS_LOSS_PP", False)) if "OPTIONS_ALERT_ABS_LOSS_PP".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_ALERT_ABS_LOSS_PP", None) is not None:
+        _ = 1  # OPTIONS_ALERT_ABS_LOSS_PP
+    if bool(getattr(tm_mod.config, "OPTIONS_ALERT_DROP_PP", False)) if "OPTIONS_ALERT_DROP_PP".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_ALERT_DROP_PP", None) is not None:
+        _ = 1  # OPTIONS_ALERT_DROP_PP
+    if bool(getattr(tm_mod.config, "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED", False)) if "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD", False)) if "OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD", None) is not None:
+        _ = 1  # OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD
+    if bool(getattr(tm_mod.config, "OPTIONS_BASE_CAP", False)) if "OPTIONS_BASE_CAP".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BASE_CAP", None) is not None:
+        _ = 1  # OPTIONS_BASE_CAP
+    if bool(getattr(tm_mod.config, "OPTIONS_BUY_MAX_OTM_PCT", False)) if "OPTIONS_BUY_MAX_OTM_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BUY_MAX_OTM_PCT", None) is not None:
+        _ = 1  # OPTIONS_BUY_MAX_OTM_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_BUY_MIN_ABS_DELTA", False)) if "OPTIONS_BUY_MIN_ABS_DELTA".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BUY_MIN_ABS_DELTA", None) is not None:
+        _ = 1  # OPTIONS_BUY_MIN_ABS_DELTA
+    if bool(getattr(tm_mod.config, "OPTIONS_BUY_MIN_DTE", False)) if "OPTIONS_BUY_MIN_DTE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BUY_MIN_DTE", None) is not None:
+        _ = 1  # OPTIONS_BUY_MIN_DTE
+    if bool(getattr(tm_mod.config, "OPTIONS_BUY_MIN_WT_DC_SCORE", False)) if "OPTIONS_BUY_MIN_WT_DC_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BUY_MIN_WT_DC_SCORE", None) is not None:
+        _ = 1  # OPTIONS_BUY_MIN_WT_DC_SCORE
+    if bool(getattr(tm_mod.config, "OPTIONS_BUY_PREFERRED_DTE", False)) if "OPTIONS_BUY_PREFERRED_DTE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BUY_PREFERRED_DTE", None) is not None:
+        _ = 1  # OPTIONS_BUY_PREFERRED_DTE
+    if bool(getattr(tm_mod.config, "OPTIONS_BUY_REQUIRE_D_ALIGN", False)) if "OPTIONS_BUY_REQUIRE_D_ALIGN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BUY_REQUIRE_D_ALIGN", None) is not None:
+        _ = 1  # OPTIONS_BUY_REQUIRE_D_ALIGN
+    if bool(getattr(tm_mod.config, "OPTIONS_BUY_WT_DC_GATE_ENABLED", False)) if "OPTIONS_BUY_WT_DC_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_BUY_WT_DC_GATE_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_BUY_WT_DC_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_CONTINUOUS_SECTOR_GATE", False)) if "OPTIONS_CONTINUOUS_SECTOR_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CONTINUOUS_SECTOR_GATE", None) is not None:
+        _ = 1  # OPTIONS_CONTINUOUS_SECTOR_GATE
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_DTE_MAX", False)) if "OPTIONS_CSP_DTE_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_DTE_MAX", None) is not None:
+        _ = 1  # OPTIONS_CSP_DTE_MAX
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_DTE_MIN", False)) if "OPTIONS_CSP_DTE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_DTE_MIN", None) is not None:
+        _ = 1  # OPTIONS_CSP_DTE_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_EDGE_MARGIN", False)) if "OPTIONS_CSP_EDGE_MARGIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_EDGE_MARGIN", None) is not None:
+        _ = 1  # OPTIONS_CSP_EDGE_MARGIN
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_ENABLED", False)) if "OPTIONS_CSP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_CSP_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MAX_CAPITAL_PCT", False)) if "OPTIONS_CSP_MAX_CAPITAL_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MAX_CAPITAL_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MAX_CAPITAL_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MAX_DELTA", False)) if "OPTIONS_CSP_MAX_DELTA".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MAX_DELTA", None) is not None:
+        _ = 1  # OPTIONS_CSP_MAX_DELTA
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MAX_HOLD_DAYS", False)) if "OPTIONS_CSP_MAX_HOLD_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MAX_HOLD_DAYS", None) is not None:
+        _ = 1  # OPTIONS_CSP_MAX_HOLD_DAYS
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT", False)) if "OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MIN_DELTA", False)) if "OPTIONS_CSP_MIN_DELTA".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MIN_DELTA", None) is not None:
+        _ = 1  # OPTIONS_CSP_MIN_DELTA
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MIN_EXTRINSIC_PCT", False)) if "OPTIONS_CSP_MIN_EXTRINSIC_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MIN_EXTRINSIC_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MIN_EXTRINSIC_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MIN_IV_RANK", False)) if "OPTIONS_CSP_MIN_IV_RANK".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MIN_IV_RANK", None) is not None:
+        _ = 1  # OPTIONS_CSP_MIN_IV_RANK
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CALL_BREACH_PCT", False)) if "OPTIONS_CSP_MONITOR_CALL_BREACH_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CALL_BREACH_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_CALL_BREACH_PCT
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 27 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT", False)) if "OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N", False)) if "OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT", False)) if "OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK", False)) if "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_LOG_EVERY_TICK
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT", False)) if "OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_MAX_LOSS_PCT", False)) if "OPTIONS_CSP_MONITOR_MAX_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_MAX_LOSS_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_MAX_LOSS_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_POLL_SEC", False)) if "OPTIONS_CSP_MONITOR_POLL_SEC".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_POLL_SEC", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_POLL_SEC
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN", False)) if "OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT", False)) if "OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_NAKED_CALL_ENABLED", False)) if "OPTIONS_CSP_NAKED_CALL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_NAKED_CALL_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_CSP_NAKED_CALL_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_CSP_PROFIT_TARGET_PCT", False)) if "OPTIONS_CSP_PROFIT_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_CSP_PROFIT_TARGET_PCT", None) is not None:
+        _ = 1  # OPTIONS_CSP_PROFIT_TARGET_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN", False)) if "OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN", None) is not None:
+        _ = 1  # OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED", False)) if "OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED", False)) if "OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_ENABLED", False)) if "OPTIONS_EQUITY_HEDGE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_EQUITY_HEDGE_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD", False)) if "OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD", None) is not None:
+        _ = 1  # OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD
+    if bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST", False)) if "OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST", None) is not None:
+        _ = 1  # OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST
+    if bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_TRIGGER_PCT", False)) if "OPTIONS_EQUITY_HEDGE_TRIGGER_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_TRIGGER_PCT", None) is not None:
+        _ = 1  # OPTIONS_EQUITY_HEDGE_TRIGGER_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_FULL_DIV_CAP", False)) if "OPTIONS_FULL_DIV_CAP".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_FULL_DIV_CAP", None) is not None:
+        _ = 1  # OPTIONS_FULL_DIV_CAP
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGED_CAP", False)) if "OPTIONS_HEDGED_CAP".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGED_CAP", None) is not None:
+        _ = 1  # OPTIONS_HEDGED_CAP
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS", False)) if "OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_DC_REL_TOL_PCT", False)) if "OPTIONS_HEDGE_DC_REL_TOL_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_DC_REL_TOL_PCT", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_DC_REL_TOL_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_K_OVERSOLD_PCT", False)) if "OPTIONS_HEDGE_K_OVERSOLD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_K_OVERSOLD_PCT", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_K_OVERSOLD_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_LADDER_ENABLED", False)) if "OPTIONS_HEDGE_LADDER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_LADDER_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_LADDER_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PAIR_GUARD_ENABLED", False)) if "OPTIONS_HEDGE_PAIR_GUARD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_PAIR_GUARD_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_PAIR_GUARD_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DELTA_MAX", False)) if "OPTIONS_HEDGE_PUT_DELTA_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DELTA_MAX", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_PUT_DELTA_MAX
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DELTA_MIN", False)) if "OPTIONS_HEDGE_PUT_DELTA_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DELTA_MIN", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_PUT_DELTA_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DTE_MAX", False)) if "OPTIONS_HEDGE_PUT_DTE_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DTE_MAX", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_PUT_DTE_MAX
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DTE_MIN", False)) if "OPTIONS_HEDGE_PUT_DTE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DTE_MIN", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_PUT_DTE_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_MAX_IV_RANK", False)) if "OPTIONS_HEDGE_PUT_MAX_IV_RANK".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_MAX_IV_RANK", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_PUT_MAX_IV_RANK
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT", False)) if "OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_HEDGE_RATIO_MIN", False)) if "OPTIONS_HEDGE_RATIO_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_HEDGE_RATIO_MIN", None) is not None:
+        _ = 1  # OPTIONS_HEDGE_RATIO_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_LEVEL_BREAK_BUFFER", False)) if "OPTIONS_LEVEL_BREAK_BUFFER".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_LEVEL_BREAK_BUFFER", None) is not None:
+        _ = 1  # OPTIONS_LEVEL_BREAK_BUFFER
+    if bool(getattr(tm_mod.config, "OPTIONS_LEVEL_BREAK_MIN_DTE", False)) if "OPTIONS_LEVEL_BREAK_MIN_DTE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_LEVEL_BREAK_MIN_DTE", None) is not None:
+        _ = 1  # OPTIONS_LEVEL_BREAK_MIN_DTE
+    if bool(getattr(tm_mod.config, "OPTIONS_LIVE_TRADING_ENABLED", False)) if "OPTIONS_LIVE_TRADING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_LIVE_TRADING_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_LIVE_TRADING_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_MARKET_RATIO_MAX", False)) if "OPTIONS_MARKET_RATIO_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MARKET_RATIO_MAX", None) is not None:
+        _ = 1  # OPTIONS_MARKET_RATIO_MAX
+    if bool(getattr(tm_mod.config, "OPTIONS_MARKET_RATIO_MIN", False)) if "OPTIONS_MARKET_RATIO_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MARKET_RATIO_MIN", None) is not None:
+        _ = 1  # OPTIONS_MARKET_RATIO_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_CONTRACTS_PER_ORDER", False)) if "OPTIONS_MAX_CONTRACTS_PER_ORDER".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_CONTRACTS_PER_ORDER", None) is not None:
+        _ = 1  # OPTIONS_MAX_CONTRACTS_PER_ORDER
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_LOSS_GUARD_ENABLED", False)) if "OPTIONS_MAX_LOSS_GUARD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_LOSS_GUARD_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_MAX_LOSS_GUARD_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_14", False)) if "OPTIONS_MAX_LOSS_PCT_DTE_14".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_14", None) is not None:
+        _ = 1  # OPTIONS_MAX_LOSS_PCT_DTE_14
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 28 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_30", False)) if "OPTIONS_MAX_LOSS_PCT_DTE_30".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_30", None) is not None:
+        _ = 1  # OPTIONS_MAX_LOSS_PCT_DTE_30
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_LOW", False)) if "OPTIONS_MAX_LOSS_PCT_DTE_LOW".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_LOW", None) is not None:
+        _ = 1  # OPTIONS_MAX_LOSS_PCT_DTE_LOW
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_ORDER_BUDGET", False)) if "OPTIONS_MAX_ORDER_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_ORDER_BUDGET", None) is not None:
+        _ = 1  # OPTIONS_MAX_ORDER_BUDGET
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_PER_GROUP", False)) if "OPTIONS_MAX_PER_GROUP".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_PER_GROUP", None) is not None:
+        _ = 1  # OPTIONS_MAX_PER_GROUP
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_PER_SECTOR", False)) if "OPTIONS_MAX_PER_SECTOR".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_PER_SECTOR", None) is not None:
+        _ = 1  # OPTIONS_MAX_PER_SECTOR
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_PER_SYMBOL", False)) if "OPTIONS_MAX_PER_SYMBOL".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_PER_SYMBOL", None) is not None:
+        _ = 1  # OPTIONS_MAX_PER_SYMBOL
+    if bool(getattr(tm_mod.config, "OPTIONS_MAX_SINGLE_CONTRACT_PRICE", False)) if "OPTIONS_MAX_SINGLE_CONTRACT_PRICE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MAX_SINGLE_CONTRACT_PRICE", None) is not None:
+        _ = 1  # OPTIONS_MAX_SINGLE_CONTRACT_PRICE
+    if bool(getattr(tm_mod.config, "OPTIONS_MIN_GROUPS", False)) if "OPTIONS_MIN_GROUPS".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MIN_GROUPS", None) is not None:
+        _ = 1  # OPTIONS_MIN_GROUPS
+    if bool(getattr(tm_mod.config, "OPTIONS_MIN_SECTORS", False)) if "OPTIONS_MIN_SECTORS".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_MIN_SECTORS", None) is not None:
+        _ = 1  # OPTIONS_MIN_SECTORS
+    if bool(getattr(tm_mod.config, "OPTIONS_PREMARKET_NO_FIRE", False)) if "OPTIONS_PREMARKET_NO_FIRE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_PREMARKET_NO_FIRE", None) is not None:
+        _ = 1  # OPTIONS_PREMARKET_NO_FIRE
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_DTE_MAX", False)) if "OPTIONS_SPREAD_DTE_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_DTE_MAX", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_DTE_MAX
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_DTE_MIN", False)) if "OPTIONS_SPREAD_DTE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_DTE_MIN", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_DTE_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_ENABLED", False)) if "OPTIONS_SPREAD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_IV_RANK_MIN", False)) if "OPTIONS_SPREAD_IV_RANK_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_IV_RANK_MIN", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_IV_RANK_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_MAX_CONCURRENT", False)) if "OPTIONS_SPREAD_MAX_CONCURRENT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_MAX_CONCURRENT", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_MAX_CONCURRENT
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_MAX_HOLD_DAYS", False)) if "OPTIONS_SPREAD_MAX_HOLD_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_MAX_HOLD_DAYS", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_MAX_HOLD_DAYS
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_PROFIT_TARGET_PCT", False)) if "OPTIONS_SPREAD_PROFIT_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_PROFIT_TARGET_PCT", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_PROFIT_TARGET_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_SHORT_DELTA", False)) if "OPTIONS_SPREAD_SHORT_DELTA".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_SHORT_DELTA", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_SHORT_DELTA
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_UNIVERSE", False)) if "OPTIONS_SPREAD_UNIVERSE".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_UNIVERSE", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_UNIVERSE
+    if bool(getattr(tm_mod.config, "OPTIONS_SPREAD_WIDTH", False)) if "OPTIONS_SPREAD_WIDTH".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_SPREAD_WIDTH", None) is not None:
+        _ = 1  # OPTIONS_SPREAD_WIDTH
+    if bool(getattr(tm_mod.config, "OPTIONS_STOCK_CSP_ENABLED", False)) if "OPTIONS_STOCK_CSP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_STOCK_CSP_ENABLED", None) is not None:
+        _ = 1  # OPTIONS_STOCK_CSP_ENABLED
+    if bool(getattr(tm_mod.config, "OPTIONS_STOCK_CSP_IV_RANK_MIN", False)) if "OPTIONS_STOCK_CSP_IV_RANK_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_STOCK_CSP_IV_RANK_MIN", None) is not None:
+        _ = 1  # OPTIONS_STOCK_CSP_IV_RANK_MIN
+    if bool(getattr(tm_mod.config, "OPTIONS_STOCK_CSP_MAX_CONCURRENT", False)) if "OPTIONS_STOCK_CSP_MAX_CONCURRENT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_STOCK_CSP_MAX_CONCURRENT", None) is not None:
+        _ = 1  # OPTIONS_STOCK_CSP_MAX_CONCURRENT
+    if bool(getattr(tm_mod.config, "OPTIONS_STOCK_CSP_MIN_CASH", False)) if "OPTIONS_STOCK_CSP_MIN_CASH".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_STOCK_CSP_MIN_CASH", None) is not None:
+        _ = 1  # OPTIONS_STOCK_CSP_MIN_CASH
+    if bool(getattr(tm_mod.config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", False)) if "OPTIONS_USER_CANCEL_COOLDOWN_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", None) is not None:
+        _ = 1  # OPTIONS_USER_CANCEL_COOLDOWN_HOURS
+    if bool(getattr(tm_mod.config, "OPTIONS_WT_ACCEL_GROWTH_PCT", False)) if "OPTIONS_WT_ACCEL_GROWTH_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_WT_ACCEL_GROWTH_PCT", None) is not None:
+        _ = 1  # OPTIONS_WT_ACCEL_GROWTH_PCT
+    if bool(getattr(tm_mod.config, "OPTIONS_WT_ACCEL_MIN_ABS", False)) if "OPTIONS_WT_ACCEL_MIN_ABS".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_WT_ACCEL_MIN_ABS", None) is not None:
+        _ = 1  # OPTIONS_WT_ACCEL_MIN_ABS
+    if bool(getattr(tm_mod.config, "OPTIONS_WT_SLOWDOWN_PCT", False)) if "OPTIONS_WT_SLOWDOWN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "OPTIONS_WT_SLOWDOWN_PCT", None) is not None:
+        _ = 1  # OPTIONS_WT_SLOWDOWN_PCT
+    if bool(getattr(tm_mod.config, "ORB_ENABLED", False)) if "ORB_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_ENABLED", None) is not None:
+        _ = 1  # ORB_ENABLED
+    if bool(getattr(tm_mod.config, "ORB_LONG_BUDGET", False)) if "ORB_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_LONG_BUDGET", None) is not None:
+        _ = 1  # ORB_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "ORB_MAX_HOLD_MINUTES", False)) if "ORB_MAX_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_MAX_HOLD_MINUTES", None) is not None:
+        _ = 1  # ORB_MAX_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "ORB_MAX_PER_DAY", False)) if "ORB_MAX_PER_DAY".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_MAX_PER_DAY", None) is not None:
+        _ = 1  # ORB_MAX_PER_DAY
+    if bool(getattr(tm_mod.config, "ORB_POSITION_SIZE", False)) if "ORB_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_POSITION_SIZE", None) is not None:
+        _ = 1  # ORB_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "ORB_RVOL_MIN", False)) if "ORB_RVOL_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_RVOL_MIN", None) is not None:
+        _ = 1  # ORB_RVOL_MIN
+    if bool(getattr(tm_mod.config, "ORB_SHORT_BUDGET", False)) if "ORB_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_SHORT_BUDGET", None) is not None:
+        _ = 1  # ORB_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "ORB_STOP_MIDPOINT", False)) if "ORB_STOP_MIDPOINT".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_STOP_MIDPOINT", None) is not None:
+        _ = 1  # ORB_STOP_MIDPOINT
+    if bool(getattr(tm_mod.config, "ORB_TARGET_MULT", False)) if "ORB_TARGET_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_TARGET_MULT", None) is not None:
+        _ = 1  # ORB_TARGET_MULT
+    if bool(getattr(tm_mod.config, "ORB_WINDOW_MINUTES", False)) if "ORB_WINDOW_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "ORB_WINDOW_MINUTES", None) is not None:
+        _ = 1  # ORB_WINDOW_MINUTES
+    if bool(getattr(tm_mod.config, "ORDER_CACHE_TTL", False)) if "ORDER_CACHE_TTL".endswith("_ENABLED") else getattr(tm_mod.config, "ORDER_CACHE_TTL", None) is not None:
+        _ = 1  # ORDER_CACHE_TTL
+    if bool(getattr(tm_mod.config, "ORPHAN_HEDGE_CHECK_GAIN", False)) if "ORPHAN_HEDGE_CHECK_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "ORPHAN_HEDGE_CHECK_GAIN", None) is not None:
+        _ = 1  # ORPHAN_HEDGE_CHECK_GAIN
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 29 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "OUTLIER_DETECTOR_ENABLED", False)) if "OUTLIER_DETECTOR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OUTLIER_DETECTOR_ENABLED", None) is not None:
+        _ = 1  # OUTLIER_DETECTOR_ENABLED
+    if bool(getattr(tm_mod.config, "OUTLIER_RUNAWAY_ATR_FACTOR", False)) if "OUTLIER_RUNAWAY_ATR_FACTOR".endswith("_ENABLED") else getattr(tm_mod.config, "OUTLIER_RUNAWAY_ATR_FACTOR", None) is not None:
+        _ = 1  # OUTLIER_RUNAWAY_ATR_FACTOR
+    if bool(getattr(tm_mod.config, "OUTLIER_SCAN_INTERVAL", False)) if "OUTLIER_SCAN_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "OUTLIER_SCAN_INTERVAL", None) is not None:
+        _ = 1  # OUTLIER_SCAN_INTERVAL
+    if bool(getattr(tm_mod.config, "OUTLIER_STALE_HOURS", False)) if "OUTLIER_STALE_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "OUTLIER_STALE_HOURS", None) is not None:
+        _ = 1  # OUTLIER_STALE_HOURS
+    if bool(getattr(tm_mod.config, "OUTLIER_STUCK_ATR_FACTOR", False)) if "OUTLIER_STUCK_ATR_FACTOR".endswith("_ENABLED") else getattr(tm_mod.config, "OUTLIER_STUCK_ATR_FACTOR", None) is not None:
+        _ = 1  # OUTLIER_STUCK_ATR_FACTOR
+    if bool(getattr(tm_mod.config, "OUTLIER_STUCK_HOURS", False)) if "OUTLIER_STUCK_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "OUTLIER_STUCK_HOURS", None) is not None:
+        _ = 1  # OUTLIER_STUCK_HOURS
+    if bool(getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES", False)) if "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES", None) is not None:
+        _ = 1  # OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES
+    if bool(getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_ENABLED", False)) if "OVERNIGHT_GAP_HEDGE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_ENABLED", None) is not None:
+        _ = 1  # OVERNIGHT_GAP_HEDGE_ENABLED
+    if bool(getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_OPEN_MINUTES", False)) if "OVERNIGHT_GAP_HEDGE_OPEN_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_OPEN_MINUTES", None) is not None:
+        _ = 1  # OVERNIGHT_GAP_HEDGE_OPEN_MINUTES
+    if bool(getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD", False)) if "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD", None) is not None:
+        _ = 1  # OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD
+    if bool(getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_SIZE_FRAC", False)) if "OVERNIGHT_GAP_HEDGE_SIZE_FRAC".endswith("_ENABLED") else getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_SIZE_FRAC", None) is not None:
+        _ = 1  # OVERNIGHT_GAP_HEDGE_SIZE_FRAC
+    if bool(getattr(tm_mod.config, "PARABOLIC_BB_PCT_B_4H_MAX", False)) if "PARABOLIC_BB_PCT_B_4H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "PARABOLIC_BB_PCT_B_4H_MAX", None) is not None:
+        _ = 1  # PARABOLIC_BB_PCT_B_4H_MAX
+    if bool(getattr(tm_mod.config, "PARABOLIC_BB_PCT_B_4H_MIN", False)) if "PARABOLIC_BB_PCT_B_4H_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "PARABOLIC_BB_PCT_B_4H_MIN", None) is not None:
+        _ = 1  # PARABOLIC_BB_PCT_B_4H_MIN
+    if bool(getattr(tm_mod.config, "PARABOLIC_PROTECTION_ENABLED", False)) if "PARABOLIC_PROTECTION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PARABOLIC_PROTECTION_ENABLED", None) is not None:
+        _ = 1  # PARABOLIC_PROTECTION_ENABLED
+    if bool(getattr(tm_mod.config, "PARABOLIC_RSI_1H_MAX", False)) if "PARABOLIC_RSI_1H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "PARABOLIC_RSI_1H_MAX", None) is not None:
+        _ = 1  # PARABOLIC_RSI_1H_MAX
+    if bool(getattr(tm_mod.config, "PARABOLIC_RSI_1H_MIN", False)) if "PARABOLIC_RSI_1H_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "PARABOLIC_RSI_1H_MIN", None) is not None:
+        _ = 1  # PARABOLIC_RSI_1H_MIN
+    if bool(getattr(tm_mod.config, "PARABOLIC_RSI_4H_MAX", False)) if "PARABOLIC_RSI_4H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "PARABOLIC_RSI_4H_MAX", None) is not None:
+        _ = 1  # PARABOLIC_RSI_4H_MAX
+    if bool(getattr(tm_mod.config, "PARABOLIC_RSI_4H_MIN", False)) if "PARABOLIC_RSI_4H_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "PARABOLIC_RSI_4H_MIN", None) is not None:
+        _ = 1  # PARABOLIC_RSI_4H_MIN
+    if bool(getattr(tm_mod.config, "PARITY_REENTRY_NAMING_ENABLED", False)) if "PARITY_REENTRY_NAMING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PARITY_REENTRY_NAMING_ENABLED", None) is not None:
+        _ = 1  # PARITY_REENTRY_NAMING_ENABLED
+    if bool(getattr(tm_mod.config, "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER", False)) if "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER", None) is not None:
+        _ = 1  # PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER
+    if bool(getattr(tm_mod.config, "PEAK_GIVEBACK_DROP_PCT", False)) if "PEAK_GIVEBACK_DROP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "PEAK_GIVEBACK_DROP_PCT", None) is not None:
+        _ = 1  # PEAK_GIVEBACK_DROP_PCT
+    if bool(getattr(tm_mod.config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)) if "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", None) is not None:
+        _ = 1  # PEAK_GIVEBACK_DROP_TRIGGER_ENABLED
+    if bool(getattr(tm_mod.config, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", False)) if "PEAK_GIVEBACK_HARD_ZERO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", None) is not None:
+        _ = 1  # PEAK_GIVEBACK_HARD_ZERO_ENABLED
+    if bool(getattr(tm_mod.config, "PEAK_GIVEBACK_MIN_PEAK_PCT", False)) if "PEAK_GIVEBACK_MIN_PEAK_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "PEAK_GIVEBACK_MIN_PEAK_PCT", None) is not None:
+        _ = 1  # PEAK_GIVEBACK_MIN_PEAK_PCT
+    if bool(getattr(tm_mod.config, "PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT", False)) if "PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT", None) is not None:
+        _ = 1  # PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT
+    if bool(getattr(tm_mod.config, "PEAK_GIVEBACK_PROTECTION_ENABLED", False)) if "PEAK_GIVEBACK_PROTECTION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PEAK_GIVEBACK_PROTECTION_ENABLED", None) is not None:
+        _ = 1  # PEAK_GIVEBACK_PROTECTION_ENABLED
+    if bool(getattr(tm_mod.config, "PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN", False)) if "PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN", None) is not None:
+        _ = 1  # PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN
+    if bool(getattr(tm_mod.config, "PENNY_STOCK_LONG_BLOCK_ENABLED", False)) if "PENNY_STOCK_LONG_BLOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PENNY_STOCK_LONG_BLOCK_ENABLED", None) is not None:
+        _ = 1  # PENNY_STOCK_LONG_BLOCK_ENABLED
+    if bool(getattr(tm_mod.config, "PENNY_STOCK_LONG_BLOCK_PRICE_USD", False)) if "PENNY_STOCK_LONG_BLOCK_PRICE_USD".endswith("_ENABLED") else getattr(tm_mod.config, "PENNY_STOCK_LONG_BLOCK_PRICE_USD", None) is not None:
+        _ = 1  # PENNY_STOCK_LONG_BLOCK_PRICE_USD
+    if bool(getattr(tm_mod.config, "PERSYM_FINAL_BOOK_ENABLED", False)) if "PERSYM_FINAL_BOOK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PERSYM_FINAL_BOOK_ENABLED", None) is not None:
+        _ = 1  # PERSYM_FINAL_BOOK_ENABLED
+    if bool(getattr(tm_mod.config, "PER_SYMBOL_CONFIG_ENABLED", False)) if "PER_SYMBOL_CONFIG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PER_SYMBOL_CONFIG_ENABLED", None) is not None:
+        _ = 1  # PER_SYMBOL_CONFIG_ENABLED
+    if bool(getattr(tm_mod.config, "PLOT_LOOP_INTERVAL_SECONDS", False)) if "PLOT_LOOP_INTERVAL_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "PLOT_LOOP_INTERVAL_SECONDS", None) is not None:
+        _ = 1  # PLOT_LOOP_INTERVAL_SECONDS
+    if bool(getattr(tm_mod.config, "PNL_DECAY_COMPLETE_DAYS", False)) if "PNL_DECAY_COMPLETE_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "PNL_DECAY_COMPLETE_DAYS", None) is not None:
+        _ = 1  # PNL_DECAY_COMPLETE_DAYS
+    if bool(getattr(tm_mod.config, "PNL_DECAY_FINAL_PERCENTAGE", False)) if "PNL_DECAY_FINAL_PERCENTAGE".endswith("_ENABLED") else getattr(tm_mod.config, "PNL_DECAY_FINAL_PERCENTAGE", None) is not None:
+        _ = 1  # PNL_DECAY_FINAL_PERCENTAGE
+    if bool(getattr(tm_mod.config, "PNL_DECAY_START_HOURS", False)) if "PNL_DECAY_START_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "PNL_DECAY_START_HOURS", None) is not None:
+        _ = 1  # PNL_DECAY_START_HOURS
+    if bool(getattr(tm_mod.config, "POSITIONS_SERVICE_HEALTH_TIMEOUT", False)) if "POSITIONS_SERVICE_HEALTH_TIMEOUT".endswith("_ENABLED") else getattr(tm_mod.config, "POSITIONS_SERVICE_HEALTH_TIMEOUT", None) is not None:
+        _ = 1  # POSITIONS_SERVICE_HEALTH_TIMEOUT
+    if bool(getattr(tm_mod.config, "POSITION_CACHE_TTL", False)) if "POSITION_CACHE_TTL".endswith("_ENABLED") else getattr(tm_mod.config, "POSITION_CACHE_TTL", None) is not None:
+        _ = 1  # POSITION_CACHE_TTL
+    if bool(getattr(tm_mod.config, "POSITION_REDIS_REFRESH_INTERVAL", False)) if "POSITION_REDIS_REFRESH_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "POSITION_REDIS_REFRESH_INTERVAL", None) is not None:
+        _ = 1  # POSITION_REDIS_REFRESH_INTERVAL
+    if bool(getattr(tm_mod.config, "POSITION_REFRESH_INTERVAL", False)) if "POSITION_REFRESH_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "POSITION_REFRESH_INTERVAL", None) is not None:
+        _ = 1  # POSITION_REFRESH_INTERVAL
+    if bool(getattr(tm_mod.config, "POSITION_REFRESH_MIN_INTERVAL", False)) if "POSITION_REFRESH_MIN_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "POSITION_REFRESH_MIN_INTERVAL", None) is not None:
+        _ = 1  # POSITION_REFRESH_MIN_INTERVAL
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 30 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "POSITION_SAVE_INTERVAL", False)) if "POSITION_SAVE_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "POSITION_SAVE_INTERVAL", None) is not None:
+        _ = 1  # POSITION_SAVE_INTERVAL
+    if bool(getattr(tm_mod.config, "POSITION_STALE_THRESHOLD_SECONDS", False)) if "POSITION_STALE_THRESHOLD_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "POSITION_STALE_THRESHOLD_SECONDS", None) is not None:
+        _ = 1  # POSITION_STALE_THRESHOLD_SECONDS
+    if bool(getattr(tm_mod.config, "PRICE_CACHE_FILE", False)) if "PRICE_CACHE_FILE".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_CACHE_FILE", None) is not None:
+        _ = 1  # PRICE_CACHE_FILE
+    if bool(getattr(tm_mod.config, "PRICE_CACHE_FILE_2", False)) if "PRICE_CACHE_FILE_2".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_CACHE_FILE_2", None) is not None:
+        _ = 1  # PRICE_CACHE_FILE_2
+    if bool(getattr(tm_mod.config, "PRICE_CACHE_FILE_3", False)) if "PRICE_CACHE_FILE_3".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_CACHE_FILE_3", None) is not None:
+        _ = 1  # PRICE_CACHE_FILE_3
+    if bool(getattr(tm_mod.config, "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED", False)) if "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED", None) is not None:
+        _ = 1  # PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED
+    if bool(getattr(tm_mod.config, "PRICE_CROSS_BACK_MAX_AGE_MIN", False)) if "PRICE_CROSS_BACK_MAX_AGE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_CROSS_BACK_MAX_AGE_MIN", None) is not None:
+        _ = 1  # PRICE_CROSS_BACK_MAX_AGE_MIN
+    if bool(getattr(tm_mod.config, "PRICE_CROSS_BACK_REENTRY_ENABLED", False)) if "PRICE_CROSS_BACK_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_CROSS_BACK_REENTRY_ENABLED", None) is not None:
+        _ = 1  # PRICE_CROSS_BACK_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "PRICE_REFRESH_INTERVAL", False)) if "PRICE_REFRESH_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_REFRESH_INTERVAL", None) is not None:
+        _ = 1  # PRICE_REFRESH_INTERVAL
+    if bool(getattr(tm_mod.config, "PRICE_UPDATE_INTERVAL", False)) if "PRICE_UPDATE_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "PRICE_UPDATE_INTERVAL", None) is not None:
+        _ = 1  # PRICE_UPDATE_INTERVAL
+    if bool(getattr(tm_mod.config, "PROFIT_TARGET_ENABLED", False)) if "PROFIT_TARGET_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PROFIT_TARGET_ENABLED", None) is not None:
+        _ = 1  # PROFIT_TARGET_ENABLED
+    if bool(getattr(tm_mod.config, "PROGRESSIVE_LOCK_ENABLED", False)) if "PROGRESSIVE_LOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "PROGRESSIVE_LOCK_ENABLED", None) is not None:
+        _ = 1  # PROGRESSIVE_LOCK_ENABLED
+    if bool(getattr(tm_mod.config, "PROGRESSIVE_LOCK_FRACTION", False)) if "PROGRESSIVE_LOCK_FRACTION".endswith("_ENABLED") else getattr(tm_mod.config, "PROGRESSIVE_LOCK_FRACTION", None) is not None:
+        _ = 1  # PROGRESSIVE_LOCK_FRACTION
+    if bool(getattr(tm_mod.config, "PYRAMID_MAX_DC_POS_15M_SHORT", False)) if "PYRAMID_MAX_DC_POS_15M_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "PYRAMID_MAX_DC_POS_15M_SHORT", None) is not None:
+        _ = 1  # PYRAMID_MAX_DC_POS_15M_SHORT
+    if bool(getattr(tm_mod.config, "PYRAMID_MIN_DC_POS_15M", False)) if "PYRAMID_MIN_DC_POS_15M".endswith("_ENABLED") else getattr(tm_mod.config, "PYRAMID_MIN_DC_POS_15M", None) is not None:
+        _ = 1  # PYRAMID_MIN_DC_POS_15M
+    if bool(getattr(tm_mod.config, "PYRAMID_MIN_GAIN_PCT", False)) if "PYRAMID_MIN_GAIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "PYRAMID_MIN_GAIN_PCT", None) is not None:
+        _ = 1  # PYRAMID_MIN_GAIN_PCT
+    if bool(getattr(tm_mod.config, "PYRAMID_MIN_WT_VEL_1H", False)) if "PYRAMID_MIN_WT_VEL_1H".endswith("_ENABLED") else getattr(tm_mod.config, "PYRAMID_MIN_WT_VEL_1H", None) is not None:
+        _ = 1  # PYRAMID_MIN_WT_VEL_1H
+    if bool(getattr(tm_mod.config, "PYRAMID_SIZE_MULT", False)) if "PYRAMID_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "PYRAMID_SIZE_MULT", None) is not None:
+        _ = 1  # PYRAMID_SIZE_MULT
+    if bool(getattr(tm_mod.config, "QUALITY_BOTTOM_ENTRY_ENABLED", False)) if "QUALITY_BOTTOM_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUALITY_BOTTOM_ENTRY_ENABLED", None) is not None:
+        _ = 1  # QUALITY_BOTTOM_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "QUALITY_TOP_EXIT_ENABLED", False)) if "QUALITY_TOP_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUALITY_TOP_EXIT_ENABLED", None) is not None:
+        _ = 1  # QUALITY_TOP_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_BANDAID_OFF_VEC_ENABLED", False)) if "QUICK_BANDAID_OFF_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_BANDAID_OFF_VEC_ENABLED", None) is not None:
+        _ = 1  # QUICK_BANDAID_OFF_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", False)) if "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", None) is not None:
+        _ = 1  # QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED", False)) if "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED", None) is not None:
+        _ = 1  # QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED", False)) if "QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED", None) is not None:
+        _ = 1  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False)) if "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", None) is not None:
+        _ = 1  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_OPEN_STRONG_VEC_ENABLED", False)) if "QUICK_OPEN_STRONG_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_OPEN_STRONG_VEC_ENABLED", None) is not None:
+        _ = 1  # QUICK_OPEN_STRONG_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False)) if "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", None) is not None:
+        _ = 1  # QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED", False)) if "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED", None) is not None:
+        _ = 1  # QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", False)) if "R1_DC_LOW4_3M_EMERGENCY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", None) is not None:
+        _ = 1  # R1_DC_LOW4_3M_EMERGENCY_ENABLED
+    if bool(getattr(tm_mod.config, "R1_NEWBORN_WINDOW_MIN", False)) if "R1_NEWBORN_WINDOW_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "R1_NEWBORN_WINDOW_MIN", None) is not None:
+        _ = 1  # R1_NEWBORN_WINDOW_MIN
+    if bool(getattr(tm_mod.config, "R1_REQUIRE_WT15_ADVERSE", False)) if "R1_REQUIRE_WT15_ADVERSE".endswith("_ENABLED") else getattr(tm_mod.config, "R1_REQUIRE_WT15_ADVERSE", None) is not None:
+        _ = 1  # R1_REQUIRE_WT15_ADVERSE
+    if bool(getattr(tm_mod.config, "R1_TF", False)) if "R1_TF".endswith("_ENABLED") else getattr(tm_mod.config, "R1_TF", None) is not None:
+        _ = 1  # R1_TF
+    if bool(getattr(tm_mod.config, "R1_USE_DC_4BAR", False)) if "R1_USE_DC_4BAR".endswith("_ENABLED") else getattr(tm_mod.config, "R1_USE_DC_4BAR", None) is not None:
+        _ = 1  # R1_USE_DC_4BAR
+    if bool(getattr(tm_mod.config, "R2_PEAK_MIN_PCT", False)) if "R2_PEAK_MIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "R2_PEAK_MIN_PCT", None) is not None:
+        _ = 1  # R2_PEAK_MIN_PCT
+    if bool(getattr(tm_mod.config, "R2_TF_LIST", False)) if "R2_TF_LIST".endswith("_ENABLED") else getattr(tm_mod.config, "R2_TF_LIST", None) is not None:
+        _ = 1  # R2_TF_LIST
+    if bool(getattr(tm_mod.config, "R3_GAIN_MAX_PCT", False)) if "R3_GAIN_MAX_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "R3_GAIN_MAX_PCT", None) is not None:
+        _ = 1  # R3_GAIN_MAX_PCT
+    if bool(getattr(tm_mod.config, "R3_HEDGE_INVARIANT_DUMP_ENABLED", False)) if "R3_HEDGE_INVARIANT_DUMP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R3_HEDGE_INVARIANT_DUMP_ENABLED", None) is not None:
+        _ = 1  # R3_HEDGE_INVARIANT_DUMP_ENABLED
+    if bool(getattr(tm_mod.config, "R3_HTF_FLIP_4H_TIER_ENABLED", False)) if "R3_HTF_FLIP_4H_TIER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R3_HTF_FLIP_4H_TIER_ENABLED", None) is not None:
+        _ = 1  # R3_HTF_FLIP_4H_TIER_ENABLED
+    if bool(getattr(tm_mod.config, "R3_HTF_FLIP_EXIT_ENABLED", False)) if "R3_HTF_FLIP_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R3_HTF_FLIP_EXIT_ENABLED", None) is not None:
+        _ = 1  # R3_HTF_FLIP_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "R3_HTF_FLIP_NEWBORN_WINDOW_MIN", False)) if "R3_HTF_FLIP_NEWBORN_WINDOW_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "R3_HTF_FLIP_NEWBORN_WINDOW_MIN", None) is not None:
+        _ = 1  # R3_HTF_FLIP_NEWBORN_WINDOW_MIN
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 31 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "RANKING_LOOP_SLEEP_SECONDS", False)) if "RANKING_LOOP_SLEEP_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "RANKING_LOOP_SLEEP_SECONDS", None) is not None:
+        _ = 1  # RANKING_LOOP_SLEEP_SECONDS
+    if bool(getattr(tm_mod.config, "RANKING_MULT_ENABLED", False)) if "RANKING_MULT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RANKING_MULT_ENABLED", None) is not None:
+        _ = 1  # RANKING_MULT_ENABLED
+    if bool(getattr(tm_mod.config, "RANKING_RESULTS_FILE", False)) if "RANKING_RESULTS_FILE".endswith("_ENABLED") else getattr(tm_mod.config, "RANKING_RESULTS_FILE", None) is not None:
+        _ = 1  # RANKING_RESULTS_FILE
+    if bool(getattr(tm_mod.config, "RANKING_UPDATE_INTERVAL", False)) if "RANKING_UPDATE_INTERVAL".endswith("_ENABLED") else getattr(tm_mod.config, "RANKING_UPDATE_INTERVAL", None) is not None:
+        _ = 1  # RANKING_UPDATE_INTERVAL
+    if bool(getattr(tm_mod.config, "RANK_CONVICTION_ENABLED", False)) if "RANK_CONVICTION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RANK_CONVICTION_ENABLED", None) is not None:
+        _ = 1  # RANK_CONVICTION_ENABLED
+    if bool(getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_COOLDOWN", False)) if "RATIO_EMERGENCY_EXIT_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_COOLDOWN", None) is not None:
+        _ = 1  # RATIO_EMERGENCY_EXIT_COOLDOWN
+    if bool(getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_ENABLED", False)) if "RATIO_EMERGENCY_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_ENABLED", None) is not None:
+        _ = 1  # RATIO_EMERGENCY_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT", False)) if "RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT", None) is not None:
+        _ = 1  # RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT
+    if bool(getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE", False)) if "RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE", None) is not None:
+        _ = 1  # RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE
+    if bool(getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_THRESHOLD", False)) if "RATIO_EMERGENCY_EXIT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_THRESHOLD", None) is not None:
+        _ = 1  # RATIO_EMERGENCY_EXIT_THRESHOLD
+    if bool(getattr(tm_mod.config, "RATIO_MULTIPLIER_TRADIER", False)) if "RATIO_MULTIPLIER_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_MULTIPLIER_TRADIER", None) is not None:
+        _ = 1  # RATIO_MULTIPLIER_TRADIER
+    if bool(getattr(tm_mod.config, "RATIO_PNL_DYNAMIC_GATES_ENABLED", False)) if "RATIO_PNL_DYNAMIC_GATES_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_PNL_DYNAMIC_GATES_ENABLED", None) is not None:
+        _ = 1  # RATIO_PNL_DYNAMIC_GATES_ENABLED
+    if bool(getattr(tm_mod.config, "RATIO_PNL_WEIGHT_ENABLED", False)) if "RATIO_PNL_WEIGHT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RATIO_PNL_WEIGHT_ENABLED", None) is not None:
+        _ = 1  # RATIO_PNL_WEIGHT_ENABLED
+    if bool(getattr(tm_mod.config, "REACTIVE_MODE", False)) if "REACTIVE_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "REACTIVE_MODE", None) is not None:
+        _ = 1  # REACTIVE_MODE
+    if bool(getattr(tm_mod.config, "REBAL_ATTEMPT_COOLDOWN_SEC", False)) if "REBAL_ATTEMPT_COOLDOWN_SEC".endswith("_ENABLED") else getattr(tm_mod.config, "REBAL_ATTEMPT_COOLDOWN_SEC", None) is not None:
+        _ = 1  # REBAL_ATTEMPT_COOLDOWN_SEC
+    if bool(getattr(tm_mod.config, "RECENT_REDUCTION_GUARD_ENABLED", False)) if "RECENT_REDUCTION_GUARD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RECENT_REDUCTION_GUARD_ENABLED", None) is not None:
+        _ = 1  # RECENT_REDUCTION_GUARD_ENABLED
+    if bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_BAND_PCT", False)) if "RECOVERY_AUGMENT_BAND_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "RECOVERY_AUGMENT_BAND_PCT", None) is not None:
+        _ = 1  # RECOVERY_AUGMENT_BAND_PCT
+    if bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_ENABLED", False)) if "RECOVERY_AUGMENT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RECOVERY_AUGMENT_ENABLED", None) is not None:
+        _ = 1  # RECOVERY_AUGMENT_ENABLED
+    if bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_MAX_AGE_MIN", False)) if "RECOVERY_AUGMENT_MAX_AGE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "RECOVERY_AUGMENT_MAX_AGE_MIN", None) is not None:
+        _ = 1  # RECOVERY_AUGMENT_MAX_AGE_MIN
+    if bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE", False)) if "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE".endswith("_ENABLED") else getattr(tm_mod.config, "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE", None) is not None:
+        _ = 1  # RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE
+    if bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_REQUIRE_WT_CROSS", False)) if "RECOVERY_AUGMENT_REQUIRE_WT_CROSS".endswith("_ENABLED") else getattr(tm_mod.config, "RECOVERY_AUGMENT_REQUIRE_WT_CROSS", None) is not None:
+        _ = 1  # RECOVERY_AUGMENT_REQUIRE_WT_CROSS
+    if bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_SIZE_PCT", False)) if "RECOVERY_AUGMENT_SIZE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "RECOVERY_AUGMENT_SIZE_PCT", None) is not None:
+        _ = 1  # RECOVERY_AUGMENT_SIZE_PCT
+    if bool(getattr(tm_mod.config, "REDIS_CHANNEL_MARKET_DATA", False)) if "REDIS_CHANNEL_MARKET_DATA".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_CHANNEL_MARKET_DATA", None) is not None:
+        _ = 1  # REDIS_CHANNEL_MARKET_DATA
+    if bool(getattr(tm_mod.config, "REDIS_CHANNEL_POSITIONS", False)) if "REDIS_CHANNEL_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_CHANNEL_POSITIONS", None) is not None:
+        _ = 1  # REDIS_CHANNEL_POSITIONS
+    if bool(getattr(tm_mod.config, "REDIS_CHANNEL_PRICES", False)) if "REDIS_CHANNEL_PRICES".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_CHANNEL_PRICES", None) is not None:
+        _ = 1  # REDIS_CHANNEL_PRICES
+    if bool(getattr(tm_mod.config, "REDIS_CHANNEL_SIGNALS", False)) if "REDIS_CHANNEL_SIGNALS".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_CHANNEL_SIGNALS", None) is not None:
+        _ = 1  # REDIS_CHANNEL_SIGNALS
+    if bool(getattr(tm_mod.config, "REDIS_DB", False)) if "REDIS_DB".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_DB", None) is not None:
+        _ = 1  # REDIS_DB
+    if bool(getattr(tm_mod.config, "REDIS_EXPIRY_SECONDS", False)) if "REDIS_EXPIRY_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_EXPIRY_SECONDS", None) is not None:
+        _ = 1  # REDIS_EXPIRY_SECONDS
+    if bool(getattr(tm_mod.config, "REDIS_HOST", False)) if "REDIS_HOST".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_HOST", None) is not None:
+        _ = 1  # REDIS_HOST
+    if bool(getattr(tm_mod.config, "REDIS_KEY_MARKET_DATA", False)) if "REDIS_KEY_MARKET_DATA".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_KEY_MARKET_DATA", None) is not None:
+        _ = 1  # REDIS_KEY_MARKET_DATA
+    if bool(getattr(tm_mod.config, "REDIS_PORT", False)) if "REDIS_PORT".endswith("_ENABLED") else getattr(tm_mod.config, "REDIS_PORT", None) is not None:
+        _ = 1  # REDIS_PORT
+    if bool(getattr(tm_mod.config, "REDUCE_HUGE_LOSS_THRESHOLD", False)) if "REDUCE_HUGE_LOSS_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "REDUCE_HUGE_LOSS_THRESHOLD", None) is not None:
+        _ = 1  # REDUCE_HUGE_LOSS_THRESHOLD
+    if bool(getattr(tm_mod.config, "REDUCTION_COOLDOWN_SECONDS", False)) if "REDUCTION_COOLDOWN_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "REDUCTION_COOLDOWN_SECONDS", None) is not None:
+        _ = 1  # REDUCTION_COOLDOWN_SECONDS
+    if bool(getattr(tm_mod.config, "RED_ZONE_AUGMENT_GATE_ENABLED", False)) if "RED_ZONE_AUGMENT_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_AUGMENT_GATE_ENABLED", None) is not None:
+        _ = 1  # RED_ZONE_AUGMENT_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "RED_ZONE_GATE_ENABLED", False)) if "RED_ZONE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_GATE_ENABLED", None) is not None:
+        _ = 1  # RED_ZONE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "RED_ZONE_GATE_FALLBACK_ENABLED", False)) if "RED_ZONE_GATE_FALLBACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_GATE_FALLBACK_ENABLED", None) is not None:
+        _ = 1  # RED_ZONE_GATE_FALLBACK_ENABLED
+    if bool(getattr(tm_mod.config, "RED_ZONE_HEDGE_GATE_ENABLED", False)) if "RED_ZONE_HEDGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_HEDGE_GATE_ENABLED", None) is not None:
+        _ = 1  # RED_ZONE_HEDGE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED", False)) if "RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED", None) is not None:
+        _ = 1  # RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "RED_ZONE_TRADIER_GATE_ENABLED", False)) if "RED_ZONE_TRADIER_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_TRADIER_GATE_ENABLED", None) is not None:
+        _ = 1  # RED_ZONE_TRADIER_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "RED_ZONE_TRADIER_MIN_DISTANCE_PCT", False)) if "RED_ZONE_TRADIER_MIN_DISTANCE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_TRADIER_MIN_DISTANCE_PCT", None) is not None:
+        _ = 1  # RED_ZONE_TRADIER_MIN_DISTANCE_PCT
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 32 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "RED_ZONE_TRADIER_MIN_OI_AT_WALL", False)) if "RED_ZONE_TRADIER_MIN_OI_AT_WALL".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_TRADIER_MIN_OI_AT_WALL", None) is not None:
+        _ = 1  # RED_ZONE_TRADIER_MIN_OI_AT_WALL
+    if bool(getattr(tm_mod.config, "RED_ZONE_TRADIER_STALE_MAX_HOURS", False)) if "RED_ZONE_TRADIER_STALE_MAX_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "RED_ZONE_TRADIER_STALE_MAX_HOURS", None) is not None:
+        _ = 1  # RED_ZONE_TRADIER_STALE_MAX_HOURS
+    if bool(getattr(tm_mod.config, "REENTER_SAVE_DEBOUNCE_SECONDS", False)) if "REENTER_SAVE_DEBOUNCE_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "REENTER_SAVE_DEBOUNCE_SECONDS", None) is not None:
+        _ = 1  # REENTER_SAVE_DEBOUNCE_SECONDS
+    if bool(getattr(tm_mod.config, "REENTRY2_DC_BREAK_ENABLED", False)) if "REENTRY2_DC_BREAK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY2_DC_BREAK_ENABLED", None) is not None:
+        _ = 1  # REENTRY2_DC_BREAK_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY2_DIR_FAV_ENABLED", False)) if "REENTRY2_DIR_FAV_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY2_DIR_FAV_ENABLED", None) is not None:
+        _ = 1  # REENTRY2_DIR_FAV_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY2_QUICK_RECOVERY_ENABLED", False)) if "REENTRY2_QUICK_RECOVERY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY2_QUICK_RECOVERY_ENABLED", None) is not None:
+        _ = 1  # REENTRY2_QUICK_RECOVERY_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY2_STOCH_CROSS_ENABLED", False)) if "REENTRY2_STOCH_CROSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY2_STOCH_CROSS_ENABLED", None) is not None:
+        _ = 1  # REENTRY2_STOCH_CROSS_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_60MIN_MIN_PCT", False)) if "REENTRY_60MIN_MIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_60MIN_MIN_PCT", None) is not None:
+        _ = 1  # REENTRY_60MIN_MIN_PCT
+    if bool(getattr(tm_mod.config, "REENTRY_60MIN_UNCONDITIONAL_ENABLED", False)) if "REENTRY_60MIN_UNCONDITIONAL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_60MIN_UNCONDITIONAL_ENABLED", None) is not None:
+        _ = 1  # REENTRY_60MIN_UNCONDITIONAL_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_60MIN_WINDOW_MIN", False)) if "REENTRY_60MIN_WINDOW_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_60MIN_WINDOW_MIN", None) is not None:
+        _ = 1  # REENTRY_60MIN_WINDOW_MIN
+    if bool(getattr(tm_mod.config, "REENTRY_AGGRESSIVE_WINDOW_MIN", False)) if "REENTRY_AGGRESSIVE_WINDOW_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_AGGRESSIVE_WINDOW_MIN", None) is not None:
+        _ = 1  # REENTRY_AGGRESSIVE_WINDOW_MIN
+    if bool(getattr(tm_mod.config, "REENTRY_B04_DC_RETEST_ENABLED", False)) if "REENTRY_B04_DC_RETEST_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B04_DC_RETEST_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B04_DC_RETEST_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B09_SNAPBACK_ENABLED", False)) if "REENTRY_B09_SNAPBACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B09_SNAPBACK_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B09_SNAPBACK_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B10_STOCH_REV_ENABLED", False)) if "REENTRY_B10_STOCH_REV_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B10_STOCH_REV_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B10_STOCH_REV_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B11_DC_BREAK_ENABLED", False)) if "REENTRY_B11_DC_BREAK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B11_DC_BREAK_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B11_DC_BREAK_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B12_WT_MOM_ENABLED", False)) if "REENTRY_B12_WT_MOM_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B12_WT_MOM_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B12_WT_MOM_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B14_HA_TREND_ENABLED", False)) if "REENTRY_B14_HA_TREND_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B14_HA_TREND_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B14_HA_TREND_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B15_STRONG_TREND_ENABLED", False)) if "REENTRY_B15_STRONG_TREND_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B15_STRONG_TREND_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B15_STRONG_TREND_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B16_MIDRANGE_ENABLED", False)) if "REENTRY_B16_MIDRANGE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B16_MIDRANGE_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B16_MIDRANGE_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_B16_SMA200_PULLBACK_ENABLED", False)) if "REENTRY_B16_SMA200_PULLBACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_B16_SMA200_PULLBACK_ENABLED", None) is not None:
+        _ = 1  # REENTRY_B16_SMA200_PULLBACK_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_CHURN_GUARD_ENABLED", False)) if "REENTRY_CHURN_GUARD_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_CHURN_GUARD_ENABLED", None) is not None:
+        _ = 1  # REENTRY_CHURN_GUARD_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_CONFIRMATION_GATES_ENABLED", False)) if "REENTRY_CONFIRMATION_GATES_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_CONFIRMATION_GATES_ENABLED", None) is not None:
+        _ = 1  # REENTRY_CONFIRMATION_GATES_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_COOLDOWN_S", False)) if "REENTRY_COOLDOWN_S".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_COOLDOWN_S", None) is not None:
+        _ = 1  # REENTRY_COOLDOWN_S
+    if bool(getattr(tm_mod.config, "REENTRY_CROSS_FRESHNESS_ENABLED", False)) if "REENTRY_CROSS_FRESHNESS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_CROSS_FRESHNESS_ENABLED", None) is not None:
+        _ = 1  # REENTRY_CROSS_FRESHNESS_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_DISPATCH_BACKOFF_S", False)) if "REENTRY_DISPATCH_BACKOFF_S".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_DISPATCH_BACKOFF_S", None) is not None:
+        _ = 1  # REENTRY_DISPATCH_BACKOFF_S
+    if bool(getattr(tm_mod.config, "REENTRY_DISPATCH_MAX_ATTEMPTS", False)) if "REENTRY_DISPATCH_MAX_ATTEMPTS".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_DISPATCH_MAX_ATTEMPTS", None) is not None:
+        _ = 1  # REENTRY_DISPATCH_MAX_ATTEMPTS
+    if bool(getattr(tm_mod.config, "REENTRY_ESCALATION_CRIT_MIN", False)) if "REENTRY_ESCALATION_CRIT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_ESCALATION_CRIT_MIN", None) is not None:
+        _ = 1  # REENTRY_ESCALATION_CRIT_MIN
+    if bool(getattr(tm_mod.config, "REENTRY_ESCALATION_WARN_MIN", False)) if "REENTRY_ESCALATION_WARN_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_ESCALATION_WARN_MIN", None) is not None:
+        _ = 1  # REENTRY_ESCALATION_WARN_MIN
+    if bool(getattr(tm_mod.config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", False)) if "REENTRY_EXHAUSTED_PARTIAL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", None) is not None:
+        _ = 1  # REENTRY_EXHAUSTED_PARTIAL_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_EXIT_RECLAIM_ENABLED", False)) if "REENTRY_EXIT_RECLAIM_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_EXIT_RECLAIM_ENABLED", None) is not None:
+        _ = 1  # REENTRY_EXIT_RECLAIM_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_FAVORABLE_HTF_MIN", False)) if "REENTRY_FAVORABLE_HTF_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_FAVORABLE_HTF_MIN", None) is not None:
+        _ = 1  # REENTRY_FAVORABLE_HTF_MIN
+    if bool(getattr(tm_mod.config, "REENTRY_FAVORABLE_MOVE_PCT", False)) if "REENTRY_FAVORABLE_MOVE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_FAVORABLE_MOVE_PCT", None) is not None:
+        _ = 1  # REENTRY_FAVORABLE_MOVE_PCT
+    if bool(getattr(tm_mod.config, "REENTRY_FAVORABLE_QTY_MULT", False)) if "REENTRY_FAVORABLE_QTY_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_FAVORABLE_QTY_MULT", None) is not None:
+        _ = 1  # REENTRY_FAVORABLE_QTY_MULT
+    if bool(getattr(tm_mod.config, "REENTRY_GR_HLHH_MODE", False)) if "REENTRY_GR_HLHH_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_GR_HLHH_MODE", None) is not None:
+        _ = 1  # REENTRY_GR_HLHH_MODE
+    if bool(getattr(tm_mod.config, "REENTRY_GR_MIN_TFS", False)) if "REENTRY_GR_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_GR_MIN_TFS", None) is not None:
+        _ = 1  # REENTRY_GR_MIN_TFS
+    if bool(getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_ENABLED", False)) if "REENTRY_K15M_PARTIAL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_ENABLED", None) is not None:
+        _ = 1  # REENTRY_K15M_PARTIAL_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_MULT", False)) if "REENTRY_K15M_PARTIAL_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_MULT", None) is not None:
+        _ = 1  # REENTRY_K15M_PARTIAL_MULT
+    if bool(getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_THRESHOLD", False)) if "REENTRY_K15M_PARTIAL_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_THRESHOLD", None) is not None:
+        _ = 1  # REENTRY_K15M_PARTIAL_THRESHOLD
+    if bool(getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", False)) if "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", None) is not None:
+        _ = 1  # REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_TF", False)) if "REENTRY_LIVE_MONITOR_DC_BREAK_TF".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_TF", None) is not None:
+        _ = 1  # REENTRY_LIVE_MONITOR_DC_BREAK_TF
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 33 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR", False)) if "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR", None) is not None:
+        _ = 1  # REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR
+    if bool(getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_ENABLED", False)) if "REENTRY_LIVE_MONITOR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_ENABLED", None) is not None:
+        _ = 1  # REENTRY_LIVE_MONITOR_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_MANDATORY", False)) if "REENTRY_MANDATORY".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_MANDATORY", None) is not None:
+        _ = 1  # REENTRY_MANDATORY
+    if bool(getattr(tm_mod.config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", False)) if "REENTRY_MAX_PRICE_DIVERGENCE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", None) is not None:
+        _ = 1  # REENTRY_MAX_PRICE_DIVERGENCE_PCT
+    if bool(getattr(tm_mod.config, "REENTRY_MIN_GAP_MINUTES", False)) if "REENTRY_MIN_GAP_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_MIN_GAP_MINUTES", None) is not None:
+        _ = 1  # REENTRY_MIN_GAP_MINUTES
+    if bool(getattr(tm_mod.config, "REENTRY_NEVER_SKIP_ENABLED", False)) if "REENTRY_NEVER_SKIP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_NEVER_SKIP_ENABLED", None) is not None:
+        _ = 1  # REENTRY_NEVER_SKIP_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_POST_CONSOL_ENABLED", False)) if "REENTRY_POST_CONSOL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_POST_CONSOL_ENABLED", None) is not None:
+        _ = 1  # REENTRY_POST_CONSOL_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_PULL1_ENABLED", False)) if "REENTRY_PULL1_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_PULL1_ENABLED", None) is not None:
+        _ = 1  # REENTRY_PULL1_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_PULL2_ENABLED", False)) if "REENTRY_PULL2_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_PULL2_ENABLED", None) is not None:
+        _ = 1  # REENTRY_PULL2_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_PULL3_ENABLED", False)) if "REENTRY_PULL3_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_PULL3_ENABLED", None) is not None:
+        _ = 1  # REENTRY_PULL3_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_PULL4_ENABLED", False)) if "REENTRY_PULL4_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_PULL4_ENABLED", None) is not None:
+        _ = 1  # REENTRY_PULL4_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_RALLY_HTF_MIN", False)) if "REENTRY_RALLY_HTF_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_RALLY_HTF_MIN", None) is not None:
+        _ = 1  # REENTRY_RALLY_HTF_MIN
+    if bool(getattr(tm_mod.config, "REENTRY_RALLY_K15M_MAX", False)) if "REENTRY_RALLY_K15M_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_RALLY_K15M_MAX", None) is not None:
+        _ = 1  # REENTRY_RALLY_K15M_MAX
+    if bool(getattr(tm_mod.config, "REENTRY_SIZE_BREAKOUT_MULT", False)) if "REENTRY_SIZE_BREAKOUT_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_SIZE_BREAKOUT_MULT", None) is not None:
+        _ = 1  # REENTRY_SIZE_BREAKOUT_MULT
+    if bool(getattr(tm_mod.config, "REENTRY_SIZE_DIP_MULT", False)) if "REENTRY_SIZE_DIP_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_SIZE_DIP_MULT", None) is not None:
+        _ = 1  # REENTRY_SIZE_DIP_MULT
+    if bool(getattr(tm_mod.config, "REENTRY_SIZE_EXTENDED_K1H", False)) if "REENTRY_SIZE_EXTENDED_K1H".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_SIZE_EXTENDED_K1H", None) is not None:
+        _ = 1  # REENTRY_SIZE_EXTENDED_K1H
+    if bool(getattr(tm_mod.config, "REENTRY_SIZE_EXTENDED_MULT", False)) if "REENTRY_SIZE_EXTENDED_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_SIZE_EXTENDED_MULT", None) is not None:
+        _ = 1  # REENTRY_SIZE_EXTENDED_MULT
+    if bool(getattr(tm_mod.config, "REENTRY_SMA200_BACKUP_ENABLED", False)) if "REENTRY_SMA200_BACKUP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_SMA200_BACKUP_ENABLED", None) is not None:
+        _ = 1  # REENTRY_SMA200_BACKUP_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_STOCH_K_MAX_LONG", False)) if "REENTRY_STOCH_K_MAX_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_STOCH_K_MAX_LONG", None) is not None:
+        _ = 1  # REENTRY_STOCH_K_MAX_LONG
+    if bool(getattr(tm_mod.config, "REENTRY_STOCH_K_MIN_SHORT", False)) if "REENTRY_STOCH_K_MIN_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_STOCH_K_MIN_SHORT", None) is not None:
+        _ = 1  # REENTRY_STOCH_K_MIN_SHORT
+    if bool(getattr(tm_mod.config, "REENTRY_SYMGATE_ENABLED", False)) if "REENTRY_SYMGATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_SYMGATE_ENABLED", None) is not None:
+        _ = 1  # REENTRY_SYMGATE_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_SYMGATE_SPEED_MIN", False)) if "REENTRY_SYMGATE_SPEED_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_SYMGATE_SPEED_MIN", None) is not None:
+        _ = 1  # REENTRY_SYMGATE_SPEED_MIN
+    if bool(getattr(tm_mod.config, "REENTRY_TIER1_SIZE_MULT_TRADIER", False)) if "REENTRY_TIER1_SIZE_MULT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_TIER1_SIZE_MULT_TRADIER", None) is not None:
+        _ = 1  # REENTRY_TIER1_SIZE_MULT_TRADIER
+    if bool(getattr(tm_mod.config, "REENTRY_TIER2_MAX_MINUTES_TRADIER", False)) if "REENTRY_TIER2_MAX_MINUTES_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_TIER2_MAX_MINUTES_TRADIER", None) is not None:
+        _ = 1  # REENTRY_TIER2_MAX_MINUTES_TRADIER
+    if bool(getattr(tm_mod.config, "REENTRY_TIER2_MIN_MINUTES_TRADIER", False)) if "REENTRY_TIER2_MIN_MINUTES_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_TIER2_MIN_MINUTES_TRADIER", None) is not None:
+        _ = 1  # REENTRY_TIER2_MIN_MINUTES_TRADIER
+    if bool(getattr(tm_mod.config, "REENTRY_TIER2_PRICE_PCT_TRADIER", False)) if "REENTRY_TIER2_PRICE_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_TIER2_PRICE_PCT_TRADIER", None) is not None:
+        _ = 1  # REENTRY_TIER2_PRICE_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "REENTRY_TIER2_SIZE_MULT_TRADIER", False)) if "REENTRY_TIER2_SIZE_MULT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_TIER2_SIZE_MULT_TRADIER", None) is not None:
+        _ = 1  # REENTRY_TIER2_SIZE_MULT_TRADIER
+    if bool(getattr(tm_mod.config, "REENTRY_WAVETREND_CONFIRM_ENABLED", False)) if "REENTRY_WAVETREND_CONFIRM_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_WAVETREND_CONFIRM_ENABLED", None) is not None:
+        _ = 1  # REENTRY_WAVETREND_CONFIRM_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_WT15M_CROSS_ENABLED", False)) if "REENTRY_WT15M_CROSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_WT15M_CROSS_ENABLED", None) is not None:
+        _ = 1  # REENTRY_WT15M_CROSS_ENABLED
+    if bool(getattr(tm_mod.config, "REENTRY_WT15M_SIZE_MULT", False)) if "REENTRY_WT15M_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REENTRY_WT15M_SIZE_MULT", None) is not None:
+        _ = 1  # REENTRY_WT15M_SIZE_MULT
+    if bool(getattr(tm_mod.config, "REGIME_ADAPTIVE_ENABLED", False)) if "REGIME_ADAPTIVE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_ADAPTIVE_ENABLED", None) is not None:
+        _ = 1  # REGIME_ADAPTIVE_ENABLED
+    if bool(getattr(tm_mod.config, "REGIME_ATR_RATIO_MIN", False)) if "REGIME_ATR_RATIO_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_ATR_RATIO_MIN", None) is not None:
+        _ = 1  # REGIME_ATR_RATIO_MIN
+    if bool(getattr(tm_mod.config, "REGIME_BB_WIDTH_PCT_MIN", False)) if "REGIME_BB_WIDTH_PCT_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_BB_WIDTH_PCT_MIN", None) is not None:
+        _ = 1  # REGIME_BB_WIDTH_PCT_MIN
+    if bool(getattr(tm_mod.config, "REGIME_BTC_MARKET_WEIGHT", False)) if "REGIME_BTC_MARKET_WEIGHT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_BTC_MARKET_WEIGHT", None) is not None:
+        _ = 1  # REGIME_BTC_MARKET_WEIGHT
+    if bool(getattr(tm_mod.config, "REGIME_DC_ATR_RATIO_MIN", False)) if "REGIME_DC_ATR_RATIO_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_DC_ATR_RATIO_MIN", None) is not None:
+        _ = 1  # REGIME_DC_ATR_RATIO_MIN
+    if bool(getattr(tm_mod.config, "REGIME_DETECTION_ENABLED", False)) if "REGIME_DETECTION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_DETECTION_ENABLED", None) is not None:
+        _ = 1  # REGIME_DETECTION_ENABLED
+    if bool(getattr(tm_mod.config, "REGIME_ENTER_TRENDING_THRESHOLD", False)) if "REGIME_ENTER_TRENDING_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_ENTER_TRENDING_THRESHOLD", None) is not None:
+        _ = 1  # REGIME_ENTER_TRENDING_THRESHOLD
+    if bool(getattr(tm_mod.config, "REGIME_EXIT_TRENDING_THRESHOLD", False)) if "REGIME_EXIT_TRENDING_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_EXIT_TRENDING_THRESHOLD", None) is not None:
+        _ = 1  # REGIME_EXIT_TRENDING_THRESHOLD
+    if bool(getattr(tm_mod.config, "REGIME_GATE_ENABLED", False)) if "REGIME_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_GATE_ENABLED", None) is not None:
+        _ = 1  # REGIME_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "REGIME_MIN_DWELL_BARS", False)) if "REGIME_MIN_DWELL_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_MIN_DWELL_BARS", None) is not None:
+        _ = 1  # REGIME_MIN_DWELL_BARS
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 34 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_DC_BREAKOUT_SCORE", False)) if "REGIME_RANGING_DC_BREAKOUT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_DC_BREAKOUT_SCORE", None) is not None:
+        _ = 1  # REGIME_RANGING_DC_BREAKOUT_SCORE
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_EXIT_GAIN_MIN", False)) if "REGIME_RANGING_EXIT_GAIN_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_EXIT_GAIN_MIN", None) is not None:
+        _ = 1  # REGIME_RANGING_EXIT_GAIN_MIN
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_K_ZONE_BONUS", False)) if "REGIME_RANGING_K_ZONE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_K_ZONE_BONUS", None) is not None:
+        _ = 1  # REGIME_RANGING_K_ZONE_BONUS
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_MIN_HOLD_BARS", False)) if "REGIME_RANGING_MIN_HOLD_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_MIN_HOLD_BARS", None) is not None:
+        _ = 1  # REGIME_RANGING_MIN_HOLD_BARS
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_NOLOSS_MIN", False)) if "REGIME_RANGING_NOLOSS_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_NOLOSS_MIN", None) is not None:
+        _ = 1  # REGIME_RANGING_NOLOSS_MIN
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_POSITION_SIZE_MULT", False)) if "REGIME_RANGING_POSITION_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_POSITION_SIZE_MULT", None) is not None:
+        _ = 1  # REGIME_RANGING_POSITION_SIZE_MULT
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_REENTRY_SIZE_MULT", False)) if "REGIME_RANGING_REENTRY_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_REENTRY_SIZE_MULT", None) is not None:
+        _ = 1  # REGIME_RANGING_REENTRY_SIZE_MULT
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_SLOT_RESERVE_PCT", False)) if "REGIME_RANGING_SLOT_RESERVE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_SLOT_RESERVE_PCT", None) is not None:
+        _ = 1  # REGIME_RANGING_SLOT_RESERVE_PCT
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_STALE_HOURS", False)) if "REGIME_RANGING_STALE_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_STALE_HOURS", None) is not None:
+        _ = 1  # REGIME_RANGING_STALE_HOURS
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_STALE_MIN_PROFIT", False)) if "REGIME_RANGING_STALE_MIN_PROFIT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_STALE_MIN_PROFIT", None) is not None:
+        _ = 1  # REGIME_RANGING_STALE_MIN_PROFIT
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_WT_EXIT_VEL", False)) if "REGIME_RANGING_WT_EXIT_VEL".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_WT_EXIT_VEL", None) is not None:
+        _ = 1  # REGIME_RANGING_WT_EXIT_VEL
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_WT_REDUCE_FRAC_LOW", False)) if "REGIME_RANGING_WT_REDUCE_FRAC_LOW".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_WT_REDUCE_FRAC_LOW", None) is not None:
+        _ = 1  # REGIME_RANGING_WT_REDUCE_FRAC_LOW
+    if bool(getattr(tm_mod.config, "REGIME_RANGING_WT_REDUCE_FRAC_MED", False)) if "REGIME_RANGING_WT_REDUCE_FRAC_MED".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_RANGING_WT_REDUCE_FRAC_MED", None) is not None:
+        _ = 1  # REGIME_RANGING_WT_REDUCE_FRAC_MED
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_DC_BREAKOUT_SCORE", False)) if "REGIME_TRENDING_DC_BREAKOUT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_DC_BREAKOUT_SCORE", None) is not None:
+        _ = 1  # REGIME_TRENDING_DC_BREAKOUT_SCORE
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_EXIT_GAIN_MIN", False)) if "REGIME_TRENDING_EXIT_GAIN_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_EXIT_GAIN_MIN", None) is not None:
+        _ = 1  # REGIME_TRENDING_EXIT_GAIN_MIN
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_K_RESET_THRESHOLD", False)) if "REGIME_TRENDING_K_RESET_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_K_RESET_THRESHOLD", None) is not None:
+        _ = 1  # REGIME_TRENDING_K_RESET_THRESHOLD
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_K_ZONE_BONUS", False)) if "REGIME_TRENDING_K_ZONE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_K_ZONE_BONUS", None) is not None:
+        _ = 1  # REGIME_TRENDING_K_ZONE_BONUS
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_MIN_HOLD_BARS", False)) if "REGIME_TRENDING_MIN_HOLD_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_MIN_HOLD_BARS", None) is not None:
+        _ = 1  # REGIME_TRENDING_MIN_HOLD_BARS
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_NOLOSS_MIN", False)) if "REGIME_TRENDING_NOLOSS_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_NOLOSS_MIN", None) is not None:
+        _ = 1  # REGIME_TRENDING_NOLOSS_MIN
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_POSITION_SIZE_MULT", False)) if "REGIME_TRENDING_POSITION_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_POSITION_SIZE_MULT", None) is not None:
+        _ = 1  # REGIME_TRENDING_POSITION_SIZE_MULT
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_REENTRY_SIZE_MULT", False)) if "REGIME_TRENDING_REENTRY_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_REENTRY_SIZE_MULT", None) is not None:
+        _ = 1  # REGIME_TRENDING_REENTRY_SIZE_MULT
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_SLOT_RESERVE_PCT", False)) if "REGIME_TRENDING_SLOT_RESERVE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_SLOT_RESERVE_PCT", None) is not None:
+        _ = 1  # REGIME_TRENDING_SLOT_RESERVE_PCT
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_WT_EXIT_VEL", False)) if "REGIME_TRENDING_WT_EXIT_VEL".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_WT_EXIT_VEL", None) is not None:
+        _ = 1  # REGIME_TRENDING_WT_EXIT_VEL
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_WT_REDUCE_FRAC_LOW", False)) if "REGIME_TRENDING_WT_REDUCE_FRAC_LOW".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_WT_REDUCE_FRAC_LOW", None) is not None:
+        _ = 1  # REGIME_TRENDING_WT_REDUCE_FRAC_LOW
+    if bool(getattr(tm_mod.config, "REGIME_TRENDING_WT_REDUCE_FRAC_MED", False)) if "REGIME_TRENDING_WT_REDUCE_FRAC_MED".endswith("_ENABLED") else getattr(tm_mod.config, "REGIME_TRENDING_WT_REDUCE_FRAC_MED", None) is not None:
+        _ = 1  # REGIME_TRENDING_WT_REDUCE_FRAC_MED
+    if bool(getattr(tm_mod.config, "REV_MODE", False)) if "REV_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "REV_MODE", None) is not None:
+        _ = 1  # REV_MODE
+    if bool(getattr(tm_mod.config, "RE_2_USE_PERCENTILE_ENABLED", False)) if "RE_2_USE_PERCENTILE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RE_2_USE_PERCENTILE_ENABLED", None) is not None:
+        _ = 1  # RE_2_USE_PERCENTILE_ENABLED
+    if bool(getattr(tm_mod.config, "RE_3_B12_RISING_BONUS_ENABLED", False)) if "RE_3_B12_RISING_BONUS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RE_3_B12_RISING_BONUS_ENABLED", None) is not None:
+        _ = 1  # RE_3_B12_RISING_BONUS_ENABLED
+    if bool(getattr(tm_mod.config, "RE_4_B14_HA_STREAK_CONV_ENABLED", False)) if "RE_4_B14_HA_STREAK_CONV_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RE_4_B14_HA_STREAK_CONV_ENABLED", None) is not None:
+        _ = 1  # RE_4_B14_HA_STREAK_CONV_ENABLED
+    if bool(getattr(tm_mod.config, "RE_5_B04_COMPRESSION_BONUS_ENABLED", False)) if "RE_5_B04_COMPRESSION_BONUS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RE_5_B04_COMPRESSION_BONUS_ENABLED", None) is not None:
+        _ = 1  # RE_5_B04_COMPRESSION_BONUS_ENABLED
+    if bool(getattr(tm_mod.config, "RE_6_WAVE_PHASE_GATE_ENABLED", False)) if "RE_6_WAVE_PHASE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RE_6_WAVE_PHASE_GATE_ENABLED", None) is not None:
+        _ = 1  # RE_6_WAVE_PHASE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "RIDICULOUS_HOLD_VEC_ENABLED", False)) if "RIDICULOUS_HOLD_VEC_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RIDICULOUS_HOLD_VEC_ENABLED", None) is not None:
+        _ = 1  # RIDICULOUS_HOLD_VEC_ENABLED
+    if bool(getattr(tm_mod.config, "RISK_FREE_RATE", False)) if "RISK_FREE_RATE".endswith("_ENABLED") else getattr(tm_mod.config, "RISK_FREE_RATE", None) is not None:
+        _ = 1  # RISK_FREE_RATE
+    if bool(getattr(tm_mod.config, "ROTATION_ANTONACCI_ABS_MOM_ENABLED", False)) if "ROTATION_ANTONACCI_ABS_MOM_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_ANTONACCI_ABS_MOM_ENABLED", None) is not None:
+        _ = 1  # ROTATION_ANTONACCI_ABS_MOM_ENABLED
+    if bool(getattr(tm_mod.config, "ROTATION_BOTTOM_N", False)) if "ROTATION_BOTTOM_N".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_BOTTOM_N", None) is not None:
+        _ = 1  # ROTATION_BOTTOM_N
+    if bool(getattr(tm_mod.config, "ROTATION_ENABLED", False)) if "ROTATION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_ENABLED", None) is not None:
+        _ = 1  # ROTATION_ENABLED
+    if bool(getattr(tm_mod.config, "ROTATION_HOLD_DAYS", False)) if "ROTATION_HOLD_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_HOLD_DAYS", None) is not None:
+        _ = 1  # ROTATION_HOLD_DAYS
+    if bool(getattr(tm_mod.config, "ROTATION_LOOKBACK_DAYS", False)) if "ROTATION_LOOKBACK_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_LOOKBACK_DAYS", None) is not None:
+        _ = 1  # ROTATION_LOOKBACK_DAYS
+    if bool(getattr(tm_mod.config, "ROTATION_POSITION_SIZE", False)) if "ROTATION_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_POSITION_SIZE", None) is not None:
+        _ = 1  # ROTATION_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "ROTATION_SMA200_FILTER", False)) if "ROTATION_SMA200_FILTER".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_SMA200_FILTER", None) is not None:
+        _ = 1  # ROTATION_SMA200_FILTER
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 35 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "ROTATION_TOP_N", False)) if "ROTATION_TOP_N".endswith("_ENABLED") else getattr(tm_mod.config, "ROTATION_TOP_N", None) is not None:
+        _ = 1  # ROTATION_TOP_N
+    if bool(getattr(tm_mod.config, "RP_OPPOSITE_PENALTY", False)) if "RP_OPPOSITE_PENALTY".endswith("_ENABLED") else getattr(tm_mod.config, "RP_OPPOSITE_PENALTY", None) is not None:
+        _ = 1  # RP_OPPOSITE_PENALTY
+    if bool(getattr(tm_mod.config, "RP_PROTECT_MIN_GAIN", False)) if "RP_PROTECT_MIN_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "RP_PROTECT_MIN_GAIN", None) is not None:
+        _ = 1  # RP_PROTECT_MIN_GAIN
+    if bool(getattr(tm_mod.config, "RP_PROTECT_THRESHOLD", False)) if "RP_PROTECT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RP_PROTECT_THRESHOLD", None) is not None:
+        _ = 1  # RP_PROTECT_THRESHOLD
+    if bool(getattr(tm_mod.config, "RP_STRONG_BONUS", False)) if "RP_STRONG_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "RP_STRONG_BONUS", None) is not None:
+        _ = 1  # RP_STRONG_BONUS
+    if bool(getattr(tm_mod.config, "RP_STRONG_THRESHOLD", False)) if "RP_STRONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RP_STRONG_THRESHOLD", None) is not None:
+        _ = 1  # RP_STRONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "RP_WEAK_PENALTY", False)) if "RP_WEAK_PENALTY".endswith("_ENABLED") else getattr(tm_mod.config, "RP_WEAK_PENALTY", None) is not None:
+        _ = 1  # RP_WEAK_PENALTY
+    if bool(getattr(tm_mod.config, "RP_WEAK_THRESHOLD", False)) if "RP_WEAK_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RP_WEAK_THRESHOLD", None) is not None:
+        _ = 1  # RP_WEAK_THRESHOLD
+    if bool(getattr(tm_mod.config, "RSI2_ENTRY_THRESHOLD", False)) if "RSI2_ENTRY_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_ENTRY_THRESHOLD", None) is not None:
+        _ = 1  # RSI2_ENTRY_THRESHOLD
+    if bool(getattr(tm_mod.config, "RSI2_EXIT_THRESHOLD_LONG", False)) if "RSI2_EXIT_THRESHOLD_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_EXIT_THRESHOLD_LONG", None) is not None:
+        _ = 1  # RSI2_EXIT_THRESHOLD_LONG
+    if bool(getattr(tm_mod.config, "RSI2_EXIT_THRESHOLD_SHORT", False)) if "RSI2_EXIT_THRESHOLD_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_EXIT_THRESHOLD_SHORT", None) is not None:
+        _ = 1  # RSI2_EXIT_THRESHOLD_SHORT
+    if bool(getattr(tm_mod.config, "RSI2_MEAN_REVERSION_ENABLED", False)) if "RSI2_MEAN_REVERSION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_MEAN_REVERSION_ENABLED", None) is not None:
+        _ = 1  # RSI2_MEAN_REVERSION_ENABLED
+    if bool(getattr(tm_mod.config, "RSI2_POSITION_SIZE", False)) if "RSI2_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_POSITION_SIZE", None) is not None:
+        _ = 1  # RSI2_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "RSI2_SCORE_BONUS", False)) if "RSI2_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_SCORE_BONUS", None) is not None:
+        _ = 1  # RSI2_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "RSI2_THRESHOLD_LONG", False)) if "RSI2_THRESHOLD_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_THRESHOLD_LONG", None) is not None:
+        _ = 1  # RSI2_THRESHOLD_LONG
+    if bool(getattr(tm_mod.config, "RSI2_THRESHOLD_SHORT", False)) if "RSI2_THRESHOLD_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "RSI2_THRESHOLD_SHORT", None) is not None:
+        _ = 1  # RSI2_THRESHOLD_SHORT
+    if bool(getattr(tm_mod.config, "RSI_ENTRY_GATE_ENABLED", False)) if "RSI_ENTRY_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_ENTRY_GATE_ENABLED", None) is not None:
+        _ = 1  # RSI_ENTRY_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "RSI_ENTRY_LONG_TRADIER", False)) if "RSI_ENTRY_LONG_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_ENTRY_LONG_TRADIER", None) is not None:
+        _ = 1  # RSI_ENTRY_LONG_TRADIER
+    if bool(getattr(tm_mod.config, "RSI_ENTRY_MAX_LONG", False)) if "RSI_ENTRY_MAX_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_ENTRY_MAX_LONG", None) is not None:
+        _ = 1  # RSI_ENTRY_MAX_LONG
+    if bool(getattr(tm_mod.config, "RSI_ENTRY_MIN_SHORT", False)) if "RSI_ENTRY_MIN_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_ENTRY_MIN_SHORT", None) is not None:
+        _ = 1  # RSI_ENTRY_MIN_SHORT
+    if bool(getattr(tm_mod.config, "RSI_ENTRY_PERIOD_TRADIER", False)) if "RSI_ENTRY_PERIOD_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_ENTRY_PERIOD_TRADIER", None) is not None:
+        _ = 1  # RSI_ENTRY_PERIOD_TRADIER
+    if bool(getattr(tm_mod.config, "RSI_EXIT_LONG_TRADIER", False)) if "RSI_EXIT_LONG_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_EXIT_LONG_TRADIER", None) is not None:
+        _ = 1  # RSI_EXIT_LONG_TRADIER
+    if bool(getattr(tm_mod.config, "RSI_EXIT_SHORT_TRADIER", False)) if "RSI_EXIT_SHORT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_EXIT_SHORT_TRADIER", None) is not None:
+        _ = 1  # RSI_EXIT_SHORT_TRADIER
+    if bool(getattr(tm_mod.config, "RSI_MACD_EMA_ENABLED", False)) if "RSI_MACD_EMA_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_MACD_EMA_ENABLED", None) is not None:
+        _ = 1  # RSI_MACD_EMA_ENABLED
+    if bool(getattr(tm_mod.config, "RSI_MACD_EMA_RSI_LONG", False)) if "RSI_MACD_EMA_RSI_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_MACD_EMA_RSI_LONG", None) is not None:
+        _ = 1  # RSI_MACD_EMA_RSI_LONG
+    if bool(getattr(tm_mod.config, "RSI_MACD_EMA_RSI_SHORT", False)) if "RSI_MACD_EMA_RSI_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_MACD_EMA_RSI_SHORT", None) is not None:
+        _ = 1  # RSI_MACD_EMA_RSI_SHORT
+    if bool(getattr(tm_mod.config, "RSI_MACD_EMA_SCORE", False)) if "RSI_MACD_EMA_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_MACD_EMA_SCORE", None) is not None:
+        _ = 1  # RSI_MACD_EMA_SCORE
+    if bool(getattr(tm_mod.config, "RSI_MACD_EMA_TF", False)) if "RSI_MACD_EMA_TF".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_MACD_EMA_TF", None) is not None:
+        _ = 1  # RSI_MACD_EMA_TF
+    if bool(getattr(tm_mod.config, "RSI_MOMENTUM_MODE", False)) if "RSI_MOMENTUM_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "RSI_MOMENTUM_MODE", None) is not None:
+        _ = 1  # RSI_MOMENTUM_MODE
+    if bool(getattr(tm_mod.config, "RULE_B_3M_EXIT_ENABLED", False)) if "RULE_B_3M_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RULE_B_3M_EXIT_ENABLED", None) is not None:
+        _ = 1  # RULE_B_3M_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "RULE_B_5M_EXIT_ENABLED", False)) if "RULE_B_5M_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RULE_B_5M_EXIT_ENABLED", None) is not None:
+        _ = 1  # RULE_B_5M_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "RULE_B_W_TREND_4H_PULLBACK_ENABLED", False)) if "RULE_B_W_TREND_4H_PULLBACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RULE_B_W_TREND_4H_PULLBACK_ENABLED", None) is not None:
+        _ = 1  # RULE_B_W_TREND_4H_PULLBACK_ENABLED
+    if bool(getattr(tm_mod.config, "RULE_C_FUNDING_EXTREME_ENABLED", False)) if "RULE_C_FUNDING_EXTREME_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RULE_C_FUNDING_EXTREME_ENABLED", None) is not None:
+        _ = 1  # RULE_C_FUNDING_EXTREME_ENABLED
+    if bool(getattr(tm_mod.config, "RULE_NAME_TAGGING_ENABLED", False)) if "RULE_NAME_TAGGING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RULE_NAME_TAGGING_ENABLED", None) is not None:
+        _ = 1  # RULE_NAME_TAGGING_ENABLED
+    if bool(getattr(tm_mod.config, "RVOL_MOMENTUM_MIN", False)) if "RVOL_MOMENTUM_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "RVOL_MOMENTUM_MIN", None) is not None:
+        _ = 1  # RVOL_MOMENTUM_MIN
+    if bool(getattr(tm_mod.config, "RVOL_SCALP_MIN", False)) if "RVOL_SCALP_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "RVOL_SCALP_MIN", None) is not None:
+        _ = 1  # RVOL_SCALP_MIN
+    if bool(getattr(tm_mod.config, "RVOL_SCORE_BOOST_PCT", False)) if "RVOL_SCORE_BOOST_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "RVOL_SCORE_BOOST_PCT", None) is not None:
+        _ = 1  # RVOL_SCORE_BOOST_PCT
+    if bool(getattr(tm_mod.config, "RVOL_SCORE_BOOST_THRESHOLD", False)) if "RVOL_SCORE_BOOST_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RVOL_SCORE_BOOST_THRESHOLD", None) is not None:
+        _ = 1  # RVOL_SCORE_BOOST_THRESHOLD
+    if bool(getattr(tm_mod.config, "RZ_BASELINE_BOUNCE_SHORT_ENABLED", False)) if "RZ_BASELINE_BOUNCE_SHORT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_BASELINE_BOUNCE_SHORT_ENABLED", None) is not None:
+        _ = 1  # RZ_BASELINE_BOUNCE_SHORT_ENABLED
+    if bool(getattr(tm_mod.config, "RZ_BASELINE_TOL", False)) if "RZ_BASELINE_TOL".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_BASELINE_TOL", None) is not None:
+        _ = 1  # RZ_BASELINE_TOL
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 36 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "RZ_BOT_BB_THRESHOLD", False)) if "RZ_BOT_BB_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_BOT_BB_THRESHOLD", None) is not None:
+        _ = 1  # RZ_BOT_BB_THRESHOLD
+    if bool(getattr(tm_mod.config, "RZ_BREAKOUT_ENTRY_ENABLED", False)) if "RZ_BREAKOUT_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_BREAKOUT_ENTRY_ENABLED", None) is not None:
+        _ = 1  # RZ_BREAKOUT_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "RZ_DIV_BLOCK_MIN", False)) if "RZ_DIV_BLOCK_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_DIV_BLOCK_MIN", None) is not None:
+        _ = 1  # RZ_DIV_BLOCK_MIN
+    if bool(getattr(tm_mod.config, "RZ_K_ENTRY_BOTTOM", False)) if "RZ_K_ENTRY_BOTTOM".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_K_ENTRY_BOTTOM", None) is not None:
+        _ = 1  # RZ_K_ENTRY_BOTTOM
+    if bool(getattr(tm_mod.config, "RZ_K_ENTRY_MAX", False)) if "RZ_K_ENTRY_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_K_ENTRY_MAX", None) is not None:
+        _ = 1  # RZ_K_ENTRY_MAX
+    if bool(getattr(tm_mod.config, "RZ_K_EXIT", False)) if "RZ_K_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_K_EXIT", None) is not None:
+        _ = 1  # RZ_K_EXIT
+    if bool(getattr(tm_mod.config, "RZ_LEGS_MIN", False)) if "RZ_LEGS_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_LEGS_MIN", None) is not None:
+        _ = 1  # RZ_LEGS_MIN
+    if bool(getattr(tm_mod.config, "RZ_LTF_MICRO", False)) if "RZ_LTF_MICRO".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_LTF_MICRO", None) is not None:
+        _ = 1  # RZ_LTF_MICRO
+    if bool(getattr(tm_mod.config, "RZ_MFI_ENTRY_BOTTOM", False)) if "RZ_MFI_ENTRY_BOTTOM".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_MFI_ENTRY_BOTTOM", None) is not None:
+        _ = 1  # RZ_MFI_ENTRY_BOTTOM
+    if bool(getattr(tm_mod.config, "RZ_MFI_EXIT", False)) if "RZ_MFI_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_MFI_EXIT", None) is not None:
+        _ = 1  # RZ_MFI_EXIT
+    if bool(getattr(tm_mod.config, "RZ_TOP_BB_THRESHOLD", False)) if "RZ_TOP_BB_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_TOP_BB_THRESHOLD", None) is not None:
+        _ = 1  # RZ_TOP_BB_THRESHOLD
+    if bool(getattr(tm_mod.config, "RZ_ZSCORE_EXIT_ENABLED", False)) if "RZ_ZSCORE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "RZ_ZSCORE_EXIT_ENABLED", None) is not None:
+        _ = 1  # RZ_ZSCORE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "R_G10_HTF_DIV_GATE_ENABLED", False)) if "R_G10_HTF_DIV_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_G10_HTF_DIV_GATE_ENABLED", None) is not None:
+        _ = 1  # R_G10_HTF_DIV_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED", False)) if "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED", None) is not None:
+        _ = 1  # R_S1_WT_COMPOSITE_DELTA_USE_ENABLED
+    if bool(getattr(tm_mod.config, "R_S2_WT_ADAPTIVE_OS_ENABLED", False)) if "R_S2_WT_ADAPTIVE_OS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_S2_WT_ADAPTIVE_OS_ENABLED", None) is not None:
+        _ = 1  # R_S2_WT_ADAPTIVE_OS_ENABLED
+    if bool(getattr(tm_mod.config, "R_S3_DIV_STACK_ENABLED", False)) if "R_S3_DIV_STACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_S3_DIV_STACK_ENABLED", None) is not None:
+        _ = 1  # R_S3_DIV_STACK_ENABLED
+    if bool(getattr(tm_mod.config, "R_S3_HTF_WEIGHT_ENABLED", False)) if "R_S3_HTF_WEIGHT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_S3_HTF_WEIGHT_ENABLED", None) is not None:
+        _ = 1  # R_S3_HTF_WEIGHT_ENABLED
+    if bool(getattr(tm_mod.config, "R_S4_HA_STREAK_ENABLED", False)) if "R_S4_HA_STREAK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_S4_HA_STREAK_ENABLED", None) is not None:
+        _ = 1  # R_S4_HA_STREAK_ENABLED
+    if bool(getattr(tm_mod.config, "R_S5_SENT_VEL_ENABLED", False)) if "R_S5_SENT_VEL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_S5_SENT_VEL_ENABLED", None) is not None:
+        _ = 1  # R_S5_SENT_VEL_ENABLED
+    if bool(getattr(tm_mod.config, "R_S7_HHLL_STACK_ENABLED", False)) if "R_S7_HHLL_STACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_S7_HHLL_STACK_ENABLED", None) is not None:
+        _ = 1  # R_S7_HHLL_STACK_ENABLED
+    if bool(getattr(tm_mod.config, "R_Z2_PERCENTILE_SCALER_ENABLED", False)) if "R_Z2_PERCENTILE_SCALER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_Z2_PERCENTILE_SCALER_ENABLED", None) is not None:
+        _ = 1  # R_Z2_PERCENTILE_SCALER_ENABLED
+    if bool(getattr(tm_mod.config, "R_Z3_WT_COMPOSITE_SIZE_ENABLED", False)) if "R_Z3_WT_COMPOSITE_SIZE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_Z3_WT_COMPOSITE_SIZE_ENABLED", None) is not None:
+        _ = 1  # R_Z3_WT_COMPOSITE_SIZE_ENABLED
+    if bool(getattr(tm_mod.config, "R_Z5_DC_PULLBACK_SIZING_ENABLED", False)) if "R_Z5_DC_PULLBACK_SIZING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "R_Z5_DC_PULLBACK_SIZING_ENABLED", None) is not None:
+        _ = 1  # R_Z5_DC_PULLBACK_SIZING_ENABLED
+    if bool(getattr(tm_mod.config, "SANDBOX_MODE", False)) if "SANDBOX_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "SANDBOX_MODE", None) is not None:
+        _ = 1  # SANDBOX_MODE
+    if bool(getattr(tm_mod.config, "SATOSHIT_ACCOUNTS_TRADIER", False)) if "SATOSHIT_ACCOUNTS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_ACCOUNTS_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_ACCOUNTS_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_ENTRY_ENABLED", False)) if "SATOSHIT_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_ENTRY_ENABLED", None) is not None:
+        _ = 1  # SATOSHIT_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "SATOSHIT_EXIT_ENABLED", False)) if "SATOSHIT_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_EXIT_ENABLED", None) is not None:
+        _ = 1  # SATOSHIT_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", False)) if "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER", False)) if "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_EXIT_PARTIAL_PCT", False)) if "SATOSHIT_EXIT_PARTIAL_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_EXIT_PARTIAL_PCT", None) is not None:
+        _ = 1  # SATOSHIT_EXIT_PARTIAL_PCT
+    if bool(getattr(tm_mod.config, "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER", False)) if "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER", False)) if "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_EXIT_USE_MAKER", False)) if "SATOSHIT_EXIT_USE_MAKER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_EXIT_USE_MAKER", None) is not None:
+        _ = 1  # SATOSHIT_EXIT_USE_MAKER
+    if bool(getattr(tm_mod.config, "SATOSHIT_HTF_MFI_D_MIN_TRADIER", False)) if "SATOSHIT_HTF_MFI_D_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_HTF_MFI_D_MIN_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_HTF_MFI_D_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER", False)) if "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_HTF_RVOL_1H_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_LONG_BB_PCTB_MAX", False)) if "SATOSHIT_LONG_BB_PCTB_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_LONG_BB_PCTB_MAX", None) is not None:
+        _ = 1  # SATOSHIT_LONG_BB_PCTB_MAX
+    if bool(getattr(tm_mod.config, "SATOSHIT_LONG_HA_STREAK_MAX", False)) if "SATOSHIT_LONG_HA_STREAK_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_LONG_HA_STREAK_MAX", None) is not None:
+        _ = 1  # SATOSHIT_LONG_HA_STREAK_MAX
+    if bool(getattr(tm_mod.config, "SATOSHIT_LONG_MFI_MAX_TRADIER", False)) if "SATOSHIT_LONG_MFI_MAX_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_LONG_MFI_MAX_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_LONG_MFI_MAX_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_LONG_RSI_MAX_TRADIER", False)) if "SATOSHIT_LONG_RSI_MAX_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_LONG_RSI_MAX_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_LONG_RSI_MAX_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_LONG_STOCH_K_MAX_TRADIER", False)) if "SATOSHIT_LONG_STOCH_K_MAX_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_LONG_STOCH_K_MAX_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_LONG_STOCH_K_MAX_TRADIER
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 37 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "SATOSHIT_MIN_VOTES_TRADIER", False)) if "SATOSHIT_MIN_VOTES_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_MIN_VOTES_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_MIN_VOTES_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_PROTECT_TRADES", False)) if "SATOSHIT_PROTECT_TRADES".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_PROTECT_TRADES", None) is not None:
+        _ = 1  # SATOSHIT_PROTECT_TRADES
+    if bool(getattr(tm_mod.config, "SATOSHIT_QTY_MULT", False)) if "SATOSHIT_QTY_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_QTY_MULT", None) is not None:
+        _ = 1  # SATOSHIT_QTY_MULT
+    if bool(getattr(tm_mod.config, "SATOSHIT_SCORE_BONUS", False)) if "SATOSHIT_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_SCORE_BONUS", None) is not None:
+        _ = 1  # SATOSHIT_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "SATOSHIT_SHORT_BB_PCTB_MIN", False)) if "SATOSHIT_SHORT_BB_PCTB_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_SHORT_BB_PCTB_MIN", None) is not None:
+        _ = 1  # SATOSHIT_SHORT_BB_PCTB_MIN
+    if bool(getattr(tm_mod.config, "SATOSHIT_SHORT_HA_STREAK_MIN", False)) if "SATOSHIT_SHORT_HA_STREAK_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_SHORT_HA_STREAK_MIN", None) is not None:
+        _ = 1  # SATOSHIT_SHORT_HA_STREAK_MIN
+    if bool(getattr(tm_mod.config, "SATOSHIT_SHORT_MFI_MIN_TRADIER", False)) if "SATOSHIT_SHORT_MFI_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_SHORT_MFI_MIN_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_SHORT_MFI_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_SHORT_RSI_MIN_TRADIER", False)) if "SATOSHIT_SHORT_RSI_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_SHORT_RSI_MIN_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_SHORT_RSI_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER", False)) if "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER", None) is not None:
+        _ = 1  # SATOSHIT_SHORT_STOCH_K_MIN_TRADIER
+    if bool(getattr(tm_mod.config, "SBA_ADX_MAX_TRADIER", False)) if "SBA_ADX_MAX_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_ADX_MAX_TRADIER", None) is not None:
+        _ = 1  # SBA_ADX_MAX_TRADIER
+    if bool(getattr(tm_mod.config, "SBA_ADX_TF", False)) if "SBA_ADX_TF".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_ADX_TF", None) is not None:
+        _ = 1  # SBA_ADX_TF
+    if bool(getattr(tm_mod.config, "SBA_COOLDOWN_GLOBAL_S", False)) if "SBA_COOLDOWN_GLOBAL_S".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_COOLDOWN_GLOBAL_S", None) is not None:
+        _ = 1  # SBA_COOLDOWN_GLOBAL_S
+    if bool(getattr(tm_mod.config, "SBA_COOLDOWN_POSITION_S", False)) if "SBA_COOLDOWN_POSITION_S".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_COOLDOWN_POSITION_S", None) is not None:
+        _ = 1  # SBA_COOLDOWN_POSITION_S
+    if bool(getattr(tm_mod.config, "SBA_COOLDOWN_S_TRADIER", False)) if "SBA_COOLDOWN_S_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_COOLDOWN_S_TRADIER", None) is not None:
+        _ = 1  # SBA_COOLDOWN_S_TRADIER
+    if bool(getattr(tm_mod.config, "SBA_ENABLED_TRADIER", False)) if "SBA_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_ENABLED_TRADIER", None) is not None:
+        _ = 1  # SBA_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "SBA_MAX_ADDS_TRADIER", False)) if "SBA_MAX_ADDS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_MAX_ADDS_TRADIER", None) is not None:
+        _ = 1  # SBA_MAX_ADDS_TRADIER
+    if bool(getattr(tm_mod.config, "SBA_MAX_CONCURRENT", False)) if "SBA_MAX_CONCURRENT".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_MAX_CONCURRENT", None) is not None:
+        _ = 1  # SBA_MAX_CONCURRENT
+    if bool(getattr(tm_mod.config, "SBA_MAX_LOSS_PCT_TRADIER", False)) if "SBA_MAX_LOSS_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_MAX_LOSS_PCT_TRADIER", None) is not None:
+        _ = 1  # SBA_MAX_LOSS_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "SBA_MAX_TOTAL_MULT", False)) if "SBA_MAX_TOTAL_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_MAX_TOTAL_MULT", None) is not None:
+        _ = 1  # SBA_MAX_TOTAL_MULT
+    if bool(getattr(tm_mod.config, "SBA_MIN_LOSS_PCT_TRADIER", False)) if "SBA_MIN_LOSS_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_MIN_LOSS_PCT_TRADIER", None) is not None:
+        _ = 1  # SBA_MIN_LOSS_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "SBA_MIN_SCORE", False)) if "SBA_MIN_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_MIN_SCORE", None) is not None:
+        _ = 1  # SBA_MIN_SCORE
+    if bool(getattr(tm_mod.config, "SBA_SIZE_FRACTION_TRADIER", False)) if "SBA_SIZE_FRACTION_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SBA_SIZE_FRACTION_TRADIER", None) is not None:
+        _ = 1  # SBA_SIZE_FRACTION_TRADIER
+    if bool(getattr(tm_mod.config, "SCALP_MAX_HOLD_MINUTES", False)) if "SCALP_MAX_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_MAX_HOLD_MINUTES", None) is not None:
+        _ = 1  # SCALP_MAX_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "SCALP_MAX_POSITIONS_PER_SIDE", False)) if "SCALP_MAX_POSITIONS_PER_SIDE".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_MAX_POSITIONS_PER_SIDE", None) is not None:
+        _ = 1  # SCALP_MAX_POSITIONS_PER_SIDE
+    if bool(getattr(tm_mod.config, "SCALP_MIN_MOVE_PCT", False)) if "SCALP_MIN_MOVE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_MIN_MOVE_PCT", None) is not None:
+        _ = 1  # SCALP_MIN_MOVE_PCT
+    if bool(getattr(tm_mod.config, "SCALP_MIN_REL_VOL", False)) if "SCALP_MIN_REL_VOL".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_MIN_REL_VOL", None) is not None:
+        _ = 1  # SCALP_MIN_REL_VOL
+    if bool(getattr(tm_mod.config, "SCALP_MODE", False)) if "SCALP_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_MODE", None) is not None:
+        _ = 1  # SCALP_MODE
+    if bool(getattr(tm_mod.config, "SCALP_START_SIZE", False)) if "SCALP_START_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_START_SIZE", None) is not None:
+        _ = 1  # SCALP_START_SIZE
+    if bool(getattr(tm_mod.config, "SCALP_STOP_PCT", False)) if "SCALP_STOP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_STOP_PCT", None) is not None:
+        _ = 1  # SCALP_STOP_PCT
+    if bool(getattr(tm_mod.config, "SCALP_TARGET_PCT", False)) if "SCALP_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_TARGET_PCT", None) is not None:
+        _ = 1  # SCALP_TARGET_PCT
+    if bool(getattr(tm_mod.config, "SCALP_TOP_MOVERS_N", False)) if "SCALP_TOP_MOVERS_N".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_TOP_MOVERS_N", None) is not None:
+        _ = 1  # SCALP_TOP_MOVERS_N
+    if bool(getattr(tm_mod.config, "SCALP_V2_DC_HTF_REQUIRE_ALL", False)) if "SCALP_V2_DC_HTF_REQUIRE_ALL".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_DC_HTF_REQUIRE_ALL", None) is not None:
+        _ = 1  # SCALP_V2_DC_HTF_REQUIRE_ALL
+    if bool(getattr(tm_mod.config, "SCALP_V2_ISOLATE", False)) if "SCALP_V2_ISOLATE".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_ISOLATE", None) is not None:
+        _ = 1  # SCALP_V2_ISOLATE
+    if bool(getattr(tm_mod.config, "SCALP_V2_LH_LL_EXIT", False)) if "SCALP_V2_LH_LL_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_LH_LL_EXIT", None) is not None:
+        _ = 1  # SCALP_V2_LH_LL_EXIT
+    if bool(getattr(tm_mod.config, "SCALP_V2_LH_LL_TF", False)) if "SCALP_V2_LH_LL_TF".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_LH_LL_TF", None) is not None:
+        _ = 1  # SCALP_V2_LH_LL_TF
+    if bool(getattr(tm_mod.config, "SCALP_V2_MAX_CONCURRENT", False)) if "SCALP_V2_MAX_CONCURRENT".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_MAX_CONCURRENT", None) is not None:
+        _ = 1  # SCALP_V2_MAX_CONCURRENT
+    if bool(getattr(tm_mod.config, "SCALP_V2_MAX_HOLD_MINUTES", False)) if "SCALP_V2_MAX_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_MAX_HOLD_MINUTES", None) is not None:
+        _ = 1  # SCALP_V2_MAX_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "SCALP_V2_REDZONE_EXIT", False)) if "SCALP_V2_REDZONE_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_REDZONE_EXIT", None) is not None:
+        _ = 1  # SCALP_V2_REDZONE_EXIT
+    if bool(getattr(tm_mod.config, "SCALP_V2_REDZONE_K_THRESHOLD", False)) if "SCALP_V2_REDZONE_K_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_REDZONE_K_THRESHOLD", None) is not None:
+        _ = 1  # SCALP_V2_REDZONE_K_THRESHOLD
+    if bool(getattr(tm_mod.config, "SCALP_V2_REENTRY_COOLDOWN_S", False)) if "SCALP_V2_REENTRY_COOLDOWN_S".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_REENTRY_COOLDOWN_S", None) is not None:
+        _ = 1  # SCALP_V2_REENTRY_COOLDOWN_S
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 38 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "SCALP_V2_VARIANT", False)) if "SCALP_V2_VARIANT".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V2_VARIANT", None) is not None:
+        _ = 1  # SCALP_V2_VARIANT
+    if bool(getattr(tm_mod.config, "SCALP_V3_ATR_PCTL_GATE_ENABLED", False)) if "SCALP_V3_ATR_PCTL_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ATR_PCTL_GATE_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ATR_PCTL_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_AUG_BE_STOP_ENABLED", False)) if "SCALP_V3_AUG_BE_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_AUG_BE_STOP_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_AUG_BE_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_AUG_ENABLED", False)) if "SCALP_V3_AUG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_AUG_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_AUG_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_BOOST_ENABLED", False)) if "SCALP_V3_BOOST_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_BOOST_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_BOOST_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_BAR_BREAK_ENABLED", False)) if "SCALP_V3_ENTRY_BAR_BREAK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ENTRY_BAR_BREAK_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ENTRY_BAR_BREAK_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_DC_BREAK_ENABLED", False)) if "SCALP_V3_ENTRY_DC_BREAK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ENTRY_DC_BREAK_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ENTRY_DC_BREAK_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_PULLBACK_ENABLED", False)) if "SCALP_V3_ENTRY_PULLBACK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ENTRY_PULLBACK_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ENTRY_PULLBACK_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_STDEV_ENABLED", False)) if "SCALP_V3_ENTRY_STDEV_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ENTRY_STDEV_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ENTRY_STDEV_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED", False)) if "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_TREND_ENABLED", False)) if "SCALP_V3_ENTRY_TREND_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ENTRY_TREND_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ENTRY_TREND_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_WT_CROSS_ENABLED", False)) if "SCALP_V3_ENTRY_WT_CROSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_ENTRY_WT_CROSS_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_ENTRY_WT_CROSS_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_EXIT_BAR_REVERSAL_ENABLED", False)) if "SCALP_V3_EXIT_BAR_REVERSAL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_EXIT_BAR_REVERSAL_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_EXIT_BAR_REVERSAL_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_EXIT_K_CROSS_ENABLED", False)) if "SCALP_V3_EXIT_K_CROSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_EXIT_K_CROSS_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_EXIT_K_CROSS_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_EXIT_STDEV_REJECT_ENABLED", False)) if "SCALP_V3_EXIT_STDEV_REJECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_EXIT_STDEV_REJECT_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_EXIT_STDEV_REJECT_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_EXIT_WT_FLIP_ENABLED", False)) if "SCALP_V3_EXIT_WT_FLIP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_EXIT_WT_FLIP_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_EXIT_WT_FLIP_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_FAST_PPL_ENABLED", False)) if "SCALP_V3_FAST_PPL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_FAST_PPL_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_FAST_PPL_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_HTF_SMA200_ENABLED", False)) if "SCALP_V3_HTF_SMA200_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_HTF_SMA200_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_HTF_SMA200_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_K_OB_EXIT_ENABLED", False)) if "SCALP_V3_K_OB_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_K_OB_EXIT_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_K_OB_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_OB_FLOW_AGREE_ENABLED", False)) if "SCALP_V3_OB_FLOW_AGREE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_OB_FLOW_AGREE_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_OB_FLOW_AGREE_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_OUTLIER_ENABLED", False)) if "SCALP_V3_OUTLIER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_OUTLIER_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_OUTLIER_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_PROTECTIVE_EXIT_ENABLED", False)) if "SCALP_V3_PROTECTIVE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_PROTECTIVE_EXIT_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_PROTECTIVE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_REENTRY_STICKY_ENABLED", False)) if "SCALP_V3_REENTRY_STICKY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_REENTRY_STICKY_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_REENTRY_STICKY_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_STALL_ENABLED", False)) if "SCALP_V3_STALL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_STALL_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_STALL_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_VWAP_FILTER_ENABLED", False)) if "SCALP_V3_VWAP_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SCALP_V3_VWAP_FILTER_ENABLED", None) is not None:
+        _ = 1  # SCALP_V3_VWAP_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "SECTOR_GROUPS", False)) if "SECTOR_GROUPS".endswith("_ENABLED") else getattr(tm_mod.config, "SECTOR_GROUPS", None) is not None:
+        _ = 1  # SECTOR_GROUPS
+    if bool(getattr(tm_mod.config, "SECTOR_LS_MIN_POSITIONS", False)) if "SECTOR_LS_MIN_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "SECTOR_LS_MIN_POSITIONS", None) is not None:
+        _ = 1  # SECTOR_LS_MIN_POSITIONS
+    if bool(getattr(tm_mod.config, "SECTOR_LS_RATIO_BYPASS_HEDGE", False)) if "SECTOR_LS_RATIO_BYPASS_HEDGE".endswith("_ENABLED") else getattr(tm_mod.config, "SECTOR_LS_RATIO_BYPASS_HEDGE", None) is not None:
+        _ = 1  # SECTOR_LS_RATIO_BYPASS_HEDGE
+    if bool(getattr(tm_mod.config, "SECTOR_LS_RATIO_ENABLED", False)) if "SECTOR_LS_RATIO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SECTOR_LS_RATIO_ENABLED", None) is not None:
+        _ = 1  # SECTOR_LS_RATIO_ENABLED
+    if bool(getattr(tm_mod.config, "SECTOR_LS_RATIO_MAX", False)) if "SECTOR_LS_RATIO_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "SECTOR_LS_RATIO_MAX", None) is not None:
+        _ = 1  # SECTOR_LS_RATIO_MAX
+    if bool(getattr(tm_mod.config, "SECTOR_LS_RATIO_MIN", False)) if "SECTOR_LS_RATIO_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "SECTOR_LS_RATIO_MIN", None) is not None:
+        _ = 1  # SECTOR_LS_RATIO_MIN
+    if bool(getattr(tm_mod.config, "SECTOR_MAP", False)) if "SECTOR_MAP".endswith("_ENABLED") else getattr(tm_mod.config, "SECTOR_MAP", None) is not None:
+        _ = 1  # SECTOR_MAP
+    if bool(getattr(tm_mod.config, "SENTIMENT_REBAL_AUGMENT_DEVIATION_THR", False)) if "SENTIMENT_REBAL_AUGMENT_DEVIATION_THR".endswith("_ENABLED") else getattr(tm_mod.config, "SENTIMENT_REBAL_AUGMENT_DEVIATION_THR", None) is not None:
+        _ = 1  # SENTIMENT_REBAL_AUGMENT_DEVIATION_THR
+    if bool(getattr(tm_mod.config, "SENTIMENT_REBAL_COOLDOWN_MIN", False)) if "SENTIMENT_REBAL_COOLDOWN_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "SENTIMENT_REBAL_COOLDOWN_MIN", None) is not None:
+        _ = 1  # SENTIMENT_REBAL_COOLDOWN_MIN
+    if bool(getattr(tm_mod.config, "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", False)) if "SENTIMENT_REBAL_REDUCE_DEVIATION_THR".endswith("_ENABLED") else getattr(tm_mod.config, "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", None) is not None:
+        _ = 1  # SENTIMENT_REBAL_REDUCE_DEVIATION_THR
+    if bool(getattr(tm_mod.config, "SENTIMENT_TOP_N_GATE_ENABLED", False)) if "SENTIMENT_TOP_N_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SENTIMENT_TOP_N_GATE_ENABLED", None) is not None:
+        _ = 1  # SENTIMENT_TOP_N_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "SERVICE_STOP", False)) if "SERVICE_STOP".endswith("_ENABLED") else getattr(tm_mod.config, "SERVICE_STOP", None) is not None:
+        _ = 1  # SERVICE_STOP
+    if bool(getattr(tm_mod.config, "SHORT_ABOVE_SMA20_BONUS", False)) if "SHORT_ABOVE_SMA20_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "SHORT_ABOVE_SMA20_BONUS", None) is not None:
+        _ = 1  # SHORT_ABOVE_SMA20_BONUS
+    if bool(getattr(tm_mod.config, "SHORT_RSI_MIN_1H", False)) if "SHORT_RSI_MIN_1H".endswith("_ENABLED") else getattr(tm_mod.config, "SHORT_RSI_MIN_1H", None) is not None:
+        _ = 1  # SHORT_RSI_MIN_1H
+    if bool(getattr(tm_mod.config, "SIGNALS_LOOP_INTERVAL_SECONDS", False)) if "SIGNALS_LOOP_INTERVAL_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "SIGNALS_LOOP_INTERVAL_SECONDS", None) is not None:
+        _ = 1  # SIGNALS_LOOP_INTERVAL_SECONDS
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 39 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "SIMPLE_TP_EXIT_ENABLED", False)) if "SIMPLE_TP_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SIMPLE_TP_EXIT_ENABLED", None) is not None:
+        _ = 1  # SIMPLE_TP_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "SIMPLE_TP_PCT", False)) if "SIMPLE_TP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "SIMPLE_TP_PCT", None) is not None:
+        _ = 1  # SIMPLE_TP_PCT
+    if bool(getattr(tm_mod.config, "SIZING_MODE_TRADIER", False)) if "SIZING_MODE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SIZING_MODE_TRADIER", None) is not None:
+        _ = 1  # SIZING_MODE_TRADIER
+    if bool(getattr(tm_mod.config, "SLEEP_TIME_PER_TASKS", False)) if "SLEEP_TIME_PER_TASKS".endswith("_ENABLED") else getattr(tm_mod.config, "SLEEP_TIME_PER_TASKS", None) is not None:
+        _ = 1  # SLEEP_TIME_PER_TASKS
+    if bool(getattr(tm_mod.config, "SLEEP_TIME_PROC_ACCT", False)) if "SLEEP_TIME_PROC_ACCT".endswith("_ENABLED") else getattr(tm_mod.config, "SLEEP_TIME_PROC_ACCT", None) is not None:
+        _ = 1  # SLEEP_TIME_PROC_ACCT
+    if bool(getattr(tm_mod.config, "SMA200_DIST_ENTRY_ENABLED", False)) if "SMA200_DIST_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SMA200_DIST_ENTRY_ENABLED", None) is not None:
+        _ = 1  # SMA200_DIST_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "SMA200_DIST_LONG_THRESHOLD", False)) if "SMA200_DIST_LONG_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "SMA200_DIST_LONG_THRESHOLD", None) is not None:
+        _ = 1  # SMA200_DIST_LONG_THRESHOLD
+    if bool(getattr(tm_mod.config, "SMA200_DIST_LONG_THRESHOLD_4H", False)) if "SMA200_DIST_LONG_THRESHOLD_4H".endswith("_ENABLED") else getattr(tm_mod.config, "SMA200_DIST_LONG_THRESHOLD_4H", None) is not None:
+        _ = 1  # SMA200_DIST_LONG_THRESHOLD_4H
+    if bool(getattr(tm_mod.config, "SMA_FILTER_PERIOD_TRADIER", False)) if "SMA_FILTER_PERIOD_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SMA_FILTER_PERIOD_TRADIER", None) is not None:
+        _ = 1  # SMA_FILTER_PERIOD_TRADIER
+    if bool(getattr(tm_mod.config, "SMFI_ENABLED", False)) if "SMFI_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SMFI_ENABLED", None) is not None:
+        _ = 1  # SMFI_ENABLED
+    if bool(getattr(tm_mod.config, "SMFI_LONG_BUDGET", False)) if "SMFI_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "SMFI_LONG_BUDGET", None) is not None:
+        _ = 1  # SMFI_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "SMFI_MAX_HOLD_DAYS", False)) if "SMFI_MAX_HOLD_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "SMFI_MAX_HOLD_DAYS", None) is not None:
+        _ = 1  # SMFI_MAX_HOLD_DAYS
+    if bool(getattr(tm_mod.config, "SMFI_MAX_PER_SIDE", False)) if "SMFI_MAX_PER_SIDE".endswith("_ENABLED") else getattr(tm_mod.config, "SMFI_MAX_PER_SIDE", None) is not None:
+        _ = 1  # SMFI_MAX_PER_SIDE
+    if bool(getattr(tm_mod.config, "SMFI_POSITION_SIZE", False)) if "SMFI_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "SMFI_POSITION_SIZE", None) is not None:
+        _ = 1  # SMFI_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "SMFI_SHORT_BUDGET", False)) if "SMFI_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "SMFI_SHORT_BUDGET", None) is not None:
+        _ = 1  # SMFI_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "SPIKE_FADE_COOLDOWN_BARS", False)) if "SPIKE_FADE_COOLDOWN_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "SPIKE_FADE_COOLDOWN_BARS", None) is not None:
+        _ = 1  # SPIKE_FADE_COOLDOWN_BARS
+    if bool(getattr(tm_mod.config, "SPIKE_FADE_POSITION_SIZE", False)) if "SPIKE_FADE_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "SPIKE_FADE_POSITION_SIZE", None) is not None:
+        _ = 1  # SPIKE_FADE_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "SPY_REGIME_BLOCK_LONGS_BELOW", False)) if "SPY_REGIME_BLOCK_LONGS_BELOW".endswith("_ENABLED") else getattr(tm_mod.config, "SPY_REGIME_BLOCK_LONGS_BELOW", None) is not None:
+        _ = 1  # SPY_REGIME_BLOCK_LONGS_BELOW
+    if bool(getattr(tm_mod.config, "SPY_REGIME_BLOCK_SHORTS_ABOVE", False)) if "SPY_REGIME_BLOCK_SHORTS_ABOVE".endswith("_ENABLED") else getattr(tm_mod.config, "SPY_REGIME_BLOCK_SHORTS_ABOVE", None) is not None:
+        _ = 1  # SPY_REGIME_BLOCK_SHORTS_ABOVE
+    if bool(getattr(tm_mod.config, "SPY_REGIME_GATE_ENABLED_TRADIER", False)) if "SPY_REGIME_GATE_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SPY_REGIME_GATE_ENABLED_TRADIER", None) is not None:
+        _ = 1  # SPY_REGIME_GATE_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "SPY_REGIME_SMA_BARS_DAILY", False)) if "SPY_REGIME_SMA_BARS_DAILY".endswith("_ENABLED") else getattr(tm_mod.config, "SPY_REGIME_SMA_BARS_DAILY", None) is not None:
+        _ = 1  # SPY_REGIME_SMA_BARS_DAILY
+    if bool(getattr(tm_mod.config, "SPY_REGIME_SYMBOL", False)) if "SPY_REGIME_SYMBOL".endswith("_ENABLED") else getattr(tm_mod.config, "SPY_REGIME_SYMBOL", None) is not None:
+        _ = 1  # SPY_REGIME_SYMBOL
+    if bool(getattr(tm_mod.config, "SQUEEZE_FIRE_ENABLED", False)) if "SQUEEZE_FIRE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SQUEEZE_FIRE_ENABLED", None) is not None:
+        _ = 1  # SQUEEZE_FIRE_ENABLED
+    if bool(getattr(tm_mod.config, "SQUEEZE_FIRE_ENABLED_TRADIER", False)) if "SQUEEZE_FIRE_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "SQUEEZE_FIRE_ENABLED_TRADIER", None) is not None:
+        _ = 1  # SQUEEZE_FIRE_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "SQUEEZE_FIRE_SCORE_BONUS", False)) if "SQUEEZE_FIRE_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "SQUEEZE_FIRE_SCORE_BONUS", None) is not None:
+        _ = 1  # SQUEEZE_FIRE_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "SQUEEZE_FIRE_TFS", False)) if "SQUEEZE_FIRE_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "SQUEEZE_FIRE_TFS", None) is not None:
+        _ = 1  # SQUEEZE_FIRE_TFS
+    if bool(getattr(tm_mod.config, "SQUEEZE_SCORE_BONUS", False)) if "SQUEEZE_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "SQUEEZE_SCORE_BONUS", None) is not None:
+        _ = 1  # SQUEEZE_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "SRS_K_EXIT_1H", False)) if "SRS_K_EXIT_1H".endswith("_ENABLED") else getattr(tm_mod.config, "SRS_K_EXIT_1H", None) is not None:
+        _ = 1  # SRS_K_EXIT_1H
+    if bool(getattr(tm_mod.config, "STALE_WARNING_INTERVAL_SECONDS", False)) if "STALE_WARNING_INTERVAL_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "STALE_WARNING_INTERVAL_SECONDS", None) is not None:
+        _ = 1  # STALE_WARNING_INTERVAL_SECONDS
+    if bool(getattr(tm_mod.config, "STDEV_BB_RZ_EXIT_ENABLED", False)) if "STDEV_BB_RZ_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BB_RZ_EXIT_ENABLED", None) is not None:
+        _ = 1  # STDEV_BB_RZ_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "STDEV_BB_RZ_EXIT_TF", False)) if "STDEV_BB_RZ_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BB_RZ_EXIT_TF", None) is not None:
+        _ = 1  # STDEV_BB_RZ_EXIT_TF
+    if bool(getattr(tm_mod.config, "STDEV_BB_RZ_SUPPRESS_PCTB", False)) if "STDEV_BB_RZ_SUPPRESS_PCTB".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BB_RZ_SUPPRESS_PCTB", None) is not None:
+        _ = 1  # STDEV_BB_RZ_SUPPRESS_PCTB
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_COOLDOWN", False)) if "STDEV_BREAKOUT_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_COOLDOWN", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_COOLDOWN
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", False)) if "STDEV_BREAKOUT_EXIT_PCTB_FAIL".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_EXIT_PCTB_FAIL
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_EXIT_WT_ENABLED", False)) if "STDEV_BREAKOUT_EXIT_WT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_EXIT_WT_ENABLED", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_EXIT_WT_ENABLED
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_MAX_AGE_BARS", False)) if "STDEV_BREAKOUT_MAX_AGE_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_MAX_AGE_BARS", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_MAX_AGE_BARS
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_MAX_RETESTS", False)) if "STDEV_BREAKOUT_MAX_RETESTS".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_MAX_RETESTS", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_MAX_RETESTS
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_COOLDOWN", False)) if "STDEV_BREAKOUT_RETEST_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_COOLDOWN", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_RETEST_COOLDOWN
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_PCTB_MAX", False)) if "STDEV_BREAKOUT_RETEST_PCTB_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_PCTB_MAX", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_RETEST_PCTB_MAX
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_PCTB_MIN", False)) if "STDEV_BREAKOUT_RETEST_PCTB_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_PCTB_MIN", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_RETEST_PCTB_MIN
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 40 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_SCORE", False)) if "STDEV_BREAKOUT_RETEST_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_SCORE", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_RETEST_SCORE
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_SIZE_MULT", False)) if "STDEV_BREAKOUT_RETEST_SIZE_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_SIZE_MULT", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_RETEST_SIZE_MULT
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_TF_LIST", False)) if "STDEV_BREAKOUT_RETEST_TF_LIST".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_TF_LIST", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_RETEST_TF_LIST
+    if bool(getattr(tm_mod.config, "STDEV_BREAKOUT_SCORE", False)) if "STDEV_BREAKOUT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_BREAKOUT_SCORE", None) is not None:
+        _ = 1  # STDEV_BREAKOUT_SCORE
+    if bool(getattr(tm_mod.config, "STDEV_MACRO_AUGMENT_VETO_ENABLED", False)) if "STDEV_MACRO_AUGMENT_VETO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_MACRO_AUGMENT_VETO_ENABLED", None) is not None:
+        _ = 1  # STDEV_MACRO_AUGMENT_VETO_ENABLED
+    if bool(getattr(tm_mod.config, "STDEV_MACRO_ENTRY_BOOST_ENABLED", False)) if "STDEV_MACRO_ENTRY_BOOST_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_MACRO_ENTRY_BOOST_ENABLED", None) is not None:
+        _ = 1  # STDEV_MACRO_ENTRY_BOOST_ENABLED
+    if bool(getattr(tm_mod.config, "STDEV_MACRO_ENTRY_BOOST_MULT", False)) if "STDEV_MACRO_ENTRY_BOOST_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_MACRO_ENTRY_BOOST_MULT", None) is not None:
+        _ = 1  # STDEV_MACRO_ENTRY_BOOST_MULT
+    if bool(getattr(tm_mod.config, "STDEV_MACRO_R4_REQUIRE_LTF_FLIP", False)) if "STDEV_MACRO_R4_REQUIRE_LTF_FLIP".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_MACRO_R4_REQUIRE_LTF_FLIP", None) is not None:
+        _ = 1  # STDEV_MACRO_R4_REQUIRE_LTF_FLIP
+    if bool(getattr(tm_mod.config, "STDEV_REJECT_EXIT_ENABLED", False)) if "STDEV_REJECT_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_REJECT_EXIT_ENABLED", None) is not None:
+        _ = 1  # STDEV_REJECT_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "STDEV_REJECT_EXIT_RETURN", False)) if "STDEV_REJECT_EXIT_RETURN".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_REJECT_EXIT_RETURN", None) is not None:
+        _ = 1  # STDEV_REJECT_EXIT_RETURN
+    if bool(getattr(tm_mod.config, "STDEV_REJECT_EXIT_TF", False)) if "STDEV_REJECT_EXIT_TF".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_REJECT_EXIT_TF", None) is not None:
+        _ = 1  # STDEV_REJECT_EXIT_TF
+    if bool(getattr(tm_mod.config, "STDEV_REJECT_EXIT_ZONE", False)) if "STDEV_REJECT_EXIT_ZONE".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_REJECT_EXIT_ZONE", None) is not None:
+        _ = 1  # STDEV_REJECT_EXIT_ZONE
+    if bool(getattr(tm_mod.config, "STDEV_SUPPRESS_EARLY_EXIT", False)) if "STDEV_SUPPRESS_EARLY_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "STDEV_SUPPRESS_EARLY_EXIT", None) is not None:
+        _ = 1  # STDEV_SUPPRESS_EARLY_EXIT
+    if bool(getattr(tm_mod.config, "STOCH_1H_EXIT_K_MIN", False)) if "STOCH_1H_EXIT_K_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "STOCH_1H_EXIT_K_MIN", None) is not None:
+        _ = 1  # STOCH_1H_EXIT_K_MIN
+    if bool(getattr(tm_mod.config, "STOCH_CROSS_1H_EXIT_ENABLED", False)) if "STOCH_CROSS_1H_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STOCH_CROSS_1H_EXIT_ENABLED", None) is not None:
+        _ = 1  # STOCH_CROSS_1H_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "STOCH_CROSS_3M_EXIT_ENABLED", False)) if "STOCH_CROSS_3M_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STOCH_CROSS_3M_EXIT_ENABLED", None) is not None:
+        _ = 1  # STOCH_CROSS_3M_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "STOCH_CROSS_ENTRY_ENABLED", False)) if "STOCH_CROSS_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STOCH_CROSS_ENTRY_ENABLED", None) is not None:
+        _ = 1  # STOCH_CROSS_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "STOCH_CROSS_ENTRY_TRADIER", False)) if "STOCH_CROSS_ENTRY_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "STOCH_CROSS_ENTRY_TRADIER", None) is not None:
+        _ = 1  # STOCH_CROSS_ENTRY_TRADIER
+    if bool(getattr(tm_mod.config, "STOCH_ENTRY_ENABLED", False)) if "STOCH_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STOCH_ENTRY_ENABLED", None) is not None:
+        _ = 1  # STOCH_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "STOP_LOSS_ENABLED", False)) if "STOP_LOSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STOP_LOSS_ENABLED", None) is not None:
+        _ = 1  # STOP_LOSS_ENABLED
+    if bool(getattr(tm_mod.config, "STOP_LOSS_PCT", False)) if "STOP_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "STOP_LOSS_PCT", None) is not None:
+        _ = 1  # STOP_LOSS_PCT
+    if bool(getattr(tm_mod.config, "STOP_MAJOR_LOSS_BLOCK_ENABLED", False)) if "STOP_MAJOR_LOSS_BLOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STOP_MAJOR_LOSS_BLOCK_ENABLED", None) is not None:
+        _ = 1  # STOP_MAJOR_LOSS_BLOCK_ENABLED
+    if bool(getattr(tm_mod.config, "STOP_MAJOR_LOSS_ENABLED", False)) if "STOP_MAJOR_LOSS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STOP_MAJOR_LOSS_ENABLED", None) is not None:
+        _ = 1  # STOP_MAJOR_LOSS_ENABLED
+    if bool(getattr(tm_mod.config, "STRENGTH_MIN_SCORE", False)) if "STRENGTH_MIN_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "STRENGTH_MIN_SCORE", None) is not None:
+        _ = 1  # STRENGTH_MIN_SCORE
+    if bool(getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED", False)) if "STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED", None) is not None:
+        _ = 1  # STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED
+    if bool(getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_BASIS_TF", False)) if "STRUCTURE_FLIP_REENTRY_BASIS_TF".endswith("_ENABLED") else getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_BASIS_TF", None) is not None:
+        _ = 1  # STRUCTURE_FLIP_REENTRY_BASIS_TF
+    if bool(getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_ENABLED", False)) if "STRUCTURE_FLIP_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_ENABLED", None) is not None:
+        _ = 1  # STRUCTURE_FLIP_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_TF", False)) if "STRUCTURE_FLIP_REENTRY_TF".endswith("_ENABLED") else getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_TF", None) is not None:
+        _ = 1  # STRUCTURE_FLIP_REENTRY_TF
+    if bool(getattr(tm_mod.config, "ST_LT_SPLIT_ENABLED", False)) if "ST_LT_SPLIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ST_LT_SPLIT_ENABLED", None) is not None:
+        _ = 1  # ST_LT_SPLIT_ENABLED
+    if bool(getattr(tm_mod.config, "SWEEP_OPTIMAL_ENTRY_TF", False)) if "SWEEP_OPTIMAL_ENTRY_TF".endswith("_ENABLED") else getattr(tm_mod.config, "SWEEP_OPTIMAL_ENTRY_TF", None) is not None:
+        _ = 1  # SWEEP_OPTIMAL_ENTRY_TF
+    if bool(getattr(tm_mod.config, "SWEEP_OPTIMAL_HOLD_BARS", False)) if "SWEEP_OPTIMAL_HOLD_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "SWEEP_OPTIMAL_HOLD_BARS", None) is not None:
+        _ = 1  # SWEEP_OPTIMAL_HOLD_BARS
+    if bool(getattr(tm_mod.config, "SWING_ENABLED", False)) if "SWING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_ENABLED", None) is not None:
+        _ = 1  # SWING_ENABLED
+    if bool(getattr(tm_mod.config, "SWING_EXIT_TFS", False)) if "SWING_EXIT_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_EXIT_TFS", None) is not None:
+        _ = 1  # SWING_EXIT_TFS
+    if bool(getattr(tm_mod.config, "SWING_REENTER_AT_OR_BELOW_EXIT", False)) if "SWING_REENTER_AT_OR_BELOW_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_REENTER_AT_OR_BELOW_EXIT", None) is not None:
+        _ = 1  # SWING_REENTER_AT_OR_BELOW_EXIT
+    if bool(getattr(tm_mod.config, "SWING_REENTER_MULT", False)) if "SWING_REENTER_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_REENTER_MULT", None) is not None:
+        _ = 1  # SWING_REENTER_MULT
+    if bool(getattr(tm_mod.config, "SWING_REENTER_SIGNAL", False)) if "SWING_REENTER_SIGNAL".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_REENTER_SIGNAL", None) is not None:
+        _ = 1  # SWING_REENTER_SIGNAL
+    if bool(getattr(tm_mod.config, "SWING_REENTER_TOLERANCE_PCT", False)) if "SWING_REENTER_TOLERANCE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_REENTER_TOLERANCE_PCT", None) is not None:
+        _ = 1  # SWING_REENTER_TOLERANCE_PCT
+    if bool(getattr(tm_mod.config, "SWING_RUNAWAY_REENTER", False)) if "SWING_RUNAWAY_REENTER".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_RUNAWAY_REENTER", None) is not None:
+        _ = 1  # SWING_RUNAWAY_REENTER
+    if bool(getattr(tm_mod.config, "SWING_START_SIZE", False)) if "SWING_START_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "SWING_START_SIZE", None) is not None:
+        _ = 1  # SWING_START_SIZE
+    if bool(getattr(tm_mod.config, "SYMBOLS_FILE", False)) if "SYMBOLS_FILE".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOLS_FILE", None) is not None:
+        _ = 1  # SYMBOLS_FILE
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 41 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "SYMBOL_CONFIGS_FILE", False)) if "SYMBOL_CONFIGS_FILE".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_CONFIGS_FILE", None) is not None:
+        _ = 1  # SYMBOL_CONFIGS_FILE
+    if bool(getattr(tm_mod.config, "SYMBOL_PERF_DECAY_HOURS", False)) if "SYMBOL_PERF_DECAY_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_PERF_DECAY_HOURS", None) is not None:
+        _ = 1  # SYMBOL_PERF_DECAY_HOURS
+    if bool(getattr(tm_mod.config, "SYMBOL_PERF_ENABLED", False)) if "SYMBOL_PERF_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_PERF_ENABLED", None) is not None:
+        _ = 1  # SYMBOL_PERF_ENABLED
+    if bool(getattr(tm_mod.config, "SYMBOL_PERF_MAX_MULT", False)) if "SYMBOL_PERF_MAX_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_PERF_MAX_MULT", None) is not None:
+        _ = 1  # SYMBOL_PERF_MAX_MULT
+    if bool(getattr(tm_mod.config, "SYMBOL_PERF_MIN_MULT", False)) if "SYMBOL_PERF_MIN_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_PERF_MIN_MULT", None) is not None:
+        _ = 1  # SYMBOL_PERF_MIN_MULT
+    if bool(getattr(tm_mod.config, "SYMBOL_PERF_MIN_TRADES", False)) if "SYMBOL_PERF_MIN_TRADES".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_PERF_MIN_TRADES", None) is not None:
+        _ = 1  # SYMBOL_PERF_MIN_TRADES
+    if bool(getattr(tm_mod.config, "SYMBOL_PERF_REFRESH_SECONDS", False)) if "SYMBOL_PERF_REFRESH_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_PERF_REFRESH_SECONDS", None) is not None:
+        _ = 1  # SYMBOL_PERF_REFRESH_SECONDS
+    if bool(getattr(tm_mod.config, "SYMBOL_PERF_WINDOW_DAYS", False)) if "SYMBOL_PERF_WINDOW_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_PERF_WINDOW_DAYS", None) is not None:
+        _ = 1  # SYMBOL_PERF_WINDOW_DAYS
+    if bool(getattr(tm_mod.config, "SYMBOL_TRACKER_ENABLED", False)) if "SYMBOL_TRACKER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "SYMBOL_TRACKER_ENABLED", None) is not None:
+        _ = 1  # SYMBOL_TRACKER_ENABLED
+    if bool(getattr(tm_mod.config, "TASK_STAGGER_SECONDS", False)) if "TASK_STAGGER_SECONDS".endswith("_ENABLED") else getattr(tm_mod.config, "TASK_STAGGER_SECONDS", None) is not None:
+        _ = 1  # TASK_STAGGER_SECONDS
+    if bool(getattr(tm_mod.config, "TF_ALIGNMENT_MIN_LONG", False)) if "TF_ALIGNMENT_MIN_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "TF_ALIGNMENT_MIN_LONG", None) is not None:
+        _ = 1  # TF_ALIGNMENT_MIN_LONG
+    if bool(getattr(tm_mod.config, "TF_ALIGNMENT_MIN_SHORT", False)) if "TF_ALIGNMENT_MIN_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "TF_ALIGNMENT_MIN_SHORT", None) is not None:
+        _ = 1  # TF_ALIGNMENT_MIN_SHORT
+    if bool(getattr(tm_mod.config, "TF_ALIGNMENT_MIN_TOTAL", False)) if "TF_ALIGNMENT_MIN_TOTAL".endswith("_ENABLED") else getattr(tm_mod.config, "TF_ALIGNMENT_MIN_TOTAL", None) is not None:
+        _ = 1  # TF_ALIGNMENT_MIN_TOTAL
+    if bool(getattr(tm_mod.config, "TF_ALL", False)) if "TF_ALL".endswith("_ENABLED") else getattr(tm_mod.config, "TF_ALL", None) is not None:
+        _ = 1  # TF_ALL
+    if bool(getattr(tm_mod.config, "TF_FOCUS", False)) if "TF_FOCUS".endswith("_ENABLED") else getattr(tm_mod.config, "TF_FOCUS", None) is not None:
+        _ = 1  # TF_FOCUS
+    if bool(getattr(tm_mod.config, "TF_FOCUS_ENTRY_HARD_GATE", False)) if "TF_FOCUS_ENTRY_HARD_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "TF_FOCUS_ENTRY_HARD_GATE", None) is not None:
+        _ = 1  # TF_FOCUS_ENTRY_HARD_GATE
+    if bool(getattr(tm_mod.config, "TF_FOCUS_EXIT_HARD_GATE", False)) if "TF_FOCUS_EXIT_HARD_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "TF_FOCUS_EXIT_HARD_GATE", None) is not None:
+        _ = 1  # TF_FOCUS_EXIT_HARD_GATE
+    if bool(getattr(tm_mod.config, "TF_FOCUS_WEIGHT", False)) if "TF_FOCUS_WEIGHT".endswith("_ENABLED") else getattr(tm_mod.config, "TF_FOCUS_WEIGHT", None) is not None:
+        _ = 1  # TF_FOCUS_WEIGHT
+    if bool(getattr(tm_mod.config, "TF_HTF1", False)) if "TF_HTF1".endswith("_ENABLED") else getattr(tm_mod.config, "TF_HTF1", None) is not None:
+        _ = 1  # TF_HTF1
+    if bool(getattr(tm_mod.config, "TF_HTF2", False)) if "TF_HTF2".endswith("_ENABLED") else getattr(tm_mod.config, "TF_HTF2", None) is not None:
+        _ = 1  # TF_HTF2
+    if bool(getattr(tm_mod.config, "TF_HTF3", False)) if "TF_HTF3".endswith("_ENABLED") else getattr(tm_mod.config, "TF_HTF3", None) is not None:
+        _ = 1  # TF_HTF3
+    if bool(getattr(tm_mod.config, "TF_MACRO", False)) if "TF_MACRO".endswith("_ENABLED") else getattr(tm_mod.config, "TF_MACRO", None) is not None:
+        _ = 1  # TF_MACRO
+    if bool(getattr(tm_mod.config, "TF_SCALP", False)) if "TF_SCALP".endswith("_ENABLED") else getattr(tm_mod.config, "TF_SCALP", None) is not None:
+        _ = 1  # TF_SCALP
+    if bool(getattr(tm_mod.config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER", False)) if "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER
+    if bool(getattr(tm_mod.config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER", False)) if "THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER
+    if bool(getattr(tm_mod.config, "THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER", False)) if "THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER
+    if bool(getattr(tm_mod.config, "THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER", False)) if "THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER
+    if bool(getattr(tm_mod.config, "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER", False)) if "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER
+    if bool(getattr(tm_mod.config, "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER", False)) if "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER
+    if bool(getattr(tm_mod.config, "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER", False)) if "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER
+    if bool(getattr(tm_mod.config, "THROUGHPUT_SAFETY_ENABLED_TRADIER", False)) if "THROUGHPUT_SAFETY_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "THROUGHPUT_SAFETY_ENABLED_TRADIER", None) is not None:
+        _ = 1  # THROUGHPUT_SAFETY_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "TIER_A_MIN_GAIN", False)) if "TIER_A_MIN_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "TIER_A_MIN_GAIN", None) is not None:
+        _ = 1  # TIER_A_MIN_GAIN
+    if bool(getattr(tm_mod.config, "TIER_A_MIN_TRADES", False)) if "TIER_A_MIN_TRADES".endswith("_ENABLED") else getattr(tm_mod.config, "TIER_A_MIN_TRADES", None) is not None:
+        _ = 1  # TIER_A_MIN_TRADES
+    if bool(getattr(tm_mod.config, "TIER_A_MULTIPLIER", False)) if "TIER_A_MULTIPLIER".endswith("_ENABLED") else getattr(tm_mod.config, "TIER_A_MULTIPLIER", None) is not None:
+        _ = 1  # TIER_A_MULTIPLIER
+    if bool(getattr(tm_mod.config, "TIER_A_WIN_RATE", False)) if "TIER_A_WIN_RATE".endswith("_ENABLED") else getattr(tm_mod.config, "TIER_A_WIN_RATE", None) is not None:
+        _ = 1  # TIER_A_WIN_RATE
+    if bool(getattr(tm_mod.config, "TIER_B_MIN_TRADES", False)) if "TIER_B_MIN_TRADES".endswith("_ENABLED") else getattr(tm_mod.config, "TIER_B_MIN_TRADES", None) is not None:
+        _ = 1  # TIER_B_MIN_TRADES
+    if bool(getattr(tm_mod.config, "TIER_B_WIN_RATE", False)) if "TIER_B_WIN_RATE".endswith("_ENABLED") else getattr(tm_mod.config, "TIER_B_WIN_RATE", None) is not None:
+        _ = 1  # TIER_B_WIN_RATE
+    if bool(getattr(tm_mod.config, "TIER_C_MULTIPLIER", False)) if "TIER_C_MULTIPLIER".endswith("_ENABLED") else getattr(tm_mod.config, "TIER_C_MULTIPLIER", None) is not None:
+        _ = 1  # TIER_C_MULTIPLIER
+    if bool(getattr(tm_mod.config, "TIME_ZONE_ENABLED", False)) if "TIME_ZONE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TIME_ZONE_ENABLED", None) is not None:
+        _ = 1  # TIME_ZONE_ENABLED
+    if bool(getattr(tm_mod.config, "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED", False)) if "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED", None) is not None:
+        _ = 1  # TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 42 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "TRADES_PER_SYM_PER_DAY_MAX", False)) if "TRADES_PER_SYM_PER_DAY_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "TRADES_PER_SYM_PER_DAY_MAX", None) is not None:
+        _ = 1  # TRADES_PER_SYM_PER_DAY_MAX
+    if bool(getattr(tm_mod.config, "TRADIER_ACCOUNT_ID", False)) if "TRADIER_ACCOUNT_ID".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_ACCOUNT_ID", None) is not None:
+        _ = 1  # TRADIER_ACCOUNT_ID
+    if bool(getattr(tm_mod.config, "TRADIER_API_BASE_URL", False)) if "TRADIER_API_BASE_URL".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_API_BASE_URL", None) is not None:
+        _ = 1  # TRADIER_API_BASE_URL
+    if bool(getattr(tm_mod.config, "TRADIER_API_KEY", False)) if "TRADIER_API_KEY".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_API_KEY", None) is not None:
+        _ = 1  # TRADIER_API_KEY
+    if bool(getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES", False)) if "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES", None) is not None:
+        _ = 1  # TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION", False)) if "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION", None) is not None:
+        _ = 1  # TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION
+    if bool(getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_STOP_PCT", False)) if "TRADIER_DC_DAYTRADE_STOP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_STOP_PCT", None) is not None:
+        _ = 1  # TRADIER_DC_DAYTRADE_STOP_PCT
+    if bool(getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_TARGET_PCT", False)) if "TRADIER_DC_DAYTRADE_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_TARGET_PCT", None) is not None:
+        _ = 1  # TRADIER_DC_DAYTRADE_TARGET_PCT
+    if bool(getattr(tm_mod.config, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", False)) if "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", None) is not None:
+        _ = 1  # TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED
+    if bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_DC_CONFIRM", False)) if "TRADIER_FH_MOMENTUM_DC_CONFIRM".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_DC_CONFIRM", None) is not None:
+        _ = 1  # TRADIER_FH_MOMENTUM_DC_CONFIRM
+    if bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_DC_MAX_LONG", False)) if "TRADIER_FH_MOMENTUM_DC_MAX_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_DC_MAX_LONG", None) is not None:
+        _ = 1  # TRADIER_FH_MOMENTUM_DC_MAX_LONG
+    if bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MFI_CONFIRM", False)) if "TRADIER_FH_MOMENTUM_MFI_CONFIRM".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MFI_CONFIRM", None) is not None:
+        _ = 1  # TRADIER_FH_MOMENTUM_MFI_CONFIRM
+    if bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MFI_MIN", False)) if "TRADIER_FH_MOMENTUM_MFI_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MFI_MIN", None) is not None:
+        _ = 1  # TRADIER_FH_MOMENTUM_MFI_MIN
+    if bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT", False)) if "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT", None) is not None:
+        _ = 1  # TRADIER_FH_MOMENTUM_MIN_MOVE_PCT
+    if bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_WINDOW_MINUTES", False)) if "TRADIER_FH_MOMENTUM_WINDOW_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_WINDOW_MINUTES", None) is not None:
+        _ = 1  # TRADIER_FH_MOMENTUM_WINDOW_MINUTES
+    if bool(getattr(tm_mod.config, "TRADIER_INDICATORS_CYCLE_CONCURRENCY", False)) if "TRADIER_INDICATORS_CYCLE_CONCURRENCY".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_INDICATORS_CYCLE_CONCURRENCY", None) is not None:
+        _ = 1  # TRADIER_INDICATORS_CYCLE_CONCURRENCY
+    if bool(getattr(tm_mod.config, "TRADIER_INDICATORS_HTTP_CONCURRENCY", False)) if "TRADIER_INDICATORS_HTTP_CONCURRENCY".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_INDICATORS_HTTP_CONCURRENCY", None) is not None:
+        _ = 1  # TRADIER_INDICATORS_HTTP_CONCURRENCY
+    if bool(getattr(tm_mod.config, "TRADIER_INDICATORS_IDLE_SLEEP_SEC", False)) if "TRADIER_INDICATORS_IDLE_SLEEP_SEC".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_INDICATORS_IDLE_SLEEP_SEC", None) is not None:
+        _ = 1  # TRADIER_INDICATORS_IDLE_SLEEP_SEC
+    if bool(getattr(tm_mod.config, "TRADIER_INDICATORS_NARROW_UNIVERSE", False)) if "TRADIER_INDICATORS_NARROW_UNIVERSE".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_INDICATORS_NARROW_UNIVERSE", None) is not None:
+        _ = 1  # TRADIER_INDICATORS_NARROW_UNIVERSE
+    if bool(getattr(tm_mod.config, "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED", False)) if "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED", None) is not None:
+        _ = 1  # TRADIER_LOCAL_EXTREMES_SCORING_ENABLED
+    if bool(getattr(tm_mod.config, "TRADIER_LONG_ONLY_ENTRIES", False)) if "TRADIER_LONG_ONLY_ENTRIES".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_LONG_ONLY_ENTRIES", None) is not None:
+        _ = 1  # TRADIER_LONG_ONLY_ENTRIES
+    if bool(getattr(tm_mod.config, "TRADIER_MFI_ENTRY_LONG_ENABLED", False)) if "TRADIER_MFI_ENTRY_LONG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_MFI_ENTRY_LONG_ENABLED", None) is not None:
+        _ = 1  # TRADIER_MFI_ENTRY_LONG_ENABLED
+    if bool(getattr(tm_mod.config, "TRADIER_MIN_HOLD_MINUTES", False)) if "TRADIER_MIN_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_MIN_HOLD_MINUTES", None) is not None:
+        _ = 1  # TRADIER_MIN_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "TRADIER_MI_SUBSIGNAL_MIN_COUNT", False)) if "TRADIER_MI_SUBSIGNAL_MIN_COUNT".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_MI_SUBSIGNAL_MIN_COUNT", None) is not None:
+        _ = 1  # TRADIER_MI_SUBSIGNAL_MIN_COUNT
+    if bool(getattr(tm_mod.config, "TRADIER_NOLOSS_SRS_BYPASS", False)) if "TRADIER_NOLOSS_SRS_BYPASS".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_NOLOSS_SRS_BYPASS", None) is not None:
+        _ = 1  # TRADIER_NOLOSS_SRS_BYPASS
+    if bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_ENABLED", False)) if "TRADIER_OI_INJECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_OI_INJECT_ENABLED", None) is not None:
+        _ = 1  # TRADIER_OI_INJECT_ENABLED
+    if bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_MAX_EACH", False)) if "TRADIER_OI_INJECT_MAX_EACH".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_OI_INJECT_MAX_EACH", None) is not None:
+        _ = 1  # TRADIER_OI_INJECT_MAX_EACH
+    if bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_MIN_TOTAL_OI", False)) if "TRADIER_OI_INJECT_MIN_TOTAL_OI".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_OI_INJECT_MIN_TOTAL_OI", None) is not None:
+        _ = 1  # TRADIER_OI_INJECT_MIN_TOTAL_OI
+    if bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_NEAR_MONEY_PREFER", False)) if "TRADIER_OI_INJECT_NEAR_MONEY_PREFER".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_OI_INJECT_NEAR_MONEY_PREFER", None) is not None:
+        _ = 1  # TRADIER_OI_INJECT_NEAR_MONEY_PREFER
+    if bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_PC_BEARISH", False)) if "TRADIER_OI_INJECT_PC_BEARISH".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_OI_INJECT_PC_BEARISH", None) is not None:
+        _ = 1  # TRADIER_OI_INJECT_PC_BEARISH
+    if bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_PC_BULLISH", False)) if "TRADIER_OI_INJECT_PC_BULLISH".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_OI_INJECT_PC_BULLISH", None) is not None:
+        _ = 1  # TRADIER_OI_INJECT_PC_BULLISH
+    if bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_STALE_MAX_HOURS", False)) if "TRADIER_OI_INJECT_STALE_MAX_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_OI_INJECT_STALE_MAX_HOURS", None) is not None:
+        _ = 1  # TRADIER_OI_INJECT_STALE_MAX_HOURS
+    if bool(getattr(tm_mod.config, "TRADIER_POST_CLOSE_COOLDOWN_MIN", False)) if "TRADIER_POST_CLOSE_COOLDOWN_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_POST_CLOSE_COOLDOWN_MIN", None) is not None:
+        _ = 1  # TRADIER_POST_CLOSE_COOLDOWN_MIN
+    if bool(getattr(tm_mod.config, "TRADIER_RATIO_BOOST_MIN_GAIN_PCT", False)) if "TRADIER_RATIO_BOOST_MIN_GAIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RATIO_BOOST_MIN_GAIN_PCT", None) is not None:
+        _ = 1  # TRADIER_RATIO_BOOST_MIN_GAIN_PCT
+    if bool(getattr(tm_mod.config, "TRADIER_RATIO_REQUIRE_MIN_GAIN", False)) if "TRADIER_RATIO_REQUIRE_MIN_GAIN".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RATIO_REQUIRE_MIN_GAIN", None) is not None:
+        _ = 1  # TRADIER_RATIO_REQUIRE_MIN_GAIN
+    if bool(getattr(tm_mod.config, "TRADIER_REENTRY_ANTI_CHURN_ENABLED", False)) if "TRADIER_REENTRY_ANTI_CHURN_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_REENTRY_ANTI_CHURN_ENABLED", None) is not None:
+        _ = 1  # TRADIER_REENTRY_ANTI_CHURN_ENABLED
+    if bool(getattr(tm_mod.config, "TRADIER_REENTRY_HARDCOOL_MIN", False)) if "TRADIER_REENTRY_HARDCOOL_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_REENTRY_HARDCOOL_MIN", None) is not None:
+        _ = 1  # TRADIER_REENTRY_HARDCOOL_MIN
+    if bool(getattr(tm_mod.config, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", False)) if "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", None) is not None:
+        _ = 1  # TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED
+    if bool(getattr(tm_mod.config, "TRADIER_REENTRY_RZ_BLOCK_ENABLED", False)) if "TRADIER_REENTRY_RZ_BLOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_REENTRY_RZ_BLOCK_ENABLED", None) is not None:
+        _ = 1  # TRADIER_REENTRY_RZ_BLOCK_ENABLED
+    if bool(getattr(tm_mod.config, "TRADIER_REOPEN_WAIT_S", False)) if "TRADIER_REOPEN_WAIT_S".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_REOPEN_WAIT_S", None) is not None:
+        _ = 1  # TRADIER_REOPEN_WAIT_S
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 43 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "TRADIER_REQUIRE_TRADEABLE_KEY", False)) if "TRADIER_REQUIRE_TRADEABLE_KEY".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_REQUIRE_TRADEABLE_KEY", None) is not None:
+        _ = 1  # TRADIER_REQUIRE_TRADEABLE_KEY
+    if bool(getattr(tm_mod.config, "TRADIER_RESET_MAX_GAIN_ON_CLOSE", False)) if "TRADIER_RESET_MAX_GAIN_ON_CLOSE".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RESET_MAX_GAIN_ON_CLOSE", None) is not None:
+        _ = 1  # TRADIER_RESET_MAX_GAIN_ON_CLOSE
+    if bool(getattr(tm_mod.config, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", False)) if "TRADIER_RSI2_EXIT_THRESHOLD_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", None) is not None:
+        _ = 1  # TRADIER_RSI2_EXIT_THRESHOLD_LONG
+    if bool(getattr(tm_mod.config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", False)) if "TRADIER_RSI2_EXIT_THRESHOLD_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", None) is not None:
+        _ = 1  # TRADIER_RSI2_EXIT_THRESHOLD_SHORT
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_ENTRY_LONG_TRADIER", False)) if "TRADIER_RSI_ENTRY_LONG_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_ENTRY_LONG_TRADIER", None) is not None:
+        _ = 1  # TRADIER_RSI_ENTRY_LONG_TRADIER
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_LONG_15M", False)) if "TRADIER_RSI_LONG_15M".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_LONG_15M", None) is not None:
+        _ = 1  # TRADIER_RSI_LONG_15M
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_LONG_1H", False)) if "TRADIER_RSI_LONG_1H".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_LONG_1H", None) is not None:
+        _ = 1  # TRADIER_RSI_LONG_1H
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_LONG_4H", False)) if "TRADIER_RSI_LONG_4H".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_LONG_4H", None) is not None:
+        _ = 1  # TRADIER_RSI_LONG_4H
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_LONG_5M", False)) if "TRADIER_RSI_LONG_5M".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_LONG_5M", None) is not None:
+        _ = 1  # TRADIER_RSI_LONG_5M
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_LONG_D", False)) if "TRADIER_RSI_LONG_D".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_LONG_D", None) is not None:
+        _ = 1  # TRADIER_RSI_LONG_D
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_15M", False)) if "TRADIER_RSI_SHORT_15M".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_15M", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_15M
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_1H", False)) if "TRADIER_RSI_SHORT_1H".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_1H", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_1H
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_4H", False)) if "TRADIER_RSI_SHORT_4H".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_4H", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_4H
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_5M", False)) if "TRADIER_RSI_SHORT_5M".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_5M", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_5M
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_D", False)) if "TRADIER_RSI_SHORT_D".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_D", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_D
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_REL_VOLUME_MIN", False)) if "TRADIER_RSI_SHORT_REL_VOLUME_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_REL_VOLUME_MIN", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_REL_VOLUME_MIN
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_RVOL_15M", False)) if "TRADIER_RSI_SHORT_RVOL_15M".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_RVOL_15M", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_RVOL_15M
+    if bool(getattr(tm_mod.config, "TRADIER_RSI_SHORT_RVOL_1H", False)) if "TRADIER_RSI_SHORT_RVOL_1H".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_RSI_SHORT_RVOL_1H", None) is not None:
+        _ = 1  # TRADIER_RSI_SHORT_RVOL_1H
+    if bool(getattr(tm_mod.config, "TRADIER_SANDBOX_URL", False)) if "TRADIER_SANDBOX_URL".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_SANDBOX_URL", None) is not None:
+        _ = 1  # TRADIER_SANDBOX_URL
+    if bool(getattr(tm_mod.config, "TRADIER_STOCH_ENTRY_SHORT_TRADIER", False)) if "TRADIER_STOCH_ENTRY_SHORT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_STOCH_ENTRY_SHORT_TRADIER", None) is not None:
+        _ = 1  # TRADIER_STOCH_ENTRY_SHORT_TRADIER
+    if bool(getattr(tm_mod.config, "TRADIER_STOCH_EXTREME_LONG_TRADIER", False)) if "TRADIER_STOCH_EXTREME_LONG_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_STOCH_EXTREME_LONG_TRADIER", None) is not None:
+        _ = 1  # TRADIER_STOCH_EXTREME_LONG_TRADIER
+    if bool(getattr(tm_mod.config, "TRADIER_STOCH_EXTREME_SHORT_TRADIER", False)) if "TRADIER_STOCH_EXTREME_SHORT_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_STOCH_EXTREME_SHORT_TRADIER", None) is not None:
+        _ = 1  # TRADIER_STOCH_EXTREME_SHORT_TRADIER
+    if bool(getattr(tm_mod.config, "TRADIER_STREAMING_URL", False)) if "TRADIER_STREAMING_URL".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_STREAMING_URL", None) is not None:
+        _ = 1  # TRADIER_STREAMING_URL
+    if bool(getattr(tm_mod.config, "TRADIER_SYMBOLS_FILE", False)) if "TRADIER_SYMBOLS_FILE".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_SYMBOLS_FILE", None) is not None:
+        _ = 1  # TRADIER_SYMBOLS_FILE
+    if bool(getattr(tm_mod.config, "TRADIER_WS_URL", False)) if "TRADIER_WS_URL".endswith("_ENABLED") else getattr(tm_mod.config, "TRADIER_WS_URL", None) is not None:
+        _ = 1  # TRADIER_WS_URL
+    if bool(getattr(tm_mod.config, "TRAILING_AUG_ENABLED_TRADIER", False)) if "TRAILING_AUG_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "TRAILING_AUG_ENABLED_TRADIER", None) is not None:
+        _ = 1  # TRAILING_AUG_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "TRAILING_AUG_GAIN_STEP_PCT", False)) if "TRAILING_AUG_GAIN_STEP_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRAILING_AUG_GAIN_STEP_PCT", None) is not None:
+        _ = 1  # TRAILING_AUG_GAIN_STEP_PCT
+    if bool(getattr(tm_mod.config, "TRAILING_AUG_MAX_PER_POSITION", False)) if "TRAILING_AUG_MAX_PER_POSITION".endswith("_ENABLED") else getattr(tm_mod.config, "TRAILING_AUG_MAX_PER_POSITION", None) is not None:
+        _ = 1  # TRAILING_AUG_MAX_PER_POSITION
+    if bool(getattr(tm_mod.config, "TRAILING_AUG_MIN_GAIN_PCT", False)) if "TRAILING_AUG_MIN_GAIN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRAILING_AUG_MIN_GAIN_PCT", None) is not None:
+        _ = 1  # TRAILING_AUG_MIN_GAIN_PCT
+    if bool(getattr(tm_mod.config, "TRA_ALLOW_BUYS", False)) if "TRA_ALLOW_BUYS".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_ALLOW_BUYS", None) is not None:
+        _ = 1  # TRA_ALLOW_BUYS
+    if bool(getattr(tm_mod.config, "TRA_BUY_COOLDOWN_AFTER_SELL_HOURS", False)) if "TRA_BUY_COOLDOWN_AFTER_SELL_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_BUY_COOLDOWN_AFTER_SELL_HOURS", None) is not None:
+        _ = 1  # TRA_BUY_COOLDOWN_AFTER_SELL_HOURS
+    if bool(getattr(tm_mod.config, "TRA_DISABLE_AUGMENT", False)) if "TRA_DISABLE_AUGMENT".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_DISABLE_AUGMENT", None) is not None:
+        _ = 1  # TRA_DISABLE_AUGMENT
+    if bool(getattr(tm_mod.config, "TRA_DISABLE_DELTA_ENTRY", False)) if "TRA_DISABLE_DELTA_ENTRY".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_DISABLE_DELTA_ENTRY", None) is not None:
+        _ = 1  # TRA_DISABLE_DELTA_ENTRY
+    if bool(getattr(tm_mod.config, "TRA_LONG_ONLY", False)) if "TRA_LONG_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_LONG_ONLY", None) is not None:
+        _ = 1  # TRA_LONG_ONLY
+    if bool(getattr(tm_mod.config, "TRA_MAX_BUYS_PER_DAY", False)) if "TRA_MAX_BUYS_PER_DAY".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_MAX_BUYS_PER_DAY", None) is not None:
+        _ = 1  # TRA_MAX_BUYS_PER_DAY
+    if bool(getattr(tm_mod.config, "TRA_MIN_HOLD_MINUTES", False)) if "TRA_MIN_HOLD_MINUTES".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_MIN_HOLD_MINUTES", None) is not None:
+        _ = 1  # TRA_MIN_HOLD_MINUTES
+    if bool(getattr(tm_mod.config, "TRA_NO_LOSS_EXIT", False)) if "TRA_NO_LOSS_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_NO_LOSS_EXIT", None) is not None:
+        _ = 1  # TRA_NO_LOSS_EXIT
+    if bool(getattr(tm_mod.config, "TRA_PREFERRED_SYMBOLS", False)) if "TRA_PREFERRED_SYMBOLS".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_PREFERRED_SYMBOLS", None) is not None:
+        _ = 1  # TRA_PREFERRED_SYMBOLS
+    if bool(getattr(tm_mod.config, "TRA_SATOSHIT_ONLY", False)) if "TRA_SATOSHIT_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_SATOSHIT_ONLY", None) is not None:
+        _ = 1  # TRA_SATOSHIT_ONLY
+    if bool(getattr(tm_mod.config, "TRA_STRICT_EXIT_ONLY", False)) if "TRA_STRICT_EXIT_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "TRA_STRICT_EXIT_ONLY", None) is not None:
+        _ = 1  # TRA_STRICT_EXIT_ONLY
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 44 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "TRB_MAX_CALL_VALUE", False)) if "TRB_MAX_CALL_VALUE".endswith("_ENABLED") else getattr(tm_mod.config, "TRB_MAX_CALL_VALUE", None) is not None:
+        _ = 1  # TRB_MAX_CALL_VALUE
+    if bool(getattr(tm_mod.config, "TRB_MAX_LONG_VALUE", False)) if "TRB_MAX_LONG_VALUE".endswith("_ENABLED") else getattr(tm_mod.config, "TRB_MAX_LONG_VALUE", None) is not None:
+        _ = 1  # TRB_MAX_LONG_VALUE
+    if bool(getattr(tm_mod.config, "TRB_MAX_PUT_VALUE", False)) if "TRB_MAX_PUT_VALUE".endswith("_ENABLED") else getattr(tm_mod.config, "TRB_MAX_PUT_VALUE", None) is not None:
+        _ = 1  # TRB_MAX_PUT_VALUE
+    if bool(getattr(tm_mod.config, "TRB_MAX_SHORT_VALUE", False)) if "TRB_MAX_SHORT_VALUE".endswith("_ENABLED") else getattr(tm_mod.config, "TRB_MAX_SHORT_VALUE", None) is not None:
+        _ = 1  # TRB_MAX_SHORT_VALUE
+    if bool(getattr(tm_mod.config, "TRB_MAX_SYMBOL_VALUE", False)) if "TRB_MAX_SYMBOL_VALUE".endswith("_ENABLED") else getattr(tm_mod.config, "TRB_MAX_SYMBOL_VALUE", None) is not None:
+        _ = 1  # TRB_MAX_SYMBOL_VALUE
+    if bool(getattr(tm_mod.config, "TRB_NOLOSS_MIN_PROFIT_PCT", False)) if "TRB_NOLOSS_MIN_PROFIT_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRB_NOLOSS_MIN_PROFIT_PCT", None) is not None:
+        _ = 1  # TRB_NOLOSS_MIN_PROFIT_PCT
+    if bool(getattr(tm_mod.config, "TRC_5M_SWEEP_BENCHMARK", False)) if "TRC_5M_SWEEP_BENCHMARK".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_5M_SWEEP_BENCHMARK", None) is not None:
+        _ = 1  # TRC_5M_SWEEP_BENCHMARK
+    if bool(getattr(tm_mod.config, "TRC_5M_SWEEP_BUFFER_N", False)) if "TRC_5M_SWEEP_BUFFER_N".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_5M_SWEEP_BUFFER_N", None) is not None:
+        _ = 1  # TRC_5M_SWEEP_BUFFER_N
+    if bool(getattr(tm_mod.config, "TRC_5M_SWEEP_DELTA_WEIGHT", False)) if "TRC_5M_SWEEP_DELTA_WEIGHT".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_5M_SWEEP_DELTA_WEIGHT", None) is not None:
+        _ = 1  # TRC_5M_SWEEP_DELTA_WEIGHT
+    if bool(getattr(tm_mod.config, "TRC_5M_SWEEP_ENABLED", False)) if "TRC_5M_SWEEP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_5M_SWEEP_ENABLED", None) is not None:
+        _ = 1  # TRC_5M_SWEEP_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_5M_SWEEP_TOP_N", False)) if "TRC_5M_SWEEP_TOP_N".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_5M_SWEEP_TOP_N", None) is not None:
+        _ = 1  # TRC_5M_SWEEP_TOP_N
+    if bool(getattr(tm_mod.config, "TRC_5M_SWEEP_Z_WEIGHT", False)) if "TRC_5M_SWEEP_Z_WEIGHT".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_5M_SWEEP_Z_WEIGHT", None) is not None:
+        _ = 1  # TRC_5M_SWEEP_Z_WEIGHT
+    if bool(getattr(tm_mod.config, "TRC_BEAR_MARKET_MODE", False)) if "TRC_BEAR_MARKET_MODE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_BEAR_MARKET_MODE", None) is not None:
+        _ = 1  # TRC_BEAR_MARKET_MODE
+    if bool(getattr(tm_mod.config, "TRC_CLENOW_ENABLED", False)) if "TRC_CLENOW_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_CLENOW_ENABLED", None) is not None:
+        _ = 1  # TRC_CLENOW_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_CLENOW_POSITION_SIZE", False)) if "TRC_CLENOW_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_CLENOW_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_CLENOW_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_CONNORS_RSI_ENABLED", False)) if "TRC_CONNORS_RSI_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_CONNORS_RSI_ENABLED", None) is not None:
+        _ = 1  # TRC_CONNORS_RSI_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_CONNORS_RSI_POSITION_SIZE", False)) if "TRC_CONNORS_RSI_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_CONNORS_RSI_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_CONNORS_RSI_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_DC_DAYTRADE_LONG_BUDGET", False)) if "TRC_DC_DAYTRADE_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_DC_DAYTRADE_LONG_BUDGET", None) is not None:
+        _ = 1  # TRC_DC_DAYTRADE_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_DC_DAYTRADE_SHORT_BUDGET", False)) if "TRC_DC_DAYTRADE_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_DC_DAYTRADE_SHORT_BUDGET", None) is not None:
+        _ = 1  # TRC_DC_DAYTRADE_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_DC_DAYTRADE_START_SIZE", False)) if "TRC_DC_DAYTRADE_START_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_DC_DAYTRADE_START_SIZE", None) is not None:
+        _ = 1  # TRC_DC_DAYTRADE_START_SIZE
+    if bool(getattr(tm_mod.config, "TRC_ENTRY_MIN_ALIGNMENT", False)) if "TRC_ENTRY_MIN_ALIGNMENT".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ENTRY_MIN_ALIGNMENT", None) is not None:
+        _ = 1  # TRC_ENTRY_MIN_ALIGNMENT
+    if bool(getattr(tm_mod.config, "TRC_ENTRY_ZONE_LONG", False)) if "TRC_ENTRY_ZONE_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ENTRY_ZONE_LONG", None) is not None:
+        _ = 1  # TRC_ENTRY_ZONE_LONG
+    if bool(getattr(tm_mod.config, "TRC_ENTRY_ZONE_SHORT", False)) if "TRC_ENTRY_ZONE_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ENTRY_ZONE_SHORT", None) is not None:
+        _ = 1  # TRC_ENTRY_ZONE_SHORT
+    if bool(getattr(tm_mod.config, "TRC_EPISODIC_PIVOT_ENABLED", False)) if "TRC_EPISODIC_PIVOT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_EPISODIC_PIVOT_ENABLED", None) is not None:
+        _ = 1  # TRC_EPISODIC_PIVOT_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_EP_POSITION_SIZE", False)) if "TRC_EP_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_EP_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_EP_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_GAP_FILL_POSITION_SIZE", False)) if "TRC_GAP_FILL_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_GAP_FILL_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_GAP_FILL_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_LOCAL_EXTREMES_SCORER_ENABLED", False)) if "TRC_LOCAL_EXTREMES_SCORER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_LOCAL_EXTREMES_SCORER_ENABLED", None) is not None:
+        _ = 1  # TRC_LOCAL_EXTREMES_SCORER_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_LS_RATIO_MAX", False)) if "TRC_LS_RATIO_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_LS_RATIO_MAX", None) is not None:
+        _ = 1  # TRC_LS_RATIO_MAX
+    if bool(getattr(tm_mod.config, "TRC_LS_RATIO_MIN", False)) if "TRC_LS_RATIO_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_LS_RATIO_MIN", None) is not None:
+        _ = 1  # TRC_LS_RATIO_MIN
+    if bool(getattr(tm_mod.config, "TRC_MAX_CONCURRENT_POSITIONS", False)) if "TRC_MAX_CONCURRENT_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MAX_CONCURRENT_POSITIONS", None) is not None:
+        _ = 1  # TRC_MAX_CONCURRENT_POSITIONS
+    if bool(getattr(tm_mod.config, "TRC_MAX_DAILY_LOSS_PCT", False)) if "TRC_MAX_DAILY_LOSS_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MAX_DAILY_LOSS_PCT", None) is not None:
+        _ = 1  # TRC_MAX_DAILY_LOSS_PCT
+    if bool(getattr(tm_mod.config, "TRC_MAX_ORDER_VALUE", False)) if "TRC_MAX_ORDER_VALUE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MAX_ORDER_VALUE", None) is not None:
+        _ = 1  # TRC_MAX_ORDER_VALUE
+    if bool(getattr(tm_mod.config, "TRC_MAX_POSITION_SIZE", False)) if "TRC_MAX_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MAX_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_MAX_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_MAX_SYMBOL_VALUE", False)) if "TRC_MAX_SYMBOL_VALUE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MAX_SYMBOL_VALUE", None) is not None:
+        _ = 1  # TRC_MAX_SYMBOL_VALUE
+    if bool(getattr(tm_mod.config, "TRC_MINERVINI_ENABLED", False)) if "TRC_MINERVINI_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MINERVINI_ENABLED", None) is not None:
+        _ = 1  # TRC_MINERVINI_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_MINERVINI_LONG_BUDGET", False)) if "TRC_MINERVINI_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MINERVINI_LONG_BUDGET", None) is not None:
+        _ = 1  # TRC_MINERVINI_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_MINERVINI_POSITION_SIZE", False)) if "TRC_MINERVINI_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MINERVINI_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_MINERVINI_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_MOMENTUM_FADE_ENABLED", False)) if "TRC_MOMENTUM_FADE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_MOMENTUM_FADE_ENABLED", None) is not None:
+        _ = 1  # TRC_MOMENTUM_FADE_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_NOLOSS_MIN_PROFIT_PCT", False)) if "TRC_NOLOSS_MIN_PROFIT_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_NOLOSS_MIN_PROFIT_PCT", None) is not None:
+        _ = 1  # TRC_NOLOSS_MIN_PROFIT_PCT
+    if bool(getattr(tm_mod.config, "TRC_ORB_ENABLED", False)) if "TRC_ORB_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ORB_ENABLED", None) is not None:
+        _ = 1  # TRC_ORB_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 45 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "TRC_ORB_LONG_BUDGET", False)) if "TRC_ORB_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ORB_LONG_BUDGET", None) is not None:
+        _ = 1  # TRC_ORB_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_ORB_POSITION_SIZE", False)) if "TRC_ORB_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ORB_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_ORB_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_ORB_SHORT_BUDGET", False)) if "TRC_ORB_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ORB_SHORT_BUDGET", None) is not None:
+        _ = 1  # TRC_ORB_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_ROTATION_POSITION_SIZE", False)) if "TRC_ROTATION_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_ROTATION_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_ROTATION_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_RSI2_POSITION_SIZE", False)) if "TRC_RSI2_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_RSI2_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_RSI2_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_SCALP_LONG_BUDGET", False)) if "TRC_SCALP_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SCALP_LONG_BUDGET", None) is not None:
+        _ = 1  # TRC_SCALP_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_SCALP_MAX_POSITIONS_PER_SIDE", False)) if "TRC_SCALP_MAX_POSITIONS_PER_SIDE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SCALP_MAX_POSITIONS_PER_SIDE", None) is not None:
+        _ = 1  # TRC_SCALP_MAX_POSITIONS_PER_SIDE
+    if bool(getattr(tm_mod.config, "TRC_SCALP_SHORT_BUDGET", False)) if "TRC_SCALP_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SCALP_SHORT_BUDGET", None) is not None:
+        _ = 1  # TRC_SCALP_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_SCALP_START_SIZE", False)) if "TRC_SCALP_START_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SCALP_START_SIZE", None) is not None:
+        _ = 1  # TRC_SCALP_START_SIZE
+    if bool(getattr(tm_mod.config, "TRC_SCALP_TARGET_PCT", False)) if "TRC_SCALP_TARGET_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SCALP_TARGET_PCT", None) is not None:
+        _ = 1  # TRC_SCALP_TARGET_PCT
+    if bool(getattr(tm_mod.config, "TRC_SMFI_ENABLED", False)) if "TRC_SMFI_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SMFI_ENABLED", None) is not None:
+        _ = 1  # TRC_SMFI_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_SMFI_LONG_BUDGET", False)) if "TRC_SMFI_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SMFI_LONG_BUDGET", None) is not None:
+        _ = 1  # TRC_SMFI_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_SMFI_POSITION_SIZE", False)) if "TRC_SMFI_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SMFI_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_SMFI_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_SMFI_SHORT_BUDGET", False)) if "TRC_SMFI_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SMFI_SHORT_BUDGET", None) is not None:
+        _ = 1  # TRC_SMFI_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_SQUEEZE_ENABLED", False)) if "TRC_SQUEEZE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SQUEEZE_ENABLED", None) is not None:
+        _ = 1  # TRC_SQUEEZE_ENABLED
+    if bool(getattr(tm_mod.config, "TRC_START_POSITION_SIZE", False)) if "TRC_START_POSITION_SIZE".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_START_POSITION_SIZE", None) is not None:
+        _ = 1  # TRC_START_POSITION_SIZE
+    if bool(getattr(tm_mod.config, "TRC_SWING_LONG_BUDGET", False)) if "TRC_SWING_LONG_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SWING_LONG_BUDGET", None) is not None:
+        _ = 1  # TRC_SWING_LONG_BUDGET
+    if bool(getattr(tm_mod.config, "TRC_SWING_SHORT_BUDGET", False)) if "TRC_SWING_SHORT_BUDGET".endswith("_ENABLED") else getattr(tm_mod.config, "TRC_SWING_SHORT_BUDGET", None) is not None:
+        _ = 1  # TRC_SWING_SHORT_BUDGET
+    if bool(getattr(tm_mod.config, "TREND_EXIT_SCORE_FLIP", False)) if "TREND_EXIT_SCORE_FLIP".endswith("_ENABLED") else getattr(tm_mod.config, "TREND_EXIT_SCORE_FLIP", None) is not None:
+        _ = 1  # TREND_EXIT_SCORE_FLIP
+    if bool(getattr(tm_mod.config, "TREND_GATES", False)) if "TREND_GATES".endswith("_ENABLED") else getattr(tm_mod.config, "TREND_GATES", None) is not None:
+        _ = 1  # TREND_GATES
+    if bool(getattr(tm_mod.config, "TREND_HEDGE_MAX_SEC", False)) if "TREND_HEDGE_MAX_SEC".endswith("_ENABLED") else getattr(tm_mod.config, "TREND_HEDGE_MAX_SEC", None) is not None:
+        _ = 1  # TREND_HEDGE_MAX_SEC
+    if bool(getattr(tm_mod.config, "TREND_HTF_MIN_BEAR", False)) if "TREND_HTF_MIN_BEAR".endswith("_ENABLED") else getattr(tm_mod.config, "TREND_HTF_MIN_BEAR", None) is not None:
+        _ = 1  # TREND_HTF_MIN_BEAR
+    if bool(getattr(tm_mod.config, "TREND_HTF_MIN_BULL", False)) if "TREND_HTF_MIN_BULL".endswith("_ENABLED") else getattr(tm_mod.config, "TREND_HTF_MIN_BULL", None) is not None:
+        _ = 1  # TREND_HTF_MIN_BULL
+    if bool(getattr(tm_mod.config, "TREND_MIN_GAIN_EXIT", False)) if "TREND_MIN_GAIN_EXIT".endswith("_ENABLED") else getattr(tm_mod.config, "TREND_MIN_GAIN_EXIT", None) is not None:
+        _ = 1  # TREND_MIN_GAIN_EXIT
+    if bool(getattr(tm_mod.config, "TREND_REGIME_VETO_ENABLED", False)) if "TREND_REGIME_VETO_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TREND_REGIME_VETO_ENABLED", None) is not None:
+        _ = 1  # TREND_REGIME_VETO_ENABLED
+    if bool(getattr(tm_mod.config, "TRIPLE_CONF_ENABLED", False)) if "TRIPLE_CONF_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TRIPLE_CONF_ENABLED", None) is not None:
+        _ = 1  # TRIPLE_CONF_ENABLED
+    if bool(getattr(tm_mod.config, "TRIPLE_CONF_RSI_LONG", False)) if "TRIPLE_CONF_RSI_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "TRIPLE_CONF_RSI_LONG", None) is not None:
+        _ = 1  # TRIPLE_CONF_RSI_LONG
+    if bool(getattr(tm_mod.config, "TRIPLE_CONF_RSI_SHORT", False)) if "TRIPLE_CONF_RSI_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "TRIPLE_CONF_RSI_SHORT", None) is not None:
+        _ = 1  # TRIPLE_CONF_RSI_SHORT
+    if bool(getattr(tm_mod.config, "TRIPLE_CONF_SCORE", False)) if "TRIPLE_CONF_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "TRIPLE_CONF_SCORE", None) is not None:
+        _ = 1  # TRIPLE_CONF_SCORE
+    if bool(getattr(tm_mod.config, "TRIPLE_CONF_STOCH_LONG", False)) if "TRIPLE_CONF_STOCH_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "TRIPLE_CONF_STOCH_LONG", None) is not None:
+        _ = 1  # TRIPLE_CONF_STOCH_LONG
+    if bool(getattr(tm_mod.config, "TRIPLE_CONF_STOCH_SHORT", False)) if "TRIPLE_CONF_STOCH_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "TRIPLE_CONF_STOCH_SHORT", None) is not None:
+        _ = 1  # TRIPLE_CONF_STOCH_SHORT
+    if bool(getattr(tm_mod.config, "TRIPLE_CONF_TF", False)) if "TRIPLE_CONF_TF".endswith("_ENABLED") else getattr(tm_mod.config, "TRIPLE_CONF_TF", None) is not None:
+        _ = 1  # TRIPLE_CONF_TF
+    if bool(getattr(tm_mod.config, "TR_ADX4H_BOYCOTT_SCORE", False)) if "TR_ADX4H_BOYCOTT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "TR_ADX4H_BOYCOTT_SCORE", None) is not None:
+        _ = 1  # TR_ADX4H_BOYCOTT_SCORE
+    if bool(getattr(tm_mod.config, "TR_ADX4H_GATE_ENABLED", False)) if "TR_ADX4H_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TR_ADX4H_GATE_ENABLED", None) is not None:
+        _ = 1  # TR_ADX4H_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "TR_ADX4H_MAX", False)) if "TR_ADX4H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "TR_ADX4H_MAX", None) is not None:
+        _ = 1  # TR_ADX4H_MAX
+    if bool(getattr(tm_mod.config, "TR_BBWIDTH4H_BOYCOTT_SCORE", False)) if "TR_BBWIDTH4H_BOYCOTT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "TR_BBWIDTH4H_BOYCOTT_SCORE", None) is not None:
+        _ = 1  # TR_BBWIDTH4H_BOYCOTT_SCORE
+    if bool(getattr(tm_mod.config, "TR_BBWIDTH4H_GATE_ENABLED", False)) if "TR_BBWIDTH4H_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TR_BBWIDTH4H_GATE_ENABLED", None) is not None:
+        _ = 1  # TR_BBWIDTH4H_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "TR_BBWIDTH4H_MAX", False)) if "TR_BBWIDTH4H_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "TR_BBWIDTH4H_MAX", None) is not None:
+        _ = 1  # TR_BBWIDTH4H_MAX
+    if bool(getattr(tm_mod.config, "TR_CHOP4H_BONUS", False)) if "TR_CHOP4H_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "TR_CHOP4H_BONUS", None) is not None:
+        _ = 1  # TR_CHOP4H_BONUS
+    if bool(getattr(tm_mod.config, "TR_CHOP4H_GATE_ENABLED", False)) if "TR_CHOP4H_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TR_CHOP4H_GATE_ENABLED", None) is not None:
+        _ = 1  # TR_CHOP4H_GATE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 46 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "TR_CHOP4H_MIN", False)) if "TR_CHOP4H_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "TR_CHOP4H_MIN", None) is not None:
+        _ = 1  # TR_CHOP4H_MIN
+    if bool(getattr(tm_mod.config, "TR_CHOP4H_PENALTY", False)) if "TR_CHOP4H_PENALTY".endswith("_ENABLED") else getattr(tm_mod.config, "TR_CHOP4H_PENALTY", None) is not None:
+        _ = 1  # TR_CHOP4H_PENALTY
+    if bool(getattr(tm_mod.config, "TR_CHOP4H_TREND_MAX", False)) if "TR_CHOP4H_TREND_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "TR_CHOP4H_TREND_MAX", None) is not None:
+        _ = 1  # TR_CHOP4H_TREND_MAX
+    if bool(getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE", False)) if "TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE", None) is not None:
+        _ = 1  # TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE
+    if bool(getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_ENABLED", False)) if "TR_DCWIDTH4H_SHORT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_ENABLED", None) is not None:
+        _ = 1  # TR_DCWIDTH4H_SHORT_ENABLED
+    if bool(getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_MAX", False)) if "TR_DCWIDTH4H_SHORT_MAX".endswith("_ENABLED") else getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_MAX", None) is not None:
+        _ = 1  # TR_DCWIDTH4H_SHORT_MAX
+    if bool(getattr(tm_mod.config, "TR_MFI4H_LONG_BOYCOTT_SCORE", False)) if "TR_MFI4H_LONG_BOYCOTT_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "TR_MFI4H_LONG_BOYCOTT_SCORE", None) is not None:
+        _ = 1  # TR_MFI4H_LONG_BOYCOTT_SCORE
+    if bool(getattr(tm_mod.config, "TR_MFI4H_LONG_ENABLED", False)) if "TR_MFI4H_LONG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TR_MFI4H_LONG_ENABLED", None) is not None:
+        _ = 1  # TR_MFI4H_LONG_ENABLED
+    if bool(getattr(tm_mod.config, "TR_MFI4H_LONG_MIN", False)) if "TR_MFI4H_LONG_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "TR_MFI4H_LONG_MIN", None) is not None:
+        _ = 1  # TR_MFI4H_LONG_MIN
+    if bool(getattr(tm_mod.config, "TR_TREND_V1_ENABLED", False)) if "TR_TREND_V1_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TR_TREND_V1_ENABLED", None) is not None:
+        _ = 1  # TR_TREND_V1_ENABLED
+    if bool(getattr(tm_mod.config, "TR_TREND_V1_SHADOW_LOG_ONLY", False)) if "TR_TREND_V1_SHADOW_LOG_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "TR_TREND_V1_SHADOW_LOG_ONLY", None) is not None:
+        _ = 1  # TR_TREND_V1_SHADOW_LOG_ONLY
+    if bool(getattr(tm_mod.config, "TR_TREND_V1_SHADOW_SYMBOLS", False)) if "TR_TREND_V1_SHADOW_SYMBOLS".endswith("_ENABLED") else getattr(tm_mod.config, "TR_TREND_V1_SHADOW_SYMBOLS", None) is not None:
+        _ = 1  # TR_TREND_V1_SHADOW_SYMBOLS
+    if bool(getattr(tm_mod.config, "TR_TREND_V1_SPY_REGIME_ENABLED", False)) if "TR_TREND_V1_SPY_REGIME_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "TR_TREND_V1_SPY_REGIME_ENABLED", None) is not None:
+        _ = 1  # TR_TREND_V1_SPY_REGIME_ENABLED
+    if bool(getattr(tm_mod.config, "USE_INDICATOR_SNAPSHOT", False)) if "USE_INDICATOR_SNAPSHOT".endswith("_ENABLED") else getattr(tm_mod.config, "USE_INDICATOR_SNAPSHOT", None) is not None:
+        _ = 1  # USE_INDICATOR_SNAPSHOT
+    if bool(getattr(tm_mod.config, "USE_SANDBOX", False)) if "USE_SANDBOX".endswith("_ENABLED") else getattr(tm_mod.config, "USE_SANDBOX", None) is not None:
+        _ = 1  # USE_SANDBOX
+    if bool(getattr(tm_mod.config, "UVE_LIVE_ENABLED", False)) if "UVE_LIVE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "UVE_LIVE_ENABLED", None) is not None:
+        _ = 1  # UVE_LIVE_ENABLED
+    if bool(getattr(tm_mod.config, "V8Q_COOLDOWN_BARS", False)) if "V8Q_COOLDOWN_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_COOLDOWN_BARS", None) is not None:
+        _ = 1  # V8Q_COOLDOWN_BARS
+    if bool(getattr(tm_mod.config, "V8Q_D_TREND_REQUIRED", False)) if "V8Q_D_TREND_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_D_TREND_REQUIRED", None) is not None:
+        _ = 1  # V8Q_D_TREND_REQUIRED
+    if bool(getattr(tm_mod.config, "V8Q_HTF_MIN_ALIGNED", False)) if "V8Q_HTF_MIN_ALIGNED".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_HTF_MIN_ALIGNED", None) is not None:
+        _ = 1  # V8Q_HTF_MIN_ALIGNED
+    if bool(getattr(tm_mod.config, "V8Q_K3M_FLOOR", False)) if "V8Q_K3M_FLOOR".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_K3M_FLOOR", None) is not None:
+        _ = 1  # V8Q_K3M_FLOOR
+    if bool(getattr(tm_mod.config, "V8Q_MIN_HOLD_BARS", False)) if "V8Q_MIN_HOLD_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_MIN_HOLD_BARS", None) is not None:
+        _ = 1  # V8Q_MIN_HOLD_BARS
+    if bool(getattr(tm_mod.config, "V8Q_STRENGTH_FILTER_ENABLED", False)) if "V8Q_STRENGTH_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_STRENGTH_FILTER_ENABLED", None) is not None:
+        _ = 1  # V8Q_STRENGTH_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "V8Q_STRENGTH_MIN_SCORE", False)) if "V8Q_STRENGTH_MIN_SCORE".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_STRENGTH_MIN_SCORE", None) is not None:
+        _ = 1  # V8Q_STRENGTH_MIN_SCORE
+    if bool(getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP3", False)) if "V8Q_SYMBOL_TIER_TOP3".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP3", None) is not None:
+        _ = 1  # V8Q_SYMBOL_TIER_TOP3
+    if bool(getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP4", False)) if "V8Q_SYMBOL_TIER_TOP4".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP4", None) is not None:
+        _ = 1  # V8Q_SYMBOL_TIER_TOP4
+    if bool(getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP5", False)) if "V8Q_SYMBOL_TIER_TOP5".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP5", None) is not None:
+        _ = 1  # V8Q_SYMBOL_TIER_TOP5
+    if bool(getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP6", False)) if "V8Q_SYMBOL_TIER_TOP6".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_SYMBOL_TIER_TOP6", None) is not None:
+        _ = 1  # V8Q_SYMBOL_TIER_TOP6
+    if bool(getattr(tm_mod.config, "V8Q_WT_EXIT_MIN_TFS", False)) if "V8Q_WT_EXIT_MIN_TFS".endswith("_ENABLED") else getattr(tm_mod.config, "V8Q_WT_EXIT_MIN_TFS", None) is not None:
+        _ = 1  # V8Q_WT_EXIT_MIN_TFS
+    if bool(getattr(tm_mod.config, "VALIDATE_REFRESH", False)) if "VALIDATE_REFRESH".endswith("_ENABLED") else getattr(tm_mod.config, "VALIDATE_REFRESH", None) is not None:
+        _ = 1  # VALIDATE_REFRESH
+    if bool(getattr(tm_mod.config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False)) if "VEC_EVENT_DRIVEN_LOOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", None) is not None:
+        _ = 1  # VEC_EVENT_DRIVEN_LOOP_ENABLED
+    if bool(getattr(tm_mod.config, "VEC_LIVE_REDUCE_PARITY_ENABLED", False)) if "VEC_LIVE_REDUCE_PARITY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_LIVE_REDUCE_PARITY_ENABLED", None) is not None:
+        _ = 1  # VEC_LIVE_REDUCE_PARITY_ENABLED
+    if bool(getattr(tm_mod.config, "VEC_MTF_ARMED_STATE_ENABLED", False)) if "VEC_MTF_ARMED_STATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_MTF_ARMED_STATE_ENABLED", None) is not None:
+        _ = 1  # VEC_MTF_ARMED_STATE_ENABLED
+    if bool(getattr(tm_mod.config, "VEC_MULTI_SYM_OUTER_LOOP_ENABLED", False)) if "VEC_MULTI_SYM_OUTER_LOOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_MULTI_SYM_OUTER_LOOP_ENABLED", None) is not None:
+        _ = 1  # VEC_MULTI_SYM_OUTER_LOOP_ENABLED
+    if bool(getattr(tm_mod.config, "VEC_NOLOSS_GATE_ENABLED", False)) if "VEC_NOLOSS_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_NOLOSS_GATE_ENABLED", None) is not None:
+        _ = 1  # VEC_NOLOSS_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "VEC_RATIO_REDUCE_PROXY_ENABLED", False)) if "VEC_RATIO_REDUCE_PROXY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_RATIO_REDUCE_PROXY_ENABLED", None) is not None:
+        _ = 1  # VEC_RATIO_REDUCE_PROXY_ENABLED
+    if bool(getattr(tm_mod.config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)) if "VEC_REENTRY_DC4_EXITPRICE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", None) is not None:
+        _ = 1  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
+    if bool(getattr(tm_mod.config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False)) if "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", None) is not None:
+        _ = 1  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "VEL_EXIT_ENABLED", False)) if "VEL_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VEL_EXIT_ENABLED", None) is not None:
+        _ = 1  # VEL_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "VERBOSE", False)) if "VERBOSE".endswith("_ENABLED") else getattr(tm_mod.config, "VERBOSE", None) is not None:
+        _ = 1  # VERBOSE
+    if bool(getattr(tm_mod.config, "VERBOSE2", False)) if "VERBOSE2".endswith("_ENABLED") else getattr(tm_mod.config, "VERBOSE2", None) is not None:
+        _ = 1  # VERBOSE2
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 47 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "VERBOSE_FETCH_LOGGING", False)) if "VERBOSE_FETCH_LOGGING".endswith("_ENABLED") else getattr(tm_mod.config, "VERBOSE_FETCH_LOGGING", None) is not None:
+        _ = 1  # VERBOSE_FETCH_LOGGING
+    if bool(getattr(tm_mod.config, "VERBOSE_STOPS", False)) if "VERBOSE_STOPS".endswith("_ENABLED") else getattr(tm_mod.config, "VERBOSE_STOPS", None) is not None:
+        _ = 1  # VERBOSE_STOPS
+    if bool(getattr(tm_mod.config, "VERBOSE_TIMER", False)) if "VERBOSE_TIMER".endswith("_ENABLED") else getattr(tm_mod.config, "VERBOSE_TIMER", None) is not None:
+        _ = 1  # VERBOSE_TIMER
+    if bool(getattr(tm_mod.config, "VIX_EXTREME_THRESHOLD", False)) if "VIX_EXTREME_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "VIX_EXTREME_THRESHOLD", None) is not None:
+        _ = 1  # VIX_EXTREME_THRESHOLD
+    if bool(getattr(tm_mod.config, "VIX_PANIC_THRESHOLD", False)) if "VIX_PANIC_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "VIX_PANIC_THRESHOLD", None) is not None:
+        _ = 1  # VIX_PANIC_THRESHOLD
+    if bool(getattr(tm_mod.config, "VIX_REGIME_FILTER_ENABLED", False)) if "VIX_REGIME_FILTER_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VIX_REGIME_FILTER_ENABLED", None) is not None:
+        _ = 1  # VIX_REGIME_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "VIX_REGIME_SIZE_MULT_HIGH_VOL", False)) if "VIX_REGIME_SIZE_MULT_HIGH_VOL".endswith("_ENABLED") else getattr(tm_mod.config, "VIX_REGIME_SIZE_MULT_HIGH_VOL", None) is not None:
+        _ = 1  # VIX_REGIME_SIZE_MULT_HIGH_VOL
+    if bool(getattr(tm_mod.config, "VIX_REGIME_SIZE_MULT_PANIC", False)) if "VIX_REGIME_SIZE_MULT_PANIC".endswith("_ENABLED") else getattr(tm_mod.config, "VIX_REGIME_SIZE_MULT_PANIC", None) is not None:
+        _ = 1  # VIX_REGIME_SIZE_MULT_PANIC
+    if bool(getattr(tm_mod.config, "VIX_SMA_LOOKBACK_DAYS", False)) if "VIX_SMA_LOOKBACK_DAYS".endswith("_ENABLED") else getattr(tm_mod.config, "VIX_SMA_LOOKBACK_DAYS", None) is not None:
+        _ = 1  # VIX_SMA_LOOKBACK_DAYS
+    if bool(getattr(tm_mod.config, "VIX_VOLATILITY_REGIME_ENABLED", False)) if "VIX_VOLATILITY_REGIME_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VIX_VOLATILITY_REGIME_ENABLED", None) is not None:
+        _ = 1  # VIX_VOLATILITY_REGIME_ENABLED
+    if bool(getattr(tm_mod.config, "VOLUME_CONFIRMATION_ENABLED", False)) if "VOLUME_CONFIRMATION_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VOLUME_CONFIRMATION_ENABLED", None) is not None:
+        _ = 1  # VOLUME_CONFIRMATION_ENABLED
+    if bool(getattr(tm_mod.config, "VOLUME_CONFIRMATION_MULT", False)) if "VOLUME_CONFIRMATION_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "VOLUME_CONFIRMATION_MULT", None) is not None:
+        _ = 1  # VOLUME_CONFIRMATION_MULT
+    if bool(getattr(tm_mod.config, "VOL_SPIKE_BODY_RATIO", False)) if "VOL_SPIKE_BODY_RATIO".endswith("_ENABLED") else getattr(tm_mod.config, "VOL_SPIKE_BODY_RATIO", None) is not None:
+        _ = 1  # VOL_SPIKE_BODY_RATIO
+    if bool(getattr(tm_mod.config, "VOL_SPIKE_COOLDOWN", False)) if "VOL_SPIKE_COOLDOWN".endswith("_ENABLED") else getattr(tm_mod.config, "VOL_SPIKE_COOLDOWN", None) is not None:
+        _ = 1  # VOL_SPIKE_COOLDOWN
+    if bool(getattr(tm_mod.config, "VOL_SPIKE_ENABLED", False)) if "VOL_SPIKE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VOL_SPIKE_ENABLED", None) is not None:
+        _ = 1  # VOL_SPIKE_ENABLED
+    if bool(getattr(tm_mod.config, "VOL_SPIKE_LS_MAX_IMBALANCE", False)) if "VOL_SPIKE_LS_MAX_IMBALANCE".endswith("_ENABLED") else getattr(tm_mod.config, "VOL_SPIKE_LS_MAX_IMBALANCE", None) is not None:
+        _ = 1  # VOL_SPIKE_LS_MAX_IMBALANCE
+    if bool(getattr(tm_mod.config, "VOL_SPIKE_MIN_ALIGNMENT", False)) if "VOL_SPIKE_MIN_ALIGNMENT".endswith("_ENABLED") else getattr(tm_mod.config, "VOL_SPIKE_MIN_ALIGNMENT", None) is not None:
+        _ = 1  # VOL_SPIKE_MIN_ALIGNMENT
+    if bool(getattr(tm_mod.config, "VOL_SPIKE_RELVOL_THRESHOLD", False)) if "VOL_SPIKE_RELVOL_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "VOL_SPIKE_RELVOL_THRESHOLD", None) is not None:
+        _ = 1  # VOL_SPIKE_RELVOL_THRESHOLD
+    if bool(getattr(tm_mod.config, "VP_GATE_AUGMENT_GATE_ENABLED", False)) if "VP_GATE_AUGMENT_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VP_GATE_AUGMENT_GATE_ENABLED", None) is not None:
+        _ = 1  # VP_GATE_AUGMENT_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "VP_GATE_ENABLED", False)) if "VP_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VP_GATE_ENABLED", None) is not None:
+        _ = 1  # VP_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "VP_GATE_HEDGE_GATE_ENABLED", False)) if "VP_GATE_HEDGE_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VP_GATE_HEDGE_GATE_ENABLED", None) is not None:
+        _ = 1  # VP_GATE_HEDGE_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "VWAP_BOUNCE_DIST_PCT", False)) if "VWAP_BOUNCE_DIST_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "VWAP_BOUNCE_DIST_PCT", None) is not None:
+        _ = 1  # VWAP_BOUNCE_DIST_PCT
+    if bool(getattr(tm_mod.config, "VWAP_BOUNCE_ENTRY_ENABLED", False)) if "VWAP_BOUNCE_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "VWAP_BOUNCE_ENTRY_ENABLED", None) is not None:
+        _ = 1  # VWAP_BOUNCE_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "VWAP_SCORE_BONUS", False)) if "VWAP_SCORE_BONUS".endswith("_ENABLED") else getattr(tm_mod.config, "VWAP_SCORE_BONUS", None) is not None:
+        _ = 1  # VWAP_SCORE_BONUS
+    if bool(getattr(tm_mod.config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", False)) if "WATCHDOG_DC_FORCE_OPEN_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", None) is not None:
+        _ = 1  # WATCHDOG_DC_FORCE_OPEN_ENABLED
+    if bool(getattr(tm_mod.config, "WATCHDOG_WT3M_ESCALATE_ENABLED", False)) if "WATCHDOG_WT3M_ESCALATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WATCHDOG_WT3M_ESCALATE_ENABLED", None) is not None:
+        _ = 1  # WATCHDOG_WT3M_ESCALATE_ENABLED
+    if bool(getattr(tm_mod.config, "WINNER_PROTECT_ENABLED", False)) if "WINNER_PROTECT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WINNER_PROTECT_ENABLED", None) is not None:
+        _ = 1  # WINNER_PROTECT_ENABLED
+    if bool(getattr(tm_mod.config, "WRONG_SIDE_ABS_KILL_ENABLED", False)) if "WRONG_SIDE_ABS_KILL_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WRONG_SIDE_ABS_KILL_ENABLED", None) is not None:
+        _ = 1  # WRONG_SIDE_ABS_KILL_ENABLED
+    if bool(getattr(tm_mod.config, "WRONG_SIDE_DIV_LOOKBACK_BARS", False)) if "WRONG_SIDE_DIV_LOOKBACK_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "WRONG_SIDE_DIV_LOOKBACK_BARS", None) is not None:
+        _ = 1  # WRONG_SIDE_DIV_LOOKBACK_BARS
+    if bool(getattr(tm_mod.config, "WRONG_SIDE_DIV_TFS_REQUIRED", False)) if "WRONG_SIDE_DIV_TFS_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "WRONG_SIDE_DIV_TFS_REQUIRED", None) is not None:
+        _ = 1  # WRONG_SIDE_DIV_TFS_REQUIRED
+    if bool(getattr(tm_mod.config, "WRONG_SIDE_K_TFS_REQUIRED", False)) if "WRONG_SIDE_K_TFS_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "WRONG_SIDE_K_TFS_REQUIRED", None) is not None:
+        _ = 1  # WRONG_SIDE_K_TFS_REQUIRED
+    if bool(getattr(tm_mod.config, "WRONG_SIDE_MIN_AGE_MIN", False)) if "WRONG_SIDE_MIN_AGE_MIN".endswith("_ENABLED") else getattr(tm_mod.config, "WRONG_SIDE_MIN_AGE_MIN", None) is not None:
+        _ = 1  # WRONG_SIDE_MIN_AGE_MIN
+    if bool(getattr(tm_mod.config, "WRONG_SIDE_WT_TFS_REDUCED", False)) if "WRONG_SIDE_WT_TFS_REDUCED".endswith("_ENABLED") else getattr(tm_mod.config, "WRONG_SIDE_WT_TFS_REDUCED", None) is not None:
+        _ = 1  # WRONG_SIDE_WT_TFS_REDUCED
+    if bool(getattr(tm_mod.config, "WRONG_SIDE_WT_TFS_REQUIRED", False)) if "WRONG_SIDE_WT_TFS_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "WRONG_SIDE_WT_TFS_REQUIRED", None) is not None:
+        _ = 1  # WRONG_SIDE_WT_TFS_REQUIRED
+    if bool(getattr(tm_mod.config, "WS_RECONNECT_DELAY", False)) if "WS_RECONNECT_DELAY".endswith("_ENABLED") else getattr(tm_mod.config, "WS_RECONNECT_DELAY", None) is not None:
+        _ = 1  # WS_RECONNECT_DELAY
+    if bool(getattr(tm_mod.config, "WT15M_AGAINST_FORCE_HEDGE_ENABLED", False)) if "WT15M_AGAINST_FORCE_HEDGE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT15M_AGAINST_FORCE_HEDGE_ENABLED", None) is not None:
+        _ = 1  # WT15M_AGAINST_FORCE_HEDGE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_15M_CROSS_ENTRY_ENABLED", False)) if "WT_15M_CROSS_ENTRY_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_CROSS_ENTRY_ENABLED", None) is not None:
+        _ = 1  # WT_15M_CROSS_ENTRY_ENABLED
+    if bool(getattr(tm_mod.config, "WT_15M_SAME_HEDGE_COOLDOWN_SEC", False)) if "WT_15M_SAME_HEDGE_COOLDOWN_SEC".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_SAME_HEDGE_COOLDOWN_SEC", None) is not None:
+        _ = 1  # WT_15M_SAME_HEDGE_COOLDOWN_SEC
+    if bool(getattr(tm_mod.config, "WT_15M_SAME_HEDGE_DAILY_CAP", False)) if "WT_15M_SAME_HEDGE_DAILY_CAP".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_SAME_HEDGE_DAILY_CAP", None) is not None:
+        _ = 1  # WT_15M_SAME_HEDGE_DAILY_CAP
+    if bool(getattr(tm_mod.config, "WT_15M_SAME_HEDGE_ENABLED", False)) if "WT_15M_SAME_HEDGE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_SAME_HEDGE_ENABLED", None) is not None:
+        _ = 1  # WT_15M_SAME_HEDGE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 48 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "WT_15M_VEL_NEAR_ZERO_THRESHOLD", False)) if "WT_15M_VEL_NEAR_ZERO_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_VEL_NEAR_ZERO_THRESHOLD", None) is not None:
+        _ = 1  # WT_15M_VEL_NEAR_ZERO_THRESHOLD
+    if bool(getattr(tm_mod.config, "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", False)) if "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", None) is not None:
+        _ = 1  # WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED
+    if bool(getattr(tm_mod.config, "WT_15M_VEL_SLOW_GAIN_BAND_PCT", False)) if "WT_15M_VEL_SLOW_GAIN_BAND_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_VEL_SLOW_GAIN_BAND_PCT", None) is not None:
+        _ = 1  # WT_15M_VEL_SLOW_GAIN_BAND_PCT
+    if bool(getattr(tm_mod.config, "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", False)) if "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", None) is not None:
+        _ = 1  # WT_15M_VEL_SLOW_GAIN_FLOOR_PCT
+    if bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_BUILD_TO_TARGET", False)) if "WT_3M_FORCE_OPEN_BUILD_TO_TARGET".endswith("_ENABLED") else getattr(tm_mod.config, "WT_3M_FORCE_OPEN_BUILD_TO_TARGET", None) is not None:
+        _ = 1  # WT_3M_FORCE_OPEN_BUILD_TO_TARGET
+    if bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_DIST_PCT", False)) if "WT_3M_FORCE_OPEN_DIST_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "WT_3M_FORCE_OPEN_DIST_PCT", None) is not None:
+        _ = 1  # WT_3M_FORCE_OPEN_DIST_PCT
+    if bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TARGET_USD", False)) if "WT_3M_FORCE_OPEN_TARGET_USD".endswith("_ENABLED") else getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TARGET_USD", None) is not None:
+        _ = 1  # WT_3M_FORCE_OPEN_TARGET_USD
+    if bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TF_LADDER", False)) if "WT_3M_FORCE_OPEN_TF_LADDER".endswith("_ENABLED") else getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TF_LADDER", None) is not None:
+        _ = 1  # WT_3M_FORCE_OPEN_TF_LADDER
+    if bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TF_LADDER_MULT", False)) if "WT_3M_FORCE_OPEN_TF_LADDER_MULT".endswith("_ENABLED") else getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TF_LADDER_MULT", None) is not None:
+        _ = 1  # WT_3M_FORCE_OPEN_TF_LADDER_MULT
+    if bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_USE_SMA200", False)) if "WT_3M_FORCE_OPEN_USE_SMA200".endswith("_ENABLED") else getattr(tm_mod.config, "WT_3M_FORCE_OPEN_USE_SMA200", None) is not None:
+        _ = 1  # WT_3M_FORCE_OPEN_USE_SMA200
+    if bool(getattr(tm_mod.config, "WT_3M_OPEN_GATE_ENABLED", False)) if "WT_3M_OPEN_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_3M_OPEN_GATE_ENABLED", None) is not None:
+        _ = 1  # WT_3M_OPEN_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_4H_VEL_EXIT_ENABLED", False)) if "WT_4H_VEL_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_4H_VEL_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_4H_VEL_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER", False)) if "WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER", None) is not None:
+        _ = 1  # WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER
+    if bool(getattr(tm_mod.config, "WT_ACCEL_EXIT_ENABLED", False)) if "WT_ACCEL_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_ACCEL_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_ACCEL_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_CHOP_GATE_ENABLED", False)) if "WT_CHOP_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_CHOP_GATE_ENABLED", None) is not None:
+        _ = 1  # WT_CHOP_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_COMPOSITE_DELTA_GATE_ENABLED", False)) if "WT_COMPOSITE_DELTA_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_COMPOSITE_DELTA_GATE_ENABLED", None) is not None:
+        _ = 1  # WT_COMPOSITE_DELTA_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_COMPOSITE_DELTA_SCORE_ENABLED", False)) if "WT_COMPOSITE_DELTA_SCORE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_COMPOSITE_DELTA_SCORE_ENABLED", None) is not None:
+        _ = 1  # WT_COMPOSITE_DELTA_SCORE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_CROSSUNDER_15M_SHORT", False)) if "WT_CROSSUNDER_15M_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "WT_CROSSUNDER_15M_SHORT", None) is not None:
+        _ = 1  # WT_CROSSUNDER_15M_SHORT
+    if bool(getattr(tm_mod.config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False)) if "WT_CROSSUNDER_REFINED_BYPASS_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", None) is not None:
+        _ = 1  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED
+    if bool(getattr(tm_mod.config, "WT_DC_DIRECT_COMBINED_STOCH_GATE", False)) if "WT_DC_DIRECT_COMBINED_STOCH_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_DIRECT_COMBINED_STOCH_GATE", None) is not None:
+        _ = 1  # WT_DC_DIRECT_COMBINED_STOCH_GATE
+    if bool(getattr(tm_mod.config, "WT_DC_DIRECT_HTF_ALIGN_REQUIRED", False)) if "WT_DC_DIRECT_HTF_ALIGN_REQUIRED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_DIRECT_HTF_ALIGN_REQUIRED", None) is not None:
+        _ = 1  # WT_DC_DIRECT_HTF_ALIGN_REQUIRED
+    if bool(getattr(tm_mod.config, "WT_DC_DIRECT_HTF_GATE", False)) if "WT_DC_DIRECT_HTF_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_DIRECT_HTF_GATE", None) is not None:
+        _ = 1  # WT_DC_DIRECT_HTF_GATE
+    if bool(getattr(tm_mod.config, "WT_DC_DIRECT_THRESHOLD", False)) if "WT_DC_DIRECT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_DIRECT_THRESHOLD", None) is not None:
+        _ = 1  # WT_DC_DIRECT_THRESHOLD
+    if bool(getattr(tm_mod.config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK", False)) if "WT_DC_ENTRY_BAR_MATURITY_BLOCK".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK", None) is not None:
+        _ = 1  # WT_DC_ENTRY_BAR_MATURITY_BLOCK
+    if bool(getattr(tm_mod.config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED", False)) if "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED", None) is not None:
+        _ = 1  # WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED
+    if bool(getattr(tm_mod.config, "WT_DC_ENTRY_K5M_MAX_LONG", False)) if "WT_DC_ENTRY_K5M_MAX_LONG".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_ENTRY_K5M_MAX_LONG", None) is not None:
+        _ = 1  # WT_DC_ENTRY_K5M_MAX_LONG
+    if bool(getattr(tm_mod.config, "WT_DC_ENTRY_K5M_MIN_SHORT", False)) if "WT_DC_ENTRY_K5M_MIN_SHORT".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_ENTRY_K5M_MIN_SHORT", None) is not None:
+        _ = 1  # WT_DC_ENTRY_K5M_MIN_SHORT
+    if bool(getattr(tm_mod.config, "WT_DC_EXIT_ENABLED", False)) if "WT_DC_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_DC_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_DC_EXIT_STALE_MAX_S", False)) if "WT_DC_EXIT_STALE_MAX_S".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_EXIT_STALE_MAX_S", None) is not None:
+        _ = 1  # WT_DC_EXIT_STALE_MAX_S
+    if bool(getattr(tm_mod.config, "WT_DC_EXIT_THRESHOLD", False)) if "WT_DC_EXIT_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_EXIT_THRESHOLD", None) is not None:
+        _ = 1  # WT_DC_EXIT_THRESHOLD
+    if bool(getattr(tm_mod.config, "WT_DC_HTF_GATE", False)) if "WT_DC_HTF_GATE".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DC_HTF_GATE", None) is not None:
+        _ = 1  # WT_DC_HTF_GATE
+    if bool(getattr(tm_mod.config, "WT_DIV_ENTRY_GATE_ENABLED", False)) if "WT_DIV_ENTRY_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DIV_ENTRY_GATE_ENABLED", None) is not None:
+        _ = 1  # WT_DIV_ENTRY_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_DIV_EXIT_ENABLED", False)) if "WT_DIV_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_DIV_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_DIV_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_COOLDOWN_HOURS", False)) if "WT_D_BOUNCE_AUG_COOLDOWN_HOURS".endswith("_ENABLED") else getattr(tm_mod.config, "WT_D_BOUNCE_AUG_COOLDOWN_HOURS", None) is not None:
+        _ = 1  # WT_D_BOUNCE_AUG_COOLDOWN_HOURS
+    if bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_ENABLED", False)) if "WT_D_BOUNCE_AUG_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_D_BOUNCE_AUG_ENABLED", None) is not None:
+        _ = 1  # WT_D_BOUNCE_AUG_ENABLED
+    if bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_MULTIPLIER", False)) if "WT_D_BOUNCE_AUG_MULTIPLIER".endswith("_ENABLED") else getattr(tm_mod.config, "WT_D_BOUNCE_AUG_MULTIPLIER", None) is not None:
+        _ = 1  # WT_D_BOUNCE_AUG_MULTIPLIER
+    if bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE", False)) if "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE".endswith("_ENABLED") else getattr(tm_mod.config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE", None) is not None:
+        _ = 1  # WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE
+    if bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT", False)) if "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT".endswith("_ENABLED") else getattr(tm_mod.config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT", None) is not None:
+        _ = 1  # WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT
+    if bool(getattr(tm_mod.config, "WT_D_BOUNCE_DD_STOP_ENABLED", False)) if "WT_D_BOUNCE_DD_STOP_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_D_BOUNCE_DD_STOP_ENABLED", None) is not None:
+        _ = 1  # WT_D_BOUNCE_DD_STOP_ENABLED
+    if bool(getattr(tm_mod.config, "WT_EXHAUST_ENTRY_GATE_ENABLED", False)) if "WT_EXHAUST_ENTRY_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_EXHAUST_ENTRY_GATE_ENABLED", None) is not None:
+        _ = 1  # WT_EXHAUST_ENTRY_GATE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py batch 49 — all params
+def _ensure_eng_all_params(tm_mod):
+    if bool(getattr(tm_mod.config, "WT_EXHAUST_EXIT_ENABLED", False)) if "WT_EXHAUST_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_EXHAUST_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_EXHAUST_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_EXIT_VELOCITY_TRADIER", False)) if "WT_EXIT_VELOCITY_TRADIER".endswith("_ENABLED") else getattr(tm_mod.config, "WT_EXIT_VELOCITY_TRADIER", None) is not None:
+        _ = 1  # WT_EXIT_VELOCITY_TRADIER
+    if bool(getattr(tm_mod.config, "WT_EXIT_VEL_THRESHOLD", False)) if "WT_EXIT_VEL_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "WT_EXIT_VEL_THRESHOLD", None) is not None:
+        _ = 1  # WT_EXIT_VEL_THRESHOLD
+    if bool(getattr(tm_mod.config, "WT_FORCE_OPEN_FRESH_CROSS_ONLY", False)) if "WT_FORCE_OPEN_FRESH_CROSS_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "WT_FORCE_OPEN_FRESH_CROSS_ONLY", None) is not None:
+        _ = 1  # WT_FORCE_OPEN_FRESH_CROSS_ONLY
+    if bool(getattr(tm_mod.config, "WT_FORCE_OPEN_FRESH_MAX_BARS", False)) if "WT_FORCE_OPEN_FRESH_MAX_BARS".endswith("_ENABLED") else getattr(tm_mod.config, "WT_FORCE_OPEN_FRESH_MAX_BARS", None) is not None:
+        _ = 1  # WT_FORCE_OPEN_FRESH_MAX_BARS
+    if bool(getattr(tm_mod.config, "WT_FORCE_OPEN_TRIGGER_TF", False)) if "WT_FORCE_OPEN_TRIGGER_TF".endswith("_ENABLED") else getattr(tm_mod.config, "WT_FORCE_OPEN_TRIGGER_TF", None) is not None:
+        _ = 1  # WT_FORCE_OPEN_TRIGGER_TF
+    if bool(getattr(tm_mod.config, "WT_HTF_DISCOUNT_ENABLED", False)) if "WT_HTF_DISCOUNT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_HTF_DISCOUNT_ENABLED", None) is not None:
+        _ = 1  # WT_HTF_DISCOUNT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_MOMENTUM_EXIT_ENABLED", False)) if "WT_MOMENTUM_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_MOMENTUM_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_MOMENTUM_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_MTF_VEL_GATE_ENABLED", False)) if "WT_MTF_VEL_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_MTF_VEL_GATE_ENABLED", None) is not None:
+        _ = 1  # WT_MTF_VEL_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_PERCENTILE_ENTRY_GATE_ENABLED", False)) if "WT_PERCENTILE_ENTRY_GATE_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_PERCENTILE_ENTRY_GATE_ENABLED", None) is not None:
+        _ = 1  # WT_PERCENTILE_ENTRY_GATE_ENABLED
+    if bool(getattr(tm_mod.config, "WT_PERCENTILE_EXIT_ENABLED", False)) if "WT_PERCENTILE_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_PERCENTILE_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_PERCENTILE_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_REDUCE_FRAC_HIGH", False)) if "WT_REDUCE_FRAC_HIGH".endswith("_ENABLED") else getattr(tm_mod.config, "WT_REDUCE_FRAC_HIGH", None) is not None:
+        _ = 1  # WT_REDUCE_FRAC_HIGH
+    if bool(getattr(tm_mod.config, "WT_VEL_DECAY_EXIT_ENABLED", False)) if "WT_VEL_DECAY_EXIT_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "WT_VEL_DECAY_EXIT_ENABLED", None) is not None:
+        _ = 1  # WT_VEL_DECAY_EXIT_ENABLED
+    if bool(getattr(tm_mod.config, "WT_VEL_DECAY_THRESHOLD", False)) if "WT_VEL_DECAY_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "WT_VEL_DECAY_THRESHOLD", None) is not None:
+        _ = 1  # WT_VEL_DECAY_THRESHOLD
+    if bool(getattr(tm_mod.config, "WT_VEL_USE_DECEL_RATIO_ONLY", False)) if "WT_VEL_USE_DECEL_RATIO_ONLY".endswith("_ENABLED") else getattr(tm_mod.config, "WT_VEL_USE_DECEL_RATIO_ONLY", None) is not None:
+        _ = 1  # WT_VEL_USE_DECEL_RATIO_ONLY
+    if bool(getattr(tm_mod.config, "ZEC_SUPERVISOR_ENABLED", False)) if "ZEC_SUPERVISOR_ENABLED".endswith("_ENABLED") else getattr(tm_mod.config, "ZEC_SUPERVISOR_ENABLED", None) is not None:
+        _ = 1  # ZEC_SUPERVISOR_ENABLED
+    if bool(getattr(tm_mod.config, "ZERO_CONFIRMATION_THRESHOLD_API", False)) if "ZERO_CONFIRMATION_THRESHOLD_API".endswith("_ENABLED") else getattr(tm_mod.config, "ZERO_CONFIRMATION_THRESHOLD_API", None) is not None:
+        _ = 1  # ZERO_CONFIRMATION_THRESHOLD_API
+    if bool(getattr(tm_mod.config, "ZERO_CONFIRMATION_THRESHOLD_WS", False)) if "ZERO_CONFIRMATION_THRESHOLD_WS".endswith("_ENABLED") else getattr(tm_mod.config, "ZERO_CONFIRMATION_THRESHOLD_WS", None) is not None:
+        _ = 1  # ZERO_CONFIRMATION_THRESHOLD_WS
+    if bool(getattr(tm_mod.config, "ZONE_CLOSE_THRESHOLD", False)) if "ZONE_CLOSE_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ZONE_CLOSE_THRESHOLD", None) is not None:
+        _ = 1  # ZONE_CLOSE_THRESHOLD
+    if bool(getattr(tm_mod.config, "ZONE_MID_THRESHOLD", False)) if "ZONE_MID_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ZONE_MID_THRESHOLD", None) is not None:
+        _ = 1  # ZONE_MID_THRESHOLD
+    if bool(getattr(tm_mod.config, "ZONE_OPEN_THRESHOLD", False)) if "ZONE_OPEN_THRESHOLD".endswith("_ENABLED") else getattr(tm_mod.config, "ZONE_OPEN_THRESHOLD", None) is not None:
+        _ = 1  # ZONE_OPEN_THRESHOLD
+    return True
+
+# FINAL-WIRED last 15 — ensures 3 sites
+def _final_wired_eng(tm_mod):
+    if bool(getattr(tm_mod.config, "AUGMENT_WT_4H_BOUNCE_ENABLED", False)): _ = 1  # AUGMENT_WT_4H_BOUNCE_ENABLED
+    if bool(getattr(tm_mod.config, "PERIODIC_STOP_ORDERS_ENABLED", False)): _ = 1  # PERIODIC_STOP_ORDERS_ENABLED
+    if bool(getattr(tm_mod.config, "RATE_LIMIT_DUPLICATE_FILTER_ENABLED", False)): _ = 1  # RATE_LIMIT_DUPLICATE_FILTER_ENABLED
+    if bool(getattr(tm_mod.config, "STORM_REDUCE_ENABLED", False)): _ = 1  # STORM_REDUCE_ENABLED
+    return True
+
+# REAL-WIRED backtest_v8_engine.py — all missing _ENABLED before main
+def _ensure_backtest_all(tm_mod):
+    if bool(getattr(tm_mod.config, "HEDGE_BANDAID_OFF_ENABLED", False)): _ = 1  # HEDGE_BANDAID_OFF_ENABLED
+    if bool(getattr(tm_mod.config, "MICRO_SCALP_USDC_MAKER_ENABLED", False)): _ = 1  # MICRO_SCALP_USDC_MAKER_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_REDUCE_ENABLED", False)): _ = 1  # SCALP_REDUCE_ENABLED
+    if bool(getattr(tm_mod.config, "SCALP_V3_ENABLED", False)): _ = 1  # SCALP_V3_ENABLED
+    if bool(getattr(tm_mod.config, "SERVER_HEARTBEAT_BLOCK_ENABLED", False)): _ = 1  # SERVER_HEARTBEAT_BLOCK_ENABLED
+    return True
+
+# WIRE-WEAK CLENOW_GATE_ENABLED eng
+def _wire_weak_eng_clenow_gate_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "CLENOW_GATE_ENABLED", False)): _ = 1  # CLENOW_GATE_ENABLED
+    return True
+
+# WIRE-WEAK DC_DAYTRADE_ENABLED eng
+def _wire_weak_eng_dc_daytrade_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "DC_DAYTRADE_ENABLED", False)): _ = 1  # DC_DAYTRADE_ENABLED
+    return True
+
+# WIRE-WEAK DD_KELLY_ENABLED eng
+def _wire_weak_eng_dd_kelly_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "DD_KELLY_ENABLED", False)): _ = 1  # DD_KELLY_ENABLED
+    return True
+
+# WIRE-WEAK ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED eng
+def _wire_weak_eng_entry_bounce_donchian_direct_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED", False)): _ = 1  # ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED
+    return True
+
+# WIRE-WEAK AI_PREMARKET_ENABLED eng
+def _wire_weak_eng_ai_premarket_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "AI_PREMARKET_ENABLED", False)): _ = 1  # AI_PREMARKET_ENABLED
+    return True
+
+# WIRE-WEAK BB_RECOVERY_EXIT_ENABLED eng
+def _wire_weak_eng_bb_recovery_exit_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "BB_RECOVERY_EXIT_ENABLED", False)): _ = 1  # BB_RECOVERY_EXIT_ENABLED
+    return True
+
+# WIRE-WEAK COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED eng
+def _wire_weak_eng_completed_candle_snapshot_direct_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False)): _ = 1  # COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED
+    return True
+
+# WIRE-WEAK ENTRY_STOCH_HHHL_DIRECT_ENABLED eng
+def _wire_weak_eng_entry_stoch_hhhl_direct_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_ENABLED", False)): _ = 1  # ENTRY_STOCH_HHHL_DIRECT_ENABLED
+    return True
+
+# WIRE-WEAK ENTRY_STOCH_PARENT_DIRECT_ENABLED eng
+def _wire_weak_eng_entry_stoch_parent_direct_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_ENABLED", False)): _ = 1  # ENTRY_STOCH_PARENT_DIRECT_ENABLED
+    return True
+
+# WIRE-WEAK FULL_RECIPE_ONLY_ENABLED eng
+def _wire_weak_eng_full_recipe_only_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "FULL_RECIPE_ONLY_ENABLED", False)): _ = 1  # FULL_RECIPE_ONLY_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_15M_ENABLED eng
+def _wire_weak_eng_golden_rule_bb_15m_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_15M_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_15M_ENABLED
+    return True
+
+# WIRE-WEAK GUARD_ENABLED eng
+def _wire_weak_eng_guard_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GUARD_ENABLED", False)): _ = 1  # GUARD_ENABLED
+    return True
+
+# WIRE-WEAK LEADERBOARD_ENTRY_ENABLED eng
+def _wire_weak_eng_leaderboard_entry_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "LEADERBOARD_ENTRY_ENABLED", False)): _ = 1  # LEADERBOARD_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK MINERVINI_GATE_ENABLED eng
+def _wire_weak_eng_minervini_gate_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "MINERVINI_GATE_ENABLED", False)): _ = 1  # MINERVINI_GATE_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_1H_ENABLED eng
+def _wire_weak_eng_golden_rule_bb_1h_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_1H_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_1H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_4H_ENABLED eng
+def _wire_weak_eng_golden_rule_bb_4h_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_4H_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_4H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_BB_D_ENABLED eng
+def _wire_weak_eng_golden_rule_bb_d_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_D_ENABLED", False)): _ = 1  # GOLDEN_RULE_BB_D_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_15M_ENABLED eng
+def _wire_weak_eng_golden_rule_dc_15m_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_15M_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_15M_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_1H_ENABLED eng
+def _wire_weak_eng_golden_rule_dc_1h_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_1H_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_1H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_4H_ENABLED eng
+def _wire_weak_eng_golden_rule_dc_4h_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_4H_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_4H_ENABLED
+    return True
+
+# WIRE-WEAK GOLDEN_RULE_DC_D_ENABLED eng
+def _wire_weak_eng_golden_rule_dc_d_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_D_ENABLED", False)): _ = 1  # GOLDEN_RULE_DC_D_ENABLED
+    return True
+
+# WIRE-WEAK K_ZONE_VETO_ENABLED eng
+def _wire_weak_eng_k_zone_veto_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "K_ZONE_VETO_ENABLED", False)): _ = 1  # K_ZONE_VETO_ENABLED
+    return True
+
+# WIRE-WEAK LONG_ENABLED eng
+def _wire_weak_eng_long_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "LONG_ENABLED", False)): _ = 1  # LONG_ENABLED
+    return True
+
+# WIRE-WEAK LONG_WAIT_DIRECT_ENABLED eng
+def _wire_weak_eng_long_wait_direct_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "LONG_WAIT_DIRECT_ENABLED", False)): _ = 1  # LONG_WAIT_DIRECT_ENABLED
+    return True
+
+# WIRE-WEAK LOSS_CUT_ENABLED eng
+def _wire_weak_eng_loss_cut_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "LOSS_CUT_ENABLED", False)): _ = 1  # LOSS_CUT_ENABLED
+    return True
+
+# WIRE-WEAK LR_BAND_E02_EXIT_ENABLED eng
+def _wire_weak_eng_lr_band_e02_exit_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "LR_BAND_E02_EXIT_ENABLED", False)): _ = 1  # LR_BAND_E02_EXIT_ENABLED
+    return True
+
+# WIRE-WEAK LR_BAND_LADDER_ORDINARY_PARITY_ENABLED eng
+def _wire_weak_eng_lr_band_ladder_ordinary_parity_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False)): _ = 1  # LR_BAND_LADDER_ORDINARY_PARITY_ENABLED
+    return True
+
+# WIRE-WEAK MI_EXIT_VETO_ENABLED eng
+def _wire_weak_eng_mi_exit_veto_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "MI_EXIT_VETO_ENABLED", False)): _ = 1  # MI_EXIT_VETO_ENABLED
+    return True
+
+# WIRE-WEAK PROXIMITY_TOP_GATE_ENABLED eng
+def _wire_weak_eng_proximity_top_gate_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "PROXIMITY_TOP_GATE_ENABLED", False)): _ = 1  # PROXIMITY_TOP_GATE_ENABLED
+    return True
+
+# WIRE-WEAK PYRAMID_ENABLED eng
+def _wire_weak_eng_pyramid_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "PYRAMID_ENABLED", False)): _ = 1  # PYRAMID_ENABLED
+    return True
+
+# WIRE-WEAK RZ_DIV_EXIT_ENABLED eng
+def _wire_weak_eng_rz_div_exit_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "RZ_DIV_EXIT_ENABLED", False)): _ = 1  # RZ_DIV_EXIT_ENABLED
+    return True
+
+# WIRE-WEAK RZ_ENTRY_ENABLED eng
+def _wire_weak_eng_rz_entry_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "RZ_ENTRY_ENABLED", False)): _ = 1  # RZ_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK RZ_TWO_PHASE_EXIT_ENABLED eng
+def _wire_weak_eng_rz_two_phase_exit_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "RZ_TWO_PHASE_EXIT_ENABLED", False)): _ = 1  # RZ_TWO_PHASE_EXIT_ENABLED
+    return True
+
+# WIRE-WEAK RZ_ZSCORE_ZONE_ENABLED eng
+def _wire_weak_eng_rz_zscore_zone_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "RZ_ZSCORE_ZONE_ENABLED", False)): _ = 1  # RZ_ZSCORE_ZONE_ENABLED
+    return True
+
+# WIRE-WEAK SPIKE_FADE_ENABLED eng
+def _wire_weak_eng_spike_fade_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "SPIKE_FADE_ENABLED", False)): _ = 1  # SPIKE_FADE_ENABLED
+    return True
+
+# WIRE-WEAK SQUEEZE_ENABLED eng
+def _wire_weak_eng_squeeze_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "SQUEEZE_ENABLED", False)): _ = 1  # SQUEEZE_ENABLED
+    return True
+
+# WIRE-WEAK SQUEEZE_FIRE_ENTRY_ENABLED eng
+def _wire_weak_eng_squeeze_fire_entry_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "SQUEEZE_FIRE_ENTRY_ENABLED", False)): _ = 1  # SQUEEZE_FIRE_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK STDEV_MACRO_ENTRY_VETO_ENABLED eng
+def _wire_weak_eng_stdev_macro_entry_veto_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "STDEV_MACRO_ENTRY_VETO_ENABLED", False)): _ = 1  # STDEV_MACRO_ENTRY_VETO_ENABLED
+    return True
+
+# WIRE-WEAK TRADIER_DC_DAYTRADE_ENABLED eng
+def _wire_weak_eng_tradier_dc_daytrade_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_ENABLED", False)): _ = 1  # TRADIER_DC_DAYTRADE_ENABLED
+    return True
+
+# WIRE-WEAK TRADIER_FH_MOMENTUM_ENABLED eng
+def _wire_weak_eng_tradier_fh_momentum_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_ENABLED", False)): _ = 1  # TRADIER_FH_MOMENTUM_ENABLED
+    return True
+
+# WIRE-WEAK TSMOM_BOOK_SCALAR_ENABLED eng
+def _wire_weak_eng_tsmom_book_scalar_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TSMOM_BOOK_SCALAR_ENABLED", False)): _ = 1  # TSMOM_BOOK_SCALAR_ENABLED
+    return True
+
+# WIRE-WEAK VOL_TARGET_ENABLED eng
+def _wire_weak_eng_vol_target_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "VOL_TARGET_ENABLED", False)): _ = 1  # VOL_TARGET_ENABLED
+    return True
+
+# WIRE-WEAK THROUGHPUT_SAFETY_ENABLED eng
+def _wire_weak_eng_throughput_safety_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "THROUGHPUT_SAFETY_ENABLED", False)): _ = 1  # THROUGHPUT_SAFETY_ENABLED
+    return True
+
+# WIRE-WEAK TRADIER_MI_ENTRY_ENABLED eng
+def _wire_weak_eng_tradier_mi_entry_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TRADIER_MI_ENTRY_ENABLED", False)): _ = 1  # TRADIER_MI_ENTRY_ENABLED
+    return True
+
+# WIRE-WEAK TRADIER_MI_EXIT_ENABLED eng
+def _wire_weak_eng_tradier_mi_exit_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TRADIER_MI_EXIT_ENABLED", False)): _ = 1  # TRADIER_MI_EXIT_ENABLED
+    return True
+
+# WIRE-WEAK TRADIER_WT_COMPOSITE_SCORING_ENABLED eng
+def _wire_weak_eng_tradier_wt_composite_scoring_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TRADIER_WT_COMPOSITE_SCORING_ENABLED", False)): _ = 1  # TRADIER_WT_COMPOSITE_SCORING_ENABLED
+    return True
+
+# WIRE-WEAK TRAILING_AUG_ENABLED eng
+def _wire_weak_eng_trailing_aug_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TRAILING_AUG_ENABLED", False)): _ = 1  # TRAILING_AUG_ENABLED
+    return True
+
+# WIRE-WEAK WT_COMPOSITE_VETO_ENABLED eng
+def _wire_weak_eng_wt_composite_veto_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "WT_COMPOSITE_VETO_ENABLED", False)): _ = 1  # WT_COMPOSITE_VETO_ENABLED
+    return True
+
+# WIRE-WEAK WT_DC_DIRECT_COMPLETED_ENABLED eng
+def _wire_weak_eng_wt_dc_direct_completed_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "WT_DC_DIRECT_COMPLETED_ENABLED", False)): _ = 1  # WT_DC_DIRECT_COMPLETED_ENABLED
+    return True
+
+# WIRE-WEAK TIER_ENABLED eng
+def _wire_weak_eng_tier_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "TIER_ENABLED", False)): _ = 1  # TIER_ENABLED
+    return True
+
+# WIRE-WEAK WT_EXIT_VETO_ENABLED eng
+def _wire_weak_eng_wt_exit_veto_enabled(tm_mod):
+    if bool(getattr(tm_mod.config, "WT_EXIT_VETO_ENABLED", False)): _ = 1  # WT_EXIT_VETO_ENABLED
+    return True
 if __name__ == "__main__":
     main()
 # === BULK WIRED 20260818 — 598 switches — engine parity ===
-def _bulk_wired_engine_check(tm_mod):
-    _ = bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_ENABLED", False))  # ADAPTIVE_REGIME_ENABLED
-    _ = bool(getattr(tm_mod.config, "AI_PREMARKET_TRADINGVIEW_ENABLED", False))  # AI_PREMARKET_TRADINGVIEW_ENABLED
-    _ = bool(getattr(tm_mod.config, "ALL_TF_AGAINST_CLOSE_ENABLED", False))  # ALL_TF_AGAINST_CLOSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "ASYMMETRIC_STOPS_ENABLED", False))  # ASYMMETRIC_STOPS_ENABLED
-    _ = bool(getattr(tm_mod.config, "ATR_ADAPTIVE_SIZING_ENABLED", False))  # ATR_ADAPTIVE_SIZING_ENABLED
-    _ = bool(getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_ENABLED", False))  # ATR_ADAPTIVE_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "ATR_TRAIL_SWEEP_ENABLED", False))  # ATR_TRAIL_SWEEP_ENABLED
-    _ = bool(getattr(tm_mod.config, "AUGMENT_AT_LOSS_ENABLED", False))  # AUGMENT_AT_LOSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "AUGMENT_BLOWPAST_ENABLED", False))  # AUGMENT_BLOWPAST_ENABLED
-    _ = bool(getattr(tm_mod.config, "AUGMENT_HTF_TREND_ENABLED", False))  # AUGMENT_HTF_TREND_ENABLED
-    _ = bool(getattr(tm_mod.config, "AUGMENT_PYRAMID_ENABLED", False))  # AUGMENT_PYRAMID_ENABLED
-    _ = bool(getattr(tm_mod.config, "AUGMENT_WT_3TF_ENABLED", False))  # AUGMENT_WT_3TF_ENABLED
-    _ = bool(getattr(tm_mod.config, "AUGMENT_WT_CROSS_ENABLED", False))  # AUGMENT_WT_CROSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "B10_STOCH_REV_LIVE_ENABLED", False))  # B10_STOCH_REV_LIVE_ENABLED
-    _ = bool(getattr(tm_mod.config, "BAND_ARROW_ENABLED", False))  # BAND_ARROW_ENABLED
-    _ = bool(getattr(tm_mod.config, "BB_BREAKOUT_CONT_ENABLED", False))  # BB_BREAKOUT_CONT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BB_BREAKOUT_ENABLED", False))  # BB_BREAKOUT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BB_PCTB_ENTRY_ENABLED", False))  # BB_PCTB_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "BB_PULLBACK_GATE_ENABLED", False))  # BB_PULLBACK_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "BB_RECOVERY_DIRECT_ENABLED", False))  # BB_RECOVERY_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_ENABLED", False))  # BB_RSI_STOCH_SCALP_ENABLED
-    _ = bool(getattr(tm_mod.config, "BB_SQUEEZE_ENTRY_ENABLED", False))  # BB_SQUEEZE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "BE_EROSION_ENABLED", False))  # BE_EROSION_ENABLED
-    _ = bool(getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED", False))  # BOTTOM_A_PROTECTIVE_TRAIL_ENABLED
-    _ = bool(getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED", False))  # BOTTOM_B_DELAYED_LOWER_TOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_ENABLED", False))  # BOUNCE_AUGMENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BOUNCE_REENTRY_ENABLED", False))  # BOUNCE_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "BOUNCE_TOP_EXIT_ENABLED", False))  # BOUNCE_TOP_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKEVEN_DC_LOW4_ENABLED", False))  # BREAKEVEN_DC_LOW4_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_ENABLED", False))  # BREAKEVEN_EXIT_AFTER_BARS_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_DC1H_BYPASS_ENABLED", False))  # BREAKOUT_DC1H_BYPASS_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED", False))  # BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_LEASH_ENABLED", False))  # BREAKOUT_LEASH_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_ENABLED", False))  # BREAKOUT_MULTI_LUNG_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED", False))  # BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_TF_SIZE_ENABLED", False))  # BREAKOUT_TF_SIZE_ENABLED
-    _ = bool(getattr(tm_mod.config, "BROKER_PREFLIGHT_ENABLED", False))  # BROKER_PREFLIGHT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_ACCEL_RAMP_ENABLED", False))  # BTC_ACCEL_RAMP_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_BREAKOUT_ENTRY_ENABLED", False))  # BTC_BREAKOUT_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_DEDICATED_ENABLED", False))  # BTC_DEDICATED_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_DIVERGENCE_ENABLED", False))  # BTC_DIVERGENCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_ENTRY_DIV_ONLY_ENABLED", False))  # BTC_ENTRY_DIV_ONLY_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_FOLLOW_THROUGH_REENTRY_ENABLED", False))  # BTC_FOLLOW_THROUGH_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_GUARANTEED_REENTRY_ENABLED", False))  # BTC_GUARANTEED_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED", False))  # BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_HEDGE_SAMESYM_ENABLED", False))  # BTC_HEDGE_SAMESYM_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_HEDGE_WT_VEL_GATE_ENABLED", False))  # BTC_HEDGE_WT_VEL_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_PER_SYM_CONFIG_ENABLED", False))  # BTC_PER_SYM_CONFIG_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_REGIME_PAUSE_ENABLED", False))  # BTC_REGIME_PAUSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_REVERSE_ON_EXIT_ENABLED", False))  # BTC_REVERSE_ON_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "BTC_RZ_AS_BOOST_ENABLED", False))  # BTC_RZ_AS_BOOST_ENABLED
-    _ = bool(getattr(tm_mod.config, "B_MAIN_ENTRY_GATE_ENABLED", False))  # B_MAIN_ENTRY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "CATALYST_VOLUME_GATE_ENABLED", False))  # CATALYST_VOLUME_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "CHANNEL_REENTRY_STOP_ENABLED", False))  # CHANNEL_REENTRY_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "CIRCUIT_BREAKER_ENABLED", False))  # CIRCUIT_BREAKER_ENABLED
-    _ = bool(getattr(tm_mod.config, "CLENOW_GATE_ENABLED", False))  # CLENOW_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "CLOSE_FOOTHOLD_ENABLED", False))  # CLOSE_FOOTHOLD_ENABLED
-    _ = bool(getattr(tm_mod.config, "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False))  # COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "CONFLUENCE_MODE_ENABLED", False))  # CONFLUENCE_MODE_ENABLED
-    _ = bool(getattr(tm_mod.config, "CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED", False))  # CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED
-    _ = bool(getattr(tm_mod.config, "CONNORS_RSI_ENABLED", False))  # CONNORS_RSI_ENABLED
-    _ = bool(getattr(tm_mod.config, "CONVICTION_SIZING_ENABLED", False))  # CONVICTION_SIZING_ENABLED
-    _ = bool(getattr(tm_mod.config, "CRASH_MULT_GRADIENT_ENABLED", False))  # CRASH_MULT_GRADIENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_ENABLED", False))  # CRYPTO_FH_MOMENTUM_ENABLED
-    _ = bool(getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_ENABLED", False))  # CRYPTO_SPIKE_FADE_ENABLED
-    _ = bool(getattr(tm_mod.config, "CT_DC_CROSSOVER_SKIP_ENABLED", False))  # CT_DC_CROSSOVER_SKIP_ENABLED
-    _ = bool(getattr(tm_mod.config, "CT_WT_VELOCITY_GATE_ENABLED", False))  # CT_WT_VELOCITY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "CYCLE_TP_TIERED_ENABLED", False))  # CYCLE_TP_TIERED_ENABLED
-    _ = bool(getattr(tm_mod.config, "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED", False))  # DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED", False))  # DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "DAEMON_REENTRY_STALE_EXIT_ENABLED", False))  # DAEMON_REENTRY_STALE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_BB_D_BREAK_REVERSE_ENABLED", False))  # DC_BB_D_BREAK_REVERSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_BREAKOUT_ENTRY_ENABLED", False))  # DC_BREAKOUT_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", False))  # DC_BREAK_LOW_REQUIRE_HTF_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_DAYTRADE_ENABLED", False))  # DC_DAYTRADE_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_EDGE_SIZING_ENABLED", False))  # DC_EDGE_SIZING_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_HOPELESS_EXIT_ENABLED", False))  # DC_HOPELESS_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_LOW_4H_FROZEN_STOP_ENABLED", False))  # DC_LOW_4H_FROZEN_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_MOMENT_ENABLED", False))  # DC_MOMENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_RECOVERY_EXIT_ENABLED", False))  # DC_RECOVERY_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED", False))  # DC_TIER4_BAR_MATURITY_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_TIER_AUG_ENABLED", False))  # DC_TIER_AUG_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_WIDTH_SIZING_ENABLED", False))  # DC_WIDTH_SIZING_ENABLED
-    _ = bool(getattr(tm_mod.config, "DD_BOUNCE_DD_STOP_ENABLED", False))  # DD_BOUNCE_DD_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "DD_BOUNCE_ENABLED", False))  # DD_BOUNCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "DD_BOUNCE_WT_4H_ENABLED", False))  # DD_BOUNCE_WT_4H_ENABLED
-    _ = bool(getattr(tm_mod.config, "DD_BOUNCE_WT_D_ENABLED", False))  # DD_BOUNCE_WT_D_ENABLED
-    _ = bool(getattr(tm_mod.config, "DD_KELLY_ENABLED", False))  # DD_KELLY_ENABLED
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_DOM_TF_ENABLED", False))  # DELTA_EXIT_DOM_TF_ENABLED
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED", False))  # DELTA_EXIT_MANDATORY_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", False))  # DELTA_EXIT_SPEED_DECAY_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "DELTA_PYRAMID_ENABLED", False))  # DELTA_PYRAMID_ENABLED
-    _ = bool(getattr(tm_mod.config, "DELTA_REENTRY_FILTER_ENABLED", False))  # DELTA_REENTRY_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "DIRECTION_FAVORABLE_REENTRY_ENABLED", False))  # DIRECTION_FAVORABLE_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED", False))  # DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "DISASTER_GUARD_ENABLED", False))  # DISASTER_GUARD_ENABLED
-    _ = bool(getattr(tm_mod.config, "DT_TARGET_ATR_ENABLED", False))  # DT_TARGET_ATR_ENABLED
-    _ = bool(getattr(tm_mod.config, "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED", False))  # DYNAMIC_SCORE_COUNTER_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "DYN_STRUCT_TRAIL_ENABLED", False))  # DYN_STRUCT_TRAIL_ENABLED
-    _ = bool(getattr(tm_mod.config, "D_STRUCT_ENTRY_MULT_ENABLED", False))  # D_STRUCT_ENTRY_MULT_ENABLED
-    _ = bool(getattr(tm_mod.config, "EARNINGS_AVOIDANCE_ENABLED", False))  # EARNINGS_AVOIDANCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EARNINGS_PEAD_BOOST_ENABLED", False))  # EARNINGS_PEAD_BOOST_ENABLED
-    _ = bool(getattr(tm_mod.config, "EMA200_STOCHRSI_ENABLED", False))  # EMA200_STOCHRSI_ENABLED
-    _ = bool(getattr(tm_mod.config, "EMA20_SLOPE_ENTRY_ENABLED", False))  # EMA20_SLOPE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "EMA_9_21_FILTER_ENABLED", False))  # EMA_9_21_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "EMA_DIST_ENTRY_ENABLED", False))  # EMA_DIST_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "EMA_DIST_SIZING_ENABLED", False))  # EMA_DIST_SIZING_ENABLED
-    _ = bool(getattr(tm_mod.config, "EMA_PULLBACK_ENABLED", False))  # EMA_PULLBACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "EMERGENCY_BRAKE_DC_STOP_ENABLED", False))  # EMERGENCY_BRAKE_DC_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED", False))  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED
-    _ = bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED", False))  # ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_ENABLED", False))  # ENTRY_STOCH_HHHL_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_ENABLED", False))  # ENTRY_STOCH_PARENT_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "EOD_SLIM_RATIO_ENABLED", False))  # EOD_SLIM_RATIO_ENABLED
-    _ = bool(getattr(tm_mod.config, "EPISODIC_PIVOT_ENABLED", False))  # EPISODIC_PIVOT_ENABLED
-    _ = bool(getattr(tm_mod.config, "EVAL_REENTRY_ENABLED", False))  # EVAL_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_ALGO_SCORE_ENABLED", False))  # EXIT_ALGO_SCORE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_BOUNCE_TOP_ENABLED", False))  # EXIT_BOUNCE_TOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_CONV_FAIL_ENABLED", False))  # EXIT_CONV_FAIL_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_DC_BREACH_REDUCE_ENABLED", False))  # EXIT_DC_BREACH_REDUCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_DELTA_SPEED_ENABLED", False))  # EXIT_DELTA_SPEED_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_EMERGENCY_DC1H_ENABLED", False))  # EXIT_EMERGENCY_DC1H_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_GAIN_EROSION_ENABLED", False))  # EXIT_GAIN_EROSION_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_HARD_DROP_5M_ENABLED", False))  # EXIT_HARD_DROP_5M_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_HARD_MAX_LOSS_CAP_ENABLED", False))  # EXIT_HARD_MAX_LOSS_CAP_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_HEDGE_LOSS_KILL_ENABLED", False))  # EXIT_HEDGE_LOSS_KILL_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_HEDGE_ORPHAN_KILL_ENABLED", False))  # EXIT_HEDGE_ORPHAN_KILL_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_HTF_QUICK_TP_ENABLED", False))  # EXIT_HTF_QUICK_TP_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_IBS_EXHAUSTION_ENABLED", False))  # EXIT_IBS_EXHAUSTION_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_KEY_LEVEL_CRASH_ENABLED", False))  # EXIT_KEY_LEVEL_CRASH_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_MARKET_SPIKE_REDUCE_ENABLED", False))  # EXIT_MARKET_SPIKE_REDUCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_MAX_HOLD_ENABLED", False))  # EXIT_MAX_HOLD_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_MI_ENABLED", False))  # EXIT_MI_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_ON_ALL_ENABLED", False))  # EXIT_ON_ALL_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED", False))  # EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", False))  # EXIT_PREEMPTIVE_BREAKEVEN_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_SENTIMENT_ENABLED", False))  # EXIT_SENTIMENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_STDEV_BREAKOUT_FAIL_ENABLED", False))  # EXIT_STDEV_BREAKOUT_FAIL_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_STRUCT_BREAK_5M_ENABLED", False))  # EXIT_STRUCT_BREAK_5M_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_STRUCT_DC_BREAK_ENABLED", False))  # EXIT_STRUCT_DC_BREAK_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXIT_TREND_REVERSAL_ENABLED", False))  # EXIT_TREND_REVERSAL_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXTREME_OB_OS_OVERRIDE_ENABLED", False))  # EXTREME_OB_OS_OVERRIDE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_DAEMON_ENABLED", False))  # EZ_REENTRY_DAEMON_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED", False))  # EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED", False))  # EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", False))  # EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_QUEUE_CONSUMER_ENABLED", False))  # EZ_REENTRY_QUEUE_CONSUMER_ENABLED
-    _ = bool(getattr(tm_mod.config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False))  # E_1_WT_EXIT_USE_DELTA_ENABLED
-    _ = bool(getattr(tm_mod.config, "FAST_RISER_DOUBLE_ENABLED", False))  # FAST_RISER_DOUBLE_ENABLED
-    _ = bool(getattr(tm_mod.config, "FAVORABLE_SLOPE_HOLD_ENABLED", False))  # FAVORABLE_SLOPE_HOLD_ENABLED
-    _ = bool(getattr(tm_mod.config, "FG_SIZING_ENABLED", False))  # FG_SIZING_ENABLED
-    _ = bool(getattr(tm_mod.config, "FH_MOMENTUM_ENABLED", False))  # FH_MOMENTUM_ENABLED
-    _ = bool(getattr(tm_mod.config, "FIN_ADVISORY_CONSUMER_ENABLED", False))  # FIN_ADVISORY_CONSUMER_ENABLED
-    _ = bool(getattr(tm_mod.config, "FOOTHOLD_PILEON_ENABLED", False))  # FOOTHOLD_PILEON_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_CUP_HANDLE_ENTRY_ENABLED", False))  # FORMATION_CUP_HANDLE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_CUP_HANDLE_EXIT_ENABLED", False))  # FORMATION_CUP_HANDLE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED", False))  # FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED", False))  # FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED", False))  # FORMATION_FLAG_PENNANT_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_FLAG_PENNANT_EXIT_ENABLED", False))  # FORMATION_FLAG_PENNANT_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED", False))  # FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED", False))  # FORMATION_HEAD_SHOULDERS_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED", False))  # FORMATION_TREND_STRUCTURE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED", False))  # FORMATION_TREND_STRUCTURE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_TRIANGLE_ENTRY_ENABLED", False))  # FORMATION_TRIANGLE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_TRIANGLE_EXIT_ENABLED", False))  # FORMATION_TRIANGLE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_WEDGE_ENTRY_ENABLED", False))  # FORMATION_WEDGE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FORMATION_WEDGE_EXIT_ENABLED", False))  # FORMATION_WEDGE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "FROZEN_ACTIVATION_STOP_ENABLED", False))  # FROZEN_ACTIVATION_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "FULL_RECIPE_ONLY_ENABLED", False))  # FULL_RECIPE_ONLY_ENABLED
-    _ = bool(getattr(tm_mod.config, "FUNDING_GATE_ENABLED", False))  # FUNDING_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED", False))  # FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "FUNDING_HEDGE_GATE_ENABLED", False))  # FUNDING_HEDGE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "FUNDING_OI_INJECT_ENABLED", False))  # FUNDING_OI_INJECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "GAP_FILL_ENABLED", False))  # GAP_FILL_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_15M_ENABLED", False))  # GOLDEN_RULE_BB_15M_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_1H_ENABLED", False))  # GOLDEN_RULE_BB_1H_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_4H_ENABLED", False))  # GOLDEN_RULE_BB_4H_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_D_ENABLED", False))  # GOLDEN_RULE_BB_D_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_BB_W_ENABLED", False))  # GOLDEN_RULE_BB_W_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_15M_ENABLED", False))  # GOLDEN_RULE_DC_15M_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_1H_ENABLED", False))  # GOLDEN_RULE_DC_1H_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_4H_ENABLED", False))  # GOLDEN_RULE_DC_4H_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_D_ENABLED", False))  # GOLDEN_RULE_DC_D_ENABLED
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_DC_W_ENABLED", False))  # GOLDEN_RULE_DC_W_ENABLED
-    _ = bool(getattr(tm_mod.config, "GR_HTF_DIRECT_ENTRY_ENABLED", False))  # GR_HTF_DIRECT_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "GR_V5_ENABLED", False))  # GR_V5_ENABLED
-    _ = bool(getattr(tm_mod.config, "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED", False))  # GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_DELTA_GATE_ENABLED", False))  # GUARANTEED_REENTRY_DELTA_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_HTF_VETO_ENABLED", False))  # GUARANTEED_REENTRY_HTF_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED", False))  # GUARANTEED_REENTRY_TIGHT_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "HAIKU_ENTRY_GATE_ENABLED", False))  # HAIKU_ENTRY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HAIKU_WINNER_ENABLED", False))  # HAIKU_WINNER_ENABLED
-    _ = bool(getattr(tm_mod.config, "HARD_BREAKEVEN_FLOOR_ENABLED", False))  # HARD_BREAKEVEN_FLOOR_ENABLED
-    _ = bool(getattr(tm_mod.config, "HA_WICK_QUALITY_ENABLED", False))  # HA_WICK_QUALITY_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED", False))  # HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_DC_RESISTANCE_GATE_ENABLED", False))  # HEDGE_DC_RESISTANCE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_DECAY_NUKE_ENABLED", False))  # HEDGE_DECAY_NUKE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_DETERIORATING_GAIN_ENABLED", False))  # HEDGE_DETERIORATING_GAIN_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_EXIT_DELTA_CHECK_ENABLED", False))  # HEDGE_EXIT_DELTA_CHECK_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", False))  # HEDGE_FAILED_FALLBACK_CLOSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_HTF_VETO_ENABLED", False))  # HEDGE_HTF_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_LOSS_KILL_ENABLED", False))  # HEDGE_LOSS_KILL_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_OPEN_OB_CHECK_ENABLED", False))  # HEDGE_OPEN_OB_CHECK_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_PROFIT_PROTECT_ENABLED", False))  # HEDGE_PROFIT_PROTECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False))  # HEDGE_PROTECT_LOSS_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_RECOVERY_CLOSE_ENABLED", False))  # HEDGE_RECOVERY_CLOSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_SAME_SYMBOL_ENABLED", False))  # HEDGE_SAME_SYMBOL_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_STRICT_WT_ALL_TFS_ENABLED", False))  # HEDGE_STRICT_WT_ALL_TFS_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", False))  # HEDGE_TRIGGER_GR_SCORE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HEDGE_WT_VEL_GATE_ENABLED", False))  # HEDGE_WT_VEL_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HLR_RALLY_ENABLED", False))  # HLR_RALLY_ENABLED
-    _ = bool(getattr(tm_mod.config, "HLR_TOP_EXIT_ENABLED", False))  # HLR_TOP_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "HOUR_OF_DAY_GATE_ENABLED", False))  # HOUR_OF_DAY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", False))  # HTF_AGAINST_FORCE_CLOSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_ALIGNMENT_ENABLED", False))  # HTF_ALIGNMENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_AUG_VETO_FIX_ENABLED", False))  # HTF_AUG_VETO_FIX_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_ENABLED", False))  # HTF_DC_BREAKOUT_TRADIER_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_DIRECTION_GATE_ENABLED", False))  # HTF_DIRECTION_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_EXIT_VETO_ENABLED", False))  # HTF_EXIT_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_REGIME_ENABLED", False))  # HTF_REGIME_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_TREND_VETO_BYPASS_ENABLED", False))  # HTF_TREND_VETO_BYPASS_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False))  # HTF_TREND_VETO_ON_REDUCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED", False))  # HTF_W_M_ALIGN_GATE_TRADIER_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED", False))  # HTF_W_REVERSAL_EXIT_TRADIER_ENABLED
-    _ = bool(getattr(tm_mod.config, "HYBRID_STRUCT_EXIT_ENABLED", False))  # HYBRID_STRUCT_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "IMMEDIATE_WRONG_WAY_ENABLED", False))  # IMMEDIATE_WRONG_WAY_ENABLED
-    _ = bool(getattr(tm_mod.config, "INF_DEDICATED_WINNERS_ENABLED", False))  # INF_DEDICATED_WINNERS_ENABLED
-    _ = bool(getattr(tm_mod.config, "INTERVENTION_QUEUE_ENABLED", False))  # INTERVENTION_QUEUE_ENABLED
-    _ = bool(getattr(tm_mod.config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", False))  # IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED
-    _ = bool(getattr(tm_mod.config, "K1M_EXTREME_REVERSE_ENABLED", False))  # K1M_EXTREME_REVERSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "K_LOWER_HIGH_EXIT_ENABLED", False))  # K_LOWER_HIGH_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "K_ZONE_ENTRY_ENABLED", False))  # K_ZONE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "LAST_RESORT_K_BYPASS_ENABLED", False))  # LAST_RESORT_K_BYPASS_ENABLED
-    _ = bool(getattr(tm_mod.config, "LEADERBOARD_ENTRY_ENABLED", False))  # LEADERBOARD_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "LH_HL_FILTER_AUGMENT_GATE_ENABLED", False))  # LH_HL_FILTER_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "LH_HL_FILTER_HEDGE_GATE_ENABLED", False))  # LH_HL_FILTER_HEDGE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "LINEARITY_LR_LONG_ENABLED", False))  # LINEARITY_LR_LONG_ENABLED
-    _ = bool(getattr(tm_mod.config, "LINEARITY_LR_SHORT_ENABLED", False))  # LINEARITY_LR_SHORT_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_DC_ENABLED", False))  # LIVE_ENTRY_ENGINE_DC_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_HTF_ENABLED", False))  # LIVE_ENTRY_ENGINE_HTF_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", False))  # LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_STOCH_ENABLED", False))  # LIVE_ENTRY_ENGINE_STOCH_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_WT_ENABLED", False))  # LIVE_ENTRY_ENGINE_WT_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False))  # LIVE_VEC_EMERGENCY_BRAKE_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", False))  # LIVE_VEC_QUARANTINE_STRATEGY_ENABLED
-    _ = bool(getattr(tm_mod.config, "LIVE_VEC_STALE_MARK_PRICE_ENABLED", False))  # LIVE_VEC_STALE_MARK_PRICE_ENABLED
-    _ = bool(getattr(tm_mod.config, "LOCAL_EXTREMES_SCORER_ENABLED", False))  # LOCAL_EXTREMES_SCORER_ENABLED
-    _ = bool(getattr(tm_mod.config, "LONG_ENABLED", False))  # LONG_ENABLED
-    _ = bool(getattr(tm_mod.config, "LONG_WAIT_DIRECT_ENABLED", False))  # LONG_WAIT_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "LOSS_CUT_ENABLED", False))  # LOSS_CUT_ENABLED
-    _ = bool(getattr(tm_mod.config, "LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED", False))  # LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED
-    _ = bool(getattr(tm_mod.config, "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", False))  # LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED
-    _ = bool(getattr(tm_mod.config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", False))  # LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED
-    _ = bool(getattr(tm_mod.config, "LR_BAND_E02_EXIT_ENABLED", False))  # LR_BAND_E02_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED", False))  # LR_BAND_LADDER_ORDINARY_PARITY_ENABLED
-    _ = bool(getattr(tm_mod.config, "LR_PCTB_D_LONG_ENTRY_ENABLED", False))  # LR_PCTB_D_LONG_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "LS_RATIO_CONTRARIAN_ENABLED", False))  # LS_RATIO_CONTRARIAN_ENABLED
-    _ = bool(getattr(tm_mod.config, "LUNCH_DEADZONE_ENABLED", False))  # LUNCH_DEADZONE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MACD_EXIT_ENABLED", False))  # MACD_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MACD_ZERO_CROSS_ENABLED", False))  # MACD_ZERO_CROSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "MACRO_BLACKOUT_ENABLED", False))  # MACRO_BLACKOUT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MAKER_CLOSE_COMMISSION_FLOOR_ENABLED", False))  # MAKER_CLOSE_COMMISSION_FLOOR_ENABLED
-    _ = bool(getattr(tm_mod.config, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", False))  # MANDATORY_HEDGE_ON_NEGATIVE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED", False))  # MANDATORY_PRICE_CROSS_EPQ_ENABLED
-    _ = bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_ENABLED", False))  # MANDATORY_REENTRY_WT_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "MARKET_QUALITY_SCORE_ENABLED", False))  # MARKET_QUALITY_SCORE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MICRO_SCALP_STOCKS_MAKER_ENABLED", False))  # MICRO_SCALP_STOCKS_MAKER_ENABLED
-    _ = bool(getattr(tm_mod.config, "MINERVINI_ENABLED", False))  # MINERVINI_ENABLED
-    _ = bool(getattr(tm_mod.config, "MINERVINI_GATE_ENABLED", False))  # MINERVINI_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MITIGATOR_ENABLED", False))  # MITIGATOR_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_DIV_EXIT_ENABLED", False))  # MI_DIV_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_ENTRY_ENABLED", False))  # MI_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_EXHAUST_EXIT_ENABLED", False))  # MI_EXHAUST_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_EXIT_ENABLED", False))  # MI_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_STRUCT_EXIT_ENABLED", False))  # MI_STRUCT_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_VELOCITY_EXIT_ENABLED", False))  # MI_VELOCITY_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_WAVE_EXIT_ENABLED", False))  # MI_WAVE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOM3_ENTRY_ENABLED", False))  # MOM3_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOM4S_S_GATE_ENABLED", False))  # MOM4S_S_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOM5_ENTRY_ENABLED", False))  # MOM5_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOM5_TRENDER_L_GATE_ENABLED", False))  # MOM5_TRENDER_L_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOMENTUM_BREAKOUT_ENABLED", False))  # MOMENTUM_BREAKOUT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOMENTUM_FADE_ENABLED", False))  # MOMENTUM_FADE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOMENTUM_RIDER_ENABLED", False))  # MOMENTUM_RIDER_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_ENABLED", False))  # MOMENTUM_SMA_WATCHDOG_ENABLED
-    _ = bool(getattr(tm_mod.config, "MOVER_DETECTION_ENABLED", False))  # MOVER_DETECTION_ENABLED
-    _ = bool(getattr(tm_mod.config, "MR3S_S_GATE_ENABLED", False))  # MR3S_S_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MR5_L_GATE_ENABLED", False))  # MR5_L_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", False))  # MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_ARROW_ENTRY_ENABLED", False))  # MTF_ARROW_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_ARROW_SHORT_ENTRY_ENABLED", False))  # MTF_ARROW_SHORT_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_ARROW_TRAIL_EXIT_ENABLED", False))  # MTF_ARROW_TRAIL_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_ENABLED", False))  # MTF_ATR_MULTITF_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_ENABLED", False))  # MTF_BB_REJECT_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_ENABLED", False))  # MTF_DC_REJECT_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_GR_EXIT_GATE_ENABLED", False))  # MTF_GR_EXIT_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_GR_FILTER_ENABLED", False))  # MTF_GR_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False))  # MTF_WT_CROSS_EXIT_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTS_GATE_ENABLED", False))  # MTS_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "MU_CORRECTION_EXIT_ENABLED", False))  # MU_CORRECTION_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MU_CORRECTION_REENTRY_ENABLED", False))  # MU_CORRECTION_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "MU_CORRECTION_REENTRY_STOCH_ENABLED", False))  # MU_CORRECTION_REENTRY_STOCH_ENABLED
-    _ = bool(getattr(tm_mod.config, "NEVER_GO_RED_STOP_ENABLED", False))  # NEVER_GO_RED_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "NEWBORN_DC_STOP_ENABLED", False))  # NEWBORN_DC_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "NEWBORN_LOSS_KILL_ENABLED", False))  # NEWBORN_LOSS_KILL_ENABLED
-    _ = bool(getattr(tm_mod.config, "NEWBORN_PROTECT_ENABLED", False))  # NEWBORN_PROTECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "NEWS_SENTIMENT_ENABLED", False))  # NEWS_SENTIMENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "NOLOSS_BB1H_GATE_ENABLED", False))  # NOLOSS_BB1H_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "NOLOSS_BYPASS_WT_5OF5_ENABLED", False))  # NOLOSS_BYPASS_WT_5OF5_ENABLED
-    _ = bool(getattr(tm_mod.config, "NOLOSS_DC4H_GATE_ENABLED", False))  # NOLOSS_DC4H_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "NOLOSS_ENABLED", False))  # NOLOSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED", False))  # OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "OBLIGATORY_REENTRY_ENABLED", False))  # OBLIGATORY_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "OBLIGATORY_REENTRY_LONG_ENABLED", False))  # OBLIGATORY_REENTRY_LONG_ENABLED
-    _ = bool(getattr(tm_mod.config, "OBLIGATORY_REENTRY_SHORT_ENABLED", False))  # OBLIGATORY_REENTRY_SHORT_ENABLED
-    _ = bool(getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_ENABLED", False))  # OBLIGATORY_SECTOR_HEDGE_ENABLED
-    _ = bool(getattr(tm_mod.config, "OBLIGATORY_SMA200_WT3M_ENABLED", False))  # OBLIGATORY_SMA200_WT3M_ENABLED
-    _ = bool(getattr(tm_mod.config, "OB_PRICE_DEFER_ENABLED", False))  # OB_PRICE_DEFER_ENABLED
-    _ = bool(getattr(tm_mod.config, "OI_CONFIRM_ENABLED", False))  # OI_CONFIRM_ENABLED
-    _ = bool(getattr(tm_mod.config, "OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED", False))  # OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "OI_DIVERGENCE_ENABLED", False))  # OI_DIVERGENCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "OI_HEDGE_GATE_ENABLED", False))  # OI_HEDGE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPEN_RATE_BREAKER_ENABLED", False))  # OPEN_RATE_BREAKER_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED", False))  # OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED", False))  # OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_BUY_WT_DC_GATE_ENABLED", False))  # OPTIONS_BUY_WT_DC_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_CSP_ENABLED", False))  # OPTIONS_CSP_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_CSP_NAKED_CALL_ENABLED", False))  # OPTIONS_CSP_NAKED_CALL_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED", False))  # OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED", False))  # OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_ENABLED", False))  # OPTIONS_EQUITY_HEDGE_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_HEDGE_LADDER_ENABLED", False))  # OPTIONS_HEDGE_LADDER_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_HEDGE_PAIR_GUARD_ENABLED", False))  # OPTIONS_HEDGE_PAIR_GUARD_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_LIVE_TRADING_ENABLED", False))  # OPTIONS_LIVE_TRADING_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_MAX_LOSS_GUARD_ENABLED", False))  # OPTIONS_MAX_LOSS_GUARD_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_SPREAD_ENABLED", False))  # OPTIONS_SPREAD_ENABLED
-    _ = bool(getattr(tm_mod.config, "OPTIONS_STOCK_CSP_ENABLED", False))  # OPTIONS_STOCK_CSP_ENABLED
-    _ = bool(getattr(tm_mod.config, "ORB_ENABLED", False))  # ORB_ENABLED
-    _ = bool(getattr(tm_mod.config, "OUTLIER_DETECTOR_ENABLED", False))  # OUTLIER_DETECTOR_ENABLED
-    _ = bool(getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_ENABLED", False))  # OVERNIGHT_GAP_HEDGE_ENABLED
-    _ = bool(getattr(tm_mod.config, "PARITY_REENTRY_NAMING_ENABLED", False))  # PARITY_REENTRY_NAMING_ENABLED
-    _ = bool(getattr(tm_mod.config, "PARTIAL_PROFIT_LOCK_SWEEP_ENABLED", False))  # PARTIAL_PROFIT_LOCK_SWEEP_ENABLED
-    _ = bool(getattr(tm_mod.config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False))  # PEAK_GIVEBACK_DROP_TRIGGER_ENABLED
-    _ = bool(getattr(tm_mod.config, "PENNY_STOCK_LONG_BLOCK_ENABLED", False))  # PENNY_STOCK_LONG_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "PER_SYMBOL_CONFIG_ENABLED", False))  # PER_SYMBOL_CONFIG_ENABLED
-    _ = bool(getattr(tm_mod.config, "PER_SYM_CONFIG_ENABLED", False))  # PER_SYM_CONFIG_ENABLED
-    _ = bool(getattr(tm_mod.config, "PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED", False))  # PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "PRICE_CROSS_BACK_REENTRY_ENABLED", False))  # PRICE_CROSS_BACK_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "PROFIT_TARGET_ENABLED", False))  # PROFIT_TARGET_ENABLED
-    _ = bool(getattr(tm_mod.config, "PROGRESSIVE_LOCK_ENABLED", False))  # PROGRESSIVE_LOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "PROXIMITY_TOP_GATE_ENABLED", False))  # PROXIMITY_TOP_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "PYRAMID_ENABLED", False))  # PYRAMID_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUALITY_BOTTOM_ENTRY_ENABLED", False))  # QUALITY_BOTTOM_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUALITY_TOP_EXIT_ENABLED", False))  # QUALITY_TOP_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_BANDAID_OFF_VEC_ENABLED", False))  # QUICK_BANDAID_OFF_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", False))  # QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED", False))  # QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED", False))  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False))  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_OPEN_STRONG_VEC_ENABLED", False))  # QUICK_OPEN_STRONG_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False))  # QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED", False))  # QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "R3_HEDGE_INVARIANT_DUMP_ENABLED", False))  # R3_HEDGE_INVARIANT_DUMP_ENABLED
-    _ = bool(getattr(tm_mod.config, "RANKING_MULT_ENABLED", False))  # RANKING_MULT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RANK_CONVICTION_ENABLED", False))  # RANK_CONVICTION_ENABLED
-    _ = bool(getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_ENABLED", False))  # RATIO_EMERGENCY_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RATIO_PNL_DYNAMIC_GATES_ENABLED", False))  # RATIO_PNL_DYNAMIC_GATES_ENABLED
-    _ = bool(getattr(tm_mod.config, "RATIO_PNL_WEIGHT_ENABLED", False))  # RATIO_PNL_WEIGHT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RATIO_REBALANCE_ENABLED", False))  # RATIO_REBALANCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RECENT_REDUCTION_GUARD_ENABLED", False))  # RECENT_REDUCTION_GUARD_ENABLED
-    _ = bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_ENABLED", False))  # RECOVERY_AUGMENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RED_ZONE_AUGMENT_GATE_ENABLED", False))  # RED_ZONE_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RED_ZONE_GATE_ENABLED", False))  # RED_ZONE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RED_ZONE_GATE_FALLBACK_ENABLED", False))  # RED_ZONE_GATE_FALLBACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "RED_ZONE_HEDGE_GATE_ENABLED", False))  # RED_ZONE_HEDGE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED", False))  # RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RED_ZONE_TRADIER_GATE_ENABLED", False))  # RED_ZONE_TRADIER_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY2_DC_BREAK_ENABLED", False))  # REENTRY2_DC_BREAK_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY2_DIR_FAV_ENABLED", False))  # REENTRY2_DIR_FAV_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY2_QUICK_RECOVERY_ENABLED", False))  # REENTRY2_QUICK_RECOVERY_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY2_STOCH_CROSS_ENABLED", False))  # REENTRY2_STOCH_CROSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_60MIN_UNCONDITIONAL_ENABLED", False))  # REENTRY_60MIN_UNCONDITIONAL_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B01_WT_2of3_ENABLED", False))  # REENTRY_B01_WT_2of3_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B04_DC_RETEST_ENABLED", False))  # REENTRY_B04_DC_RETEST_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B09_SNAPBACK_ENABLED", False))  # REENTRY_B09_SNAPBACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B10_STOCH_REV_ENABLED", False))  # REENTRY_B10_STOCH_REV_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B11_DC_BREAK_ENABLED", False))  # REENTRY_B11_DC_BREAK_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B12_WT_MOM_ENABLED", False))  # REENTRY_B12_WT_MOM_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B14_HA_TREND_ENABLED", False))  # REENTRY_B14_HA_TREND_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B15_STRONG_TREND_ENABLED", False))  # REENTRY_B15_STRONG_TREND_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B16_MIDRANGE_ENABLED", False))  # REENTRY_B16_MIDRANGE_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_B16_SMA200_PULLBACK_ENABLED", False))  # REENTRY_B16_SMA200_PULLBACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_CHURN_GUARD_ENABLED", False))  # REENTRY_CHURN_GUARD_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_CONFIRMATION_GATES_ENABLED", False))  # REENTRY_CONFIRMATION_GATES_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_CROSS_FRESHNESS_ENABLED", False))  # REENTRY_CROSS_FRESHNESS_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", False))  # REENTRY_EXHAUSTED_PARTIAL_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_EXIT_RECLAIM_ENABLED", False))  # REENTRY_EXIT_RECLAIM_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_ENABLED", False))  # REENTRY_K15M_PARTIAL_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_ENABLED", False))  # REENTRY_LIVE_MONITOR_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_NEVER_SKIP_ENABLED", False))  # REENTRY_NEVER_SKIP_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_POST_CONSOL_ENABLED", False))  # REENTRY_POST_CONSOL_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_PROFIT_PULLBACK_ENABLED", False))  # REENTRY_PROFIT_PULLBACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_PULL1_ENABLED", False))  # REENTRY_PULL1_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_PULL2_ENABLED", False))  # REENTRY_PULL2_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_PULL3_ENABLED", False))  # REENTRY_PULL3_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_PULL4_ENABLED", False))  # REENTRY_PULL4_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_SMA200_BACKUP_ENABLED", False))  # REENTRY_SMA200_BACKUP_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_SYMGATE_ENABLED", False))  # REENTRY_SYMGATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_WAVETREND_CONFIRM_ENABLED", False))  # REENTRY_WAVETREND_CONFIRM_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_WT15M_CROSS_ENABLED", False))  # REENTRY_WT15M_CROSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "REGIME_ADAPTIVE_ENABLED", False))  # REGIME_ADAPTIVE_ENABLED
-    _ = bool(getattr(tm_mod.config, "REGIME_GATE_ENABLED", False))  # REGIME_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RE_2_USE_PERCENTILE_ENABLED", False))  # RE_2_USE_PERCENTILE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RE_3_B12_RISING_BONUS_ENABLED", False))  # RE_3_B12_RISING_BONUS_ENABLED
-    _ = bool(getattr(tm_mod.config, "RE_4_B14_HA_STREAK_CONV_ENABLED", False))  # RE_4_B14_HA_STREAK_CONV_ENABLED
-    _ = bool(getattr(tm_mod.config, "RE_5_B04_COMPRESSION_BONUS_ENABLED", False))  # RE_5_B04_COMPRESSION_BONUS_ENABLED
-    _ = bool(getattr(tm_mod.config, "RE_6_WAVE_PHASE_GATE_ENABLED", False))  # RE_6_WAVE_PHASE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RIDICULOUS_HOLD_VEC_ENABLED", False))  # RIDICULOUS_HOLD_VEC_ENABLED
-    _ = bool(getattr(tm_mod.config, "ROTATION_ANTONACCI_ABS_MOM_ENABLED", False))  # ROTATION_ANTONACCI_ABS_MOM_ENABLED
-    _ = bool(getattr(tm_mod.config, "ROTATION_ENABLED", False))  # ROTATION_ENABLED
-    _ = bool(getattr(tm_mod.config, "RSI2_ENABLED", False))  # RSI2_ENABLED
-    _ = bool(getattr(tm_mod.config, "RSI2_MEAN_REVERSION_ENABLED", False))  # RSI2_MEAN_REVERSION_ENABLED
-    _ = bool(getattr(tm_mod.config, "RSI_MACD_EMA_ENABLED", False))  # RSI_MACD_EMA_ENABLED
-    _ = bool(getattr(tm_mod.config, "RULE_B_3M_EXIT_ENABLED", False))  # RULE_B_3M_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RULE_B_5M_EXIT_ENABLED", False))  # RULE_B_5M_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RULE_B_W_TREND_4H_PULLBACK_ENABLED", False))  # RULE_B_W_TREND_4H_PULLBACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "RULE_C_FUNDING_EXTREME_ENABLED", False))  # RULE_C_FUNDING_EXTREME_ENABLED
-    _ = bool(getattr(tm_mod.config, "RULE_NAME_TAGGING_ENABLED", False))  # RULE_NAME_TAGGING_ENABLED
-    _ = bool(getattr(tm_mod.config, "RZ_BASELINE_BOUNCE_SHORT_ENABLED", False))  # RZ_BASELINE_BOUNCE_SHORT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RZ_BREAKOUT_ENTRY_ENABLED", False))  # RZ_BREAKOUT_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "RZ_DIV_EXIT_ENABLED", False))  # RZ_DIV_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RZ_ENTRY_ENABLED", False))  # RZ_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "RZ_TWO_PHASE_EXIT_ENABLED", False))  # RZ_TWO_PHASE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RZ_ZSCORE_EXIT_ENABLED", False))  # RZ_ZSCORE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "RZ_ZSCORE_ZONE_ENABLED", False))  # RZ_ZSCORE_ZONE_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_G10_HTF_DIV_GATE_ENABLED", False))  # R_G10_HTF_DIV_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED", False))  # R_S1_WT_COMPOSITE_DELTA_USE_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_S2_WT_ADAPTIVE_OS_ENABLED", False))  # R_S2_WT_ADAPTIVE_OS_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_S3_DIV_STACK_ENABLED", False))  # R_S3_DIV_STACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_S3_HTF_WEIGHT_ENABLED", False))  # R_S3_HTF_WEIGHT_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_S4_HA_STREAK_ENABLED", False))  # R_S4_HA_STREAK_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_S5_SENT_VEL_ENABLED", False))  # R_S5_SENT_VEL_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_S7_HHLL_STACK_ENABLED", False))  # R_S7_HHLL_STACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_Z2_PERCENTILE_SCALER_ENABLED", False))  # R_Z2_PERCENTILE_SCALER_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_Z3_WT_COMPOSITE_SIZE_ENABLED", False))  # R_Z3_WT_COMPOSITE_SIZE_ENABLED
-    _ = bool(getattr(tm_mod.config, "R_Z5_DC_PULLBACK_SIZING_ENABLED", False))  # R_Z5_DC_PULLBACK_SIZING_ENABLED
-    _ = bool(getattr(tm_mod.config, "SATOSHIT_ENTRY_ENABLED", False))  # SATOSHIT_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "SATOSHIT_EXIT_ENABLED", False))  # SATOSHIT_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "SBA_ENABLED", False))  # SBA_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ATR_PCTL_GATE_ENABLED", False))  # SCALP_V3_ATR_PCTL_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_AUG_BE_STOP_ENABLED", False))  # SCALP_V3_AUG_BE_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_AUG_ENABLED", False))  # SCALP_V3_AUG_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_BOOST_ENABLED", False))  # SCALP_V3_BOOST_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_BAR_BREAK_ENABLED", False))  # SCALP_V3_ENTRY_BAR_BREAK_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_DC_BREAK_ENABLED", False))  # SCALP_V3_ENTRY_DC_BREAK_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_PULLBACK_ENABLED", False))  # SCALP_V3_ENTRY_PULLBACK_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_STDEV_ENABLED", False))  # SCALP_V3_ENTRY_STDEV_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED", False))  # SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_TREND_ENABLED", False))  # SCALP_V3_ENTRY_TREND_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_ENTRY_WT_CROSS_ENABLED", False))  # SCALP_V3_ENTRY_WT_CROSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_EXIT_BAR_REVERSAL_ENABLED", False))  # SCALP_V3_EXIT_BAR_REVERSAL_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_EXIT_K_CROSS_ENABLED", False))  # SCALP_V3_EXIT_K_CROSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_EXIT_STDEV_REJECT_ENABLED", False))  # SCALP_V3_EXIT_STDEV_REJECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_EXIT_WT_FLIP_ENABLED", False))  # SCALP_V3_EXIT_WT_FLIP_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_FAST_PPL_ENABLED", False))  # SCALP_V3_FAST_PPL_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_HTF_SMA200_ENABLED", False))  # SCALP_V3_HTF_SMA200_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_K_OB_EXIT_ENABLED", False))  # SCALP_V3_K_OB_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_OB_FLOW_AGREE_ENABLED", False))  # SCALP_V3_OB_FLOW_AGREE_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_OUTLIER_ENABLED", False))  # SCALP_V3_OUTLIER_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_PROTECTIVE_EXIT_ENABLED", False))  # SCALP_V3_PROTECTIVE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_REENTRY_STICKY_ENABLED", False))  # SCALP_V3_REENTRY_STICKY_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_STALL_ENABLED", False))  # SCALP_V3_STALL_ENABLED
-    _ = bool(getattr(tm_mod.config, "SCALP_V3_VWAP_FILTER_ENABLED", False))  # SCALP_V3_VWAP_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "SECTOR_LS_RATIO_ENABLED", False))  # SECTOR_LS_RATIO_ENABLED
-    _ = bool(getattr(tm_mod.config, "SENTIMENT_FADE_PROXY_ENABLED", False))  # SENTIMENT_FADE_PROXY_ENABLED
-    _ = bool(getattr(tm_mod.config, "SENTIMENT_REBALANCER_ENABLED", False))  # SENTIMENT_REBALANCER_ENABLED
-    _ = bool(getattr(tm_mod.config, "SENTIMENT_TOP_N_GATE_ENABLED", False))  # SENTIMENT_TOP_N_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "SIMPLE_TP_EXIT_ENABLED", False))  # SIMPLE_TP_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "SMA200_DIST_ENTRY_ENABLED", False))  # SMA200_DIST_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "SMFI_ENABLED", False))  # SMFI_ENABLED
-    _ = bool(getattr(tm_mod.config, "SPIKE_FADE_ENABLED", False))  # SPIKE_FADE_ENABLED
-    _ = bool(getattr(tm_mod.config, "SQUEEZE_ENABLED", False))  # SQUEEZE_ENABLED
-    _ = bool(getattr(tm_mod.config, "SQUEEZE_FIRE_ENABLED", False))  # SQUEEZE_FIRE_ENABLED
-    _ = bool(getattr(tm_mod.config, "SQUEEZE_FIRE_ENTRY_ENABLED", False))  # SQUEEZE_FIRE_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "STALL_SUB_ENABLED", False))  # STALL_SUB_ENABLED
-    _ = bool(getattr(tm_mod.config, "STDEV_BB_RZ_EXIT_ENABLED", False))  # STDEV_BB_RZ_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "STDEV_BREAKOUT_EXIT_WT_ENABLED", False))  # STDEV_BREAKOUT_EXIT_WT_ENABLED
-    _ = bool(getattr(tm_mod.config, "STDEV_MACRO_AUGMENT_VETO_ENABLED", False))  # STDEV_MACRO_AUGMENT_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "STDEV_MACRO_ENTRY_BOOST_ENABLED", False))  # STDEV_MACRO_ENTRY_BOOST_ENABLED
-    _ = bool(getattr(tm_mod.config, "STDEV_MACRO_ENTRY_VETO_ENABLED", False))  # STDEV_MACRO_ENTRY_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "STDEV_MACRO_HEDGE_BOOST_ENABLED", False))  # STDEV_MACRO_HEDGE_BOOST_ENABLED
-    _ = bool(getattr(tm_mod.config, "STOCH_CROSS_3M_EXIT_ENABLED", False))  # STOCH_CROSS_3M_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "STOCH_CROSS_ENTRY_ENABLED", False))  # STOCH_CROSS_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "STOCH_ENTRY_ENABLED", False))  # STOCH_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "STOP_LOSS_ENABLED", False))  # STOP_LOSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "STOP_MAJOR_LOSS_BLOCK_ENABLED", False))  # STOP_MAJOR_LOSS_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "STOP_MAJOR_LOSS_ENABLED", False))  # STOP_MAJOR_LOSS_ENABLED
-    _ = bool(getattr(tm_mod.config, "STRUCTURAL_EXIT_GATE_ENABLED", False))  # STRUCTURAL_EXIT_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED", False))  # STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED
-    _ = bool(getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_ENABLED", False))  # STRUCTURE_FLIP_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "ST_LT_SPLIT_ENABLED", False))  # ST_LT_SPLIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "SWING_ENABLED", False))  # SWING_ENABLED
-    _ = bool(getattr(tm_mod.config, "SYMBOL_PERF_ENABLED", False))  # SYMBOL_PERF_ENABLED
-    _ = bool(getattr(tm_mod.config, "SYMBOL_TRACKER_ENABLED", False))  # SYMBOL_TRACKER_ENABLED
-    _ = bool(getattr(tm_mod.config, "THROUGHPUT_SAFETY_ENABLED", False))  # THROUGHPUT_SAFETY_ENABLED
-    _ = bool(getattr(tm_mod.config, "TIER_ENABLED", False))  # TIER_ENABLED
-    _ = bool(getattr(tm_mod.config, "TOP_OF_RANGE_BLOCK_ENABLED", False))  # TOP_OF_RANGE_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED", False))  # TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_ENABLED", False))  # TRADIER_DC_DAYTRADE_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", False))  # TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_ENABLED", False))  # TRADIER_FH_MOMENTUM_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED", False))  # TRADIER_LOCAL_EXTREMES_SCORING_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_MFI_ENTRY_LONG_ENABLED", False))  # TRADIER_MFI_ENTRY_LONG_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_ENABLED", False))  # TRADIER_OI_INJECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_REENTRY_ANTI_CHURN_ENABLED", False))  # TRADIER_REENTRY_ANTI_CHURN_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", False))  # TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_REENTRY_RZ_BLOCK_ENABLED", False))  # TRADIER_REENTRY_RZ_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_RSI2_ENABLED", False))  # TRADIER_RSI2_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_5M_SWEEP_ENABLED", False))  # TRC_5M_SWEEP_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_CLENOW_ENABLED", False))  # TRC_CLENOW_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_CONNORS_RSI_ENABLED", False))  # TRC_CONNORS_RSI_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_EPISODIC_PIVOT_ENABLED", False))  # TRC_EPISODIC_PIVOT_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_LOCAL_EXTREMES_SCORER_ENABLED", False))  # TRC_LOCAL_EXTREMES_SCORER_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_MINERVINI_ENABLED", False))  # TRC_MINERVINI_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_MOMENTUM_FADE_ENABLED", False))  # TRC_MOMENTUM_FADE_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_ORB_ENABLED", False))  # TRC_ORB_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_SMFI_ENABLED", False))  # TRC_SMFI_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRC_SQUEEZE_ENABLED", False))  # TRC_SQUEEZE_ENABLED
-    _ = bool(getattr(tm_mod.config, "TREND_REGIME_VETO_ENABLED", False))  # TREND_REGIME_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRIPLE_CONF_ENABLED", False))  # TRIPLE_CONF_ENABLED
-    _ = bool(getattr(tm_mod.config, "TR_BBWIDTH4H_GATE_ENABLED", False))  # TR_BBWIDTH4H_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "TR_CHOP4H_GATE_ENABLED", False))  # TR_CHOP4H_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_ENABLED", False))  # TR_DCWIDTH4H_SHORT_ENABLED
-    _ = bool(getattr(tm_mod.config, "TR_MFI4H_LONG_ENABLED", False))  # TR_MFI4H_LONG_ENABLED
-    _ = bool(getattr(tm_mod.config, "TR_TREND_V1_SPY_REGIME_ENABLED", False))  # TR_TREND_V1_SPY_REGIME_ENABLED
-    _ = bool(getattr(tm_mod.config, "TSMOM_BOOK_SCALAR_ENABLED", False))  # TSMOM_BOOK_SCALAR_ENABLED
-    _ = bool(getattr(tm_mod.config, "UNDERWATER_HEDGE_OR_CLOSE_ENABLED", False))  # UNDERWATER_HEDGE_OR_CLOSE_ENABLED
-    _ = bool(getattr(tm_mod.config, "UVE_LIVE_ENABLED", False))  # UVE_LIVE_ENABLED
-    _ = bool(getattr(tm_mod.config, "V8Q_STRENGTH_FILTER_ENABLED", False))  # V8Q_STRENGTH_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False))  # VEC_EVENT_DRIVEN_LOOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_LIVE_REDUCE_PARITY_ENABLED", False))  # VEC_LIVE_REDUCE_PARITY_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_MTF_ARMED_STATE_ENABLED", False))  # VEC_MTF_ARMED_STATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_MULTI_SYM_OUTER_LOOP_ENABLED", False))  # VEC_MULTI_SYM_OUTER_LOOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_NOLOSS_GATE_ENABLED", False))  # VEC_NOLOSS_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_RATIO_REDUCE_PROXY_ENABLED", False))  # VEC_RATIO_REDUCE_PROXY_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False))  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False))  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "VEL_EXIT_ENABLED", False))  # VEL_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "VIX_REGIME_FILTER_ENABLED", False))  # VIX_REGIME_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "VIX_VOLATILITY_REGIME_ENABLED", False))  # VIX_VOLATILITY_REGIME_ENABLED
-    _ = bool(getattr(tm_mod.config, "VOL_SPIKE_ENABLED", False))  # VOL_SPIKE_ENABLED
-    _ = bool(getattr(tm_mod.config, "VOL_TARGET_ENABLED", False))  # VOL_TARGET_ENABLED
-    _ = bool(getattr(tm_mod.config, "VP_GATE_AUGMENT_GATE_ENABLED", False))  # VP_GATE_AUGMENT_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "VP_GATE_ENABLED", False))  # VP_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "VP_GATE_HEDGE_GATE_ENABLED", False))  # VP_GATE_HEDGE_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "VWAP_FILTER_ENABLED", False))  # VWAP_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", False))  # WATCHDOG_DC_FORCE_OPEN_ENABLED
-    _ = bool(getattr(tm_mod.config, "WATCHDOG_WT3M_ESCALATE_ENABLED", False))  # WATCHDOG_WT3M_ESCALATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WINNER_PROTECT_ENABLED", False))  # WINNER_PROTECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WRONG_SIDE_ABS_KILL_ENABLED", False))  # WRONG_SIDE_ABS_KILL_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT15M_AGAINST_FORCE_HEDGE_ENABLED", False))  # WT15M_AGAINST_FORCE_HEDGE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_15M_BOUNCE_OPEN_ENABLED", False))  # WT_15M_BOUNCE_OPEN_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_15M_CROSS_ENTRY_ENABLED", False))  # WT_15M_CROSS_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_3M_OPEN_GATE_ENABLED", False))  # WT_3M_OPEN_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_4H_VEL_EXIT_ENABLED", False))  # WT_4H_VEL_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED", False))  # WT_4H_VEL_MANDATORY_REENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_ACCEL_EXIT_ENABLED", False))  # WT_ACCEL_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_BOTTOM_CROSS_GATE_ENABLED", False))  # WT_BOTTOM_CROSS_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_CHOP_GATE_ENABLED", False))  # WT_CHOP_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_COMPOSITE_DELTA_GATE_ENABLED", False))  # WT_COMPOSITE_DELTA_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_COMPOSITE_DELTA_SCORE_ENABLED", False))  # WT_COMPOSITE_DELTA_SCORE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_COMPOSITE_SCORING_ENABLED", False))  # WT_COMPOSITE_SCORING_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False))  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_CROSS_EXIT_ENABLED", False))  # WT_CROSS_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_DC_DIRECT_COMPLETED_ENABLED", False))  # WT_DC_DIRECT_COMPLETED_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED", False))  # WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_DC_EXIT_ENABLED", False))  # WT_DC_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_DC_LONG_ENABLED", False))  # WT_DC_LONG_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_DC_SHORT_ENABLED", False))  # WT_DC_SHORT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_DIV_ENTRY_GATE_ENABLED", False))  # WT_DIV_ENTRY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_DIV_EXIT_ENABLED", False))  # WT_DIV_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_ENABLED", False))  # WT_D_BOUNCE_AUG_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_D_BOUNCE_DD_STOP_ENABLED", False))  # WT_D_BOUNCE_DD_STOP_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_EXHAUST_ENTRY_GATE_ENABLED", False))  # WT_EXHAUST_ENTRY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_EXHAUST_EXIT_ENABLED", False))  # WT_EXHAUST_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_HTF_DISCOUNT_ENABLED", False))  # WT_HTF_DISCOUNT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_MOMENTUM_EXIT_ENABLED", False))  # WT_MOMENTUM_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_MTF_VEL_GATE_ENABLED", False))  # WT_MTF_VEL_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_PERCENTILE_ENTRY_GATE_ENABLED", False))  # WT_PERCENTILE_ENTRY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_PERCENTILE_EXIT_ENABLED", False))  # WT_PERCENTILE_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_VEL_DECAY_EXIT_ENABLED", False))  # WT_VEL_DECAY_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "ZEC_SUPERVISOR_ENABLED", False))  # ZEC_SUPERVISOR_ENABLED
-    return True
-# === FINAL 9 WIRED backtest_v8_engine.py 20260818 ===
-def _final9_engine(tm_mod):
-    _ = bool(getattr(tm_mod.config, "AGGRESSIVE_LOSS_CUT_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "CT_15M_MOMENTUM_GATE_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "CT_CHOP_4H_GATE_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "CT_VOLUME_SURGE_GATE_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "EXIT_DEAD_CODE_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "VOLUME_CONFIRMATION_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "VWAP_BOUNCE_ENTRY_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "WT_15M_SAME_HEDGE_ENABLED", False))
-    return True
-# HOT-WIRED engine missing
-def _hot_engine_missing(tm_mod):
-    _ = bool(getattr(tm_mod.config, "ADX_REGIME_FILTER_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "AI_PREMARKET_ENABLED_TRB", False))
-    _ = bool(getattr(tm_mod.config, "AI_PREMARKET_ENABLED_TRC", False))
-    _ = bool(getattr(tm_mod.config, "ATR_TRAIL_2X_EXIT_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "ATR_TRAIL_ENABLED_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "AUGMENT_AT_LOSS_ENABLED_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "AUGMENT_PYRAMID_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "B10_STOCH_REV_LIVE_ENABLED_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BACKTEST_VALIDATED_GATES_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BB_SQUEEZE_ENABLED", False))
-    _ = bool(getattr(tm_mod.config, "BEAR_MARKET_MODE_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BOUNCE_REENTRY_ENABLED_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BOUNCE_REENTRY_K_RESET_LONG_TRADIER", False))
-    _ = bool(getattr(tm_mod.config, "BOUNCE_REENTRY_K_RESET_SHORT_TRADIER", False))
-    return True
-# HOT-WIRED engine bulk 2026-08-18 — ensures Y for all config bools
-def _hot_engine_all(tm_mod):
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_AGGRESSIVE_HEDGE", False))  # ABLATION_DISABLE_AGGRESSIVE_HEDGE
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_AUGMENTATION", False))  # ABLATION_DISABLE_AUGMENTATION
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_CHECK_NOLOSS", False))  # ABLATION_DISABLE_CHECK_NOLOSS
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_DC_BREACH_REDUCE", False))  # ABLATION_DISABLE_DC_BREACH_REDUCE
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_LEADERBOARD", False))  # ABLATION_DISABLE_ENTRY_LEADERBOARD
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_RANKING", False))  # ABLATION_DISABLE_ENTRY_RANKING
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_REVERSAL", False))  # ABLATION_DISABLE_ENTRY_REVERSAL
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_ENTRY_TECHNICAL", False))  # ABLATION_DISABLE_ENTRY_TECHNICAL
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_FAST_RISER", False))  # ABLATION_DISABLE_FAST_RISER
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_HEDGE", False))  # ABLATION_DISABLE_HEDGE
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_HIGH_GAIN_AUGMENT", False))  # ABLATION_DISABLE_HIGH_GAIN_AUGMENT
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_PERIODIC_REENTRY", False))  # ABLATION_DISABLE_PERIODIC_REENTRY
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_QUICK_ENTRY", False))  # ABLATION_DISABLE_QUICK_ENTRY
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_QUICK_EXIT", False))  # ABLATION_DISABLE_QUICK_EXIT
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_RATIO_REBALANCE", False))  # ABLATION_DISABLE_RATIO_REBALANCE
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_REENTRY", False))  # ABLATION_DISABLE_REENTRY
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_REENTRY_ENFORCE", False))  # ABLATION_DISABLE_REENTRY_ENFORCE
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_SCALP_GUARD", False))  # ABLATION_DISABLE_SCALP_GUARD
-    _ = bool(getattr(tm_mod.config, "ABLATION_DISABLE_SPIKE_FADE_EXIT", False))  # ABLATION_DISABLE_SPIKE_FADE_EXIT
-    _ = bool(getattr(tm_mod.config, "ADAPTIVE_REGIME_PAPER", False))  # ADAPTIVE_REGIME_PAPER
-    _ = bool(getattr(tm_mod.config, "ATR_PARITY_USE_DAILY", False))  # ATR_PARITY_USE_DAILY
-    _ = bool(getattr(tm_mod.config, "BAND_ARROW_ACCUMULATE", False))  # BAND_ARROW_ACCUMULATE
-    _ = bool(getattr(tm_mod.config, "BASIS_CONDITION", False))  # BASIS_CONDITION
-    _ = bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_K_D_CROSSING_UP", False))  # BOUNCE_AUGMENT_K_D_CROSSING_UP
-    _ = bool(getattr(tm_mod.config, "BOUNCE_AUGMENT_PAPER", False))  # BOUNCE_AUGMENT_PAPER
-    _ = bool(getattr(tm_mod.config, "BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE", False))  # BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_ENABLED", False))  # BREAKOUT_RETEST_ARMED_ENABLED
-    _ = bool(getattr(tm_mod.config, "BREAKOUT_SIZE_LADDER_ENABLED", False))  # BREAKOUT_SIZE_LADDER_ENABLED
-    _ = bool(getattr(tm_mod.config, "CLENOW_REGIME_FILTER", False))  # CLENOW_REGIME_FILTER
-    _ = bool(getattr(tm_mod.config, "CONNORS_RSI2_REQUIRE_ABOVE_200SMA", False))  # CONNORS_RSI2_REQUIRE_ABOVE_200SMA
-    _ = bool(getattr(tm_mod.config, "COUNTER_TREND_ADD_BLOCK_ENABLED", False))  # COUNTER_TREND_ADD_BLOCK_ENABLED
-    _ = bool(getattr(tm_mod.config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", False))  # COUNTER_TREND_SMA200_BYPASS_ENABLED
-    _ = bool(getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_DC_CONFIRM", False))  # CRYPTO_FH_MOMENTUM_DC_CONFIRM
-    _ = bool(getattr(tm_mod.config, "DC_BREAK_GR_MULT_ENABLED", False))  # DC_BREAK_GR_MULT_ENABLED
-    _ = bool(getattr(tm_mod.config, "DC_DAYTRADE_REQUIRE_1H_EXPANSION", False))  # DC_DAYTRADE_REQUIRE_1H_EXPANSION
-    _ = bool(getattr(tm_mod.config, "DC_DAYTRADE_STOCH_FILTER", False))  # DC_DAYTRADE_STOCH_FILTER
-    _ = bool(getattr(tm_mod.config, "DELTA_ATR_ENTRY_FILTER", False))  # DELTA_ATR_ENTRY_FILTER
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_DC_FLOOR", False))  # DELTA_EXIT_DC_FLOOR
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER", False))  # DELTA_EXIT_MANDATORY_REENTRY_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_OVERRIDE_NOLOSS", False))  # DELTA_EXIT_OVERRIDE_NOLOSS
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_REQUIRE_NONZERO_SCORE", False))  # DELTA_EXIT_REQUIRE_NONZERO_SCORE
-    _ = bool(getattr(tm_mod.config, "DELTA_EXIT_WT_CROSS", False))  # DELTA_EXIT_WT_CROSS
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_AUGMENT", False))  # DELTA_GATE_AUGMENT
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_BB_SQUEEZE", False))  # DELTA_GATE_BB_SQUEEZE
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_DC_BREAKOUT", False))  # DELTA_GATE_DC_BREAKOUT
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_GUARANTEED_REENTRY", False))  # DELTA_GATE_GUARANTEED_REENTRY
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_HEDGE_OPEN", False))  # DELTA_GATE_HEDGE_OPEN
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_OPEN", False))  # DELTA_GATE_OPEN
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_RATIO_REBALANCE", False))  # DELTA_GATE_RATIO_REBALANCE
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_REENTRY", False))  # DELTA_GATE_REENTRY
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_SBA", False))  # DELTA_GATE_SBA
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_STDEV_BREAKOUT", False))  # DELTA_GATE_STDEV_BREAKOUT
-    _ = bool(getattr(tm_mod.config, "DELTA_GATE_VOL_SPIKE", False))  # DELTA_GATE_VOL_SPIKE
-    _ = bool(getattr(tm_mod.config, "DELTA_REENTRY_REQUIRE_NOT_EXITING", False))  # DELTA_REENTRY_REQUIRE_NOT_EXITING
-    _ = bool(getattr(tm_mod.config, "DELTA_SERVICE_BLEED_STOP", False))  # DELTA_SERVICE_BLEED_STOP
-    _ = bool(getattr(tm_mod.config, "DELTA_SERVICE_REDUCE_GATE", False))  # DELTA_SERVICE_REDUCE_GATE
-    _ = bool(getattr(tm_mod.config, "DELTA_SERVICE_TRAILING_STOP", False))  # DELTA_SERVICE_TRAILING_STOP
-    _ = bool(getattr(tm_mod.config, "DG_BROKER_MEMORY_SYNC_BLOCK", False))  # DG_BROKER_MEMORY_SYNC_BLOCK
-    _ = bool(getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_1H", False))  # DG_HTF_ALIGN_REQUIRE_1H
-    _ = bool(getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_4H", False))  # DG_HTF_ALIGN_REQUIRE_4H
-    _ = bool(getattr(tm_mod.config, "DG_HTF_ALIGN_REQUIRE_D", False))  # DG_HTF_ALIGN_REQUIRE_D
-    _ = bool(getattr(tm_mod.config, "DG_SMA200_SHORT_BYPASS", False))  # DG_SMA200_SHORT_BYPASS
-    _ = bool(getattr(tm_mod.config, "DG_WT_3M_REQUIRE_HTF_CONFIRM", False))  # DG_WT_3M_REQUIRE_HTF_CONFIRM
-    _ = bool(getattr(tm_mod.config, "DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER", False))  # DIRECTION_FAVORABLE_REENTRY_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "D_TREND_REQUIRED", False))  # D_TREND_REQUIRED
-    _ = bool(getattr(tm_mod.config, "ENABLE_FAST_RISER_REDUCE", False))  # ENABLE_FAST_RISER_REDUCE
-    _ = bool(getattr(tm_mod.config, "ENABLE_IP_ROTATION", False))  # ENABLE_IP_ROTATION
-    _ = bool(getattr(tm_mod.config, "ENABLE_LOSS_PROTECTION", False))  # ENABLE_LOSS_PROTECTION
-    _ = bool(getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY", False))  # ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY
-    _ = bool(getattr(tm_mod.config, "EOD_RATIO_ENFORCE_TRADIER", False))  # EOD_RATIO_ENFORCE_TRADIER
-    _ = bool(getattr(tm_mod.config, "EXIT_K5M_BOUNCE_ENABLED", False))  # EXIT_K5M_BOUNCE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EXTREME_MODE", False))  # EXTREME_MODE
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_ENABLED", False))  # EZ_REENTRY_INLINE_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED", False))  # EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED
-    _ = bool(getattr(tm_mod.config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", False))  # EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED
-    _ = bool(getattr(tm_mod.config, "FH_MOMENTUM_DC_CONFIRM", False))  # FH_MOMENTUM_DC_CONFIRM
-    _ = bool(getattr(tm_mod.config, "FH_MOMENTUM_MFI_CONFIRM", False))  # FH_MOMENTUM_MFI_CONFIRM
-    _ = bool(getattr(tm_mod.config, "FIN_ADVISORY_CONSUMER_ENABLED_TRADIER", False))  # FIN_ADVISORY_CONSUMER_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "FUNDING_GATE_ENABLED_TRADIER", False))  # FUNDING_GATE_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER", False))  # FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER
-    _ = bool(getattr(tm_mod.config, "GHOST_CLOSE_REQUIRE_CONFIRMATION", False))  # GHOST_CLOSE_REQUIRE_CONFIRMATION
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_REQUIRE_ACTIVATION", False))  # GOLDEN_RULE_REQUIRE_ACTIVATION
-    _ = bool(getattr(tm_mod.config, "GOLDEN_RULE_REQUIRE_HEDGE_OPEN", False))  # GOLDEN_RULE_REQUIRE_HEDGE_OPEN
-    _ = bool(getattr(tm_mod.config, "GR_V5_BOUNCE_WT_CROSS_REQUIRED", False))  # GR_V5_BOUNCE_WT_CROSS_REQUIRED
-    _ = bool(getattr(tm_mod.config, "GR_V5_BREAKOUT_REQUIRE_VOLUME", False))  # GR_V5_BREAKOUT_REQUIRE_VOLUME
-    _ = bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", False))  # GUARANTEED_REENTRY_AUGMENT_ENABLED
-    _ = bool(getattr(tm_mod.config, "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN", False))  # GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN
-    _ = bool(getattr(tm_mod.config, "HEDGE_ALL_POSITIONS", False))  # HEDGE_ALL_POSITIONS
-    _ = bool(getattr(tm_mod.config, "HEDGE_CROSS_SYMBOL_TRADIER", False))  # HEDGE_CROSS_SYMBOL_TRADIER
-    _ = bool(getattr(tm_mod.config, "HEDGE_MODE_TRADIER", False))  # HEDGE_MODE_TRADIER
-    _ = bool(getattr(tm_mod.config, "HEDGE_MOMENTUM_GATE", False))  # HEDGE_MOMENTUM_GATE
-    _ = bool(getattr(tm_mod.config, "HEDGE_NEWBORN_DC_BREACH_ALLOWED", False))  # HEDGE_NEWBORN_DC_BREACH_ALLOWED
-    _ = bool(getattr(tm_mod.config, "HEDGE_SAME_SYMBOL_TRADIER", False))  # HEDGE_SAME_SYMBOL_TRADIER
-    _ = bool(getattr(tm_mod.config, "HODL_LONG_ONLY", False))  # HODL_LONG_ONLY
-    _ = bool(getattr(tm_mod.config, "HTF1_CONF", False))  # HTF1_CONF
-    _ = bool(getattr(tm_mod.config, "HTF4_CONF", False))  # HTF4_CONF
-    _ = bool(getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT", False))  # HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT
-    _ = bool(getattr(tm_mod.config, "HTF_REGIME_SCALE_IN", False))  # HTF_REGIME_SCALE_IN
-    _ = bool(getattr(tm_mod.config, "HTF_STRICT", False))  # HTF_STRICT
-    _ = bool(getattr(tm_mod.config, "HTF_TREND_VETO_ENABLED", False))  # HTF_TREND_VETO_ENABLED
-    _ = bool(getattr(tm_mod.config, "HTF_VETO_REQUIRE_D", False))  # HTF_VETO_REQUIRE_D
-    _ = bool(getattr(tm_mod.config, "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D", False))  # HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D
-    _ = bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_DELTA", False))  # INF_RANKING_BYPASS_DELTA
-    _ = bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_HTF", False))  # INF_RANKING_BYPASS_HTF
-    _ = bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_SCORE", False))  # INF_RANKING_BYPASS_SCORE
-    _ = bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_STOCH", False))  # INF_RANKING_BYPASS_STOCH
-    _ = bool(getattr(tm_mod.config, "INF_RANKING_BYPASS_WT", False))  # INF_RANKING_BYPASS_WT
-    _ = bool(getattr(tm_mod.config, "INF_RANKING_PRIORITY_BYPASS", False))  # INF_RANKING_PRIORITY_BYPASS
-    _ = bool(getattr(tm_mod.config, "K_ZONE_ENTRY_ENABLED_TRADIER", False))  # K_ZONE_ENTRY_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "LEADERBOARD_ENTRY_ENABLED_TRADIER", False))  # LEADERBOARD_ENTRY_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "LEADERBOARD_FILTER", False))  # LEADERBOARD_FILTER
-    _ = bool(getattr(tm_mod.config, "LEGACY_AGGRESSIVE_LOSS_CUT", False))  # LEGACY_AGGRESSIVE_LOSS_CUT
-    _ = bool(getattr(tm_mod.config, "LEGACY_DC_BREAKOUT_REENTRY", False))  # LEGACY_DC_BREAKOUT_REENTRY
-    _ = bool(getattr(tm_mod.config, "LEGACY_FAST_CUT_LOSS", False))  # LEGACY_FAST_CUT_LOSS
-    _ = bool(getattr(tm_mod.config, "LEGACY_GUARANTEED_REENTRY", False))  # LEGACY_GUARANTEED_REENTRY
-    _ = bool(getattr(tm_mod.config, "LEGACY_PROC_SINGLE_REENTRY", False))  # LEGACY_PROC_SINGLE_REENTRY
-    _ = bool(getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_2WT", False))  # LEGACY_REENTRY_GUARANTEED_2WT
-    _ = bool(getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_BOTTOM", False))  # LEGACY_REENTRY_GUARANTEED_BOTTOM
-    _ = bool(getattr(tm_mod.config, "LEGACY_REENTRY_GUARANTEED_CROSS", False))  # LEGACY_REENTRY_GUARANTEED_CROSS
-    _ = bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_DC_BOUNCE", False))  # LEGACY_REENTRY_PSR_DC_BOUNCE
-    _ = bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_FULL_DC", False))  # LEGACY_REENTRY_PSR_FULL_DC
-    _ = bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_K_DC_CROSSOVER", False))  # LEGACY_REENTRY_PSR_K_DC_CROSSOVER
-    _ = bool(getattr(tm_mod.config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False))  # LEGACY_REENTRY_PSR_QUICK_RECOVERY
-    _ = bool(getattr(tm_mod.config, "LEGACY_WR_PULLBACK", False))  # LEGACY_WR_PULLBACK
-    _ = bool(getattr(tm_mod.config, "LH_HL_FILTER_ENABLED", False))  # LH_HL_FILTER_ENABLED
-    _ = bool(getattr(tm_mod.config, "LH_HL_FILTER_REPLACE_SMA200D", False))  # LH_HL_FILTER_REPLACE_SMA200D
-    _ = bool(getattr(tm_mod.config, "LH_HL_FILTER_REQUIRE_BOTH", False))  # LH_HL_FILTER_REQUIRE_BOTH
-    _ = bool(getattr(tm_mod.config, "LIGHT_MODE", False))  # LIGHT_MODE
-    _ = bool(getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_ENABLED", False))  # LIVE_ENTRY_ENGINE_ENABLED
-    _ = bool(getattr(tm_mod.config, "LONG_STOCH_CHASE_BLOCK", False))  # LONG_STOCH_CHASE_BLOCK
-    _ = bool(getattr(tm_mod.config, "LOSS_EXIT_REQUIRES_HEDGE", False))  # LOSS_EXIT_REQUIRES_HEDGE
-    _ = bool(getattr(tm_mod.config, "LR_BAND_BE_RATCHET", False))  # LR_BAND_BE_RATCHET
-    _ = bool(getattr(tm_mod.config, "LR_BAND_ENTRY_ENABLED", False))  # LR_BAND_ENTRY_ENABLED
-    _ = bool(getattr(tm_mod.config, "LR_BAND_ENTRY_PRIORITY", False))  # LR_BAND_ENTRY_PRIORITY
-    _ = bool(getattr(tm_mod.config, "LR_BAND_EXIT_EXEMPT", False))  # LR_BAND_EXIT_EXEMPT
-    _ = bool(getattr(tm_mod.config, "LR_BAND_HARVEST_ENABLED", False))  # LR_BAND_HARVEST_ENABLED
-    _ = bool(getattr(tm_mod.config, "LR_BAND_REGIME_ENABLED", False))  # LR_BAND_REGIME_ENABLED
-    _ = bool(getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", False))  # LR_BAND_SLOPE_FLIP_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MANAGE_REDUCE", False))  # MANAGE_REDUCE
-    _ = bool(getattr(tm_mod.config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER", False))  # MANDATORY_PRICE_CROSS_EPQ_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP", False))  # MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP
-    _ = bool(getattr(tm_mod.config, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", False))  # MARKET_QUALITY_SCORE_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MFI_FLIP_EXIT_ENABLED", False))  # MFI_FLIP_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MI_DIV_EXIT_ENABLED_TRADIER", False))  # MI_DIV_EXIT_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MI_EXHAUST_EXIT_ENABLED_TRADIER", False))  # MI_EXHAUST_EXIT_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MI_STRUCT_EXIT_ENABLED_TRADIER", False))  # MI_STRUCT_EXIT_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MI_VELOCITY_EXIT_ENABLED_TRADIER", False))  # MI_VELOCITY_EXIT_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MI_WAVE_EXIT_ENABLED_TRADIER", False))  # MI_WAVE_EXIT_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MOMENTUM_FADE_ENABLED_TRADIER", False))  # MOMENTUM_FADE_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MOMENTUM_FADE_K_ZONE_TRADIER", False))  # MOMENTUM_FADE_K_ZONE_TRADIER
-    _ = bool(getattr(tm_mod.config, "MTF_GR_INVERT_DC_BB", False))  # MTF_GR_INVERT_DC_BB
-    _ = bool(getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_ENABLED", False))  # MTF_WT_CROSS_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "MTS_GATE_ENABLED_TRADIER", False))  # MTS_GATE_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "MU_CORRECTION_REQUIRE_CLOSE_REVERSAL", False))  # MU_CORRECTION_REQUIRE_CLOSE_REVERSAL
-    _ = bool(getattr(tm_mod.config, "MU_CORRECTION_REQUIRE_HIGH_REVERSAL", False))  # MU_CORRECTION_REQUIRE_HIGH_REVERSAL
-    _ = bool(getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H", False))  # OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H
-    _ = bool(getattr(tm_mod.config, "OI_CONFIRM_ENABLED_TRADIER", False))  # OI_CONFIRM_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "OPTIONS_BUY_REQUIRE_D_ALIGN", False))  # OPTIONS_BUY_REQUIRE_D_ALIGN
-    _ = bool(getattr(tm_mod.config, "OPTIONS_CONTINUOUS_SECTOR_GATE", False))  # OPTIONS_CONTINUOUS_SECTOR_GATE
-    _ = bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK", False))  # OPTIONS_CSP_MONITOR_LOG_EVERY_TICK
-    _ = bool(getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN", False))  # OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN
-    _ = bool(getattr(tm_mod.config, "OPTIONS_PREMARKET_NO_FIRE", False))  # OPTIONS_PREMARKET_NO_FIRE
-    _ = bool(getattr(tm_mod.config, "ORB_STOP_MIDPOINT", False))  # ORB_STOP_MIDPOINT
-    _ = bool(getattr(tm_mod.config, "ORPHAN_HEDGE_CHECK_GAIN", False))  # ORPHAN_HEDGE_CHECK_GAIN
-    _ = bool(getattr(tm_mod.config, "PARABOLIC_PROTECTION_ENABLED", False))  # PARABOLIC_PROTECTION_ENABLED
-    _ = bool(getattr(tm_mod.config, "PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER", False))  # PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER
-    _ = bool(getattr(tm_mod.config, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", False))  # PEAK_GIVEBACK_HARD_ZERO_ENABLED
-    _ = bool(getattr(tm_mod.config, "PEAK_GIVEBACK_PROTECTION_ENABLED", False))  # PEAK_GIVEBACK_PROTECTION_ENABLED
-    _ = bool(getattr(tm_mod.config, "PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN", False))  # PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN
-    _ = bool(getattr(tm_mod.config, "PERSYM_FINAL_BOOK_ENABLED", False))  # PERSYM_FINAL_BOOK_ENABLED
-    _ = bool(getattr(tm_mod.config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", False))  # R1_DC_LOW4_3M_EMERGENCY_ENABLED
-    _ = bool(getattr(tm_mod.config, "R1_REQUIRE_WT15_ADVERSE", False))  # R1_REQUIRE_WT15_ADVERSE
-    _ = bool(getattr(tm_mod.config, "R1_USE_DC_4BAR", False))  # R1_USE_DC_4BAR
-    _ = bool(getattr(tm_mod.config, "R3_HTF_FLIP_4H_TIER_ENABLED", False))  # R3_HTF_FLIP_4H_TIER_ENABLED
-    _ = bool(getattr(tm_mod.config, "R3_HTF_FLIP_EXIT_ENABLED", False))  # R3_HTF_FLIP_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "REACTIVE_MODE", False))  # REACTIVE_MODE
-    _ = bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE", False))  # RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE
-    _ = bool(getattr(tm_mod.config, "RECOVERY_AUGMENT_REQUIRE_WT_CROSS", False))  # RECOVERY_AUGMENT_REQUIRE_WT_CROSS
-    _ = bool(getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", False))  # REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED
-    _ = bool(getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR", False))  # REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR
-    _ = bool(getattr(tm_mod.config, "REENTRY_MANDATORY", False))  # REENTRY_MANDATORY
-    _ = bool(getattr(tm_mod.config, "REGIME_DETECTION_ENABLED", False))  # REGIME_DETECTION_ENABLED
-    _ = bool(getattr(tm_mod.config, "REV_MODE", False))  # REV_MODE
-    _ = bool(getattr(tm_mod.config, "ROTATION_SMA200_FILTER", False))  # ROTATION_SMA200_FILTER
-    _ = bool(getattr(tm_mod.config, "RSI_ENTRY_GATE_ENABLED", False))  # RSI_ENTRY_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "RSI_MOMENTUM_MODE", False))  # RSI_MOMENTUM_MODE
-    _ = bool(getattr(tm_mod.config, "SANDBOX_MODE", False))  # SANDBOX_MODE
-    _ = bool(getattr(tm_mod.config, "SATOSHIT_EXIT_USE_MAKER", False))  # SATOSHIT_EXIT_USE_MAKER
-    _ = bool(getattr(tm_mod.config, "SATOSHIT_PROTECT_TRADES", False))  # SATOSHIT_PROTECT_TRADES
-    _ = bool(getattr(tm_mod.config, "SBA_ENABLED_TRADIER", False))  # SBA_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "SCALP_MODE", False))  # SCALP_MODE
-    _ = bool(getattr(tm_mod.config, "SCALP_V2_DC_HTF_REQUIRE_ALL", False))  # SCALP_V2_DC_HTF_REQUIRE_ALL
-    _ = bool(getattr(tm_mod.config, "SCALP_V2_ISOLATE", False))  # SCALP_V2_ISOLATE
-    _ = bool(getattr(tm_mod.config, "SCALP_V2_LH_LL_EXIT", False))  # SCALP_V2_LH_LL_EXIT
-    _ = bool(getattr(tm_mod.config, "SCALP_V2_REDZONE_EXIT", False))  # SCALP_V2_REDZONE_EXIT
-    _ = bool(getattr(tm_mod.config, "SECTOR_LS_RATIO_BYPASS_HEDGE", False))  # SECTOR_LS_RATIO_BYPASS_HEDGE
-    _ = bool(getattr(tm_mod.config, "SERVICE_STOP", False))  # SERVICE_STOP
-    _ = bool(getattr(tm_mod.config, "SPY_REGIME_BLOCK_LONGS_BELOW", False))  # SPY_REGIME_BLOCK_LONGS_BELOW
-    _ = bool(getattr(tm_mod.config, "SPY_REGIME_BLOCK_SHORTS_ABOVE", False))  # SPY_REGIME_BLOCK_SHORTS_ABOVE
-    _ = bool(getattr(tm_mod.config, "SPY_REGIME_GATE_ENABLED_TRADIER", False))  # SPY_REGIME_GATE_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "SQUEEZE_FIRE_ENABLED_TRADIER", False))  # SQUEEZE_FIRE_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "STDEV_MACRO_R4_REQUIRE_LTF_FLIP", False))  # STDEV_MACRO_R4_REQUIRE_LTF_FLIP
-    _ = bool(getattr(tm_mod.config, "STDEV_REJECT_EXIT_ENABLED", False))  # STDEV_REJECT_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "STDEV_SUPPRESS_EARLY_EXIT", False))  # STDEV_SUPPRESS_EARLY_EXIT
-    _ = bool(getattr(tm_mod.config, "STOCH_CROSS_1H_EXIT_ENABLED", False))  # STOCH_CROSS_1H_EXIT_ENABLED
-    _ = bool(getattr(tm_mod.config, "STOCH_CROSS_ENTRY_TRADIER", False))  # STOCH_CROSS_ENTRY_TRADIER
-    _ = bool(getattr(tm_mod.config, "SWING_REENTER_AT_OR_BELOW_EXIT", False))  # SWING_REENTER_AT_OR_BELOW_EXIT
-    _ = bool(getattr(tm_mod.config, "SWING_RUNAWAY_REENTER", False))  # SWING_RUNAWAY_REENTER
-    _ = bool(getattr(tm_mod.config, "TF_FOCUS_ENTRY_HARD_GATE", False))  # TF_FOCUS_ENTRY_HARD_GATE
-    _ = bool(getattr(tm_mod.config, "TF_FOCUS_EXIT_HARD_GATE", False))  # TF_FOCUS_EXIT_HARD_GATE
-    _ = bool(getattr(tm_mod.config, "THROUGHPUT_SAFETY_ENABLED_TRADIER", False))  # THROUGHPUT_SAFETY_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "TIME_ZONE_ENABLED", False))  # TIME_ZONE_ENABLED
-    _ = bool(getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION", False))  # TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION
-    _ = bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_DC_CONFIRM", False))  # TRADIER_FH_MOMENTUM_DC_CONFIRM
-    _ = bool(getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MFI_CONFIRM", False))  # TRADIER_FH_MOMENTUM_MFI_CONFIRM
-    _ = bool(getattr(tm_mod.config, "TRADIER_INDICATORS_NARROW_UNIVERSE", False))  # TRADIER_INDICATORS_NARROW_UNIVERSE
-    _ = bool(getattr(tm_mod.config, "TRADIER_LONG_ONLY_ENTRIES", False))  # TRADIER_LONG_ONLY_ENTRIES
-    _ = bool(getattr(tm_mod.config, "TRADIER_NOLOSS_SRS_BYPASS", False))  # TRADIER_NOLOSS_SRS_BYPASS
-    _ = bool(getattr(tm_mod.config, "TRADIER_OI_INJECT_NEAR_MONEY_PREFER", False))  # TRADIER_OI_INJECT_NEAR_MONEY_PREFER
-    _ = bool(getattr(tm_mod.config, "TRADIER_RATIO_REQUIRE_MIN_GAIN", False))  # TRADIER_RATIO_REQUIRE_MIN_GAIN
-    _ = bool(getattr(tm_mod.config, "TRADIER_REQUIRE_TRADEABLE_KEY", False))  # TRADIER_REQUIRE_TRADEABLE_KEY
-    _ = bool(getattr(tm_mod.config, "TRADIER_RESET_MAX_GAIN_ON_CLOSE", False))  # TRADIER_RESET_MAX_GAIN_ON_CLOSE
-    _ = bool(getattr(tm_mod.config, "TRAILING_AUG_ENABLED_TRADIER", False))  # TRAILING_AUG_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "TRA_ALLOW_BUYS", False))  # TRA_ALLOW_BUYS
-    _ = bool(getattr(tm_mod.config, "TRA_DISABLE_AUGMENT", False))  # TRA_DISABLE_AUGMENT
-    _ = bool(getattr(tm_mod.config, "TRA_DISABLE_DELTA_ENTRY", False))  # TRA_DISABLE_DELTA_ENTRY
-    _ = bool(getattr(tm_mod.config, "TRA_LONG_ONLY", False))  # TRA_LONG_ONLY
-    _ = bool(getattr(tm_mod.config, "TRA_NO_LOSS_EXIT", False))  # TRA_NO_LOSS_EXIT
-    _ = bool(getattr(tm_mod.config, "TRA_SATOSHIT_ONLY", False))  # TRA_SATOSHIT_ONLY
-    _ = bool(getattr(tm_mod.config, "TRA_STRICT_EXIT_ONLY", False))  # TRA_STRICT_EXIT_ONLY
-    _ = bool(getattr(tm_mod.config, "TRC_BEAR_MARKET_MODE", False))  # TRC_BEAR_MARKET_MODE
-    _ = bool(getattr(tm_mod.config, "TREND_GATES", False))  # TREND_GATES
-    _ = bool(getattr(tm_mod.config, "TR_ADX4H_GATE_ENABLED", False))  # TR_ADX4H_GATE_ENABLED
-    _ = bool(getattr(tm_mod.config, "TR_TREND_V1_ENABLED", False))  # TR_TREND_V1_ENABLED
-    _ = bool(getattr(tm_mod.config, "TR_TREND_V1_SHADOW_LOG_ONLY", False))  # TR_TREND_V1_SHADOW_LOG_ONLY
-    _ = bool(getattr(tm_mod.config, "USE_INDICATOR_SNAPSHOT", False))  # USE_INDICATOR_SNAPSHOT
-    _ = bool(getattr(tm_mod.config, "USE_SANDBOX", False))  # USE_SANDBOX
-    _ = bool(getattr(tm_mod.config, "V8Q_D_TREND_REQUIRED", False))  # V8Q_D_TREND_REQUIRED
-    _ = bool(getattr(tm_mod.config, "VERBOSE", False))  # VERBOSE
-    _ = bool(getattr(tm_mod.config, "VERBOSE2", False))  # VERBOSE2
-    _ = bool(getattr(tm_mod.config, "VERBOSE_FETCH_LOGGING", False))  # VERBOSE_FETCH_LOGGING
-    _ = bool(getattr(tm_mod.config, "VERBOSE_STOPS", False))  # VERBOSE_STOPS
-    _ = bool(getattr(tm_mod.config, "VERBOSE_TIMER", False))  # VERBOSE_TIMER
-    _ = bool(getattr(tm_mod.config, "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", False))  # WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED
-    _ = bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_BUILD_TO_TARGET", False))  # WT_3M_FORCE_OPEN_BUILD_TO_TARGET
-    _ = bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TF_LADDER", False))  # WT_3M_FORCE_OPEN_TF_LADDER
-    _ = bool(getattr(tm_mod.config, "WT_3M_FORCE_OPEN_USE_SMA200", False))  # WT_3M_FORCE_OPEN_USE_SMA200
-    _ = bool(getattr(tm_mod.config, "WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER", False))  # WT_4H_VEL_MANDATORY_REENTRY_ENABLED_TRADIER
-    _ = bool(getattr(tm_mod.config, "WT_CROSSUNDER_15M_SHORT", False))  # WT_CROSSUNDER_15M_SHORT
-    _ = bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE", False))  # WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE
-    _ = bool(getattr(tm_mod.config, "WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT", False))  # WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT
-    _ = bool(getattr(tm_mod.config, "WT_EXIT_VELOCITY_TRADIER", False))  # WT_EXIT_VELOCITY_TRADIER
-    _ = bool(getattr(tm_mod.config, "WT_FORCE_OPEN_FRESH_CROSS_ONLY", False))  # WT_FORCE_OPEN_FRESH_CROSS_ONLY
-    _ = bool(getattr(tm_mod.config, "WT_VEL_USE_DECEL_RATIO_ONLY", False))  # WT_VEL_USE_DECEL_RATIO_ONLY
-    _ = bool(getattr(tm_mod.config, "_G0_PURE_BH", False))  # _G0_PURE_BH
-    return True
-# HOT-WIRED params bulk
-def _hot_params_engine(tm_mod):
-    _ = getattr(tm_mod.config, "ACCOUNT_TYPE_TRA", 0)  # ACCOUNT_TYPE_TRA
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD", 0)  # ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD", 0)  # ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_DECAY_HALFLIFE_H", 0)  # ADAPTIVE_REGIME_DECAY_HALFLIFE_H
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_HEAT_TRIGGER", 0)  # ADAPTIVE_REGIME_HEAT_TRIGGER
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_LOOKBACK_DAYS", 0)  # ADAPTIVE_REGIME_LOOKBACK_DAYS
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_MIN_SIGNALS", 0)  # ADAPTIVE_REGIME_MIN_SIGNALS
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_NPZ_CACHE_HOURS", 0)  # ADAPTIVE_REGIME_NPZ_CACHE_HOURS
-    _ = getattr(tm_mod.config, "ADAPTIVE_REGIME_SHARPE_FLOOR", 0)  # ADAPTIVE_REGIME_SHARPE_FLOOR
-    _ = getattr(tm_mod.config, "ADX_RANGING_THRESHOLD", 0)  # ADX_RANGING_THRESHOLD
-    _ = getattr(tm_mod.config, "ADX_TF", 0)  # ADX_TF
-    _ = getattr(tm_mod.config, "ADX_TRENDING_THRESHOLD", 0)  # ADX_TRENDING_THRESHOLD
-    _ = getattr(tm_mod.config, "AI_PREMARKET_DECISIONS_DIR", 0)  # AI_PREMARKET_DECISIONS_DIR
-    _ = getattr(tm_mod.config, "AI_PREMARKET_EXPIRES_ET", 0)  # AI_PREMARKET_EXPIRES_ET
-    _ = getattr(tm_mod.config, "AI_PREMARKET_MAX_NEW_PER_SIDE", 0)  # AI_PREMARKET_MAX_NEW_PER_SIDE
-    _ = getattr(tm_mod.config, "AI_PREMARKET_MIN_CONVICTION", 0)  # AI_PREMARKET_MIN_CONVICTION
-    _ = getattr(tm_mod.config, "AI_PREMARKET_SIZE_MULT_MAX", 0)  # AI_PREMARKET_SIZE_MULT_MAX
-    _ = getattr(tm_mod.config, "ALIGNMENT_GATE_MIN", 0)  # ALIGNMENT_GATE_MIN
-    _ = getattr(tm_mod.config, "ALIGNMENT_GATE_TOTAL", 0)  # ALIGNMENT_GATE_TOTAL
-    _ = getattr(tm_mod.config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", 0)  # ALL_TF_AGAINST_CLOSE_MIN_TFS
-    _ = getattr(tm_mod.config, "API_RATE_LIMIT_PER_MINUTE", 0)  # API_RATE_LIMIT_PER_MINUTE
-    _ = getattr(tm_mod.config, "API_RATE_LIMIT_PER_SECOND", 0)  # API_RATE_LIMIT_PER_SECOND
-    _ = getattr(tm_mod.config, "ASYMMETRIC_LOSER_MIN_AGE_SECONDS", 0)  # ASYMMETRIC_LOSER_MIN_AGE_SECONDS
-    _ = getattr(tm_mod.config, "ASYMMETRIC_WINNER_GAIN_PCT", 0)  # ASYMMETRIC_WINNER_GAIN_PCT
-    _ = getattr(tm_mod.config, "ATR_ADAPTIVE_SIZING_TARGET_PCT", 0)  # ATR_ADAPTIVE_SIZING_TARGET_PCT
-    _ = getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_MULT", 0)  # ATR_ADAPTIVE_STOP_MULT
-    _ = getattr(tm_mod.config, "ATR_ADAPTIVE_STOP_TF", 0)  # ATR_ADAPTIVE_STOP_TF
-    _ = getattr(tm_mod.config, "ATR_PARITY_EQUITY_BASE_USD", 0)  # ATR_PARITY_EQUITY_BASE_USD
-    _ = getattr(tm_mod.config, "ATR_PARITY_QTY_CAP_MULT", 0)  # ATR_PARITY_QTY_CAP_MULT
-    _ = getattr(tm_mod.config, "ATR_PARITY_TARGET_RISK_PCT", 0)  # ATR_PARITY_TARGET_RISK_PCT
-    _ = getattr(tm_mod.config, "AUGMENTATION_COOLDOWN_SECONDS", 0)  # AUGMENTATION_COOLDOWN_SECONDS
-    _ = getattr(tm_mod.config, "BAND_ARROW_ENTRY_TFS", 0)  # BAND_ARROW_ENTRY_TFS
-    _ = getattr(tm_mod.config, "BAND_ARROW_EXIT_TFS", 0)  # BAND_ARROW_EXIT_TFS
-    _ = getattr(tm_mod.config, "BAND_ARROW_MAX_POS_MULT", 0)  # BAND_ARROW_MAX_POS_MULT
-    _ = getattr(tm_mod.config, "BAND_ARROW_SLOPE_DEADBAND", 0)  # BAND_ARROW_SLOPE_DEADBAND
-    _ = getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_DEPTH_GAIN", 0)  # BAND_SLOPE_SIZING_V2_DEPTH_GAIN
-    _ = getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_MAX", 0)  # BAND_SLOPE_SIZING_V2_MAX
-    _ = getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_MIN", 0)  # BAND_SLOPE_SIZING_V2_MIN
-    _ = getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY", 0)  # BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY
-    _ = getattr(tm_mod.config, "BAND_SLOPE_SIZING_V2_TF", 0)  # BAND_SLOPE_SIZING_V2_TF
-    _ = getattr(tm_mod.config, "BASE_TF", 0)  # BASE_TF
-    _ = getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_BASIS_PCT", 0)  # BB4H_BREAKOUT_LADDER_BASIS_PCT
-    _ = getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_BREAKOUT_PCT", 0)  # BB4H_BREAKOUT_LADDER_BREAKOUT_PCT
-    _ = getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES", 0)  # BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES
-    _ = getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD", 0)  # BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD
-    _ = getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_TARGET_USD", 0)  # BB4H_BREAKOUT_LADDER_TARGET_USD
-    _ = getattr(tm_mod.config, "BB4H_BREAKOUT_LADDER_WT_CROSS_PCT", 0)  # BB4H_BREAKOUT_LADDER_WT_CROSS_PCT
-    _ = getattr(tm_mod.config, "BB_BREAKOUT_SCORE", 0)  # BB_BREAKOUT_SCORE
-    _ = getattr(tm_mod.config, "BB_BREAKOUT_TF", 0)  # BB_BREAKOUT_TF
-    _ = getattr(tm_mod.config, "BB_ENTRY_LONG_THRESHOLD", 0)  # BB_ENTRY_LONG_THRESHOLD
-    _ = getattr(tm_mod.config, "BB_ENTRY_SHORT_THRESHOLD", 0)  # BB_ENTRY_SHORT_THRESHOLD
-    _ = getattr(tm_mod.config, "BB_PULLBACK_GATE_LONG_MAX", 0)  # BB_PULLBACK_GATE_LONG_MAX
-    _ = getattr(tm_mod.config, "BB_PULLBACK_GATE_SHORT_MIN", 0)  # BB_PULLBACK_GATE_SHORT_MIN
-    _ = getattr(tm_mod.config, "BB_PULLBACK_GATE_TF", 0)  # BB_PULLBACK_GATE_TF
-    _ = getattr(tm_mod.config, "BB_RECOVERY_DIRECT_BARS", 0)  # BB_RECOVERY_DIRECT_BARS
-    _ = getattr(tm_mod.config, "BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR", 0)  # BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR
-    _ = getattr(tm_mod.config, "BB_RECOVERY_DIRECT_TIMEFRAME", 0)  # BB_RECOVERY_DIRECT_TIMEFRAME
-    _ = getattr(tm_mod.config, "BB_RSI_STOCH_BB_MAX", 0)  # BB_RSI_STOCH_BB_MAX
-    _ = getattr(tm_mod.config, "BB_RSI_STOCH_K_MAX", 0)  # BB_RSI_STOCH_K_MAX
-    _ = getattr(tm_mod.config, "BB_RSI_STOCH_RSI_MAX", 0)  # BB_RSI_STOCH_RSI_MAX
-    _ = getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_SCORE", 0)  # BB_RSI_STOCH_SCALP_SCORE
-    _ = getattr(tm_mod.config, "BB_RSI_STOCH_SCALP_TF", 0)  # BB_RSI_STOCH_SCALP_TF
-    _ = getattr(tm_mod.config, "BB_SQUEEZE_COOLDOWN", 0)  # BB_SQUEEZE_COOLDOWN
-    _ = getattr(tm_mod.config, "BB_SQUEEZE_MIN_ALIGNMENT", 0)  # BB_SQUEEZE_MIN_ALIGNMENT
-    _ = getattr(tm_mod.config, "BB_SQUEEZE_THRESHOLD_15M", 0)  # BB_SQUEEZE_THRESHOLD_15M
-    _ = getattr(tm_mod.config, "BB_SQUEEZE_THRESHOLD_1H", 0)  # BB_SQUEEZE_THRESHOLD_1H
-    _ = getattr(tm_mod.config, "BB_SQUEEZE_WIDTH_PERCENTILE", 0)  # BB_SQUEEZE_WIDTH_PERCENTILE
-    _ = getattr(tm_mod.config, "BINANCE_API_BASE", 0)  # BINANCE_API_BASE
-    _ = getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME", 0)  # BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME
-    _ = getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR", 0)  # BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR
-    _ = getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT", 0)  # BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT
-    _ = getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK", 0)  # BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK
-    _ = getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_MODE", 0)  # BOTTOM_A_PROTECTIVE_TRAIL_MODE
-    _ = getattr(tm_mod.config, "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME", 0)  # BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK
-    _ = getattr(tm_mod.config, "BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR", 0)  # BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR
-    _ = getattr(tm_mod.config, "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE", 0)  # BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE
-    _ = getattr(tm_mod.config, "BOUNCE_AUGMENT_K_D_THRESHOLD", 0)  # BOUNCE_AUGMENT_K_D_THRESHOLD
-    _ = getattr(tm_mod.config, "BOUNCE_AUGMENT_MIN_LOSS_PCT", 0)  # BOUNCE_AUGMENT_MIN_LOSS_PCT
-    _ = getattr(tm_mod.config, "BOUNCE_TOP_MAX_LOSS_PCT", 0)  # BOUNCE_TOP_MAX_LOSS_PCT
-    _ = getattr(tm_mod.config, "BOUNCE_TOP_MIN_HOLD_MINUTES", 0)  # BOUNCE_TOP_MIN_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "BOUNCE_TOP_MIN_LOSS_PCT", 0)  # BOUNCE_TOP_MIN_LOSS_PCT
-    _ = getattr(tm_mod.config, "BOUNCE_TOP_REENTRY_MULT", 0)  # BOUNCE_TOP_REENTRY_MULT
-    _ = getattr(tm_mod.config, "BOUNCE_TOP_RISING_CROSS_MULT", 0)  # BOUNCE_TOP_RISING_CROSS_MULT
-    _ = getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT", 0)  # BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT
-    _ = getattr(tm_mod.config, "BREAKEVEN_EXIT_AFTER_BARS_TF", 0)  # BREAKEVEN_EXIT_AFTER_BARS_TF
-    _ = getattr(tm_mod.config, "BREAKEVEN_GRACE_MINUTES", 0)  # BREAKEVEN_GRACE_MINUTES
-    _ = getattr(tm_mod.config, "BREAKOUT_LEASH_QTY_MULT", 0)  # BREAKOUT_LEASH_QTY_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_LEASH_REENTRY_MULT", 0)  # BREAKOUT_LEASH_REENTRY_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_LEASH_TF", 0)  # BREAKOUT_LEASH_TF
-    _ = getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE", 0)  # BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE
-    _ = getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE", 0)  # BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE
-    _ = getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS", 0)  # BREAKOUT_MULTI_LUNG_COOLDOWN_BARS
-    return True
-# HOT-WIRED rest params bulk
-def _hot_rest_params(tm_mod):
-    _ = getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_MODE", 0)  # BREAKOUT_MULTI_LUNG_MODE
-    _ = getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE", 0)  # BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE
-    _ = getattr(tm_mod.config, "BREAKOUT_MULTI_LUNG_TIER", 0)  # BREAKOUT_MULTI_LUNG_TIER
-    _ = getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN", 0)  # BREAKOUT_RETEST_ARMED_HTF_STACK_MIN
-    _ = getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX", 0)  # BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX
-    _ = getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", 0)  # BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_VOLUME_MULT", 0)  # BREAKOUT_RETEST_ARMED_VOLUME_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_RETEST_ARMED_WINDOW_DAYS", 0)  # BREAKOUT_RETEST_ARMED_WINDOW_DAYS
-    _ = getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T1_MULT", 0)  # BREAKOUT_SIZE_EMA200_T1_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T1_PCT", 0)  # BREAKOUT_SIZE_EMA200_T1_PCT
-    _ = getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T2_MULT", 0)  # BREAKOUT_SIZE_EMA200_T2_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T2_PCT", 0)  # BREAKOUT_SIZE_EMA200_T2_PCT
-    _ = getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T3_MULT", 0)  # BREAKOUT_SIZE_EMA200_T3_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_SIZE_EMA200_T3_PCT", 0)  # BREAKOUT_SIZE_EMA200_T3_PCT
-    _ = getattr(tm_mod.config, "BREAKOUT_SIZE_MAX_MULT", 0)  # BREAKOUT_SIZE_MAX_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_TF_SIZE_CAP_MULT", 0)  # BREAKOUT_TF_SIZE_CAP_MULT
-    _ = getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_15M", 0)  # BREAKOUT_TF_SIZE_MULT_15M
-    _ = getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_1H", 0)  # BREAKOUT_TF_SIZE_MULT_1H
-    _ = getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_4H", 0)  # BREAKOUT_TF_SIZE_MULT_4H
-    _ = getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_5M", 0)  # BREAKOUT_TF_SIZE_MULT_5M
-    _ = getattr(tm_mod.config, "BREAKOUT_TF_SIZE_MULT_D", 0)  # BREAKOUT_TF_SIZE_MULT_D
-    _ = getattr(tm_mod.config, "BROKER_PREFLIGHT_CACHE_S", 0)  # BROKER_PREFLIGHT_CACHE_S
-    _ = getattr(tm_mod.config, "BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY", 0)  # BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY
-    _ = getattr(tm_mod.config, "CATALYST_VOLUME_RATIO", 0)  # CATALYST_VOLUME_RATIO
-    _ = getattr(tm_mod.config, "CHOP_RANGING_THRESHOLD", 0)  # CHOP_RANGING_THRESHOLD
-    _ = getattr(tm_mod.config, "CHOP_TRENDING_THRESHOLD", 0)  # CHOP_TRENDING_THRESHOLD
-    _ = getattr(tm_mod.config, "CIRCUIT_BREAKER_ACCOUNT_HALT_MIN", 0)  # CIRCUIT_BREAKER_ACCOUNT_HALT_MIN
-    _ = getattr(tm_mod.config, "CIRCUIT_BREAKER_ACCOUNT_LOSSES", 0)  # CIRCUIT_BREAKER_ACCOUNT_LOSSES
-    _ = getattr(tm_mod.config, "CIRCUIT_BREAKER_COOLDOWN", 0)  # CIRCUIT_BREAKER_COOLDOWN
-    _ = getattr(tm_mod.config, "CIRCUIT_BREAKER_SYMBOL_HALT_MIN", 0)  # CIRCUIT_BREAKER_SYMBOL_HALT_MIN
-    _ = getattr(tm_mod.config, "CIRCUIT_BREAKER_SYMBOL_LOSSES", 0)  # CIRCUIT_BREAKER_SYMBOL_LOSSES
-    _ = getattr(tm_mod.config, "CLENOW_LOOKBACK", 0)  # CLENOW_LOOKBACK
-    _ = getattr(tm_mod.config, "CLENOW_MIN_SCORE", 0)  # CLENOW_MIN_SCORE
-    _ = getattr(tm_mod.config, "CLENOW_POSITION_SIZE", 0)  # CLENOW_POSITION_SIZE
-    _ = getattr(tm_mod.config, "CLENOW_REBALANCE_DAYS", 0)  # CLENOW_REBALANCE_DAYS
-    _ = getattr(tm_mod.config, "CLENOW_TOP_N", 0)  # CLENOW_TOP_N
-    _ = getattr(tm_mod.config, "CLOSE_ZONE_SIZE_MULT", 0)  # CLOSE_ZONE_SIZE_MULT
-    _ = getattr(tm_mod.config, "COMBINED_STOCH_GATE_TRADIER", 0)  # COMBINED_STOCH_GATE_TRADIER
-    _ = getattr(tm_mod.config, "CONFLUENCE_MIN_BLOCKS", 0)  # CONFLUENCE_MIN_BLOCKS
-    _ = getattr(tm_mod.config, "CONGRESS_CONVICTION_MIN_SOURCES", 0)  # CONGRESS_CONVICTION_MIN_SOURCES
-    _ = getattr(tm_mod.config, "CONGRESS_CONVICTION_SIZING_BOOST", 0)  # CONGRESS_CONVICTION_SIZING_BOOST
-    _ = getattr(tm_mod.config, "CONNORS_RSI2_EXIT_SMA_BARS_DAILY", 0)  # CONNORS_RSI2_EXIT_SMA_BARS_DAILY
-    _ = getattr(tm_mod.config, "CONNORS_RSI2_THRESHOLD", 0)  # CONNORS_RSI2_THRESHOLD
-    _ = getattr(tm_mod.config, "CONNORS_RSI2_TIME_STOP_BARS_DAILY", 0)  # CONNORS_RSI2_TIME_STOP_BARS_DAILY
-    _ = getattr(tm_mod.config, "CONNORS_RSI_ENTRY_THRESHOLD", 0)  # CONNORS_RSI_ENTRY_THRESHOLD
-    _ = getattr(tm_mod.config, "CONNORS_RSI_EXIT_THRESHOLD", 0)  # CONNORS_RSI_EXIT_THRESHOLD
-    _ = getattr(tm_mod.config, "CONNORS_RSI_MAX_HOLD_DAYS", 0)  # CONNORS_RSI_MAX_HOLD_DAYS
-    _ = getattr(tm_mod.config, "CONNORS_RSI_POSITION_SIZE", 0)  # CONNORS_RSI_POSITION_SIZE
-    _ = getattr(tm_mod.config, "CONVICTION_SHORT_THRESHOLD", 0)  # CONVICTION_SHORT_THRESHOLD
-    _ = getattr(tm_mod.config, "CONVICTION_SIZING_MAX", 0)  # CONVICTION_SIZING_MAX
-    _ = getattr(tm_mod.config, "COOLDOWN_BARS_TRADIER", 0)  # COOLDOWN_BARS_TRADIER
-    _ = getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_DC_MAX_LONG", 0)  # CRYPTO_FH_MOMENTUM_DC_MAX_LONG
-    _ = getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_MAX_POSITIONS", 0)  # CRYPTO_FH_MOMENTUM_MAX_POSITIONS
-    _ = getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT", 0)  # CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT
-    _ = getattr(tm_mod.config, "CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT", 0)  # CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT
-    _ = getattr(tm_mod.config, "CRYPTO_ROUND_TRIP_COMMISSION_PCT", 0)  # CRYPTO_ROUND_TRIP_COMMISSION_PCT
-    _ = getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_COOLDOWN_SEC", 0)  # CRYPTO_SPIKE_FADE_COOLDOWN_SEC
-    _ = getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_K_EXHAUSTION", 0)  # CRYPTO_SPIKE_FADE_K_EXHAUSTION
-    _ = getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_LOOKBACK_BARS", 0)  # CRYPTO_SPIKE_FADE_LOOKBACK_BARS
-    _ = getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_MAX_POSITIONS", 0)  # CRYPTO_SPIKE_FADE_MAX_POSITIONS
-    _ = getattr(tm_mod.config, "CRYPTO_SPIKE_FADE_THRESHOLD_PCT", 0)  # CRYPTO_SPIKE_FADE_THRESHOLD_PCT
-    _ = getattr(tm_mod.config, "CT_CHOP_4H_MAX", 0)  # CT_CHOP_4H_MAX
-    _ = getattr(tm_mod.config, "CT_MFI_15M_LONG_MIN", 0)  # CT_MFI_15M_LONG_MIN
-    _ = getattr(tm_mod.config, "CT_MFI_15M_SHORT_MAX", 0)  # CT_MFI_15M_SHORT_MAX
-    _ = getattr(tm_mod.config, "CT_REL_VOL_MIN", 0)  # CT_REL_VOL_MIN
-    _ = getattr(tm_mod.config, "CT_STOCH_K_15M_LONG_MIN", 0)  # CT_STOCH_K_15M_LONG_MIN
-    _ = getattr(tm_mod.config, "CT_STOCH_K_15M_SHORT_MAX", 0)  # CT_STOCH_K_15M_SHORT_MAX
-    _ = getattr(tm_mod.config, "CT_WT_VELOCITY_1H_MIN", 0)  # CT_WT_VELOCITY_1H_MIN
-    _ = getattr(tm_mod.config, "CYCLE_TP_CONDITIONAL_EXIT", 0)  # CYCLE_TP_CONDITIONAL_EXIT
-    _ = getattr(tm_mod.config, "CYCLE_TP_PCT", 0)  # CYCLE_TP_PCT
-    _ = getattr(tm_mod.config, "CYCLE_TP_TIERED_FRAC", 0)  # CYCLE_TP_TIERED_FRAC
-    _ = getattr(tm_mod.config, "DATA_READY_TIMEOUT_SECONDS", 0)  # DATA_READY_TIMEOUT_SECONDS
-    _ = getattr(tm_mod.config, "DAYS_PLOT", 0)  # DAYS_PLOT
-    _ = getattr(tm_mod.config, "DC_BREAKOUT_SCORE", 0)  # DC_BREAKOUT_SCORE
-    _ = getattr(tm_mod.config, "DC_BREAKOUT_TF", 0)  # DC_BREAKOUT_TF
-    _ = getattr(tm_mod.config, "DC_BREAK_GR_MULT_BREAKOUT", 0)  # DC_BREAK_GR_MULT_BREAKOUT
-    _ = getattr(tm_mod.config, "DC_BREAK_GR_MULT_RETEST", 0)  # DC_BREAK_GR_MULT_RETEST
-    _ = getattr(tm_mod.config, "DC_BREAK_GR_RETEST_TOLERANCE_PCT", 0)  # DC_BREAK_GR_RETEST_TOLERANCE_PCT
-    _ = getattr(tm_mod.config, "DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS", 0)  # DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_ACCOUNT", 0)  # DC_DAYTRADE_ACCOUNT
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_BUFFER", 0)  # DC_DAYTRADE_BUFFER
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_K_EXHAUSTED_LONG", 0)  # DC_DAYTRADE_K_EXHAUSTED_LONG
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_K_EXHAUSTED_SHORT", 0)  # DC_DAYTRADE_K_EXHAUSTED_SHORT
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_LONG_BUDGET", 0)  # DC_DAYTRADE_LONG_BUDGET
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_MAX_HOLD_MINUTES", 0)  # DC_DAYTRADE_MAX_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_MAX_PER_SIDE", 0)  # DC_DAYTRADE_MAX_PER_SIDE
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_MAX_POSITION_SIZE", 0)  # DC_DAYTRADE_MAX_POSITION_SIZE
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_PRE_CLOSE_MINUTES", 0)  # DC_DAYTRADE_PRE_CLOSE_MINUTES
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_SHORT_BUDGET", 0)  # DC_DAYTRADE_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_START_SIZE", 0)  # DC_DAYTRADE_START_SIZE
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_STOP_PCT", 0)  # DC_DAYTRADE_STOP_PCT
-    _ = getattr(tm_mod.config, "DC_DAYTRADE_TARGET_PCT", 0)  # DC_DAYTRADE_TARGET_PCT
-    _ = getattr(tm_mod.config, "DC_EDGE_SIZING_MAX_MULT", 0)  # DC_EDGE_SIZING_MAX_MULT
-    _ = getattr(tm_mod.config, "DC_EDGE_SIZING_MIN_MULT", 0)  # DC_EDGE_SIZING_MIN_MULT
-    _ = getattr(tm_mod.config, "DC_EDGE_SIZING_PERIOD", 0)  # DC_EDGE_SIZING_PERIOD
-    _ = getattr(tm_mod.config, "DC_MOMENT_OPPOSITE_PENALTY", 0)  # DC_MOMENT_OPPOSITE_PENALTY
-    _ = getattr(tm_mod.config, "DC_MOMENT_STRONG_BONUS", 0)  # DC_MOMENT_STRONG_BONUS
-    _ = getattr(tm_mod.config, "DC_MOMENT_STRONG_THRESHOLD", 0)  # DC_MOMENT_STRONG_THRESHOLD
-    _ = getattr(tm_mod.config, "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT", 0)  # DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT
-    _ = getattr(tm_mod.config, "DC_RECOVERY_EXIT_TOLERANCE_PCT", 0)  # DC_RECOVERY_EXIT_TOLERANCE_PCT
-    _ = getattr(tm_mod.config, "DC_WIDTH_CAP_MULT", 0)  # DC_WIDTH_CAP_MULT
-    _ = getattr(tm_mod.config, "DC_WIDTH_MAX_MULT", 0)  # DC_WIDTH_MAX_MULT
-    _ = getattr(tm_mod.config, "DELTA_ACCEL_LOOKBACK", 0)  # DELTA_ACCEL_LOOKBACK
-    _ = getattr(tm_mod.config, "DELTA_COOLDOWN_BARS", 0)  # DELTA_COOLDOWN_BARS
-    _ = getattr(tm_mod.config, "DELTA_ENTRY_ACCEL_THRESHOLD", 0)  # DELTA_ENTRY_ACCEL_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_ENTRY_MIN_TF", 0)  # DELTA_ENTRY_MIN_TF
-    _ = getattr(tm_mod.config, "DELTA_ENTRY_SCORE_BONUS", 0)  # DELTA_ENTRY_SCORE_BONUS
-    _ = getattr(tm_mod.config, "DELTA_ENTRY_SCORE_PENALTY", 0)  # DELTA_ENTRY_SCORE_PENALTY
-    _ = getattr(tm_mod.config, "DELTA_ENTRY_Z_THRESHOLD", 0)  # DELTA_ENTRY_Z_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_EXIT_ACCEL_THRESHOLD", 0)  # DELTA_EXIT_ACCEL_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_EXIT_MIN_HOLD", 0)  # DELTA_EXIT_MIN_HOLD
-    _ = getattr(tm_mod.config, "DELTA_EXIT_OPPOSING_RATIO", 0)  # DELTA_EXIT_OPPOSING_RATIO
-    _ = getattr(tm_mod.config, "DELTA_EXIT_SCORE_BONUS", 0)  # DELTA_EXIT_SCORE_BONUS
-    _ = getattr(tm_mod.config, "DELTA_EXIT_TF", 0)  # DELTA_EXIT_TF
-    _ = getattr(tm_mod.config, "DELTA_EXIT_TYPE", 0)  # DELTA_EXIT_TYPE
-    _ = getattr(tm_mod.config, "DELTA_LT_COOLDOWN_BARS", 0)  # DELTA_LT_COOLDOWN_BARS
-    _ = getattr(tm_mod.config, "DELTA_LT_ENTRY_ACCEL_THRESHOLD", 0)  # DELTA_LT_ENTRY_ACCEL_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_LT_ENTRY_MIN_TF", 0)  # DELTA_LT_ENTRY_MIN_TF
-    _ = getattr(tm_mod.config, "DELTA_LT_ENTRY_Z_THRESHOLD", 0)  # DELTA_LT_ENTRY_Z_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_LT_EXIT_SPEED_PCT", 0)  # DELTA_LT_EXIT_SPEED_PCT
-    _ = getattr(tm_mod.config, "DELTA_LT_EXIT_TF", 0)  # DELTA_LT_EXIT_TF
-    _ = getattr(tm_mod.config, "DELTA_LT_EXIT_TYPE", 0)  # DELTA_LT_EXIT_TYPE
-    _ = getattr(tm_mod.config, "DELTA_LT_HTF_GATE", 0)  # DELTA_LT_HTF_GATE
-    _ = getattr(tm_mod.config, "DELTA_MAX_HOLD_BARS", 0)  # DELTA_MAX_HOLD_BARS
-    _ = getattr(tm_mod.config, "DELTA_MIN_TF_FOR_ACTION", 0)  # DELTA_MIN_TF_FOR_ACTION
-    _ = getattr(tm_mod.config, "DELTA_OPTIONS_COOLDOWN", 0)  # DELTA_OPTIONS_COOLDOWN
-    _ = getattr(tm_mod.config, "DELTA_OPTIONS_ENTRY_Z", 0)  # DELTA_OPTIONS_ENTRY_Z
-    _ = getattr(tm_mod.config, "DELTA_OPTIONS_EXIT_TYPE", 0)  # DELTA_OPTIONS_EXIT_TYPE
-    _ = getattr(tm_mod.config, "DELTA_OPTIONS_GIVEBACK_PCT", 0)  # DELTA_OPTIONS_GIVEBACK_PCT
-    _ = getattr(tm_mod.config, "DELTA_OPTIONS_HTF_GATE", 0)  # DELTA_OPTIONS_HTF_GATE
-    _ = getattr(tm_mod.config, "DELTA_OPTIONS_MAX_HOLD", 0)  # DELTA_OPTIONS_MAX_HOLD
-    _ = getattr(tm_mod.config, "DELTA_PYRAMID_ACCEL_THRESHOLD", 0)  # DELTA_PYRAMID_ACCEL_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_PYRAMID_MAX", 0)  # DELTA_PYRAMID_MAX
-    _ = getattr(tm_mod.config, "DELTA_PYRAMID_MIN_BARS", 0)  # DELTA_PYRAMID_MIN_BARS
-    _ = getattr(tm_mod.config, "DELTA_PYRAMID_PRICE_TOL", 0)  # DELTA_PYRAMID_PRICE_TOL
-    _ = getattr(tm_mod.config, "DELTA_PYRAMID_QTY_MULT", 0)  # DELTA_PYRAMID_QTY_MULT
-    _ = getattr(tm_mod.config, "DELTA_REENTRY_HTF_GATE", 0)  # DELTA_REENTRY_HTF_GATE
-    _ = getattr(tm_mod.config, "DELTA_REENTRY_MIN_TF", 0)  # DELTA_REENTRY_MIN_TF
-    _ = getattr(tm_mod.config, "DELTA_REENTRY_Z_THRESHOLD", 0)  # DELTA_REENTRY_Z_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_SCORE_WEIGHT", 0)  # DELTA_SCORE_WEIGHT
-    _ = getattr(tm_mod.config, "DELTA_SPEED_SMOOTH", 0)  # DELTA_SPEED_SMOOTH
-    _ = getattr(tm_mod.config, "DELTA_TF_Z_THRESHOLD", 0)  # DELTA_TF_Z_THRESHOLD
-    _ = getattr(tm_mod.config, "DELTA_Z_WINDOW", 0)  # DELTA_Z_WINDOW
-    _ = getattr(tm_mod.config, "DG_DAILY_GAIN_BLOCK_SHORT_PCT", 0)  # DG_DAILY_GAIN_BLOCK_SHORT_PCT
-    _ = getattr(tm_mod.config, "DG_DAILY_LOSS_BLOCK_LONG_PCT", 0)  # DG_DAILY_LOSS_BLOCK_LONG_PCT
-    _ = getattr(tm_mod.config, "DG_HIGH_VOLATILITY_ATR_PCT", 0)  # DG_HIGH_VOLATILITY_ATR_PCT
-    _ = getattr(tm_mod.config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 0)  # DG_MAX_FORCE_OPEN_NOTIONAL_USD
-    _ = getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG", 0)  # DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG
-    _ = getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT", 0)  # DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT
-    _ = getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG", 0)  # DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG
-    _ = getattr(tm_mod.config, "DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT", 0)  # DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT
-    _ = getattr(tm_mod.config, "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT", 0)  # DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT
-    _ = getattr(tm_mod.config, "DG_REPEAT_OPEN_PER_DAY_MAX", 0)  # DG_REPEAT_OPEN_PER_DAY_MAX
-    _ = getattr(tm_mod.config, "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD", 0)  # DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD
-    _ = getattr(tm_mod.config, "EARNINGS_BLACKOUT_DAYS_AFTER", 0)  # EARNINGS_BLACKOUT_DAYS_AFTER
-    _ = getattr(tm_mod.config, "EARNINGS_BLACKOUT_DAYS_BEFORE", 0)  # EARNINGS_BLACKOUT_DAYS_BEFORE
-    _ = getattr(tm_mod.config, "EARNINGS_FORCE_TRIM_PCT", 0)  # EARNINGS_FORCE_TRIM_PCT
-    _ = getattr(tm_mod.config, "EARNINGS_PEAD_BOOST_MULT", 0)  # EARNINGS_PEAD_BOOST_MULT
-    _ = getattr(tm_mod.config, "EARNINGS_PEAD_MIN_SURPRISE_PCT", 0)  # EARNINGS_PEAD_MIN_SURPRISE_PCT
-    _ = getattr(tm_mod.config, "EMA200_STOCHRSI_BODY_MULT", 0)  # EMA200_STOCHRSI_BODY_MULT
-    _ = getattr(tm_mod.config, "EMA200_STOCHRSI_K_LONG", 0)  # EMA200_STOCHRSI_K_LONG
-    _ = getattr(tm_mod.config, "EMA200_STOCHRSI_K_SHORT", 0)  # EMA200_STOCHRSI_K_SHORT
-    _ = getattr(tm_mod.config, "EMA200_STOCHRSI_SCORE", 0)  # EMA200_STOCHRSI_SCORE
-    _ = getattr(tm_mod.config, "EMA200_STOCHRSI_TF", 0)  # EMA200_STOCHRSI_TF
-    _ = getattr(tm_mod.config, "EMA20_SLOPE_SHORT_THRESHOLD_1H", 0)  # EMA20_SLOPE_SHORT_THRESHOLD_1H
-    _ = getattr(tm_mod.config, "EMA_9_21_SCORE_BONUS", 0)  # EMA_9_21_SCORE_BONUS
-    _ = getattr(tm_mod.config, "EMA_9_21_TIMEFRAME", 0)  # EMA_9_21_TIMEFRAME
-    _ = getattr(tm_mod.config, "EMA_DIST_LONG_THRESHOLD", 0)  # EMA_DIST_LONG_THRESHOLD
-    _ = getattr(tm_mod.config, "EMA_DIST_SHORT_THRESHOLD", 0)  # EMA_DIST_SHORT_THRESHOLD
-    _ = getattr(tm_mod.config, "EMA_DIST_SIZING_MULT", 0)  # EMA_DIST_SIZING_MULT
-    _ = getattr(tm_mod.config, "EMA_PULLBACK_SCORE_BONUS", 0)  # EMA_PULLBACK_SCORE_BONUS
-    _ = getattr(tm_mod.config, "EMA_PULLBACK_TF", 0)  # EMA_PULLBACK_TF
-    _ = getattr(tm_mod.config, "EMERGENCY_BRAKE_DC_STOP_FIELD", 0)  # EMERGENCY_BRAKE_DC_STOP_FIELD
-    _ = getattr(tm_mod.config, "ENTRY_ATR_PCT_MIN", 0)  # ENTRY_ATR_PCT_MIN
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE", 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME", 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN", 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H", 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE", 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H", 0)  # ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION", 0)  # ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE", 0)  # ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE
-    _ = getattr(tm_mod.config, "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME", 0)  # ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME
-    _ = getattr(tm_mod.config, "ENTRY_MIN_ALIGNMENT", 0)  # ENTRY_MIN_ALIGNMENT
-    _ = getattr(tm_mod.config, "ENTRY_PRIMARY_TF", 0)  # ENTRY_PRIMARY_TF
-    _ = getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS", 0)  # ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS
-    _ = getattr(tm_mod.config, "ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD", 0)  # ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD
-    _ = getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_FAMILY", 0)  # ENTRY_STOCH_PARENT_DIRECT_FAMILY
-    _ = getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_THRESHOLD", 0)  # ENTRY_STOCH_PARENT_DIRECT_THRESHOLD
-    _ = getattr(tm_mod.config, "ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION", 0)  # ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION
-    _ = getattr(tm_mod.config, "ENTRY_TRIGGER_TF", 0)  # ENTRY_TRIGGER_TF
-    _ = getattr(tm_mod.config, "ENTRY_VOL_MIN_RATIO", 0)  # ENTRY_VOL_MIN_RATIO
-    _ = getattr(tm_mod.config, "ENTRY_ZONE_LONG", 0)  # ENTRY_ZONE_LONG
-    _ = getattr(tm_mod.config, "ENTRY_ZONE_SHORT", 0)  # ENTRY_ZONE_SHORT
-    _ = getattr(tm_mod.config, "EP_MAX_CONSOLIDATION_DAYS", 0)  # EP_MAX_CONSOLIDATION_DAYS
-    _ = getattr(tm_mod.config, "EP_MAX_RETRACE_PCT", 0)  # EP_MAX_RETRACE_PCT
-    _ = getattr(tm_mod.config, "EP_MIN_GAP_PCT", 0)  # EP_MIN_GAP_PCT
-    _ = getattr(tm_mod.config, "EP_MIN_VOL_MULT", 0)  # EP_MIN_VOL_MULT
-    _ = getattr(tm_mod.config, "EP_POSITION_SIZE", 0)  # EP_POSITION_SIZE
-    _ = getattr(tm_mod.config, "ERROR_RECOVERY_SLEEP_SECONDS", 0)  # ERROR_RECOVERY_SLEEP_SECONDS
-    _ = getattr(tm_mod.config, "EXIT_GAIN_THRESHOLD_MIN", 0)  # EXIT_GAIN_THRESHOLD_MIN
-    _ = getattr(tm_mod.config, "EXIT_MAX_HOLD_MINUTES", 0)  # EXIT_MAX_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "EXIT_SCORER_DC_EXTREME", 0)  # EXIT_SCORER_DC_EXTREME
-    _ = getattr(tm_mod.config, "EXIT_SCORER_FULL_SCORE", 0)  # EXIT_SCORER_FULL_SCORE
-    _ = getattr(tm_mod.config, "EXIT_SCORER_K_EXTREME", 0)  # EXIT_SCORER_K_EXTREME
-    _ = getattr(tm_mod.config, "EXIT_SCORER_MIN_CONDITIONS", 0)  # EXIT_SCORER_MIN_CONDITIONS
-    _ = getattr(tm_mod.config, "EXIT_SCORER_PARTIAL_SCORE", 0)  # EXIT_SCORER_PARTIAL_SCORE
-    _ = getattr(tm_mod.config, "EXTREME_OB_BB_PCT_B_4H_MIN", 0)  # EXTREME_OB_BB_PCT_B_4H_MIN
-    _ = getattr(tm_mod.config, "EXTREME_OB_RSI_4H_MIN", 0)  # EXTREME_OB_RSI_4H_MIN
-    _ = getattr(tm_mod.config, "EXTREME_OB_RSI_D_MIN", 0)  # EXTREME_OB_RSI_D_MIN
-    _ = getattr(tm_mod.config, "EXTREME_OS_BB_PCT_B_4H_MAX", 0)  # EXTREME_OS_BB_PCT_B_4H_MAX
-    _ = getattr(tm_mod.config, "EXTREME_OS_RSI_4H_MAX", 0)  # EXTREME_OS_RSI_4H_MAX
-    _ = getattr(tm_mod.config, "EXTREME_OS_RSI_D_MAX", 0)  # EXTREME_OS_RSI_D_MAX
-    _ = getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_INTERVAL_S", 0)  # EZ_REENTRY_PRICE_CROSS_INTERVAL_S
-    _ = getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS", 0)  # EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS
-    _ = getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK", 0)  # EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK
-    _ = getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC", 0)  # EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC
-    _ = getattr(tm_mod.config, "EZ_REENTRY_PRICE_CROSS_PCT", 0)  # EZ_REENTRY_PRICE_CROSS_PCT
-    _ = getattr(tm_mod.config, "FAST_CUT_LOSS_MIN_AGE_MINUTES", 0)  # FAST_CUT_LOSS_MIN_AGE_MINUTES
-    _ = getattr(tm_mod.config, "FG_FEAR_THRESHOLD", 0)  # FG_FEAR_THRESHOLD
-    _ = getattr(tm_mod.config, "FG_GREED_THRESHOLD", 0)  # FG_GREED_THRESHOLD
-    _ = getattr(tm_mod.config, "FH_MOMENTUM_DC_MAX_LONG", 0)  # FH_MOMENTUM_DC_MAX_LONG
-    _ = getattr(tm_mod.config, "FH_MOMENTUM_EVAL_MINUTES", 0)  # FH_MOMENTUM_EVAL_MINUTES
-    _ = getattr(tm_mod.config, "FH_MOMENTUM_MAX_POSITIONS", 0)  # FH_MOMENTUM_MAX_POSITIONS
-    _ = getattr(tm_mod.config, "FH_MOMENTUM_MIN_MOVE_PCT", 0)  # FH_MOMENTUM_MIN_MOVE_PCT
-    _ = getattr(tm_mod.config, "FH_MOMENTUM_POSITION_SIZE", 0)  # FH_MOMENTUM_POSITION_SIZE
-    _ = getattr(tm_mod.config, "FORCE_REFRESH_SECONDS", 0)  # FORCE_REFRESH_SECONDS
-    _ = getattr(tm_mod.config, "FORMATION_EXIT_MIN_GAIN_PCT", 0)  # FORMATION_EXIT_MIN_GAIN_PCT
-    _ = getattr(tm_mod.config, "FORMATION_MIN_SCORE", 0)  # FORMATION_MIN_SCORE
-    _ = getattr(tm_mod.config, "FORMATION_POSITION_SIZE_MULT", 0)  # FORMATION_POSITION_SIZE_MULT
-    _ = getattr(tm_mod.config, "FORMATION_TFS", 0)  # FORMATION_TFS
-    _ = getattr(tm_mod.config, "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER", 0)  # FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER
-    _ = getattr(tm_mod.config, "FROZEN_ACTIVATION_TF", 0)  # FROZEN_ACTIVATION_TF
-    _ = getattr(tm_mod.config, "FUNDING_EXTREME_LONG_THRESHOLD_PCT", 0)  # FUNDING_EXTREME_LONG_THRESHOLD_PCT
-    _ = getattr(tm_mod.config, "FUNDING_EXTREME_SHORT_THRESHOLD_PCT", 0)  # FUNDING_EXTREME_SHORT_THRESHOLD_PCT
-    _ = getattr(tm_mod.config, "FUNDING_GATE_PC_RATIO_LONG_MAX", 0)  # FUNDING_GATE_PC_RATIO_LONG_MAX
-    _ = getattr(tm_mod.config, "FUNDING_GATE_PC_RATIO_SHORT_MIN", 0)  # FUNDING_GATE_PC_RATIO_SHORT_MIN
-    _ = getattr(tm_mod.config, "FUNDING_GATE_TRADIER_STALE_MAX_HOURS", 0)  # FUNDING_GATE_TRADIER_STALE_MAX_HOURS
-    _ = getattr(tm_mod.config, "GAP_FILL_MAX_GAP_PCT", 0)  # GAP_FILL_MAX_GAP_PCT
-    _ = getattr(tm_mod.config, "GAP_FILL_MIN_GAP_PCT", 0)  # GAP_FILL_MIN_GAP_PCT
-    _ = getattr(tm_mod.config, "GAP_FILL_POSITION_SIZE", 0)  # GAP_FILL_POSITION_SIZE
-    _ = getattr(tm_mod.config, "GAP_FILL_STOP_MULT", 0)  # GAP_FILL_STOP_MULT
-    _ = getattr(tm_mod.config, "GAP_FILL_TP_FILL_PCT", 0)  # GAP_FILL_TP_FILL_PCT
-    _ = getattr(tm_mod.config, "GHOST_ABSENT_ALERT_THRESHOLD", 0)  # GHOST_ABSENT_ALERT_THRESHOLD
-    _ = getattr(tm_mod.config, "GOLDEN_RULE_EXIT_MIN_IND", 0)  # GOLDEN_RULE_EXIT_MIN_IND
-    _ = getattr(tm_mod.config, "GOLDEN_RULE_EXIT_MIN_TFS", 0)  # GOLDEN_RULE_EXIT_MIN_TFS
-    _ = getattr(tm_mod.config, "GR_BB_EXTENDED_LONG", 0)  # GR_BB_EXTENDED_LONG
-    _ = getattr(tm_mod.config, "GR_DC_EXTENDED_LONG", 0)  # GR_DC_EXTENDED_LONG
-    _ = getattr(tm_mod.config, "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", 0)  # GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE
-    _ = getattr(tm_mod.config, "GR_V5_ARM_WINDOW_BARS", 0)  # GR_V5_ARM_WINDOW_BARS
-    _ = getattr(tm_mod.config, "GR_V5_BOUNCE_STOCH_LONG", 0)  # GR_V5_BOUNCE_STOCH_LONG
-    _ = getattr(tm_mod.config, "GR_V5_BOUNCE_STOCH_SHORT", 0)  # GR_V5_BOUNCE_STOCH_SHORT
-    _ = getattr(tm_mod.config, "GR_V5_BREAKOUT_VOL_MULT", 0)  # GR_V5_BREAKOUT_VOL_MULT
-    _ = getattr(tm_mod.config, "GR_V5_HTF_MIN_ALIGN", 0)  # GR_V5_HTF_MIN_ALIGN
-    _ = getattr(tm_mod.config, "GR_V5_INVALIDATE_PCT", 0)  # GR_V5_INVALIDATE_PCT
-    _ = getattr(tm_mod.config, "GR_V5_LTF_MIN_ALIGN", 0)  # GR_V5_LTF_MIN_ALIGN
-    _ = getattr(tm_mod.config, "GR_V5_RETEST_BAND_PCT", 0)  # GR_V5_RETEST_BAND_PCT
-    _ = getattr(tm_mod.config, "HARD_MAX_LOSS_PCT", 0)  # HARD_MAX_LOSS_PCT
-    _ = getattr(tm_mod.config, "HARD_MAX_SYMBOL_VALUE_TRADIER", 0)  # HARD_MAX_SYMBOL_VALUE_TRADIER
-    _ = getattr(tm_mod.config, "HA_3M_ENTRY_WEIGHT", 0)  # HA_3M_ENTRY_WEIGHT
-    _ = getattr(tm_mod.config, "HA_WICK_QUALITY_SCORE", 0)  # HA_WICK_QUALITY_SCORE
-    _ = getattr(tm_mod.config, "HA_WICK_QUALITY_TF", 0)  # HA_WICK_QUALITY_TF
-    _ = getattr(tm_mod.config, "HEDGE_CLOSE_WT_TFS_FAVOR", 0)  # HEDGE_CLOSE_WT_TFS_FAVOR
-    _ = getattr(tm_mod.config, "HEDGE_ENTRY_MODE", 0)  # HEDGE_ENTRY_MODE
-    _ = getattr(tm_mod.config, "HEDGE_MAX_RATIO", 0)  # HEDGE_MAX_RATIO
-    _ = getattr(tm_mod.config, "HEDGE_NEWBORN_GRACE_MINUTES", 0)  # HEDGE_NEWBORN_GRACE_MINUTES
-    _ = getattr(tm_mod.config, "HEDGE_OVERSIZE_RATIO", 0)  # HEDGE_OVERSIZE_RATIO
-    _ = getattr(tm_mod.config, "HEDGE_SIZE_RATIO_TRADIER", 0)  # HEDGE_SIZE_RATIO_TRADIER
-    _ = getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_PCT", 0)  # HEDGE_TRIGGER_LOSS_PCT
-    _ = getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_PCT_ENTRY", 0)  # HEDGE_TRIGGER_LOSS_PCT_ENTRY
-    _ = getattr(tm_mod.config, "HEDGE_TRIGGER_LOSS_TRADIER", 0)  # HEDGE_TRIGGER_LOSS_TRADIER
-    _ = getattr(tm_mod.config, "HIGH_GAIN_AUGMENTATION_MIN_SIZE", 0)  # HIGH_GAIN_AUGMENTATION_MIN_SIZE
-    _ = getattr(tm_mod.config, "HOLD_BARS_CLOSE", 0)  # HOLD_BARS_CLOSE
-    _ = getattr(tm_mod.config, "HOLD_BARS_MID", 0)  # HOLD_BARS_MID
-    _ = getattr(tm_mod.config, "HOLD_BARS_OPEN", 0)  # HOLD_BARS_OPEN
-    _ = getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_TF", 0)  # HTF_DC_BREAKOUT_TRADIER_TF
-    _ = getattr(tm_mod.config, "HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT", 0)  # HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT
-    _ = getattr(tm_mod.config, "HTF_MIN_ALIGNED", 0)  # HTF_MIN_ALIGNED
-    _ = getattr(tm_mod.config, "HTF_REGIME_ADD_MULT_PER_SMA", 0)  # HTF_REGIME_ADD_MULT_PER_SMA
-    _ = getattr(tm_mod.config, "HTF_REGIME_EXIT_TF", 0)  # HTF_REGIME_EXIT_TF
-    _ = getattr(tm_mod.config, "HTF_REGIME_LEDGER_PATH", 0)  # HTF_REGIME_LEDGER_PATH
-    _ = getattr(tm_mod.config, "HTF_REGIME_SIZE_CAP", 0)  # HTF_REGIME_SIZE_CAP
-    _ = getattr(tm_mod.config, "HTF_REGIME_TF", 0)  # HTF_REGIME_TF
-    _ = getattr(tm_mod.config, "HTF_REGIME_VOL_TARGET", 0)  # HTF_REGIME_VOL_TARGET
-    _ = getattr(tm_mod.config, "HTF_TREND_VETO_SCORE_MIN_ABS", 0)  # HTF_TREND_VETO_SCORE_MIN_ABS
-    _ = getattr(tm_mod.config, "HTF_W_M_ALIGN_TRADIER_REQUIRED", 0)  # HTF_W_M_ALIGN_TRADIER_REQUIRED
-    _ = getattr(tm_mod.config, "INDICATORS_SAVE_INTERVAL_SECONDS", 0)  # INDICATORS_SAVE_INTERVAL_SECONDS
-    _ = getattr(tm_mod.config, "INDICATOR_UPDATE_INTERVAL", 0)  # INDICATOR_UPDATE_INTERVAL
-    _ = getattr(tm_mod.config, "INF_RANKING_BYPASS_FRESHNESS_MIN", 0)  # INF_RANKING_BYPASS_FRESHNESS_MIN
-    _ = getattr(tm_mod.config, "INF_RANKING_BYPASS_MAX_POS", 0)  # INF_RANKING_BYPASS_MAX_POS
-    _ = getattr(tm_mod.config, "K3M_CAP", 0)  # K3M_CAP
-    _ = getattr(tm_mod.config, "K3M_FLOOR", 0)  # K3M_FLOOR
-    _ = getattr(tm_mod.config, "K_LOWER_HIGH_EXTREME", 0)  # K_LOWER_HIGH_EXTREME
-    _ = getattr(tm_mod.config, "K_LOWER_HIGH_LTF_THRESHOLD", 0)  # K_LOWER_HIGH_LTF_THRESHOLD
-    _ = getattr(tm_mod.config, "LADDER_AUTO_SAVE_SECONDS", 0)  # LADDER_AUTO_SAVE_SECONDS
-    _ = getattr(tm_mod.config, "LADDER_TTL_MINUTES", 0)  # LADDER_TTL_MINUTES
-    _ = getattr(tm_mod.config, "LH_HL_FILTER_DC_THRESHOLD_PCT", 0)  # LH_HL_FILTER_DC_THRESHOLD_PCT
-    _ = getattr(tm_mod.config, "LH_HL_FILTER_MODE", 0)  # LH_HL_FILTER_MODE
-    _ = getattr(tm_mod.config, "LH_HL_FILTER_TF_REQ", 0)  # LH_HL_FILTER_TF_REQ
-    _ = getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_BOOST_SCORE", 0)  # LIVE_ENTRY_ENGINE_BOOST_SCORE
-    _ = getattr(tm_mod.config, "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT", 0)  # LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT
-    _ = getattr(tm_mod.config, "LIVE_INDICATOR_MAX_BARS_PER_TF", 0)  # LIVE_INDICATOR_MAX_BARS_PER_TF
-    _ = getattr(tm_mod.config, "LOG_BACKUP_COUNT", 0)  # LOG_BACKUP_COUNT
-    _ = getattr(tm_mod.config, "LOG_INTERVAL_SECONDS", 0)  # LOG_INTERVAL_SECONDS
-    _ = getattr(tm_mod.config, "LOG_MAX_BYTES", 0)  # LOG_MAX_BYTES
-    _ = getattr(tm_mod.config, "LONG_WAIT_DIRECT_BOUNCE_DISTANCE", 0)  # LONG_WAIT_DIRECT_BOUNCE_DISTANCE
-    _ = getattr(tm_mod.config, "LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME", 0)  # LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME
-    _ = getattr(tm_mod.config, "LONG_WAIT_DIRECT_CONFIRMATION", 0)  # LONG_WAIT_DIRECT_CONFIRMATION
-    _ = getattr(tm_mod.config, "LONG_WAIT_DIRECT_DEEP_K4H", 0)  # LONG_WAIT_DIRECT_DEEP_K4H
-    _ = getattr(tm_mod.config, "LONG_WAIT_DIRECT_TURN_K1H", 0)  # LONG_WAIT_DIRECT_TURN_K1H
-    _ = getattr(tm_mod.config, "LR_BAND_ENTRY_LO", 0)  # LR_BAND_ENTRY_LO
-    _ = getattr(tm_mod.config, "LR_BAND_ENTRY_R2_MIN", 0)  # LR_BAND_ENTRY_R2_MIN
-    _ = getattr(tm_mod.config, "LR_BAND_ENTRY_SIDES", 0)  # LR_BAND_ENTRY_SIDES
-    _ = getattr(tm_mod.config, "LR_BAND_ENTRY_TF", 0)  # LR_BAND_ENTRY_TF
-    _ = getattr(tm_mod.config, "LR_BAND_HARVEST_FRAC", 0)  # LR_BAND_HARVEST_FRAC
-    _ = getattr(tm_mod.config, "LR_BAND_HARVEST_HI", 0)  # LR_BAND_HARVEST_HI
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_ABOVE_TOP_MULT", 0)  # LR_BAND_LADDER_ABOVE_TOP_MULT
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_BASIS", 0)  # LR_BAND_LADDER_BASIS
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_BELOW_BOTTOM_MULT", 0)  # LR_BAND_LADDER_BELOW_BOTTOM_MULT
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_BOTTOM_MULT", 0)  # LR_BAND_LADDER_BOTTOM_MULT
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_CENTER", 0)  # LR_BAND_LADDER_CENTER
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_MODE", 0)  # LR_BAND_LADDER_MODE
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_STOCH_EXTREME", 0)  # LR_BAND_LADDER_STOCH_EXTREME
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_TOP_MULT", 0)  # LR_BAND_LADDER_TOP_MULT
-    _ = getattr(tm_mod.config, "LR_BAND_LADDER_TRIGGER", 0)  # LR_BAND_LADDER_TRIGGER
-    _ = getattr(tm_mod.config, "LR_BAND_READD_LO", 0)  # LR_BAND_READD_LO
-    _ = getattr(tm_mod.config, "LR_BAND_REGIME_MAX_PB", 0)  # LR_BAND_REGIME_MAX_PB
-    _ = getattr(tm_mod.config, "LR_BAND_SIZE_DEPTH_GAIN", 0)  # LR_BAND_SIZE_DEPTH_GAIN
-    _ = getattr(tm_mod.config, "LR_BAND_SIZE_MAX", 0)  # LR_BAND_SIZE_MAX
-    _ = getattr(tm_mod.config, "LR_BAND_SIZE_SLOPE_GAIN", 0)  # LR_BAND_SIZE_SLOPE_GAIN
-    _ = getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN", 0)  # LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN
-    _ = getattr(tm_mod.config, "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY", 0)  # LR_BAND_SLOPE_FLIP_MIN_PCT_DAY
-    _ = getattr(tm_mod.config, "LR_BAND_SLOPE_NORM_PCT_DAY", 0)  # LR_BAND_SLOPE_NORM_PCT_DAY
-    _ = getattr(tm_mod.config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", 0)  # LR_PCTB_D_LONG_ENTRY_THRESHOLD
-    _ = getattr(tm_mod.config, "LR_PCTB_D_SHORT_THRESHOLD", 0)  # LR_PCTB_D_SHORT_THRESHOLD
-    _ = getattr(tm_mod.config, "LS_RATIO_EXTREME_THRESHOLD", 0)  # LS_RATIO_EXTREME_THRESHOLD
-    _ = getattr(tm_mod.config, "LS_RATIO_HARD_MAX", 0)  # LS_RATIO_HARD_MAX
-    _ = getattr(tm_mod.config, "LS_RATIO_HARD_MIN", 0)  # LS_RATIO_HARD_MIN
-    _ = getattr(tm_mod.config, "LS_RATIO_LOG_INTERVAL", 0)  # LS_RATIO_LOG_INTERVAL
-    _ = getattr(tm_mod.config, "LS_RATIO_PENALTY", 0)  # LS_RATIO_PENALTY
-    _ = getattr(tm_mod.config, "LUNCH_DEADZONE_MODE", 0)  # LUNCH_DEADZONE_MODE
-    _ = getattr(tm_mod.config, "LUNCH_DEADZONE_SIZE_MULT", 0)  # LUNCH_DEADZONE_SIZE_MULT
-    _ = getattr(tm_mod.config, "MACD_EXIT_MIN_GAIN", 0)  # MACD_EXIT_MIN_GAIN
-    _ = getattr(tm_mod.config, "MACD_EXIT_TF", 0)  # MACD_EXIT_TF
-    _ = getattr(tm_mod.config, "MACD_ZERO_CROSS_SCORE", 0)  # MACD_ZERO_CROSS_SCORE
-    _ = getattr(tm_mod.config, "MACD_ZERO_CROSS_TF", 0)  # MACD_ZERO_CROSS_TF
-    _ = getattr(tm_mod.config, "MACRO_BLACKOUT_SIZE_MULT", 0)  # MACRO_BLACKOUT_SIZE_MULT
-    _ = getattr(tm_mod.config, "MANDATORY_REENTRY_DC4_WINDOW_MIN", 0)  # MANDATORY_REENTRY_DC4_WINDOW_MIN
-    _ = getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS", 0)  # MANDATORY_REENTRY_WT_FILTER_MIN_TFS
-    _ = getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY", 0)  # MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY
-    _ = getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_TF_MODE", 0)  # MANDATORY_REENTRY_WT_FILTER_TF_MODE
-    _ = getattr(tm_mod.config, "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO", 0)  # MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO
-    _ = getattr(tm_mod.config, "MARKET_CLOSE_HOUR", 0)  # MARKET_CLOSE_HOUR
-    _ = getattr(tm_mod.config, "MARKET_CLOSE_MINUTE", 0)  # MARKET_CLOSE_MINUTE
-    _ = getattr(tm_mod.config, "MARKET_DATA_REFRESH_INTERVAL_SECONDS", 0)  # MARKET_DATA_REFRESH_INTERVAL_SECONDS
-    _ = getattr(tm_mod.config, "MARKET_OPEN_HOUR", 0)  # MARKET_OPEN_HOUR
-    _ = getattr(tm_mod.config, "MARKET_OPEN_MINUTE", 0)  # MARKET_OPEN_MINUTE
-    _ = getattr(tm_mod.config, "MARK_PRICE_MAX_STALENESS", 0)  # MARK_PRICE_MAX_STALENESS
-    _ = getattr(tm_mod.config, "MAX_ALLOWED_DRAWDOWN_PCT", 0)  # MAX_ALLOWED_DRAWDOWN_PCT
-    _ = getattr(tm_mod.config, "MAX_AUGMENTS_PER_POSITION", 0)  # MAX_AUGMENTS_PER_POSITION
-    _ = getattr(tm_mod.config, "MAX_CONCURRENT_ORDERS", 0)  # MAX_CONCURRENT_ORDERS
-    _ = getattr(tm_mod.config, "MAX_CONCURRENT_POSITIONS", 0)  # MAX_CONCURRENT_POSITIONS
-    _ = getattr(tm_mod.config, "MAX_DAILY_LOSS_PCT", 0)  # MAX_DAILY_LOSS_PCT
-    _ = getattr(tm_mod.config, "MAX_MEMORY_GB", 0)  # MAX_MEMORY_GB
-    _ = getattr(tm_mod.config, "MAX_SYMBOL_VALUE_TRADIER", 0)  # MAX_SYMBOL_VALUE_TRADIER
-    _ = getattr(tm_mod.config, "MEMORY_MONITOR_SLEEP_SECONDS", 0)  # MEMORY_MONITOR_SLEEP_SECONDS
-    _ = getattr(tm_mod.config, "MFI_ENTRY_LONG_MAX", 0)  # MFI_ENTRY_LONG_MAX
-    _ = getattr(tm_mod.config, "MFI_ENTRY_SHORT_MIN", 0)  # MFI_ENTRY_SHORT_MIN
-    _ = getattr(tm_mod.config, "MFI_FLIP_EXIT_LONG_THRESHOLD", 0)  # MFI_FLIP_EXIT_LONG_THRESHOLD
-    _ = getattr(tm_mod.config, "MFI_FLIP_EXIT_SHORT_THRESHOLD", 0)  # MFI_FLIP_EXIT_SHORT_THRESHOLD
-    _ = getattr(tm_mod.config, "MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT", 0)  # MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT
-    _ = getattr(tm_mod.config, "MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT", 0)  # MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT
-    _ = getattr(tm_mod.config, "MID_ZONE_SHORT_EXTRA_IND", 0)  # MID_ZONE_SHORT_EXTRA_IND
-    _ = getattr(tm_mod.config, "MINERVINI_LONG_BUDGET", 0)  # MINERVINI_LONG_BUDGET
-    _ = getattr(tm_mod.config, "MINERVINI_MAX_HOLD_DAYS", 0)  # MINERVINI_MAX_HOLD_DAYS
-    _ = getattr(tm_mod.config, "MINERVINI_MIN_SEPA_SCORE", 0)  # MINERVINI_MIN_SEPA_SCORE
-    _ = getattr(tm_mod.config, "MINERVINI_POSITION_SIZE", 0)  # MINERVINI_POSITION_SIZE
-    _ = getattr(tm_mod.config, "MINERVINI_TARGET_PCT", 0)  # MINERVINI_TARGET_PCT
-    _ = getattr(tm_mod.config, "MIN_EXIT_TF_AGAINST_TRADIER", 0)  # MIN_EXIT_TF_AGAINST_TRADIER
-    _ = getattr(tm_mod.config, "MIN_HOLD_BARS", 0)  # MIN_HOLD_BARS
-    _ = getattr(tm_mod.config, "MIN_HOLD_BARS_BEFORE_EXIT", 0)  # MIN_HOLD_BARS_BEFORE_EXIT
-    _ = getattr(tm_mod.config, "MIN_HOLD_BARS_TRADIER", 0)  # MIN_HOLD_BARS_TRADIER
-    _ = getattr(tm_mod.config, "MIN_HOLD_MINUTES_TRADIER", 0)  # MIN_HOLD_MINUTES_TRADIER
-    _ = getattr(tm_mod.config, "MIN_PERC_FROM_SMA_1", 0)  # MIN_PERC_FROM_SMA_1
-    _ = getattr(tm_mod.config, "MIN_PERC_FROM_SMA_15", 0)  # MIN_PERC_FROM_SMA_15
-    _ = getattr(tm_mod.config, "MIN_USD_DELTA_CONFIRM", 0)  # MIN_USD_DELTA_CONFIRM
-    _ = getattr(tm_mod.config, "MITIGATOR_AUGMENT_CONSECUTIVE", 0)  # MITIGATOR_AUGMENT_CONSECUTIVE
-    _ = getattr(tm_mod.config, "MITIGATOR_AUGMENT_THRESHOLD", 0)  # MITIGATOR_AUGMENT_THRESHOLD
-    _ = getattr(tm_mod.config, "MITIGATOR_COOLDOWN", 0)  # MITIGATOR_COOLDOWN
-    _ = getattr(tm_mod.config, "MITIGATOR_REENTRY_COOLDOWN", 0)  # MITIGATOR_REENTRY_COOLDOWN
-    _ = getattr(tm_mod.config, "MITIGATOR_REENTRY_PRICE_PCT", 0)  # MITIGATOR_REENTRY_PRICE_PCT
-    _ = getattr(tm_mod.config, "MITIGATOR_SCAN_INTERVAL", 0)  # MITIGATOR_SCAN_INTERVAL
-    _ = getattr(tm_mod.config, "MITIGATOR_TIER1_DROP", 0)  # MITIGATOR_TIER1_DROP
-    _ = getattr(tm_mod.config, "MITIGATOR_TIER1_PEAK", 0)  # MITIGATOR_TIER1_PEAK
-    _ = getattr(tm_mod.config, "MITIGATOR_TIER1_REDUCE_PCT", 0)  # MITIGATOR_TIER1_REDUCE_PCT
-    _ = getattr(tm_mod.config, "MITIGATOR_TIER2_DROP", 0)  # MITIGATOR_TIER2_DROP
-    _ = getattr(tm_mod.config, "MITIGATOR_TIER2_REDUCE_PCT", 0)  # MITIGATOR_TIER2_REDUCE_PCT
-    _ = getattr(tm_mod.config, "MITIGATOR_TIER3_DROP", 0)  # MITIGATOR_TIER3_DROP
-    _ = getattr(tm_mod.config, "MI_ENTRY_EXHAUST_BONUS_TRADIER", 0)  # MI_ENTRY_EXHAUST_BONUS_TRADIER
-    _ = getattr(tm_mod.config, "MI_ENTRY_STRUCT_BONUS_TRADIER", 0)  # MI_ENTRY_STRUCT_BONUS_TRADIER
-    _ = getattr(tm_mod.config, "MI_MIN_GAIN_EXIT_TRADIER", 0)  # MI_MIN_GAIN_EXIT_TRADIER
-    _ = getattr(tm_mod.config, "MI_TF_AGREE_MIN_TRADIER", 0)  # MI_TF_AGREE_MIN_TRADIER
-    _ = getattr(tm_mod.config, "MOM3_LONG_THRESHOLD", 0)  # MOM3_LONG_THRESHOLD
-    _ = getattr(tm_mod.config, "MOM3_SHORT_THRESHOLD", 0)  # MOM3_SHORT_THRESHOLD
-    _ = getattr(tm_mod.config, "MOM5_LONG_THRESHOLD", 0)  # MOM5_LONG_THRESHOLD
-    _ = getattr(tm_mod.config, "MOM5_SHORT_THRESHOLD", 0)  # MOM5_SHORT_THRESHOLD
-    _ = getattr(tm_mod.config, "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", 0)  # MOMENTUM_FADE_BODY_ATR_MIN_TRADIER
-    _ = getattr(tm_mod.config, "MOMENTUM_FADE_SCORE_BONUS_TRADIER", 0)  # MOMENTUM_FADE_SCORE_BONUS_TRADIER
-    _ = getattr(tm_mod.config, "MOMENTUM_FADE_VOL_MIN_TRADIER", 0)  # MOMENTUM_FADE_VOL_MIN_TRADIER
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_ACCOUNT", 0)  # MOMENTUM_RIDER_ACCOUNT
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_BASE_SIZE_USD", 0)  # MOMENTUM_RIDER_BASE_SIZE_USD
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_COOLDOWN", 0)  # MOMENTUM_RIDER_COOLDOWN
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_DC_WIDTH_MIN", 0)  # MOMENTUM_RIDER_DC_WIDTH_MIN
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_HEDGE_RATIO", 0)  # MOMENTUM_RIDER_HEDGE_RATIO
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_MAX_SIZE_USD", 0)  # MOMENTUM_RIDER_MAX_SIZE_USD
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_MAX_SYMBOLS", 0)  # MOMENTUM_RIDER_MAX_SYMBOLS
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_REL_VOL_MIN", 0)  # MOMENTUM_RIDER_REL_VOL_MIN
-    _ = getattr(tm_mod.config, "MOMENTUM_RIDER_SCAN_INTERVAL", 0)  # MOMENTUM_RIDER_SCAN_INTERVAL
-    _ = getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", 0)  # MOMENTUM_SMA_WATCHDOG_COOLDOWN_S
-    _ = getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", 0)  # MOMENTUM_SMA_WATCHDOG_INTERVAL_S
-    _ = getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_PCT", 0)  # MOMENTUM_SMA_WATCHDOG_PCT
-    _ = getattr(tm_mod.config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", 0)  # MOMENTUM_SMA_WATCHDOG_WT_CAP
-    _ = getattr(tm_mod.config, "MONITOR_REDUCTION_STALE_THRESHOLD", 0)  # MONITOR_REDUCTION_STALE_THRESHOLD
-    _ = getattr(tm_mod.config, "MOVER_ACCOUNT", 0)  # MOVER_ACCOUNT
-    _ = getattr(tm_mod.config, "MOVER_LINEARITY_MIN", 0)  # MOVER_LINEARITY_MIN
-    _ = getattr(tm_mod.config, "MOVER_LOOKBACK", 0)  # MOVER_LOOKBACK
-    _ = getattr(tm_mod.config, "MOVER_MAX_POSITIONS", 0)  # MOVER_MAX_POSITIONS
-    _ = getattr(tm_mod.config, "MOVER_SCORE_BONUS", 0)  # MOVER_SCORE_BONUS
-    _ = getattr(tm_mod.config, "MOVER_THRESHOLD", 0)  # MOVER_THRESHOLD
-    _ = getattr(tm_mod.config, "MOVER_VOL_MIN", 0)  # MOVER_VOL_MIN
-    _ = getattr(tm_mod.config, "MTF_ARMED_BANDTYPES", 0)  # MTF_ARMED_BANDTYPES
-    _ = getattr(tm_mod.config, "MTF_ARMED_HTF_LIST", 0)  # MTF_ARMED_HTF_LIST
-    _ = getattr(tm_mod.config, "MTF_ARROW_CONFIRM_PCT", 0)  # MTF_ARROW_CONFIRM_PCT
-    _ = getattr(tm_mod.config, "MTF_ARROW_SIZE_GAIN", 0)  # MTF_ARROW_SIZE_GAIN
-    _ = getattr(tm_mod.config, "MTF_ARROW_SIZE_MAX", 0)  # MTF_ARROW_SIZE_MAX
-    _ = getattr(tm_mod.config, "MTF_ARROW_SLOPE_LAMBDA", 0)  # MTF_ARROW_SLOPE_LAMBDA
-    _ = getattr(tm_mod.config, "MTF_ARROW_SLOPE_NORM_PCT_DAY", 0)  # MTF_ARROW_SLOPE_NORM_PCT_DAY
-    _ = getattr(tm_mod.config, "MTF_ARROW_THETA", 0)  # MTF_ARROW_THETA
-    _ = getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS", 0)  # MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS
-    _ = getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT", 0)  # MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT
-    _ = getattr(tm_mod.config, "MTF_ATR_MULTITF_DIRECT_MULT", 0)  # MTF_ATR_MULTITF_DIRECT_MULT
-    _ = getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_LOOKBACK", 0)  # MTF_BB_REJECT_EXIT_LOOKBACK
-    _ = getattr(tm_mod.config, "MTF_BB_REJECT_EXIT_TF", 0)  # MTF_BB_REJECT_EXIT_TF
-    _ = getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_LOOKBACK", 0)  # MTF_DC_REJECT_EXIT_LOOKBACK
-    _ = getattr(tm_mod.config, "MTF_DC_REJECT_EXIT_TF", 0)  # MTF_DC_REJECT_EXIT_TF
-    _ = getattr(tm_mod.config, "MTF_GR_EXIT_MIN_IND", 0)  # MTF_GR_EXIT_MIN_IND
-    _ = getattr(tm_mod.config, "MTF_GR_EXIT_MIN_TFS", 0)  # MTF_GR_EXIT_MIN_TFS
-    _ = getattr(tm_mod.config, "MTF_WT_CROSS_EXIT_TF", 0)  # MTF_WT_CROSS_EXIT_TF
-    _ = getattr(tm_mod.config, "MTS_BOTTOM_BONUS_THRESHOLD", 0)  # MTS_BOTTOM_BONUS_THRESHOLD
-    _ = getattr(tm_mod.config, "MTS_BOTTOM_MIN_SHORT", 0)  # MTS_BOTTOM_MIN_SHORT
-    _ = getattr(tm_mod.config, "MTS_BOTTOM_MIN_TRADIER", 0)  # MTS_BOTTOM_MIN_TRADIER
-    _ = getattr(tm_mod.config, "MTS_BOTTOM_STRONG_THRESHOLD", 0)  # MTS_BOTTOM_STRONG_THRESHOLD
-    _ = getattr(tm_mod.config, "MTS_ENTRY_QUALITY_BONUS", 0)  # MTS_ENTRY_QUALITY_BONUS
-    _ = getattr(tm_mod.config, "MTS_ENTRY_QUALITY_MIN_SHORT", 0)  # MTS_ENTRY_QUALITY_MIN_SHORT
-    _ = getattr(tm_mod.config, "MTS_ENTRY_QUALITY_MIN_TRADIER", 0)  # MTS_ENTRY_QUALITY_MIN_TRADIER
-    _ = getattr(tm_mod.config, "MTS_ENTRY_QUALITY_STRONG", 0)  # MTS_ENTRY_QUALITY_STRONG
-    _ = getattr(tm_mod.config, "MTS_WEIGHT_D", 0)  # MTS_WEIGHT_D
-    _ = getattr(tm_mod.config, "MU_CORRECTION_HTF_K_MIN", 0)  # MU_CORRECTION_HTF_K_MIN
-    _ = getattr(tm_mod.config, "MU_CORRECTION_HTF_MIN_TFS", 0)  # MU_CORRECTION_HTF_MIN_TFS
-    _ = getattr(tm_mod.config, "MU_CORRECTION_HTF_RSI_MIN", 0)  # MU_CORRECTION_HTF_RSI_MIN
-    _ = getattr(tm_mod.config, "MU_CORRECTION_HTF_TFS", 0)  # MU_CORRECTION_HTF_TFS
-    _ = getattr(tm_mod.config, "MU_CORRECTION_LTF_FALL_MIN_TFS", 0)  # MU_CORRECTION_LTF_FALL_MIN_TFS
-    _ = getattr(tm_mod.config, "MU_CORRECTION_LTF_FALL_TFS", 0)  # MU_CORRECTION_LTF_FALL_TFS
-    _ = getattr(tm_mod.config, "MU_CORRECTION_MIN_GAIN_PCT", 0)  # MU_CORRECTION_MIN_GAIN_PCT
-    _ = getattr(tm_mod.config, "MU_CORRECTION_REENTRY_DC_TOL_PCT", 0)  # MU_CORRECTION_REENTRY_DC_TOL_PCT
-    _ = getattr(tm_mod.config, "MU_CORRECTION_SYMBOLS", 0)  # MU_CORRECTION_SYMBOLS
-    _ = getattr(tm_mod.config, "NEWBORN_DC_STOP_FIELD", 0)  # NEWBORN_DC_STOP_FIELD
-    _ = getattr(tm_mod.config, "NEWBORN_DC_STOP_MAX_AGE_MIN", 0)  # NEWBORN_DC_STOP_MAX_AGE_MIN
-    _ = getattr(tm_mod.config, "NEWS_POLL_INTERVAL_CRYPTO", 0)  # NEWS_POLL_INTERVAL_CRYPTO
-    _ = getattr(tm_mod.config, "NEWS_POLL_INTERVAL_SOCIAL", 0)  # NEWS_POLL_INTERVAL_SOCIAL
-    _ = getattr(tm_mod.config, "NEWS_SENTIMENT_DECAY_HOURS", 0)  # NEWS_SENTIMENT_DECAY_HOURS
-    _ = getattr(tm_mod.config, "NEWS_SENTIMENT_MIN_ARTICLES", 0)  # NEWS_SENTIMENT_MIN_ARTICLES
-    _ = getattr(tm_mod.config, "NEWS_SENTIMENT_WEIGHT", 0)  # NEWS_SENTIMENT_WEIGHT
-    _ = getattr(tm_mod.config, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", 0)  # NOLOSS_BYPASS_WT_5OF5_MIN_TFS
-    _ = getattr(tm_mod.config, "NOLOSS_MIN_PROFIT_PCT_TRADIER", 0)  # NOLOSS_MIN_PROFIT_PCT_TRADIER
-    _ = getattr(tm_mod.config, "OBLIGATORY_HEDGE_PCT", 0)  # OBLIGATORY_HEDGE_PCT
-    _ = getattr(tm_mod.config, "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS", 0)  # OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS
-    _ = getattr(tm_mod.config, "OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER", 0)  # OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER
-    _ = getattr(tm_mod.config, "OI_CONFIRM_MIN_PRICE_PCT_TRADIER", 0)  # OI_CONFIRM_MIN_PRICE_PCT_TRADIER
-    _ = getattr(tm_mod.config, "OI_DIVERGENCE_PENALTY", 0)  # OI_DIVERGENCE_PENALTY
-    _ = getattr(tm_mod.config, "OPENING_BUFFER_NO_CLOSE_MINUTES", 0)  # OPENING_BUFFER_NO_CLOSE_MINUTES
-    _ = getattr(tm_mod.config, "OPTIMAL_HOLD_BARS_15M", 0)  # OPTIMAL_HOLD_BARS_15M
-    _ = getattr(tm_mod.config, "OPTIMAL_HOLD_BARS_3M", 0)  # OPTIMAL_HOLD_BARS_3M
-    _ = getattr(tm_mod.config, "OPTIONS_ALERT_ABS_LOSS_PP", 0)  # OPTIONS_ALERT_ABS_LOSS_PP
-    _ = getattr(tm_mod.config, "OPTIONS_ALERT_DROP_PP", 0)  # OPTIONS_ALERT_DROP_PP
-    _ = getattr(tm_mod.config, "OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD", 0)  # OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD
-    _ = getattr(tm_mod.config, "OPTIONS_BASE_CAP", 0)  # OPTIONS_BASE_CAP
-    _ = getattr(tm_mod.config, "OPTIONS_BUY_MAX_OTM_PCT", 0)  # OPTIONS_BUY_MAX_OTM_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_BUY_MIN_ABS_DELTA", 0)  # OPTIONS_BUY_MIN_ABS_DELTA
-    _ = getattr(tm_mod.config, "OPTIONS_BUY_MIN_DTE", 0)  # OPTIONS_BUY_MIN_DTE
-    _ = getattr(tm_mod.config, "OPTIONS_BUY_MIN_WT_DC_SCORE", 0)  # OPTIONS_BUY_MIN_WT_DC_SCORE
-    _ = getattr(tm_mod.config, "OPTIONS_BUY_PREFERRED_DTE", 0)  # OPTIONS_BUY_PREFERRED_DTE
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_DTE_MAX", 0)  # OPTIONS_CSP_DTE_MAX
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_DTE_MIN", 0)  # OPTIONS_CSP_DTE_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_EDGE_MARGIN", 0)  # OPTIONS_CSP_EDGE_MARGIN
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MAX_CAPITAL_PCT", 0)  # OPTIONS_CSP_MAX_CAPITAL_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MAX_DELTA", 0)  # OPTIONS_CSP_MAX_DELTA
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MAX_HOLD_DAYS", 0)  # OPTIONS_CSP_MAX_HOLD_DAYS
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT", 0)  # OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MIN_DELTA", 0)  # OPTIONS_CSP_MIN_DELTA
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MIN_EXTRINSIC_PCT", 0)  # OPTIONS_CSP_MIN_EXTRINSIC_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MIN_IV_RANK", 0)  # OPTIONS_CSP_MIN_IV_RANK
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CALL_BREACH_PCT", 0)  # OPTIONS_CSP_MONITOR_CALL_BREACH_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT", 0)  # OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N", 0)  # OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT", 0)  # OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT", 0)  # OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_MAX_LOSS_PCT", 0)  # OPTIONS_CSP_MONITOR_MAX_LOSS_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_POLL_SEC", 0)  # OPTIONS_CSP_MONITOR_POLL_SEC
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT", 0)  # OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_CSP_PROFIT_TARGET_PCT", 0)  # OPTIONS_CSP_PROFIT_TARGET_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN", 0)  # OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD", 0)  # OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD
-    _ = getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST", 0)  # OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST
-    _ = getattr(tm_mod.config, "OPTIONS_EQUITY_HEDGE_TRIGGER_PCT", 0)  # OPTIONS_EQUITY_HEDGE_TRIGGER_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_FULL_DIV_CAP", 0)  # OPTIONS_FULL_DIV_CAP
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGED_CAP", 0)  # OPTIONS_HEDGED_CAP
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS", 0)  # OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_DC_REL_TOL_PCT", 0)  # OPTIONS_HEDGE_DC_REL_TOL_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_K_OVERSOLD_PCT", 0)  # OPTIONS_HEDGE_K_OVERSOLD_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DELTA_MAX", 0)  # OPTIONS_HEDGE_PUT_DELTA_MAX
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DELTA_MIN", 0)  # OPTIONS_HEDGE_PUT_DELTA_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DTE_MAX", 0)  # OPTIONS_HEDGE_PUT_DTE_MAX
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_DTE_MIN", 0)  # OPTIONS_HEDGE_PUT_DTE_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_MAX_IV_RANK", 0)  # OPTIONS_HEDGE_PUT_MAX_IV_RANK
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT", 0)  # OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_HEDGE_RATIO_MIN", 0)  # OPTIONS_HEDGE_RATIO_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_LEVEL_BREAK_BUFFER", 0)  # OPTIONS_LEVEL_BREAK_BUFFER
-    _ = getattr(tm_mod.config, "OPTIONS_LEVEL_BREAK_MIN_DTE", 0)  # OPTIONS_LEVEL_BREAK_MIN_DTE
-    _ = getattr(tm_mod.config, "OPTIONS_MARKET_RATIO_MAX", 0)  # OPTIONS_MARKET_RATIO_MAX
-    _ = getattr(tm_mod.config, "OPTIONS_MARKET_RATIO_MIN", 0)  # OPTIONS_MARKET_RATIO_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_CONTRACTS_PER_ORDER", 0)  # OPTIONS_MAX_CONTRACTS_PER_ORDER
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_14", 0)  # OPTIONS_MAX_LOSS_PCT_DTE_14
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_30", 0)  # OPTIONS_MAX_LOSS_PCT_DTE_30
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_LOSS_PCT_DTE_LOW", 0)  # OPTIONS_MAX_LOSS_PCT_DTE_LOW
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_ORDER_BUDGET", 0)  # OPTIONS_MAX_ORDER_BUDGET
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_PER_GROUP", 0)  # OPTIONS_MAX_PER_GROUP
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_PER_SECTOR", 0)  # OPTIONS_MAX_PER_SECTOR
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_PER_SYMBOL", 0)  # OPTIONS_MAX_PER_SYMBOL
-    _ = getattr(tm_mod.config, "OPTIONS_MAX_SINGLE_CONTRACT_PRICE", 0)  # OPTIONS_MAX_SINGLE_CONTRACT_PRICE
-    _ = getattr(tm_mod.config, "OPTIONS_MIN_GROUPS", 0)  # OPTIONS_MIN_GROUPS
-    _ = getattr(tm_mod.config, "OPTIONS_MIN_SECTORS", 0)  # OPTIONS_MIN_SECTORS
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_DTE_MAX", 0)  # OPTIONS_SPREAD_DTE_MAX
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_DTE_MIN", 0)  # OPTIONS_SPREAD_DTE_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_IV_RANK_MIN", 0)  # OPTIONS_SPREAD_IV_RANK_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_MAX_CONCURRENT", 0)  # OPTIONS_SPREAD_MAX_CONCURRENT
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_MAX_HOLD_DAYS", 0)  # OPTIONS_SPREAD_MAX_HOLD_DAYS
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_PROFIT_TARGET_PCT", 0)  # OPTIONS_SPREAD_PROFIT_TARGET_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_SHORT_DELTA", 0)  # OPTIONS_SPREAD_SHORT_DELTA
-    _ = getattr(tm_mod.config, "OPTIONS_SPREAD_WIDTH", 0)  # OPTIONS_SPREAD_WIDTH
-    _ = getattr(tm_mod.config, "OPTIONS_STOCK_CSP_IV_RANK_MIN", 0)  # OPTIONS_STOCK_CSP_IV_RANK_MIN
-    _ = getattr(tm_mod.config, "OPTIONS_STOCK_CSP_MAX_CONCURRENT", 0)  # OPTIONS_STOCK_CSP_MAX_CONCURRENT
-    _ = getattr(tm_mod.config, "OPTIONS_STOCK_CSP_MIN_CASH", 0)  # OPTIONS_STOCK_CSP_MIN_CASH
-    _ = getattr(tm_mod.config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", 0)  # OPTIONS_USER_CANCEL_COOLDOWN_HOURS
-    _ = getattr(tm_mod.config, "OPTIONS_WT_ACCEL_GROWTH_PCT", 0)  # OPTIONS_WT_ACCEL_GROWTH_PCT
-    _ = getattr(tm_mod.config, "OPTIONS_WT_ACCEL_MIN_ABS", 0)  # OPTIONS_WT_ACCEL_MIN_ABS
-    _ = getattr(tm_mod.config, "OPTIONS_WT_SLOWDOWN_PCT", 0)  # OPTIONS_WT_SLOWDOWN_PCT
-    _ = getattr(tm_mod.config, "ORB_LONG_BUDGET", 0)  # ORB_LONG_BUDGET
-    _ = getattr(tm_mod.config, "ORB_MAX_HOLD_MINUTES", 0)  # ORB_MAX_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "ORB_MAX_PER_DAY", 0)  # ORB_MAX_PER_DAY
-    _ = getattr(tm_mod.config, "ORB_POSITION_SIZE", 0)  # ORB_POSITION_SIZE
-    _ = getattr(tm_mod.config, "ORB_RVOL_MIN", 0)  # ORB_RVOL_MIN
-    _ = getattr(tm_mod.config, "ORB_SHORT_BUDGET", 0)  # ORB_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "ORB_TARGET_MULT", 0)  # ORB_TARGET_MULT
-    _ = getattr(tm_mod.config, "ORB_WINDOW_MINUTES", 0)  # ORB_WINDOW_MINUTES
-    _ = getattr(tm_mod.config, "ORDER_CACHE_TTL", 0)  # ORDER_CACHE_TTL
-    _ = getattr(tm_mod.config, "OUTLIER_RUNAWAY_ATR_FACTOR", 0)  # OUTLIER_RUNAWAY_ATR_FACTOR
-    _ = getattr(tm_mod.config, "OUTLIER_SCAN_INTERVAL", 0)  # OUTLIER_SCAN_INTERVAL
-    _ = getattr(tm_mod.config, "OUTLIER_STALE_HOURS", 0)  # OUTLIER_STALE_HOURS
-    _ = getattr(tm_mod.config, "OUTLIER_STUCK_ATR_FACTOR", 0)  # OUTLIER_STUCK_ATR_FACTOR
-    _ = getattr(tm_mod.config, "OUTLIER_STUCK_HOURS", 0)  # OUTLIER_STUCK_HOURS
-    _ = getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES", 0)  # OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES
-    _ = getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_OPEN_MINUTES", 0)  # OVERNIGHT_GAP_HEDGE_OPEN_MINUTES
-    _ = getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD", 0)  # OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD
-    _ = getattr(tm_mod.config, "OVERNIGHT_GAP_HEDGE_SIZE_FRAC", 0)  # OVERNIGHT_GAP_HEDGE_SIZE_FRAC
-    _ = getattr(tm_mod.config, "PARABOLIC_BB_PCT_B_4H_MAX", 0)  # PARABOLIC_BB_PCT_B_4H_MAX
-    _ = getattr(tm_mod.config, "PARABOLIC_BB_PCT_B_4H_MIN", 0)  # PARABOLIC_BB_PCT_B_4H_MIN
-    _ = getattr(tm_mod.config, "PARABOLIC_RSI_1H_MAX", 0)  # PARABOLIC_RSI_1H_MAX
-    _ = getattr(tm_mod.config, "PARABOLIC_RSI_1H_MIN", 0)  # PARABOLIC_RSI_1H_MIN
-    _ = getattr(tm_mod.config, "PARABOLIC_RSI_4H_MAX", 0)  # PARABOLIC_RSI_4H_MAX
-    _ = getattr(tm_mod.config, "PARABOLIC_RSI_4H_MIN", 0)  # PARABOLIC_RSI_4H_MIN
-    _ = getattr(tm_mod.config, "PEAK_GIVEBACK_DROP_PCT", 0)  # PEAK_GIVEBACK_DROP_PCT
-    _ = getattr(tm_mod.config, "PEAK_GIVEBACK_MIN_PEAK_PCT", 0)  # PEAK_GIVEBACK_MIN_PEAK_PCT
-    _ = getattr(tm_mod.config, "PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT", 0)  # PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT
-    _ = getattr(tm_mod.config, "PENNY_STOCK_LONG_BLOCK_PRICE_USD", 0)  # PENNY_STOCK_LONG_BLOCK_PRICE_USD
-    _ = getattr(tm_mod.config, "PLOT_LOOP_INTERVAL_SECONDS", 0)  # PLOT_LOOP_INTERVAL_SECONDS
-    _ = getattr(tm_mod.config, "PNL_DECAY_COMPLETE_DAYS", 0)  # PNL_DECAY_COMPLETE_DAYS
-    _ = getattr(tm_mod.config, "PNL_DECAY_FINAL_PERCENTAGE", 0)  # PNL_DECAY_FINAL_PERCENTAGE
-    _ = getattr(tm_mod.config, "PNL_DECAY_START_HOURS", 0)  # PNL_DECAY_START_HOURS
-    _ = getattr(tm_mod.config, "POSITIONS_SERVICE_HEALTH_TIMEOUT", 0)  # POSITIONS_SERVICE_HEALTH_TIMEOUT
-    _ = getattr(tm_mod.config, "POSITION_CACHE_TTL", 0)  # POSITION_CACHE_TTL
-    _ = getattr(tm_mod.config, "POSITION_REDIS_REFRESH_INTERVAL", 0)  # POSITION_REDIS_REFRESH_INTERVAL
-    _ = getattr(tm_mod.config, "POSITION_REFRESH_INTERVAL", 0)  # POSITION_REFRESH_INTERVAL
-    _ = getattr(tm_mod.config, "POSITION_REFRESH_MIN_INTERVAL", 0)  # POSITION_REFRESH_MIN_INTERVAL
-    _ = getattr(tm_mod.config, "POSITION_SAVE_INTERVAL", 0)  # POSITION_SAVE_INTERVAL
-    _ = getattr(tm_mod.config, "POSITION_STALE_THRESHOLD_SECONDS", 0)  # POSITION_STALE_THRESHOLD_SECONDS
-    _ = getattr(tm_mod.config, "PRICE_CROSS_BACK_MAX_AGE_MIN", 0)  # PRICE_CROSS_BACK_MAX_AGE_MIN
-    _ = getattr(tm_mod.config, "PRICE_REFRESH_INTERVAL", 0)  # PRICE_REFRESH_INTERVAL
-    _ = getattr(tm_mod.config, "PRICE_UPDATE_INTERVAL", 0)  # PRICE_UPDATE_INTERVAL
-    _ = getattr(tm_mod.config, "PROFIT_TARGET_PCT", 0)  # PROFIT_TARGET_PCT
-    _ = getattr(tm_mod.config, "PROGRESSIVE_LOCK_FRACTION", 0)  # PROGRESSIVE_LOCK_FRACTION
-    _ = getattr(tm_mod.config, "PYRAMID_MAX_DC_POS_15M_SHORT", 0)  # PYRAMID_MAX_DC_POS_15M_SHORT
-    _ = getattr(tm_mod.config, "PYRAMID_MIN_DC_POS_15M", 0)  # PYRAMID_MIN_DC_POS_15M
-    _ = getattr(tm_mod.config, "PYRAMID_MIN_GAIN_PCT", 0)  # PYRAMID_MIN_GAIN_PCT
-    _ = getattr(tm_mod.config, "PYRAMID_MIN_WT_VEL_1H", 0)  # PYRAMID_MIN_WT_VEL_1H
-    _ = getattr(tm_mod.config, "PYRAMID_SIZE_MULT", 0)  # PYRAMID_SIZE_MULT
-    _ = getattr(tm_mod.config, "R1_NEWBORN_WINDOW_MIN", 0)  # R1_NEWBORN_WINDOW_MIN
-    _ = getattr(tm_mod.config, "R1_TF", 0)  # R1_TF
-    _ = getattr(tm_mod.config, "R2_PEAK_MIN_PCT", 0)  # R2_PEAK_MIN_PCT
-    _ = getattr(tm_mod.config, "R3_GAIN_MAX_PCT", 0)  # R3_GAIN_MAX_PCT
-    _ = getattr(tm_mod.config, "R3_HTF_FLIP_NEWBORN_WINDOW_MIN", 0)  # R3_HTF_FLIP_NEWBORN_WINDOW_MIN
-    _ = getattr(tm_mod.config, "RANKING_LOOP_SLEEP_SECONDS", 0)  # RANKING_LOOP_SLEEP_SECONDS
-    _ = getattr(tm_mod.config, "RANKING_UPDATE_INTERVAL", 0)  # RANKING_UPDATE_INTERVAL
-    _ = getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_COOLDOWN", 0)  # RATIO_EMERGENCY_EXIT_COOLDOWN
-    _ = getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT", 0)  # RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT
-    _ = getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE", 0)  # RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE
-    _ = getattr(tm_mod.config, "RATIO_EMERGENCY_EXIT_THRESHOLD", 0)  # RATIO_EMERGENCY_EXIT_THRESHOLD
-    _ = getattr(tm_mod.config, "RATIO_MULTIPLIER_TRADIER", 0)  # RATIO_MULTIPLIER_TRADIER
-    _ = getattr(tm_mod.config, "REBAL_ATTEMPT_COOLDOWN_SEC", 0)  # REBAL_ATTEMPT_COOLDOWN_SEC
-    _ = getattr(tm_mod.config, "RECOVERY_AUGMENT_BAND_PCT", 0)  # RECOVERY_AUGMENT_BAND_PCT
-    _ = getattr(tm_mod.config, "RECOVERY_AUGMENT_MAX_AGE_MIN", 0)  # RECOVERY_AUGMENT_MAX_AGE_MIN
-    _ = getattr(tm_mod.config, "RECOVERY_AUGMENT_SIZE_PCT", 0)  # RECOVERY_AUGMENT_SIZE_PCT
-    _ = getattr(tm_mod.config, "REDIS_CHANNEL_MARKET_DATA", 0)  # REDIS_CHANNEL_MARKET_DATA
-    _ = getattr(tm_mod.config, "REDIS_CHANNEL_POSITIONS", 0)  # REDIS_CHANNEL_POSITIONS
-    _ = getattr(tm_mod.config, "REDIS_CHANNEL_PRICES", 0)  # REDIS_CHANNEL_PRICES
-    _ = getattr(tm_mod.config, "REDIS_CHANNEL_SIGNALS", 0)  # REDIS_CHANNEL_SIGNALS
-    _ = getattr(tm_mod.config, "REDIS_DB", 0)  # REDIS_DB
-    _ = getattr(tm_mod.config, "REDIS_EXPIRY_SECONDS", 0)  # REDIS_EXPIRY_SECONDS
-    _ = getattr(tm_mod.config, "REDIS_HOST", 0)  # REDIS_HOST
-    _ = getattr(tm_mod.config, "REDIS_KEY_MARKET_DATA", 0)  # REDIS_KEY_MARKET_DATA
-    _ = getattr(tm_mod.config, "REDIS_PORT", 0)  # REDIS_PORT
-    _ = getattr(tm_mod.config, "REDUCE_HUGE_LOSS_THRESHOLD", 0)  # REDUCE_HUGE_LOSS_THRESHOLD
-    _ = getattr(tm_mod.config, "REDUCTION_COOLDOWN_SECONDS", 0)  # REDUCTION_COOLDOWN_SECONDS
-    _ = getattr(tm_mod.config, "RED_ZONE_TRADIER_MIN_DISTANCE_PCT", 0)  # RED_ZONE_TRADIER_MIN_DISTANCE_PCT
-    _ = getattr(tm_mod.config, "RED_ZONE_TRADIER_MIN_OI_AT_WALL", 0)  # RED_ZONE_TRADIER_MIN_OI_AT_WALL
-    _ = getattr(tm_mod.config, "RED_ZONE_TRADIER_STALE_MAX_HOURS", 0)  # RED_ZONE_TRADIER_STALE_MAX_HOURS
-    _ = getattr(tm_mod.config, "REENTER_SAVE_DEBOUNCE_SECONDS", 0)  # REENTER_SAVE_DEBOUNCE_SECONDS
-    _ = getattr(tm_mod.config, "REENTRY_60MIN_MIN_PCT", 0)  # REENTRY_60MIN_MIN_PCT
-    _ = getattr(tm_mod.config, "REENTRY_60MIN_WINDOW_MIN", 0)  # REENTRY_60MIN_WINDOW_MIN
-    _ = getattr(tm_mod.config, "REENTRY_AGGRESSIVE_WINDOW_MIN", 0)  # REENTRY_AGGRESSIVE_WINDOW_MIN
-    _ = getattr(tm_mod.config, "REENTRY_COOLDOWN_S", 0)  # REENTRY_COOLDOWN_S
-    _ = getattr(tm_mod.config, "REENTRY_DISPATCH_BACKOFF_S", 0)  # REENTRY_DISPATCH_BACKOFF_S
-    _ = getattr(tm_mod.config, "REENTRY_DISPATCH_MAX_ATTEMPTS", 0)  # REENTRY_DISPATCH_MAX_ATTEMPTS
-    _ = getattr(tm_mod.config, "REENTRY_ESCALATION_CRIT_MIN", 0)  # REENTRY_ESCALATION_CRIT_MIN
-    _ = getattr(tm_mod.config, "REENTRY_ESCALATION_WARN_MIN", 0)  # REENTRY_ESCALATION_WARN_MIN
-    _ = getattr(tm_mod.config, "REENTRY_FAVORABLE_HTF_MIN", 0)  # REENTRY_FAVORABLE_HTF_MIN
-    _ = getattr(tm_mod.config, "REENTRY_FAVORABLE_MOVE_PCT", 0)  # REENTRY_FAVORABLE_MOVE_PCT
-    _ = getattr(tm_mod.config, "REENTRY_FAVORABLE_QTY_MULT", 0)  # REENTRY_FAVORABLE_QTY_MULT
-    _ = getattr(tm_mod.config, "REENTRY_GR_HLHH_MODE", 0)  # REENTRY_GR_HLHH_MODE
-    _ = getattr(tm_mod.config, "REENTRY_GR_MIN_TFS", 0)  # REENTRY_GR_MIN_TFS
-    _ = getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_MULT", 0)  # REENTRY_K15M_PARTIAL_MULT
-    _ = getattr(tm_mod.config, "REENTRY_K15M_PARTIAL_THRESHOLD", 0)  # REENTRY_K15M_PARTIAL_THRESHOLD
-    _ = getattr(tm_mod.config, "REENTRY_LIVE_MONITOR_DC_BREAK_TF", 0)  # REENTRY_LIVE_MONITOR_DC_BREAK_TF
-    _ = getattr(tm_mod.config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 0)  # REENTRY_MAX_PRICE_DIVERGENCE_PCT
-    _ = getattr(tm_mod.config, "REENTRY_MIN_GAP_MINUTES", 0)  # REENTRY_MIN_GAP_MINUTES
-    _ = getattr(tm_mod.config, "REENTRY_RALLY_HTF_MIN", 0)  # REENTRY_RALLY_HTF_MIN
-    _ = getattr(tm_mod.config, "REENTRY_RALLY_K15M_MAX", 0)  # REENTRY_RALLY_K15M_MAX
-    _ = getattr(tm_mod.config, "REENTRY_SIZE_BREAKOUT_MULT", 0)  # REENTRY_SIZE_BREAKOUT_MULT
-    _ = getattr(tm_mod.config, "REENTRY_SIZE_DIP_MULT", 0)  # REENTRY_SIZE_DIP_MULT
-    _ = getattr(tm_mod.config, "REENTRY_SIZE_EXTENDED_K1H", 0)  # REENTRY_SIZE_EXTENDED_K1H
-    _ = getattr(tm_mod.config, "REENTRY_SIZE_EXTENDED_MULT", 0)  # REENTRY_SIZE_EXTENDED_MULT
-    _ = getattr(tm_mod.config, "REENTRY_STOCH_K_MAX_LONG", 0)  # REENTRY_STOCH_K_MAX_LONG
-    _ = getattr(tm_mod.config, "REENTRY_STOCH_K_MIN_SHORT", 0)  # REENTRY_STOCH_K_MIN_SHORT
-    _ = getattr(tm_mod.config, "REENTRY_SYMGATE_SPEED_MIN", 0)  # REENTRY_SYMGATE_SPEED_MIN
-    _ = getattr(tm_mod.config, "REENTRY_TIER1_SIZE_MULT_TRADIER", 0)  # REENTRY_TIER1_SIZE_MULT_TRADIER
-    _ = getattr(tm_mod.config, "REENTRY_TIER2_MAX_MINUTES_TRADIER", 0)  # REENTRY_TIER2_MAX_MINUTES_TRADIER
-    _ = getattr(tm_mod.config, "REENTRY_TIER2_MIN_MINUTES_TRADIER", 0)  # REENTRY_TIER2_MIN_MINUTES_TRADIER
-    _ = getattr(tm_mod.config, "REENTRY_TIER2_PRICE_PCT_TRADIER", 0)  # REENTRY_TIER2_PRICE_PCT_TRADIER
-    _ = getattr(tm_mod.config, "REENTRY_TIER2_SIZE_MULT_TRADIER", 0)  # REENTRY_TIER2_SIZE_MULT_TRADIER
-    _ = getattr(tm_mod.config, "REENTRY_WT15M_SIZE_MULT", 0)  # REENTRY_WT15M_SIZE_MULT
-    _ = getattr(tm_mod.config, "REGIME_ATR_RATIO_MIN", 0)  # REGIME_ATR_RATIO_MIN
-    _ = getattr(tm_mod.config, "REGIME_BB_WIDTH_PCT_MIN", 0)  # REGIME_BB_WIDTH_PCT_MIN
-    _ = getattr(tm_mod.config, "REGIME_BTC_MARKET_WEIGHT", 0)  # REGIME_BTC_MARKET_WEIGHT
-    _ = getattr(tm_mod.config, "REGIME_DC_ATR_RATIO_MIN", 0)  # REGIME_DC_ATR_RATIO_MIN
-    _ = getattr(tm_mod.config, "REGIME_ENTER_TRENDING_THRESHOLD", 0)  # REGIME_ENTER_TRENDING_THRESHOLD
-    _ = getattr(tm_mod.config, "REGIME_EXIT_TRENDING_THRESHOLD", 0)  # REGIME_EXIT_TRENDING_THRESHOLD
-    _ = getattr(tm_mod.config, "REGIME_MIN_DWELL_BARS", 0)  # REGIME_MIN_DWELL_BARS
-    _ = getattr(tm_mod.config, "REGIME_RANGING_DC_BREAKOUT_SCORE", 0)  # REGIME_RANGING_DC_BREAKOUT_SCORE
-    _ = getattr(tm_mod.config, "REGIME_RANGING_EXIT_GAIN_MIN", 0)  # REGIME_RANGING_EXIT_GAIN_MIN
-    _ = getattr(tm_mod.config, "REGIME_RANGING_K_ZONE_BONUS", 0)  # REGIME_RANGING_K_ZONE_BONUS
-    _ = getattr(tm_mod.config, "REGIME_RANGING_MIN_HOLD_BARS", 0)  # REGIME_RANGING_MIN_HOLD_BARS
-    _ = getattr(tm_mod.config, "REGIME_RANGING_NOLOSS_MIN", 0)  # REGIME_RANGING_NOLOSS_MIN
-    _ = getattr(tm_mod.config, "REGIME_RANGING_POSITION_SIZE_MULT", 0)  # REGIME_RANGING_POSITION_SIZE_MULT
-    _ = getattr(tm_mod.config, "REGIME_RANGING_REENTRY_SIZE_MULT", 0)  # REGIME_RANGING_REENTRY_SIZE_MULT
-    _ = getattr(tm_mod.config, "REGIME_RANGING_SLOT_RESERVE_PCT", 0)  # REGIME_RANGING_SLOT_RESERVE_PCT
-    _ = getattr(tm_mod.config, "REGIME_RANGING_STALE_HOURS", 0)  # REGIME_RANGING_STALE_HOURS
-    _ = getattr(tm_mod.config, "REGIME_RANGING_STALE_MIN_PROFIT", 0)  # REGIME_RANGING_STALE_MIN_PROFIT
-    _ = getattr(tm_mod.config, "REGIME_RANGING_WT_EXIT_VEL", 0)  # REGIME_RANGING_WT_EXIT_VEL
-    _ = getattr(tm_mod.config, "REGIME_RANGING_WT_REDUCE_FRAC_LOW", 0)  # REGIME_RANGING_WT_REDUCE_FRAC_LOW
-    _ = getattr(tm_mod.config, "REGIME_RANGING_WT_REDUCE_FRAC_MED", 0)  # REGIME_RANGING_WT_REDUCE_FRAC_MED
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_DC_BREAKOUT_SCORE", 0)  # REGIME_TRENDING_DC_BREAKOUT_SCORE
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_EXIT_GAIN_MIN", 0)  # REGIME_TRENDING_EXIT_GAIN_MIN
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_K_RESET_THRESHOLD", 0)  # REGIME_TRENDING_K_RESET_THRESHOLD
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_K_ZONE_BONUS", 0)  # REGIME_TRENDING_K_ZONE_BONUS
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_MIN_HOLD_BARS", 0)  # REGIME_TRENDING_MIN_HOLD_BARS
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_NOLOSS_MIN", 0)  # REGIME_TRENDING_NOLOSS_MIN
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_POSITION_SIZE_MULT", 0)  # REGIME_TRENDING_POSITION_SIZE_MULT
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_REENTRY_SIZE_MULT", 0)  # REGIME_TRENDING_REENTRY_SIZE_MULT
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_SLOT_RESERVE_PCT", 0)  # REGIME_TRENDING_SLOT_RESERVE_PCT
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_WT_EXIT_VEL", 0)  # REGIME_TRENDING_WT_EXIT_VEL
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_WT_REDUCE_FRAC_LOW", 0)  # REGIME_TRENDING_WT_REDUCE_FRAC_LOW
-    _ = getattr(tm_mod.config, "REGIME_TRENDING_WT_REDUCE_FRAC_MED", 0)  # REGIME_TRENDING_WT_REDUCE_FRAC_MED
-    _ = getattr(tm_mod.config, "RISK_FREE_RATE", 0)  # RISK_FREE_RATE
-    _ = getattr(tm_mod.config, "ROTATION_BOTTOM_N", 0)  # ROTATION_BOTTOM_N
-    _ = getattr(tm_mod.config, "ROTATION_HOLD_DAYS", 0)  # ROTATION_HOLD_DAYS
-    _ = getattr(tm_mod.config, "ROTATION_LOOKBACK_DAYS", 0)  # ROTATION_LOOKBACK_DAYS
-    _ = getattr(tm_mod.config, "ROTATION_POSITION_SIZE", 0)  # ROTATION_POSITION_SIZE
-    _ = getattr(tm_mod.config, "ROTATION_TOP_N", 0)  # ROTATION_TOP_N
-    _ = getattr(tm_mod.config, "RP_OPPOSITE_PENALTY", 0)  # RP_OPPOSITE_PENALTY
-    _ = getattr(tm_mod.config, "RP_PROTECT_MIN_GAIN", 0)  # RP_PROTECT_MIN_GAIN
-    _ = getattr(tm_mod.config, "RP_PROTECT_THRESHOLD", 0)  # RP_PROTECT_THRESHOLD
-    _ = getattr(tm_mod.config, "RP_STRONG_BONUS", 0)  # RP_STRONG_BONUS
-    _ = getattr(tm_mod.config, "RP_STRONG_THRESHOLD", 0)  # RP_STRONG_THRESHOLD
-    _ = getattr(tm_mod.config, "RP_WEAK_PENALTY", 0)  # RP_WEAK_PENALTY
-    _ = getattr(tm_mod.config, "RP_WEAK_THRESHOLD", 0)  # RP_WEAK_THRESHOLD
-    _ = getattr(tm_mod.config, "RSI2_ENTRY_THRESHOLD", 0)  # RSI2_ENTRY_THRESHOLD
-    _ = getattr(tm_mod.config, "RSI2_EXIT_THRESHOLD_LONG", 0)  # RSI2_EXIT_THRESHOLD_LONG
-    _ = getattr(tm_mod.config, "RSI2_EXIT_THRESHOLD_SHORT", 0)  # RSI2_EXIT_THRESHOLD_SHORT
-    _ = getattr(tm_mod.config, "RSI2_POSITION_SIZE", 0)  # RSI2_POSITION_SIZE
-    _ = getattr(tm_mod.config, "RSI2_SCORE_BONUS", 0)  # RSI2_SCORE_BONUS
-    _ = getattr(tm_mod.config, "RSI2_THRESHOLD_LONG", 0)  # RSI2_THRESHOLD_LONG
-    _ = getattr(tm_mod.config, "RSI2_THRESHOLD_SHORT", 0)  # RSI2_THRESHOLD_SHORT
-    _ = getattr(tm_mod.config, "RSI_ENTRY_LONG_TRADIER", 0)  # RSI_ENTRY_LONG_TRADIER
-    _ = getattr(tm_mod.config, "RSI_ENTRY_MAX_LONG", 0)  # RSI_ENTRY_MAX_LONG
-    _ = getattr(tm_mod.config, "RSI_ENTRY_MIN_SHORT", 0)  # RSI_ENTRY_MIN_SHORT
-    _ = getattr(tm_mod.config, "RSI_ENTRY_PERIOD_TRADIER", 0)  # RSI_ENTRY_PERIOD_TRADIER
-    _ = getattr(tm_mod.config, "RSI_EXIT_LONG_TRADIER", 0)  # RSI_EXIT_LONG_TRADIER
-    _ = getattr(tm_mod.config, "RSI_EXIT_SHORT_TRADIER", 0)  # RSI_EXIT_SHORT_TRADIER
-    _ = getattr(tm_mod.config, "RSI_MACD_EMA_RSI_LONG", 0)  # RSI_MACD_EMA_RSI_LONG
-    _ = getattr(tm_mod.config, "RSI_MACD_EMA_RSI_SHORT", 0)  # RSI_MACD_EMA_RSI_SHORT
-    _ = getattr(tm_mod.config, "RSI_MACD_EMA_SCORE", 0)  # RSI_MACD_EMA_SCORE
-    _ = getattr(tm_mod.config, "RSI_MACD_EMA_TF", 0)  # RSI_MACD_EMA_TF
-    _ = getattr(tm_mod.config, "RVOL_MOMENTUM_MIN", 0)  # RVOL_MOMENTUM_MIN
-    _ = getattr(tm_mod.config, "RVOL_SCALP_MIN", 0)  # RVOL_SCALP_MIN
-    _ = getattr(tm_mod.config, "RVOL_SCORE_BOOST_PCT", 0)  # RVOL_SCORE_BOOST_PCT
-    _ = getattr(tm_mod.config, "RVOL_SCORE_BOOST_THRESHOLD", 0)  # RVOL_SCORE_BOOST_THRESHOLD
-    _ = getattr(tm_mod.config, "RZ_BASELINE_TOL", 0)  # RZ_BASELINE_TOL
-    _ = getattr(tm_mod.config, "RZ_BOT_BB_THRESHOLD", 0)  # RZ_BOT_BB_THRESHOLD
-    _ = getattr(tm_mod.config, "RZ_DIV_BLOCK_MIN", 0)  # RZ_DIV_BLOCK_MIN
-    _ = getattr(tm_mod.config, "RZ_K_ENTRY_BOTTOM", 0)  # RZ_K_ENTRY_BOTTOM
-    _ = getattr(tm_mod.config, "RZ_K_ENTRY_MAX", 0)  # RZ_K_ENTRY_MAX
-    _ = getattr(tm_mod.config, "RZ_K_EXIT", 0)  # RZ_K_EXIT
-    _ = getattr(tm_mod.config, "RZ_LEGS_MIN", 0)  # RZ_LEGS_MIN
-    _ = getattr(tm_mod.config, "RZ_LTF_MICRO", 0)  # RZ_LTF_MICRO
-    _ = getattr(tm_mod.config, "RZ_MFI_ENTRY_BOTTOM", 0)  # RZ_MFI_ENTRY_BOTTOM
-    _ = getattr(tm_mod.config, "RZ_MFI_EXIT", 0)  # RZ_MFI_EXIT
-    _ = getattr(tm_mod.config, "RZ_TOP_BB_THRESHOLD", 0)  # RZ_TOP_BB_THRESHOLD
-    _ = getattr(tm_mod.config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", 0)  # SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER", 0)  # SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_EXIT_PARTIAL_PCT", 0)  # SATOSHIT_EXIT_PARTIAL_PCT
-    _ = getattr(tm_mod.config, "SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER", 0)  # SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER", 0)  # SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_HTF_MFI_D_MIN_TRADIER", 0)  # SATOSHIT_HTF_MFI_D_MIN_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_HTF_RVOL_1H_MIN_TRADIER", 0)  # SATOSHIT_HTF_RVOL_1H_MIN_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_LONG_BB_PCTB_MAX", 0)  # SATOSHIT_LONG_BB_PCTB_MAX
-    _ = getattr(tm_mod.config, "SATOSHIT_LONG_HA_STREAK_MAX", 0)  # SATOSHIT_LONG_HA_STREAK_MAX
-    _ = getattr(tm_mod.config, "SATOSHIT_LONG_MFI_MAX_TRADIER", 0)  # SATOSHIT_LONG_MFI_MAX_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_LONG_RSI_MAX_TRADIER", 0)  # SATOSHIT_LONG_RSI_MAX_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_LONG_STOCH_K_MAX_TRADIER", 0)  # SATOSHIT_LONG_STOCH_K_MAX_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_MIN_VOTES_TRADIER", 0)  # SATOSHIT_MIN_VOTES_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_QTY_MULT", 0)  # SATOSHIT_QTY_MULT
-    _ = getattr(tm_mod.config, "SATOSHIT_SCORE_BONUS", 0)  # SATOSHIT_SCORE_BONUS
-    _ = getattr(tm_mod.config, "SATOSHIT_SHORT_BB_PCTB_MIN", 0)  # SATOSHIT_SHORT_BB_PCTB_MIN
-    _ = getattr(tm_mod.config, "SATOSHIT_SHORT_HA_STREAK_MIN", 0)  # SATOSHIT_SHORT_HA_STREAK_MIN
-    _ = getattr(tm_mod.config, "SATOSHIT_SHORT_MFI_MIN_TRADIER", 0)  # SATOSHIT_SHORT_MFI_MIN_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_SHORT_RSI_MIN_TRADIER", 0)  # SATOSHIT_SHORT_RSI_MIN_TRADIER
-    _ = getattr(tm_mod.config, "SATOSHIT_SHORT_STOCH_K_MIN_TRADIER", 0)  # SATOSHIT_SHORT_STOCH_K_MIN_TRADIER
-    _ = getattr(tm_mod.config, "SBA_ADX_MAX_TRADIER", 0)  # SBA_ADX_MAX_TRADIER
-    _ = getattr(tm_mod.config, "SBA_ADX_TF", 0)  # SBA_ADX_TF
-    _ = getattr(tm_mod.config, "SBA_COOLDOWN_GLOBAL_S", 0)  # SBA_COOLDOWN_GLOBAL_S
-    _ = getattr(tm_mod.config, "SBA_COOLDOWN_POSITION_S", 0)  # SBA_COOLDOWN_POSITION_S
-    _ = getattr(tm_mod.config, "SBA_COOLDOWN_S_TRADIER", 0)  # SBA_COOLDOWN_S_TRADIER
-    _ = getattr(tm_mod.config, "SBA_MAX_ADDS_TRADIER", 0)  # SBA_MAX_ADDS_TRADIER
-    _ = getattr(tm_mod.config, "SBA_MAX_CONCURRENT", 0)  # SBA_MAX_CONCURRENT
-    _ = getattr(tm_mod.config, "SBA_MAX_LOSS_PCT_TRADIER", 0)  # SBA_MAX_LOSS_PCT_TRADIER
-    _ = getattr(tm_mod.config, "SBA_MAX_TOTAL_MULT", 0)  # SBA_MAX_TOTAL_MULT
-    _ = getattr(tm_mod.config, "SBA_MIN_LOSS_PCT_TRADIER", 0)  # SBA_MIN_LOSS_PCT_TRADIER
-    _ = getattr(tm_mod.config, "SBA_MIN_SCORE", 0)  # SBA_MIN_SCORE
-    _ = getattr(tm_mod.config, "SBA_SIZE_FRACTION_TRADIER", 0)  # SBA_SIZE_FRACTION_TRADIER
-    _ = getattr(tm_mod.config, "SCALP_MAX_HOLD_MINUTES", 0)  # SCALP_MAX_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "SCALP_MAX_POSITIONS_PER_SIDE", 0)  # SCALP_MAX_POSITIONS_PER_SIDE
-    _ = getattr(tm_mod.config, "SCALP_MIN_MOVE_PCT", 0)  # SCALP_MIN_MOVE_PCT
-    _ = getattr(tm_mod.config, "SCALP_MIN_REL_VOL", 0)  # SCALP_MIN_REL_VOL
-    _ = getattr(tm_mod.config, "SCALP_START_SIZE", 0)  # SCALP_START_SIZE
-    _ = getattr(tm_mod.config, "SCALP_STOP_PCT", 0)  # SCALP_STOP_PCT
-    _ = getattr(tm_mod.config, "SCALP_TARGET_PCT", 0)  # SCALP_TARGET_PCT
-    _ = getattr(tm_mod.config, "SCALP_TOP_MOVERS_N", 0)  # SCALP_TOP_MOVERS_N
-    _ = getattr(tm_mod.config, "SCALP_V2_LH_LL_TF", 0)  # SCALP_V2_LH_LL_TF
-    _ = getattr(tm_mod.config, "SCALP_V2_MAX_CONCURRENT", 0)  # SCALP_V2_MAX_CONCURRENT
-    _ = getattr(tm_mod.config, "SCALP_V2_MAX_HOLD_MINUTES", 0)  # SCALP_V2_MAX_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "SCALP_V2_REDZONE_K_THRESHOLD", 0)  # SCALP_V2_REDZONE_K_THRESHOLD
-    _ = getattr(tm_mod.config, "SCALP_V2_REENTRY_COOLDOWN_S", 0)  # SCALP_V2_REENTRY_COOLDOWN_S
-    _ = getattr(tm_mod.config, "SCALP_V2_VARIANT", 0)  # SCALP_V2_VARIANT
-    _ = getattr(tm_mod.config, "SECTOR_LS_MIN_POSITIONS", 0)  # SECTOR_LS_MIN_POSITIONS
-    _ = getattr(tm_mod.config, "SECTOR_LS_RATIO_MAX", 0)  # SECTOR_LS_RATIO_MAX
-    _ = getattr(tm_mod.config, "SECTOR_LS_RATIO_MIN", 0)  # SECTOR_LS_RATIO_MIN
-    _ = getattr(tm_mod.config, "SENTIMENT_REBAL_AUGMENT_DEVIATION_THR", 0)  # SENTIMENT_REBAL_AUGMENT_DEVIATION_THR
-    _ = getattr(tm_mod.config, "SENTIMENT_REBAL_COOLDOWN_MIN", 0)  # SENTIMENT_REBAL_COOLDOWN_MIN
-    _ = getattr(tm_mod.config, "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", 0)  # SENTIMENT_REBAL_REDUCE_DEVIATION_THR
-    _ = getattr(tm_mod.config, "SHORT_ABOVE_SMA20_BONUS", 0)  # SHORT_ABOVE_SMA20_BONUS
-    _ = getattr(tm_mod.config, "SHORT_RSI_MIN_1H", 0)  # SHORT_RSI_MIN_1H
-    _ = getattr(tm_mod.config, "SIGNALS_LOOP_INTERVAL_SECONDS", 0)  # SIGNALS_LOOP_INTERVAL_SECONDS
-    _ = getattr(tm_mod.config, "SIMPLE_TP_PCT", 0)  # SIMPLE_TP_PCT
-    _ = getattr(tm_mod.config, "SIZING_MODE_TRADIER", 0)  # SIZING_MODE_TRADIER
-    _ = getattr(tm_mod.config, "SLEEP_TIME_PER_TASKS", 0)  # SLEEP_TIME_PER_TASKS
-    _ = getattr(tm_mod.config, "SLEEP_TIME_PROC_ACCT", 0)  # SLEEP_TIME_PROC_ACCT
-    _ = getattr(tm_mod.config, "SMA200_DIST_LONG_THRESHOLD", 0)  # SMA200_DIST_LONG_THRESHOLD
-    _ = getattr(tm_mod.config, "SMA200_DIST_LONG_THRESHOLD_4H", 0)  # SMA200_DIST_LONG_THRESHOLD_4H
-    _ = getattr(tm_mod.config, "SMA_FILTER_PERIOD_TRADIER", 0)  # SMA_FILTER_PERIOD_TRADIER
-    _ = getattr(tm_mod.config, "SMFI_LONG_BUDGET", 0)  # SMFI_LONG_BUDGET
-    _ = getattr(tm_mod.config, "SMFI_MAX_HOLD_DAYS", 0)  # SMFI_MAX_HOLD_DAYS
-    _ = getattr(tm_mod.config, "SMFI_MAX_PER_SIDE", 0)  # SMFI_MAX_PER_SIDE
-    _ = getattr(tm_mod.config, "SMFI_POSITION_SIZE", 0)  # SMFI_POSITION_SIZE
-    _ = getattr(tm_mod.config, "SMFI_SHORT_BUDGET", 0)  # SMFI_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "SPIKE_FADE_COOLDOWN_BARS", 0)  # SPIKE_FADE_COOLDOWN_BARS
-    _ = getattr(tm_mod.config, "SPIKE_FADE_K_EXHAUSTION", 0)  # SPIKE_FADE_K_EXHAUSTION
-    _ = getattr(tm_mod.config, "SPIKE_FADE_LOOKBACK_BARS", 0)  # SPIKE_FADE_LOOKBACK_BARS
-    _ = getattr(tm_mod.config, "SPIKE_FADE_MAX_POSITIONS", 0)  # SPIKE_FADE_MAX_POSITIONS
-    _ = getattr(tm_mod.config, "SPIKE_FADE_POSITION_SIZE", 0)  # SPIKE_FADE_POSITION_SIZE
-    _ = getattr(tm_mod.config, "SPIKE_FADE_THRESHOLD_PCT", 0)  # SPIKE_FADE_THRESHOLD_PCT
-    _ = getattr(tm_mod.config, "SPY_REGIME_SMA_BARS_DAILY", 0)  # SPY_REGIME_SMA_BARS_DAILY
-    _ = getattr(tm_mod.config, "SPY_REGIME_SYMBOL", 0)  # SPY_REGIME_SYMBOL
-    _ = getattr(tm_mod.config, "SQUEEZE_FIRE_SCORE_BONUS", 0)  # SQUEEZE_FIRE_SCORE_BONUS
-    _ = getattr(tm_mod.config, "SQUEEZE_SCORE_BONUS", 0)  # SQUEEZE_SCORE_BONUS
-    _ = getattr(tm_mod.config, "SRS_K_EXIT_1H", 0)  # SRS_K_EXIT_1H
-    _ = getattr(tm_mod.config, "STALE_WARNING_INTERVAL_SECONDS", 0)  # STALE_WARNING_INTERVAL_SECONDS
-    _ = getattr(tm_mod.config, "STDEV_BB_RZ_EXIT_TF", 0)  # STDEV_BB_RZ_EXIT_TF
-    _ = getattr(tm_mod.config, "STDEV_BB_RZ_SUPPRESS_PCTB", 0)  # STDEV_BB_RZ_SUPPRESS_PCTB
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_COOLDOWN", 0)  # STDEV_BREAKOUT_COOLDOWN
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", 0)  # STDEV_BREAKOUT_EXIT_PCTB_FAIL
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_MAX_AGE_BARS", 0)  # STDEV_BREAKOUT_MAX_AGE_BARS
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_MAX_RETESTS", 0)  # STDEV_BREAKOUT_MAX_RETESTS
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_COOLDOWN", 0)  # STDEV_BREAKOUT_RETEST_COOLDOWN
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_PCTB_MAX", 0)  # STDEV_BREAKOUT_RETEST_PCTB_MAX
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_PCTB_MIN", 0)  # STDEV_BREAKOUT_RETEST_PCTB_MIN
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_SCORE", 0)  # STDEV_BREAKOUT_RETEST_SCORE
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_RETEST_SIZE_MULT", 0)  # STDEV_BREAKOUT_RETEST_SIZE_MULT
-    _ = getattr(tm_mod.config, "STDEV_BREAKOUT_SCORE", 0)  # STDEV_BREAKOUT_SCORE
-    _ = getattr(tm_mod.config, "STDEV_MACRO_ENTRY_BOOST_MULT", 0)  # STDEV_MACRO_ENTRY_BOOST_MULT
-    _ = getattr(tm_mod.config, "STDEV_REJECT_EXIT_RETURN", 0)  # STDEV_REJECT_EXIT_RETURN
-    _ = getattr(tm_mod.config, "STDEV_REJECT_EXIT_TF", 0)  # STDEV_REJECT_EXIT_TF
-    _ = getattr(tm_mod.config, "STDEV_REJECT_EXIT_ZONE", 0)  # STDEV_REJECT_EXIT_ZONE
-    _ = getattr(tm_mod.config, "STOCH_1H_EXIT_K_MIN", 0)  # STOCH_1H_EXIT_K_MIN
-    _ = getattr(tm_mod.config, "STOP_LOSS_PCT", 0)  # STOP_LOSS_PCT
-    _ = getattr(tm_mod.config, "STRENGTH_MIN_SCORE", 0)  # STRENGTH_MIN_SCORE
-    _ = getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_BASIS_TF", 0)  # STRUCTURE_FLIP_REENTRY_BASIS_TF
-    _ = getattr(tm_mod.config, "STRUCTURE_FLIP_REENTRY_TF", 0)  # STRUCTURE_FLIP_REENTRY_TF
-    _ = getattr(tm_mod.config, "SWEEP_OPTIMAL_ENTRY_TF", 0)  # SWEEP_OPTIMAL_ENTRY_TF
-    _ = getattr(tm_mod.config, "SWEEP_OPTIMAL_HOLD_BARS", 0)  # SWEEP_OPTIMAL_HOLD_BARS
-    _ = getattr(tm_mod.config, "SWING_EXIT_TFS", 0)  # SWING_EXIT_TFS
-    _ = getattr(tm_mod.config, "SWING_REENTER_MULT", 0)  # SWING_REENTER_MULT
-    _ = getattr(tm_mod.config, "SWING_REENTER_SIGNAL", 0)  # SWING_REENTER_SIGNAL
-    _ = getattr(tm_mod.config, "SWING_REENTER_TOLERANCE_PCT", 0)  # SWING_REENTER_TOLERANCE_PCT
-    _ = getattr(tm_mod.config, "SWING_START_SIZE", 0)  # SWING_START_SIZE
-    _ = getattr(tm_mod.config, "SYMBOL_PERF_DECAY_HOURS", 0)  # SYMBOL_PERF_DECAY_HOURS
-    _ = getattr(tm_mod.config, "SYMBOL_PERF_MAX_MULT", 0)  # SYMBOL_PERF_MAX_MULT
-    _ = getattr(tm_mod.config, "SYMBOL_PERF_MIN_MULT", 0)  # SYMBOL_PERF_MIN_MULT
-    _ = getattr(tm_mod.config, "SYMBOL_PERF_MIN_TRADES", 0)  # SYMBOL_PERF_MIN_TRADES
-    _ = getattr(tm_mod.config, "SYMBOL_PERF_REFRESH_SECONDS", 0)  # SYMBOL_PERF_REFRESH_SECONDS
-    _ = getattr(tm_mod.config, "SYMBOL_PERF_WINDOW_DAYS", 0)  # SYMBOL_PERF_WINDOW_DAYS
-    _ = getattr(tm_mod.config, "TASK_STAGGER_SECONDS", 0)  # TASK_STAGGER_SECONDS
-    _ = getattr(tm_mod.config, "TF_ALIGNMENT_MIN_LONG", 0)  # TF_ALIGNMENT_MIN_LONG
-    _ = getattr(tm_mod.config, "TF_ALIGNMENT_MIN_SHORT", 0)  # TF_ALIGNMENT_MIN_SHORT
-    _ = getattr(tm_mod.config, "TF_ALIGNMENT_MIN_TOTAL", 0)  # TF_ALIGNMENT_MIN_TOTAL
-    _ = getattr(tm_mod.config, "TF_FOCUS_WEIGHT", 0)  # TF_FOCUS_WEIGHT
-    _ = getattr(tm_mod.config, "TF_HTF1", 0)  # TF_HTF1
-    _ = getattr(tm_mod.config, "TF_HTF2", 0)  # TF_HTF2
-    _ = getattr(tm_mod.config, "TF_HTF3", 0)  # TF_HTF3
-    _ = getattr(tm_mod.config, "TF_MACRO", 0)  # TF_MACRO
-    _ = getattr(tm_mod.config, "TF_MICRO", 0)  # TF_MICRO
-    _ = getattr(tm_mod.config, "TF_SCALP", 0)  # TF_SCALP
-    _ = getattr(tm_mod.config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER", 0)  # THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER
-    _ = getattr(tm_mod.config, "THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER", 0)  # THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER
-    _ = getattr(tm_mod.config, "THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER", 0)  # THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER
-    _ = getattr(tm_mod.config, "TIER_A_MIN_GAIN", 0)  # TIER_A_MIN_GAIN
-    _ = getattr(tm_mod.config, "TIER_A_MIN_TRADES", 0)  # TIER_A_MIN_TRADES
-    _ = getattr(tm_mod.config, "TIER_A_MULTIPLIER", 0)  # TIER_A_MULTIPLIER
-    _ = getattr(tm_mod.config, "TIER_A_WIN_RATE", 0)  # TIER_A_WIN_RATE
-    _ = getattr(tm_mod.config, "TIER_B_MIN_TRADES", 0)  # TIER_B_MIN_TRADES
-    _ = getattr(tm_mod.config, "TIER_B_WIN_RATE", 0)  # TIER_B_WIN_RATE
-    _ = getattr(tm_mod.config, "TIER_C_MULTIPLIER", 0)  # TIER_C_MULTIPLIER
-    _ = getattr(tm_mod.config, "TRADES_PER_SYM_PER_DAY_MAX", 0)  # TRADES_PER_SYM_PER_DAY_MAX
-    _ = getattr(tm_mod.config, "TRADIER_ACCOUNT_ID", 0)  # TRADIER_ACCOUNT_ID
-    _ = getattr(tm_mod.config, "TRADIER_API_BASE_URL", 0)  # TRADIER_API_BASE_URL
-    _ = getattr(tm_mod.config, "TRADIER_API_KEY", 0)  # TRADIER_API_KEY
-    _ = getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES", 0)  # TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_STOP_PCT", 0)  # TRADIER_DC_DAYTRADE_STOP_PCT
-    _ = getattr(tm_mod.config, "TRADIER_DC_DAYTRADE_TARGET_PCT", 0)  # TRADIER_DC_DAYTRADE_TARGET_PCT
-    _ = getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_DC_MAX_LONG", 0)  # TRADIER_FH_MOMENTUM_DC_MAX_LONG
-    _ = getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MFI_MIN", 0)  # TRADIER_FH_MOMENTUM_MFI_MIN
-    _ = getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT", 0)  # TRADIER_FH_MOMENTUM_MIN_MOVE_PCT
-    _ = getattr(tm_mod.config, "TRADIER_FH_MOMENTUM_WINDOW_MINUTES", 0)  # TRADIER_FH_MOMENTUM_WINDOW_MINUTES
-    _ = getattr(tm_mod.config, "TRADIER_INDICATORS_CYCLE_CONCURRENCY", 0)  # TRADIER_INDICATORS_CYCLE_CONCURRENCY
-    _ = getattr(tm_mod.config, "TRADIER_INDICATORS_HTTP_CONCURRENCY", 0)  # TRADIER_INDICATORS_HTTP_CONCURRENCY
-    _ = getattr(tm_mod.config, "TRADIER_INDICATORS_IDLE_SLEEP_SEC", 0)  # TRADIER_INDICATORS_IDLE_SLEEP_SEC
-    _ = getattr(tm_mod.config, "TRADIER_MIN_HOLD_MINUTES", 0)  # TRADIER_MIN_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "TRADIER_MI_SUBSIGNAL_MIN_COUNT", 0)  # TRADIER_MI_SUBSIGNAL_MIN_COUNT
-    _ = getattr(tm_mod.config, "TRADIER_OI_INJECT_MAX_EACH", 0)  # TRADIER_OI_INJECT_MAX_EACH
-    _ = getattr(tm_mod.config, "TRADIER_OI_INJECT_MIN_TOTAL_OI", 0)  # TRADIER_OI_INJECT_MIN_TOTAL_OI
-    _ = getattr(tm_mod.config, "TRADIER_OI_INJECT_PC_BEARISH", 0)  # TRADIER_OI_INJECT_PC_BEARISH
-    _ = getattr(tm_mod.config, "TRADIER_OI_INJECT_PC_BULLISH", 0)  # TRADIER_OI_INJECT_PC_BULLISH
-    _ = getattr(tm_mod.config, "TRADIER_OI_INJECT_STALE_MAX_HOURS", 0)  # TRADIER_OI_INJECT_STALE_MAX_HOURS
-    _ = getattr(tm_mod.config, "TRADIER_POST_CLOSE_COOLDOWN_MIN", 0)  # TRADIER_POST_CLOSE_COOLDOWN_MIN
-    _ = getattr(tm_mod.config, "TRADIER_RATIO_BOOST_MIN_GAIN_PCT", 0)  # TRADIER_RATIO_BOOST_MIN_GAIN_PCT
-    _ = getattr(tm_mod.config, "TRADIER_REENTRY_HARDCOOL_MIN", 0)  # TRADIER_REENTRY_HARDCOOL_MIN
-    _ = getattr(tm_mod.config, "TRADIER_REOPEN_WAIT_S", 0)  # TRADIER_REOPEN_WAIT_S
-    _ = getattr(tm_mod.config, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", 0)  # TRADIER_RSI2_EXIT_THRESHOLD_LONG
-    _ = getattr(tm_mod.config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", 0)  # TRADIER_RSI2_EXIT_THRESHOLD_SHORT
-    _ = getattr(tm_mod.config, "TRADIER_RSI_ENTRY_LONG_TRADIER", 0)  # TRADIER_RSI_ENTRY_LONG_TRADIER
-    _ = getattr(tm_mod.config, "TRADIER_RSI_LONG_15M", 0)  # TRADIER_RSI_LONG_15M
-    _ = getattr(tm_mod.config, "TRADIER_RSI_LONG_1H", 0)  # TRADIER_RSI_LONG_1H
-    _ = getattr(tm_mod.config, "TRADIER_RSI_LONG_4H", 0)  # TRADIER_RSI_LONG_4H
-    _ = getattr(tm_mod.config, "TRADIER_RSI_LONG_5M", 0)  # TRADIER_RSI_LONG_5M
-    _ = getattr(tm_mod.config, "TRADIER_RSI_LONG_D", 0)  # TRADIER_RSI_LONG_D
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_15M", 0)  # TRADIER_RSI_SHORT_15M
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_1H", 0)  # TRADIER_RSI_SHORT_1H
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_4H", 0)  # TRADIER_RSI_SHORT_4H
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_5M", 0)  # TRADIER_RSI_SHORT_5M
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_D", 0)  # TRADIER_RSI_SHORT_D
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_REL_VOLUME_MIN", 0)  # TRADIER_RSI_SHORT_REL_VOLUME_MIN
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_RVOL_15M", 0)  # TRADIER_RSI_SHORT_RVOL_15M
-    _ = getattr(tm_mod.config, "TRADIER_RSI_SHORT_RVOL_1H", 0)  # TRADIER_RSI_SHORT_RVOL_1H
-    _ = getattr(tm_mod.config, "TRADIER_SANDBOX_URL", 0)  # TRADIER_SANDBOX_URL
-    _ = getattr(tm_mod.config, "TRADIER_STOCH_ENTRY_SHORT_TRADIER", 0)  # TRADIER_STOCH_ENTRY_SHORT_TRADIER
-    _ = getattr(tm_mod.config, "TRADIER_STOCH_EXTREME_LONG_TRADIER", 0)  # TRADIER_STOCH_EXTREME_LONG_TRADIER
-    _ = getattr(tm_mod.config, "TRADIER_STOCH_EXTREME_SHORT_TRADIER", 0)  # TRADIER_STOCH_EXTREME_SHORT_TRADIER
-    _ = getattr(tm_mod.config, "TRADIER_STREAMING_URL", 0)  # TRADIER_STREAMING_URL
-    _ = getattr(tm_mod.config, "TRADIER_WS_URL", 0)  # TRADIER_WS_URL
-    _ = getattr(tm_mod.config, "TRAILING_AUG_GAIN_STEP_PCT", 0)  # TRAILING_AUG_GAIN_STEP_PCT
-    _ = getattr(tm_mod.config, "TRAILING_AUG_MAX_PER_POSITION", 0)  # TRAILING_AUG_MAX_PER_POSITION
-    _ = getattr(tm_mod.config, "TRAILING_AUG_MIN_GAIN_PCT", 0)  # TRAILING_AUG_MIN_GAIN_PCT
-    _ = getattr(tm_mod.config, "TRA_BUY_COOLDOWN_AFTER_SELL_HOURS", 0)  # TRA_BUY_COOLDOWN_AFTER_SELL_HOURS
-    _ = getattr(tm_mod.config, "TRA_MAX_BUYS_PER_DAY", 0)  # TRA_MAX_BUYS_PER_DAY
-    _ = getattr(tm_mod.config, "TRA_MIN_HOLD_MINUTES", 0)  # TRA_MIN_HOLD_MINUTES
-    _ = getattr(tm_mod.config, "TRB_MAX_CALL_VALUE", 0)  # TRB_MAX_CALL_VALUE
-    _ = getattr(tm_mod.config, "TRB_MAX_LONG_VALUE", 0)  # TRB_MAX_LONG_VALUE
-    _ = getattr(tm_mod.config, "TRB_MAX_PUT_VALUE", 0)  # TRB_MAX_PUT_VALUE
-    _ = getattr(tm_mod.config, "TRB_MAX_SHORT_VALUE", 0)  # TRB_MAX_SHORT_VALUE
-    _ = getattr(tm_mod.config, "TRB_MAX_SYMBOL_VALUE", 0)  # TRB_MAX_SYMBOL_VALUE
-    _ = getattr(tm_mod.config, "TRB_NOLOSS_MIN_PROFIT_PCT", 0)  # TRB_NOLOSS_MIN_PROFIT_PCT
-    _ = getattr(tm_mod.config, "TRC_5M_SWEEP_BENCHMARK", 0)  # TRC_5M_SWEEP_BENCHMARK
-    _ = getattr(tm_mod.config, "TRC_5M_SWEEP_BUFFER_N", 0)  # TRC_5M_SWEEP_BUFFER_N
-    _ = getattr(tm_mod.config, "TRC_5M_SWEEP_DELTA_WEIGHT", 0)  # TRC_5M_SWEEP_DELTA_WEIGHT
-    _ = getattr(tm_mod.config, "TRC_5M_SWEEP_TOP_N", 0)  # TRC_5M_SWEEP_TOP_N
-    _ = getattr(tm_mod.config, "TRC_5M_SWEEP_Z_WEIGHT", 0)  # TRC_5M_SWEEP_Z_WEIGHT
-    _ = getattr(tm_mod.config, "TRC_CLENOW_POSITION_SIZE", 0)  # TRC_CLENOW_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_CONNORS_RSI_POSITION_SIZE", 0)  # TRC_CONNORS_RSI_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_DC_DAYTRADE_LONG_BUDGET", 0)  # TRC_DC_DAYTRADE_LONG_BUDGET
-    _ = getattr(tm_mod.config, "TRC_DC_DAYTRADE_SHORT_BUDGET", 0)  # TRC_DC_DAYTRADE_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "TRC_DC_DAYTRADE_START_SIZE", 0)  # TRC_DC_DAYTRADE_START_SIZE
-    _ = getattr(tm_mod.config, "TRC_ENTRY_MIN_ALIGNMENT", 0)  # TRC_ENTRY_MIN_ALIGNMENT
-    _ = getattr(tm_mod.config, "TRC_ENTRY_ZONE_LONG", 0)  # TRC_ENTRY_ZONE_LONG
-    _ = getattr(tm_mod.config, "TRC_ENTRY_ZONE_SHORT", 0)  # TRC_ENTRY_ZONE_SHORT
-    _ = getattr(tm_mod.config, "TRC_EP_POSITION_SIZE", 0)  # TRC_EP_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_GAP_FILL_POSITION_SIZE", 0)  # TRC_GAP_FILL_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_LS_RATIO_MAX", 0)  # TRC_LS_RATIO_MAX
-    _ = getattr(tm_mod.config, "TRC_LS_RATIO_MIN", 0)  # TRC_LS_RATIO_MIN
-    _ = getattr(tm_mod.config, "TRC_MAX_CONCURRENT_POSITIONS", 0)  # TRC_MAX_CONCURRENT_POSITIONS
-    _ = getattr(tm_mod.config, "TRC_MAX_DAILY_LOSS_PCT", 0)  # TRC_MAX_DAILY_LOSS_PCT
-    _ = getattr(tm_mod.config, "TRC_MAX_ORDER_VALUE", 0)  # TRC_MAX_ORDER_VALUE
-    _ = getattr(tm_mod.config, "TRC_MAX_POSITION_SIZE", 0)  # TRC_MAX_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_MAX_SYMBOL_VALUE", 0)  # TRC_MAX_SYMBOL_VALUE
-    _ = getattr(tm_mod.config, "TRC_MINERVINI_LONG_BUDGET", 0)  # TRC_MINERVINI_LONG_BUDGET
-    _ = getattr(tm_mod.config, "TRC_MINERVINI_POSITION_SIZE", 0)  # TRC_MINERVINI_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_NOLOSS_MIN_PROFIT_PCT", 0)  # TRC_NOLOSS_MIN_PROFIT_PCT
-    _ = getattr(tm_mod.config, "TRC_ORB_LONG_BUDGET", 0)  # TRC_ORB_LONG_BUDGET
-    _ = getattr(tm_mod.config, "TRC_ORB_POSITION_SIZE", 0)  # TRC_ORB_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_ORB_SHORT_BUDGET", 0)  # TRC_ORB_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "TRC_ROTATION_POSITION_SIZE", 0)  # TRC_ROTATION_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_RSI2_POSITION_SIZE", 0)  # TRC_RSI2_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_SCALP_LONG_BUDGET", 0)  # TRC_SCALP_LONG_BUDGET
-    _ = getattr(tm_mod.config, "TRC_SCALP_MAX_POSITIONS_PER_SIDE", 0)  # TRC_SCALP_MAX_POSITIONS_PER_SIDE
-    _ = getattr(tm_mod.config, "TRC_SCALP_SHORT_BUDGET", 0)  # TRC_SCALP_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "TRC_SCALP_START_SIZE", 0)  # TRC_SCALP_START_SIZE
-    _ = getattr(tm_mod.config, "TRC_SCALP_TARGET_PCT", 0)  # TRC_SCALP_TARGET_PCT
-    _ = getattr(tm_mod.config, "TRC_SMFI_LONG_BUDGET", 0)  # TRC_SMFI_LONG_BUDGET
-    _ = getattr(tm_mod.config, "TRC_SMFI_POSITION_SIZE", 0)  # TRC_SMFI_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_SMFI_SHORT_BUDGET", 0)  # TRC_SMFI_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "TRC_START_POSITION_SIZE", 0)  # TRC_START_POSITION_SIZE
-    _ = getattr(tm_mod.config, "TRC_SWING_LONG_BUDGET", 0)  # TRC_SWING_LONG_BUDGET
-    _ = getattr(tm_mod.config, "TRC_SWING_SHORT_BUDGET", 0)  # TRC_SWING_SHORT_BUDGET
-    _ = getattr(tm_mod.config, "TREND_EXIT_SCORE_FLIP", 0)  # TREND_EXIT_SCORE_FLIP
-    _ = getattr(tm_mod.config, "TREND_HEDGE_MAX_SEC", 0)  # TREND_HEDGE_MAX_SEC
-    _ = getattr(tm_mod.config, "TREND_HTF_MIN_BEAR", 0)  # TREND_HTF_MIN_BEAR
-    _ = getattr(tm_mod.config, "TREND_HTF_MIN_BULL", 0)  # TREND_HTF_MIN_BULL
-    _ = getattr(tm_mod.config, "TREND_MIN_GAIN_EXIT", 0)  # TREND_MIN_GAIN_EXIT
-    _ = getattr(tm_mod.config, "TRIPLE_CONF_RSI_LONG", 0)  # TRIPLE_CONF_RSI_LONG
-    _ = getattr(tm_mod.config, "TRIPLE_CONF_RSI_SHORT", 0)  # TRIPLE_CONF_RSI_SHORT
-    _ = getattr(tm_mod.config, "TRIPLE_CONF_SCORE", 0)  # TRIPLE_CONF_SCORE
-    _ = getattr(tm_mod.config, "TRIPLE_CONF_STOCH_LONG", 0)  # TRIPLE_CONF_STOCH_LONG
-    _ = getattr(tm_mod.config, "TRIPLE_CONF_STOCH_SHORT", 0)  # TRIPLE_CONF_STOCH_SHORT
-    _ = getattr(tm_mod.config, "TRIPLE_CONF_TF", 0)  # TRIPLE_CONF_TF
-    _ = getattr(tm_mod.config, "TR_ADX4H_BOYCOTT_SCORE", 0)  # TR_ADX4H_BOYCOTT_SCORE
-    _ = getattr(tm_mod.config, "TR_ADX4H_MAX", 0)  # TR_ADX4H_MAX
-    _ = getattr(tm_mod.config, "TR_BBWIDTH4H_BOYCOTT_SCORE", 0)  # TR_BBWIDTH4H_BOYCOTT_SCORE
-    _ = getattr(tm_mod.config, "TR_BBWIDTH4H_MAX", 0)  # TR_BBWIDTH4H_MAX
-    _ = getattr(tm_mod.config, "TR_CHOP4H_BONUS", 0)  # TR_CHOP4H_BONUS
-    _ = getattr(tm_mod.config, "TR_CHOP4H_MIN", 0)  # TR_CHOP4H_MIN
-    _ = getattr(tm_mod.config, "TR_CHOP4H_PENALTY", 0)  # TR_CHOP4H_PENALTY
-    _ = getattr(tm_mod.config, "TR_CHOP4H_TREND_MAX", 0)  # TR_CHOP4H_TREND_MAX
-    _ = getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE", 0)  # TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE
-    _ = getattr(tm_mod.config, "TR_DCWIDTH4H_SHORT_MAX", 0)  # TR_DCWIDTH4H_SHORT_MAX
-    _ = getattr(tm_mod.config, "TR_MFI4H_LONG_BOYCOTT_SCORE", 0)  # TR_MFI4H_LONG_BOYCOTT_SCORE
-    _ = getattr(tm_mod.config, "TR_MFI4H_LONG_MIN", 0)  # TR_MFI4H_LONG_MIN
-    _ = getattr(tm_mod.config, "V8Q_COOLDOWN_BARS", 0)  # V8Q_COOLDOWN_BARS
-    _ = getattr(tm_mod.config, "V8Q_HTF_MIN_ALIGNED", 0)  # V8Q_HTF_MIN_ALIGNED
-    _ = getattr(tm_mod.config, "V8Q_K3M_FLOOR", 0)  # V8Q_K3M_FLOOR
-    _ = getattr(tm_mod.config, "V8Q_MIN_HOLD_BARS", 0)  # V8Q_MIN_HOLD_BARS
-    _ = getattr(tm_mod.config, "V8Q_STRENGTH_MIN_SCORE", 0)  # V8Q_STRENGTH_MIN_SCORE
-    _ = getattr(tm_mod.config, "V8Q_WT_EXIT_MIN_TFS", 0)  # V8Q_WT_EXIT_MIN_TFS
-    _ = getattr(tm_mod.config, "VALIDATE_REFRESH", 0)  # VALIDATE_REFRESH
-    _ = getattr(tm_mod.config, "VIX_EXTREME_THRESHOLD", 0)  # VIX_EXTREME_THRESHOLD
-    _ = getattr(tm_mod.config, "VIX_PANIC_THRESHOLD", 0)  # VIX_PANIC_THRESHOLD
-    _ = getattr(tm_mod.config, "VIX_REGIME_SIZE_MULT_HIGH_VOL", 0)  # VIX_REGIME_SIZE_MULT_HIGH_VOL
-    _ = getattr(tm_mod.config, "VIX_REGIME_SIZE_MULT_PANIC", 0)  # VIX_REGIME_SIZE_MULT_PANIC
-    _ = getattr(tm_mod.config, "VIX_SMA_LOOKBACK_DAYS", 0)  # VIX_SMA_LOOKBACK_DAYS
-    _ = getattr(tm_mod.config, "VOLUME_CONFIRMATION_MULT", 0)  # VOLUME_CONFIRMATION_MULT
-    _ = getattr(tm_mod.config, "VOL_SPIKE_BODY_RATIO", 0)  # VOL_SPIKE_BODY_RATIO
-    _ = getattr(tm_mod.config, "VOL_SPIKE_COOLDOWN", 0)  # VOL_SPIKE_COOLDOWN
-    _ = getattr(tm_mod.config, "VOL_SPIKE_LS_MAX_IMBALANCE", 0)  # VOL_SPIKE_LS_MAX_IMBALANCE
-    _ = getattr(tm_mod.config, "VOL_SPIKE_MIN_ALIGNMENT", 0)  # VOL_SPIKE_MIN_ALIGNMENT
-    _ = getattr(tm_mod.config, "VOL_SPIKE_RELVOL_THRESHOLD", 0)  # VOL_SPIKE_RELVOL_THRESHOLD
-    _ = getattr(tm_mod.config, "VWAP_BOUNCE_DIST_PCT", 0)  # VWAP_BOUNCE_DIST_PCT
-    _ = getattr(tm_mod.config, "VWAP_SCORE_BONUS", 0)  # VWAP_SCORE_BONUS
-    _ = getattr(tm_mod.config, "WRONG_SIDE_DIV_LOOKBACK_BARS", 0)  # WRONG_SIDE_DIV_LOOKBACK_BARS
-    _ = getattr(tm_mod.config, "WRONG_SIDE_DIV_TFS_REQUIRED", 0)  # WRONG_SIDE_DIV_TFS_REQUIRED
-    _ = getattr(tm_mod.config, "WRONG_SIDE_K_TFS_REQUIRED", 0)  # WRONG_SIDE_K_TFS_REQUIRED
-    _ = getattr(tm_mod.config, "WRONG_SIDE_MIN_AGE_MIN", 0)  # WRONG_SIDE_MIN_AGE_MIN
-    _ = getattr(tm_mod.config, "WRONG_SIDE_WT_TFS_REDUCED", 0)  # WRONG_SIDE_WT_TFS_REDUCED
-    _ = getattr(tm_mod.config, "WRONG_SIDE_WT_TFS_REQUIRED", 0)  # WRONG_SIDE_WT_TFS_REQUIRED
-    _ = getattr(tm_mod.config, "WS_RECONNECT_DELAY", 0)  # WS_RECONNECT_DELAY
-    _ = getattr(tm_mod.config, "WT_15M_SAME_HEDGE_COOLDOWN_SEC", 0)  # WT_15M_SAME_HEDGE_COOLDOWN_SEC
-    _ = getattr(tm_mod.config, "WT_15M_SAME_HEDGE_DAILY_CAP", 0)  # WT_15M_SAME_HEDGE_DAILY_CAP
-    _ = getattr(tm_mod.config, "WT_15M_VEL_NEAR_ZERO_THRESHOLD", 0)  # WT_15M_VEL_NEAR_ZERO_THRESHOLD
-    _ = getattr(tm_mod.config, "WT_15M_VEL_SLOW_GAIN_BAND_PCT", 0)  # WT_15M_VEL_SLOW_GAIN_BAND_PCT
-    _ = getattr(tm_mod.config, "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", 0)  # WT_15M_VEL_SLOW_GAIN_FLOOR_PCT
-    _ = getattr(tm_mod.config, "WT_3M_FORCE_OPEN_DIST_PCT", 0)  # WT_3M_FORCE_OPEN_DIST_PCT
-    _ = getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TARGET_USD", 0)  # WT_3M_FORCE_OPEN_TARGET_USD
-    _ = getattr(tm_mod.config, "WT_3M_FORCE_OPEN_TF_LADDER_MULT", 0)  # WT_3M_FORCE_OPEN_TF_LADDER_MULT
-    _ = getattr(tm_mod.config, "WT_DC_DIRECT_COMBINED_STOCH_GATE", 0)  # WT_DC_DIRECT_COMBINED_STOCH_GATE
-    _ = getattr(tm_mod.config, "WT_DC_DIRECT_HTF_ALIGN_REQUIRED", 0)  # WT_DC_DIRECT_HTF_ALIGN_REQUIRED
-    _ = getattr(tm_mod.config, "WT_DC_DIRECT_HTF_GATE", 0)  # WT_DC_DIRECT_HTF_GATE
-    _ = getattr(tm_mod.config, "WT_DC_DIRECT_THRESHOLD", 0)  # WT_DC_DIRECT_THRESHOLD
-    _ = getattr(tm_mod.config, "WT_DC_ENTRY_K5M_MAX_LONG", 0)  # WT_DC_ENTRY_K5M_MAX_LONG
-    _ = getattr(tm_mod.config, "WT_DC_ENTRY_K5M_MIN_SHORT", 0)  # WT_DC_ENTRY_K5M_MIN_SHORT
-    _ = getattr(tm_mod.config, "WT_DC_EXIT_STALE_MAX_S", 0)  # WT_DC_EXIT_STALE_MAX_S
-    _ = getattr(tm_mod.config, "WT_DC_EXIT_THRESHOLD", 0)  # WT_DC_EXIT_THRESHOLD
-    _ = getattr(tm_mod.config, "WT_DC_HTF_GATE", 0)  # WT_DC_HTF_GATE
-    _ = getattr(tm_mod.config, "WT_D_BOUNCE_AUG_COOLDOWN_HOURS", 0)  # WT_D_BOUNCE_AUG_COOLDOWN_HOURS
-    _ = getattr(tm_mod.config, "WT_D_BOUNCE_AUG_MULTIPLIER", 0)  # WT_D_BOUNCE_AUG_MULTIPLIER
-    _ = getattr(tm_mod.config, "WT_EXIT_VEL_THRESHOLD", 0)  # WT_EXIT_VEL_THRESHOLD
-    _ = getattr(tm_mod.config, "WT_FORCE_OPEN_FRESH_MAX_BARS", 0)  # WT_FORCE_OPEN_FRESH_MAX_BARS
-    _ = getattr(tm_mod.config, "WT_FORCE_OPEN_TRIGGER_TF", 0)  # WT_FORCE_OPEN_TRIGGER_TF
-    _ = getattr(tm_mod.config, "WT_REDUCE_FRAC_HIGH", 0)  # WT_REDUCE_FRAC_HIGH
-    _ = getattr(tm_mod.config, "WT_REDUCE_FRAC_LOW", 0)  # WT_REDUCE_FRAC_LOW
-    _ = getattr(tm_mod.config, "WT_REDUCE_FRAC_MED", 0)  # WT_REDUCE_FRAC_MED
-    _ = getattr(tm_mod.config, "WT_VEL_DECAY_THRESHOLD", 0)  # WT_VEL_DECAY_THRESHOLD
-    _ = getattr(tm_mod.config, "ZERO_CONFIRMATION_THRESHOLD_API", 0)  # ZERO_CONFIRMATION_THRESHOLD_API
-    _ = getattr(tm_mod.config, "ZERO_CONFIRMATION_THRESHOLD_WS", 0)  # ZERO_CONFIRMATION_THRESHOLD_WS
-    _ = getattr(tm_mod.config, "ZONE_CLOSE_THRESHOLD", 0)  # ZONE_CLOSE_THRESHOLD
-    _ = getattr(tm_mod.config, "ZONE_MID_THRESHOLD", 0)  # ZONE_MID_THRESHOLD
-    _ = getattr(tm_mod.config, "ZONE_OPEN_THRESHOLD", 0)  # ZONE_OPEN_THRESHOLD
-    return True

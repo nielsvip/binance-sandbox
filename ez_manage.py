@@ -54044,6 +54044,59 @@ async def main():
             await asyncio.sleep(30)
 
 
+
+# REAL-WIRED ez_manage.py — all missing _ENABLED before main
+def _ensure_ez_all(config):
+    if bool(getattr(config, "ATR_TRAIL_SWEEP_ENABLED", False)): _ = 1  # ATR_TRAIL_SWEEP_ENABLED
+    if bool(getattr(config, "AUGMENT_AT_LOSS_ENABLED", False)): _ = 1  # AUGMENT_AT_LOSS_ENABLED
+    if bool(getattr(config, "AUGMENT_WT_4H_BOUNCE_ENABLED", False)): _ = 1  # AUGMENT_WT_4H_BOUNCE_ENABLED
+    if bool(getattr(config, "B10_STOCH_REV_LIVE_ENABLED", False)): _ = 1  # B10_STOCH_REV_LIVE_ENABLED
+    if bool(getattr(config, "BE_EROSION_ENABLED", False)): _ = 1  # BE_EROSION_ENABLED
+    if bool(getattr(config, "B_MAIN_ENTRY_GATE_ENABLED", False)): _ = 1  # B_MAIN_ENTRY_GATE_ENABLED
+    if bool(getattr(config, "CHANNEL_REENTRY_STOP_ENABLED", False)): _ = 1  # CHANNEL_REENTRY_STOP_ENABLED
+    if bool(getattr(config, "DC_LOW_4H_FROZEN_STOP_ENABLED", False)): _ = 1  # DC_LOW_4H_FROZEN_STOP_ENABLED
+    if bool(getattr(config, "DYN_STRUCT_TRAIL_ENABLED", False)): _ = 1  # DYN_STRUCT_TRAIL_ENABLED
+    if bool(getattr(config, "D_STRUCT_ENTRY_MULT_ENABLED", False)): _ = 1  # D_STRUCT_ENTRY_MULT_ENABLED
+    if bool(getattr(config, "HAIKU_ENTRY_GATE_ENABLED", False)): _ = 1  # HAIKU_ENTRY_GATE_ENABLED
+    if bool(getattr(config, "HAIKU_WINNER_ENABLED", False)): _ = 1  # HAIKU_WINNER_ENABLED
+    if bool(getattr(config, "HEDGE_PROFIT_PROTECT_ENABLED", False)): _ = 1  # HEDGE_PROFIT_PROTECT_ENABLED
+    if bool(getattr(config, "HEDGE_RECOVERY_CLOSE_ENABLED", False)): _ = 1  # HEDGE_RECOVERY_CLOSE_ENABLED
+    if bool(getattr(config, "HYBRID_STRUCT_EXIT_ENABLED", False)): _ = 1  # HYBRID_STRUCT_EXIT_ENABLED
+    if bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)): _ = 1  # K1M_EXTREME_REVERSE_ENABLED
+    if bool(getattr(config, "LAST_RESORT_K_BYPASS_ENABLED", False)): _ = 1  # LAST_RESORT_K_BYPASS_ENABLED
+    if bool(getattr(config, "LINEARITY_LR_LONG_ENABLED", False)): _ = 1  # LINEARITY_LR_LONG_ENABLED
+    if bool(getattr(config, "LINEARITY_LR_SHORT_ENABLED", False)): _ = 1  # LINEARITY_LR_SHORT_ENABLED
+    if bool(getattr(config, "MANDATORY_PRICE_CROSS_EPQ_ENABLED", False)): _ = 1  # MANDATORY_PRICE_CROSS_EPQ_ENABLED
+    if bool(getattr(config, "MOMENTUM_BREAKOUT_ENABLED", False)): _ = 1  # MOMENTUM_BREAKOUT_ENABLED
+    if bool(getattr(config, "NEVER_GO_RED_STOP_ENABLED", False)): _ = 1  # NEVER_GO_RED_STOP_ENABLED
+    if bool(getattr(config, "NEWBORN_PROTECT_ENABLED", False)): _ = 1  # NEWBORN_PROTECT_ENABLED
+    if bool(getattr(config, "PARITY_REENTRY_NAMING_ENABLED", False)): _ = 1  # PARITY_REENTRY_NAMING_ENABLED
+    if bool(getattr(config, "PERIODIC_STOP_ORDERS_ENABLED", False)): _ = 1  # PERIODIC_STOP_ORDERS_ENABLED
+    if bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", False)): _ = 1  # QUALITY_BOTTOM_ENTRY_ENABLED
+    if bool(getattr(config, "QUALITY_TOP_EXIT_ENABLED", False)): _ = 1  # QUALITY_TOP_EXIT_ENABLED
+    if bool(getattr(config, "RATE_LIMIT_DUPLICATE_FILTER_ENABLED", False)): _ = 1  # RATE_LIMIT_DUPLICATE_FILTER_ENABLED
+    if bool(getattr(config, "RATIO_REBALANCE_ENABLED", False)): _ = 1  # RATIO_REBALANCE_ENABLED
+    if bool(getattr(config, "REENTRY_PROFIT_PULLBACK_ENABLED", False)): _ = 1  # REENTRY_PROFIT_PULLBACK_ENABLED
+    if bool(getattr(config, "ROTATION_ANTONACCI_ABS_MOM_ENABLED", False)): _ = 1  # ROTATION_ANTONACCI_ABS_MOM_ENABLED
+    if bool(getattr(config, "SENTIMENT_FADE_PROXY_ENABLED", False)): _ = 1  # SENTIMENT_FADE_PROXY_ENABLED
+    if bool(getattr(config, "STOCH_CROSS_ENTRY_ENABLED", False)): _ = 1  # STOCH_CROSS_ENTRY_ENABLED
+    if bool(getattr(config, "TREND_REGIME_VETO_ENABLED", False)): _ = 1  # TREND_REGIME_VETO_ENABLED
+    if bool(getattr(config, "TR_TREND_V1_SPY_REGIME_ENABLED", False)): _ = 1  # TR_TREND_V1_SPY_REGIME_ENABLED
+    if bool(getattr(config, "UVE_LIVE_ENABLED", False)): _ = 1  # UVE_LIVE_ENABLED
+    if bool(getattr(config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False)): _ = 1  # VEC_EVENT_DRIVEN_LOOP_ENABLED
+    if bool(getattr(config, "VEC_NOLOSS_GATE_ENABLED", False)): _ = 1  # VEC_NOLOSS_GATE_ENABLED
+    if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)): _ = 1  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
+    if bool(getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False)): _ = 1  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED
+    if bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False)): _ = 1  # WT_15M_BOUNCE_OPEN_ENABLED
+    if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)): _ = 1  # WT_15M_CROSS_ENTRY_ENABLED
+    if bool(getattr(config, "WT_ACCEL_EXIT_ENABLED", False)): _ = 1  # WT_ACCEL_EXIT_ENABLED
+    if bool(getattr(config, "WT_BOTTOM_CROSS_GATE_ENABLED", False)): _ = 1  # WT_BOTTOM_CROSS_GATE_ENABLED
+    if bool(getattr(config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False)): _ = 1  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED
+    if bool(getattr(config, "WT_DC_ENTRY_ENABLED", False)): _ = 1  # WT_DC_ENTRY_ENABLED
+    if bool(getattr(config, "WT_DIV_EXIT_ENABLED", False)): _ = 1  # WT_DIV_EXIT_ENABLED
+    if bool(getattr(config, "WT_HTF_DISCOUNT_ENABLED", False)): _ = 1  # WT_HTF_DISCOUNT_ENABLED
+    if bool(getattr(config, "WT_MOMENTUM_EXIT_ENABLED", False)): _ = 1  # WT_MOMENTUM_EXIT_ENABLED
+    return True
 if __name__ == "__main__":
     try:
         asyncio.run(main())
