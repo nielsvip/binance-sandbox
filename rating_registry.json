@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T22:38:14.866745+00:00",
+  "timestamp": "2026-08-18T22:53:32.370327+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -751,12 +751,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CAKEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "TIAUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -949,6 +943,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PUMPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "DELLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1069,17 +1069,17 @@
       "short_score": 0
     },
     {
-      "symbol": "PUMPUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
+      "symbol": "CAKEUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "PUMPUSDT",
-      11.2,
-      0.003025
+      "CAKEUSDT",
+      10.4,
+      1.5151
     ]
   ],
   "top_shorts": [],

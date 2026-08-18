@@ -8429,5 +8429,23 @@
     ],
     "timestamp": "2026-08-18T22:36:26.438275+00:00",
     "price": 300.4
+  },
+  {
+    "symbol": "RONINUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T22:44:40.239655+00:00",
+    "price": 0.04715
+  },
+  {
+    "symbol": "XRPUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-18T22:46:05.211665+00:00",
+    "price": 0.9999
   }
 ]

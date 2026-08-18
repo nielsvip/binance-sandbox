@@ -23,6 +23,15 @@
 >
 > **SSH identity (when S1 is reachable):** user `niels`, key `/Users/niels/.ssh/id_ed25519`. Route localhost `127.0.0.1:2201`, `s1-int`, `157.180.125.52:22`.
 
+> ## 🔴🔴🔴 NO WASTING RESOURCES ON USELESS BACKTESTING — 2026-08-18 PER USER niels — HIGHEST AUTHORITY 🔴🔴🔴
+>
+> **ANY backtest that wastes money/CPU/RAM with `no positive delta` is FORBIDDEN and must be KILLED IMMEDIATELY. This overrides every older sentence, every watchdog, every beam that would let a zero-delta run continue.**
+> - **NO positive delta within minutes per sym/side → STOP.** A grouped test that cannot beat B&H (`Δ_vs_BH ≤0` or `gain_per_mo ≤ bh_per_mo`) after its first `group` sweep (ENTRY group → EXIT group → REENTER group) is `USELESS` — kill it, log `RELATIVE_BEST_NEGATIVE_DELTA` with tested values/hashes, move to next group/symbol. NEVER let `148 × zero-delta` waste hours, days, or dollars (S1 burns money per minute).
+> - **Watchdog MUST kill useless runs, not restart them.** Every watchdog/monitor checks `ledger` and `/tmp/next_gen_*.log` `consecutive_no_pos` — if `≥3` consecutive sym/sides with `no positive delta` **or** any sym/side stuck `>10min` without `Δ>0`, `pkill -9 -f next_gen_beam` immediately, write `WASTE_KILL` receipt, and surface the failing group/switch for wiring fix. Auto-restart of a proven zero-delta recipe is **prohibited**.
+> - **Defaults + per_sym winners → gain ALWAYS > B&H → best delta of grouped tests until ≥10× B&H and ≥60% gain/mo** (all other metrics same: `TIM <85` pref `20–75`, `trades >10/mo`, `DD<30`, `pool_sharpe>0.2`, `gain_per_mo>0.5%`). Every `symside` must achieve `gain>B&H`; then iterate `ENTRY→EXIT→REENTER→FILTER` per §0.1 until `≥10× B&H` and `≥60% gain/mo` or `no remaining modeled family yields Δ>0`. Log per-switch `Δ` and promote only via `tools/promote_pending_per_sym.py --from-next-gen`.
+> - **Resource floor while tuning:** S1 must run at `CPU 80–99%` (`16` cores fully saturated) and `RAM 65–90%` (`19–27Gi` of `30Gi`) with as many workers as possible (`--max-workers 12–16` + parallel group shards). If CPU `<80%` or RAM `<65%`, add workers/shards until saturated. If CPU `>99%` or RAM `>90%`, throttle by `1` worker. Idle S1 while ledger is `0/148` is a **hard failure**.
+> - **MONEY RULE:** A backtest that has not produced one `pos Δ` per group within `minutes` for each `sym/side` is burning cash — the agent watching it **must not fall asleep**. Every monitor logs `ledger N/148`, `consecutive_no_pos`, `CPU/RAM`, and `kills` every `≤60s`, and kills waste instantly. This rule is checked at session start and before every S1 launch.
+
 > ## 🔴 CURRENT CONTROLLING MATRIX CONTRACT — READ THIS FIRST (2026-08-01)
 >
 > For `SWITCH_MATRIX_TRB`, **§16.11 is the highest-precedence reporting and
