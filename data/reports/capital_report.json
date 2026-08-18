@@ -1,44 +1,45 @@
 {
- "generated_at": "2026-08-18 03:53 UTC",
- "total_capital_usd": 13.97,
+ "generated_at": "2026-08-18 04:26 UTC",
+ "total_capital_usd": 13.96,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 13.97
+  "B": 6.99,
+  "C": 6.97
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 2
+  "B": 1,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "men:MANAUSDT_SHORT",
-  "men:MEMEUSDT_SHORT"
+  "men:MANAUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "men:LTCUSDC_SHORT"
+ ],
  "positions": [
   {
-   "pk": "men:MEMEUSDT_SHORT",
-   "symbol": "MEMEUSDT",
+   "pk": "men:LTCUSDC_SHORT",
+   "symbol": "LTCUSDC",
    "account": "men",
-   "value_usd": 7.0,
-   "gain_pct": 0.0,
-   "tier": "C",
-   "perf_mult": 0.58,
-   "amt": 15709.0,
-   "mark": 0.0004457
+   "value_usd": 6.99,
+   "gain_pct": 0.078,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.158,
+   "mark": 44.24
   },
   {
    "pk": "men:MANAUSDT_SHORT",
    "symbol": "MANAUSDT",
    "account": "men",
    "value_usd": 6.97,
-   "gain_pct": -0.209,
+   "gain_pct": -0.37,
    "tier": "C",
    "perf_mult": 0.43,
    "amt": 112.0,
-   "mark": 0.06226
+   "mark": 0.0622607
   }
  ]
 }

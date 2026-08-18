@@ -1,8 +1,8 @@
 [
   {
     "symbol": "ETHFIUSDC",
-    "score": 97.98552382299961,
-    "linearity": 0.824527235827339
+    "score": 98.51696233135323,
+    "linearity": 0.8237724169023272
   },
   {
     "symbol": "SNXXUSDT",
@@ -15,14 +15,9 @@
     "linearity": 0.6326174867148122
   },
   {
-    "symbol": "PUMPUSDT",
-    "score": 95.09364975204302,
-    "linearity": 0.5450058338552892
-  },
-  {
     "symbol": "LINKUSDC",
-    "score": 91.88443614048612,
-    "linearity": 0.7248532474724577
+    "score": 91.84210420437469,
+    "linearity": 0.7175485838307385
   },
   {
     "symbol": "NBISUSDT",
@@ -31,13 +26,18 @@
   },
   {
     "symbol": "XMRUSDT",
-    "score": 90.59696546311312,
-    "linearity": 0.8052617493101323
+    "score": 90.50213075913521,
+    "linearity": 0.8037868349161519
   },
   {
     "symbol": "SPCXUSD1",
     "score": 90.79681392882877,
     "linearity": 0.6029819588118586
+  },
+  {
+    "symbol": "BOMEUSDC",
+    "score": 91.84714903568027,
+    "linearity": 0.41616449087633056
   },
   {
     "symbol": "SMCIUSDT",
@@ -46,23 +46,23 @@
   },
   {
     "symbol": "PLTRUSDT",
-    "score": 88.49836458729028,
-    "linearity": 0.6807500008728954
+    "score": 88.75191240936289,
+    "linearity": 0.6772257042984037
+  },
+  {
+    "symbol": "CRVUSDC",
+    "score": 88.10457698698265,
+    "linearity": 0.5744038631506304
   },
   {
     "symbol": "MORPHOUSDT",
-    "score": 86.68273798685993,
-    "linearity": 0.7200797006201846
+    "score": 86.6230038574131,
+    "linearity": 0.7247805410486144
   },
   {
     "symbol": "STXXUSDT",
     "score": 86.31559037385365,
     "linearity": 0.7460524822373845
-  },
-  {
-    "symbol": "CRVUSDC",
-    "score": 87.09817908775597,
-    "linearity": 0.6212809334140316
   },
   {
     "symbol": "SKHYUSDT",
@@ -71,8 +71,8 @@
   },
   {
     "symbol": "AIAUSDT",
-    "score": 85.6007709642263,
-    "linearity": 0.6795671398381974
+    "score": 85.60225616483386,
+    "linearity": 0.679712781752073
   },
   {
     "symbol": "SNDKUSDT",
@@ -81,8 +81,8 @@
   },
   {
     "symbol": "AXTIUSDT",
-    "score": 84.98434541502766,
-    "linearity": 0.6592968133283319
+    "score": 84.98730649281565,
+    "linearity": 0.6590465944590349
   },
   {
     "symbol": "DELLUSDT",
@@ -96,8 +96,8 @@
   },
   {
     "symbol": "MSFTUSDT",
-    "score": 82.47619067643329,
-    "linearity": 0.6481236376249142
+    "score": 82.42613585997395,
+    "linearity": 0.648999706218092
   },
   {
     "symbol": "LITEUSDT",
@@ -111,18 +111,18 @@
   },
   {
     "symbol": "BABAUSDT",
-    "score": 82.98742720836582,
-    "linearity": 0.5577528542064402
+    "score": 82.99068954379763,
+    "linearity": 0.557888670550137
   },
   {
     "symbol": "AAOIUSDT",
-    "score": 81.92904092001727,
-    "linearity": 0.6417395628352006
+    "score": 81.86409141853512,
+    "linearity": 0.6412002487084523
   },
   {
     "symbol": "FARTCOINUSDT",
-    "score": 82.64480260004342,
-    "linearity": 0.5198737539462785
+    "score": 82.78845679768327,
+    "linearity": 0.5446652224072455
   },
   {
     "symbol": "BMNRUSDT",
@@ -131,23 +131,23 @@
   },
   {
     "symbol": "CRCLUSDT",
-    "score": 80.88024168585358,
-    "linearity": 0.6520505647455639
+    "score": 80.87969947271975,
+    "linearity": 0.6517613464519083
   },
   {
     "symbol": "AWEUSDT",
-    "score": 81.44795402839964,
-    "linearity": 0.5726915766814832
+    "score": 81.58680242878367,
+    "linearity": 0.575711553359041
   },
   {
     "symbol": "WLFIUSDC",
-    "score": 81.94999360298881,
-    "linearity": 0.4832693255874111
+    "score": 81.97905740872719,
+    "linearity": 0.4856856107817892
   },
   {
     "symbol": "ICPUSDT",
-    "score": 79.9031069191661,
-    "linearity": 0.6760129371655961
+    "score": 79.77718746479188,
+    "linearity": 0.6779862059310497
   },
   {
     "symbol": "SOXSUSDT",
@@ -158,63 +158,67 @@
     "score": 99.38461538461539
   },
   {
+    "symbol": "PANWUSDT",
+    "score": 99.07692307692308
+  },
+  {
     "symbol": "TRXUSDT",
-    "score": 98.76923076923077
+    "score": 98.46153846153847
   },
   {
     "symbol": "GRIFFAINUSDT",
     "score": 98.15384615384616
   },
   {
-    "symbol": "TZAUSDT",
-    "score": 97.84615384615384
-  },
-  {
-    "symbol": "XLEUSDT",
+    "symbol": "ADBEUSDT",
     "score": 97.53846153846153
   },
   {
-    "symbol": "AAPLUSDT",
-    "score": 96.92307692307692
-  },
-  {
-    "symbol": "BTCDOMUSDT",
+    "symbol": "TZAUSDT",
     "score": 96.61538461538461
   },
   {
-    "symbol": "PANWUSDT",
-    "score": 95.6923076923077
+    "symbol": "AAPLUSDT",
+    "score": 96.0
   },
   {
-    "symbol": "COSTUSDT",
+    "symbol": "XLEUSDT",
     "score": 95.38461538461539
   },
   {
-    "symbol": "ZMUSDT",
+    "symbol": "BTCDOMUSDT",
+    "score": 95.07692307692308
+  },
+  {
+    "symbol": "COSTUSDT",
+    "score": 94.76923076923077
+  },
+  {
+    "symbol": "PYPLUSDT",
     "score": 94.46153846153847
   },
   {
-    "symbol": "BITOUSDT",
-    "score": 92.92307692307692
+    "symbol": "ZMUSDT",
+    "score": 94.15384615384616
   },
   {
-    "symbol": "ADBEUSDT",
-    "score": 92.61538461538461
-  },
-  {
-    "symbol": "TBTUSDT",
+    "symbol": "CRMUSDT",
     "score": 92.0
   },
   {
-    "symbol": "NOWUSDT",
+    "symbol": "BITOUSDT",
     "score": 91.6923076923077
   },
   {
-    "symbol": "BNCUSDT",
-    "score": 91.38461538461539
+    "symbol": "TBTUSDT",
+    "score": 91.07692307692308
   },
   {
-    "symbol": "HDUSDT",
-    "score": 90.15384615384616
+    "symbol": "BNCUSDT",
+    "score": 90.76923076923077
+  },
+  {
+    "symbol": "LLYUSDT",
+    "score": 90.46153846153847
   }
 ]

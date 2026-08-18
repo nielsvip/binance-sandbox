@@ -1,11 +1,11 @@
-PERFORMANCE REPORT — 2026-08-18 03:52 UTC
+PERFORMANCE REPORT — 2026-08-18 04:26 UTC
 ================================================================================
-Total: 68 symbols | A=0 B=56 C=12
+Total: 68 symbols | A=0 B=55 C=13
 Window: 14 days | Min trades: 5
 
 --- TIER A (0 symbols) ---
 
---- TIER B (56 symbols) ---
+--- TIER B (55 symbols) ---
           PTBUSDT  WR=56%  avg=+0.16%  total=+1.5%  trades=  9  mult=1.95
         USUALUSDT  WR=100%  avg=+0.69%  total=+0.7%  trades=  1  mult=1.00
          IOTXUSDT  WR=25%  avg=+0.16%  total=+0.6%  trades=  4  mult=1.00
@@ -13,14 +13,13 @@ Window: 14 days | Min trades: 5
           AXSUSDT  WR=100%  avg=+0.16%  total=+0.5%  trades=  3  mult=1.00
            OPUSDT  WR=70%  avg=+0.03%  total=+0.3%  trades= 10  mult=2.90
          GALAUSDT  WR=70%  avg=+0.02%  total=+0.2%  trades= 10  mult=2.88
+         ASTSUSDT  WR=60%  avg=+0.05%  total=+0.2%  trades=  5  mult=1.53
        RENDERUSDT  WR=67%  avg=+0.04%  total=+0.2%  trades=  6  mult=1.97
           SKYUSDT  WR=83%  avg=+0.03%  total=+0.2%  trades=  6  mult=2.86
-         ASTSUSDT  WR=50%  avg=+0.04%  total=+0.2%  trades=  4  mult=1.00
           ZRXUSDT  WR=75%  avg=+0.02%  total=+0.1%  trades=  4  mult=1.00
           UNIUSDC  WR=67%  avg=+0.03%  total=+0.1%  trades=  3  mult=1.00
          EGLDUSDT  WR=100%  avg=+0.04%  total=+0.1%  trades=  2  mult=1.00
          MASKUSDT  WR=50%  avg=+0.01%  total=+0.1%  trades=  6  mult=1.02
-         ORDIUSDC  WR=40%  avg=+0.01%  total=+0.1%  trades=  5  mult=0.84 ** OPEN **
           XLMUSDT  WR=100%  avg=+0.01%  total=+0.0%  trades=  3  mult=1.00
          MSTRUSDT  WR=100%  avg=+0.04%  total=+0.0%  trades=  1  mult=1.00
           INXUSDT  WR=100%  avg=+0.03%  total=+0.0%  trades=  1  mult=1.00
@@ -53,7 +52,7 @@ Window: 14 days | Min trades: 5
      1000SHIBUSDC  WR=0%  avg=-0.04%  total=-0.1%  trades=  2  mult=1.00
           KSMUSDT  WR=0%  avg=-0.04%  total=-0.1%  trades=  3  mult=1.00
          NBISUSDT  WR=0%  avg=-0.07%  total=-0.1%  trades=  2  mult=1.00
-          LTCUSDC  WR=25%  avg=-0.04%  total=-0.1%  trades=  4  mult=1.00
+          LTCUSDC  WR=25%  avg=-0.04%  total=-0.1%  trades=  4  mult=1.00 ** OPEN **
           ETHUSDC  WR=0%  avg=-0.18%  total=-0.2%  trades=  1  mult=1.00
           APPUSDT  WR=33%  avg=-0.07%  total=-0.2%  trades=  3  mult=1.00
          COTIUSDT  WR=50%  avg=-0.04%  total=-0.3%  trades=  8  mult=0.95
@@ -63,22 +62,23 @@ Window: 14 days | Min trades: 5
           TIAUSDC  WR=50%  avg=-0.27%  total=-1.1%  trades=  4  mult=1.00
      FARTCOINUSDT  WR=25%  avg=-0.34%  total=-1.4%  trades=  4  mult=1.00
 
---- TIER C (12 symbols) ---
-        MAGICUSDT  WR=38%  avg=-0.00%  total=-0.0%  trades= 16  mult=0.55
+--- TIER C (13 symbols) ---
+        MAGICUSDT  WR=41%  avg=-0.00%  total=-0.0%  trades= 17  mult=0.62
          HYPEUSDT  WR=33%  avg=-0.02%  total=-0.1%  trades=  6  mult=0.71
     1000FLOKIUSDT  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.62
+         ORDIUSDC  WR=33%  avg=-0.03%  total=-0.2%  trades=  6  mult=0.70
           FILUSDC  WR=40%  avg=-0.05%  total=-0.5%  trades= 10  mult=0.68
           INJUSDT  WR=20%  avg=-0.10%  total=-0.5%  trades=  5  mult=0.60
-          WLDUSDC  WR=42%  avg=-0.02%  total=-0.5%  trades= 31  mult=0.59
+          WLDUSDC  WR=44%  avg=-0.02%  total=-0.5%  trades= 32  mult=0.65
           ZROUSDT  WR=22%  avg=-0.03%  total=-0.6%  trades= 18  mult=0.32
           CRVUSDC  WR=29%  avg=-0.11%  total=-0.8%  trades=  7  mult=0.58
-         MEMEUSDT  WR=33%  avg=-0.09%  total=-0.8%  trades=  9  mult=0.58
+         MEMEUSDT  WR=40%  avg=-0.08%  total=-0.8%  trades= 10  mult=0.66
           SNXUSDT  WR=20%  avg=-0.38%  total=-1.9%  trades=  5  mult=0.53
          MANAUSDT  WR=0%  avg=-0.41%  total=-2.0%  trades=  5  mult=0.43 ** OPEN **
          RUNEUSDT  WR=43%  avg=-0.35%  total=-2.5%  trades=  7  mult=0.64
 
 SUMMARY:
-  Total PnL (all symbols): -10.7%
+  Total PnL (all symbols): -10.8%
   Avg win rate: 45%
   A-tier avg mult: 0.00
-  C-tier avg mult: 0.57
+  C-tier avg mult: 0.59
