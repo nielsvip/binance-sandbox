@@ -1,10 +1,10 @@
 {
   "_meta": {
-    "created": "2026-08-18T16:01:28Z",
+    "created": "2026-08-18T16:16:55Z",
     "manual_reset_only": true,
     "description": "Authoritative per-switch positive/negative counters for 922 grind, sortable, persists across sessions. Generated from vector_results.json trusted AUDITED rows \u0394>0 vs \u0394<=0 per param|value. Updates on each filter run via vector_lab_streamer flush; survive reboot. Manual reset only via switch_lab/manual_reset_counters.sh or POST /api/switch_lab/counters/reset",
     "source": "/Users/niels/Documents/binance/data/reports/gui_lab/vector_results.json",
-    "rows_scanned": 5006,
+    "rows_scanned": 5003,
     "trusted_rows": 45,
     "store_locations": [
       "/Users/niels/Documents/binance/data/reports/gui_lab/switch_counters.json",
@@ -27,14 +27,13 @@
         ]
       },
       "\"True\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -242,11 +241,10 @@
     "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG": {
       "52.5": {
         "positive": 0,
-        "negative": 2,
+        "negative": 1,
         "sym_positive": [],
         "sym_negative": [
-          "ASML_LONG",
-          "UUUU_SHORT"
+          "ASML_LONG"
         ]
       },
       "17.5": {
@@ -388,6 +386,14 @@
         ],
         "sym_negative": []
       },
+      "1.5": {
+        "positive": 1,
+        "negative": 0,
+        "sym_positive": [
+          "COHR_LONG"
+        ],
+        "sym_negative": []
+      },
       "0.5": {
         "positive": 0,
         "negative": 0
@@ -397,10 +403,6 @@
         "negative": 0
       },
       "1.25": {
-        "positive": 0,
-        "negative": 0
-      },
-      "1.5": {
         "positive": 0,
         "negative": 0
       }
@@ -648,13 +650,11 @@
       },
       "1.25": {
         "positive": 1,
-        "negative": 1,
+        "negative": 0,
         "sym_positive": [
           "MSTR_SHORT"
         ],
-        "sym_negative": [
-          "UUUU_SHORT"
-        ]
+        "sym_negative": []
       },
       "0.5": {
         "positive": 0,
@@ -706,11 +706,7 @@
       },
       "true": {
         "positive": 0,
-        "negative": 1,
-        "sym_positive": [],
-        "sym_negative": [
-          "UUUU_SHORT"
-        ]
+        "negative": 0
       }
     },
     "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER": {
@@ -863,14 +859,13 @@
         "sym_negative": []
       },
       "\"True\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -889,7 +884,7 @@
         "sym_negative": []
       },
       "0.005": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -897,8 +892,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -998,15 +992,14 @@
         "sym_negative": []
       },
       "0": {
-        "positive": 6,
+        "positive": 5,
         "negative": 0,
         "sym_positive": [
           "BEATUSDT_SHORT",
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -1187,7 +1180,7 @@
         "sym_negative": []
       },
       "0.005": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -1195,8 +1188,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -1481,14 +1473,13 @@
         ]
       },
       "\"False\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -1722,19 +1713,15 @@
         ],
         "sym_negative": []
       },
-      "9900.0": {
-        "positive": 0,
-        "negative": 1,
-        "sym_positive": [],
-        "sym_negative": [
-          "UUUU_SHORT"
-        ]
-      },
       "4950.0": {
         "positive": 0,
         "negative": 0
       },
       "7425.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "9900.0": {
         "positive": 0,
         "negative": 0
       },
@@ -2089,14 +2076,13 @@
         "sym_negative": []
       },
       "\"True\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2308,60 +2294,6 @@
         "negative": 0
       }
     },
-    "OBLIGATORY_SECTOR_HEDGE_ENABLED": {
-      "false": {
-        "positive": 0,
-        "negative": 1,
-        "sym_positive": [],
-        "sym_negative": [
-          "UUUU_SHORT"
-        ]
-      },
-      "true": {
-        "positive": 0,
-        "negative": 0
-      }
-    },
-    "PYRAMID_MIN_WT_VEL_1H": {
-      "2.0": {
-        "positive": 0,
-        "negative": 1,
-        "sym_positive": [],
-        "sym_negative": [
-          "UUUU_SHORT"
-        ]
-      },
-      "1.0": {
-        "positive": 0,
-        "negative": 0
-      },
-      "1.5": {
-        "positive": 0,
-        "negative": 0
-      },
-      "2.5": {
-        "positive": 0,
-        "negative": 0
-      },
-      "3.0": {
-        "positive": 0,
-        "negative": 0
-      }
-    },
-    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION": {
-      "false": {
-        "positive": 0,
-        "negative": 1,
-        "sym_positive": [],
-        "sym_negative": [
-          "UUUU_SHORT"
-        ]
-      },
-      "true": {
-        "positive": 0,
-        "negative": 0
-      }
-    },
     "BB_RSI_STOCH_BB_MAX": {
       "0.3": {
         "positive": 0,
@@ -2486,7 +2418,7 @@
     },
     "AUGMENTATION_COOLDOWN_SECONDS": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2494,8 +2426,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2522,7 +2453,7 @@
     },
     "BOUNCE_TOP_MIN_HOLD_MINUTES": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2530,8 +2461,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2558,7 +2488,7 @@
     },
     "COOLDOWN_BARS_TRADIER": {
       "10": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2566,8 +2496,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2594,7 +2523,7 @@
     },
     "DELTA_EXIT_MIN_TF_LOST": {
       "2": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2602,8 +2531,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2618,14 +2546,13 @@
     },
     "EXIT_CONV_FAIL_ENABLED": {
       "\"True\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2645,14 +2572,13 @@
     },
     "EXIT_MAX_HOLD_ENABLED": {
       "\"True\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2672,7 +2598,7 @@
     },
     "EXIT_SCORER_DC_EXTREME": {
       "1.2": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2680,8 +2606,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2704,7 +2629,7 @@
     },
     "GOLDEN_RULE_HTF_MIN_TFS": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2712,8 +2637,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2744,7 +2668,7 @@
     },
     "GOLDEN_RULE_MIN_IND": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2752,8 +2676,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2804,7 +2727,7 @@
     },
     "GR_HTF_DIRECT_ENTRY_SCORE_MIN": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2812,8 +2735,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2840,7 +2762,7 @@
     },
     "HTF_ALIGN_REQUIRED_TRADIER": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2848,8 +2770,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2876,15 +2797,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "SLV_LONG"
-        ],
-        "sym_negative": []
-      },
-      "0.75": {
-        "positive": 1,
-        "negative": 0,
-        "sym_positive": [
-          "OLED_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2903,11 +2816,15 @@
       "0.625": {
         "positive": 0,
         "negative": 0
+      },
+      "0.75": {
+        "positive": 0,
+        "negative": 0
       }
     },
     "LOCAL_EXTREMES_MIN_SCORE": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -2915,8 +2832,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2959,14 +2875,13 @@
     },
     "LR_BAND_E02_EXIT_ENABLED": {
       "\"False\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -2986,14 +2901,13 @@
     },
     "LR_BAND_ENTRY_ENABLED": {
       "\"True\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3013,14 +2927,13 @@
     },
     "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": {
       "\"False\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3040,7 +2953,7 @@
     },
     "MAX_ALLOWED_DRAWDOWN_PCT": {
       "100": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3048,8 +2961,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3076,7 +2988,7 @@
     },
     "MIN_HOLD_BARS_BEFORE_EXIT": {
       "1": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3084,8 +2996,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3112,7 +3023,7 @@
     },
     "MIN_HOLD_MINUTES_TRADIER": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3120,8 +3031,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3148,14 +3058,13 @@
     },
     "R1_USE_DC_4BAR": {
       "\"False\"": {
-        "positive": 5,
+        "positive": 4,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
           "BEATUSDT_SHORT",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3175,7 +3084,7 @@
     },
     "RSI_EXIT_LONG_TRADIER": {
       "42.5": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3183,8 +3092,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3199,7 +3107,7 @@
     },
     "RSI_EXIT_SHORT_TRADIER": {
       "58.0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3207,8 +3115,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3235,7 +3142,7 @@
     },
     "TRADIER_ENTRY_SCORE_THRESHOLD": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3243,8 +3150,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3263,7 +3169,7 @@
     },
     "TRA_WT_DC_ENTRY_THRESHOLD": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3271,8 +3177,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3299,7 +3204,7 @@
     },
     "WT_DC_ENTRY_K5M_MAX_LONG": {
       "100": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3307,8 +3212,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3335,7 +3239,7 @@
     },
     "WT_DC_ENTRY_K5M_MIN_SHORT": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3343,8 +3247,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3363,7 +3266,7 @@
     },
     "WT_DC_ENTRY_THRESHOLD": {
       "0": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3371,8 +3274,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3399,7 +3301,7 @@
     },
     "WT_DC_EXIT_THRESHOLD": {
       "75": {
-        "positive": 7,
+        "positive": 6,
         "negative": 0,
         "sym_positive": [
           "SNDK_SHORT",
@@ -3407,8 +3309,7 @@
           "MSTR_LONG",
           "ALMU_LONG",
           "B3USDT_SHORT",
-          "OLED_LONG",
-          "SLV_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3764,12 +3665,12 @@
         "negative": 0
       }
     },
-    "ATR_ADAPTIVE_SIZING_ENABLED": {
+    "BB_RSI_STOCH_SCALP_ENABLED": {
       "false": {
         "positive": 1,
         "negative": 0,
         "sym_positive": [
-          "OLED_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
@@ -3778,68 +3679,16 @@
         "negative": 0
       }
     },
-    "TRC_SMFI_LONG_BUDGET": {
-      "12375.0": {
+    "FORMATION_CUP_HANDLE_ENTRY_ENABLED": {
+      "true": {
         "positive": 1,
         "negative": 0,
         "sym_positive": [
-          "OLED_LONG"
+          "TXN_LONG"
         ],
         "sym_negative": []
       },
-      "4950.0": {
-        "positive": 0,
-        "negative": 0
-      },
-      "7425.0": {
-        "positive": 0,
-        "negative": 0
-      },
-      "9900.0": {
-        "positive": 0,
-        "negative": 0
-      },
-      "14850.0": {
-        "positive": 0,
-        "negative": 0
-      }
-    },
-    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY": {
-      "0.05": {
-        "positive": 1,
-        "negative": 0,
-        "sym_positive": [
-          "SLV_LONG"
-        ],
-        "sym_negative": []
-      },
-      "0.025": {
-        "positive": 0,
-        "negative": 0
-      },
-      "0.0375": {
-        "positive": 0,
-        "negative": 0
-      },
-      "0.0625": {
-        "positive": 0,
-        "negative": 0
-      },
-      "0.075": {
-        "positive": 0,
-        "negative": 0
-      }
-    },
-    "TRC_NOLOSS_MIN_PROFIT_PCT": {
-      "0.01": {
-        "positive": 1,
-        "negative": 0,
-        "sym_positive": [
-          "SLV_LONG"
-        ],
-        "sym_negative": []
-      },
-      "0.0": {
+      "false": {
         "positive": 0,
         "negative": 0
       }
@@ -4066,6 +3915,16 @@
         "negative": 0
       },
       "54": {
+        "positive": 0,
+        "negative": 0
+      }
+    },
+    "ATR_ADAPTIVE_SIZING_ENABLED": {
+      "true": {
+        "positive": 0,
+        "negative": 0
+      },
+      "false": {
         "positive": 0,
         "negative": 0
       }
@@ -4486,16 +4345,6 @@
         "negative": 0
       },
       "60.0": {
-        "positive": 0,
-        "negative": 0
-      }
-    },
-    "BB_RSI_STOCH_SCALP_ENABLED": {
-      "true": {
-        "positive": 0,
-        "negative": 0
-      },
-      "false": {
         "positive": 0,
         "negative": 0
       }
@@ -7960,16 +7809,6 @@
         "negative": 0
       }
     },
-    "FORMATION_CUP_HANDLE_ENTRY_ENABLED": {
-      "true": {
-        "positive": 0,
-        "negative": 0
-      },
-      "false": {
-        "positive": 0,
-        "negative": 0
-      }
-    },
     "FORMATION_CUP_HANDLE_EXIT_ENABLED": {
       "true": {
         "positive": 0,
@@ -9270,6 +9109,28 @@
         "negative": 0
       }
     },
+    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY": {
+      "0.025": {
+        "positive": 0,
+        "negative": 0
+      },
+      "0.0375": {
+        "positive": 0,
+        "negative": 0
+      },
+      "0.05": {
+        "positive": 0,
+        "negative": 0
+      },
+      "0.0625": {
+        "positive": 0,
+        "negative": 0
+      },
+      "0.075": {
+        "positive": 0,
+        "negative": 0
+      }
+    },
     "LR_BAND_SLOPE_NORM_PCT_DAY": {
       "0.15": {
         "positive": 0,
@@ -10498,6 +10359,16 @@
         "negative": 0
       }
     },
+    "OBLIGATORY_SECTOR_HEDGE_ENABLED": {
+      "true": {
+        "positive": 0,
+        "negative": 0
+      },
+      "false": {
+        "positive": 0,
+        "negative": 0
+      }
+    },
     "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS": {
       "45.0": {
         "positive": 0,
@@ -11199,6 +11070,28 @@
       }
     },
     "PYRAMID_MIN_GAIN_PCT": {
+      "1.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "1.5": {
+        "positive": 0,
+        "negative": 0
+      },
+      "2.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "2.5": {
+        "positive": 0,
+        "negative": 0
+      },
+      "3.0": {
+        "positive": 0,
+        "negative": 0
+      }
+    },
+    "PYRAMID_MIN_WT_VEL_1H": {
       "1.0": {
         "positive": 0,
         "negative": 0
@@ -14268,6 +14161,16 @@
         "negative": 0
       }
     },
+    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION": {
+      "true": {
+        "positive": 0,
+        "negative": 0
+      },
+      "false": {
+        "positive": 0,
+        "negative": 0
+      }
+    },
     "TRADIER_DC_POSITION_ENTRY_THRESHOLD": {
       "0.15": {
         "positive": 0,
@@ -15298,6 +15201,16 @@
         "negative": 0
       }
     },
+    "TRC_NOLOSS_MIN_PROFIT_PCT": {
+      "0.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "0.01": {
+        "positive": 0,
+        "negative": 0
+      }
+    },
     "TRC_ORB_LONG_BUDGET": {
       "3300.0": {
         "positive": 0,
@@ -15502,6 +15415,28 @@
         "negative": 0
       },
       "false": {
+        "positive": 0,
+        "negative": 0
+      }
+    },
+    "TRC_SMFI_LONG_BUDGET": {
+      "4950.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "7425.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "9900.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "12375.0": {
+        "positive": 0,
+        "negative": 0
+      },
+      "14850.0": {
         "positive": 0,
         "negative": 0
       }
@@ -17287,14 +17222,13 @@
       ]
     },
     "BB_RECOVERY_EXIT_ENABLED_TRADIER|\"True\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -17480,11 +17414,10 @@
     },
     "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG|52.5": {
       "positive": 0,
-      "negative": 2,
+      "negative": 1,
       "sym_positive": [],
       "sym_negative": [
-        "ASML_LONG",
-        "UUUU_SHORT"
+        "ASML_LONG"
       ]
     },
     "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG|17.5": {
@@ -17614,6 +17547,14 @@
       ],
       "sym_negative": []
     },
+    "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT|1.5": {
+      "positive": 1,
+      "negative": 0,
+      "sym_positive": [
+        "COHR_LONG"
+      ],
+      "sym_negative": []
+    },
     "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT|0.5": {
       "positive": 0,
       "negative": 0
@@ -17623,10 +17564,6 @@
       "negative": 0
     },
     "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT|1.25": {
-      "positive": 0,
-      "negative": 0
-    },
-    "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT|1.5": {
       "positive": 0,
       "negative": 0
     },
@@ -17852,13 +17789,11 @@
     },
     "DC_EDGE_SIZING_MIN_MULT|1.25": {
       "positive": 1,
-      "negative": 1,
+      "negative": 0,
       "sym_positive": [
         "MSTR_SHORT"
       ],
-      "sym_negative": [
-        "UUUU_SHORT"
-      ]
+      "sym_negative": []
     },
     "DC_EDGE_SIZING_MIN_MULT|0.5": {
       "positive": 0,
@@ -17906,11 +17841,7 @@
     },
     "MI_EXIT_ENABLED_TRADIER|true": {
       "positive": 0,
-      "negative": 1,
-      "sym_positive": [],
-      "sym_negative": [
-        "UUUU_SHORT"
-      ]
+      "negative": 0
     },
     "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER|0.02": {
       "positive": 1,
@@ -18047,14 +17978,13 @@
       "sym_negative": []
     },
     "STRUCTURAL_EXIT_GATE_ENABLED|\"True\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -18071,7 +18001,7 @@
       "sym_negative": []
     },
     "TRADIER_DC_DAYTRADE_TARGET_PCT|0.005": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -18079,8 +18009,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -18170,15 +18099,14 @@
       "sym_negative": []
     },
     "TRA_MIN_HOLD_MINUTES|0": {
-      "positive": 6,
+      "positive": 5,
       "negative": 0,
       "sym_positive": [
         "BEATUSDT_SHORT",
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -18343,7 +18271,7 @@
       "sym_negative": []
     },
     "TRADIER_DC_DAYTRADE_STOP_PCT|0.005": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -18351,8 +18279,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -18609,14 +18536,13 @@
       ]
     },
     "REENTRY_MANDATORY|\"False\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -18828,19 +18754,15 @@
       ],
       "sym_negative": []
     },
-    "TRC_SMFI_SHORT_BUDGET|9900.0": {
-      "positive": 0,
-      "negative": 1,
-      "sym_positive": [],
-      "sym_negative": [
-        "UUUU_SHORT"
-      ]
-    },
     "TRC_SMFI_SHORT_BUDGET|4950.0": {
       "positive": 0,
       "negative": 0
     },
     "TRC_SMFI_SHORT_BUDGET|7425.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRC_SMFI_SHORT_BUDGET|9900.0": {
       "positive": 0,
       "negative": 0
     },
@@ -19161,14 +19083,13 @@
       "sym_negative": []
     },
     "DELTA_ENTRY_ENABLED|\"True\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19361,54 +19282,6 @@
       "positive": 0,
       "negative": 0
     },
-    "OBLIGATORY_SECTOR_HEDGE_ENABLED|false": {
-      "positive": 0,
-      "negative": 1,
-      "sym_positive": [],
-      "sym_negative": [
-        "UUUU_SHORT"
-      ]
-    },
-    "OBLIGATORY_SECTOR_HEDGE_ENABLED|true": {
-      "positive": 0,
-      "negative": 0
-    },
-    "PYRAMID_MIN_WT_VEL_1H|2.0": {
-      "positive": 0,
-      "negative": 1,
-      "sym_positive": [],
-      "sym_negative": [
-        "UUUU_SHORT"
-      ]
-    },
-    "PYRAMID_MIN_WT_VEL_1H|1.0": {
-      "positive": 0,
-      "negative": 0
-    },
-    "PYRAMID_MIN_WT_VEL_1H|1.5": {
-      "positive": 0,
-      "negative": 0
-    },
-    "PYRAMID_MIN_WT_VEL_1H|2.5": {
-      "positive": 0,
-      "negative": 0
-    },
-    "PYRAMID_MIN_WT_VEL_1H|3.0": {
-      "positive": 0,
-      "negative": 0
-    },
-    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION|false": {
-      "positive": 0,
-      "negative": 1,
-      "sym_positive": [],
-      "sym_negative": [
-        "UUUU_SHORT"
-      ]
-    },
-    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION|true": {
-      "positive": 0,
-      "negative": 0
-    },
     "BB_RSI_STOCH_BB_MAX|0.3": {
       "positive": 0,
       "negative": 1,
@@ -19522,7 +19395,7 @@
       "negative": 0
     },
     "AUGMENTATION_COOLDOWN_SECONDS|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19530,8 +19403,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19556,7 +19428,7 @@
       "negative": 0
     },
     "BOUNCE_TOP_MIN_HOLD_MINUTES|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19564,8 +19436,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19590,7 +19461,7 @@
       "negative": 0
     },
     "COOLDOWN_BARS_TRADIER|10": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19598,8 +19469,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19624,7 +19494,7 @@
       "negative": 0
     },
     "DELTA_EXIT_MIN_TF_LOST|2": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19632,8 +19502,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19646,14 +19515,13 @@
       "negative": 0
     },
     "EXIT_CONV_FAIL_ENABLED|\"True\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19671,14 +19539,13 @@
       "negative": 0
     },
     "EXIT_MAX_HOLD_ENABLED|\"True\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19696,7 +19563,7 @@
       "negative": 0
     },
     "EXIT_SCORER_DC_EXTREME|1.2": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19704,8 +19571,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19726,7 +19592,7 @@
       "negative": 0
     },
     "GOLDEN_RULE_HTF_MIN_TFS|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19734,8 +19600,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19764,7 +19629,7 @@
       "negative": 0
     },
     "GOLDEN_RULE_MIN_IND|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19772,8 +19637,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19822,7 +19686,7 @@
       "negative": 0
     },
     "GR_HTF_DIRECT_ENTRY_SCORE_MIN|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19830,8 +19694,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19856,7 +19719,7 @@
       "negative": 0
     },
     "HTF_ALIGN_REQUIRED_TRADIER|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19864,8 +19727,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19890,15 +19752,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "SLV_LONG"
-      ],
-      "sym_negative": []
-    },
-    "LIVE_ENTRY_ENGINE_MIN_SCORE|0.75": {
-      "positive": 1,
-      "negative": 0,
-      "sym_positive": [
-        "OLED_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19918,8 +19772,12 @@
       "positive": 0,
       "negative": 0
     },
+    "LIVE_ENTRY_ENGINE_MIN_SCORE|0.75": {
+      "positive": 0,
+      "negative": 0
+    },
     "LOCAL_EXTREMES_MIN_SCORE|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -19927,8 +19785,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19969,14 +19826,13 @@
       "negative": 0
     },
     "LR_BAND_E02_EXIT_ENABLED|\"False\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -19994,14 +19850,13 @@
       "negative": 0
     },
     "LR_BAND_ENTRY_ENABLED|\"True\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20019,14 +19874,13 @@
       "negative": 0
     },
     "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED|\"False\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20044,7 +19898,7 @@
       "negative": 0
     },
     "MAX_ALLOWED_DRAWDOWN_PCT|100": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20052,8 +19906,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20078,7 +19931,7 @@
       "negative": 0
     },
     "MIN_HOLD_BARS_BEFORE_EXIT|1": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20086,8 +19939,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20112,7 +19964,7 @@
       "negative": 0
     },
     "MIN_HOLD_MINUTES_TRADIER|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20120,8 +19972,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20146,14 +19997,13 @@
       "negative": 0
     },
     "R1_USE_DC_4BAR|\"False\"": {
-      "positive": 5,
+      "positive": 4,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
         "BEATUSDT_SHORT",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20171,7 +20021,7 @@
       "negative": 0
     },
     "RSI_EXIT_LONG_TRADIER|42.5": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20179,8 +20029,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20193,7 +20042,7 @@
       "negative": 0
     },
     "RSI_EXIT_SHORT_TRADIER|58.0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20201,8 +20050,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20227,7 +20075,7 @@
       "negative": 0
     },
     "TRADIER_ENTRY_SCORE_THRESHOLD|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20235,8 +20083,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20253,7 +20100,7 @@
       "negative": 0
     },
     "TRA_WT_DC_ENTRY_THRESHOLD|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20261,8 +20108,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20287,7 +20133,7 @@
       "negative": 0
     },
     "WT_DC_ENTRY_K5M_MAX_LONG|100": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20295,8 +20141,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20321,7 +20166,7 @@
       "negative": 0
     },
     "WT_DC_ENTRY_K5M_MIN_SHORT|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20329,8 +20174,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20347,7 +20191,7 @@
       "negative": 0
     },
     "WT_DC_ENTRY_THRESHOLD|0": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20355,8 +20199,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20381,7 +20224,7 @@
       "negative": 0
     },
     "WT_DC_EXIT_THRESHOLD|75": {
-      "positive": 7,
+      "positive": 6,
       "negative": 0,
       "sym_positive": [
         "SNDK_SHORT",
@@ -20389,8 +20232,7 @@
         "MSTR_LONG",
         "ALMU_LONG",
         "B3USDT_SHORT",
-        "OLED_LONG",
-        "SLV_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
@@ -20711,75 +20553,27 @@
       "positive": 0,
       "negative": 0
     },
-    "ATR_ADAPTIVE_SIZING_ENABLED|false": {
+    "BB_RSI_STOCH_SCALP_ENABLED|false": {
       "positive": 1,
       "negative": 0,
       "sym_positive": [
-        "OLED_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
-    "ATR_ADAPTIVE_SIZING_ENABLED|true": {
+    "BB_RSI_STOCH_SCALP_ENABLED|true": {
       "positive": 0,
       "negative": 0
     },
-    "TRC_SMFI_LONG_BUDGET|12375.0": {
+    "FORMATION_CUP_HANDLE_ENTRY_ENABLED|true": {
       "positive": 1,
       "negative": 0,
       "sym_positive": [
-        "OLED_LONG"
+        "TXN_LONG"
       ],
       "sym_negative": []
     },
-    "TRC_SMFI_LONG_BUDGET|4950.0": {
-      "positive": 0,
-      "negative": 0
-    },
-    "TRC_SMFI_LONG_BUDGET|7425.0": {
-      "positive": 0,
-      "negative": 0
-    },
-    "TRC_SMFI_LONG_BUDGET|9900.0": {
-      "positive": 0,
-      "negative": 0
-    },
-    "TRC_SMFI_LONG_BUDGET|14850.0": {
-      "positive": 0,
-      "negative": 0
-    },
-    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.05": {
-      "positive": 1,
-      "negative": 0,
-      "sym_positive": [
-        "SLV_LONG"
-      ],
-      "sym_negative": []
-    },
-    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.025": {
-      "positive": 0,
-      "negative": 0
-    },
-    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.0375": {
-      "positive": 0,
-      "negative": 0
-    },
-    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.0625": {
-      "positive": 0,
-      "negative": 0
-    },
-    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.075": {
-      "positive": 0,
-      "negative": 0
-    },
-    "TRC_NOLOSS_MIN_PROFIT_PCT|0.01": {
-      "positive": 1,
-      "negative": 0,
-      "sym_positive": [
-        "SLV_LONG"
-      ],
-      "sym_negative": []
-    },
-    "TRC_NOLOSS_MIN_PROFIT_PCT|0.0": {
+    "FORMATION_CUP_HANDLE_ENTRY_ENABLED|false": {
       "positive": 0,
       "negative": 0
     },
@@ -20968,6 +20762,14 @@
       "negative": 0
     },
     "ALIGNMENT_GATE_TOTAL|54": {
+      "positive": 0,
+      "negative": 0
+    },
+    "ATR_ADAPTIVE_SIZING_ENABLED|true": {
+      "positive": 0,
+      "negative": 0
+    },
+    "ATR_ADAPTIVE_SIZING_ENABLED|false": {
       "positive": 0,
       "negative": 0
     },
@@ -21340,14 +21142,6 @@
       "negative": 0
     },
     "BB_RSI_STOCH_RSI_MAX|60.0": {
-      "positive": 0,
-      "negative": 0
-    },
-    "BB_RSI_STOCH_SCALP_ENABLED|true": {
-      "positive": 0,
-      "negative": 0
-    },
-    "BB_RSI_STOCH_SCALP_ENABLED|false": {
       "positive": 0,
       "negative": 0
     },
@@ -24387,14 +24181,6 @@
       "positive": 0,
       "negative": 0
     },
-    "FORMATION_CUP_HANDLE_ENTRY_ENABLED|true": {
-      "positive": 0,
-      "negative": 0
-    },
-    "FORMATION_CUP_HANDLE_ENTRY_ENABLED|false": {
-      "positive": 0,
-      "negative": 0
-    },
     "FORMATION_CUP_HANDLE_EXIT_ENABLED|true": {
       "positive": 0,
       "negative": 0
@@ -25523,6 +25309,26 @@
       "positive": 0,
       "negative": 0
     },
+    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.025": {
+      "positive": 0,
+      "negative": 0
+    },
+    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.0375": {
+      "positive": 0,
+      "negative": 0
+    },
+    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.05": {
+      "positive": 0,
+      "negative": 0
+    },
+    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.0625": {
+      "positive": 0,
+      "negative": 0
+    },
+    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY|0.075": {
+      "positive": 0,
+      "negative": 0
+    },
     "LR_BAND_SLOPE_NORM_PCT_DAY|0.15": {
       "positive": 0,
       "negative": 0
@@ -26599,6 +26405,14 @@
       "positive": 0,
       "negative": 0
     },
+    "OBLIGATORY_SECTOR_HEDGE_ENABLED|true": {
+      "positive": 0,
+      "negative": 0
+    },
+    "OBLIGATORY_SECTOR_HEDGE_ENABLED|false": {
+      "positive": 0,
+      "negative": 0
+    },
     "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS|45.0": {
       "positive": 0,
       "negative": 0
@@ -27240,6 +27054,26 @@
       "negative": 0
     },
     "PYRAMID_MIN_GAIN_PCT|3.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "PYRAMID_MIN_WT_VEL_1H|1.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "PYRAMID_MIN_WT_VEL_1H|1.5": {
+      "positive": 0,
+      "negative": 0
+    },
+    "PYRAMID_MIN_WT_VEL_1H|2.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "PYRAMID_MIN_WT_VEL_1H|2.5": {
+      "positive": 0,
+      "negative": 0
+    },
+    "PYRAMID_MIN_WT_VEL_1H|3.0": {
       "positive": 0,
       "negative": 0
     },
@@ -29931,6 +29765,14 @@
       "positive": 0,
       "negative": 0
     },
+    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION|true": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION|false": {
+      "positive": 0,
+      "negative": 0
+    },
     "TRADIER_DC_POSITION_ENTRY_THRESHOLD|0.15": {
       "positive": 0,
       "negative": 0
@@ -30839,6 +30681,14 @@
       "positive": 0,
       "negative": 0
     },
+    "TRC_NOLOSS_MIN_PROFIT_PCT|0.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRC_NOLOSS_MIN_PROFIT_PCT|0.01": {
+      "positive": 0,
+      "negative": 0
+    },
     "TRC_ORB_LONG_BUDGET|3300.0": {
       "positive": 0,
       "negative": 0
@@ -31024,6 +30874,26 @@
       "negative": 0
     },
     "TRC_SMFI_ENABLED|false": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRC_SMFI_LONG_BUDGET|4950.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRC_SMFI_LONG_BUDGET|7425.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRC_SMFI_LONG_BUDGET|9900.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRC_SMFI_LONG_BUDGET|12375.0": {
+      "positive": 0,
+      "negative": 0
+    },
+    "TRC_SMFI_LONG_BUDGET|14850.0": {
       "positive": 0,
       "negative": 0
     },
@@ -32534,7 +32404,7 @@
   },
   "per_param_summary": {
     "BB_RECOVERY_EXIT_ENABLED_TRADIER": {
-      "total_positive": 8,
+      "total_positive": 7,
       "total_negative": 1,
       "best_value": "\"True\"",
       "values": {
@@ -32551,14 +32421,13 @@
           ]
         },
         "\"True\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -32816,16 +32685,15 @@
     },
     "DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG": {
       "total_positive": 0,
-      "total_negative": 2,
+      "total_negative": 1,
       "best_value": "52.5",
       "values": {
         "52.5": {
           "positive": 0,
-          "negative": 2,
+          "negative": 1,
           "sym_positive": [],
           "sym_negative": [
-            "ASML_LONG",
-            "UUUU_SHORT"
+            "ASML_LONG"
           ]
         },
         "17.5": {
@@ -32985,7 +32853,7 @@
       }
     },
     "DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT": {
-      "total_positive": 1,
+      "total_positive": 2,
       "total_negative": 0,
       "best_value": "1.0",
       "values": {
@@ -32994,6 +32862,14 @@
           "negative": 0,
           "sym_positive": [
             "ASTS_SHORT"
+          ],
+          "sym_negative": []
+        },
+        "1.5": {
+          "positive": 1,
+          "negative": 0,
+          "sym_positive": [
+            "COHR_LONG"
           ],
           "sym_negative": []
         },
@@ -33006,10 +32882,6 @@
           "negative": 0
         },
         "1.25": {
-          "positive": 0,
-          "negative": 0
-        },
-        "1.5": {
           "positive": 0,
           "negative": 0
         }
@@ -33299,7 +33171,7 @@
     },
     "DC_EDGE_SIZING_MIN_MULT": {
       "total_positive": 2,
-      "total_negative": 1,
+      "total_negative": 0,
       "best_value": "1.5",
       "values": {
         "1.5": {
@@ -33312,13 +33184,11 @@
         },
         "1.25": {
           "positive": 1,
-          "negative": 1,
+          "negative": 0,
           "sym_positive": [
             "MSTR_SHORT"
           ],
-          "sym_negative": [
-            "UUUU_SHORT"
-          ]
+          "sym_negative": []
         },
         "0.5": {
           "positive": 0,
@@ -33367,7 +33237,7 @@
     },
     "MI_EXIT_ENABLED_TRADIER": {
       "total_positive": 1,
-      "total_negative": 1,
+      "total_negative": 0,
       "best_value": "false",
       "values": {
         "false": {
@@ -33380,11 +33250,7 @@
         },
         "true": {
           "positive": 0,
-          "negative": 1,
-          "sym_positive": [],
-          "sym_negative": [
-            "UUUU_SHORT"
-          ]
+          "negative": 0
         }
       }
     },
@@ -33562,7 +33428,7 @@
       }
     },
     "STRUCTURAL_EXIT_GATE_ENABLED": {
-      "total_positive": 8,
+      "total_positive": 7,
       "total_negative": 0,
       "best_value": "\"True\"",
       "values": {
@@ -33577,14 +33443,13 @@
           "sym_negative": []
         },
         "\"True\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -33595,7 +33460,7 @@
       }
     },
     "TRADIER_DC_DAYTRADE_TARGET_PCT": {
-      "total_positive": 8,
+      "total_positive": 7,
       "total_negative": 0,
       "best_value": "0.005",
       "values": {
@@ -33608,7 +33473,7 @@
           "sym_negative": []
         },
         "0.005": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -33616,8 +33481,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -33728,7 +33592,7 @@
       }
     },
     "TRA_MIN_HOLD_MINUTES": {
-      "total_positive": 8,
+      "total_positive": 7,
       "total_negative": 0,
       "best_value": "0",
       "values": {
@@ -33742,15 +33606,14 @@
           "sym_negative": []
         },
         "0": {
-          "positive": 6,
+          "positive": 5,
           "negative": 0,
           "sym_positive": [
             "BEATUSDT_SHORT",
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -33947,7 +33810,7 @@
       }
     },
     "TRADIER_DC_DAYTRADE_STOP_PCT": {
-      "total_positive": 9,
+      "total_positive": 8,
       "total_negative": 2,
       "best_value": "0.005",
       "values": {
@@ -33971,7 +33834,7 @@
           "sym_negative": []
         },
         "0.005": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -33979,8 +33842,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -34318,7 +34180,7 @@
       }
     },
     "REENTRY_MANDATORY": {
-      "total_positive": 8,
+      "total_positive": 7,
       "total_negative": 1,
       "best_value": "\"False\"",
       "values": {
@@ -34335,14 +34197,13 @@
           ]
         },
         "\"False\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -34620,7 +34481,7 @@
     },
     "TRC_SMFI_SHORT_BUDGET": {
       "total_positive": 1,
-      "total_negative": 1,
+      "total_negative": 0,
       "best_value": "12375.0",
       "values": {
         "12375.0": {
@@ -34631,19 +34492,15 @@
           ],
           "sym_negative": []
         },
-        "9900.0": {
-          "positive": 0,
-          "negative": 1,
-          "sym_positive": [],
-          "sym_negative": [
-            "UUUU_SHORT"
-          ]
-        },
         "4950.0": {
           "positive": 0,
           "negative": 0
         },
         "7425.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "9900.0": {
           "positive": 0,
           "negative": 0
         },
@@ -35070,7 +34927,7 @@
       }
     },
     "DELTA_ENTRY_ENABLED": {
-      "total_positive": 8,
+      "total_positive": 7,
       "total_negative": 0,
       "best_value": "\"True\"",
       "values": {
@@ -35083,14 +34940,13 @@
           "sym_negative": []
         },
         "\"True\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35348,75 +35204,6 @@
         }
       }
     },
-    "OBLIGATORY_SECTOR_HEDGE_ENABLED": {
-      "total_positive": 0,
-      "total_negative": 1,
-      "best_value": "false",
-      "values": {
-        "false": {
-          "positive": 0,
-          "negative": 1,
-          "sym_positive": [],
-          "sym_negative": [
-            "UUUU_SHORT"
-          ]
-        },
-        "true": {
-          "positive": 0,
-          "negative": 0
-        }
-      }
-    },
-    "PYRAMID_MIN_WT_VEL_1H": {
-      "total_positive": 0,
-      "total_negative": 1,
-      "best_value": "2.0",
-      "values": {
-        "2.0": {
-          "positive": 0,
-          "negative": 1,
-          "sym_positive": [],
-          "sym_negative": [
-            "UUUU_SHORT"
-          ]
-        },
-        "1.0": {
-          "positive": 0,
-          "negative": 0
-        },
-        "1.5": {
-          "positive": 0,
-          "negative": 0
-        },
-        "2.5": {
-          "positive": 0,
-          "negative": 0
-        },
-        "3.0": {
-          "positive": 0,
-          "negative": 0
-        }
-      }
-    },
-    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION": {
-      "total_positive": 0,
-      "total_negative": 1,
-      "best_value": "false",
-      "values": {
-        "false": {
-          "positive": 0,
-          "negative": 1,
-          "sym_positive": [],
-          "sym_negative": [
-            "UUUU_SHORT"
-          ]
-        },
-        "true": {
-          "positive": 0,
-          "negative": 0
-        }
-      }
-    },
     "BB_RSI_STOCH_BB_MAX": {
       "total_positive": 0,
       "total_negative": 1,
@@ -35565,12 +35352,12 @@
       }
     },
     "AUGMENTATION_COOLDOWN_SECONDS": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35578,8 +35365,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35606,12 +35392,12 @@
       }
     },
     "BOUNCE_TOP_MIN_HOLD_MINUTES": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35619,8 +35405,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35647,12 +35432,12 @@
       }
     },
     "COOLDOWN_BARS_TRADIER": {
-      "total_positive": 8,
+      "total_positive": 7,
       "total_negative": 0,
       "best_value": "10",
       "values": {
         "10": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35660,8 +35445,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35688,12 +35472,12 @@
       }
     },
     "DELTA_EXIT_MIN_TF_LOST": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "2",
       "values": {
         "2": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35701,8 +35485,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35717,19 +35500,18 @@
       }
     },
     "EXIT_CONV_FAIL_ENABLED": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "\"True\"",
       "values": {
         "\"True\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35749,19 +35531,18 @@
       }
     },
     "EXIT_MAX_HOLD_ENABLED": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "\"True\"",
       "values": {
         "\"True\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35781,12 +35562,12 @@
       }
     },
     "EXIT_SCORER_DC_EXTREME": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "1.2",
       "values": {
         "1.2": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35794,8 +35575,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35818,12 +35598,12 @@
       }
     },
     "GOLDEN_RULE_HTF_MIN_TFS": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35831,8 +35611,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35863,12 +35642,12 @@
       }
     },
     "GOLDEN_RULE_MIN_IND": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35876,8 +35655,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35928,12 +35706,12 @@
       }
     },
     "GR_HTF_DIRECT_ENTRY_SCORE_MIN": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35941,8 +35719,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -35969,12 +35746,12 @@
       }
     },
     "HTF_ALIGN_REQUIRED_TRADIER": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -35982,8 +35759,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36002,7 +35778,7 @@
       }
     },
     "LIVE_ENTRY_ENGINE_MIN_SCORE": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
@@ -36015,15 +35791,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "SLV_LONG"
-          ],
-          "sym_negative": []
-        },
-        "0.75": {
-          "positive": 1,
-          "negative": 0,
-          "sym_positive": [
-            "OLED_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36042,16 +35810,20 @@
         "0.625": {
           "positive": 0,
           "negative": 0
+        },
+        "0.75": {
+          "positive": 0,
+          "negative": 0
         }
       }
     },
     "LOCAL_EXTREMES_MIN_SCORE": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36059,8 +35831,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36103,19 +35874,18 @@
       }
     },
     "LR_BAND_E02_EXIT_ENABLED": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "\"False\"",
       "values": {
         "\"False\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36135,19 +35905,18 @@
       }
     },
     "LR_BAND_ENTRY_ENABLED": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "\"True\"",
       "values": {
         "\"True\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36167,19 +35936,18 @@
       }
     },
     "LR_BAND_LADDER_ORDINARY_PARITY_ENABLED": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "\"False\"",
       "values": {
         "\"False\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36199,12 +35967,12 @@
       }
     },
     "MAX_ALLOWED_DRAWDOWN_PCT": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "100",
       "values": {
         "100": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36212,8 +35980,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36240,12 +36007,12 @@
       }
     },
     "MIN_HOLD_BARS_BEFORE_EXIT": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "1",
       "values": {
         "1": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36253,8 +36020,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36281,12 +36047,12 @@
       }
     },
     "MIN_HOLD_MINUTES_TRADIER": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36294,8 +36060,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36322,19 +36087,18 @@
       }
     },
     "R1_USE_DC_4BAR": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "\"False\"",
       "values": {
         "\"False\"": {
-          "positive": 5,
+          "positive": 4,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
             "BEATUSDT_SHORT",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36354,12 +36118,12 @@
       }
     },
     "RSI_EXIT_LONG_TRADIER": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "42.5",
       "values": {
         "42.5": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36367,8 +36131,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36383,12 +36146,12 @@
       }
     },
     "RSI_EXIT_SHORT_TRADIER": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "58.0",
       "values": {
         "58.0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36396,8 +36159,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36424,12 +36186,12 @@
       }
     },
     "TRADIER_ENTRY_SCORE_THRESHOLD": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36437,8 +36199,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36457,12 +36218,12 @@
       }
     },
     "TRA_WT_DC_ENTRY_THRESHOLD": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36470,8 +36231,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36498,12 +36258,12 @@
       }
     },
     "WT_DC_ENTRY_K5M_MAX_LONG": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "100",
       "values": {
         "100": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36511,8 +36271,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36539,12 +36298,12 @@
       }
     },
     "WT_DC_ENTRY_K5M_MIN_SHORT": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36552,8 +36311,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36572,12 +36330,12 @@
       }
     },
     "WT_DC_ENTRY_THRESHOLD": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "0",
       "values": {
         "0": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36585,8 +36343,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -36613,12 +36370,12 @@
       }
     },
     "WT_DC_EXIT_THRESHOLD": {
-      "total_positive": 7,
+      "total_positive": 6,
       "total_negative": 0,
       "best_value": "75",
       "values": {
         "75": {
-          "positive": 7,
+          "positive": 6,
           "negative": 0,
           "sym_positive": [
             "SNDK_SHORT",
@@ -36626,8 +36383,7 @@
             "MSTR_LONG",
             "ALMU_LONG",
             "B3USDT_SHORT",
-            "OLED_LONG",
-            "SLV_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -37069,7 +36825,7 @@
         }
       }
     },
-    "ATR_ADAPTIVE_SIZING_ENABLED": {
+    "BB_RSI_STOCH_SCALP_ENABLED": {
       "total_positive": 1,
       "total_negative": 0,
       "best_value": "false",
@@ -37078,7 +36834,7 @@
           "positive": 1,
           "negative": 0,
           "sym_positive": [
-            "OLED_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
@@ -37088,82 +36844,20 @@
         }
       }
     },
-    "TRC_SMFI_LONG_BUDGET": {
+    "FORMATION_CUP_HANDLE_ENTRY_ENABLED": {
       "total_positive": 1,
       "total_negative": 0,
-      "best_value": "12375.0",
+      "best_value": "true",
       "values": {
-        "12375.0": {
+        "true": {
           "positive": 1,
           "negative": 0,
           "sym_positive": [
-            "OLED_LONG"
+            "TXN_LONG"
           ],
           "sym_negative": []
         },
-        "4950.0": {
-          "positive": 0,
-          "negative": 0
-        },
-        "7425.0": {
-          "positive": 0,
-          "negative": 0
-        },
-        "9900.0": {
-          "positive": 0,
-          "negative": 0
-        },
-        "14850.0": {
-          "positive": 0,
-          "negative": 0
-        }
-      }
-    },
-    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY": {
-      "total_positive": 1,
-      "total_negative": 0,
-      "best_value": "0.05",
-      "values": {
-        "0.05": {
-          "positive": 1,
-          "negative": 0,
-          "sym_positive": [
-            "SLV_LONG"
-          ],
-          "sym_negative": []
-        },
-        "0.025": {
-          "positive": 0,
-          "negative": 0
-        },
-        "0.0375": {
-          "positive": 0,
-          "negative": 0
-        },
-        "0.0625": {
-          "positive": 0,
-          "negative": 0
-        },
-        "0.075": {
-          "positive": 0,
-          "negative": 0
-        }
-      }
-    },
-    "TRC_NOLOSS_MIN_PROFIT_PCT": {
-      "total_positive": 1,
-      "total_negative": 0,
-      "best_value": "0.01",
-      "values": {
-        "0.01": {
-          "positive": 1,
-          "negative": 0,
-          "sym_positive": [
-            "SLV_LONG"
-          ],
-          "sym_negative": []
-        },
-        "0.0": {
+        "false": {
           "positive": 0,
           "negative": 0
         }
@@ -37485,6 +37179,21 @@
           "negative": 0
         },
         "54": {
+          "positive": 0,
+          "negative": 0
+        }
+      }
+    },
+    "ATR_ADAPTIVE_SIZING_ENABLED": {
+      "total_positive": 0,
+      "total_negative": 0,
+      "best_value": "true",
+      "values": {
+        "true": {
+          "positive": 0,
+          "negative": 0
+        },
+        "false": {
           "positive": 0,
           "negative": 0
         }
@@ -38025,21 +37734,6 @@
           "negative": 0
         },
         "60.0": {
-          "positive": 0,
-          "negative": 0
-        }
-      }
-    },
-    "BB_RSI_STOCH_SCALP_ENABLED": {
-      "total_positive": 0,
-      "total_negative": 0,
-      "best_value": "true",
-      "values": {
-        "true": {
-          "positive": 0,
-          "negative": 0
-        },
-        "false": {
           "positive": 0,
           "negative": 0
         }
@@ -42565,21 +42259,6 @@
         }
       }
     },
-    "FORMATION_CUP_HANDLE_ENTRY_ENABLED": {
-      "total_positive": 0,
-      "total_negative": 0,
-      "best_value": "true",
-      "values": {
-        "true": {
-          "positive": 0,
-          "negative": 0
-        },
-        "false": {
-          "positive": 0,
-          "negative": 0
-        }
-      }
-    },
     "FORMATION_CUP_HANDLE_EXIT_ENABLED": {
       "total_positive": 0,
       "total_negative": 0,
@@ -44310,6 +43989,33 @@
         }
       }
     },
+    "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY": {
+      "total_positive": 0,
+      "total_negative": 0,
+      "best_value": "0.025",
+      "values": {
+        "0.025": {
+          "positive": 0,
+          "negative": 0
+        },
+        "0.0375": {
+          "positive": 0,
+          "negative": 0
+        },
+        "0.05": {
+          "positive": 0,
+          "negative": 0
+        },
+        "0.0625": {
+          "positive": 0,
+          "negative": 0
+        },
+        "0.075": {
+          "positive": 0,
+          "negative": 0
+        }
+      }
+    },
     "LR_BAND_SLOPE_NORM_PCT_DAY": {
       "total_positive": 0,
       "total_negative": 0,
@@ -45918,6 +45624,21 @@
         }
       }
     },
+    "OBLIGATORY_SECTOR_HEDGE_ENABLED": {
+      "total_positive": 0,
+      "total_negative": 0,
+      "best_value": "true",
+      "values": {
+        "true": {
+          "positive": 0,
+          "negative": 0
+        },
+        "false": {
+          "positive": 0,
+          "negative": 0
+        }
+      }
+    },
     "OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS": {
       "total_positive": 0,
       "total_negative": 0,
@@ -46809,6 +46530,33 @@
       }
     },
     "PYRAMID_MIN_GAIN_PCT": {
+      "total_positive": 0,
+      "total_negative": 0,
+      "best_value": "1.0",
+      "values": {
+        "1.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "1.5": {
+          "positive": 0,
+          "negative": 0
+        },
+        "2.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "2.5": {
+          "positive": 0,
+          "negative": 0
+        },
+        "3.0": {
+          "positive": 0,
+          "negative": 0
+        }
+      }
+    },
+    "PYRAMID_MIN_WT_VEL_1H": {
       "total_positive": 0,
       "total_negative": 0,
       "best_value": "1.0",
@@ -50783,6 +50531,21 @@
         }
       }
     },
+    "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION": {
+      "total_positive": 0,
+      "total_negative": 0,
+      "best_value": "true",
+      "values": {
+        "true": {
+          "positive": 0,
+          "negative": 0
+        },
+        "false": {
+          "positive": 0,
+          "negative": 0
+        }
+      }
+    },
     "TRADIER_DC_POSITION_ENTRY_THRESHOLD": {
       "total_positive": 0,
       "total_negative": 0,
@@ -52118,6 +51881,21 @@
         }
       }
     },
+    "TRC_NOLOSS_MIN_PROFIT_PCT": {
+      "total_positive": 0,
+      "total_negative": 0,
+      "best_value": "0.0",
+      "values": {
+        "0.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "0.01": {
+          "positive": 0,
+          "negative": 0
+        }
+      }
+    },
     "TRC_ORB_LONG_BUDGET": {
       "total_positive": 0,
       "total_negative": 0,
@@ -52371,6 +52149,33 @@
           "negative": 0
         },
         "false": {
+          "positive": 0,
+          "negative": 0
+        }
+      }
+    },
+    "TRC_SMFI_LONG_BUDGET": {
+      "total_positive": 0,
+      "total_negative": 0,
+      "best_value": "4950.0",
+      "values": {
+        "4950.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "7425.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "9900.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "12375.0": {
+          "positive": 0,
+          "negative": 0
+        },
+        "14850.0": {
           "positive": 0,
           "negative": 0
         }
