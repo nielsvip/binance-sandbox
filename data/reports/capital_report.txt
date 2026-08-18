@@ -1,19 +1,21 @@
-CAPITAL ALLOCATION REPORT — 2026-08-18 03:36 UTC
+CAPITAL ALLOCATION REPORT — 2026-08-18 03:53 UTC
 ================================================================================
-Total capital deployed: $6.98 across 1 positions
+Total capital deployed: $13.97 across 2 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $      6.98 ( 99.9%) — 1 positions
-  Tier C: $      0.00 (  0.0%) — 0 positions
+  Tier B: $      0.00 (  0.0%) — 0 positions
+  Tier C: $     13.97 (100.0%) — 2 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
+  ** C-tier OVERWEIGHT: 100% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [0]:
-  (none)
+LOSERS — reduce allocation (C-tier or losing) [2]:
+                   men:MANAUSDT_SHORT  $    6.97  gain=-0.21%  tier=C  mult=0.43
+                   men:MEMEUSDT_SHORT  $    7.00  gain=+0.00%  tier=C  mult=0.58
 
-MEDIOCRE — capital sitting idle [1]:
-                  fin:LUNA2USDT_SHORT  $    6.98  gain=-0.15%  tier=B
+MEDIOCRE — capital sitting idle [0]:
+  (none)
