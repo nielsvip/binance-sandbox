@@ -1,12 +1,27 @@
 {
- "active": [],
- "last_scan": "2026-08-18T11:59:19.544422+00:00",
+ "active": [
+  {
+   "position_key": "men:LTCUSDC_SHORT",
+   "symbol": "LTCUSDC",
+   "type": "STALE_ACTIVITY",
+   "severity": "WARNING",
+   "idle_h": 8.3
+  },
+  {
+   "position_key": "men:MANAUSDT_SHORT",
+   "symbol": "MANAUSDT",
+   "type": "STALE_ACTIVITY",
+   "severity": "WARNING",
+   "idle_h": 8.6
+  }
+ ],
+ "last_scan": "2026-08-18T12:14:24.536721+00:00",
  "summary": {
   "stuck": 0,
   "runaway_loss": 0,
-  "stale_activity": 0,
-  "total": 0,
+  "stale_activity": 2,
+  "total": 2,
   "critical": 0,
-  "positions_scanned": 0
+  "positions_scanned": 2
  }
 }
