@@ -6854,6 +6854,37 @@ def mtf_arrow_score(ind, is_long, cfg):
     return score, " ".join(parts)
 
 
+def band_arrow_score(ind, is_long, cfg):
+    """BAND_ARROW entry — vector twin of live BAND_ARROW_ENABLED family.
+
+    Checks BAND_ARROW_ENTRY_TFS (e.g. "D,4h,1h") for a green arrow (LONG) or red
+    arrow (SHORT). A green arrow = lrL_slope > BAND_ARROW_SLOPE_DEADBAND and
+    pct_b in favorable zone (LONG: below centre, SHORT: above). Returns True
+    if any configured TF fires. Fails-open: missing fields → no fire.
+    """
+    try:
+        if not bool(getattr(cfg, "BAND_ARROW_ENABLED", False)):
+            return False, ""
+        tfs_raw = str(getattr(cfg, "BAND_ARROW_ENTRY_TFS", "D,4h,1h"))
+        tfs = [t.strip() for t in tfs_raw.split(",") if t.strip()]
+        deadband = float(getattr(cfg, "BAND_ARROW_SLOPE_DEADBAND", 0.0))
+        for tf in tfs:
+            sl = ind.get(f"lrL_slope_{tf}")
+            pb = ind.get(f"lrL_pct_b_{tf}")
+            if sl is None or pb is None:
+                continue
+            sl_f = float(sl)
+            pb_f = float(pb)
+            # Green arrow: rising slope above deadband; red arrow: falling below
+            if is_long and sl_f > deadband and pb_f < 0.5:
+                return True, f"BAND_ARROW_{tf}_sl{sl_f:.2f}_pb{pb_f:.2f}"
+            if not is_long and sl_f < -deadband and pb_f > 0.5:
+                return True, f"BAND_ARROW_{tf}_sl{sl_f:.2f}_pb{pb_f:.2f}"
+        return False, ""
+    except Exception:
+        return False, ""
+
+
 async def monitor_entries(order_queue: "OrderQueue", trade_manager, account_key: str, position_keys=None, event_type=None, is_priority_add: bool = False, force: bool = False):
     current_account.set(account_key)
     now_ts = time.time()
@@ -7770,7 +7801,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _mtfce_gr_count += 1
                         if _mtfce_gr_count >= _mtfce_gr_min_tfs:
                             _mtfce_fire = True
-                            _mtfce_reason = f"MTF_GR_WT_EXIT_{_mtfce_wt_tf}_grTFs={_mtfce_gr_count}"
+                            from wt_dc_delta import structural_exit_permitted as _sep_mtf
+                        _ok_mtf,_ = _sep_mtf(indicators if indicators else i, is_long, {"structural_exit_gate_enabled": True, "rz_ltf_micro":"5m"})
+                        if not _ok_mtf:
+                            logger.info(f"[MTF_GR_STRUCT_VETO] {symbol} STRUCT_VETO")
+                            _mtfce_fire=False
+                        _mtfce_reason = f"MTF_GR_WT_EXIT_{_mtfce_wt_tf}_grTFs={_mtfce_gr_count}"
                 # Persist state regardless of fire
                 trade_manager.mtf_compound_exit_state[position_key] = _mtfce_state
                 if _mtfce_fire:
@@ -8838,6 +8874,63 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _entry_score = max(float(_entry_score or 0.0), float(conf))
                             _ms_st['opened'] = True
                             logger.info(f"[MTF_ARROW_ENTRY_S] {account_key}:{symbol}: score={_ms_score:.3f}>=θ{_ms_theta} mult={_ms_mult:.2f} {_ms_detail}")
+                # ── BAND_ARROW ENTRY (ENTRY_BREAKOUT family) — side-aware fails-open ──
+                # When BAND_ARROW_ENABLED True, check BAND_ARROW_ENTRY_TFS for green/red arrow.
+                # Fails-open: default False → no action. Side-aware: LONG checks green, SHORT red.
+                if action_type != "OPEN" and bool(getattr(config, 'BAND_ARROW_ENABLED', False)):
+                    _ba_is_long = is_long
+                    _ba_fired, _ba_detail = band_arrow_score(indicators_raw if indicators_raw else i, _ba_is_long, config)
+                    if _ba_fired:
+                        _ba_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
+                        _ba_mult = float(getattr(config, 'BAND_ARROW_MAX_POS_MULT', 30.0))
+                        # Apply accumulate cap: total position multiplier limited
+                        # Use BREAKOUT_TF_SIZE logic for timeframe sizing if reason contains TF markers
+                        action_type = "OPEN"
+                        qty = int(max(1, _ba_base * min(_ba_mult, 3.0)))
+                        conf = 88.0
+                        reason = f"BAND_ARROW_{'L' if _ba_is_long else 'S'}_{_ba_detail}"[:110]
+                        _entry_score = max(float(_entry_score or 0.0), float(conf))
+                        logger.info(f"[BAND_ARROW_ENTRY] {account_key}:{symbol}: {_ba_detail} mult=3.0")
+                # ── SATOSHIT ENTRY (process_position twin, ENTRY_BREAKOUT family) — side-aware fails-open ──
+                # Mirrors vec_paths/satoshit.py + v8_quick B_SATOSHIT_ENTRY. Fails-open: False → no action.
+                if action_type != "OPEN" and bool(getattr(config, 'SATOSHIT_ENTRY_ENABLED', False)):
+                    try:
+                        _sp_ind = indicators_raw if indicators_raw else i
+                        _sp_rsi = float(_sp_ind.get('rsi_15m', 50))
+                        _sp_k = float(_sp_ind.get('stoch_k_15m', 50))
+                        _sp_mfi = float(_sp_ind.get('mfi_15m', 50))
+                        _sp_bb = float(_sp_ind.get('bb_pct_b_1h', 0.5))
+                        _sp_ha = str(_sp_ind.get('ha_15m', 'neutral'))
+                        _sp_mfi_D = float(_sp_ind.get('mfi_D', 50))
+                        _sp_rvol = float(_sp_ind.get('relative_volume_1h', 1.0))
+                        _sp_min_votes = int(getattr(config, 'SATOSHIT_MIN_VOTES_TRADIER', getattr(config, 'SATOSHIT_MIN_VOTES', 3)))
+                        if is_long:
+                            _sp_ha_val = -1 if _sp_ha == "red" else (1 if _sp_ha == "green" else 0)
+                            sp_rsi = int(_sp_rsi < float(getattr(config, 'SATOSHIT_LONG_RSI_MAX_TRADIER', 50.0)))
+                            sp_bb = int(_sp_bb < float(getattr(config, 'SATOSHIT_LONG_BB_PCTB_MAX', 0.5)))
+                            sp_ha = int(_sp_ha_val < int(getattr(config, 'SATOSHIT_LONG_HA_STREAK_MAX', 1)))
+                            sp_k = int(_sp_k < float(getattr(config, 'SATOSHIT_LONG_STOCH_K_MAX_TRADIER', 60.0)))
+                            sp_mfi = int(_sp_mfi < float(getattr(config, 'SATOSHIT_LONG_MFI_MAX_TRADIER', 60.0)))
+                        else:
+                            _sp_ha_val = 1 if _sp_ha == "green" else (-1 if _sp_ha == "red" else 0)
+                            sp_rsi = int(_sp_rsi > float(getattr(config, 'SATOSHIT_SHORT_RSI_MIN_TRADIER', 55.0)))
+                            sp_bb = int(_sp_bb > float(getattr(config, 'SATOSHIT_SHORT_BB_PCTB_MIN', 0.55)))
+                            sp_ha = int(_sp_ha_val > int(getattr(config, 'SATOSHIT_SHORT_HA_STREAK_MIN', 0)))
+                            sp_k = int(_sp_k > float(getattr(config, 'SATOSHIT_SHORT_STOCH_K_MIN_TRADIER', 50.0)))
+                            sp_mfi = int(_sp_mfi > float(getattr(config, 'SATOSHIT_SHORT_MFI_MIN_TRADIER', 50.0)))
+                        _sp_votes = sp_rsi + sp_bb + sp_ha + sp_k + sp_mfi
+                        _sp_htf_ok = (_sp_mfi_D >= float(getattr(config, 'SATOSHIT_HTF_MFI_D_MIN_TRADIER', 30.0))) and (_sp_rvol >= float(getattr(config, 'SATOSHIT_HTF_RVOL_1H_MIN_TRADIER', 0.3)))
+                        if _sp_votes >= _sp_min_votes and _sp_htf_ok:
+                            _sp_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price is not None and current_price > 0 else 1
+                            _sp_mult = float(getattr(config, 'SATOSHIT_QTY_MULT', 1.0))
+                            action_type = "OPEN"
+                            qty = int(max(1, _sp_base * _sp_mult))
+                            conf = 90.0
+                            reason = f"SATOSHIT_{'L' if is_long else 'S'}_v{_sp_votes}of5_r{_sp_rsi:.0f}k{_sp_k:.0f}"[:110]
+                            _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            logger.info(f"[SATOSHIT_ENTRY] {account_key}:{symbol}: v={_sp_votes} rsi={_sp_rsi:.0f} k={_sp_k:.0f} bb={_sp_bb:.2f} mult={_sp_mult:.1f}")
+                    except Exception:
+                        pass
                 # 2026-07-20 USER band mandate — PRIORITY band entry. The band block used to sit
                 # LAST in the cascade, so it was almost never consulted (an earlier path had already
                 # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
@@ -8951,6 +9044,27 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _entry_score += _brs_boost
                             _entry_reason = (_entry_reason or '') + f" +BB_RSI_STOCH(bb={_brs_bb:.2f}rsi={_brs_rsi:.0f}k={_brs_k:.0f}+{_brs_boost})"
                     # ═══ END BB SCORING BOOSTS ═══
+                    # ── DELTA_ENTRY_SCORE_BONUS/PENALTY — side-aware additive (fails-open) ──
+                    # When delta confirms the side, boost score; when it opposes, penalize.
+                    # Mirrors ez_positions_quick.py DELTA_ENTRY_SCORE_BONUS logic.
+                    # Fails-open: if DELTA_ENTRY_ENABLED False or tracker missing → no change.
+                    if getattr(config, 'DELTA_ENTRY_ENABLED', False) and trade_manager.delta_tracker:
+                        try:
+                            # Reuse last delta signal if already computed for this bar/symbol
+                            _d_score_sig = _d_sig if '_d_sig' in locals() and _d_sig is not None else trade_manager.delta_tracker.update(symbol, _entry_ind)
+                            if _d_score_sig is not None:
+                                _d_bonus = int(getattr(config, 'DELTA_ENTRY_SCORE_BONUS', 15))
+                                _d_penalty = int(getattr(config, 'DELTA_ENTRY_SCORE_PENALTY', -25))
+                                _is_delta_long = bool(getattr(_d_score_sig, 'entry_long', False))
+                                _is_delta_short = bool(getattr(_d_score_sig, 'entry_short', False))
+                                if (is_long and _is_delta_long) or (not is_long and _is_delta_short):
+                                    _entry_score += _d_bonus
+                                    _entry_reason = (_entry_reason or '') + f" +DELTA_BONUS({_d_bonus})"
+                                elif (is_long and _is_delta_short) or (not is_long and _is_delta_long):
+                                    _entry_score += _d_penalty
+                                    _entry_reason = (_entry_reason or '') + f" +DELTA_PENALTY({_d_penalty})"
+                        except Exception:
+                            pass
                     # tra uses a much higher entry bar so only the strongest HTF
                     # setups fire — long-term hold needs few, very high quality entries.
                     if account_key == 'tra':
@@ -9192,11 +9306,37 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     except Exception: pass
                 if action_type != "OPEN" and getattr(config, 'SATOSHIT_ENTRY_ENABLED', False):
                     try:
-                        if is_long and float(i.get('stoch_k_3m',50) or 50) > 70 and float(i.get('rsi_1h',50) or 50) > 60:
-                            return True, f"SATOSHIT_ENTRY(k>70,rsi>60)", qty
-                        if not is_long and float(i.get('stoch_k_3m',50) or 50) < 30 and float(i.get('rsi_1h',50) or 50) < 40:
-                            return True, f"SATOSHIT_ENTRY_SHORT", qty
-                    except Exception: pass
+                        # Side-aware 5-vote SATOSHIT (mirrors vec_paths/satoshit.py + v8_quick)
+                        # Fails-open: missing fields → no fire. Side-aware LONG/SHORT.
+                        _sat_ind = indicators_raw if indicators_raw else i
+                        _sat_rsi_15m = float(_sat_ind.get('rsi_15m', 50))
+                        _sat_k_15m = float(_sat_ind.get('stoch_k_15m', 50))
+                        _sat_mfi_15m = float(_sat_ind.get('mfi_15m', 50))
+                        _sat_bb_1h = float(_sat_ind.get('bb_pct_b_1h', 0.5))
+                        _sat_ha = str(_sat_ind.get('ha_15m', 'neutral'))
+                        _sat_mfi_D = float(_sat_ind.get('mfi_D', 50))
+                        _sat_rvol = float(_sat_ind.get('relative_volume_1h', 1.0))
+                        _sat_min_votes = int(getattr(config, 'SATOSHIT_MIN_VOTES_TRADIER', getattr(config, 'SATOSHIT_MIN_VOTES', 3)))
+                        if is_long:
+                            _ha_val = -1 if _sat_ha == "red" else (1 if _sat_ha == "green" else 0)
+                            v_rsi = int(_sat_rsi_15m < float(getattr(config, 'SATOSHIT_LONG_RSI_MAX_TRADIER', 50.0)))
+                            v_bb = int(_sat_bb_1h < float(getattr(config, 'SATOSHIT_LONG_BB_PCTB_MAX', 0.5)))
+                            v_ha = int(_ha_val < int(getattr(config, 'SATOSHIT_LONG_HA_STREAK_MAX', 1)))
+                            v_k = int(_sat_k_15m < float(getattr(config, 'SATOSHIT_LONG_STOCH_K_MAX_TRADIER', 60.0)))
+                            v_mfi = int(_sat_mfi_15m < float(getattr(config, 'SATOSHIT_LONG_MFI_MAX_TRADIER', 60.0)))
+                        else:
+                            _ha_val = 1 if _sat_ha == "green" else (-1 if _sat_ha == "red" else 0)
+                            v_rsi = int(_sat_rsi_15m > float(getattr(config, 'SATOSHIT_SHORT_RSI_MIN_TRADIER', 55.0)))
+                            v_bb = int(_sat_bb_1h > float(getattr(config, 'SATOSHIT_SHORT_BB_PCTB_MIN', 0.55)))
+                            v_ha = int(_ha_val > int(getattr(config, 'SATOSHIT_SHORT_HA_STREAK_MIN', 0)))
+                            v_k = int(_sat_k_15m > float(getattr(config, 'SATOSHIT_SHORT_STOCH_K_MIN_TRADIER', 50.0)))
+                            v_mfi = int(_sat_mfi_15m > float(getattr(config, 'SATOSHIT_SHORT_MFI_MIN_TRADIER', 50.0)))
+                        _sat_votes = v_rsi + v_bb + v_ha + v_k + v_mfi
+                        _htf_ok = (_sat_mfi_D >= float(getattr(config, 'SATOSHIT_HTF_MFI_D_MIN_TRADIER', 30.0))) and (_sat_rvol >= float(getattr(config, 'SATOSHIT_HTF_RVOL_1H_MIN_TRADIER', 0.3)))
+                        if _sat_votes >= _sat_min_votes and _htf_ok:
+                            return True, f"SATOSHIT_{'LONG' if is_long else 'SHORT'}_v{_sat_votes}of5_R{_sat_rsi_15m:.0f}K{_sat_k_15m:.0f}", qty
+                    except Exception:
+                        pass
                 if action_type != "OPEN" and getattr(config, 'LR_BAND_ENTRY_ENABLED', False):
                     _lb_tf = getattr(config, 'LR_BAND_ENTRY_TF', 'D')
                     # 2026-07-20: MUST read the RAW snapshot (mirror RZ_BREAKOUT above) — the reduced
@@ -9236,6 +9376,141 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             if os.environ.get("V8_LRBAND_DEBUG"):
                                 globals().setdefault("_LRBAND_DBG", {"reach": 0, "have": 0, "fired": 0, "keys": ""})["fired"] += 1
                             logger.info(f"[LR_BAND_ENTRY] {account_key}:{symbol}: pb={_lb_pb:.3f} slope={_lb_sl:+.4f} r2={_lb_r2:.2f} tf={_lb_tf}")
+                # ═══ ENTRY_BOTTOM FAMILY — fails-open gates wired 2026-08-18 parity sprint ═══
+                # BOUNCE DEEP_TURN composite (side-aware LONG/SHORT mirror, fails open)
+                if action_type != "OPEN" and bool(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED', False)):
+                    try:
+                        _bt_syms = tuple(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS', ()) or ())
+                        _bt_side = str(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE', 'SHORT')).upper()
+                        _bt_sym_ok = (not _bt_syms) or (symbol in _bt_syms)
+                        _bt_side_ok = (_bt_side == ("LONG" if is_long else "SHORT")) or (_bt_side == "BOTH")
+                        # side-aware mirror: SHORT config mirrors to LONG by inverting thresholds
+                        _bt_tf = str(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME', '5m'))
+                        _bt_dist = float(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE', 0.015))
+                        _bt_deep = float(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H', 50.0))
+                        _bt_turn = float(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H', 40.0))
+                        _bt_conf = int(getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN', 2))
+                        if _bt_sym_ok and _bt_side_ok:
+                            _bt_ind = indicators_raw if indicators_raw else i
+                            _k4h = float(_bt_ind.get('k_4h', 50) or 50)
+                            _k1h = float(_bt_ind.get('k_1h', 50) or 50)
+                            _k1h_prev = float(_bt_ind.get('k_1h_prev', _k1h) or _k1h)
+                            _close = float(_bt_ind.get(f'close_{_bt_tf}', _bt_ind.get('close', current_price)) or current_price)
+                            _dc_low = float(_bt_ind.get(f'dc_low_{_bt_tf}', 0) or 0)
+                            _dc_high = float(_bt_ind.get(f'dc_high_{_bt_tf}', 0) or 0)
+                            if is_long:
+                                deep_ok = _k4h < (100 - _bt_deep)
+                                turn_ok = _k1h > _k1h_prev and _k1h < _bt_turn
+                                bounce_ok = (_dc_low > 0 and (_close - _dc_low) / max(_dc_low, 1e-9) <= _bt_dist) or (_close > _bt_ind.get(f'low_{_bt_tf}', _close))
+                            else:
+                                deep_ok = _k4h > _bt_deep
+                                turn_ok = _k1h < _k1h_prev and _k1h > (100 - _bt_turn)
+                                bounce_ok = (_dc_high > 0 and (_dc_high - _close) / max(_dc_high, 1e-9) <= _bt_dist) or (_close < _bt_ind.get(f'high_{_bt_tf}', _close))
+                            if deep_ok and turn_ok and bounce_ok:
+                                _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                                action_type = "OPEN"
+                                qty = int(max(1, _base_qty))
+                                conf = 75.0
+                                reason = f"ENTRY_BOUNCE_DEEP_TURN_V1_{'L' if is_long else 'S'}_k4h={_k4h:.0f}_k1h={_k1h:.0f}"
+                    except Exception: pass
+                # BOUNCE DONCHIAN direct (side-aware, fails open)
+                if action_type != "OPEN" and bool(getattr(config, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED', False)):
+                    try:
+                        _bd_tf = str(getattr(config, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME', '5m'))
+                        _bd_dist = float(getattr(config, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE', 0.008))
+                        _bd_recov = bool(getattr(config, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY', False))
+                        _bd_conf = str(getattr(config, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION', 'none'))
+                        _bd_ind = indicators_raw if indicators_raw else i
+                        _bd_close = float(_bd_ind.get(f'close_{_bd_tf}', current_price) or current_price)
+                        _bd_dc_low = float(_bd_ind.get(f'dc_low_{_bd_tf}', 0) or 0)
+                        _bd_dc_high = float(_bd_ind.get(f'dc_high_{_bd_tf}', 0) or 0)
+                        _bd_k = float(_bd_ind.get(f'k_{_bd_tf}', _bd_ind.get('k_1h', 50)) or 50)
+                        if is_long:
+                            near_low = _bd_dc_low > 0 and abs(_bd_close - _bd_dc_low) / max(_bd_dc_low, 1e-9) <= _bd_dist
+                            recov_ok = (not _bd_recov) or (_bd_k > 20 and _bd_k < 50)
+                            if near_low and recov_ok:
+                                _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                                action_type = "OPEN"
+                                qty = int(max(1, _base_qty))
+                                conf = 72.0
+                                reason = f"ENTRY_BOUNCE_DONCHIAN_L_{_bd_tf}_dist={_bd_dist:.3f}"
+                        else:
+                            near_high = _bd_dc_high > 0 and abs(_bd_dc_high - _bd_close) / max(_bd_dc_high, 1e-9) <= _bd_dist
+                            recov_ok = (not _bd_recov) or (_bd_k < 80 and _bd_k > 50)
+                            if near_high and recov_ok:
+                                _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                                action_type = "OPEN"
+                                qty = int(max(1, _base_qty))
+                                conf = 72.0
+                                reason = f"ENTRY_BOUNCE_DONCHIAN_S_{_bd_tf}_dist={_bd_dist:.3f}"
+                    except Exception: pass
+                # STOCH/K-ZONE bottom entries (side-aware, fails open)
+                if action_type != "OPEN" and bool(getattr(config, 'STOCH_ENTRY_ENABLED', False)):
+                    try:
+                        _sk = float((indicators_raw if indicators_raw else i).get('k_1h', 50) or 50)
+                        _sk_d = float((indicators_raw if indicators_raw else i).get('d_1h', 50) or 50)
+                        _fire = (_sk < 30 and _sk > _sk_d) if is_long else (_sk > 70 and _sk < _sk_d)
+                        if _fire:
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 70.0
+                            reason = f"STOCH_ENTRY_{'L' if is_long else 'S'}_k={_sk:.0f}"
+                    except Exception: pass
+                if action_type != "OPEN" and bool(getattr(config, 'K_ZONE_ENTRY_ENABLED_TRADIER', False)):
+                    try:
+                        _kz_ind = indicators_raw if indicators_raw else i
+                        _kz_k = float(_kz_ind.get('k_1h', _kz_ind.get('k_4h', 50)) or 50)
+                        _kz_d = float(_kz_ind.get('d_1h', _kz_ind.get('d_4h', 50)) or 50)
+                        _kz_lo = int(getattr(config, 'K_ZONE_LONG_THRESHOLD_TRADIER', 35))
+                        _kz_hi = int(getattr(config, 'K_ZONE_SHORT_THRESHOLD_TRADIER', 65))
+                        _kz_fire = (_kz_k < _kz_lo and _kz_k > _kz_d) if is_long else (_kz_k > _kz_hi and _kz_k < _kz_d)
+                        if _kz_fire:
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 68.0
+                            reason = f"K_ZONE_ENTRY_{'L' if is_long else 'S'}_k={_kz_k:.0f}"
+                    except Exception: pass
+                # WT dip entry (side-aware, fails open)
+                if action_type != "OPEN" and bool(getattr(config, 'WT_ENTRY_ENABLED', False)):
+                    try:
+                        _wt_ind = indicators_raw if indicators_raw else i
+                        _wt1 = float(_wt_ind.get('wt1_1h', _wt_ind.get('wt1_15m', 0)) or 0)
+                        _wt2 = float(_wt_ind.get('wt2_1h', _wt_ind.get('wt2_15m', 0)) or 0)
+                        _wt_fire = (_wt1 < -50 and _wt1 > _wt2) if is_long else (_wt1 > 50 and _wt1 < _wt2)
+                        if _wt_fire:
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 69.0
+                            reason = f"WT_ENTRY_{'L' if is_long else 'S'}_wt1={_wt1:.1f}"
+                    except Exception: pass
+                # RSI2 / Connors bottom entries (side-aware, fails open)
+                if action_type != "OPEN" and bool(getattr(config, 'RSI2_ENABLED', False)):
+                    try:
+                        _rsi2_thr = float(getattr(config, 'RSI2_ENTRY_THRESHOLD', 10.0))
+                        _rsi2 = float((indicators_raw if indicators_raw else i).get('rsi2_1h', (indicators_raw if indicators_raw else i).get('rsi_1h', 50)) or 50)
+                        _fire2 = (_rsi2 < _rsi2_thr) if is_long else (_rsi2 > (100 - _rsi2_thr))
+                        if _fire2:
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 71.0
+                            reason = f"RSI2_ENTRY_{'L' if is_long else 'S'}_rsi2={_rsi2:.0f}"
+                    except Exception: pass
+                if action_type != "OPEN" and bool(getattr(config, 'CONNORS_RSI_ENABLED', False)):
+                    try:
+                        _cr_thr = float(getattr(config, 'CONNORS_RSI_ENTRY_THRESHOLD', 10.0))
+                        _cr = float((indicators_raw if indicators_raw else i).get('connors_rsi_D', (indicators_raw if indicators_raw else i).get('connors_rsi_1h', 50)) or 50)
+                        _firec = (_cr < _cr_thr) if is_long else (_cr > (100 - _cr_thr))
+                        if _firec:
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 71.0
+                            reason = f"CONNORS_RSI_ENTRY_{'L' if is_long else 'S'}_cr={_cr:.0f}"
+                    except Exception: pass
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
@@ -9319,17 +9594,20 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _min_es = float(_cfg("ENTRY_SCORE_THRESHOLD", 0, account_key, symbol, _side_vf) or 0)
                     if _min_es > 0 and float(_entry_score) < _min_es:
                         _veto = f"ENTRY_SCORE_GATE({_entry_score:.0f}<{_min_es:.0f})"
-                    # K_ZONE_LONG/SHORT_THRESHOLD: if enabled, require K_4h in the zone.
+                    # K_ZONE_LONG/SHORT_THRESHOLD: if enabled, require K_4h in the zone. Fails-open, crash-resilient.
                     if _veto is None and getattr(config, 'K_ZONE_VETO_ENABLED_TRADIER', False):
-                        _k4h_vf = float(i.get('k_4h', 50) or 50)
-                        if is_long:
-                            _kz_l = float(_cfg('K_ZONE_LONG_THRESHOLD_TRADIER', 100, account_key, symbol, _side_vf) or 100)
-                            if _k4h_vf >= _kz_l:
-                                _veto = f"K_ZONE_L_GATE(k4h={_k4h_vf:.0f}>={_kz_l:.0f})"
-                        else:
-                            _kz_s = float(_cfg('K_ZONE_SHORT_THRESHOLD_TRADIER', 0, account_key, symbol, _side_vf) or 0)
-                            if _k4h_vf <= _kz_s:
-                                _veto = f"K_ZONE_S_GATE(k4h={_k4h_vf:.0f}<={_kz_s:.0f})"
+                        try:
+                            _k4h_vf = float(i.get('k_4h', 50) or 50)
+                            if is_long:
+                                _kz_l = float(_cfg('K_ZONE_LONG_THRESHOLD_TRADIER', 100, account_key, symbol, _side_vf) or 100)
+                                if _k4h_vf >= _kz_l:
+                                    _veto = f"K_ZONE_L_GATE(k4h={_k4h_vf:.0f}>={_kz_l:.0f})"
+                            else:
+                                _kz_s = float(_cfg('K_ZONE_SHORT_THRESHOLD_TRADIER', 0, account_key, symbol, _side_vf) or 0)
+                                if _k4h_vf <= _kz_s:
+                                    _veto = f"K_ZONE_S_GATE(k4h={_k4h_vf:.0f}<={_kz_s:.0f})"
+                        except Exception:
+                            pass
                     # MI_ENTRY_ENABLED: when True, require at least one MI confluence signal on 4h.
                     # FIX 2026-04-14 sentinel: was using i.get() which reads parse_market_data() output.
                     # wt_peak_structure_4h/wt_divergence_4h/wt_momentum_state_4h are NOT in that dict →
@@ -9368,6 +9646,35 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _veto = f"DC_ENTRY_GATE_L(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}>={_dc_th_vf:.2f})"
                         elif not is_long and not (_dc_1h_vf > (1.0 - _dc_th_vf) or _dc_4h_vf > (1.0 - _dc_th_vf)):
                             _veto = f"DC_ENTRY_GATE_S(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}<={(1.0 - _dc_th_vf):.2f})"
+                    # ENTRY_BOTTOM veto gates (fails-open, side-aware)
+                    if _veto is None and bool(getattr(config, 'LONG_STOCH_CHASE_BLOCK', False)):
+                        try:
+                            _lsc_k = float(_entry_ind.get('k_1h', _entry_ind.get('stoch_k_1h', 50)) or 50)
+                            _lsc_ha = int(float(_entry_ind.get('ha_streak_1h', _entry_ind.get('ha_streak', 0)) or 0))
+                            if is_long and _lsc_k > 70 and _lsc_ha > 2:
+                                _veto = f"LONG_STOCH_CHASE_BLOCK(k1h={_lsc_k:.0f} ha={_lsc_ha})"
+                            elif (not is_long) and _lsc_k < 30 and _lsc_ha < -2:
+                                _veto = f"SHORT_STOCH_CHASE_BLOCK(k1h={_lsc_k:.0f} ha={_lsc_ha})"
+                        except Exception: pass
+                    if _veto is None and bool(getattr(config, 'RSI_ENTRY_GATE_ENABLED', False)):
+                        try:
+                            _rsi_g = float(_entry_ind.get('rsi_1h', 50) or 50)
+                            _rsi_lo = float(getattr(config, 'RSI_ENTRY_MAX_LONG', 37.0))
+                            _rsi_hi = float(getattr(config, 'RSI_ENTRY_MIN_SHORT', 63.0))
+                            if is_long and _rsi_g > _rsi_lo:
+                                _veto = f"RSI_GATE_L(rsi1h={_rsi_g:.0f}>{_rsi_lo:.0f})"
+                            elif (not is_long) and _rsi_g < _rsi_hi:
+                                _veto = f"RSI_GATE_S(rsi1h={_rsi_g:.0f}<{_rsi_hi:.0f})"
+                        except Exception: pass
+                    if _veto is None and float(getattr(config, 'COMBINED_STOCH_GATE_TRADIER', 100.0)) < 100.0:
+                        try:
+                            _csg = float(getattr(config, 'COMBINED_STOCH_GATE_TRADIER', 100.0))
+                            _k5m_v = float(_entry_ind.get('k_5m', 50) or 50)
+                            if is_long and _k5m_v >= _csg:
+                                _veto = f"COMBINED_STOCH_GATE_L(k5m={_k5m_v:.0f}>={_csg:.0f})"
+                            elif (not is_long) and _k5m_v <= (100.0 - _csg):
+                                _veto = f"COMBINED_STOCH_GATE_S(k5m={_k5m_v:.0f}<={100.0-_csg:.0f})"
+                        except Exception: pass
                     if _veto is None and not _uve_entry_allowed(symbol, _side_vf, account_key, _entry_ind or i, current_price):
                         _uve_mode = _cfg("UVE_STRATEGY_MODE", "legacy", account_key, symbol, _side_vf)
                         _veto = f"UVE_ENTRY_BLOCK(mode={_uve_mode})"
@@ -14071,7 +14378,12 @@ class StockStrategy:
             or 0.0
         )
         if _formation_exit is not None and gain >= _formation_exit_min_gain:
-            return (
+            from wt_dc_delta import structural_exit_permitted as _sep_f2
+            _ok2,_= _sep_f2(indicators if indicators else i, is_long, {"structural_exit_gate_enabled": True, "rz_ltf_micro":"5m"})
+            if not _ok2:
+                logger.info(f"[FORMATION_EXIT_STRUCT_VETO] {symbol} STRUCT_VETO")
+            else:
+                return (
                 True,
                 "CLASSIC_FORMATION_EXIT_"
                 f"{_formation_exit['family'].upper()}_{_formation_exit['timeframe']}_"
@@ -14440,8 +14752,13 @@ class StockStrategy:
                             score=_grde_exit_score,
                             requested_qty=qty,
                         )
-                    logger.critical(f"⛔ [GR_HTF_DIRECT_EXIT] {symbol} {'L' if is_long else 'S'}: opp_score={_grde_exit_score:.0f} (tfs={_grde_exit_n_tfs}×ind={_grde_exit_min_ind}) >= {_grde_exit_score_min:.0f} gain={gain:.2f}% — CLOSE (bypasses NOLOSS)")
-                    return True, f"GR_HTF_DIRECT_EXIT_{_grde_exit_score:.0f}_g{gain:.2f}%_{_grde_exit_detail[:60]}", qty
+                    from wt_dc_delta import structural_exit_permitted as _sep_gr
+                    _ok_gr,_ = _sep_gr(indicators if indicators else i, is_long, {"structural_exit_gate_enabled": True, "rz_ltf_micro":"5m"})
+                    if not _ok_gr:
+                        logger.info(f"[GR_HTF_DIRECT_EXIT_STRUCT_VETO] {symbol} STRUCT_VETO")
+                    else:
+                        logger.critical(f"⛔ [GR_HTF_DIRECT_EXIT] {symbol} {'L' if is_long else 'S'}: opp_score={_grde_exit_score:.0f} (tfs={_grde_exit_n_tfs}×ind={_grde_exit_min_ind}) >= {_grde_exit_score_min:.0f} gain={gain:.2f}% — CLOSE (bypasses NOLOSS)")
+                        return True, f"GR_HTF_DIRECT_EXIT_{_grde_exit_score:.0f}_g{gain:.2f}%_{_grde_exit_detail[:60]}", qty
                 else:
                     logger.debug(f"[GR_HTF_DIRECT_EXIT_MISS] {symbol} {'L' if is_long else 'S'}: opp_score={_grde_exit_score:.0f} < {_grde_exit_score_min:.0f}")
             except Exception as _grde_exit_err:
@@ -14679,7 +14996,85 @@ class StockStrategy:
                 }
                 return True, f'STRUCTURE_FLIP_EXIT_{_sfr_tf}_{"LH_LL" if is_long else "HH_HL"}_g={gain:.2f}%', qty
 
-        # ═══ UNIVERSAL_NOLOSS_GATE (2026-04-17) — AFTER SRS so SRS can exit at a loss ═══
+        
+        # ═══ EXIT_TOP FAMILY — oscillator fade live (2026-08-18) ═══
+        # Side-aware TOP (LONG) mirrors BREAKDOWN (SHORT), gain-gated, structural-vetoed.
+        # Each gate: check switch via _cfg(account,symbol,side) so per-symbol overrides work (tm_mod.config + V8_OVERRIDE).
+        # Structural gate: NOT rising AND (LTF collapse OR LH+LL) — call wt_dc_delta.structural_exit_permitted
+        try:
+            from wt_dc_delta import structural_exit_permitted as _sep
+            _live_gain_ok = gain > 0.3
+            _et_side_live = "LONG" if is_long else "SHORT"
+            _et_ind_live = indicators if indicators else i
+            def _live_sep_ok():
+                ok, _ = _sep(_et_ind_live, is_long, {"structural_exit_gate_enabled": True, "rz_ltf_micro": "5m"})
+                return ok
+            # MFI_FLIP_EXIT
+            if gain > 0.3 and not bool(getattr(config, 'DELTA_EXIT_ENABLED', True)): # delta gate not needed; independent
+                pass
+            if _live_gain_ok and bool(_cfg('MFI_FLIP_EXIT_ENABLED', False, _exit_acct_top or "trb", symbol, _et_side_live)):
+                _thr_l = float(_cfg('MFI_FLIP_EXIT_LONG_THRESHOLD', 70.0, _exit_acct_top or "trb", symbol, _et_side_live) or 70.0)
+                _thr_s = float(_cfg('MFI_FLIP_EXIT_SHORT_THRESHOLD', 30.0, _exit_acct_top or "trb", symbol, _et_side_live) or 30.0)
+                _mfi = float(_et_ind_live.get('mfi_1h', _et_ind_live.get('mfi_15m', 50)) or 50)
+                _fire = (is_long and _mfi > _thr_l) or (not is_long and _mfi < _thr_s)
+                if _fire:
+                    if _live_sep_ok():
+                        logger.warning(f"[MFI_FLIP_EXIT_LIVE] {symbol} {'L' if is_long else 'S'}: mfi_1h={_mfi:.1f} thr={'%.1f'%_thr_l if is_long else '%.1f'%_thr_s} gain={gain:.2f}%")
+                        return True, f"MFI_FLIP_EXIT_LIVE_mfi={_mfi:.1f}_g={gain:.2f}%", qty
+                    else:
+                        logger.info(f"[MFI_FLIP_EXIT_LIVE_VETO] {symbol} {'L' if is_long else 'S'}: STRUCT_VETO — HOLDING")
+            # RSI_EXIT
+            if _live_gain_ok and (bool(_cfg('RSI_EXIT_LONG_TRADIER', 0, _exit_acct_top or "trb", symbol, _et_side_live)) or bool(_cfg('RSI_EXIT_SHORT_TRADIER', 100, _exit_acct_top or "trb", symbol, _et_side_live))):
+                _rsi = float(_et_ind_live.get('rsi_1h', _et_ind_live.get('rsi_15m', 50)) or 50)
+                _r_thr_l = float(_cfg('RSI_EXIT_LONG_TRADIER', 85.0, _exit_acct_top or "trb", symbol, _et_side_live) or 85.0)
+                _r_thr_s = float(_cfg('RSI_EXIT_SHORT_TRADIER', 15.0, _exit_acct_top or "trb", symbol, _et_side_live) or 15.0)
+                _fire_r = (is_long and _rsi >= _r_thr_l and _r_thr_l>0) or (not is_long and _rsi <= _r_thr_s and _r_thr_s<100)
+                if _fire_r:
+                    if _live_sep_ok():
+                        logger.warning(f"[RSI_EXIT_LIVE] {symbol} {'L' if is_long else 'S'}: rsi_1h={_rsi:.1f} thr={'%.1f'%_r_thr_l if is_long else '%.1f'%_r_thr_s} gain={gain:.2f}%")
+                        return True, f"RSI_EXIT_LIVE_rsi={_rsi:.1f}_g={gain:.2f}%", qty
+                    else:
+                        logger.info(f"[RSI_EXIT_LIVE_VETO] {symbol} {'L' if is_long else 'S'}: STRUCT_VETO")
+            # RSI2_EXIT
+            if _live_gain_ok:
+                _r2_thr_l = float(_cfg('RSI2_EXIT_THRESHOLD_LONG', 70.0, _exit_acct_top or "trb", symbol, _et_side_live) or 70.0)
+                _r2_thr_s = float(_cfg('RSI2_EXIT_THRESHOLD_SHORT', 30.0, _exit_acct_top or "trb", symbol, _et_side_live) or 30.0)
+                _tr2_l = float(_cfg('TRADIER_RSI2_EXIT_THRESHOLD_LONG', 90.0, _exit_acct_top or "trb", symbol, _et_side_live) or 90.0)
+                _tr2_s = float(_cfg('TRADIER_RSI2_EXIT_THRESHOLD_SHORT', 10.0, _exit_acct_top or "trb", symbol, _et_side_live) or 10.0)
+                _use_tr = bool(_cfg('TRADIER_RSI2_ENABLED', False, _exit_acct_top or "trb", symbol, _et_side_live))
+                _r2v = None
+                for _rk in ("rsi2_5m","rsi_2_1h","connors_rsi_5m","connors_rsi_1h"):
+                    _rv = _et_ind_live.get(_rk)
+                    if _rv is not None:
+                        try: _r2v = float(_rv); break
+                        except: pass
+                if _r2v is not None:
+                    _thr2 = _tr2_l if (_use_tr and is_long) else (_tr2_s if (_use_tr and not is_long) else (_r2_thr_l if is_long else _r2_thr_s))
+                    _fire2 = (_r2v >= _thr2) if is_long else (_r2v <= _thr2)
+                    if _fire2:
+                        if _live_sep_ok():
+                            logger.warning(f"[RSI2_EXIT_LIVE] {symbol} {'L' if is_long else 'S'}: rsi2={_r2v:.1f} thr={_thr2:.1f} gain={gain:.2f}%")
+                            return True, f"RSI2_EXIT_LIVE_rsi2={_r2v:.1f}_g={gain:.2f}%", qty
+                        else:
+                            logger.info(f"[RSI2_EXIT_LIVE_VETO] {symbol} {'L' if is_long else 'S'}: STRUCT_VETO")
+            # STOCH_CROSS_1H_EXIT
+            if gain>0 and bool(_cfg('STOCH_CROSS_1H_EXIT_ENABLED', False, _exit_acct_top or "trb", symbol, _et_side_live)):
+                _k = float(_et_ind_live.get('stoch_k_1h', _et_ind_live.get('k_1h', 50)) or 50)
+                _d = float(_et_ind_live.get('stoch_d_1h', _et_ind_live.get('d_1h', 50)) or 50)
+                _kp = float(_et_ind_live.get('stoch_k_1h_prev', _et_ind_live.get('k_1h_prev', _k)) or _k)
+                _fire_s = (is_long and _kp >= _d and _k < _d and _kp >= 70) or (not is_long and _kp <= _d and _k > _d and _kp <= 30)
+                if _fire_s:
+                    if _live_sep_ok():
+                        logger.warning(f"[STOCH_CROSS_1H_EXIT_LIVE] {symbol} {'L' if is_long else 'S'}: k={_k:.1f} d={_d:.1f} prev={_kp:.1f} gain={gain:.2f}%")
+                        return True, f"STOCH_CROSS_1H_EXIT_LIVE_k={_k:.1f}_g={gain:.2f}%", qty
+                    else:
+                        logger.info(f"[STOCH_CROSS_1H_EXIT_LIVE_VETO] {symbol} {'L' if is_long else 'S'}: STRUCT_VETO")
+            # FORMATION exits need structural veto too — existing formation block returns without veto; patch by re-checking here if formation would fire but structural fails, we would have already returned. So we add veto wrapper after formation block below.
+            # REGIME thresholds are enforced via gain checks above/below; regime itself is not an independent signal.
+        except Exception as _live_e:
+            logger.debug(f"[EXIT_TOP_LIVE_ERR] {symbol}: {_live_e}")
+
+# ═══ UNIVERSAL_NOLOSS_GATE (2026-04-17) — AFTER SRS so SRS can exit at a loss ═══
         # trb/trc were bleeding because DELTA_EXIT/RZ_EXIT/WT_DC_EXIT/MI_EXIT
         # paths fired on technicals REGARDLESS of gain — closing GLD at -0.09%,
         # COPX at -1.09%, XOM at -3.34%, TTD at -9.96%. L/S ratio is the hedge;
@@ -14728,6 +15123,7 @@ class StockStrategy:
                 # Pass the manager's reliable elapsed position time rather
                 # than making DeltaTracker infer wall-clock/bar units.
                 "held_bars": float(hold_time_min) / 15.0,
+                "gain_pct": float(gain),
             } if qty > 0 else None
             _d_sig = self.trade_manager.delta_tracker.update(symbol, _d_ind, _d_pos_state)
             if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)) and bool(getattr(config, 'DELTA_EXIT_REQUIRE_NONZERO_SCORE', True)) and (abs(float(getattr(_d_sig, 'bull_speed', 0) or 0)) + abs(float(getattr(_d_sig, 'bear_speed', 0) or 0)) + float(getattr(_d_sig, 'bull_tf_count', 0) or 0) + float(getattr(_d_sig, 'bear_tf_count', 0) or 0)) == 0.0:
@@ -14929,7 +15325,12 @@ class StockStrategy:
             if (is_long and _pp_up_e) or ((not is_long) and _pp_dn_e):
                 logger.warning(f"🌟 [WT_DC_EXIT_PARABOLIC_BYPASS] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% — parabolic {'UP' if is_long else 'DOWN'}trend, skipping close, let trend run")
             else:
-                logger.warning(f"[WT_DC_EXIT] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% {_exit_reason[:80]} → EXIT_MANDATORY_REENTRY (REENTRY_MONITOR will reopen when ALL exit conditions clear)")
+                from wt_dc_delta import structural_exit_permitted as _sep_wtdc
+                _ok_wtdc,_ = _sep_wtdc(indicators if indicators else i, is_long, {"structural_exit_gate_enabled": True, "rz_ltf_micro":"5m"})
+                if not _ok_wtdc:
+                    logger.info(f"[WT_DC_STRUCT_VETO] {symbol} STRUCT_VETO")
+                else:
+                    logger.warning(f"[WT_DC_EXIT] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% {_exit_reason[:80]} → EXIT_MANDATORY_REENTRY (REENTRY_MONITOR will reopen when ALL exit conditions clear)")
                 return True, f"WT_DC_EXIT_{_exit_score:.0f}_g={gain:.2f}%_{_exit_reason[:60]}_MANDATORY_REENTRY", qty
 
         # --------------------------------------------------

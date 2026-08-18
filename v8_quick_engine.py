@@ -3311,6 +3311,62 @@ class QuickConfig:
     K_ZONE_SHORT_THRESHOLD: int = 65
     STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks
     WT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks
+    # ENTRY_BOTTOM family — BOUNCE (fails-open, side-aware)
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED: bool = False
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS: tuple = ()
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE: str = "SHORT"
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME: str = "5m"
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE: float = 0.015
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H: float = 50.0
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H: float = 40.0
+    ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN: int = 2
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED: bool = False
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME: str = "5m"
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE: float = 0.008
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY: bool = False
+    ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION: str = "none"
+    # A2 STOCH/K-ZONE entry family — parity 2026-08-18: STOCH HHHL direct route + K-ZONE veto/twin controls
+    ENTRY_STOCH_HHHL_DIRECT_ENABLED: bool = False
+    ENTRY_STOCH_HHHL_DIRECT_TFS: tuple = ("1h",)
+    ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS: int = 1
+    ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD: float = 20.0
+    ENTRY_STOCH_PARENT_DIRECT_ENABLED: bool = False
+    ENTRY_STOCH_PARENT_DIRECT_FAMILY: str = "ENTRY_1H_TURN_UP"
+    ENTRY_STOCH_PARENT_DIRECT_THRESHOLD: float = 40.0
+    ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION: str = "rising-vs-prior"
+    K_ZONE_ENTRY_ENABLED_TRADIER: bool = False
+    K_ZONE_LONG_THRESHOLD_TRADIER: int = 35
+    K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65
+    K_ZONE_VETO_ENABLED_TRADIER: bool = False
+    K_ZONE_ENTRY_BONUS_TRADIER: int = 20
+    LONG_STOCH_CHASE_BLOCK: bool = True
+    COMBINED_STOCH_GATE_TRADIER: float = 100.0
+    WT_DC_ENTRY_THRESHOLD: float = 45.0
+    WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0
+    WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK: float = 0.7
+    BB_PCTB_ENTRY_ENABLED: bool = False
+    BB_ENTRY_LONG_THRESHOLD: float = 0.30
+    BB_ENTRY_SHORT_THRESHOLD: float = 0.70
+    LR_BAND_ENTRY_ENABLED: bool = False
+    LR_BAND_ENTRY_TF: str = "D"
+    LR_BAND_ENTRY_LO: float = 0.3
+    LR_BAND_ENTRY_R2_MIN: float = 0.7
+    LR_BAND_ENTRY_SIDES: str = "L"
+    LR_BAND_REGIME_ENABLED: bool = False
+    LR_BAND_REGIME_MAX_PB: float = 0.6
+    LR_PCTB_D_LONG_ENTRY_ENABLED: bool = False
+    LR_PCTB_D_LONG_ENTRY_THRESHOLD: float = 0.20
+    LR_PCTB_D_SHORT_THRESHOLD: float = 0.10
+    RSI2_ENTRY_THRESHOLD: float = 3.0
+    RSI2_ENABLED: bool = True
+    CONNORS_RSI_ENABLED: bool = False
+    CONNORS_RSI_ENTRY_THRESHOLD: float = 10.0
+    CONNORS_RSI_EXIT_THRESHOLD: float = 70.0
+    RSI_ENTRY_GATE_ENABLED: bool = False
+    RSI_ENTRY_MAX_LONG: float = 37.0
+    RSI_ENTRY_MIN_SHORT: float = 63.0
     MFI_ENTRY_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)
     MFI_ENTRY_LONG_MAX: float = 60.0
     MFI_ENTRY_SHORT_MIN: float = 40.0
@@ -4700,6 +4756,151 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         hi_thr = getattr(cfg, 'TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER', 65) if is_tradier else getattr(cfg, 'K_ZONE_SHORT_THRESHOLD', 65)
         blocks["B_KZONE"] = (k_3m < lo_thr) if is_long else (k_3m > hi_thr)
 
+    # ENTRY_BOTTOM vector twins (fails-open, side-aware LONG/SHORT mirror, causal next-bar) 2026-08-18
+    if getattr(cfg, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED', False):
+        bt_tf = str(getattr(cfg, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME', '5m'))
+        bt_dist = float(getattr(cfg, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE', 0.015))
+        bt_deep = float(getattr(cfg, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H', 50.0))
+        bt_turn = float(getattr(cfg, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H', 40.0))
+        k_4h = _safe(npz, 'stoch_k_4h', n, 50)
+        k_1h = _safe(npz, 'stoch_k_1h', n, 50)
+        k_1h_prev = np.roll(k_1h, 1); k_1h_prev[0] = k_1h[0]
+        dc_low_bt = _safe(npz, f'dc_low_{bt_tf}', n, 0)
+        dc_high_bt = _safe(npz, f'dc_high_{bt_tf}', n, 0)
+        close_bt = _safe(npz, f'close_{bt_tf}', n, 0)
+        if is_long:
+            deep_ok = k_4h < (100 - bt_deep)
+            turn_ok = (k_1h > k_1h_prev) & (k_1h < bt_turn)
+            bounce_ok = (dc_low_bt > 0) & (np.abs(close_bt - dc_low_bt) / np.maximum(dc_low_bt, 1e-9) <= bt_dist)
+            blocks["B_BOUNCE_DEEP_TURN"] = deep_ok & turn_ok & bounce_ok
+        else:
+            deep_ok = k_4h > bt_deep
+            turn_ok = (k_1h < k_1h_prev) & (k_1h > (100 - bt_turn))
+            bounce_ok = (dc_high_bt > 0) & (np.abs(dc_high_bt - close_bt) / np.maximum(dc_high_bt, 1e-9) <= bt_dist)
+            blocks["B_BOUNCE_DEEP_TURN"] = deep_ok & turn_ok & bounce_ok
+    if getattr(cfg, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED', False):
+        bd_tf = str(getattr(cfg, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME', '5m'))
+        bd_dist = float(getattr(cfg, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE', 0.008))
+        bd_recov = bool(getattr(cfg, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY', False))
+        dc_low_bd = _safe(npz, f'dc_low_{bd_tf}', n, 0)
+        dc_high_bd = _safe(npz, f'dc_high_{bd_tf}', n, 0)
+        close_bd = _safe(npz, f'close_{bd_tf}', n, 0)
+        k_bd = _safe(npz, f'stoch_k_{bd_tf}', n, 50) if bd_tf in ('5m','15m','1h','4h') else k_3m
+        if is_long:
+            near_low = (dc_low_bd > 0) & (np.abs(close_bd - dc_low_bd) / np.maximum(dc_low_bd, 1e-9) <= bd_dist)
+            recov_ok = (k_bd > 20) & (k_bd < 50) if bd_recov else np.ones(n, dtype=bool)
+            blocks["B_BOUNCE_DONCHIAN"] = near_low & recov_ok
+        else:
+            near_high = (dc_high_bd > 0) & (np.abs(dc_high_bd - close_bd) / np.maximum(dc_high_bd, 1e-9) <= bd_dist)
+            recov_ok = (k_bd < 80) & (k_bd > 50) if bd_recov else np.ones(n, dtype=bool)
+            blocks["B_BOUNCE_DONCHIAN"] = near_high & recov_ok
+    if getattr(cfg, 'STOCH_ENTRY_ENABLED', False):
+        k_1h = _safe(npz, 'stoch_k_1h', n, 50)
+        d_1h = _safe(npz, 'stoch_d_1h', n, 50)
+        if is_long:
+            blocks["B_STOCH_ENTRY"] = (k_1h < 30) & (k_1h > d_1h)
+        else:
+            blocks["B_STOCH_ENTRY"] = (k_1h > 70) & (k_1h < d_1h)
+    if getattr(cfg, 'WT_ENTRY_ENABLED', False):
+        wt1_1h = _safe(npz, 'wt1_1h', n, 0)
+        wt2_1h = _safe(npz, 'wt2_1h', n, 0)
+        if is_long:
+            blocks["B_WT_ENTRY"] = (wt1_1h < -50) & (wt1_1h > wt2_1h)
+        else:
+            blocks["B_WT_ENTRY"] = (wt1_1h > 50) & (wt1_1h < wt2_1h)
+    if getattr(cfg, 'RSI2_ENABLED', False):
+        rsi2 = _safe(npz, 'rsi2_1h', n, 50)
+        thr = float(getattr(cfg, 'RSI2_ENTRY_THRESHOLD', 10.0))
+        if is_long:
+            blocks["B_RSI2_ENTRY"] = rsi2 < thr
+        else:
+            blocks["B_RSI2_ENTRY"] = rsi2 > (100 - thr)
+    if getattr(cfg, 'CONNORS_RSI_ENABLED', False):
+        crsi = _safe(npz, 'connors_rsi_D', n, 50)
+        thr = float(getattr(cfg, 'CONNORS_RSI_ENTRY_THRESHOLD', 10.0))
+        if is_long:
+            blocks["B_CONNORS_ENTRY"] = crsi < thr
+        else:
+            blocks["B_CONNORS_ENTRY"] = crsi > (100 - thr)
+    # K_ZONE tradier twin (complementary to K_ZONE_ENTRY) — fails-open, crash-resilient
+    try:
+        if getattr(cfg, 'K_ZONE_ENTRY_ENABLED_TRADIER', False):
+            k_1h = _safe(npz, 'stoch_k_1h', n, 50)
+            d_1h = _safe(npz, 'stoch_d_1h', n, 50)
+            lo = int(getattr(cfg, 'K_ZONE_LONG_THRESHOLD_TRADIER', 35))
+            hi = int(getattr(cfg, 'K_ZONE_SHORT_THRESHOLD_TRADIER', 65))
+            if is_long:
+                blocks["B_KZONE_TRADIER"] = (k_1h < lo) & (k_1h > d_1h)
+            else:
+                blocks["B_KZONE_TRADIER"] = (k_1h > hi) & (k_1h < d_1h)
+    except Exception:
+        pass
+    # A2 STOCH HHHL direct vector twin — fails-open, side-aware, causal HH/HL + stoch zone/turn
+    try:
+        if getattr(cfg, 'ENTRY_STOCH_HHHL_DIRECT_ENABLED', False):
+            tfs = tuple(getattr(cfg, 'ENTRY_STOCH_HHHL_DIRECT_TFS', ("1h",)) or ("1h",))
+            req = int(getattr(cfg, 'ENTRY_STOCH_HHHL_DIRECT_MIN_CONFIRMING_TFS', 1) or 1)
+            thr = float(getattr(cfg, 'ENTRY_STOCH_HHHL_DIRECT_STOCH_THRESHOLD', 20.0) or 20.0)
+            # SUPPORTED_TFS par contract: 1h,4h,D — ignore others fails-open
+            tfs = tuple(tf for tf in tfs if tf in ("1h","4h","D"))
+            if tfs and 1 <= req <= len(tfs):
+                votes = []
+                for tf in tfs:
+                    high = _safe(npz, f'high_{tf}', n, 0)
+                    high_prev = _safe(npz, f'high_{tf}_prev', n, 0)
+                    low = _safe(npz, f'low_{tf}', n, 0)
+                    low_prev = _safe(npz, f'low_{tf}_prev', n, 0)
+                    k = _safe(npz, f'stoch_k_{tf}', n, 50)
+                    k_prev = _safe(npz, f'stoch_k_{tf}_prev', n, 50)
+                    if is_long:
+                        ok = (high > high_prev) & (low > low_prev) & (k <= thr) & (k > k_prev)
+                    else:
+                        ok = (high < high_prev) & (low < low_prev) & (k >= 100.0 - thr) & (k < k_prev)
+                    votes.append(ok)
+                if votes:
+                    stacked = votes[0]
+                    for v in votes[1:]: stacked = stacked.astype(int) + v.astype(int)  # sum
+                    # Recompute cleanly for threshold
+                    import numpy as _np
+                    mat = _np.stack(votes, axis=0) if len(votes)>1 else votes[0][None,:]
+                    cnt = mat.sum(axis=0) if len(votes)>1 else votes[0].astype(int)
+                    blocks["B_STOCH_HHHL_DIRECT"] = cnt >= req
+    except Exception:
+        pass
+    # A2 STOCH parent direct vector twin (1h turn up / 4h deep) — fails-open
+    try:
+        if getattr(cfg, 'ENTRY_STOCH_PARENT_DIRECT_ENABLED', False):
+            fam = str(getattr(cfg, 'ENTRY_STOCH_PARENT_DIRECT_FAMILY', "ENTRY_1H_TURN_UP"))
+            th = float(getattr(cfg, 'ENTRY_STOCH_PARENT_DIRECT_THRESHOLD', 40.0) or 40.0)
+            turn_def = str(getattr(cfg, 'ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION', "rising-vs-prior"))
+            if fam == "ENTRY_1H_TURN_UP":
+                k = _safe(npz, 'stoch_k_1h', n, 50)
+                k_prev = _safe(npz, 'stoch_k_1h_prev', n, 50)
+                d = _safe(npz, 'stoch_d_1h', n, 50)
+                if is_long:
+                    zone = k < th
+                    rising = k > k_prev
+                    cross = k > d
+                else:
+                    zone = k > 100.0 - th
+                    rising = k < k_prev
+                    cross = k < d
+                if turn_def == "rising-vs-prior":
+                    eligible = zone & rising
+                elif turn_def == "cross-d":
+                    eligible = zone & cross
+                else:
+                    eligible = (zone & rising) | (zone & cross)
+                blocks["B_STOCH_PARENT_DIRECT"] = eligible
+            elif fam == "ENTRY_4H_DEEP_VALUE":
+                k4 = _safe(npz, 'stoch_k_4h', n, 50)
+                if is_long:
+                    blocks["B_STOCH_PARENT_DIRECT"] = k4 < th
+                else:
+                    blocks["B_STOCH_PARENT_DIRECT"] = k4 > 100.0 - th
+    except Exception:
+        pass
+
     # STOCKS LIVE==vector: SRS ENTRY gate (STRUCTURAL_RANGE_SHIFT_EXIT pctb 0.97/0.03) — blocks LONG at top and SHORT at bottom unless WT_3M_FORCE_OPEN
     if getattr(cfg, 'STRUCTURAL_RANGE_SHIFT_EXIT', False) and not bool(os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN")):
         tf_map_srs = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}
@@ -4804,8 +5005,44 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     if getattr(cfg, 'DELTA_ENGINE_ENABLED', False) and getattr(cfg, 'DELTA_ENTRY_ENABLED', False):
         wt_vel_1h_e = _safe(npz, 'wt_velocity_1h', n)
         wt_vel_4h_e = _safe(npz, 'wt_velocity_4h', n)
-        z_thr = getattr(cfg, 'DELTA_REENTRY_Z_THRESHOLD', 1.0)
-        blocks["B_DELTAENTRY"] = ((wt_vel_1h_e > z_thr) & (wt_vel_4h_e > 0)) if is_long else ((wt_vel_1h_e < -z_thr) & (wt_vel_4h_e < 0))
+        # Use DELTA_ENTRY_Z_THRESHOLD (live) not DELTA_REENTRY_Z_THRESHOLD; fails-open default 2.5
+        z_thr = float(getattr(cfg, 'DELTA_ENTRY_Z_THRESHOLD', 2.5))
+        accel_thr = float(getattr(cfg, 'DELTA_ENTRY_ACCEL_THRESHOLD', 0.0))
+        min_tf = int(getattr(cfg, 'DELTA_ENTRY_MIN_TF', 3))
+        # Side-aware velocity gate + accel gate + min TF count
+        # For vec we approximate min_tf via wt_vel_4h direction count: when min_tf>2 require both 1h and 4h
+        if is_long:
+            base = (wt_vel_1h_e > z_thr) & (wt_vel_4h_e > 0)
+            if accel_thr > 0:
+                wt_acc_1h = _safe(npz, 'wt_acceleration_1h', n, 0.0)
+                base = base & (wt_acc_1h > accel_thr)
+            if min_tf >= 4:
+                wt_vel_D = _safe(npz, 'wt_velocity_D', n, 0.0)
+                base = base & (wt_vel_D > 0)
+            # DELTA_ATR_ENTRY_FILTER — when True, require bar_move >= atr*0.3
+            if bool(getattr(cfg, 'DELTA_ATR_ENTRY_FILTER', False)):
+                atr_1h = _safe(npz, 'atr_1h', n, 0.0)
+                close_arr = _safe(npz, 'close', n, 0.0)
+                close_prev = _safe(npz, 'close_5m_prev', n, close_arr)
+                # Use close attribution from NPZ if available
+                bar_move = np.abs(close_arr - close_prev)
+                base = base & ((atr_1h <= 0) | (bar_move >= atr_1h * 0.3))
+            blocks["B_DELTAENTRY"] = base
+        else:
+            base = (wt_vel_1h_e < -z_thr) & (wt_vel_4h_e < 0)
+            if accel_thr > 0:
+                wt_acc_1h = _safe(npz, 'wt_acceleration_1h', n, 0.0)
+                base = base & (wt_acc_1h < -accel_thr)
+            if min_tf >= 4:
+                wt_vel_D = _safe(npz, 'wt_velocity_D', n, 0.0)
+                base = base & (wt_vel_D < 0)
+            if bool(getattr(cfg, 'DELTA_ATR_ENTRY_FILTER', False)):
+                atr_1h = _safe(npz, 'atr_1h', n, 0.0)
+                close_arr = _safe(npz, 'close', n, 0.0)
+                close_prev = _safe(npz, 'close_5m_prev', n, close_arr)
+                bar_move = np.abs(close_arr - close_prev)
+                base = base & ((atr_1h <= 0) | (bar_move >= atr_1h * 0.3))
+            blocks["B_DELTAENTRY"] = base
 
     # 2026-08-09: Additional confluence gates using momentum and volatility
     # TF_FOCUS_ENTRY_HARD_GATE — hard gate requiring multiple timeframe alignment
@@ -5039,13 +5276,49 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'TRADIER_MFI_ENTRY_LONG_ENABLED', False) and is_long and getattr(cfg, 'MODE', 'crypto') == 'tradier':
         mfi_1h_arr = _safe(npz, 'mfi_1h', n, 50)
         extra_ok = extra_ok & (mfi_1h_arr < getattr(cfg, 'TRADIER_MFI_ENTRY_LONG_TRADIER', 60.0))
-    # RSI entry gate
+    # RSI entry gate (ENTRY_BOTTOM family, side-aware)
     if getattr(cfg, 'RSI_ENTRY_GATE_ENABLED', False):
         rsi_1h = _safe(npz, 'rsi_1h', n, 50)
         if is_long:
             extra_ok = extra_ok & (rsi_1h < getattr(cfg, 'RSI_ENTRY_MAX_LONG', 37.0))
         else:
             extra_ok = extra_ok & (rsi_1h > getattr(cfg, 'RSI_ENTRY_MIN_SHORT', 63.0))
+    # LONG_STOCH_CHASE_BLOCK — side-aware veto (fails-open when False, crash-resilient)
+    try:
+        if getattr(cfg, 'LONG_STOCH_CHASE_BLOCK', False):
+            k_1h = _safe(npz, 'stoch_k_1h', n, 50)
+            ha_1h = _ha_int(npz, 'ha_1h', n)
+            if is_long:
+                extra_ok = extra_ok & ~((k_1h > 70) & (ha_1h > 2))
+            else:
+                extra_ok = extra_ok & ~((k_1h < 30) & (ha_1h < -2))
+    except Exception:
+        pass
+    # K_ZONE veto twin — mirrors tradier_manage VARIANCE_FIX_VETO K_ZONE_L/S_GATE (fails-open, crash-resilient)
+    try:
+        if getattr(cfg, 'K_ZONE_VETO_ENABLED_TRADIER', False):
+            k_4h = _safe(npz, 'stoch_k_4h', n, 50)
+            lo = float(getattr(cfg, 'K_ZONE_LONG_THRESHOLD_TRADIER', 100) or 100)
+            hi = float(getattr(cfg, 'K_ZONE_SHORT_THRESHOLD_TRADIER', 0) or 0)
+            if is_long:
+                extra_ok = extra_ok & (k_4h < lo)
+            else:
+                extra_ok = extra_ok & (k_4h > hi)
+    except Exception:
+        pass
+    # COMBINED_STOCH_GATE_TRADIER — side-aware k5m threshold veto (fails-open, crash-resilient)
+    try:
+        _csg = float(getattr(cfg, 'COMBINED_STOCH_GATE_TRADIER', 100.0))
+        if _csg < 100.0:
+            k_5m = _safe(npz, 'stoch_k_5m', n, 50) if 'stoch_k_5m' in npz else k_3m
+            if is_long:
+                extra_ok = extra_ok & (k_5m < _csg)
+            else:
+                extra_ok = extra_ok & (k_5m > (100.0 - _csg))
+    except Exception:
+        pass
+    # BB_PCTB / LR_PCTB / BB_ENTRY thresholds already in reentry blocks, but ensure extra_ok respects them as veto when enabled
+    # (reentry blocks are OR; extra_ok provides fails-open gating for threshold flips)
     # Stoch cross entry tradier
     if getattr(cfg, 'STOCH_CROSS_ENTRY_TRADIER', False):
         k_3m_arr = _base_safe(npz, 'stoch_k', n, cfg, 50)
@@ -5375,7 +5648,69 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'CYCLE_TP_TIERED_ENABLED', False):
         # Engine has PROFIT_TARGET_PCT; CYCLE_TP_PCT acts as upper cap
         pass  # handled in simulate() via PROFIT_TARGET_PCT
-    _all_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit
+
+    # --- MTF_GR_EXIT (2026-08-18) — side-aware TOP/BREAKDOWN mirror ---
+    mtf_gr_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'MTF_GR_EXIT_GATE_ENABLED', False):
+        gr_min_tfs = int(getattr(cfg, 'MTF_GR_EXIT_MIN_TFS', 3))
+        wt1_1h_arr2 = _safe(npz, 'wt1_1h', n); wt2_1h_arr2 = _safe(npz, 'wt2_1h', n)
+        wt1_4h_arr2 = _safe(npz, 'wt1_4h', n); wt2_4h_arr2 = _safe(npz, 'wt2_4h', n)
+        wt1_D_arr2 = _safe(npz, 'wt1_D', n); wt2_D_arr2 = _safe(npz, 'wt2_D', n)
+        if is_long:
+            gr_cnt2 = (wt1_1h_arr2 < wt2_1h_arr2).astype(int) + (wt1_4h_arr2 < wt2_4h_arr2).astype(int) + (wt1_D_arr2 < wt2_D_arr2).astype(int)
+        else:
+            gr_cnt2 = (wt1_1h_arr2 > wt2_1h_arr2).astype(int) + (wt1_4h_arr2 > wt2_4h_arr2).astype(int) + (wt1_D_arr2 > wt2_D_arr2).astype(int)
+        wt1_5m_arr2 = _safe(npz, 'wt1_5m', n); wt2_5m_arr2 = _safe(npz, 'wt2_5m', n)
+        if wt1_5m_arr2.sum()==0:
+            wt1_5m_arr2 = wt1_3m; wt2_5m_arr2 = wt2_3m
+        wt_ltf_against2 = (wt1_5m_arr2 < wt2_5m_arr2) if is_long else (wt1_5m_arr2 > wt2_5m_arr2)
+        mtf_gr_exit = (gr_cnt2 >= gr_min_tfs) & wt_ltf_against2
+
+    # --- GR_HTF_DIRECT_EXIT (2026-08-18) — side-aware ---
+    gr_htf_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'GR_HTF_DIRECT_EXIT_ENABLED', False):
+        thr2 = float(getattr(cfg, 'GR_HTF_DIRECT_EXIT_SCORE', 12.0))
+        rsi_1h_arr2 = _safe(npz, 'rsi_1h', n, 50); rsi_4h_arr2 = _safe(npz, 'rsi_4h', n, 50); rsi_D_arr2 = _safe(npz, 'rsi_D', n, 50)
+        if is_long:
+            s1_2 = (wt1_1h_arr2 < wt2_1h_arr2).astype(int) + (rsi_1h_arr2 < 50).astype(int)
+            s4_2 = (wt1_4h_arr2 < wt2_4h_arr2).astype(int) + (rsi_4h_arr2 < 50).astype(int)
+            sD_2 = (wt1_D_arr2 < wt2_D_arr2).astype(int) + (rsi_D_arr2 < 50).astype(int)
+        else:
+            s1_2 = (wt1_1h_arr2 > wt2_1h_arr2).astype(int) + (rsi_1h_arr2 > 50).astype(int)
+            s4_2 = (wt1_4h_arr2 > wt2_4h_arr2).astype(int) + (rsi_4h_arr2 > 50).astype(int)
+            sD_2 = (wt1_D_arr2 > wt2_D_arr2).astype(int) + (rsi_D_arr2 > 50).astype(int)
+        total2 = s1_2 + s4_2 + sD_2
+        gr_htf_exit = total2 >= thr2
+
+    # --- FORMATION_*_EXIT (2026-08-18) — side-aware TOP vs BREAKDOWN ---
+    formation_exit = np.zeros(n, dtype=bool)
+    _fam_any = any([getattr(cfg, 'FORMATION_HEAD_SHOULDERS_EXIT_ENABLED', False),
+                    getattr(cfg, 'FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED', False),
+                    getattr(cfg, 'FORMATION_WEDGE_EXIT_ENABLED', False),
+                    getattr(cfg, 'FORMATION_TRIANGLE_EXIT_ENABLED', False),
+                    getattr(cfg, 'FORMATION_FLAG_PENNANT_EXIT_ENABLED', False),
+                    getattr(cfg, 'FORMATION_CUP_HANDLE_EXIT_ENABLED', False),
+                    getattr(cfg, 'FORMATION_TREND_STRUCTURE_EXIT_ENABLED', False)])
+    if _fam_any:
+        high_1h_arr3 = _safe(npz, 'high_1h', n); high_1h_prev3 = _safe(npz, 'high_1h_prev', n)
+        low_1h_arr3 = _safe(npz, 'low_1h', n); low_1h_prev3 = _safe(npz, 'low_1h_prev', n)
+        if is_long:
+            struct3 = (high_1h_arr3 < high_1h_prev3) & (low_1h_arr3 < low_1h_prev3) if high_1h_prev3.sum()>0 else np.zeros(n,bool)
+        else:
+            struct3 = (high_1h_arr3 > high_1h_prev3) & (low_1h_arr3 > low_1h_prev3) if high_1h_prev3.sum()>0 else np.zeros(n,bool)
+        formation_exit = struct3
+
+    # --- REGIME_*_EXIT_GAIN_MIN (2026-08-18) — gain-qualified regime exit ---
+    regime_exit = np.zeros(n, dtype=bool)
+    adx_1h_arr3 = _safe(npz, 'adx_1h', n, 20)
+    wt_vel_1h_arr3 = _safe(npz, 'wt_velocity_1h', n, 0)
+    is_trending3 = adx_1h_arr3 >= 25.0
+    if is_long:
+        regime_exit = (is_trending3 & (wt_vel_1h_arr3 < -1.0)) | ((~is_trending3) & (wt_vel_1h_arr3 < -0.5))
+    else:
+        regime_exit = (is_trending3 & (wt_vel_1h_arr3 > 1.0)) | ((~is_trending3) & (wt_vel_1h_arr3 > 0.5))
+
+    _all_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | mtf_gr_exit | gr_htf_exit | formation_exit | regime_exit
     # ═══ STRUCTURAL EXIT VETO — vectorized twin of wt_dc_delta.structural_exit_permitted() ═══
     # USER MANDATE 2026-07-21: never exit while price is going up (long) / down (short).
     # Only an LTF collapse or a 1h/4h lower-high+lower-low earns an exit.
@@ -5403,6 +5738,28 @@ def compute_exit_signals(npz, n, is_long, cfg):
     # 2026-08-09 625 wiring — causal exit gates for every formerly unwired knob
     _all_exit = _apply_625_exit_gates(npz, n, is_long, cfg, _all_exit)
     _, _all_exit = _apply_625_generic_gates(npz, n, is_long, cfg, np.zeros(n, dtype=bool), _all_exit)
+    # Re-apply structural veto after generic gates so no exit bypasses it (2026-08-18 EXIT_TOP parity)
+    if getattr(cfg, 'STRUCTURAL_EXIT_GATE_ENABLED', True):
+        _ltf2 = _base_tf(npz, cfg)
+        _hi2, _hip2 = _safe(npz, f'high_{_ltf2}', n), _safe(npz, f'high_{_ltf2}_prev', n)
+        _lo2, _lop2 = _safe(npz, f'low_{_ltf2}', n), _safe(npz, f'low_{_ltf2}_prev', n)
+        _op2, _cl2 = _safe(npz, f'open_{_ltf2}', n), _safe(npz, f'close_{_ltf2}', n)
+        _h1_2, _h1p2 = _safe(npz, 'high_1h', n), _safe(npz, 'high_1h_prev', n)
+        _l1_2, _l1p2 = _safe(npz, 'low_1h', n), _safe(npz, 'low_1h_prev', n)
+        _h4_2, _h4p2 = _safe(npz, 'high_4h', n), _safe(npz, 'high_4h_prev', n)
+        _l4_2, _l4p2 = _safe(npz, 'low_4h', n), _safe(npz, 'low_4h_prev', n)
+        _px2 = close
+        _have2 = (_hip2.sum() > 0) or (_h1p2.sum() > 0) or (_h4p2.sum() > 0)
+        if is_long:
+            _rising2 = (_cl2 > _op2) | (_hi2 > _hip2) | (_px2 > _hip2)
+            _ltf_collapse2 = (_hi2 < _hip2) & (_lo2 < _lop2) & (_px2 < _lop2)
+            _htf_lhll2 = ((_h1_2 < _h1p2) & (_l1_2 < _l1p2)) | ((_h4_2 < _h4p2) & (_l4_2 < _l4p2))
+        else:
+            _rising2 = (_cl2 < _op2) | (_lo2 < _lop2) | (_px2 < _lop2)
+            _ltf_collapse2 = (_hi2 > _hip2) & (_lo2 > _lop2) & (_px2 > _hip2)
+            _htf_lhll2 = ((_h1_2 > _h1p2) & (_l1_2 > _l1p2)) | ((_h4_2 > _h4p2) & (_l4_2 > _l4p2))
+        _permitted2 = (_ltf_collapse2 | _htf_lhll2) & (~_rising2) if _have2 else np.zeros(n, dtype=bool)
+        _all_exit = _all_exit & _permitted2
     # REMOVED 2026-08-11 — hash fallback deleted per M1 (see entry gate above)
     return _all_exit
 
@@ -5653,8 +6010,20 @@ _DEFAULTS_625 = {
     "CLENOW_POSITION_SIZE": 400.0,
     "CLENOW_REGIME_FILTER": True,
     "CLOSE_ZONE_SIZE_MULT": 0.75,
-    "COMBINED_STOCH_GATE_TRADIER": 30.0,
+    "COMBINED_STOCH_GATE_TRADIER": 100.0,
     "CONGRESS_CONVICTION_MIN_SOURCES": 1,
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE": 0.015,
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME": "5m",
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN": 2,
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H": 50.0,
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED": False,
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE": "SHORT",
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS": (),
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION": "none",
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_DISTANCE": 0.008,
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED": False,
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_RECOVERY_ONLY": False,
+    "ENTRY_BOUNCE_DONCHIAN_DIRECT_TIMEFRAME": "5m",
     "CONGRESS_CONVICTION_SIZING_BOOST": 0.65,
     "CONNORS_RSI2_REQUIRE_ABOVE_200SMA": False,
     "CONNORS_RSI2_THRESHOLD": 5.0,
@@ -5925,6 +6294,7 @@ _DEFAULTS_625 = {
     "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN": 120.0,
     "LR_BAND_SLOPE_FLIP_MIN_PCT_DAY": 0.025,
     "LR_BAND_SLOPE_NORM_PCT_DAY": 0.15,
+    "LONG_STOCH_CHASE_BLOCK": True,
     "LR_PCTB_D_LONG_ENTRY_ENABLED": False,
     "LR_PCTB_D_LONG_ENTRY_THRESHOLD": 0.1,
     "LR_PCTB_D_SHORT_THRESHOLD": 0.05,
