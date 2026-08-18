@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T16:35:16.302332+00:00",
+  "timestamp": "2026-08-18T16:50:19.016841+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "CRDOUSDT",
-      "net_score": -20.6,
+      "net_score": -21.3,
       "long_score": 0,
-      "short_score": 20.6
+      "short_score": 21.3
     },
     {
       "symbol": "TSMUSDT",
-      "net_score": -20.3,
+      "net_score": -19.6,
       "long_score": 0,
-      "short_score": 20.3
+      "short_score": 19.6
     },
     {
       "symbol": "SOXLUSDT",
@@ -61,12 +61,6 @@
       "short_score": 15.1
     },
     {
-      "symbol": "INTCUSDT",
-      "net_score": -14.9,
-      "long_score": 0,
-      "short_score": 14.9
-    },
-    {
       "symbol": "BEUSDT",
       "net_score": -14.6,
       "long_score": 0,
@@ -77,6 +71,12 @@
       "net_score": -14.6,
       "long_score": 0,
       "short_score": 14.6
+    },
+    {
+      "symbol": "AVGOUSDT",
+      "net_score": -14.4,
+      "long_score": 0,
+      "short_score": 14.4
     },
     {
       "symbol": "ARMUSDT",
@@ -91,12 +91,6 @@
       "short_score": 14.1
     },
     {
-      "symbol": "EWYUSDT",
-      "net_score": -13.8,
-      "long_score": 0,
-      "short_score": 13.8
-    },
-    {
       "symbol": "SNDKUSDT",
       "net_score": -13.8,
       "long_score": 0,
@@ -109,12 +103,6 @@
       "short_score": 13.4
     },
     {
-      "symbol": "AVGOUSDT",
-      "net_score": -13.3,
-      "long_score": 0,
-      "short_score": 13.3
-    },
-    {
       "symbol": "STXXUSDT",
       "net_score": -13.0,
       "long_score": 0,
@@ -125,12 +113,6 @@
       "net_score": -12.6,
       "long_score": 0,
       "short_score": 12.6
-    },
-    {
-      "symbol": "DRAMUSDT",
-      "net_score": -12.3,
-      "long_score": 0,
-      "short_score": 12.3
     },
     {
       "symbol": "TXNUSDT",
@@ -175,6 +157,12 @@
       "short_score": 0
     },
     {
+      "symbol": "EWYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MVLLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -194,6 +182,12 @@
     },
     {
       "symbol": "SQQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "DRAMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -391,6 +385,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ONDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SOLUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -512,6 +512,12 @@
     },
     {
       "symbol": "NVDAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "INTCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -932,26 +938,20 @@
     },
     {
       "symbol": "AAPLUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "ONDOUSDT",
-      "net_score": 12.0,
-      "long_score": 12.0,
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     },
     {
       "symbol": "GOOGLUSDT",
-      "net_score": 12.5,
-      "long_score": 12.5,
+      "net_score": 11.4,
+      "long_score": 11.4,
       "short_score": 0
     },
     {
       "symbol": "CAKEUSDT",
-      "net_score": 17.6,
-      "long_score": 17.6,
+      "net_score": 14.1,
+      "long_score": 14.1,
       "short_score": 0
     },
     {
@@ -969,35 +969,30 @@
     ],
     [
       "CAKEUSDT",
-      17.6,
-      1.471
+      14.1,
+      1.4781
     ],
     [
       "GOOGLUSDT",
-      12.5,
-      344.53
-    ],
-    [
-      "ONDOUSDT",
-      12.0,
-      0.3304
+      11.4,
+      344.04
     ],
     [
       "AAPLUSDT",
-      11.5,
+      10.4,
       310.6
     ]
   ],
   "top_shorts": [
     [
       "CRDOUSDT",
-      20.6,
+      21.3,
       249.3
     ],
     [
       "TSMUSDT",
-      20.3,
-      415.44
+      19.6,
+      415.39296278
     ],
     [
       "SOXLUSDT",
@@ -1035,11 +1030,6 @@
       30.38
     ],
     [
-      "INTCUSDT",
-      14.9,
-      96.46
-    ],
-    [
       "BEUSDT",
       14.6,
       214.57193883
@@ -1055,14 +1045,14 @@
       250.7
     ],
     [
+      "AVGOUSDT",
+      14.4,
+      381.58
+    ],
+    [
       "TQQQUSDT",
       14.1,
       73.04
-    ],
-    [
-      "EWYUSDT",
-      13.8,
-      171.65
     ],
     [
       "SNDKUSDT",
@@ -1075,11 +1065,6 @@
       72.10375943
     ],
     [
-      "AVGOUSDT",
-      13.3,
-      381.58
-    ],
-    [
       "STXXUSDT",
       13.0,
       915.98
@@ -1088,11 +1073,6 @@
       "ASTSUSDT",
       12.6,
       67.34
-    ],
-    [
-      "DRAMUSDT",
-      12.3,
-      55.64
     ],
     [
       "TXNUSDT",

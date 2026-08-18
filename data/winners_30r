@@ -90,22 +90,16 @@
     "gain_score": 14.38
   },
   {
+    "symbol": "WDCUSDT",
+    "returns_15m": 3.3183228259781927,
+    "returns_3m": 3.4383954154727845,
+    "gain_score": 13.754
+  },
+  {
     "symbol": "DRAMUSDT",
     "returns_15m": 3.6203170028818406,
     "returns_3m": 3.434016540812664,
     "gain_score": 13.736
-  },
-  {
-    "symbol": "MOVRUSDT",
-    "returns_15m": 2.2268524547467123,
-    "returns_3m": 3.2758847520063195,
-    "gain_score": 13.104
-  },
-  {
-    "symbol": "WDCUSDT",
-    "returns_15m": 3.8713052576510614,
-    "returns_3m": 3.2563256325632626,
-    "gain_score": 13.025
   },
   {
     "symbol": "INTCUSDT",
@@ -120,6 +114,12 @@
     "gain_score": 12.319
   },
   {
+    "symbol": "MOVRUSDT",
+    "returns_15m": 3.0048550059047408,
+    "returns_3m": 3.0724789915966353,
+    "gain_score": 12.29
+  },
+  {
     "symbol": "SKHYUSDT",
     "returns_15m": 1.6513990153922888,
     "returns_3m": 3.0708959939340414,
@@ -127,9 +127,15 @@
   },
   {
     "symbol": "BEATUSDT",
-    "returns_15m": 1.1026293469041522,
-    "returns_3m": 2.405498281786939,
-    "gain_score": 9.622
+    "returns_15m": 2.0547945205479445,
+    "returns_3m": 3.069606571552095,
+    "gain_score": 12.278
+  },
+  {
+    "symbol": "SKYAIUSDT",
+    "returns_15m": 1.848998459167961,
+    "returns_3m": 2.512406947890835,
+    "gain_score": 10.05
   },
   {
     "symbol": "SNDKUSDT",
@@ -162,21 +168,15 @@
     "gain_score": 8.867
   },
   {
-    "symbol": "SKYAIUSDT",
-    "returns_15m": 1.1476664116296873,
-    "returns_3m": 1.990433575065575,
-    "gain_score": 7.962
+    "symbol": "MORPHOUSDT",
+    "returns_15m": -0.004580852038468481,
+    "returns_3m": 1.9999065464230723,
+    "gain_score": 8.0
   },
   {
-    "symbol": "MUUSDT",
-    "returns_15m": 1.2209431389338106,
-    "returns_3m": 1.9820433898160688,
-    "gain_score": 7.928
-  },
-  {
-    "symbol": "MRVLUSDT",
-    "returns_15m": 1.1372567148999158,
-    "returns_3m": 1.9764135552137272,
-    "gain_score": 7.906
+    "symbol": "ARMUSDT",
+    "returns_15m": 1.994813484939158,
+    "returns_3m": 1.832304321848235,
+    "gain_score": 7.329
   }
 ]
