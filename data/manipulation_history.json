@@ -9221,5 +9221,14 @@
     ],
     "timestamp": "2026-08-19T03:35:01.983721+00:00",
     "price": 66.57
+  },
+  {
+    "symbol": "TERUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 17.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T03:42:14.028254+00:00",
+    "price": 404.09
   }
 ]
