@@ -9671,5 +9671,23 @@
     ],
     "timestamp": "2026-08-19T08:24:47.063838+00:00",
     "price": 382.34
+  },
+  {
+    "symbol": "IOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 11.5x normal"
+    ],
+    "timestamp": "2026-08-19T08:35:12.023860+00:00",
+    "price": 0.1146
+  },
+  {
+    "symbol": "UNIUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T08:39:53.031157+00:00",
+    "price": 3.33
   }
 ]
