@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-19T06:55:42.202205+00:00",
+  "timestamp": "2026-08-19T07:10:52.551698+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,40 +7,22 @@
   },
   "unified_ranking": [
     {
-      "symbol": "CRCLUSDT",
-      "net_score": -16.5,
+      "symbol": "ASMLUSDT",
+      "net_score": -11.4,
       "long_score": 0,
-      "short_score": 16.5
+      "short_score": 11.4
     },
     {
-      "symbol": "GLWUSDT",
-      "net_score": -11.9,
-      "long_score": 0,
-      "short_score": 11.9
-    },
-    {
-      "symbol": "CATUSDT",
-      "net_score": -11.1,
-      "long_score": 0,
-      "short_score": 11.1
-    },
-    {
-      "symbol": "AXTIUSDT",
+      "symbol": "BSVUSDT",
       "net_score": -10.5,
       "long_score": 0,
       "short_score": 10.5
     },
     {
-      "symbol": "AMATUSDT",
-      "net_score": -10.4,
+      "symbol": "SPCXUSD1",
+      "net_score": -10.1,
       "long_score": 0,
-      "short_score": 10.4
-    },
-    {
-      "symbol": "BMNRUSDT",
-      "net_score": -10.3,
-      "long_score": 0,
-      "short_score": 10.3
+      "short_score": 10.1
     },
     {
       "symbol": "BEATUSDT",
@@ -205,6 +187,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AMATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ENAUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -266,12 +254,6 @@
     },
     {
       "symbol": "GALAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASMLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -362,6 +344,12 @@
     },
     {
       "symbol": "SUIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GLWUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -475,6 +463,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "INXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -565,12 +559,6 @@
       "short_score": 0
     },
     {
-      "symbol": "INJUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -643,6 +631,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BMNRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CRVUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -673,12 +667,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BSVUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "INTCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -698,12 +686,6 @@
     },
     {
       "symbol": "IMXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SPCXUSD1",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -817,6 +799,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CRCLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETHFIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -854,6 +842,12 @@
     },
     {
       "symbol": "SANDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AXTIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1103,39 +1097,36 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "INJUSDT",
+      "net_score": 12.0,
+      "long_score": 12.0,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "INJUSDT",
+      12.0,
+      4.243
+    ]
+  ],
   "top_shorts": [
     [
-      "CRCLUSDT",
-      16.5,
-      70.89
+      "ASMLUSDT",
+      11.4,
+      1798.9
     ],
     [
-      "GLWUSDT",
-      11.9,
-      155.75
-    ],
-    [
-      "CATUSDT",
-      11.1,
-      838.71
-    ],
-    [
-      "AXTIUSDT",
+      "BSVUSDT",
       10.5,
-      79.14
+      14.24
     ],
     [
-      "AMATUSDT",
-      10.4,
-      508.85
-    ],
-    [
-      "BMNRUSDT",
-      10.3,
-      18.31
+      "SPCXUSD1",
+      10.1,
+      142.11
     ]
   ],
   "hedge_usage": {
