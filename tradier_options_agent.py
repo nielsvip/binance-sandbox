@@ -68,12 +68,11 @@ if not logger.handlers:
     logger.addHandler(sh)
 
 # ── Budget & Risk Constants ──────────────────────────────────────────────────
-# Per-order sizing rules (2026-04-23):
-#   • Option price ≤ $9/share  → buy floor($800 / contract_cost) contracts, total ≤ $800
-#   • Option price  > $9/share → buy exactly 1 contract at full cost (e.g. $20 = $2,000 order)
-# MAX_CHEAP_ORDER_BUDGET is the $800 cap that applies ONLY to cheap options.
-# It is NOT a global per-order spend limit — expensive single contracts pay their full price.
-MAX_CHEAP_ORDER_BUDGET = 800.0    # Max spend when option price ≤ $9/share (multiple contracts OK)
+# Per-order sizing rules (2026-04-23, tightened 2026-08-19 paper affordability):
+#   • Option price ≤ $9/share  → buy floor($400 / contract_cost) contracts, total ≤ $400
+#   • Option price  > $9/share → buy 0 (reject) if cost > $400 — paper/liver cannot afford $1k options
+# Paper and live share the same $400 cap via TradierConfig.OPTIONS_MAX_ORDER_BUDGET.
+MAX_CHEAP_ORDER_BUDGET = 400.0    # Max spend — was 800, halved 2026-08-19 to match live 400 and user-affordable limit
 MAX_PER_ORDER = MAX_CHEAP_ORDER_BUDGET  # alias kept for legacy arg plumbing
 PREFERRED_PER_ORDER = MAX_CHEAP_ORDER_BUDGET
 # 2026-04-22 user rule: $3k calls / $3k puts / $6k total
@@ -733,16 +732,18 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
         contract_cost = mid * 100
         if contract_cost <= 0:
             continue
-        # ── Budget + qty rules (2026-04-23) ──
-        # Expensive (>$9/share = >$900/contract): ALWAYS exactly 1 contract.
-        #   → Order can be $2,000+ for a $20 option. That's intentional.
-        # Cheap (≤$9/share): buy floor($800 / contract_cost) contracts, capped at $800 total.
-        #   → A $3 option gets qty=2 ($600), a $8 option gets qty=1 ($800).
+        # ── Budget + qty rules (2026-04-23, affordability fix 2026-08-19) ──
+        # Expensive (>$9/share = >$900/contract): REJECT if > per-order cap — cannot afford $1k options.
+        # Cheap (≤$9/share): buy floor($400 / contract_cost) contracts, capped at $400 total.
         _max_single_price = float(getattr(config, "OPTIONS_MAX_SINGLE_CONTRACT_PRICE", 9.0)) if config else 9.0
-        _cheap_budget = float(getattr(config, "OPTIONS_MAX_ORDER_BUDGET", 800.0)) if config else 800.0
+        _cheap_budget = float(getattr(config, "OPTIONS_MAX_ORDER_BUDGET", 400.0)) if config else 400.0
         if mid > _max_single_price:
+            # Was: qty=1 at any cost (could be $2,000). Now: reject if single contract exceeds budget.
+            if contract_cost > _cheap_budget:
+                logger.info(f"BUDGET_REJECT {symbol} {mid:.2f} > ${_max_single_price:.0f} and ${contract_cost:.0f} > budget ${_cheap_budget:.0f} — cannot afford")
+                continue
             qty = 1
-            total_cost = contract_cost  # full contract cost — may exceed $800, that's fine
+            total_cost = contract_cost
         else:
             qty = min(_max_contracts, max(1, int(_cheap_budget / contract_cost)))
             total_cost = qty * contract_cost

@@ -622,6 +622,14 @@ def _market_is_open(now_utc):
     return 810 <= minutes <= 1200
 
 
+def _minutes_since_open(now_utc):
+    """Minutes elapsed since today's 13:30 open. Negative before open, None on weekend."""
+    if now_utc.weekday() >= 5:
+        return None
+    minutes = now_utc.hour * 60 + now_utc.minute
+    return minutes - 810
+
+
 def build_sync_health(tra_data, trb_data):
     """Position file health check — mark price freshness and position counts. No API calls.
 
@@ -634,6 +642,30 @@ def build_sync_health(tra_data, trb_data):
     """
     now_utc = datetime.now(timezone.utc)
     market_open = _market_is_open(now_utc)
+    mins_since_open = _minutes_since_open(now_utc)
+    # 2026-08-19 FIX: don't flag stale in first 10 min after open — price feed needs grace to warm up (pre-warm at 13:00 + fetch). Also cross-check tradier_prices_latest.json freshness as authoritative fallback.
+    grace_open = mins_since_open is not None and 0 <= mins_since_open < 10
+    prices_fresh = False
+    prices_age_min = None
+    try:
+        prices_path = DATA_DIR / "tradier" / "tradier_prices_latest.json"
+        if prices_path.exists():
+            import time as _time
+            mtime = prices_path.stat().st_mtime
+            prices_age_min = int((_time.time() - mtime) // 60)
+            # also check embedded timestamp
+            raw = json.loads(prices_path.read_text())
+            meta_ts = (raw.get("_metadata") or {}).get("updated_at") if isinstance(raw, dict) else None
+            if meta_ts:
+                try:
+                    dt_meta = datetime.fromisoformat(meta_ts.replace("Z", "+00:00"))
+                    meta_age = int((now_utc - dt_meta).total_seconds() // 60)
+                    prices_age_min = min(prices_age_min, meta_age) if prices_age_min is not None else meta_age
+                except Exception:
+                    pass
+            prices_fresh = prices_age_min is not None and prices_age_min <= 2
+    except Exception:
+        pass
     all_stale = []
     rows = []
     for data in [tra_data, trb_data]:
@@ -647,7 +679,14 @@ def build_sync_health(tra_data, trb_data):
                     age_min = int((now_utc - dt).total_seconds() // 60)
                 except Exception:
                     pass
-            stale = market_open and age_min is not None and age_min > 60
+            # grace window + authoritative price-feed fallback: if price file is fresh, don't cry stale
+            if grace_open and prices_fresh:
+                stale = False
+            elif prices_fresh and age_min is not None and age_min > 60 and prices_age_min is not None and prices_age_min <= 2:
+                # Position file lags disk flush but price feed is <2 min fresh — reporting lag, not trading lag
+                stale = False
+            else:
+                stale = market_open and not grace_open and age_min is not None and age_min > 60
             if stale:
                 all_stale.append(f"{acct}:{p['symbol']} mark {age_min}m old")
             rows.append({"acct": acct, "sym": p["symbol"], "side": p["side"], "qty": p["qty"], "entry": p["avg_cost"], "mark": p["last"], "gain_pct": p["gain_pct"], "pnl": p["pnl"], "age_min": age_min, "stale": stale})
@@ -655,12 +694,19 @@ def build_sync_health(tra_data, trb_data):
     total = len(rows)
     stale_count = len(all_stale)
     if marks_fresh:
-        note = "Mark prices current." if market_open else "Market closed — mark age not evaluated."
+        if grace_open:
+            note = f"Market just opened ({mins_since_open}m ago) — grace window, price feed fresh ({prices_age_min}m)." if prices_fresh else f"Market just opened ({mins_since_open}m ago) — grace window."
+        else:
+            note = "Mark prices current." if market_open else "Market closed — mark age not evaluated."
+            if prices_fresh:
+                note += f" Price feed {prices_age_min}m old."
         html = f'<div class="box" style="border-left:4px solid #2e7d32"><span class="pill pg">FILES OK</span> {total} positions loaded from local files. {note} <span class="gr" style="font-size:11px">(API sync disabled — avoids ban risk; wrong data visible here = tradier_manage.py is wrong too)</span></div>'
     else:
         html = f'<div class="box" style="border-left:4px solid #ef6c00;background:#fff8e1"><span class="pill po">STALE MARKS — {stale_count} positions</span> Mark prices &gt;60min old — tradier_manage.py may be trading on stale prices.<br>'
         for s in all_stale[:5]:
             html += f'<span class="r" style="font-size:11px">{s}</span><br>'
+        if prices_age_min is not None:
+            html += f'<span class="gr" style="font-size:11px">Price feed age: {prices_age_min}m (file: tradier_prices_latest.json)</span><br>'
         html += '</div>'
     html += '<table style="font-size:11px"><tr><th>Acct</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry $</th><th>Mark $</th><th>Gain %</th><th>P/L $</th><th>Mark Age</th></tr>'
     for r in sorted(rows, key=lambda x: abs(x["pnl"]), reverse=True):

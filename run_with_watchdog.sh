@@ -63,7 +63,16 @@ ez_news_market_open_utc() {
 }
 
 case "$SCRIPT" in
-    tradier_manage.py|tradier_positions.py|tradier_prices.py|tradier_indicators.py|tradier_rankings.py|tradier_premarket_scanner.py|tradier_options_csp_monitor.py|tradier_options_analyzer.py|tradier_options_agent.py|tradier_hourly_reconfig.py|tradier_webhook_bridge.py)
+    tradier_prices.py)
+        # 2026-08-19 FIX: pre-warm 30 min before open (13:00 UTC) so marks are fresh by 09:35 ET email (13:35 UTC).
+        # Previously gated at 13:30 — 5-min race + watchdog 5-min tick = stale banner every morning.
+        if ! ez_news_market_open_utc; then
+            mkdir -p "$LOGDIR"
+            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [TRADIER_MARKET_GATE] refusing to launch $SCRIPT ${ARGS[*]} — outside Mon-Fri 13:00-20:00 UTC (pre-warm for marks)" >> "$LOGDIR/tradier_market_gate.log"
+            exit 0
+        fi
+        ;;
+    tradier_manage.py|tradier_positions.py|tradier_indicators.py|tradier_rankings.py|tradier_premarket_scanner.py|tradier_options_csp_monitor.py|tradier_options_analyzer.py|tradier_options_agent.py|tradier_hourly_reconfig.py|tradier_webhook_bridge.py)
         if ! tradier_market_open_utc; then
             mkdir -p "$LOGDIR"
             echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [TRADIER_MARKET_GATE] refusing to launch $SCRIPT ${ARGS[*]} — outside Mon-Fri 13:30-20:00 UTC" >> "$LOGDIR/tradier_market_gate.log"

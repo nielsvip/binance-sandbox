@@ -20473,6 +20473,77 @@ class MultiAccountTradeManager:
         return multiplier
 
     # 0D
+    async def _inf_impulse_consumer_loop(self):
+        """Consume tradier INF impulses (stocks-only, e.g. AAPL→AAPLUSDT) and trade on Binance via execute_trade_action(14/price)."""
+        import json as _js
+        from pathlib import Path as _P
+        _imp_file = self.config.BASE_PATH / "data" / "inf_impulses.jsonl"
+        _seen = set()
+        # Load already-processed offsets (simple: track file size)
+        _pos = 0
+        try:
+            if _imp_file.exists():
+                _pos = _imp_file.stat().st_size
+        except Exception:
+            _pos = 0
+        while True:
+            try:
+                if _imp_file.exists():
+                    sz = _imp_file.stat().st_size
+                    if sz > _pos:
+                        with open(_imp_file, "r") as f:
+                            f.seek(_pos)
+                            for line in f:
+                                line=line.strip()
+                                if not line:
+                                    continue
+                                try:
+                                    rec = _js.loads(line)
+                                    key = f"{rec.get('usdt')}_{rec.get('side')}_{rec.get('ts')}"
+                                    if key in _seen:
+                                        continue
+                                    _seen.add(key)
+                                    usdt = str(rec.get("usdt","")).upper().strip()
+                                    side = str(rec.get("side","")).upper().strip()
+                                    price = float(rec.get("price") or 0)
+                                    base = str(rec.get("base","")).upper().strip()
+                                    if not usdt or side not in ("LONG","SHORT"):
+                                        continue
+                                    # Tradier never emits crypto (AAVEUSDT filtered at source), but double-gate here
+                                    # Allow only stock proxies present in symbols_tradier.json
+                                    try:
+                                        _allow = set(s.upper().strip() for s in json.loads((self.config.BASE_PATH / "symbols_tradier.json").read_text()) if s)
+                                        _base_chk = usdt[:-4] if usdt.endswith("USDT") else usdt
+                                        if _base_chk not in _allow:
+                                            continue
+                                    except Exception:
+                                        pass
+                                    if price <= 0:
+                                        # fallback to mark price
+                                        try:
+                                            price = float(self.mark_price_cache.get(usdt, {}).get("price") or 0)
+                                        except Exception:
+                                            price = 0
+                                    if price <= 0:
+                                        continue
+                                    qty = float(self.config.START_POSITION_SIZE) / price if price else 0  # config.py 14.0
+                                    if qty <= 0:
+                                        continue
+                                    pos_key = f"inf:{usdt}_{side}"
+                                    # Call ez execute_trade_action → execute_now → Binance (fractional, Finandy)
+                                    await self.execute_trade_action(account_key="inf", position_key=pos_key, symbol=usdt, quantity=qty, current_price=price, side="BUY" if side=="LONG" else "SELL", position_side=side, unique_id=f"inf_impulse_{usdt}_{side}_{int(rec.get('ts',0))}", action="OPEN", reason=f"TRADIER_IMPULSE_{rec.get('reason','')[:40]}")
+                                except Exception as _e:
+                                    continue
+                            _pos = sz
+                        # Trim seen to avoid unbounded growth
+                        if len(_seen) > 5000:
+                            _seen = set(list(_seen)[-2500:])
+                await asyncio.sleep(2)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                await asyncio.sleep(5)
+
     async def execute_trade_action(
         self,
         account_key,
@@ -53662,6 +53733,11 @@ async def main():
                 )
             background_tasks.append(
                 asyncio.create_task(trade_manager.ratio_rebalance_loop())
+            )
+            # INF impulse bridge: tradier (stocks-only, klines_cache/tradier) → ez (Binance USDT, 14/price)
+            # AAVEUSDT filtered at source; tradier never trades crypto.
+            background_tasks.append(
+                asyncio.create_task(trade_manager._inf_impulse_consumer_loop())
             )
             background_tasks.append(
                 asyncio.create_task(monitor_system_state(trade_manager))

@@ -4645,6 +4645,38 @@ except Exception as _slr_err:
 _GLOBAL_JSON_CACHE={}
 config = TradierConfig()
 
+# INF impulse bridge — tradier (stocks only) → ez (Binance). Tradier never trades crypto
+# (e.g. AAVEUSDT). When tradier signal fires for a symbol in symbols_inf_* (USDT stock proxy),
+# write {ts,base,usdt,side,price,reason} to data/inf_impulses.jsonl for ez_manage to consume.
+import json as _js_imp
+from pathlib import Path as _Path_imp
+_INF_IMPULSE_FILE = config.BASE_PATH / "data" / "inf_impulses.jsonl"
+_INF_STOCK_ALLOW = None  # lazy load symbols_tradier.json stripped set
+
+def _is_stock_proxy(usdt_sym: str) -> bool:
+    """True only if base is a Tradier stock (not crypto like AAVE). Filters AAVEUSDT."""
+    global _INF_STOCK_ALLOW
+    if _INF_STOCK_ALLOW is None:
+        try:
+            _INF_STOCK_ALLOW = set(s.upper().strip() for s in json.loads((_Path_imp(config.BASE_PATH / "symbols_tradier.json")).read_text()) if s)
+        except Exception:
+            _INF_STOCK_ALLOW = set()
+    s = usdt_sym.upper().strip()
+    base = s[:-4] if s.endswith("USDT") else s[:-4] if s.endswith("USDC") else s
+    return base in _INF_STOCK_ALLOW
+
+def _emit_inf_impulse(base: str, usdt: str, side: str, price: float, reason: str):
+    try:
+        if not _is_stock_proxy(usdt):
+            return  # tradier cannot trade crypto — drop AAVEUSDT etc.
+        rec = {"ts": __import__("time").time(), "base": base.upper(), "usdt": usdt.upper(), "side": side.upper(), "price": float(price) if price else 0, "reason": reason[:120]}
+        _INF_IMPULSE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(_INF_IMPULSE_FILE, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception:
+        pass
+
+
 # Per-symbol formation vocabulary for registry discovery.  Runtime resolution
 # is performed through the resolver passed to select_latest_formation().
 # _cfg("FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED", False)
@@ -18807,6 +18839,26 @@ class TradierTradeManager:
                                         return p, t
                 except (asyncio.TimeoutError, Exception):
                     pass 
+                # 2026-08-19 FIX: gateway Redis fallback (157.90.168.35 via localhost:6380) — if local Redis stale/missing, try gateway directly (3-geo redundancy)
+                try:
+                    gw = None
+                    if hasattr(self.redis_manager, 'connections'):
+                        gw = self.redis_manager.connections.get('gateway')
+                    if gw is not None:
+                        raw_gw = await asyncio.wait_for(gw.get("tradier_prices_latest"), timeout=1.5)
+                        if raw_gw:
+                            md_gw = json.loads(raw_gw) if isinstance(raw_gw, str) else raw_gw
+                            if isinstance(md_gw, dict):
+                                symbol_data_gw = md_gw.get("data", md_gw)
+                                if symbol in symbol_data_gw:
+                                    item_gw = symbol_data_gw[symbol]
+                                    p_gw = float(item_gw.get('price') or item_gw.get('last', 0.0))
+                                    t_gw = safe_parse_ts(item_gw.get('timestamp') or item_gw.get('date'))
+                                    if p_gw > 0 and t_gw and (now - t_gw).total_seconds() < MAX_AGE_SECONDS:
+                                        self.price_cache[symbol] = {'price': p_gw, 'timestamp': t_gw}
+                                        return p_gw, t_gw
+                except (asyncio.TimeoutError, Exception):
+                    pass
 
             # --- LAYER 3: DISK JSON (Reliable Fallback) ---
             try:
@@ -19554,6 +19606,40 @@ class TradierTradeManager:
         current_price, _ = await self.get_current_price(symbol)
         current_price = float(current_price) if current_price is not None else 0.0
         if current_price <= 0: return "NO_PRICE"
+        # INF impulse → ez (Binance). Tradier stocks-only never trades crypto (AAVEUSDT filtered inside helper).
+        # When tradier validates a stock entry (e.g. AAPL LONG), emit AAPLUSDT impulse for ez to trade fractional 14/price.
+        if is_entry_action and not _is_exit_or_reduce:
+            try:
+                _base_up = symbol.upper().strip()
+                # Load INF lists (USDT stock proxies) — tradier_rankings mirror, stocks-only filtered
+                import json as _js_inf
+                _inf_l = set()
+                _inf_s = set()
+                try:
+                    _inf_l = set(s.upper().strip() for s in json.loads((config.BASE_PATH / "symbols_inf_long.json").read_text()) if s)
+                    _inf_s = set(s.upper().strip() for s in json.loads((config.BASE_PATH / "symbols_inf_short.json").read_text()) if s)
+                except Exception:
+                    pass
+                _usdt = None
+                if is_long and _base_up in {s[:-4] if s.endswith("USDT") else s for s in _inf_l}:
+                    # Find USDT variant
+                    for cand in _inf_l:
+                        if cand == _base_up + "USDT" or cand == _base_up:
+                            _usdt = cand
+                            break
+                    if _usdt is None:
+                        _usdt = _base_up + "USDT"
+                elif not is_long and _base_up in {s[:-4] if s.endswith("USDT") else s for s in _inf_s}:
+                    for cand in _inf_s:
+                        if cand == _base_up + "USDT" or cand == _base_up:
+                            _usdt = cand
+                            break
+                    if _usdt is None:
+                        _usdt = _base_up + "USDT"
+                if _usdt:
+                    _emit_inf_impulse(_base_up, _usdt, position_side, current_price, reason or action)
+            except Exception:
+                pass
 
         # HARD NOTIONAL CEILING — applies at the final execution seam to every
         # exposure-increasing action, including routes that intentionally bypass

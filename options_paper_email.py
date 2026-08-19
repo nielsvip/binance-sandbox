@@ -328,9 +328,48 @@ def _load_paper_fills():
     return out
 
 
+def _load_paper_portfolio():
+    """Load live-marked paper portfolio (open positions)."""
+    for cand in [Path(SHADOW_DIR) / "paper_portfolio.json", Path(BASE) / "data" / "options_shadow" / "paper_portfolio.json"]:
+        if cand.exists():
+            try:
+                return json.loads(cand.read_text())
+            except Exception:
+                continue
+    return {"updated_at": None, "positions": {}}
+
+
+def _load_paper_closed(days=30):
+    """Load closed paper trades in trailing window. Returns list."""
+    for cand in [Path(SHADOW_DIR) / "paper_closed.jsonl", Path(BASE) / "data" / "options_shadow" / "paper_closed.jsonl"]:
+        if cand.exists():
+            out = []
+            cutoff = _utc_now() - timedelta(days=days)
+            try:
+                with open(cand) as f:
+                    for line in f:
+                        line=line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except Exception:
+                            continue
+                        try:
+                            ts = datetime.fromisoformat(str(rec.get("exit_ts") or rec.get("ts") or "").replace("Z", "+00:00"))
+                            if ts >= cutoff:
+                                out.append(rec)
+                        except Exception:
+                            out.append(rec)
+                return out
+            except Exception:
+                continue
+    return []
+
+
 def _paper_pnl_summary(fills, days=30):
-    """Compute hypothetical trailing P&L from paper fills. Marks to mid when available so PnL is not flat-zero.
-    Revision 2026-08-11: fills initially have market_value == premium (fill cost). Recompute market as mid*100*qty when mid exists."""
+    """Trailing P&L from FILLS is deprecated — use portfolio realized/unrealized.
+    Kept as fallback when portfolio files are absent (historical)."""
     if not fills:
         return None
     cutoff = _utc_now() - timedelta(days=days)
@@ -349,13 +388,11 @@ def _paper_pnl_summary(fills, days=30):
     for r in recent:
         prem = float(r.get("premium",0) or 0)
         total_premium += prem
-        # Prefer marked mid * qty *100; fallback to stored market_value
         mid = r.get("mid")
         qty = int(r.get("qty",1) or 1)
         if mid is not None:
             try:
                 mv = float(mid) * 100 * qty
-                # sanity: if mid looks like price per share (1-50), use it; if 0, fallback
                 if mv > 0.01:
                     total_market += mv
                     continue
@@ -365,6 +402,90 @@ def _paper_pnl_summary(fills, days=30):
     pnl = total_market - total_premium
     pnl_pct = (pnl/total_premium*100) if total_premium else 0
     return {"n_trades": len(recent), "premium": round(total_premium,2), "market": round(total_market,2), "pnl": round(pnl,2), "pnl_pct": round(pnl_pct,2)}
+
+
+def _paper_portfolio_summary(days=30):
+    """Real P&L for go-live decision: open unrealized + trailing realized closes.
+    Returns dict with open/closed stats, Sharpe from CLOSED trade returns, win rate, max DD, or None if no portfolio."""
+    port = _load_paper_portfolio()
+    positions = port.get("positions") or {}
+    open_positions = list(positions.values()) if isinstance(positions, dict) else []
+    closed = _load_paper_closed(days=days)
+    # Open aggregates
+    open_premium = sum(float(p.get("entry_premium", 0) or 0) for p in open_positions)
+    open_market = sum(float(p.get("current_market_value", p.get("entry_premium", 0)) or 0) for p in open_positions)
+    open_unreal = sum(float(p.get("unrealized_pnl", 0) or 0) for p in open_positions)
+    open_unreal_pct = (open_unreal / open_premium * 100) if open_premium else 0.0
+    # Closed aggregates (realized)
+    closed_n = len(closed)
+    closed_pnl = sum(float(c.get("realized_pnl", 0) or 0) for c in closed)
+    closed_premium = sum(float(c.get("entry_premium", 0) or 0) for c in closed)
+    closed_pct = (closed_pnl / closed_premium * 100) if closed_premium else 0.0
+    # Total (realized + unrealized) is the answer to "is it useful to put live?"
+    total_pnl = closed_pnl + open_unreal
+    total_cap = closed_premium + open_premium
+    total_pct = (total_pnl / total_cap * 100) if total_cap else 0.0
+    # Win rate / Sharpe from CLOSED realized trades only (per-trade returns, non-annualized, no sqrt(N))
+    win_n = sum(1 for c in closed if float(c.get("realized_pnl", 0) or 0) > 0)
+    win_rate = (win_n / closed_n * 100) if closed_n else 0.0
+    sharpe = None
+    pool_sharpe = None
+    max_dd_pct = None
+    if closed_n >= 2:
+        returns = []
+        for c in closed:
+            entry = float(c.get("entry_premium", 0) or 0)
+            if entry:
+                returns.append(float(c.get("realized_pnl", 0) or 0) / entry)
+        if len(returns) >= 2:
+            try:
+                import math
+                mean = sum(returns) / len(returns)
+                var = sum((x - mean) ** 2 for x in returns) / len(returns)
+                std = math.sqrt(var) if var > 0 else 0
+                sharpe = (mean / std) if std > 0 else 0.0
+                pool_sharpe = sharpe
+            except Exception:
+                pass
+        # Max DD on equity curve of realized closes (sorted by exit_ts)
+        try:
+            closed_sorted = sorted(closed, key=lambda x: str(x.get("exit_ts") or x.get("ts") or ""))
+            eq = 0.0
+            peak = 0.0
+            max_dd = 0.0
+            for c in closed_sorted:
+                eq += float(c.get("realized_pnl", 0) or 0)
+                peak = max(peak, eq)
+                dd = peak - eq
+                # Express DD as % of gross entry capital deployed to date
+                cap_to_date = sum(float(x.get("entry_premium", 0) or 0) for x in closed_sorted[: closed_sorted.index(c) + 1]) or 1
+                dd_pct = dd / cap_to_date * 100 if cap_to_date else 0
+                max_dd = max(max_dd, dd_pct)
+            max_dd_pct = round(max_dd, 2)
+        except Exception:
+            pass
+    if not open_positions and not closed:
+        return None
+    return {
+        "open_n": len(open_positions),
+        "open_premium": round(open_premium, 2),
+        "open_market": round(open_market, 2),
+        "open_pnl": round(open_unreal, 2),
+        "open_pct": round(open_unreal_pct, 2),
+        "closed_n": closed_n,
+        "closed_pnl": round(closed_pnl, 2),
+        "closed_pct": round(closed_pct, 2),
+        "total_pnl": round(total_pnl, 2),
+        "total_pct": round(total_pct, 2),
+        "win_rate": round(win_rate, 1),
+        "win_n": win_n,
+        "sharpe": round(sharpe, 3) if sharpe is not None else None,
+        "pool_sharpe": pool_sharpe,
+        "max_dd_pct": max_dd_pct,
+        "positions": open_positions,
+        "closed": closed,
+        "updated_at": port.get("updated_at"),
+    }
 
 
 def _earliest_shadow_data_date():
@@ -408,7 +529,8 @@ def build_html(session):
     data_window = "no shadow data found"
     if newest_ts:
         data_window = f"latest cycle {newest_ts}"
-    # --- P4: Paper fills trailing P&L (real, not invented) ---
+    # --- P&L: portfolio realized + unrealized is the go-live answer (fills fallback) ---
+    portfolio = _paper_portfolio_summary(days=30)
     fills = _load_paper_fills()
     pnl_summary = _paper_pnl_summary(fills, days=30)
     veto_stats = _collect_veto_stats()
@@ -424,17 +546,39 @@ def build_html(session):
     <p style="color:#666;font-size:11px">Fix deployed 2026-08-11: RATIO_GATE empty-book deadlock patched (was blocking every seed trade with 0/0 → 1.0&gt;65%). If RATIO_GATE still dominates after fix, portfolio is correctly enforcing 65% call/put balance.</p>"""
     else:
         veto_html = "<p style='color:#888;font-size:11px'>No veto stats available (log not found or empty — check /Users/niels/logs/options_shadow_stderr.log).</p>"
-    # --- P&L note: use paper fills if available, else honest placeholder ---
-    if pnl_summary:
+    # --- P&L note: portfolio is truth (fills fallback when no portfolio yet) ---
+    if portfolio:
+        pnl_color = "#2e7d32" if portfolio["total_pnl"] >= 0 else "#c62828"
+        # Lead metric: is paper useful to put live? = realized + unrealized
+        pnl_note = (
+            f"<b>Paper P&amp;L — trailing 30d (realized + unrealized, live-marked):</b> "
+            f"<span style='color:{pnl_color}'><b>${portfolio['total_pnl']:,.0f} ({portfolio['total_pct']:+.1f}%)</b></span>"
+            f" · realized <b>${portfolio['closed_pnl']:,.0f} ({portfolio['closed_pct']:+.1f}%)</b> on {portfolio['closed_n']} closed"
+            f" · unrealized <b>${portfolio['open_pnl']:,.0f} ({portfolio['open_pct']:+.1f}%)</b> on {portfolio['open_n']} open"
+            f" · win rate <b>{portfolio['win_rate']:.1f}%</b> ({portfolio['win_n']}/{portfolio['closed_n']})"
+        )
+        if portfolio.get("sharpe") is not None:
+            if portfolio["closed_n"] >= 30:
+                pnl_note += f"<br><small>pool_sharpe (per-trade, non-annualized, closed trades only, n={portfolio['closed_n']}): <b>{portfolio['sharpe']:.3f}</b> — mean/std of realized trade returns. No annualization.</small>"
+            else:
+                pnl_note += f"<br><small>pool_sharpe (per-trade, n={portfolio['closed_n']}): <b>{portfolio['sharpe']:.3f}</b> — [UNVERIFIED, &lt;30 closes]</small>"
+        elif portfolio["closed_n"] >= 1:
+            pnl_note += f"<br><small>pool_sharpe: [UNVERIFIED — {portfolio['closed_n']} closed, need ≥30 for sample floor]</small>"
+        if portfolio.get("max_dd_pct") is not None:
+            pnl_note += f" <small>max_dd <b>{portfolio['max_dd_pct']:.1f}%</b> (on realized equity curve).</small>"
+        pnl_note += f"<br><small>Source: paper_portfolio.json (open, marked to live mid) + paper_closed.jsonl (realized). Paper-only, no real orders. Updated {portfolio.get('updated_at') or '—'}.</small>"
+        # Fallback hint if portfolio exists but closed <30, also show fills count for context
+        if pnl_summary and portfolio["closed_n"] < 5:
+            pnl_note += f"<br><small>Fills in window (entry-only, not P&L): {pnl_summary['n_trades']} fills, premium ${pnl_summary['premium']:,.0f} → market ${pnl_summary['market']:,.0f}.</small>"
+    elif pnl_summary:
         pnl_color = "#2e7d32" if pnl_summary["pnl"] >= 0 else "#c62828"
         pnl_note = (
             f"<b>Hypothetical trailing 30-day paper P&amp;L (from paper_fills.jsonl, marked to mid):</b> "
             f"<span style='color:{pnl_color}'><b>${pnl_summary['pnl']:,.0f} ({pnl_summary['pnl_pct']:+.1f}%)</b></span> "
             f"on {pnl_summary['n_trades']} fills — premium ${pnl_summary['premium']:,.0f} → market ${pnl_summary['market']:,.0f}. "
             f"<br><small>Source: data/options_shadow/paper_fills.jsonl (paper-only, no real orders). "
-            f"Per-trade closes required for Sharpe; Sharpe shown only when ≥30 fills exist.</small>"
+            f"Portfolio tracker pending — after next shadow cycle paper_portfolio.json will appear and P&L will switch to realized+unrealized.</small>"
         )
-        # Sharpe from trade returns if enough fills
         if pnl_summary["n_trades"] >= 30:
             try:
                 import math
@@ -474,10 +618,62 @@ def build_html(session):
         pnl_note += f"<br><small>Oldest shadow data on disk: {earliest.strftime('%Y-%m-%d')}. {data_window}.</small>"
     # DTE / allowlist honesty note
     dte_note = "<p style='background:#e3f2fd;padding:8px;border-left:4px solid #1976d2'><b>Universe honesty:</b> Scanner outliers include 9-23 DTE short-dated contracts (filtered by 60-DTE floor for live 60-120 DTE window). Live-eligible = 60-120 DTE, ≥0.35 |delta|, allowlisted (58 longs / 52 shorts). See veto table for why symbols were dropped.</p>"
+    # Build portfolio tables (open + closed) for go-live decision
+    portfolio_tables = ""
+    if portfolio and (portfolio.get("positions") or portfolio.get("closed")):
+        # Open positions — marked to live mid
+        open_pos = portfolio.get("positions") or []
+        if open_pos:
+            open_rows = ""
+            for p in sorted(open_pos, key=lambda x: float(x.get("unrealized_pnl", 0) or 0)):
+                col = "#2e7d32" if float(p.get("unrealized_pnl", 0) or 0) >= 0 else "#c62828"
+                open_rows += (
+                    f"<tr><td>{p.get('variant','')}</td><td>{p.get('symbol','')}</td><td>{p.get('type','')}</td>"
+                    f"<td>{p.get('strike','')}</td><td>{p.get('expiry','')}</td>"
+                    f"<td>${float(p.get('entry_premium',0) or 0):,.0f} @ {float(p.get('entry_price',0) or 0):.2f}</td>"
+                    f"<td>${float(p.get('current_market_value',0) or 0):,.0f} @ {float(p.get('current_mid',0) or 0):.2f}</td>"
+                    f"<td style='color:{col}'><b>${float(p.get('unrealized_pnl',0) or 0):,.0f} ({float(p.get('unrealized_pct',0) or 0):+.1f}%)</b></td>"
+                    f"<td>{p.get('days_held',0)}d</td><td><small>{p.get('occ','')}</small></td></tr>"
+                )
+            portfolio_tables += (
+                f"<h3>Open paper positions — live-marked (unrealized, {len(open_pos)} open)</h3>"
+                f"<table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse'>"
+                f"<tr style='background:#eee'><th>Variant</th><th>Sym</th><th>Type</th><th>Strike</th><th>Expiry</th>"
+                f"<th>Entry prem @ price</th><th>Current @ mid</th><th>Unrealized</th><th>Held</th><th>OCC</th></tr>"
+                f"{open_rows}</table>"
+            )
+        else:
+            portfolio_tables += "<h3>Open paper positions — live-marked</h3><p><i>No open paper positions — all closed or awaiting first fill in window.</i></p>"
+        # Closed trades — realized, trailing 30d
+        closed = portfolio.get("closed") or []
+        if closed:
+            closed_sorted = sorted(closed, key=lambda x: str(x.get("exit_ts") or ""), reverse=True)[:30]
+            closed_rows = ""
+            for c in closed_sorted:
+                col = "#2e7d32" if float(c.get("realized_pnl", 0) or 0) >= 0 else "#c62828"
+                closed_rows += (
+                    f"<tr><td>{c.get('variant','')}</td><td>{c.get('symbol','')}</td><td>{c.get('type','')}</td>"
+                    f"<td>{c.get('strike','')}</td><td>{c.get('expiry','')}</td>"
+                    f"<td>${float(c.get('entry_premium',0) or 0):,.0f}</td><td>${float(c.get('exit_market',0) or 0):,.0f}</td>"
+                    f"<td style='color:{col}'><b>${float(c.get('realized_pnl',0) or 0):,.0f} ({float(c.get('realized_pct',0) or 0):+.1f}%)</b></td>"
+                    f"<td>{c.get('hold_days',0)}d</td><td><small>{c.get('exit_reason','')}</small></td></tr>"
+                )
+            portfolio_tables += (
+                f"<h3>Closed paper trades — trailing 30d realized ({len(closed)} closed, showing {len(closed_sorted)})</h3>"
+                f"<table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse'>"
+                f"<tr style='background:#eee'><th>Variant</th><th>Sym</th><th>Type</th><th>Strike</th><th>Expiry</th>"
+                f"<th>Entry</th><th>Exit</th><th>Realized</th><th>Held</th><th>Reason</th></tr>"
+                f"{closed_rows}</table>"
+                f"<p><small>Source: paper_closed.jsonl — realized closes only (expiry or SELL signal). Sharpe/win_rate/max_dd above are from these closes.</small></p>"
+            )
+        else:
+            portfolio_tables += "<h3>Closed paper trades — trailing 30d realized</h3><p><i>No closed trades in trailing 30d — portfolio is open-only or awaiting first expiry/SELL. Win rate / Sharpe show [UNVERIFIED] until ≥30 closes.</i></p>"
+
     html = f"""<html><body style="font-family:Arial,sans-serif">
     <h2>{title}</h2>
     {_status_html(status)}
     <p style="background:#fff3cd;padding:10px;border-left:4px solid #ffc107">{pnl_note}</p>
+    {portfolio_tables}
     {dte_note}
     <h3>Hypothetical trades the paper system would place ({len(proposals)} proposals · variants: {', '.join(variants) or 'none'})</h3>
     <p><b>Total proposed premium (capital it would deploy): ${total_premium:,.0f}</b></p>

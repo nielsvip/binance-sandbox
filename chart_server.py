@@ -532,12 +532,17 @@ def combining_dashboard_page():
 
 @app.route("/data/reports/gui_lab/<path:filename>")
 def serve_vector_data(filename):
-    # Serve vector results/status for dashboard — works on 5077 even when S1 is unreachable
-    safe = Path(filename).name  # prevent directory traversal
-    p = BASE_PATH / "data" / "reports" / "gui_lab" / safe
-    if not p.exists():
+    # Serve vector results/status + per-symbol trade JSONs for inspector — works on 5077 even when S1 is unreachable
+    # Allow subpaths (e.g. charts_next_gen_EQT_LONG/EQT_LONG_trades.json) with traversal guard
+    safe = (BASE_PATH / "data" / "reports" / "gui_lab" / filename).resolve()
+    base = (BASE_PATH / "data" / "reports" / "gui_lab").resolve()
+    try:
+        safe.relative_to(base)
+    except ValueError:
         return jsonify({"error": "not found"}), 404
-    return _no_cache(send_from_directory(str(p.parent), p.name))
+    if not safe.exists() or not safe.is_file():
+        return jsonify({"error": "not found"}), 404
+    return _no_cache(send_from_directory(str(safe.parent), safe.name))
 
 
 def _switch_lab_category(row: dict[str, Any]) -> str:

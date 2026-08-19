@@ -9023,3 +9023,89 @@ ls old/csv_invalid/20260818T22* 2>&1 | head; ls old/vector_failed/20260818T22* 2
 
 **Enforcement.** Any new `SPREADSHEETS/*.xlsx`, `data/reports/*.xlsx`, or `tools/*vector*` that is not `NEXT_GEN`/`BIBLE`/`INVENTORY`/`next_gen_beam*` must be created via this refresh contract or moved to `old/` on sight. A stale `mtime >2m` on `NEXT_GEN.xlsx` or `INVENTORY.html` is `SYNC_PENDING`, not `PASS`; the monitor restarts the exporter/watcher and fails the health pill.
 - Crypto vector (`tools/vector_lab_streamer.py` `10` workers, `T` whole-share `tradier` vs `B` fractional `crypto`, `vector_results.json`) is still running (`ps aux 80411 RN 954min`). Promoter `vector_promoter_engine.py --once --limit 20` cycles every `*/5` (log `/tmp/vector_promoter.log` — latest `SNDK_SHORT Δ423.9` fails `closes_per_month 0` so no promotion; `ensure_vector_central_sync` `*/2` syncs `15k→40k` rows to central DB). Once crypto `per_sym_active_config.json` is verified and applied live (`ez_manage` `flz/fin/inf` via `per_sym_7d_agent`), spawn agents to test `Never_Tested 38` + `Tested_Discarded 112` in **any combination**: beam over `ENTRY×EXIT×REENTER×FILTER` cross-product (not OFAT), `vector_lab_streamer` iterative stdev-ladder beam (§0.1) + `continuous_baseline_daemon` hill-climb (70% same-category, 30% trillions inspiration). Priority: urgent 32 `history`-active sym/sides first. Track in `data/sym_side_150_REAL_1968_SWITCHES.csv` (1968 switches) and `SPREADSHEETS/...BIBLE.xlsx` `Status` column — `Never_Tested` → `Tested_Discarded` or `Applied` as combos prove. Progress via `vector_status.json: per_sym_progress/urgent_32`, `continuous_baseline_state.json: cycle`, `:5077/combining_dashboard` auto-refresh 15s.
+
+### §16.71 — HETZNER BOX RENTAL: HOW TO USE IT AND HOW TO SHUT IT DOWN ASAP (USER 2026-08-19)
+
+**Why it exists.** Mac has `134` NPZ `10G`, S1 has `473` NPZ `31G` but `S1` is shared/billed per minute and CPU-constrained (`16c 30Gi`). The `267` sym_sides (167 TRB stocks + 100 crypto from `data/final_score_norm.json` top50 `_LONG` / bottom50 `_SHORT` excluding `flz:WLDUSDC` + `men:NOTUSDT`) need depth-1 grouped beam (`60` variants × `267` ≈ `16k` `v8_vec_sweep` runs, `0.2–0.5s` each via `ProcessPool 12` → `~3h` stock alone). A rented box `cpx52` `12c 24GB` `hel1` at `€` `~0.30/h` finishes the full stock+crypto sweep in days without blocking live.
+
+**What was rented.**
+- `hcloud server create --name box --type cpx52 --image ubuntu-22.04 --location hel1 --ssh-key niels` → `box` `162763559` `135.181.97.66` `cpx52` `12c AMD 24GB 80G SSD` `hel1` (`hcloud server list`).
+- Bootstrap (run once): `ssh root@135.181.97.66` `apt update && apt install -y python3-pip rsync htop` then `rsync -az -e "ssh -i ~/.ssh/id_ed25519" /Users/niels/Documents/binance/{v8_vec_sweep.py,backtest_v8,tools,next_gen*,data,config*.py,metrics_guard.py} root@135.181.97.66:/root/binance-sandbox/` (Mac→box `1.2G` codes) + `rsync -az S1:/home/niels/binance-sandbox/backtest_v8/indicators/ root@135.181.97.66:/root/binance-sandbox/backtest_v8/indicators/` (`S1→box` `31G` `473` NPZ, `rsync -az -e "ssh -o StrictHostKeyChecking=no"` `1505655` `R` `243/473 18G` at `18:19Z`).
+- Verification: `hcloud server list; ssh root@135.181.97.66 "ls ~/binance-sandbox/backtest_v8/indicators/*.npz | wc -l; du -sh ~/binance-sandbox/backtest_v8/indicators; cat ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_status.json | head"` → `473/473` + `~31G`.
+
+**How to use it (Stock + Crypto plough without double work).**
+1. **100 crypto added (2026-08-19).** `data/final_score_norm.json` `290` sorted by score. Top `50` → `_LONG` (`ACEUSDT_LONG` … `BRKBUSDT_LONG`), bottom `50` → `_SHORT` (`DOTUSDT_SHORT` … `HIGHUSDT_SHORT`), skipping `WLDUSDC`+`NOTUSDT` already in `invalidation_levels_flz/men.json`. Written to `data/symbols_final_score_100.json` + `data/hourly_reconfig/inf/active_config.json` `100` (preserved `ACEUSDT_LONG` + `99` new `overrides:{}` `pending_beam`). Beam now merges `TRB 167 + INF 100 = 267` via `_load_per_sym()` in `tools/next_gen_beam_per_sym.py` (crypto auto mode `crypto` vs `tradier`, `load_npz` resolves `ACEUSDT.npz`).
+2. **Dedup sync (no double work).** `tools/sync_next_gen_ledger.sh` (every `30s` on Mac + box, S1 as source) does `rsync -az` of `data/reports/gui_lab/next_gen_beam*.json` + `data/hourly_reconfig/{trb,inf}/active_config.json` + `data/symbols_final_score_100.json` Mac↔S1↔box, then `python merge_json_union` = union by `symside` keep `best delta_vs_bh` (ledger `267`). Box and S1 both `resume: N already done, skipping` via `ledger done set`. Run manually: `HETZNER_BOX_HOST=root@135.181.97.66 bash tools/sync_next_gen_ledger.sh; cat data/reports/gui_lab/next_gen_beam_per_sym.json | python3 -c 'import json,pathlib; j=json.loads(pathlib.Path("data/reports/gui_lab/next_gen_beam_per_sym.json").read_text()); print(len(j.get("ledger",[])))"'`.
+3. **Launch shards (box does ~4× faster than S1).** On box (inside `screen` or `nohup`):
+   ```bash
+   ssh root@135.181.97.66
+   cd ~/binance-sandbox
+   # Stocks (TRB 167, depth1 60 variants, 12 workers, ~3h):
+   nohup python3 -u tools/next_gen_beam_per_sym.py --beam-depth 1 --top-k 3 --max-workers 12 --window-days 365 > /tmp/box_trb.log 2>&1 &
+   # Crypto inf 100 (separate ledger box→S1 merge, ~1.5h):
+   nohup python3 -u tools/next_gen_beam_per_sym.py --beam-depth 1 --top-k 3 --max-workers 12 --window-days 365 --symbols $(cat data/symbols_final_score_100_flat.txt) > /tmp/box_crypto.log 2>&1 &
+   tail -f /tmp/box_trb.log /tmp/box_crypto.log
+   ```
+   Or unified: `nohup python3 -u tools/next_gen_beam_per_sym.py --beam-depth 1 --top-k 3 --max-workers 12 > /tmp/box_full.log 2>&1 &` (single ledger `267`). S1 continues its `1499306` `12` workers `126/168` remaining in parallel; merge handles overlap.
+4. **Charts per result (as soon as each sym/side out).** `tools/next_gen_bar_chart.py` already hooks `beam_for_symside` (`subprocess run` per checkpoint). Charts at `data/reports/gui_lab/charts_next_gen_<SYM>_<SIDE>/<SYM>.png` + `*_trades.json` with recomputed title (`DD/TIM/gain/BH/sharpe` from `rets/events`, not ledger). Rsync back: `rsync -az -e "ssh -o StrictHostKeyChecking=no" root@135.181.97.66:~/binance-sandbox/data/reports/gui_lab/charts_next_gen_* ~/Documents/binance/data/reports/gui_lab/` (or via `sync_next_gen_ledger.sh`).
+5. **Monitor (any machine).**
+   ```bash
+   ssh -i ~/.ssh/id_ed25519 niels@157.180.125.52 "ps aux | grep next_gen; tail -n 40 /tmp/next_gen_s1_full.log; cat /home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_status.json"
+   ssh root@135.181.97.66 "ps aux | grep next_gen; tail -n 40 /tmp/box*.log; cat ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_status.json"
+   cat data/reports/gui_lab/next_gen_beam_per_sym.json | python3 -c 'import json,pathlib; j=json.loads(pathlib.Path("data/reports/gui_lab/next_gen_beam_per_sym.json").read_text()); print(f"{len(j.get(\"ledger\",[]))}/268 ledger", sorted(j.get("ledger",[]), key=lambda r: r.get("best",{}).get("delta_vs_bh",0), reverse=True)[:3])'
+   ls data/reports/gui_lab/charts_next_gen_*/*.png 2>&1 | wc -l
+   ```
+6. **Promotion.** Beam writes ledger only; promotion via `python tools/promote_pending_per_sym.py --from-next-gen` (gate `gain_per_mo≥2% pool_sharpe≥0.3 TIM 20–80 DD≤30 closes≥10/mo delta>0`).
+
+**How to shut it down ASAP (cost control — do this as soon as ledger 267/267).**
+- **Keep it only while sweeping.** Idle box still billed `~€0.30/h` (`~€7/d`). Shut down immediately when `ledger 267/267` + charts `267` + `S1` merged.
+- **Snapshot before delete (if you want to keep image):** `hcloud server create-image --type snapshot --description "box-next-gen-20260819" box` (`hcloud image list` to verify, cost `~€0.01/GB/mo`).
+- **Power off (stops billing for CPU, still disk):** `hcloud server poweroff box` (or `hcloud server shutdown box`) → `hcloud server list` shows `off`. Good if pausing between sweeps.
+- **Delete (stops all billing):** `hcloud server delete box` → `hcloud server list` empty. Data is gone unless snapshot taken. Verify: `hcloud server list; hcloud volume list; echo HCLOUD_TOKEN ok`.
+- **Mac cleanup:** `crontab -l | grep sync_next_gen` remove if added; `ssh niels@157.180.125.52 "pkill -f next_gen_beam_per_sym"` if S1 done. Do NOT delete `data/symbols_final_score_100.json` or `data/hourly_reconfig/inf/active_config.json` (live crypto universe).
+- **Verification after shutdown:** `hcloud server list` → `0 servers`, `~/binance-sandbox` on S1/Mac still has merged ledger `267/267` and charts `267`.
+
+**Enforcement.** Box exists only for §16.69 grouped `F1→F5` + `EXIT_AT_GAIN/TOP` + `REENTRY_AFTER_TOP` beam (§16.71). No other sweeps on box. `S1` remains `16c 30Gi 473 31G` source of truth; Mac stays live-only (`ez/tradier_manage`). Any new server must be documented here before launch.
+
+### §16.72 — CRYPTO vs STOCKS DISTINCT DEFAULTS & OVERRIDES REDEFINITION (USER 2026-08-19 — LIQUIDITY BLED TO 0)
+
+**You asked if vectorized backtests keep crypto (`config.py` / `ez_*`) and stocks (`config_tradier.py` / `tradier_*`) distinct — answer before today: NO, they were blended.**
+
+**Audit 2026-08-19 (before fix):**
+- `config.py` `5766L` `~2988` keys vs `config_tradier.py` `3513L` `~2280` keys. `common 2130`, `only_crypto 858`, `only_tradier 150`. Example divergence: `config.py DELTA_ENTRY_ENABLED=True` (delta fast, good for 15m crypto) vs `config_tradier.py TRA_DISABLE_DELTA_ENTRY=True` + `DELTA_ENTRY_ENABLED=False` (T25 sweep: True = -4% Sharpe for stocks). `WT_DC_HTF_GATE`: crypto `none` vs stocks `4h_D` (prevents short-into-Daily-uptrend — PLTR/IBIT countertrend shorts 2026-07). `AUGMENT_AT_LOSS_ENABLED`: both `False` but names differ (`_TRADIER` suffix for stocks). `SweepConfig` in `v8_vec_sweep.py` `636` keys claimed to mirror `config.py` where they exist — it had `326` crypto-only vs `229` tradier-only, no mode switch. Beam `next_gen_beam_per_sym.py:_run_one_variant` did `load_npz(sym, mode)` correctly (crypto tries `ACEUSDT.npz` via `USDT/USDC` majors, stocks `A.npz`) but then did `cfg=SweepConfig()` (crypto defaults) for **both** modes and `simulate_one_symbol(sym, side, "tradier", cfg, ...)` hardcoded `tradier` — so stock backtests ran with crypto `DELTA True` leak, crypto backtests lacked funding/WT_DC gates.
+- **Live wiring:** `ez_manage.py` → `config.Config`, `tradier_manage.py` → `config_tradier.TradierConfig`, `ez_positions_quick` shared but branched on `is_tradier`. Many `858`/`150` switches were `getattr(config, "SWITCH", False) else no-op` — identical wiring was **not** assured; missing switches silently no-op instead of failing.
+
+**What crypto was using:**
+- `data/hourly_reconfig/inf/active_config.json` before today: `1` real `ACEUSDT_LONG 151.9% vs BH -99% score 502` + `99` slots with **no stock `per_sym` winners** — all current crypto `default` (`SweepConfig` crypto mirror) + `per_sym` (months-old, never beamed) had **resulted in losses, liquidity →0** per your note. The `99` new `final_score_norm` slots I added on 2026-08-19 (`top50 LONG / bottom50 SHORT` minus `WLDUSDC/NOTUSDT`) were already `overrides:{}` `pending_beam` — but they were about to beam from the **losing** crypto baseline without a redefinition.
+- Stocks `TRB 167` were healthier: each `30-40` overrides `DD≤30 TIM 20-80` verified after `44 suicide` rollback — they can keep their `per_sym` base.
+
+**Redefinition (unlocked 2026-08-19, applied):**
+1. `v8_vec_sweep.py` added `SweepConfig.for_mode(mode)` + `sweep_config_for_mode(mode)` factory: `crypto` → `DELTA_ENTRY_ENABLED=True DELTA_ENGINE_ENABLED=True WT_DC none thr 0`, `tradier` → `DELTA False DELTA_ENGINE False WT_DC 4h_D thr 45 TRA_WT_DC 85` + both `AUGMENT_AT_LOSS False` guards. This is the **only** unified entry — `SweepConfig()` without mode is deprecated.
+2. `tools/next_gen_beam_per_sym.py:_run_one_variant` now `cfg=sweep_config_for_mode(mode)` (crypto vs tradier) and `simulate_one_symbol(sym, side, mode, cfg, ...)` (was hardcoded `tradier`). Also adds `mode = crypto if USDT/USDC/USD1 else tradier`.
+3. `config.py` header now: `config.py = CRYPTO (inf 100)`, `config_tradier.py = STOCKS (TRB 167)`, intentionally divergent, `SweepConfig.for_mode` is the port. `99/100 INF` stay `overrides:{}` from **clean crypto baseline** (`sweep_config_for_mode("crypto")`) — they will be beamed `F1-F5+EXIT_AT_GAIN/TOP+REENTRY` and **not promoted** until `Δ>0 DD≤30 TIM20-80`.
+4. Verification: `python3 -c "from v8_vec_sweep import sweep_config_for_mode; print(sweep_config_for_mode('crypto').DELTA_ENTRY_ENABLED, sweep_config_for_mode('tradier').DELTA_ENTRY_ENABLED)"` → `True False`; `python3 tools/next_gen_beam_per_sym.py --dry-run` still `267` symsides (167 TRB + 100 INF).
+
+**How to use after redefinition:**
+- Crypto beam from scratch: `python3 tools/next_gen_beam_per_sym.py --symbols $(cat data/symbols_final_score_100_flat.txt) --beam-depth 1 --top-k 3 --max-workers 12` (on box `12928` already, S1 `1540307` 267). Do **not** copy old `inf` per_sym — let grouped `F1→F5` discover.
+- Stocks keep their `TRB 167` per_sym base — beam stacks on top.
+- Promotion still via `tools/promote_pending_per_sym.py --from-next-gen` with gate `gain_per_mo≥2 pool_sharpe≥0.3`.
+
+**Enforcement:** Any new switch must be added to **both** `config.py` and `config_tradier.py` **or** explicitly documented as mode-only with a `for_mode` branch. `SweepConfig` without `for_mode` is a review failure.
+
+
+### §16.73 — FLZ BASELINE AVERAGING + EZ WIRING FOR TRADIER USEFUL SWITCHES (USER 2026-08-19 — AUGMENT_AT_LOSS FALSE EVERYWHERE)
+
+**AUGMENT_AT_LOSS_ENABLED = False everywhere (your mandate):**
+- `config.py:88 AUGMENT_AT_LOSS_ENABLED=False`, `config_tradier.py:1259 AUGMENT_AT_LOSS_ENABLED_TRADIER=False`, `v8_vec_sweep.py:1422-1438 SweepConfig.for_mode(crypto)` + `for_mode(tradier)` both force `False`. No live path may augment a losing position — `ez_positions_quick` is shared but branched on `is_tradier` only for sizing: `ez_manage` fractional shares (`USDT/USDC`) vs `tradier_manage` whole-share `$2k` + `INF` Tradier execution. `ez_positions_quick` itself has **zero** `is_tradier` quantize logic (grep 0 hits) — correct per your “<ez_pos_quick should have nothing to do with tradier”.
+
+**Wiring USEFUL tradier switches into ez system (before baseline):**
+- Ledger `42` `approved 213` showed `F4_WT_DC_HIERARCHY`/`F1_GOLDEN_RULE` etc. as top `Δ>0`. Missing in `config.py` before: `REENTRY_GR_HLHH_MODE OR / REENTRY_GR_MIN_TFS 2`, `WT_CHAN_15m 10 / WT_AVG_15m 21`, `MIN_HOLD_BARS_15m 5 / COOLDOWN_BARS_15m 3`, `VEC_REENTRY_REQUIRE_PRIOR_EXIT False / WINDOW 400 / DC4_EXITPRICE True` etc. (tradier 2616-2617). Patched `config.py:52-68` PORTED block with those defaults so `v8_vec_sweep` `GROUP_DEFS` can now score them for crypto. `python3 -m py_compile config.py` ok, `grep REENTRY_GR_HLHH_MODE config.py` now `52`.
+
+**Box defines baseline first as FLZ average (your order: wiring → baseline → beam):**
+- `FLZ` per_sym is `data/hourly_reconfig/per_sym_active_config.json` `244` crypto keys (`purpose CRYPTO-ONLY`) filtered by `symbols_flz.json` `10` (`BTCUSDC`…`WLDUSDC`). `BTCUSDC_LONG 63` overrides etc. Averaged numeric `LONG 10 syms / SHORT 9 syms`: `MIN_POSITION_SIZE 68.75, TF_FOCUS_WEIGHT 2.0, K_ZONE 48, BB_SQUEEZE 0.0075 ...` (43 numeric each) + mode for `SATOSHIT_ENABLED False` etc. Written to `data/flz_baseline_long.json` + `data/flz_baseline_short.json` (`2.6K` each, synced Mac→S1/box). Box must load `flz_baseline_{side}.json` as its clean crypto baseline before `267` beam (instead of `overrides:{}`) — `next_gen_beam_per_sym.py:_load_per_sym` will seed `inf` `99` pending from `flz_avg` `avg_numeric+mode` where `mode==crypto`. Do not start crypto beam from `overrides:{}` until that seed is in place.
+
+**NPZ regeneration for crypto new switches (your note: 5m is 3m in crypto, 4h is 4h not RTH 9:30):**
+- Current `backtest_v8/indicators/*.npz` `473` (`BTCUSDC.npz` has `timestamp_3m,5m,4h,D` but `4h` built with stock RTH `9:30` buckets, `5m` is actually `3m` for crypto). Any new `REENTRY_GR`/`WT_CHAN`/`VEC_REENTRY` switch needing `1h/4h/D` `dc_*`/`wt1_*` on correct crypto bars will read wrong levels. After wiring, run `tools/regen_crypto_npz.py --mode crypto --tf 3m,15m,1h,4h,D --crypto-clock` on box to `backtest_v8/indicators_crypto/` (separate from stocks), then point `SweepConfig.for_mode("crypto").NPZ_DIR` there. Until then `FLZ` baseline uses existing NPZ (homogeneous `1h/4h` structure still comparable).
+
+**Next:** wire → `flz_baseline_*` seed → `SweepConfig.for_mode(crypto)` → `267` beam `F1-F5+EXIT_AT_GAIN/TOP+REENTRY` on box/S1, dedup via `sync_next_gen_ledger.sh`, NPZ regen in parallel.
+

@@ -229,6 +229,37 @@ async def _run_one_variant(
     _append_jsonl(out, record)
     # P4: Paper fills ledger — per-occ per-day dedup so same NVDA/IBIT not written every 5 min.
     # This is paper-only, no real orders, and feeds the trailing P&L + Sharpe in the email.
+    # P5: Paper portfolio — open positions marked to live mid, closed trades with realized PnL.
+    # This is the ONLY source of truth for "is paper useful to put live?" — gains/losses are tracked.
+    PAPER_PORTFOLIO_PATH = SHADOW_DIR / "paper_portfolio.json"
+    PAPER_CLOSED_PATH = SHADOW_DIR / "paper_closed.jsonl"
+    _REAL_OCC_RE = __import__("re").compile(r"^[A-Z]{1,6}\d{6}[CP]\d+$")
+
+    def _load_paper_portfolio() -> dict:
+        if PAPER_PORTFOLIO_PATH.exists():
+            try:
+                return json.loads(PAPER_PORTFOLIO_PATH.read_text())
+            except Exception:
+                pass
+        return {"updated_at": None, "positions": {}}
+
+    def _save_paper_portfolio(port: dict) -> None:
+        port["updated_at"] = datetime.now(timezone.utc).isoformat()
+        _atomic_write_json(PAPER_PORTFOLIO_PATH, port)
+
+    def _parse_occ_expiry(occ: str) -> Optional[str]:
+        # OCC: SYMBOL YYMMDD C/P STRIKE*1000  -> expiry YYYY-MM-DD
+        try:
+            m = __import__("re").match(r"^[A-Z]+(\d{6})[CP]\d+$", occ)
+            if not m:
+                return None
+            yymmdd = m.group(1)
+            yy = int(yymmdd[0:2]); mm = int(yymmdd[2:4]); dd = int(yymmdd[4:6])
+            yyyy = 2000 + yy
+            return f"{yyyy:04d}-{mm:02d}-{dd:02d}"
+        except Exception:
+            return None
+
     try:
         fills_path = SHADOW_DIR / "paper_fills.jsonl"
         # dedup: per variant+occ per day — only first fill per occ per day counts
@@ -320,6 +351,186 @@ async def _run_one_variant(
                 "delta": opp.get("delta"), "score": opp.get("score"),
             }
             _append_jsonl(fills_path, fill_rec)
+        # --- Paper portfolio: open positions ---
+        new_fills = []
+        # Collect fills we just wrote (re-read last lines is messy — rebuild from decisions/opps we just deduped)
+        # Instead, track what we appended this cycle via seen_key delta: we already have seen_key pre/post
+        # Simpler: re-derive from decisions/opps that passed dedup this cycle
+        # We saved fill_rec per dedup; collect them by re-iterating with same dedup logic but capturing
+        # For brevity, re-collect from the fills we just considered: gather all BUY fills for this ts
+        # Build portfolio incrementally: load, add new, then mark-to-market via live quotes
+        try:
+            port = _load_paper_portfolio()
+            positions_map = port.get("positions") or {}
+            # Add new fills from this cycle to portfolio (if not already open)
+            # Re-derive new fills: iterate decisions/opps again filtering by seen_key that we just added
+            # We need to know which were newly added this cycle — those where (variant,occ) was not in pre-cycle seen
+            # Simplest: for each decision/opportunity, if its occ’s first occurrence is this ts, add position
+            # We approximate by checking if fill_rec ts == ts (all new fills have ts)
+            # Load all fills for this ts and variant
+            added = 0
+            if fills_path.exists():
+                for line in fills_path.read_text().splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except Exception:
+                        continue
+                    if rec.get("ts") != ts or rec.get("variant") != variant_name:
+                        continue
+                    occ_key = rec.get("occ") or ""
+                    if not occ_key or not _REAL_OCC_RE.match(occ_key):
+                        # Synthetic occ (MSTR_95_2026-10-16) — track but no live quote; keep as-is
+                        pass
+                    map_key = f"{variant_name}:{occ_key}"
+                    if map_key in positions_map:
+                        continue
+                    # New open paper position
+                    expiry = rec.get("expiry") or rec.get("expiration") or _parse_occ_expiry(occ_key) or ""
+                    positions_map[map_key] = {
+                        "variant": variant_name,
+                        "occ": occ_key,
+                        "symbol": rec.get("symbol") or "",
+                        "type": rec.get("type") or "",
+                        "strike": rec.get("strike", 0),
+                        "expiry": expiry,
+                        "qty": int(rec.get("qty", 1) or 1),
+                        "entry_ts": rec.get("ts") or ts,
+                        "entry_price": float(rec.get("price", 0) or rec.get("mid", 0) or 0),
+                        "entry_premium": float(rec.get("premium", 0) or 0),
+                        "current_mid": float(rec.get("mid", 0) or rec.get("price", 0) or 0),
+                        "current_market_value": float(rec.get("premium", 0) or 0),
+                        "unrealized_pnl": 0.0,
+                        "unrealized_pct": 0.0,
+                        "days_held": 0,
+                        "source": rec.get("source", ""),
+                    }
+                    added += 1
+            # Enforce live-affordable global cap: paper must not exceed live limits
+            # Live limits: $400/order, $6000 total, 8 positions — paper was at $800/order + expensive exception → $70k
+            # Check before opening new positions: if adding this variant's new fills would breach, skip them
+            # Count total open across ALL variants (not just this variant) for global cap
+            total_open_n = len(positions_map)
+            total_open_prem = sum(float(v.get("entry_premium", 0) or 0) for v in positions_map.values())
+            # If already at cap, no new opens for any variant until closes free space
+            if total_open_n >= 8 or total_open_prem >= 6000:
+                # Still allow mark-to-market and closes, just no new opens this cycle
+                # Remove any positions we just added this cycle that would breach — already added, so prune newest
+                # For simplicity, if at cap, pop any just-added entries beyond cap
+                while len(positions_map) > 8 or sum(float(v.get("entry_premium", 0) or 0) for v in positions_map.values()) > 6000:
+                    # Remove last added (LIFO) for this variant
+                    last_key = None
+                    for k in list(positions_map.keys())[::-1]:
+                        if k.startswith(f"{variant_name}:") and k in [f"{variant_name}:{json.loads(l).get('occ')}" for l in fills_path.read_text().splitlines() if json.loads(l).get("ts")==ts] if fills_path.exists() else False:
+                            last_key = k
+                            break
+                    if last_key:
+                        positions_map.pop(last_key, None)
+                    else:
+                        break
+            # Mark-to-market real OCCs via live quotes (one batched get_quotes per variant cycle)
+            real_occs = [v["occ"] for v in positions_map.values() if v.get("variant") == variant_name and _REAL_OCC_RE.match(v.get("occ") or "")]
+            quotes = {}
+            if real_occs:
+                try:
+                    # Use the passed client (already connected) — fetch quotes for open occs
+                    # get_quotes is async; we are in async _run_one_variant
+                    quotes = await client.get_quotes(real_occs) if hasattr(client, "get_quotes") else {}
+                except Exception as qe:
+                    print(f"[WARN] paper portfolio quotes failed {variant_name}: {qe}", file=sys.stderr)
+                    quotes = {}
+            now_dt = datetime.now(timezone.utc)
+            to_close = []
+            for key, pos in list(positions_map.items()):
+                if pos.get("variant") != variant_name:
+                    continue
+                occ = pos.get("occ") or ""
+                qty = int(pos.get("qty", 1) or 1)
+                entry_prem = float(pos.get("entry_premium", 0) or 0)
+                # Update mid from live quote
+                q = quotes.get(occ) or {} if isinstance(quotes, dict) else {}
+                bid = float(q.get("bid", 0) or 0) if q else 0
+                ask = float(q.get("ask", 0) or 0) if q else 0
+                last = float(q.get("last", 0) or 0) if q else 0
+                mid = (bid + ask) / 2.0 if bid > 0 and ask > 0 else (last if last > 0 else float(pos.get("current_mid", 0) or 0))
+                if mid and mid > 0:
+                    pos["current_mid"] = round(mid, 4)
+                    mv = round(mid * qty * 100.0, 2)
+                    pos["current_market_value"] = mv
+                    pos["unrealized_pnl"] = round(mv - entry_prem, 2)
+                    pos["unrealized_pct"] = round((mv - entry_prem) / abs(entry_prem) * 100.0, 2) if entry_prem else 0.0
+                # Days held
+                try:
+                    entry_dt = datetime.fromisoformat(str(pos.get("entry_ts") or ts).replace("Z", "+00:00"))
+                    pos["days_held"] = max(0, (now_dt - entry_dt).days)
+                except Exception:
+                    pass
+                # Close reasons: expiry reached, or SELL decision for this occ/symbol
+                expiry = pos.get("expiry") or _parse_occ_expiry(occ) or ""
+                should_close = False
+                close_reason = ""
+                if expiry:
+                    try:
+                        exp_dt = datetime.strptime(expiry, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                        if now_dt.date() >= exp_dt.date():
+                            should_close = True
+                            close_reason = "expiry"
+                    except Exception:
+                        pass
+                # Also close on explicit SELL decision for this variant/occ
+                if not should_close:
+                    for d in decisions:
+                        act = str(getattr(d, "action", None) or (d.get("action") if isinstance(d, dict) else "") or "").upper()
+                        if act != "SELL":
+                            continue
+                        sell_occ = str(getattr(d, "occ_symbol", None) or (d.get("occ_symbol") if isinstance(d, dict) else "") or "")
+                        sell_sym = str(getattr(d, "symbol", None) or (d.get("symbol") if isinstance(d, dict) else "") or "")
+                        if sell_occ and sell_occ == occ:
+                            should_close = True
+                            close_reason = f"SELL:{getattr(d, 'reason', None) or (d.get('reason') if isinstance(d, dict) else '')}"
+                            break
+                        if sell_sym and sell_sym == pos.get("symbol") and not sell_occ:
+                            # Symbol-level SELL without occ — close oldest open for that symbol/variant
+                            should_close = True
+                            close_reason = f"SELL:{sell_sym}"
+                            break
+                if should_close:
+                    to_close.append((key, pos, close_reason))
+            # Persist closes to paper_closed.jsonl and remove from open map
+            for key, pos, reason in to_close:
+                exit_mid = float(pos.get("current_mid", 0) or 0)
+                exit_mv = float(pos.get("current_market_value", pos.get("entry_premium", 0)) or 0)
+                realized = round(exit_mv - float(pos.get("entry_premium", 0) or 0), 2)
+                realized_pct = round(realized / abs(float(pos.get("entry_premium", 1) or 1)) * 100.0, 2) if pos.get("entry_premium") else 0.0
+                closed_rec = {
+                    "ts": now_dt.isoformat(),
+                    "variant": pos.get("variant"),
+                    "occ": pos.get("occ"),
+                    "symbol": pos.get("symbol"),
+                    "type": pos.get("type"),
+                    "strike": pos.get("strike"),
+                    "expiry": pos.get("expiry"),
+                    "qty": pos.get("qty"),
+                    "entry_ts": pos.get("entry_ts"),
+                    "entry_price": pos.get("entry_price"),
+                    "entry_premium": pos.get("entry_premium"),
+                    "exit_ts": now_dt.isoformat(),
+                    "exit_mid": exit_mid,
+                    "exit_market": exit_mv,
+                    "realized_pnl": realized,
+                    "realized_pct": realized_pct,
+                    "hold_days": pos.get("days_held", 0),
+                    "exit_reason": reason,
+                }
+                _append_jsonl(PAPER_CLOSED_PATH, closed_rec)
+                positions_map.pop(key, None)
+            port["positions"] = positions_map
+            _save_paper_portfolio(port)
+        except Exception as pe:
+            print(f"[WARN] paper portfolio update failed {variant_name}: {pe}", file=sys.stderr)
+            import traceback as _tb
+            print(_tb.format_exc(), file=sys.stderr)
     except Exception as e:
         print(f"[WARN] paper_fills append error: {e}", file=sys.stderr)
     return record

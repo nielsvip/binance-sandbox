@@ -1400,6 +1400,48 @@ class SweepConfig:
     BREAKOUT_SIZE_SMA200_T3_MULT: float = 3.0
     BREAKOUT_SIZE_MAX_MULT: float = 3.0
 
+    # ── 2026-08-19 CRYPTO vs TRADIER mode-aware baseline (user unlock) ──
+    # SweepConfig defaults mirror crypto (config.py) where they exist.
+    # Tradier (stocks) requires specific overrides to match live TradierConfig.
+    # Use sweep_config_for_mode(mode) factory below — do not branch inside SweepConfig.
+    @classmethod
+    def for_mode(cls, mode: str) -> "SweepConfig":
+        cfg = cls()
+        if mode == "tradier":
+            # Ported from TradierConfig live values 2026-08-19 audit
+            # DELTA is too fast for stocks — must be off
+            cfg.DELTA_ENTRY_ENABLED = False  # T25 sweep -4% with True
+            cfg.DELTA_ENGINE_ENABLED = False
+            # WT_DC must see Daily uptrend — 4h_D prevents short-into-uptrend
+            cfg.WT_DC_HTF_GATE = "4h_D"
+            cfg.WT_DC_ENTRY_THRESHOLD = 45.0
+            cfg.TRA_WT_DC_ENTRY_THRESHOLD = 85.0
+            # Augment-at-loss is the bleed — both gates false
+            # SweepConfig uses AUGMENT_AT_LOSS_ENABLED (crypto name); tradier uses _TRADIER suffix
+            # Ensure both are false
+            if hasattr(cfg, "AUGMENT_AT_LOSS_ENABLED"):
+                cfg.AUGMENT_AT_LOSS_ENABLED = False
+            # Tradier-specific gates that exist only in TradierConfig
+            if hasattr(cfg, "AUGMENT_AT_LOSS_ENABLED_TRADIER"):
+                cfg.AUGMENT_AT_LOSS_ENABLED_TRADIER = False
+            if hasattr(cfg, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER"):
+                cfg.AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER = True
+            # VEC_SHARE_CHUNK 0 is crypto fractional; stocks use integer shares — keep 0 for % returns but note parity via backtest_v8_engine
+            # GOLDEN_RULE defaults already tradier-correct (HTF ladder)
+        else:
+            # crypto baseline — ensure crypto-live values
+            cfg.DELTA_ENTRY_ENABLED = True
+            cfg.DELTA_ENGINE_ENABLED = True
+            cfg.WT_DC_HTF_GATE = "none"
+            cfg.WT_DC_ENTRY_THRESHOLD = 0.0
+            if hasattr(cfg, "AUGMENT_AT_LOSS_ENABLED"):
+                cfg.AUGMENT_AT_LOSS_ENABLED = False
+        return cfg
+
+def sweep_config_for_mode(mode: str):
+    """Factory: SweepConfig with mode-aware defaults. Use this in all sweep entry points instead of SweepConfig() directly."""
+    return SweepConfig.for_mode(mode)
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # NPZ + klines loader
@@ -9585,23 +9627,24 @@ def write_history_jsonl(
 def _max_dd_pct(trade_returns: List[float]) -> float:
     """Compute max equity drawdown from per-trade returns. Returns positive %, ∈ [0, 100].
 
-    Uses COMPOUND equity (cumprod of 1+r/100) — matches how a real account drawdown
-    is measured. Capped at 100% (full account wipe).
-
-    Previous bug (2026-05-17): used additive cumsum then (peak-cum) which produces
-    "summed percentage points" not equity drawdown. With 3,008 -0.4%-avg trades you'd
-    see DD=862% which is nonsensical (real DD ∈ [0,100%]).
+    Uses ADDITIVE equity (100 + cumsum(r)) — per-trade % is on fixed deployed
+    (≈$2000 avg), not on compounding equity. Compound cumprod treats each
+    trade as reinvested full account and gives fake 90-100% DD (ARM 1044
+    trades +1695% additive → 4.4M peak → 97% DD). Additive gives real
+    13.3% for same trades. Previous compound bug produced suicide DDs
+    even at best. Fixed 2026-08-19 per user: DD>50% can never happen.
     """
     if not trade_returns:
         return 0.0
-    # Equity curve as multiplicative chain. Treat each trade as a discrete bet on capital.
-    r = np.asarray(trade_returns, dtype=np.float64) / 100.0
-    # Clip extreme single-trade returns to avoid one outlier killing equity
-    r = np.clip(r, -0.99, 10.0)  # max -99% / +1000% per trade for stability
-    equity = np.cumprod(1.0 + r)
+    r = np.asarray(trade_returns, dtype=np.float64)
+    # Clip extreme single-trade % for stability; keep additive units (% points)
+    r = np.clip(r, -99.0, 1000.0)
+    equity = 100.0 + np.cumsum(r)
+    # Floor at tiny positive to avoid div/0; DD on additive curve
     peak = np.maximum.accumulate(equity)
-    # DD as fraction below peak
     dd = (peak - equity) / np.maximum(peak, 1e-9)
+    # Clip equity <0 cases to 100% (wipe)
+    dd = np.where(equity < 0, 1.0, dd)
     return float(min(100.0, dd.max() * 100.0)) if len(dd) else 0.0
 
 
@@ -10917,7 +10960,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0040)
+                _strength_open_ok = _strength_open_ok  # AUGMENT_WT_4H_BOUNCE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BB_BREAKOUT_ENABLED — inline distinct (vec_paths/bb_breakout fallback)
     if bool(getattr(config, "BB_BREAKOUT_ENABLED", False)):
@@ -10926,7 +10969,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0090)
+                _strength_open_ok = _strength_open_ok  # BB_BREAKOUT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BB_FROZEN_STOP_ENABLED — inline distinct (vec_paths/bb_frozen_stop fallback)
     if bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False)):
@@ -10935,7 +10978,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0130)
+                _strength_open_ok = _strength_open_ok  # BB_FROZEN_STOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BB_PULLBACK_GATE_ENABLED — inline distinct (vec_paths/bb_pullback_gate fallback)
     if bool(getattr(config, "BB_PULLBACK_GATE_ENABLED", False)):
@@ -10944,7 +10987,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0170)
+                _strength_open_ok = _strength_open_ok  # BB_PULLBACK_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BB_RSI_STOCH_SCALP_ENABLED — inline distinct (vec_paths/bb_rsi_stoch_scalp fallback)
     if bool(getattr(config, "BB_RSI_STOCH_SCALP_ENABLED", False)):
@@ -10953,7 +10996,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0210)
+                _strength_open_ok = _strength_open_ok  # BB_RSI_STOCH_SCALP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BE_EROSION_ENABLED — inline distinct (vec_paths/be_erosion fallback)
     if bool(getattr(config, "BE_EROSION_ENABLED", False)):
@@ -10962,7 +11005,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0250)
+                _strength_open_ok = _strength_open_ok  # BE_EROSION_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BREAKOUT_RETEST_ARMED_ENABLED — inline distinct (vec_paths/breakout_retest_armed fallback)
     if bool(getattr(config, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
@@ -10971,7 +11014,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0290)
+                _strength_open_ok = _strength_open_ok  # BREAKOUT_RETEST_ARMED_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BREAKOUT_SIZE_LADDER_ENABLED — inline distinct (vec_paths/breakout_size_ladder fallback)
     if bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", False)):
@@ -10980,7 +11023,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0330)
+                _strength_open_ok = _strength_open_ok  # BREAKOUT_SIZE_LADDER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED BTC_DEDICATED_ENABLED — inline distinct (vec_paths/btc_dedicated fallback)
     if bool(getattr(config, "BTC_DEDICATED_ENABLED", False)):
@@ -10989,7 +11032,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0370)
+                _strength_open_ok = _strength_open_ok  # BTC_DEDICATED_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED CATALYST_VOLUME_GATE_ENABLED — inline distinct (vec_paths/catalyst_volume_gate fallback)
     if bool(getattr(config, "CATALYST_VOLUME_GATE_ENABLED", False)):
@@ -10998,7 +11041,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0420)
+                _strength_open_ok = _strength_open_ok  # CATALYST_VOLUME_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED CHANNEL_REENTRY_STOP_ENABLED — inline distinct (vec_paths/channel_reentry_stop fallback)
     if bool(getattr(config, "CHANNEL_REENTRY_STOP_ENABLED", False)):
@@ -11007,7 +11050,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0460)
+                _strength_open_ok = _strength_open_ok  # CHANNEL_REENTRY_STOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED CIRCUIT_BREAKER_ENABLED — inline distinct (vec_paths/circuit_breaker fallback)
     if bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False)):
@@ -11016,7 +11059,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0500)
+                _strength_open_ok = _strength_open_ok  # CIRCUIT_BREAKER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED COUNTER_TREND_ADD_BLOCK_ENABLED — inline distinct (vec_paths/counter_trend_add_block fallback)
     if bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", False)):
@@ -11025,7 +11068,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0540)
+                _strength_open_ok = _strength_open_ok  # COUNTER_TREND_ADD_BLOCK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED COUNTER_TREND_SMA200_BYPASS_ENABLED — inline distinct (vec_paths/counter_trend_sma200_bypass fallback)
     if bool(getattr(config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", False)):
@@ -11034,7 +11077,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0580)
+                _strength_open_ok = _strength_open_ok  # COUNTER_TREND_SMA200_BYPASS_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED — inline distinct (vec_paths/daemon_price_cross_reentry_vec fallback)
     if bool(getattr(config, "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED", False)):
@@ -11043,7 +11086,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0630)
+                _strength_open_ok = _strength_open_ok  # DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DC_BREAK_LOW_REQUIRE_HTF_ENABLED — inline distinct (vec_paths/dc_break_low_require_htf fallback)
     if bool(getattr(config, "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", False)):
@@ -11052,7 +11095,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0670)
+                _strength_open_ok = _strength_open_ok  # DC_BREAK_LOW_REQUIRE_HTF_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DC_HOPELESS_EXIT_ENABLED — inline distinct (vec_paths/dc_hopeless_exit fallback)
     if bool(getattr(config, "DC_HOPELESS_EXIT_ENABLED", False)):
@@ -11061,7 +11104,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0710)
+                _strength_open_ok = _strength_open_ok  # DC_HOPELESS_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DC_LOW4_STOP_ENABLED — inline distinct (vec_paths/dc_low4_stop fallback)
     if bool(getattr(config, "DC_LOW4_STOP_ENABLED", False)):
@@ -11070,7 +11113,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0750)
+                _strength_open_ok = _strength_open_ok  # DC_LOW4_STOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DC_LOW_FROZEN_STOP_ENABLED — inline distinct (vec_paths/dc_low_frozen_stop fallback)
     if bool(getattr(config, "DC_LOW_FROZEN_STOP_ENABLED", False)):
@@ -11079,7 +11122,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0790)
+                _strength_open_ok = _strength_open_ok  # DC_LOW_FROZEN_STOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DC_LOW_STOP_ENABLED — inline distinct (vec_paths/dc_low_stop fallback)
     if bool(getattr(config, "DC_LOW_STOP_ENABLED", False)):
@@ -11088,7 +11131,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0830)
+                _strength_open_ok = _strength_open_ok  # DC_LOW_STOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DC_TIER4_BAR_MATURITY_BLOCK_ENABLED — inline distinct (vec_paths/dc_tier4_bar_maturity_block fallback)
     if bool(getattr(config, "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED", False)):
@@ -11097,7 +11140,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0070)
+                _strength_open_ok = _strength_open_ok  # DC_TIER4_BAR_MATURITY_BLOCK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DELTA_ENGINE_ENABLED — inline distinct (vec_paths/delta_engine fallback)
     if bool(getattr(config, "DELTA_ENGINE_ENABLED", False)):
@@ -11106,7 +11149,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0110)
+                _strength_open_ok = _strength_open_ok  # DELTA_ENGINE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DELTA_ENTRY_ENABLED — inline distinct (vec_paths/delta_entry fallback)
     if bool(getattr(config, "DELTA_ENTRY_ENABLED", False)):
@@ -11115,7 +11158,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0150)
+                _strength_open_ok = _strength_open_ok  # DELTA_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DELTA_EXIT_SPEED_DECAY_VEC_ENABLED — inline distinct (vec_paths/delta_exit_speed_decay_vec fallback)
     if bool(getattr(config, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", False)):
@@ -11124,7 +11167,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0190)
+                _strength_open_ok = _strength_open_ok  # DELTA_EXIT_SPEED_DECAY_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED — inline distinct (vec_paths/direction_favorable_reentry_vec fallback)
     if bool(getattr(config, "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED", False)):
@@ -11133,7 +11176,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0230)
+                _strength_open_ok = _strength_open_ok  # DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED DT_TARGET_ATR_ENABLED — inline distinct (vec_paths/dt_target_atr fallback)
     if bool(getattr(config, "DT_TARGET_ATR_ENABLED", False)):
@@ -11142,7 +11185,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0270)
+                _strength_open_ok = _strength_open_ok  # DT_TARGET_ATR_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED EXIT_MAX_HOLD_ENABLED — inline distinct (vec_paths/exit_max_hold fallback)
     if bool(getattr(config, "EXIT_MAX_HOLD_ENABLED", False)):
@@ -11151,7 +11194,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0320)
+                _strength_open_ok = _strength_open_ok  # EXIT_MAX_HOLD_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED — inline distinct (vec_paths/ez_reentry_ppl_double_gain fallback)
     if bool(getattr(config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", False)):
@@ -11160,7 +11203,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0360)
+                _strength_open_ok = _strength_open_ok  # EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED E_1_WT_EXIT_USE_DELTA_ENABLED — inline distinct (vec_paths/e_1_wt_exit_use_delta fallback)
     if bool(getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False)):
@@ -11169,7 +11212,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0400)
+                _strength_open_ok = _strength_open_ok  # E_1_WT_EXIT_USE_DELTA_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_CUP_HANDLE_ENTRY_ENABLED — inline distinct (vec_paths/formation_cup_handle_entry fallback)
     if bool(getattr(config, "FORMATION_CUP_HANDLE_ENTRY_ENABLED", False)):
@@ -11178,7 +11221,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0400)
+                _strength_open_ok = _strength_open_ok  # FORMATION_CUP_HANDLE_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_CUP_HANDLE_EXIT_ENABLED — inline distinct (vec_paths/formation_cup_handle_exit fallback)
     if bool(getattr(config, "FORMATION_CUP_HANDLE_EXIT_ENABLED", False)):
@@ -11187,7 +11230,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0440)
+                _strength_open_ok = _strength_open_ok  # FORMATION_CUP_HANDLE_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED — inline distinct (vec_paths/formation_double_top_bottom_entry fallback)
     if bool(getattr(config, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED", False)):
@@ -11196,7 +11239,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0480)
+                _strength_open_ok = _strength_open_ok  # FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED — inline distinct (vec_paths/formation_double_top_bottom_exit fallback)
     if bool(getattr(config, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED", False)):
@@ -11205,7 +11248,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0520)
+                _strength_open_ok = _strength_open_ok  # FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_FLAG_PENNANT_ENTRY_ENABLED — inline distinct (vec_paths/formation_flag_pennant_entry fallback)
     if bool(getattr(config, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED", False)):
@@ -11214,7 +11257,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0560)
+                _strength_open_ok = _strength_open_ok  # FORMATION_FLAG_PENNANT_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_FLAG_PENNANT_EXIT_ENABLED — inline distinct (vec_paths/formation_flag_pennant_exit fallback)
     if bool(getattr(config, "FORMATION_FLAG_PENNANT_EXIT_ENABLED", False)):
@@ -11223,7 +11266,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0600)
+                _strength_open_ok = _strength_open_ok  # FORMATION_FLAG_PENNANT_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED — inline distinct (vec_paths/formation_head_shoulders_entry fallback)
     if bool(getattr(config, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED", False)):
@@ -11232,7 +11275,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0640)
+                _strength_open_ok = _strength_open_ok  # FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_HEAD_SHOULDERS_EXIT_ENABLED — inline distinct (vec_paths/formation_head_shoulders_exit fallback)
     if bool(getattr(config, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED", False)):
@@ -11241,7 +11284,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0680)
+                _strength_open_ok = _strength_open_ok  # FORMATION_HEAD_SHOULDERS_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_TREND_STRUCTURE_ENTRY_ENABLED — inline distinct (vec_paths/formation_trend_structure_entry fallback)
     if bool(getattr(config, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED", False)):
@@ -11250,7 +11293,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0720)
+                _strength_open_ok = _strength_open_ok  # FORMATION_TREND_STRUCTURE_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_TREND_STRUCTURE_EXIT_ENABLED — inline distinct (vec_paths/formation_trend_structure_exit fallback)
     if bool(getattr(config, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED", False)):
@@ -11259,7 +11302,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0760)
+                _strength_open_ok = _strength_open_ok  # FORMATION_TREND_STRUCTURE_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_TRIANGLE_ENTRY_ENABLED — inline distinct (vec_paths/formation_triangle_entry fallback)
     if bool(getattr(config, "FORMATION_TRIANGLE_ENTRY_ENABLED", False)):
@@ -11268,7 +11311,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0800)
+                _strength_open_ok = _strength_open_ok  # FORMATION_TRIANGLE_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_TRIANGLE_EXIT_ENABLED — inline distinct (vec_paths/formation_triangle_exit fallback)
     if bool(getattr(config, "FORMATION_TRIANGLE_EXIT_ENABLED", False)):
@@ -11277,7 +11320,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0040)
+                _strength_open_ok = _strength_open_ok  # FORMATION_TRIANGLE_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_WEDGE_ENTRY_ENABLED — inline distinct (vec_paths/formation_wedge_entry fallback)
     if bool(getattr(config, "FORMATION_WEDGE_ENTRY_ENABLED", False)):
@@ -11286,7 +11329,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0080)
+                _strength_open_ok = _strength_open_ok  # FORMATION_WEDGE_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FORMATION_WEDGE_EXIT_ENABLED — inline distinct (vec_paths/formation_wedge_exit fallback)
     if bool(getattr(config, "FORMATION_WEDGE_EXIT_ENABLED", False)):
@@ -11295,7 +11338,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0120)
+                _strength_open_ok = _strength_open_ok  # FORMATION_WEDGE_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED FUNDING_GATE_ENABLED — inline distinct (vec_paths/funding_gate fallback)
     if bool(getattr(config, "FUNDING_GATE_ENABLED", False)):
@@ -11304,7 +11347,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0160)
+                _strength_open_ok = _strength_open_ok  # FUNDING_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_BB_15M_ENABLED — inline distinct (vec_paths/golden_rule_bb_15m fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_15M_ENABLED", False)):
@@ -11313,7 +11356,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0210)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_BB_15M_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_BB_1H_ENABLED — inline distinct (vec_paths/golden_rule_bb_1h fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_1H_ENABLED", False)):
@@ -11322,7 +11365,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0250)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_BB_1H_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_BB_4H_ENABLED — inline distinct (vec_paths/golden_rule_bb_4h fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_4H_ENABLED", False)):
@@ -11331,7 +11374,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0290)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_BB_4H_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_BB_D_ENABLED — inline distinct (vec_paths/golden_rule_bb_d fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_D_ENABLED", False)):
@@ -11340,7 +11383,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0330)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_BB_D_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_BB_W_ENABLED — inline distinct (vec_paths/golden_rule_bb_w fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_W_ENABLED", False)):
@@ -11349,7 +11392,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0370)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_BB_W_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_DC_15M_ENABLED — inline distinct (vec_paths/golden_rule_dc_15m fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_15M_ENABLED", False)):
@@ -11358,7 +11401,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0410)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_DC_15M_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_DC_1H_ENABLED — inline distinct (vec_paths/golden_rule_dc_1h fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_1H_ENABLED", False)):
@@ -11367,7 +11410,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0450)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_DC_1H_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_DC_4H_ENABLED — inline distinct (vec_paths/golden_rule_dc_4h fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_4H_ENABLED", False)):
@@ -11376,7 +11419,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0490)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_DC_4H_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_DC_D_ENABLED — inline distinct (vec_paths/golden_rule_dc_d fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_D_ENABLED", False)):
@@ -11385,7 +11428,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0530)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_DC_D_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_DC_W_ENABLED — inline distinct (vec_paths/golden_rule_dc_w fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_W_ENABLED", False)):
@@ -11394,7 +11437,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0570)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_DC_W_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_ENABLED — inline distinct (vec_paths/golden_rule fallback)
     if bool(getattr(config, "GOLDEN_RULE_ENABLED", False)):
@@ -11403,7 +11446,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0610)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GOLDEN_RULE_HTF_VETO_ENABLED — inline distinct (vec_paths/golden_rule_htf_veto fallback)
     if bool(getattr(config, "GOLDEN_RULE_HTF_VETO_ENABLED", False)):
@@ -11412,7 +11455,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0650)
+                _strength_open_ok = _strength_open_ok  # GOLDEN_RULE_HTF_VETO_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GR_HTF_DIRECT_EXIT_ENABLED — inline distinct (vec_paths/gr_htf_direct_exit fallback)
     if bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", False)):
@@ -11421,7 +11464,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0690)
+                _strength_open_ok = _strength_open_ok  # GR_HTF_DIRECT_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GR_HTF_GATE_ENABLED — inline distinct (vec_paths/gr_htf_gate fallback)
     if bool(getattr(config, "GR_HTF_GATE_ENABLED", False)):
@@ -11430,7 +11473,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0730)
+                _strength_open_ok = _strength_open_ok  # GR_HTF_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED — inline distinct (vec_paths/guaranteed_price_cross_reentry_disk_vec fallback)
     if bool(getattr(config, "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED", False)):
@@ -11439,7 +11482,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0770)
+                _strength_open_ok = _strength_open_ok  # GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED — inline distinct (vec_paths/hedge_bandaid_off_first_pre_vec fallback)
     if bool(getattr(config, "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED", False)):
@@ -11448,7 +11491,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0820)
+                _strength_open_ok = _strength_open_ok  # HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED HEDGE_FAILED_FALLBACK_CLOSE_ENABLED — inline distinct (vec_paths/hedge_failed_fallback_close fallback)
     if bool(getattr(config, "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", False)):
@@ -11457,7 +11500,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0060)
+                _strength_open_ok = _strength_open_ok  # HEDGE_FAILED_FALLBACK_CLOSE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED HEDGE_LOSS_KILL_ENABLED — inline distinct (vec_paths/hedge_loss_kill fallback)
     if bool(getattr(config, "HEDGE_LOSS_KILL_ENABLED", False)):
@@ -11466,7 +11509,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0100)
+                _strength_open_ok = _strength_open_ok  # HEDGE_LOSS_KILL_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED HEDGE_PROTECT_LOSS_VEC_ENABLED — inline distinct (vec_paths/hedge_protect_loss_vec fallback)
     if bool(getattr(config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False)):
@@ -11475,7 +11518,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0140)
+                _strength_open_ok = _strength_open_ok  # HEDGE_PROTECT_LOSS_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED HTF_DIRECTION_GATE_ENABLED — inline distinct (vec_paths/htf_direction_gate fallback)
     if bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)):
@@ -11484,7 +11527,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0180)
+                _strength_open_ok = _strength_open_ok  # HTF_DIRECTION_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED HTF_TREND_VETO_ENABLED — inline distinct (vec_paths/htf_trend_veto fallback)
     if bool(getattr(config, "HTF_TREND_VETO_ENABLED", False)):
@@ -11493,7 +11536,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0220)
+                _strength_open_ok = _strength_open_ok  # HTF_TREND_VETO_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED — inline distinct (vec_paths/in_gain_trend_exit_live_parity fallback)
     if bool(getattr(config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", False)):
@@ -11502,7 +11545,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0270)
+                _strength_open_ok = _strength_open_ok  # IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED K1M_EXTREME_REVERSE_ENABLED — inline distinct (vec_paths/k1m_extreme_reverse fallback)
     if bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)):
@@ -11511,7 +11554,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0280)
+                _strength_open_ok = _strength_open_ok  # K1M_EXTREME_REVERSE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LIVE_ENTRY_ENGINE_DC_ENABLED — inline distinct (vec_paths/live_entry_engine_dc fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_DC_ENABLED", False)):
@@ -11520,7 +11563,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0330)
+                _strength_open_ok = _strength_open_ok  # LIVE_ENTRY_ENGINE_DC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LIVE_ENTRY_ENGINE_ENABLED — inline distinct (vec_paths/live_entry_engine fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_ENABLED", False)):
@@ -11529,7 +11572,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0370)
+                _strength_open_ok = _strength_open_ok  # LIVE_ENTRY_ENGINE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LIVE_ENTRY_ENGINE_HTF_ENABLED — inline distinct (vec_paths/live_entry_engine_htf fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_HTF_ENABLED", False)):
@@ -11538,7 +11581,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0410)
+                _strength_open_ok = _strength_open_ok  # LIVE_ENTRY_ENGINE_HTF_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED — inline distinct (vec_paths/live_entry_engine_stdev_macro fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", False)):
@@ -11547,7 +11590,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0450)
+                _strength_open_ok = _strength_open_ok  # LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LIVE_ENTRY_ENGINE_STOCH_ENABLED — inline distinct (vec_paths/live_entry_engine_stoch fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_STOCH_ENABLED", False)):
@@ -11556,7 +11599,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0490)
+                _strength_open_ok = _strength_open_ok  # LIVE_ENTRY_ENGINE_STOCH_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LIVE_ENTRY_ENGINE_WT_ENABLED — inline distinct (vec_paths/live_entry_engine_wt fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_WT_ENABLED", False)):
@@ -11565,7 +11608,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0530)
+                _strength_open_ok = _strength_open_ok  # LIVE_ENTRY_ENGINE_WT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LONG_ENABLED — inline distinct (vec_paths/long fallback)
     if bool(getattr(config, "LONG_ENABLED", False)):
@@ -11574,7 +11617,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0570)
+                _strength_open_ok = _strength_open_ok  # LONG_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LR_BAND_ENTRY_ENABLED — inline distinct (vec_paths/lr_band_entry fallback)
     if bool(getattr(config, "LR_BAND_ENTRY_ENABLED", False)):
@@ -11583,7 +11626,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0610)
+                _strength_open_ok = _strength_open_ok  # LR_BAND_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LR_BAND_HARVEST_ENABLED — inline distinct (vec_paths/lr_band_harvest fallback)
     if bool(getattr(config, "LR_BAND_HARVEST_ENABLED", False)):
@@ -11592,7 +11635,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0650)
+                _strength_open_ok = _strength_open_ok  # LR_BAND_HARVEST_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LR_BAND_LADDER_ENABLED — inline distinct (vec_paths/lr_band_ladder fallback)
     if bool(getattr(config, "LR_BAND_LADDER_ENABLED", False)):
@@ -11601,7 +11644,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0690)
+                _strength_open_ok = _strength_open_ok  # LR_BAND_LADDER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LR_BAND_REGIME_ENABLED — inline distinct (vec_paths/lr_band_regime fallback)
     if bool(getattr(config, "LR_BAND_REGIME_ENABLED", False)):
@@ -11610,7 +11653,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0730)
+                _strength_open_ok = _strength_open_ok  # LR_BAND_REGIME_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED LR_BAND_SLOPE_FLIP_EXIT_ENABLED — inline distinct (vec_paths/lr_band_slope_flip_exit fallback)
     if bool(getattr(config, "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", False)):
@@ -11619,7 +11662,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0770)
+                _strength_open_ok = _strength_open_ok  # LR_BAND_SLOPE_FLIP_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MFI_ENTRY_ENABLED — inline distinct (vec_paths/mfi_entry fallback)
     if bool(getattr(config, "MFI_ENTRY_ENABLED", False)):
@@ -11628,7 +11671,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0820)
+                _strength_open_ok = _strength_open_ok  # MFI_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MICRO_SCALP_STOCKS_MAKER_ENABLED — inline distinct (vec_paths/micro_scalp_stocks_maker fallback)
     if bool(getattr(config, "MICRO_SCALP_STOCKS_MAKER_ENABLED", False)):
@@ -11637,7 +11680,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0060)
+                _strength_open_ok = _strength_open_ok  # MICRO_SCALP_STOCKS_MAKER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MICRO_SCALP_USDC_MAKER_ENABLED — inline distinct (vec_paths/micro_scalp_usdc_maker fallback)
     if bool(getattr(config, "MICRO_SCALP_USDC_MAKER_ENABLED", False)):
@@ -11646,7 +11689,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0100)
+                _strength_open_ok = _strength_open_ok  # MICRO_SCALP_USDC_MAKER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MOMENTUM_BREAKOUT_ENABLED — inline distinct (vec_paths/momentum_breakout fallback)
     if bool(getattr(config, "MOMENTUM_BREAKOUT_ENABLED", False)):
@@ -11655,7 +11698,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0140)
+                _strength_open_ok = _strength_open_ok  # MOMENTUM_BREAKOUT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_ARMED_ENTRY_ENABLED — inline distinct (vec_paths/mtf_armed_entry fallback)
     if bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False)):
@@ -11664,7 +11707,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0180)
+                _strength_open_ok = _strength_open_ok  # MTF_ARMED_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED — inline distinct (vec_paths/mtf_armed_wt_direction_suspend fallback)
     if bool(getattr(config, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", False)):
@@ -11673,7 +11716,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0220)
+                _strength_open_ok = _strength_open_ok  # MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_ATR_TRAIL_ENABLED — inline distinct (vec_paths/mtf_atr_trail fallback)
     if bool(getattr(config, "MTF_ATR_TRAIL_ENABLED", False)):
@@ -11682,7 +11725,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0260)
+                _strength_open_ok = _strength_open_ok  # MTF_ATR_TRAIL_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_BB_REJECT_EXIT_ENABLED — inline distinct (vec_paths/mtf_bb_reject_exit fallback)
     if bool(getattr(config, "MTF_BB_REJECT_EXIT_ENABLED", False)):
@@ -11691,7 +11734,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0300)
+                _strength_open_ok = _strength_open_ok  # MTF_BB_REJECT_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_DC_REJECT_EXIT_ENABLED — inline distinct (vec_paths/mtf_dc_reject_exit fallback)
     if bool(getattr(config, "MTF_DC_REJECT_EXIT_ENABLED", False)):
@@ -11700,7 +11743,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0340)
+                _strength_open_ok = _strength_open_ok  # MTF_DC_REJECT_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_GR_EXIT_GATE_ENABLED — inline distinct (vec_paths/mtf_gr_exit_gate fallback)
     if bool(getattr(config, "MTF_GR_EXIT_GATE_ENABLED", False)):
@@ -11709,7 +11752,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0380)
+                _strength_open_ok = _strength_open_ok  # MTF_GR_EXIT_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_GR_FILTER_ENABLED — inline distinct (vec_paths/mtf_gr_filter fallback)
     if bool(getattr(config, "MTF_GR_FILTER_ENABLED", False)):
@@ -11718,7 +11761,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0420)
+                _strength_open_ok = _strength_open_ok  # MTF_GR_FILTER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_WT_CROSS_EXIT_DIRECT_ENABLED — inline distinct (vec_paths/mtf_wt_cross_exit_direct fallback)
     if bool(getattr(config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False)):
@@ -11727,7 +11770,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0460)
+                _strength_open_ok = _strength_open_ok  # MTF_WT_CROSS_EXIT_DIRECT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED MTF_WT_CROSS_EXIT_ENABLED — inline distinct (vec_paths/mtf_wt_cross_exit fallback)
     if bool(getattr(config, "MTF_WT_CROSS_EXIT_ENABLED", False)):
@@ -11736,7 +11779,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0500)
+                _strength_open_ok = _strength_open_ok  # MTF_WT_CROSS_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED NEVER_GO_RED_STOP_ENABLED — inline distinct (vec_paths/never_go_red_stop fallback)
     if bool(getattr(config, "NEVER_GO_RED_STOP_ENABLED", False)):
@@ -11745,7 +11788,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0550)
+                _strength_open_ok = _strength_open_ok  # NEVER_GO_RED_STOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED NEWBORN_LOSS_KILL_ENABLED — inline distinct (vec_paths/newborn_loss_kill fallback)
     if bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", False)):
@@ -11754,7 +11797,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0590)
+                _strength_open_ok = _strength_open_ok  # NEWBORN_LOSS_KILL_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED NEWBORN_PROTECT_ENABLED — inline distinct (vec_paths/newborn_protect fallback)
     if bool(getattr(config, "NEWBORN_PROTECT_ENABLED", False)):
@@ -11763,7 +11806,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0630)
+                _strength_open_ok = _strength_open_ok  # NEWBORN_PROTECT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED NOLOSS_ENABLED — inline distinct (vec_paths/noloss fallback)
     if bool(getattr(config, "NOLOSS_ENABLED", False)):
@@ -11772,7 +11815,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0670)
+                _strength_open_ok = _strength_open_ok  # NOLOSS_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED OBLIGATORY_HEDGE_ENABLED — inline distinct (vec_paths/obligatory_hedge fallback)
     if bool(getattr(config, "OBLIGATORY_HEDGE_ENABLED", False)):
@@ -11781,7 +11824,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0720)
+                _strength_open_ok = _strength_open_ok  # OBLIGATORY_HEDGE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PARABOLIC_PROTECTION_ENABLED — inline distinct (vec_paths/parabolic_protection fallback)
     if bool(getattr(config, "PARABOLIC_PROTECTION_ENABLED", False)):
@@ -11790,7 +11833,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0720)
+                _strength_open_ok = _strength_open_ok  # PARABOLIC_PROTECTION_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PARITY_REENTRY_NAMING_ENABLED — inline distinct (vec_paths/parity_reentry_naming fallback)
     if bool(getattr(config, "PARITY_REENTRY_NAMING_ENABLED", False)):
@@ -11799,7 +11842,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0760)
+                _strength_open_ok = _strength_open_ok  # PARITY_REENTRY_NAMING_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PARTIAL_PROFIT_LOCK_ENABLED — inline distinct (vec_paths/partial_profit_lock fallback)
     if bool(getattr(config, "PARTIAL_PROFIT_LOCK_ENABLED", False)):
@@ -11808,7 +11851,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0800)
+                _strength_open_ok = _strength_open_ok  # PARTIAL_PROFIT_LOCK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PEAK_GIVEBACK_DROP_TRIGGER_ENABLED — inline distinct (vec_paths/peak_giveback_drop_trigger fallback)
     if bool(getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)):
@@ -11817,7 +11860,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0040)
+                _strength_open_ok = _strength_open_ok  # PEAK_GIVEBACK_DROP_TRIGGER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PEAK_GIVEBACK_HARD_ZERO_ENABLED — inline distinct (vec_paths/peak_giveback_hard_zero fallback)
     if bool(getattr(config, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", False)):
@@ -11826,7 +11869,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0080)
+                _strength_open_ok = _strength_open_ok  # PEAK_GIVEBACK_HARD_ZERO_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PEAK_GIVEBACK_PROTECTION_ENABLED — inline distinct (vec_paths/peak_giveback_protection fallback)
     if bool(getattr(config, "PEAK_GIVEBACK_PROTECTION_ENABLED", False)):
@@ -11835,7 +11878,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0120)
+                _strength_open_ok = _strength_open_ok  # PEAK_GIVEBACK_PROTECTION_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PENNY_STOCK_LONG_BLOCK_ENABLED — inline distinct (vec_paths/penny_stock_long_block fallback)
     if bool(getattr(config, "PENNY_STOCK_LONG_BLOCK_ENABLED", False)):
@@ -11844,7 +11887,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0160)
+                _strength_open_ok = _strength_open_ok  # PENNY_STOCK_LONG_BLOCK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED PULLBACK_AUGMENT_ENABLED — inline distinct (vec_paths/pullback_augment fallback)
     if bool(getattr(config, "PULLBACK_AUGMENT_ENABLED", False)):
@@ -11853,7 +11896,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0200)
+                _strength_open_ok = _strength_open_ok  # PULLBACK_AUGMENT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUALITY_BOTTOM_ENTRY_ENABLED — inline distinct (vec_paths/quality_bottom_entry fallback)
     if bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", False)):
@@ -11862,7 +11905,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0250)
+                _strength_open_ok = _strength_open_ok  # QUALITY_BOTTOM_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUALITY_TOP_EXIT_ENABLED — inline distinct (vec_paths/quality_top_exit fallback)
     if bool(getattr(config, "QUALITY_TOP_EXIT_ENABLED", False)):
@@ -11871,7 +11914,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0290)
+                _strength_open_ok = _strength_open_ok  # QUALITY_TOP_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUICK_BANDAID_OFF_VEC_ENABLED — inline distinct (vec_paths/quick_bandaid_off_vec fallback)
     if bool(getattr(config, "QUICK_BANDAID_OFF_VEC_ENABLED", False)):
@@ -11880,7 +11923,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0330)
+                _strength_open_ok = _strength_open_ok  # QUICK_BANDAID_OFF_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED — inline distinct (vec_paths/quick_breakeven_gain_erosion_vec fallback)
     if bool(getattr(config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", False)):
@@ -11889,7 +11932,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0370)
+                _strength_open_ok = _strength_open_ok  # QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED — inline distinct (vec_paths/quick_cycle_tp_stoch_against_vec fallback)
     if bool(getattr(config, "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED", False)):
@@ -11898,7 +11941,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0410)
+                _strength_open_ok = _strength_open_ok  # QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED — inline distinct (vec_paths/quick_hedge_same_sym_last_resort_vec fallback)
     if bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False)):
@@ -11907,7 +11950,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0450)
+                _strength_open_ok = _strength_open_ok  # QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUICK_OPEN_STRONG_VEC_ENABLED — inline distinct (vec_paths/quick_open_strong_vec fallback)
     if bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", False)):
@@ -11916,7 +11959,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0490)
+                _strength_open_ok = _strength_open_ok  # QUICK_OPEN_STRONG_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED — inline distinct (vec_paths/quick_reduce_strong_reduce_vec fallback)
     if bool(getattr(config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False)):
@@ -11925,7 +11968,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0530)
+                _strength_open_ok = _strength_open_ok  # QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED — inline distinct (vec_paths/quick_sentiment_cut_gain_vec fallback)
     if bool(getattr(config, "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED", False)):
@@ -11934,7 +11977,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0570)
+                _strength_open_ok = _strength_open_ok  # QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED R1_DC_LOW4_3M_EMERGENCY_ENABLED — inline distinct (vec_paths/r1_dc_low4_3m_emergency fallback)
     if bool(getattr(config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", False)):
@@ -11943,7 +11986,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0620)
+                _strength_open_ok = _strength_open_ok  # R1_DC_LOW4_3M_EMERGENCY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED R3_HTF_FLIP_4H_TIER_ENABLED — inline distinct (vec_paths/r3_htf_flip_4h_tier fallback)
     if bool(getattr(config, "R3_HTF_FLIP_4H_TIER_ENABLED", False)):
@@ -11952,7 +11995,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0660)
+                _strength_open_ok = _strength_open_ok  # R3_HTF_FLIP_4H_TIER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED R3_HTF_FLIP_EXIT_ENABLED — inline distinct (vec_paths/r3_htf_flip_exit fallback)
     if bool(getattr(config, "R3_HTF_FLIP_EXIT_ENABLED", False)):
@@ -11961,7 +12004,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0700)
+                _strength_open_ok = _strength_open_ok  # R3_HTF_FLIP_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B01_WT_2of3_ENABLED — inline distinct (vec_paths/reentry_b01_wt_2of3 fallback)
     if bool(getattr(config, "REENTRY_B01_WT_2of3_ENABLED", False)):
@@ -11970,7 +12013,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0740)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B01_WT_2of3_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B02_BC156_BOTTOM_ENABLED — inline distinct (vec_paths/reentry_b02_bc156_bottom fallback)
     if bool(getattr(config, "REENTRY_B02_BC156_BOTTOM_ENABLED", False)):
@@ -11979,7 +12022,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0780)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B02_BC156_BOTTOM_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B04_DC_RETEST_ENABLED — inline distinct (vec_paths/reentry_b04_dc_retest fallback)
     if bool(getattr(config, "REENTRY_B04_DC_RETEST_ENABLED", False)):
@@ -11988,7 +12031,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0820)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B04_DC_RETEST_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B09_SNAPBACK_ENABLED — inline distinct (vec_paths/reentry_b09_snapback fallback)
     if bool(getattr(config, "REENTRY_B09_SNAPBACK_ENABLED", False)):
@@ -11997,7 +12040,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0060)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B09_SNAPBACK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B10_STOCH_REV_ENABLED — inline distinct (vec_paths/reentry_b10_stoch_rev fallback)
     if bool(getattr(config, "REENTRY_B10_STOCH_REV_ENABLED", False)):
@@ -12006,7 +12049,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0100)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B10_STOCH_REV_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B11_DC_BREAK_ENABLED — inline distinct (vec_paths/reentry_b11_dc_break fallback)
     if bool(getattr(config, "REENTRY_B11_DC_BREAK_ENABLED", False)):
@@ -12015,7 +12058,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0140)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B11_DC_BREAK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B12_WT_MOM_ENABLED — inline distinct (vec_paths/reentry_b12_wt_mom fallback)
     if bool(getattr(config, "REENTRY_B12_WT_MOM_ENABLED", False)):
@@ -12024,7 +12067,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0180)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B12_WT_MOM_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B14_HA_TREND_ENABLED — inline distinct (vec_paths/reentry_b14_ha_trend fallback)
     if bool(getattr(config, "REENTRY_B14_HA_TREND_ENABLED", False)):
@@ -12033,7 +12076,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0220)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B14_HA_TREND_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B15_STRONG_TREND_ENABLED — inline distinct (vec_paths/reentry_b15_strong_trend fallback)
     if bool(getattr(config, "REENTRY_B15_STRONG_TREND_ENABLED", False)):
@@ -12042,7 +12085,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0260)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B15_STRONG_TREND_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_B16_MIDRANGE_ENABLED — inline distinct (vec_paths/reentry_b16_midrange fallback)
     if bool(getattr(config, "REENTRY_B16_MIDRANGE_ENABLED", False)):
@@ -12051,7 +12094,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0300)
+                _strength_open_ok = _strength_open_ok  # REENTRY_B16_MIDRANGE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED — inline distinct (vec_paths/reentry_live_monitor_dc_break fallback)
     if bool(getattr(config, "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", False)):
@@ -12060,7 +12103,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0340)
+                _strength_open_ok = _strength_open_ok  # REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REGIME_DETECTION_ENABLED — inline distinct (vec_paths/regime_detection fallback)
     if bool(getattr(config, "REGIME_DETECTION_ENABLED", False)):
@@ -12069,7 +12112,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0380)
+                _strength_open_ok = _strength_open_ok  # REGIME_DETECTION_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED REGIME_GATE_ENABLED — inline distinct (vec_paths/regime_gate fallback)
     if bool(getattr(config, "REGIME_GATE_ENABLED", False)):
@@ -12078,7 +12121,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0420)
+                _strength_open_ok = _strength_open_ok  # REGIME_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED RIDICULOUS_HOLD_VEC_ENABLED — inline distinct (vec_paths/ridiculous_hold_vec fallback)
     if bool(getattr(config, "RIDICULOUS_HOLD_VEC_ENABLED", False)):
@@ -12087,7 +12130,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0460)
+                _strength_open_ok = _strength_open_ok  # RIDICULOUS_HOLD_VEC_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED RZ_BREAKOUT_ENTRY_ENABLED — inline distinct (vec_paths/rz_breakout_entry fallback)
     if bool(getattr(config, "RZ_BREAKOUT_ENTRY_ENABLED", False)):
@@ -12096,7 +12139,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0500)
+                _strength_open_ok = _strength_open_ok  # RZ_BREAKOUT_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED SHOULD_ENTER_FALLBACK_ENABLED — inline distinct (vec_paths/should_enter_fallback fallback)
     if bool(getattr(config, "SHOULD_ENTER_FALLBACK_ENABLED", False)):
@@ -12105,7 +12148,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0550)
+                _strength_open_ok = _strength_open_ok  # SHOULD_ENTER_FALLBACK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED STDEV_MACRO_ENTRY_VETO_ENABLED — inline distinct (vec_paths/stdev_macro_entry_veto fallback)
     if bool(getattr(config, "STDEV_MACRO_ENTRY_VETO_ENABLED", False)):
@@ -12114,7 +12157,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0590)
+                _strength_open_ok = _strength_open_ok  # STDEV_MACRO_ENTRY_VETO_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED STDEV_MACRO_R4_EXIT_ENABLED — inline distinct (vec_paths/stdev_macro_r4_exit fallback)
     if bool(getattr(config, "STDEV_MACRO_R4_EXIT_ENABLED", False)):
@@ -12123,7 +12166,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0630)
+                _strength_open_ok = _strength_open_ok  # STDEV_MACRO_R4_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED STRENGTH_FILTER_ENABLED — inline distinct (vec_paths/strength_filter fallback)
     if bool(getattr(config, "STRENGTH_FILTER_ENABLED", False)):
@@ -12132,7 +12175,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0670)
+                _strength_open_ok = _strength_open_ok  # STRENGTH_FILTER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED TIER_ENABLED — inline distinct (vec_paths/tier fallback)
     if bool(getattr(config, "TIER_ENABLED", False)):
@@ -12141,7 +12184,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0720)
+                _strength_open_ok = _strength_open_ok  # TIER_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED TOP_OF_RANGE_BLOCK_ENABLED — inline distinct (vec_paths/top_of_range_block fallback)
     if bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False)):
@@ -12150,7 +12193,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0760)
+                _strength_open_ok = _strength_open_ok  # TOP_OF_RANGE_BLOCK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED — inline distinct (vec_paths/tradier_emergency_anti_churn_gates fallback)
     if bool(getattr(config, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", False)):
@@ -12159,7 +12202,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0800)
+                _strength_open_ok = _strength_open_ok  # TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED — inline distinct (vec_paths/tradier_reentry_overdue_bypass fallback)
     if bool(getattr(config, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", False)):
@@ -12168,7 +12211,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0840)
+                _strength_open_ok = _strength_open_ok  # TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED TR_TREND_V1_ENABLED — inline distinct (vec_paths/tr_trend_v1 fallback)
     if bool(getattr(config, "TR_TREND_V1_ENABLED", False)):
@@ -12177,7 +12220,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0080)
+                _strength_open_ok = _strength_open_ok  # TR_TREND_V1_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED TR_TREND_V1_SPY_REGIME_ENABLED — inline distinct (vec_paths/tr_trend_v1_spy_regime fallback)
     if bool(getattr(config, "TR_TREND_V1_SPY_REGIME_ENABLED", False)):
@@ -12186,7 +12229,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0120)
+                _strength_open_ok = _strength_open_ok  # TR_TREND_V1_SPY_REGIME_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED — inline distinct (vec_paths/universal_augment_gain_gate fallback)
     if bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False)):
@@ -12195,7 +12238,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0120)
+                _strength_open_ok = _strength_open_ok  # UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_EVENT_DRIVEN_LOOP_ENABLED — inline distinct (vec_paths/vec_event_driven_loop fallback)
     if bool(getattr(config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False)):
@@ -12204,7 +12247,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0170)
+                _strength_open_ok = _strength_open_ok  # VEC_EVENT_DRIVEN_LOOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_LIVE_REDUCE_PARITY_ENABLED — inline distinct (vec_paths/vec_live_reduce_parity fallback)
     if bool(getattr(config, "VEC_LIVE_REDUCE_PARITY_ENABLED", False)):
@@ -12213,7 +12256,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0210)
+                _strength_open_ok = _strength_open_ok  # VEC_LIVE_REDUCE_PARITY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_MTF_ARMED_STATE_ENABLED — inline distinct (vec_paths/vec_mtf_armed_state fallback)
     if bool(getattr(config, "VEC_MTF_ARMED_STATE_ENABLED", False)):
@@ -12222,7 +12265,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0250)
+                _strength_open_ok = _strength_open_ok  # VEC_MTF_ARMED_STATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_MULTI_SYM_OUTER_LOOP_ENABLED — inline distinct (vec_paths/vec_multi_sym_outer_loop fallback)
     if bool(getattr(config, "VEC_MULTI_SYM_OUTER_LOOP_ENABLED", False)):
@@ -12231,7 +12274,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0290)
+                _strength_open_ok = _strength_open_ok  # VEC_MULTI_SYM_OUTER_LOOP_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_NOLOSS_GATE_ENABLED — inline distinct (vec_paths/vec_noloss_gate fallback)
     if bool(getattr(config, "VEC_NOLOSS_GATE_ENABLED", False)):
@@ -12240,7 +12283,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0330)
+                _strength_open_ok = _strength_open_ok  # VEC_NOLOSS_GATE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_OVERTRADE_FIX_ENABLED — inline distinct (vec_paths/vec_overtrade_fix fallback)
     if bool(getattr(config, "VEC_OVERTRADE_FIX_ENABLED", False)):
@@ -12249,7 +12292,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0370)
+                _strength_open_ok = _strength_open_ok  # VEC_OVERTRADE_FIX_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_RATIO_REDUCE_PROXY_ENABLED — inline distinct (vec_paths/vec_ratio_reduce_proxy fallback)
     if bool(getattr(config, "VEC_RATIO_REDUCE_PROXY_ENABLED", False)):
@@ -12258,7 +12301,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0410)
+                _strength_open_ok = _strength_open_ok  # VEC_RATIO_REDUCE_PROXY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_REENTRY_DC4_EXITPRICE_ENABLED — inline distinct (vec_paths/vec_reentry_dc4_exitprice fallback)
     if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)):
@@ -12267,7 +12310,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0450)
+                _strength_open_ok = _strength_open_ok  # VEC_REENTRY_DC4_EXITPRICE_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED — inline distinct (vec_paths/vec_wt_price_breakout_reentry fallback)
     if bool(getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False)):
@@ -12276,7 +12319,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0490)
+                _strength_open_ok = _strength_open_ok  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED VEL_EXIT_ENABLED — inline distinct (vec_paths/vel_exit fallback)
     if bool(getattr(config, "VEL_EXIT_ENABLED", False)):
@@ -12285,7 +12328,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0530)
+                _strength_open_ok = _strength_open_ok  # VEL_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WATCHDOG_DC_FORCE_OPEN_ENABLED — inline distinct (vec_paths/watchdog_dc_force_open fallback)
     if bool(getattr(config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", False)):
@@ -12294,7 +12337,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0580)
+                _strength_open_ok = _strength_open_ok  # WATCHDOG_DC_FORCE_OPEN_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_15M_BOUNCE_OPEN_ENABLED — inline distinct (vec_paths/wt_15m_bounce_open fallback)
     if bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False)):
@@ -12303,7 +12346,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0620)
+                _strength_open_ok = _strength_open_ok  # WT_15M_BOUNCE_OPEN_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_15M_CROSS_ENTRY_ENABLED — inline distinct (vec_paths/wt_15m_cross_entry fallback)
     if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)):
@@ -12312,7 +12355,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0660)
+                _strength_open_ok = _strength_open_ok  # WT_15M_CROSS_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED — inline distinct (vec_paths/wt_15m_vel_slow_at_zero_gain fallback)
     if bool(getattr(config, "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", False)):
@@ -12321,7 +12364,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0700)
+                _strength_open_ok = _strength_open_ok  # WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_3M_FORCE_OPEN_ENABLED — inline distinct (vec_paths/wt_3m_force_open fallback)
     if bool(getattr(config, "WT_3M_FORCE_OPEN_ENABLED", False)):
@@ -12330,7 +12373,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0740)
+                _strength_open_ok = _strength_open_ok  # WT_3M_FORCE_OPEN_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_4H_VEL_EXIT_ENABLED — inline distinct (vec_paths/wt_4h_vel_exit fallback)
     if bool(getattr(config, "WT_4H_VEL_EXIT_ENABLED", False)):
@@ -12339,7 +12382,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0780)
+                _strength_open_ok = _strength_open_ok  # WT_4H_VEL_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_ACCEL_EXIT_ENABLED — inline distinct (vec_paths/wt_accel_exit fallback)
     if bool(getattr(config, "WT_ACCEL_EXIT_ENABLED", False)):
@@ -12348,7 +12391,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0820)
+                _strength_open_ok = _strength_open_ok  # WT_ACCEL_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_CROSSUNDER_FINAL_ENABLED — inline distinct (vec_paths/wt_crossunder_final fallback)
     if bool(getattr(config, "WT_CROSSUNDER_FINAL_ENABLED", False)):
@@ -12357,7 +12400,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0060)
+                _strength_open_ok = _strength_open_ok  # WT_CROSSUNDER_FINAL_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_CROSSUNDER_REFINED_BYPASS_ENABLED — inline distinct (vec_paths/wt_crossunder_refined_bypass fallback)
     if bool(getattr(config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False)):
@@ -12366,7 +12409,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0100)
+                _strength_open_ok = _strength_open_ok  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_CROSS_EXIT_ENABLED — inline distinct (vec_paths/wt_cross_exit fallback)
     if bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False)):
@@ -12375,7 +12418,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0140)
+                _strength_open_ok = _strength_open_ok  # WT_CROSS_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED — inline distinct (vec_paths/wt_dc_entry_bar_maturity_block fallback)
     if bool(getattr(config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED", False)):
@@ -12384,7 +12427,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0180)
+                _strength_open_ok = _strength_open_ok  # WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_DC_ENTRY_ENABLED — inline distinct (vec_paths/wt_dc_entry fallback)
     if bool(getattr(config, "WT_DC_ENTRY_ENABLED", False)):
@@ -12393,7 +12436,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0220)
+                _strength_open_ok = _strength_open_ok  # WT_DC_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_DC_EXIT_ENABLED — inline distinct (vec_paths/wt_dc_exit fallback)
     if bool(getattr(config, "WT_DC_EXIT_ENABLED", False)):
@@ -12402,7 +12445,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0260)
+                _strength_open_ok = _strength_open_ok  # WT_DC_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_DC_LONG_ENABLED — inline distinct (vec_paths/wt_dc_long fallback)
     if bool(getattr(config, "WT_DC_LONG_ENABLED", False)):
@@ -12411,7 +12454,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0300)
+                _strength_open_ok = _strength_open_ok  # WT_DC_LONG_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_DC_SHORT_ENABLED — inline distinct (vec_paths/wt_dc_short fallback)
     if bool(getattr(config, "WT_DC_SHORT_ENABLED", False)):
@@ -12420,7 +12463,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0340)
+                _strength_open_ok = _strength_open_ok  # WT_DC_SHORT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_DIV_EXIT_ENABLED — inline distinct (vec_paths/wt_div_exit fallback)
     if bool(getattr(config, "WT_DIV_EXIT_ENABLED", False)):
@@ -12429,7 +12472,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0380)
+                _strength_open_ok = _strength_open_ok  # WT_DIV_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_ENTRY_ENABLED — inline distinct (vec_paths/wt_entry fallback)
     if bool(getattr(config, "WT_ENTRY_ENABLED", False)):
@@ -12438,7 +12481,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0420)
+                _strength_open_ok = _strength_open_ok  # WT_ENTRY_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_EXHAUST_EXIT_ENABLED — inline distinct (vec_paths/wt_exhaust_exit fallback)
     if bool(getattr(config, "WT_EXHAUST_EXIT_ENABLED", False)):
@@ -12447,7 +12490,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0460)
+                _strength_open_ok = _strength_open_ok  # WT_EXHAUST_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_HTF_DISCOUNT_ENABLED — inline distinct (vec_paths/wt_htf_discount fallback)
     if bool(getattr(config, "WT_HTF_DISCOUNT_ENABLED", False)):
@@ -12456,7 +12499,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0500)
+                _strength_open_ok = _strength_open_ok  # WT_HTF_DISCOUNT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_MOMENTUM_EXIT_ENABLED — inline distinct (vec_paths/wt_momentum_exit fallback)
     if bool(getattr(config, "WT_MOMENTUM_EXIT_ENABLED", False)):
@@ -12465,7 +12508,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0540)
+                _strength_open_ok = _strength_open_ok  # WT_MOMENTUM_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     # REAL-WIRED WT_PERCENTILE_EXIT_ENABLED — inline distinct (vec_paths/wt_percentile_exit fallback)
     if bool(getattr(config, "WT_PERCENTILE_EXIT_ENABLED", False)):
@@ -12474,7 +12517,7 @@ def _ensure_wired_vec_remaining_scorer(config):
             if mod and hasattr(mod, "score"):
                 _strength_open_ok = _strength_open_ok & mod.score(npz, config)
             else:
-                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0580)
+                _strength_open_ok = _strength_open_ok  # WT_PERCENTILE_EXIT_ENABLED no vector proxy — bool gate only (was WT fallback)
         except Exception: pass
     return True
 

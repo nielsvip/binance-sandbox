@@ -1,4 +1,4 @@
-# Copilot Status — 2026-08-18 19:58:23 UTC
+# Copilot Status — 2026-08-19 15:33:36 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:54:37
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-18T19:55:07
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:55:07
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-18T19:55:38
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:55:38
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:56:08
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:56:40
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:57:10
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:57:41
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-18T19:58:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-19T15:32:14
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-19T15:32:14
+- **STALE_INDICATORS** [tradier]  — 2026-08-19T15:32:45
+- **BIG_LOSER** [tradier] trb:MSTR_SHORT — 2026-08-19T15:32:45
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-19T15:32:45
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-19T15:32:45
+- **STALE_INDICATORS** [tradier]  — 2026-08-19T15:33:15
+- **BIG_LOSER** [tradier] trb:MSTR_SHORT — 2026-08-19T15:33:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-19T15:33:15
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-19T15:33:15
 
 ## Missed Trades (trader comparison)
 
@@ -27,17 +27,20 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 2 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +9.3%
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +7.4%
+- HELD: **IBIT** LONG (tradier) peak +4.0%, now +1.5%
+
+- WATCHING: **SNDK** LONG (tradier) peaked +3.6%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (40min)
+- [HIGH] ez_prices.py is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for men is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (41min)
 - [HIGH] ez_manage.py for ang is NOT running

@@ -12,13 +12,13 @@ LOG="$LOGDIR/tradier_watchdog_cron.log"
 WATCHDOG="$WORKDIR/run_with_watchdog.sh"
 export TRADIER_LOCAL_ONLY=1
 
-# Only active Mon-Fri 13:30-20:00 UTC.
+# Only active Mon-Fri 13:00-20:00 UTC (2026-08-19: was 13:30 — tradier_prices pre-warms at 13:00 for 09:35 ET email).
 UTC_TIME=$(date -u +"%H:%M")
 DOW=$(date -u +%u)
 UTC_HOUR=$(date -u +%H)
 UTC_MIN=$(date -u +%M)
 UTC_MINS=$((10#$UTC_HOUR * 60 + 10#$UTC_MIN))
-if [ "$DOW" -gt 5 ] || [ "$UTC_MINS" -lt 810 ] || [ "$UTC_MINS" -ge 1200 ]; then
+if [ "$DOW" -gt 5 ] || [ "$UTC_MINS" -lt 780 ] || [ "$UTC_MINS" -ge 1200 ]; then
     exit 0
 fi
 

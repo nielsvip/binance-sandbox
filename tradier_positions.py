@@ -3064,8 +3064,8 @@ class TradierPositionManager:
             asyncio.create_task(self._periodic_update_zero_positions()), # IO: Zero Pos Refresh
             asyncio.create_task(self._periodic_full_save_loop()),        # IO: Safety Save
             asyncio.create_task(self._periodic_permanence_check()),      # LOGIC: Restore deleted keys
-            asyncio.create_task(self._invalidation_cleanup_loop()) ]# ,       
-            # asyncio.create_task(self.continuous_mark_price_update_loop()) ]
+            asyncio.create_task(self._invalidation_cleanup_loop()),
+            asyncio.create_task(self.continuous_mark_price_update_loop()) ]
         
         logger.info(f"[{self.account_key}] All {len(self.background_tasks)} loops started successfully.")
 

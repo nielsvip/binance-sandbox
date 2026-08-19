@@ -1,3 +1,9 @@
+# 2026-08-19 CRYPTO vs STOCKS split — DO NOT MERGE BLINDLY
+# config.py = CRYPTO (ez_manage/inf 100). config_tradier.py = STOCKS (tradier_manage/TRB 167).
+# Intentionally divergent (858 vs 150 keys). v8_vec_sweep.SweepConfig.for_mode(crypto|tradier)
+# is the ONLY unified entry (DELTA True for crypto vs False for tradier, WT_DC 4h_D for stocks vs none for crypto).
+# 99/100 INF crypto were LOSING (liquidity→0) — now overrides:{} from clean crypto baseline, beamed grouped F1-F5+EXIT.*
+# Do not promote stale inf winners until Δ>0 DD<=30 TIM20-80. See BACKTEST_BIBLE §16.71-16.72.
 # ═══════════════════════════════════════════════════════════════════════
 # SWEEP REFERENCE: data/sweep_tiers.json — prioritized list of ALL sweepable
 # switches with ranges, tiers (TIER_1→TIER_3), and notes. Agents: read that
@@ -42,6 +48,26 @@ class Config:
     REENTRY_PULL2_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     REENTRY_PULL3_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     REENTRY_PULL4_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
+    # 2026-08-19 PORTED USEFUL tradier switches (pos Δ) — wired for crypto parity
+    REENTRY_GR_HLHH_MODE: str = "OR"  # from tradier 2616 — sweep OR/HH/HL × min_tfs
+    REENTRY_GR_MIN_TFS: int = 2  # from tradier 2617 — min TFs with HL/HH
+    WT_DC_HTF_GATE: str = "none"  # crypto baseline none vs tradier 4h_D (for_mode handles)
+    WT_DC_ENTRY_THRESHOLD: float = 0.0  # crypto 0 vs tradier 45
+    TRA_WT_DC_ENTRY_THRESHOLD: float = 0.0  # keep for crypto parity (tradier 85)
+    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0
+    GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 27.0
+    GR_HTF_DIRECT_ENTRY_ENABLED: bool = True
+    WT_CHAN_15m: int = 10  # F5 group param — not in either config before, now wired
+    WT_AVG_15m: int = 21
+    WT_DC_EXIT_THRESHOLD: float = 30.0
+    MIN_HOLD_BARS_15m: int = 5
+    COOLDOWN_BARS_15m: int = 3
+    BREAKEVEN_EXIT_AFTER_BARS_ENABLED: bool = False
+    WIN_TRAIL_EROSION_PCT: float = 0.25
+    STRUCTURAL_EXIT_GATE_ENABLED: bool = False
+    VEC_REENTRY_REQUIRE_PRIOR_EXIT: bool = False
+    VEC_REENTRY_WINDOW_BARS: int = 400
+    VEC_REENTRY_DC4_EXITPRICE_ENABLED: bool = True
     SATOSHIT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     WT_EXIT_MIN_TFS: int = 2  # parity 2026-08-17: vector->live (was vector-only)
     WT_VEL_DECAY_EXIT_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
