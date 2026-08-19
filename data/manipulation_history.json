@@ -9590,5 +9590,32 @@
     ],
     "timestamp": "2026-08-19T07:50:29.790466+00:00",
     "price": 0.08531
+  },
+  {
+    "symbol": "GMEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.0x normal"
+    ],
+    "timestamp": "2026-08-19T07:58:36.774171+00:00",
+    "price": 18.06
+  },
+  {
+    "symbol": "SONYUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 17.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T07:59:29.185295+00:00",
+    "price": 23.29
+  },
+  {
+    "symbol": "USARUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 16.5x normal"
+    ],
+    "timestamp": "2026-08-19T08:03:38.298180+00:00",
+    "price": 18.47
   }
 ]
