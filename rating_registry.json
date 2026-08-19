@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-19T04:25:01.253972+00:00",
+  "timestamp": "2026-08-19T04:40:05.181136+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "WLFIUSDC",
-      "net_score": -12.6,
+      "net_score": -11.5,
       "long_score": 0,
-      "short_score": 12.6
+      "short_score": 11.5
+    },
+    {
+      "symbol": "PNUTUSDC",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "EGLDUSDT",
@@ -505,12 +511,6 @@
       "short_score": 0
     },
     {
-      "symbol": "COMPUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "IRENUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -674,12 +674,6 @@
     },
     {
       "symbol": "SUIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PNUTUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1127,14 +1121,31 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "COMPUSDT",
+      "net_score": 19.2,
+      "long_score": 19.2,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "COMPUSDT",
+      19.2,
+      18.51
+    ]
+  ],
   "top_shorts": [
     [
       "WLFIUSDC",
-      12.6,
-      0.06013
+      11.5,
+      0.06017
+    ],
+    [
+      "PNUTUSDC",
+      10.3,
+      0.04121
     ]
   ],
   "hedge_usage": {

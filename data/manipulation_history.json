@@ -9266,5 +9266,23 @@
     ],
     "timestamp": "2026-08-19T04:24:49.087123+00:00",
     "price": 60.42
+  },
+  {
+    "symbol": "ZMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.9x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T04:26:35.291158+00:00",
+    "price": 104.22
+  },
+  {
+    "symbol": "ADBEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T04:35:40.218352+00:00",
+    "price": 264.28
   }
 ]
