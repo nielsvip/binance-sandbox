@@ -9365,5 +9365,23 @@
     ],
     "timestamp": "2026-08-19T05:29:12.642004+00:00",
     "price": 56.55
+  },
+  {
+    "symbol": "HYPEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T05:43:07.411483+00:00",
+    "price": 58.546
+  },
+  {
+    "symbol": "YFIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T05:51:31.911880+00:00",
+    "price": 1955.0
   }
 ]
