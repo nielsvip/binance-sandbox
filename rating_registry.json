@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-19T20:58:21.930442+00:00",
+  "timestamp": "2026-08-19T21:13:36.873165+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "NVDAUSDT",
-      "net_score": -11.8,
+      "net_score": -12.0,
       "long_score": 0,
-      "short_score": 11.8
+      "short_score": 12.0
     },
     {
       "symbol": "SPCXUSDT",
@@ -241,6 +241,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LINKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -344,12 +350,6 @@
     },
     {
       "symbol": "ORDIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1057,6 +1057,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BTCUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LPTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1141,21 +1147,21 @@
       "short_score": 0
     },
     {
-      "symbol": "PENDLEUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCUSDC",
-      "net_score": 10.8,
-      "long_score": 10.8,
+      "symbol": "RUNEUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
       "short_score": 0
     },
     {
       "symbol": "UNIUSDC",
       "net_score": 12.0,
       "long_score": 12.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PENDLEUSDT",
+      "net_score": 12.5,
+      "long_score": 12.5,
       "short_score": 0
     },
     {
@@ -1171,28 +1177,17 @@
       "short_score": 0
     },
     {
-      "symbol": "LINKUSDC",
-      "net_score": 18.0,
-      "long_score": 18.0,
-      "short_score": 0
-    },
-    {
       "symbol": "HYPEUSDT",
-      "net_score": 18.1,
-      "long_score": 18.1,
+      "net_score": 19.4,
+      "long_score": 19.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "HYPEUSDT",
-      18.1,
-      69.821
-    ],
-    [
-      "LINKUSDC",
-      18.0,
-      10.346
+      19.4,
+      70.877
     ],
     [
       "INJUSDT",
@@ -1200,21 +1195,21 @@
       4.595
     ],
     [
-      "BTCUSDC",
-      10.8,
-      68812.5
+      "PENDLEUSDT",
+      12.5,
+      1.4169
     ],
     [
-      "PENDLEUSDT",
-      10.3,
-      1.3898
+      "RUNEUSDT",
+      11.7,
+      0.4329
     ]
   ],
   "top_shorts": [
     [
       "NVDAUSDT",
-      11.8,
-      218.08
+      12.0,
+      218.27
     ]
   ],
   "hedge_usage": {

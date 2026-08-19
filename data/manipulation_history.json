@@ -673,5 +673,41 @@
     ],
     "timestamp": "2026-08-19T20:58:10.764895+00:00",
     "price": 0.001389
+  },
+  {
+    "symbol": "CELRUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T20:59:50.736182+00:00",
+    "price": 0.002057
+  },
+  {
+    "symbol": "1INCHUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 31.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T21:01:38.637829+00:00",
+    "price": 0.08514
+  },
+  {
+    "symbol": "BTCDOMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.3x normal"
+    ],
+    "timestamp": "2026-08-19T21:03:06.841121+00:00",
+    "price": 5357.5
+  },
+  {
+    "symbol": "COSTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T21:05:08.901118+00:00",
+    "price": 958.89
   }
 ]
