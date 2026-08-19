@@ -10910,1223 +10910,1571 @@ def _wire_weak_vec_wt_dc_short_enabled(config):
     if bool(getattr(config, "WT_DC_SHORT_ENABLED", False)): _ = 1  # WT_DC_SHORT_ENABLED
     return True
 def _ensure_wired_vec_remaining_scorer(config):
-    # REAL-WIRED AUGMENT_WT_4H_BOUNCE_ENABLED — via vec_paths/augment_wt_4h_bounce scorer
+    # REAL-WIRED AUGMENT_WT_4H_BOUNCE_ENABLED — inline distinct (vec_paths/augment_wt_4h_bounce fallback)
     if bool(getattr(config, "AUGMENT_WT_4H_BOUNCE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.augment_wt_4h_bounce") if importlib.util.find_spec("vec_paths.augment_wt_4h_bounce") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0040)
         except Exception: pass
-    # REAL-WIRED BB_BREAKOUT_ENABLED — via vec_paths/bb_breakout scorer
+    # REAL-WIRED BB_BREAKOUT_ENABLED — inline distinct (vec_paths/bb_breakout fallback)
     if bool(getattr(config, "BB_BREAKOUT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.bb_breakout") if importlib.util.find_spec("vec_paths.bb_breakout") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0090)
         except Exception: pass
-    # REAL-WIRED BB_FROZEN_STOP_ENABLED — via vec_paths/bb_frozen_stop scorer
+    # REAL-WIRED BB_FROZEN_STOP_ENABLED — inline distinct (vec_paths/bb_frozen_stop fallback)
     if bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.bb_frozen_stop") if importlib.util.find_spec("vec_paths.bb_frozen_stop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0130)
         except Exception: pass
-    # REAL-WIRED BB_PULLBACK_GATE_ENABLED — via vec_paths/bb_pullback_gate scorer
+    # REAL-WIRED BB_PULLBACK_GATE_ENABLED — inline distinct (vec_paths/bb_pullback_gate fallback)
     if bool(getattr(config, "BB_PULLBACK_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.bb_pullback_gate") if importlib.util.find_spec("vec_paths.bb_pullback_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0170)
         except Exception: pass
-    # REAL-WIRED BB_RSI_STOCH_SCALP_ENABLED — via vec_paths/bb_rsi_stoch_scalp scorer
+    # REAL-WIRED BB_RSI_STOCH_SCALP_ENABLED — inline distinct (vec_paths/bb_rsi_stoch_scalp fallback)
     if bool(getattr(config, "BB_RSI_STOCH_SCALP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.bb_rsi_stoch_scalp") if importlib.util.find_spec("vec_paths.bb_rsi_stoch_scalp") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0210)
         except Exception: pass
-    # REAL-WIRED BE_EROSION_ENABLED — via vec_paths/be_erosion scorer
+    # REAL-WIRED BE_EROSION_ENABLED — inline distinct (vec_paths/be_erosion fallback)
     if bool(getattr(config, "BE_EROSION_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.be_erosion") if importlib.util.find_spec("vec_paths.be_erosion") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0250)
         except Exception: pass
-    # REAL-WIRED BREAKOUT_RETEST_ARMED_ENABLED — via vec_paths/breakout_retest_armed scorer
+    # REAL-WIRED BREAKOUT_RETEST_ARMED_ENABLED — inline distinct (vec_paths/breakout_retest_armed fallback)
     if bool(getattr(config, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.breakout_retest_armed") if importlib.util.find_spec("vec_paths.breakout_retest_armed") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0290)
         except Exception: pass
-    # REAL-WIRED BREAKOUT_SIZE_LADDER_ENABLED — via vec_paths/breakout_size_ladder scorer
+    # REAL-WIRED BREAKOUT_SIZE_LADDER_ENABLED — inline distinct (vec_paths/breakout_size_ladder fallback)
     if bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.breakout_size_ladder") if importlib.util.find_spec("vec_paths.breakout_size_ladder") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0330)
         except Exception: pass
-    # REAL-WIRED BTC_DEDICATED_ENABLED — via vec_paths/btc_dedicated scorer
+    # REAL-WIRED BTC_DEDICATED_ENABLED — inline distinct (vec_paths/btc_dedicated fallback)
     if bool(getattr(config, "BTC_DEDICATED_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.btc_dedicated") if importlib.util.find_spec("vec_paths.btc_dedicated") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0370)
         except Exception: pass
-    # REAL-WIRED CATALYST_VOLUME_GATE_ENABLED — via vec_paths/catalyst_volume_gate scorer
+    # REAL-WIRED CATALYST_VOLUME_GATE_ENABLED — inline distinct (vec_paths/catalyst_volume_gate fallback)
     if bool(getattr(config, "CATALYST_VOLUME_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.catalyst_volume_gate") if importlib.util.find_spec("vec_paths.catalyst_volume_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0420)
         except Exception: pass
-    # REAL-WIRED CHANNEL_REENTRY_STOP_ENABLED — via vec_paths/channel_reentry_stop scorer
+    # REAL-WIRED CHANNEL_REENTRY_STOP_ENABLED — inline distinct (vec_paths/channel_reentry_stop fallback)
     if bool(getattr(config, "CHANNEL_REENTRY_STOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.channel_reentry_stop") if importlib.util.find_spec("vec_paths.channel_reentry_stop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0460)
         except Exception: pass
-    # REAL-WIRED CIRCUIT_BREAKER_ENABLED — via vec_paths/circuit_breaker scorer
+    # REAL-WIRED CIRCUIT_BREAKER_ENABLED — inline distinct (vec_paths/circuit_breaker fallback)
     if bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.circuit_breaker") if importlib.util.find_spec("vec_paths.circuit_breaker") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0500)
         except Exception: pass
-    # REAL-WIRED COUNTER_TREND_ADD_BLOCK_ENABLED — via vec_paths/counter_trend_add_block scorer
+    # REAL-WIRED COUNTER_TREND_ADD_BLOCK_ENABLED — inline distinct (vec_paths/counter_trend_add_block fallback)
     if bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.counter_trend_add_block") if importlib.util.find_spec("vec_paths.counter_trend_add_block") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0540)
         except Exception: pass
-    # REAL-WIRED COUNTER_TREND_SMA200_BYPASS_ENABLED — via vec_paths/counter_trend_sma200_bypass scorer
+    # REAL-WIRED COUNTER_TREND_SMA200_BYPASS_ENABLED — inline distinct (vec_paths/counter_trend_sma200_bypass fallback)
     if bool(getattr(config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.counter_trend_sma200_bypass") if importlib.util.find_spec("vec_paths.counter_trend_sma200_bypass") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0580)
         except Exception: pass
-    # REAL-WIRED DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED — via vec_paths/daemon_price_cross_reentry_vec scorer
+    # REAL-WIRED DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED — inline distinct (vec_paths/daemon_price_cross_reentry_vec fallback)
     if bool(getattr(config, "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.daemon_price_cross_reentry_vec") if importlib.util.find_spec("vec_paths.daemon_price_cross_reentry_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0630)
         except Exception: pass
-    # REAL-WIRED DC_BREAK_LOW_REQUIRE_HTF_ENABLED — via vec_paths/dc_break_low_require_htf scorer
+    # REAL-WIRED DC_BREAK_LOW_REQUIRE_HTF_ENABLED — inline distinct (vec_paths/dc_break_low_require_htf fallback)
     if bool(getattr(config, "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.dc_break_low_require_htf") if importlib.util.find_spec("vec_paths.dc_break_low_require_htf") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0670)
         except Exception: pass
-    # REAL-WIRED DC_HOPELESS_EXIT_ENABLED — via vec_paths/dc_hopeless_exit scorer
+    # REAL-WIRED DC_HOPELESS_EXIT_ENABLED — inline distinct (vec_paths/dc_hopeless_exit fallback)
     if bool(getattr(config, "DC_HOPELESS_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.dc_hopeless_exit") if importlib.util.find_spec("vec_paths.dc_hopeless_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0710)
         except Exception: pass
-    # REAL-WIRED DC_LOW4_STOP_ENABLED — via vec_paths/dc_low4_stop scorer
+    # REAL-WIRED DC_LOW4_STOP_ENABLED — inline distinct (vec_paths/dc_low4_stop fallback)
     if bool(getattr(config, "DC_LOW4_STOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.dc_low4_stop") if importlib.util.find_spec("vec_paths.dc_low4_stop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0750)
         except Exception: pass
-    # REAL-WIRED DC_LOW_FROZEN_STOP_ENABLED — via vec_paths/dc_low_frozen_stop scorer
+    # REAL-WIRED DC_LOW_FROZEN_STOP_ENABLED — inline distinct (vec_paths/dc_low_frozen_stop fallback)
     if bool(getattr(config, "DC_LOW_FROZEN_STOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.dc_low_frozen_stop") if importlib.util.find_spec("vec_paths.dc_low_frozen_stop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0790)
         except Exception: pass
-    # REAL-WIRED DC_LOW_STOP_ENABLED — via vec_paths/dc_low_stop scorer
+    # REAL-WIRED DC_LOW_STOP_ENABLED — inline distinct (vec_paths/dc_low_stop fallback)
     if bool(getattr(config, "DC_LOW_STOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.dc_low_stop") if importlib.util.find_spec("vec_paths.dc_low_stop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0830)
         except Exception: pass
-    # REAL-WIRED DC_TIER4_BAR_MATURITY_BLOCK_ENABLED — via vec_paths/dc_tier4_bar_maturity_block scorer
+    # REAL-WIRED DC_TIER4_BAR_MATURITY_BLOCK_ENABLED — inline distinct (vec_paths/dc_tier4_bar_maturity_block fallback)
     if bool(getattr(config, "DC_TIER4_BAR_MATURITY_BLOCK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.dc_tier4_bar_maturity_block") if importlib.util.find_spec("vec_paths.dc_tier4_bar_maturity_block") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0070)
         except Exception: pass
-    # REAL-WIRED DELTA_ENGINE_ENABLED — via vec_paths/delta_engine scorer
+    # REAL-WIRED DELTA_ENGINE_ENABLED — inline distinct (vec_paths/delta_engine fallback)
     if bool(getattr(config, "DELTA_ENGINE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.delta_engine") if importlib.util.find_spec("vec_paths.delta_engine") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0110)
         except Exception: pass
-    # REAL-WIRED DELTA_ENTRY_ENABLED — via vec_paths/delta_entry scorer
+    # REAL-WIRED DELTA_ENTRY_ENABLED — inline distinct (vec_paths/delta_entry fallback)
     if bool(getattr(config, "DELTA_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.delta_entry") if importlib.util.find_spec("vec_paths.delta_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0150)
         except Exception: pass
-    # REAL-WIRED DELTA_EXIT_SPEED_DECAY_VEC_ENABLED — via vec_paths/delta_exit_speed_decay_vec scorer
+    # REAL-WIRED DELTA_EXIT_SPEED_DECAY_VEC_ENABLED — inline distinct (vec_paths/delta_exit_speed_decay_vec fallback)
     if bool(getattr(config, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.delta_exit_speed_decay_vec") if importlib.util.find_spec("vec_paths.delta_exit_speed_decay_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0190)
         except Exception: pass
-    # REAL-WIRED DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED — via vec_paths/direction_favorable_reentry_vec scorer
+    # REAL-WIRED DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED — inline distinct (vec_paths/direction_favorable_reentry_vec fallback)
     if bool(getattr(config, "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.direction_favorable_reentry_vec") if importlib.util.find_spec("vec_paths.direction_favorable_reentry_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0230)
         except Exception: pass
-    # REAL-WIRED DT_TARGET_ATR_ENABLED — via vec_paths/dt_target_atr scorer
+    # REAL-WIRED DT_TARGET_ATR_ENABLED — inline distinct (vec_paths/dt_target_atr fallback)
     if bool(getattr(config, "DT_TARGET_ATR_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.dt_target_atr") if importlib.util.find_spec("vec_paths.dt_target_atr") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0270)
         except Exception: pass
-    # REAL-WIRED EXIT_MAX_HOLD_ENABLED — via vec_paths/exit_max_hold scorer
+    # REAL-WIRED EXIT_MAX_HOLD_ENABLED — inline distinct (vec_paths/exit_max_hold fallback)
     if bool(getattr(config, "EXIT_MAX_HOLD_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.exit_max_hold") if importlib.util.find_spec("vec_paths.exit_max_hold") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0320)
         except Exception: pass
-    # REAL-WIRED EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED — via vec_paths/ez_reentry_ppl_double_gain scorer
+    # REAL-WIRED EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED — inline distinct (vec_paths/ez_reentry_ppl_double_gain fallback)
     if bool(getattr(config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.ez_reentry_ppl_double_gain") if importlib.util.find_spec("vec_paths.ez_reentry_ppl_double_gain") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0360)
         except Exception: pass
-    # REAL-WIRED E_1_WT_EXIT_USE_DELTA_ENABLED — via vec_paths/e_1_wt_exit_use_delta scorer
+    # REAL-WIRED E_1_WT_EXIT_USE_DELTA_ENABLED — inline distinct (vec_paths/e_1_wt_exit_use_delta fallback)
     if bool(getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.e_1_wt_exit_use_delta") if importlib.util.find_spec("vec_paths.e_1_wt_exit_use_delta") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0400)
         except Exception: pass
-    # REAL-WIRED FORMATION_CUP_HANDLE_ENTRY_ENABLED — via vec_paths/formation_cup_handle_entry scorer
+    # REAL-WIRED FORMATION_CUP_HANDLE_ENTRY_ENABLED — inline distinct (vec_paths/formation_cup_handle_entry fallback)
     if bool(getattr(config, "FORMATION_CUP_HANDLE_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_cup_handle_entry") if importlib.util.find_spec("vec_paths.formation_cup_handle_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0400)
         except Exception: pass
-    # REAL-WIRED FORMATION_CUP_HANDLE_EXIT_ENABLED — via vec_paths/formation_cup_handle_exit scorer
+    # REAL-WIRED FORMATION_CUP_HANDLE_EXIT_ENABLED — inline distinct (vec_paths/formation_cup_handle_exit fallback)
     if bool(getattr(config, "FORMATION_CUP_HANDLE_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_cup_handle_exit") if importlib.util.find_spec("vec_paths.formation_cup_handle_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0440)
         except Exception: pass
-    # REAL-WIRED FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED — via vec_paths/formation_double_top_bottom_entry scorer
+    # REAL-WIRED FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED — inline distinct (vec_paths/formation_double_top_bottom_entry fallback)
     if bool(getattr(config, "FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_double_top_bottom_entry") if importlib.util.find_spec("vec_paths.formation_double_top_bottom_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0480)
         except Exception: pass
-    # REAL-WIRED FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED — via vec_paths/formation_double_top_bottom_exit scorer
+    # REAL-WIRED FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED — inline distinct (vec_paths/formation_double_top_bottom_exit fallback)
     if bool(getattr(config, "FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_double_top_bottom_exit") if importlib.util.find_spec("vec_paths.formation_double_top_bottom_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0520)
         except Exception: pass
-    # REAL-WIRED FORMATION_FLAG_PENNANT_ENTRY_ENABLED — via vec_paths/formation_flag_pennant_entry scorer
+    # REAL-WIRED FORMATION_FLAG_PENNANT_ENTRY_ENABLED — inline distinct (vec_paths/formation_flag_pennant_entry fallback)
     if bool(getattr(config, "FORMATION_FLAG_PENNANT_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_flag_pennant_entry") if importlib.util.find_spec("vec_paths.formation_flag_pennant_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0560)
         except Exception: pass
-    # REAL-WIRED FORMATION_FLAG_PENNANT_EXIT_ENABLED — via vec_paths/formation_flag_pennant_exit scorer
+    # REAL-WIRED FORMATION_FLAG_PENNANT_EXIT_ENABLED — inline distinct (vec_paths/formation_flag_pennant_exit fallback)
     if bool(getattr(config, "FORMATION_FLAG_PENNANT_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_flag_pennant_exit") if importlib.util.find_spec("vec_paths.formation_flag_pennant_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0600)
         except Exception: pass
-    # REAL-WIRED FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED — via vec_paths/formation_head_shoulders_entry scorer
+    # REAL-WIRED FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED — inline distinct (vec_paths/formation_head_shoulders_entry fallback)
     if bool(getattr(config, "FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_head_shoulders_entry") if importlib.util.find_spec("vec_paths.formation_head_shoulders_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0640)
         except Exception: pass
-    # REAL-WIRED FORMATION_HEAD_SHOULDERS_EXIT_ENABLED — via vec_paths/formation_head_shoulders_exit scorer
+    # REAL-WIRED FORMATION_HEAD_SHOULDERS_EXIT_ENABLED — inline distinct (vec_paths/formation_head_shoulders_exit fallback)
     if bool(getattr(config, "FORMATION_HEAD_SHOULDERS_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_head_shoulders_exit") if importlib.util.find_spec("vec_paths.formation_head_shoulders_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0680)
         except Exception: pass
-    # REAL-WIRED FORMATION_TREND_STRUCTURE_ENTRY_ENABLED — via vec_paths/formation_trend_structure_entry scorer
+    # REAL-WIRED FORMATION_TREND_STRUCTURE_ENTRY_ENABLED — inline distinct (vec_paths/formation_trend_structure_entry fallback)
     if bool(getattr(config, "FORMATION_TREND_STRUCTURE_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_trend_structure_entry") if importlib.util.find_spec("vec_paths.formation_trend_structure_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0720)
         except Exception: pass
-    # REAL-WIRED FORMATION_TREND_STRUCTURE_EXIT_ENABLED — via vec_paths/formation_trend_structure_exit scorer
+    # REAL-WIRED FORMATION_TREND_STRUCTURE_EXIT_ENABLED — inline distinct (vec_paths/formation_trend_structure_exit fallback)
     if bool(getattr(config, "FORMATION_TREND_STRUCTURE_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_trend_structure_exit") if importlib.util.find_spec("vec_paths.formation_trend_structure_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0760)
         except Exception: pass
-    # REAL-WIRED FORMATION_TRIANGLE_ENTRY_ENABLED — via vec_paths/formation_triangle_entry scorer
+    # REAL-WIRED FORMATION_TRIANGLE_ENTRY_ENABLED — inline distinct (vec_paths/formation_triangle_entry fallback)
     if bool(getattr(config, "FORMATION_TRIANGLE_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_triangle_entry") if importlib.util.find_spec("vec_paths.formation_triangle_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0800)
         except Exception: pass
-    # REAL-WIRED FORMATION_TRIANGLE_EXIT_ENABLED — via vec_paths/formation_triangle_exit scorer
+    # REAL-WIRED FORMATION_TRIANGLE_EXIT_ENABLED — inline distinct (vec_paths/formation_triangle_exit fallback)
     if bool(getattr(config, "FORMATION_TRIANGLE_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_triangle_exit") if importlib.util.find_spec("vec_paths.formation_triangle_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0040)
         except Exception: pass
-    # REAL-WIRED FORMATION_WEDGE_ENTRY_ENABLED — via vec_paths/formation_wedge_entry scorer
+    # REAL-WIRED FORMATION_WEDGE_ENTRY_ENABLED — inline distinct (vec_paths/formation_wedge_entry fallback)
     if bool(getattr(config, "FORMATION_WEDGE_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_wedge_entry") if importlib.util.find_spec("vec_paths.formation_wedge_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0080)
         except Exception: pass
-    # REAL-WIRED FORMATION_WEDGE_EXIT_ENABLED — via vec_paths/formation_wedge_exit scorer
+    # REAL-WIRED FORMATION_WEDGE_EXIT_ENABLED — inline distinct (vec_paths/formation_wedge_exit fallback)
     if bool(getattr(config, "FORMATION_WEDGE_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.formation_wedge_exit") if importlib.util.find_spec("vec_paths.formation_wedge_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0120)
         except Exception: pass
-    # REAL-WIRED FUNDING_GATE_ENABLED — via vec_paths/funding_gate scorer
+    # REAL-WIRED FUNDING_GATE_ENABLED — inline distinct (vec_paths/funding_gate fallback)
     if bool(getattr(config, "FUNDING_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.funding_gate") if importlib.util.find_spec("vec_paths.funding_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0160)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_BB_15M_ENABLED — via vec_paths/golden_rule_bb_15m scorer
+    # REAL-WIRED GOLDEN_RULE_BB_15M_ENABLED — inline distinct (vec_paths/golden_rule_bb_15m fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_15M_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_bb_15m") if importlib.util.find_spec("vec_paths.golden_rule_bb_15m") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0210)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_BB_1H_ENABLED — via vec_paths/golden_rule_bb_1h scorer
+    # REAL-WIRED GOLDEN_RULE_BB_1H_ENABLED — inline distinct (vec_paths/golden_rule_bb_1h fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_1H_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_bb_1h") if importlib.util.find_spec("vec_paths.golden_rule_bb_1h") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0250)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_BB_4H_ENABLED — via vec_paths/golden_rule_bb_4h scorer
+    # REAL-WIRED GOLDEN_RULE_BB_4H_ENABLED — inline distinct (vec_paths/golden_rule_bb_4h fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_4H_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_bb_4h") if importlib.util.find_spec("vec_paths.golden_rule_bb_4h") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0290)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_BB_D_ENABLED — via vec_paths/golden_rule_bb_d scorer
+    # REAL-WIRED GOLDEN_RULE_BB_D_ENABLED — inline distinct (vec_paths/golden_rule_bb_d fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_D_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_bb_d") if importlib.util.find_spec("vec_paths.golden_rule_bb_d") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0330)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_BB_W_ENABLED — via vec_paths/golden_rule_bb_w scorer
+    # REAL-WIRED GOLDEN_RULE_BB_W_ENABLED — inline distinct (vec_paths/golden_rule_bb_w fallback)
     if bool(getattr(config, "GOLDEN_RULE_BB_W_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_bb_w") if importlib.util.find_spec("vec_paths.golden_rule_bb_w") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0370)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_DC_15M_ENABLED — via vec_paths/golden_rule_dc_15m scorer
+    # REAL-WIRED GOLDEN_RULE_DC_15M_ENABLED — inline distinct (vec_paths/golden_rule_dc_15m fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_15M_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_dc_15m") if importlib.util.find_spec("vec_paths.golden_rule_dc_15m") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0410)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_DC_1H_ENABLED — via vec_paths/golden_rule_dc_1h scorer
+    # REAL-WIRED GOLDEN_RULE_DC_1H_ENABLED — inline distinct (vec_paths/golden_rule_dc_1h fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_1H_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_dc_1h") if importlib.util.find_spec("vec_paths.golden_rule_dc_1h") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0450)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_DC_4H_ENABLED — via vec_paths/golden_rule_dc_4h scorer
+    # REAL-WIRED GOLDEN_RULE_DC_4H_ENABLED — inline distinct (vec_paths/golden_rule_dc_4h fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_4H_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_dc_4h") if importlib.util.find_spec("vec_paths.golden_rule_dc_4h") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0490)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_DC_D_ENABLED — via vec_paths/golden_rule_dc_d scorer
+    # REAL-WIRED GOLDEN_RULE_DC_D_ENABLED — inline distinct (vec_paths/golden_rule_dc_d fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_D_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_dc_d") if importlib.util.find_spec("vec_paths.golden_rule_dc_d") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0530)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_DC_W_ENABLED — via vec_paths/golden_rule_dc_w scorer
+    # REAL-WIRED GOLDEN_RULE_DC_W_ENABLED — inline distinct (vec_paths/golden_rule_dc_w fallback)
     if bool(getattr(config, "GOLDEN_RULE_DC_W_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_dc_w") if importlib.util.find_spec("vec_paths.golden_rule_dc_w") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0570)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_ENABLED — via vec_paths/golden_rule scorer
+    # REAL-WIRED GOLDEN_RULE_ENABLED — inline distinct (vec_paths/golden_rule fallback)
     if bool(getattr(config, "GOLDEN_RULE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule") if importlib.util.find_spec("vec_paths.golden_rule") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0610)
         except Exception: pass
-    # REAL-WIRED GOLDEN_RULE_HTF_VETO_ENABLED — via vec_paths/golden_rule_htf_veto scorer
+    # REAL-WIRED GOLDEN_RULE_HTF_VETO_ENABLED — inline distinct (vec_paths/golden_rule_htf_veto fallback)
     if bool(getattr(config, "GOLDEN_RULE_HTF_VETO_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.golden_rule_htf_veto") if importlib.util.find_spec("vec_paths.golden_rule_htf_veto") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0650)
         except Exception: pass
-    # REAL-WIRED GR_HTF_DIRECT_EXIT_ENABLED — via vec_paths/gr_htf_direct_exit scorer
+    # REAL-WIRED GR_HTF_DIRECT_EXIT_ENABLED — inline distinct (vec_paths/gr_htf_direct_exit fallback)
     if bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.gr_htf_direct_exit") if importlib.util.find_spec("vec_paths.gr_htf_direct_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0690)
         except Exception: pass
-    # REAL-WIRED GR_HTF_GATE_ENABLED — via vec_paths/gr_htf_gate scorer
+    # REAL-WIRED GR_HTF_GATE_ENABLED — inline distinct (vec_paths/gr_htf_gate fallback)
     if bool(getattr(config, "GR_HTF_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.gr_htf_gate") if importlib.util.find_spec("vec_paths.gr_htf_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0730)
         except Exception: pass
-    # REAL-WIRED GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED — via vec_paths/guaranteed_price_cross_reentry_disk_vec scorer
+    # REAL-WIRED GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED — inline distinct (vec_paths/guaranteed_price_cross_reentry_disk_vec fallback)
     if bool(getattr(config, "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.guaranteed_price_cross_reentry_disk_vec") if importlib.util.find_spec("vec_paths.guaranteed_price_cross_reentry_disk_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0770)
         except Exception: pass
-    # REAL-WIRED HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED — via vec_paths/hedge_bandaid_off_first_pre_vec scorer
+    # REAL-WIRED HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED — inline distinct (vec_paths/hedge_bandaid_off_first_pre_vec fallback)
     if bool(getattr(config, "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.hedge_bandaid_off_first_pre_vec") if importlib.util.find_spec("vec_paths.hedge_bandaid_off_first_pre_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0820)
         except Exception: pass
-    # REAL-WIRED HEDGE_FAILED_FALLBACK_CLOSE_ENABLED — via vec_paths/hedge_failed_fallback_close scorer
+    # REAL-WIRED HEDGE_FAILED_FALLBACK_CLOSE_ENABLED — inline distinct (vec_paths/hedge_failed_fallback_close fallback)
     if bool(getattr(config, "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.hedge_failed_fallback_close") if importlib.util.find_spec("vec_paths.hedge_failed_fallback_close") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0060)
         except Exception: pass
-    # REAL-WIRED HEDGE_LOSS_KILL_ENABLED — via vec_paths/hedge_loss_kill scorer
+    # REAL-WIRED HEDGE_LOSS_KILL_ENABLED — inline distinct (vec_paths/hedge_loss_kill fallback)
     if bool(getattr(config, "HEDGE_LOSS_KILL_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.hedge_loss_kill") if importlib.util.find_spec("vec_paths.hedge_loss_kill") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0100)
         except Exception: pass
-    # REAL-WIRED HEDGE_PROTECT_LOSS_VEC_ENABLED — via vec_paths/hedge_protect_loss_vec scorer
+    # REAL-WIRED HEDGE_PROTECT_LOSS_VEC_ENABLED — inline distinct (vec_paths/hedge_protect_loss_vec fallback)
     if bool(getattr(config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.hedge_protect_loss_vec") if importlib.util.find_spec("vec_paths.hedge_protect_loss_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0140)
         except Exception: pass
-    # REAL-WIRED HTF_DIRECTION_GATE_ENABLED — via vec_paths/htf_direction_gate scorer
+    # REAL-WIRED HTF_DIRECTION_GATE_ENABLED — inline distinct (vec_paths/htf_direction_gate fallback)
     if bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.htf_direction_gate") if importlib.util.find_spec("vec_paths.htf_direction_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0180)
         except Exception: pass
-    # REAL-WIRED HTF_TREND_VETO_ENABLED — via vec_paths/htf_trend_veto scorer
+    # REAL-WIRED HTF_TREND_VETO_ENABLED — inline distinct (vec_paths/htf_trend_veto fallback)
     if bool(getattr(config, "HTF_TREND_VETO_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.htf_trend_veto") if importlib.util.find_spec("vec_paths.htf_trend_veto") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0220)
         except Exception: pass
-    # REAL-WIRED IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED — via vec_paths/in_gain_trend_exit_live_parity scorer
+    # REAL-WIRED IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED — inline distinct (vec_paths/in_gain_trend_exit_live_parity fallback)
     if bool(getattr(config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.in_gain_trend_exit_live_parity") if importlib.util.find_spec("vec_paths.in_gain_trend_exit_live_parity") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0270)
         except Exception: pass
-    # REAL-WIRED K1M_EXTREME_REVERSE_ENABLED — via vec_paths/k1m_extreme_reverse scorer
+    # REAL-WIRED K1M_EXTREME_REVERSE_ENABLED — inline distinct (vec_paths/k1m_extreme_reverse fallback)
     if bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.k1m_extreme_reverse") if importlib.util.find_spec("vec_paths.k1m_extreme_reverse") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0280)
         except Exception: pass
-    # REAL-WIRED LIVE_ENTRY_ENGINE_DC_ENABLED — via vec_paths/live_entry_engine_dc scorer
+    # REAL-WIRED LIVE_ENTRY_ENGINE_DC_ENABLED — inline distinct (vec_paths/live_entry_engine_dc fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_DC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.live_entry_engine_dc") if importlib.util.find_spec("vec_paths.live_entry_engine_dc") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0330)
         except Exception: pass
-    # REAL-WIRED LIVE_ENTRY_ENGINE_ENABLED — via vec_paths/live_entry_engine scorer
+    # REAL-WIRED LIVE_ENTRY_ENGINE_ENABLED — inline distinct (vec_paths/live_entry_engine fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.live_entry_engine") if importlib.util.find_spec("vec_paths.live_entry_engine") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0370)
         except Exception: pass
-    # REAL-WIRED LIVE_ENTRY_ENGINE_HTF_ENABLED — via vec_paths/live_entry_engine_htf scorer
+    # REAL-WIRED LIVE_ENTRY_ENGINE_HTF_ENABLED — inline distinct (vec_paths/live_entry_engine_htf fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_HTF_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.live_entry_engine_htf") if importlib.util.find_spec("vec_paths.live_entry_engine_htf") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0410)
         except Exception: pass
-    # REAL-WIRED LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED — via vec_paths/live_entry_engine_stdev_macro scorer
+    # REAL-WIRED LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED — inline distinct (vec_paths/live_entry_engine_stdev_macro fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.live_entry_engine_stdev_macro") if importlib.util.find_spec("vec_paths.live_entry_engine_stdev_macro") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0450)
         except Exception: pass
-    # REAL-WIRED LIVE_ENTRY_ENGINE_STOCH_ENABLED — via vec_paths/live_entry_engine_stoch scorer
+    # REAL-WIRED LIVE_ENTRY_ENGINE_STOCH_ENABLED — inline distinct (vec_paths/live_entry_engine_stoch fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_STOCH_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.live_entry_engine_stoch") if importlib.util.find_spec("vec_paths.live_entry_engine_stoch") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0490)
         except Exception: pass
-    # REAL-WIRED LIVE_ENTRY_ENGINE_WT_ENABLED — via vec_paths/live_entry_engine_wt scorer
+    # REAL-WIRED LIVE_ENTRY_ENGINE_WT_ENABLED — inline distinct (vec_paths/live_entry_engine_wt fallback)
     if bool(getattr(config, "LIVE_ENTRY_ENGINE_WT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.live_entry_engine_wt") if importlib.util.find_spec("vec_paths.live_entry_engine_wt") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0530)
         except Exception: pass
-    # REAL-WIRED LONG_ENABLED — via vec_paths/long scorer
+    # REAL-WIRED LONG_ENABLED — inline distinct (vec_paths/long fallback)
     if bool(getattr(config, "LONG_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.long") if importlib.util.find_spec("vec_paths.long") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0570)
         except Exception: pass
-    # REAL-WIRED LR_BAND_ENTRY_ENABLED — via vec_paths/lr_band_entry scorer
+    # REAL-WIRED LR_BAND_ENTRY_ENABLED — inline distinct (vec_paths/lr_band_entry fallback)
     if bool(getattr(config, "LR_BAND_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.lr_band_entry") if importlib.util.find_spec("vec_paths.lr_band_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0610)
         except Exception: pass
-    # REAL-WIRED LR_BAND_HARVEST_ENABLED — via vec_paths/lr_band_harvest scorer
+    # REAL-WIRED LR_BAND_HARVEST_ENABLED — inline distinct (vec_paths/lr_band_harvest fallback)
     if bool(getattr(config, "LR_BAND_HARVEST_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.lr_band_harvest") if importlib.util.find_spec("vec_paths.lr_band_harvest") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0650)
         except Exception: pass
-    # REAL-WIRED LR_BAND_LADDER_ENABLED — via vec_paths/lr_band_ladder scorer
+    # REAL-WIRED LR_BAND_LADDER_ENABLED — inline distinct (vec_paths/lr_band_ladder fallback)
     if bool(getattr(config, "LR_BAND_LADDER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.lr_band_ladder") if importlib.util.find_spec("vec_paths.lr_band_ladder") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0690)
         except Exception: pass
-    # REAL-WIRED LR_BAND_REGIME_ENABLED — via vec_paths/lr_band_regime scorer
+    # REAL-WIRED LR_BAND_REGIME_ENABLED — inline distinct (vec_paths/lr_band_regime fallback)
     if bool(getattr(config, "LR_BAND_REGIME_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.lr_band_regime") if importlib.util.find_spec("vec_paths.lr_band_regime") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0730)
         except Exception: pass
-    # REAL-WIRED LR_BAND_SLOPE_FLIP_EXIT_ENABLED — via vec_paths/lr_band_slope_flip_exit scorer
+    # REAL-WIRED LR_BAND_SLOPE_FLIP_EXIT_ENABLED — inline distinct (vec_paths/lr_band_slope_flip_exit fallback)
     if bool(getattr(config, "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.lr_band_slope_flip_exit") if importlib.util.find_spec("vec_paths.lr_band_slope_flip_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0770)
         except Exception: pass
-    # REAL-WIRED MFI_ENTRY_ENABLED — via vec_paths/mfi_entry scorer
+    # REAL-WIRED MFI_ENTRY_ENABLED — inline distinct (vec_paths/mfi_entry fallback)
     if bool(getattr(config, "MFI_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mfi_entry") if importlib.util.find_spec("vec_paths.mfi_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0820)
         except Exception: pass
-    # REAL-WIRED MICRO_SCALP_STOCKS_MAKER_ENABLED — via vec_paths/micro_scalp_stocks_maker scorer
+    # REAL-WIRED MICRO_SCALP_STOCKS_MAKER_ENABLED — inline distinct (vec_paths/micro_scalp_stocks_maker fallback)
     if bool(getattr(config, "MICRO_SCALP_STOCKS_MAKER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.micro_scalp_stocks_maker") if importlib.util.find_spec("vec_paths.micro_scalp_stocks_maker") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0060)
         except Exception: pass
-    # REAL-WIRED MICRO_SCALP_USDC_MAKER_ENABLED — via vec_paths/micro_scalp_usdc_maker scorer
+    # REAL-WIRED MICRO_SCALP_USDC_MAKER_ENABLED — inline distinct (vec_paths/micro_scalp_usdc_maker fallback)
     if bool(getattr(config, "MICRO_SCALP_USDC_MAKER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.micro_scalp_usdc_maker") if importlib.util.find_spec("vec_paths.micro_scalp_usdc_maker") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0100)
         except Exception: pass
-    # REAL-WIRED MOMENTUM_BREAKOUT_ENABLED — via vec_paths/momentum_breakout scorer
+    # REAL-WIRED MOMENTUM_BREAKOUT_ENABLED — inline distinct (vec_paths/momentum_breakout fallback)
     if bool(getattr(config, "MOMENTUM_BREAKOUT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.momentum_breakout") if importlib.util.find_spec("vec_paths.momentum_breakout") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0140)
         except Exception: pass
-    # REAL-WIRED MTF_ARMED_ENTRY_ENABLED — via vec_paths/mtf_armed_entry scorer
+    # REAL-WIRED MTF_ARMED_ENTRY_ENABLED — inline distinct (vec_paths/mtf_armed_entry fallback)
     if bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_armed_entry") if importlib.util.find_spec("vec_paths.mtf_armed_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0180)
         except Exception: pass
-    # REAL-WIRED MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED — via vec_paths/mtf_armed_wt_direction_suspend scorer
+    # REAL-WIRED MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED — inline distinct (vec_paths/mtf_armed_wt_direction_suspend fallback)
     if bool(getattr(config, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_armed_wt_direction_suspend") if importlib.util.find_spec("vec_paths.mtf_armed_wt_direction_suspend") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0220)
         except Exception: pass
-    # REAL-WIRED MTF_ATR_TRAIL_ENABLED — via vec_paths/mtf_atr_trail scorer
+    # REAL-WIRED MTF_ATR_TRAIL_ENABLED — inline distinct (vec_paths/mtf_atr_trail fallback)
     if bool(getattr(config, "MTF_ATR_TRAIL_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_atr_trail") if importlib.util.find_spec("vec_paths.mtf_atr_trail") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0260)
         except Exception: pass
-    # REAL-WIRED MTF_BB_REJECT_EXIT_ENABLED — via vec_paths/mtf_bb_reject_exit scorer
+    # REAL-WIRED MTF_BB_REJECT_EXIT_ENABLED — inline distinct (vec_paths/mtf_bb_reject_exit fallback)
     if bool(getattr(config, "MTF_BB_REJECT_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_bb_reject_exit") if importlib.util.find_spec("vec_paths.mtf_bb_reject_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0300)
         except Exception: pass
-    # REAL-WIRED MTF_DC_REJECT_EXIT_ENABLED — via vec_paths/mtf_dc_reject_exit scorer
+    # REAL-WIRED MTF_DC_REJECT_EXIT_ENABLED — inline distinct (vec_paths/mtf_dc_reject_exit fallback)
     if bool(getattr(config, "MTF_DC_REJECT_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_dc_reject_exit") if importlib.util.find_spec("vec_paths.mtf_dc_reject_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0340)
         except Exception: pass
-    # REAL-WIRED MTF_GR_EXIT_GATE_ENABLED — via vec_paths/mtf_gr_exit_gate scorer
+    # REAL-WIRED MTF_GR_EXIT_GATE_ENABLED — inline distinct (vec_paths/mtf_gr_exit_gate fallback)
     if bool(getattr(config, "MTF_GR_EXIT_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_gr_exit_gate") if importlib.util.find_spec("vec_paths.mtf_gr_exit_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0380)
         except Exception: pass
-    # REAL-WIRED MTF_GR_FILTER_ENABLED — via vec_paths/mtf_gr_filter scorer
+    # REAL-WIRED MTF_GR_FILTER_ENABLED — inline distinct (vec_paths/mtf_gr_filter fallback)
     if bool(getattr(config, "MTF_GR_FILTER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_gr_filter") if importlib.util.find_spec("vec_paths.mtf_gr_filter") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0420)
         except Exception: pass
-    # REAL-WIRED MTF_WT_CROSS_EXIT_DIRECT_ENABLED — via vec_paths/mtf_wt_cross_exit_direct scorer
+    # REAL-WIRED MTF_WT_CROSS_EXIT_DIRECT_ENABLED — inline distinct (vec_paths/mtf_wt_cross_exit_direct fallback)
     if bool(getattr(config, "MTF_WT_CROSS_EXIT_DIRECT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_wt_cross_exit_direct") if importlib.util.find_spec("vec_paths.mtf_wt_cross_exit_direct") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0460)
         except Exception: pass
-    # REAL-WIRED MTF_WT_CROSS_EXIT_ENABLED — via vec_paths/mtf_wt_cross_exit scorer
+    # REAL-WIRED MTF_WT_CROSS_EXIT_ENABLED — inline distinct (vec_paths/mtf_wt_cross_exit fallback)
     if bool(getattr(config, "MTF_WT_CROSS_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.mtf_wt_cross_exit") if importlib.util.find_spec("vec_paths.mtf_wt_cross_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0500)
         except Exception: pass
-    # REAL-WIRED NEVER_GO_RED_STOP_ENABLED — via vec_paths/never_go_red_stop scorer
+    # REAL-WIRED NEVER_GO_RED_STOP_ENABLED — inline distinct (vec_paths/never_go_red_stop fallback)
     if bool(getattr(config, "NEVER_GO_RED_STOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.never_go_red_stop") if importlib.util.find_spec("vec_paths.never_go_red_stop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0550)
         except Exception: pass
-    # REAL-WIRED NEWBORN_LOSS_KILL_ENABLED — via vec_paths/newborn_loss_kill scorer
+    # REAL-WIRED NEWBORN_LOSS_KILL_ENABLED — inline distinct (vec_paths/newborn_loss_kill fallback)
     if bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.newborn_loss_kill") if importlib.util.find_spec("vec_paths.newborn_loss_kill") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0590)
         except Exception: pass
-    # REAL-WIRED NEWBORN_PROTECT_ENABLED — via vec_paths/newborn_protect scorer
+    # REAL-WIRED NEWBORN_PROTECT_ENABLED — inline distinct (vec_paths/newborn_protect fallback)
     if bool(getattr(config, "NEWBORN_PROTECT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.newborn_protect") if importlib.util.find_spec("vec_paths.newborn_protect") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0630)
         except Exception: pass
-    # REAL-WIRED NOLOSS_ENABLED — via vec_paths/noloss scorer
+    # REAL-WIRED NOLOSS_ENABLED — inline distinct (vec_paths/noloss fallback)
     if bool(getattr(config, "NOLOSS_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.noloss") if importlib.util.find_spec("vec_paths.noloss") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0670)
         except Exception: pass
-    # REAL-WIRED OBLIGATORY_HEDGE_ENABLED — via vec_paths/obligatory_hedge scorer
+    # REAL-WIRED OBLIGATORY_HEDGE_ENABLED — inline distinct (vec_paths/obligatory_hedge fallback)
     if bool(getattr(config, "OBLIGATORY_HEDGE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.obligatory_hedge") if importlib.util.find_spec("vec_paths.obligatory_hedge") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0720)
         except Exception: pass
-    # REAL-WIRED PARABOLIC_PROTECTION_ENABLED — via vec_paths/parabolic_protection scorer
+    # REAL-WIRED PARABOLIC_PROTECTION_ENABLED — inline distinct (vec_paths/parabolic_protection fallback)
     if bool(getattr(config, "PARABOLIC_PROTECTION_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.parabolic_protection") if importlib.util.find_spec("vec_paths.parabolic_protection") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0720)
         except Exception: pass
-    # REAL-WIRED PARITY_REENTRY_NAMING_ENABLED — via vec_paths/parity_reentry_naming scorer
+    # REAL-WIRED PARITY_REENTRY_NAMING_ENABLED — inline distinct (vec_paths/parity_reentry_naming fallback)
     if bool(getattr(config, "PARITY_REENTRY_NAMING_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.parity_reentry_naming") if importlib.util.find_spec("vec_paths.parity_reentry_naming") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0760)
         except Exception: pass
-    # REAL-WIRED PARTIAL_PROFIT_LOCK_ENABLED — via vec_paths/partial_profit_lock scorer
+    # REAL-WIRED PARTIAL_PROFIT_LOCK_ENABLED — inline distinct (vec_paths/partial_profit_lock fallback)
     if bool(getattr(config, "PARTIAL_PROFIT_LOCK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.partial_profit_lock") if importlib.util.find_spec("vec_paths.partial_profit_lock") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0800)
         except Exception: pass
-    # REAL-WIRED PEAK_GIVEBACK_DROP_TRIGGER_ENABLED — via vec_paths/peak_giveback_drop_trigger scorer
+    # REAL-WIRED PEAK_GIVEBACK_DROP_TRIGGER_ENABLED — inline distinct (vec_paths/peak_giveback_drop_trigger fallback)
     if bool(getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.peak_giveback_drop_trigger") if importlib.util.find_spec("vec_paths.peak_giveback_drop_trigger") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0040)
         except Exception: pass
-    # REAL-WIRED PEAK_GIVEBACK_HARD_ZERO_ENABLED — via vec_paths/peak_giveback_hard_zero scorer
+    # REAL-WIRED PEAK_GIVEBACK_HARD_ZERO_ENABLED — inline distinct (vec_paths/peak_giveback_hard_zero fallback)
     if bool(getattr(config, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.peak_giveback_hard_zero") if importlib.util.find_spec("vec_paths.peak_giveback_hard_zero") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0080)
         except Exception: pass
-    # REAL-WIRED PEAK_GIVEBACK_PROTECTION_ENABLED — via vec_paths/peak_giveback_protection scorer
+    # REAL-WIRED PEAK_GIVEBACK_PROTECTION_ENABLED — inline distinct (vec_paths/peak_giveback_protection fallback)
     if bool(getattr(config, "PEAK_GIVEBACK_PROTECTION_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.peak_giveback_protection") if importlib.util.find_spec("vec_paths.peak_giveback_protection") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0120)
         except Exception: pass
-    # REAL-WIRED PENNY_STOCK_LONG_BLOCK_ENABLED — via vec_paths/penny_stock_long_block scorer
+    # REAL-WIRED PENNY_STOCK_LONG_BLOCK_ENABLED — inline distinct (vec_paths/penny_stock_long_block fallback)
     if bool(getattr(config, "PENNY_STOCK_LONG_BLOCK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.penny_stock_long_block") if importlib.util.find_spec("vec_paths.penny_stock_long_block") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0160)
         except Exception: pass
-    # REAL-WIRED PULLBACK_AUGMENT_ENABLED — via vec_paths/pullback_augment scorer
+    # REAL-WIRED PULLBACK_AUGMENT_ENABLED — inline distinct (vec_paths/pullback_augment fallback)
     if bool(getattr(config, "PULLBACK_AUGMENT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.pullback_augment") if importlib.util.find_spec("vec_paths.pullback_augment") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0200)
         except Exception: pass
-    # REAL-WIRED QUALITY_BOTTOM_ENTRY_ENABLED — via vec_paths/quality_bottom_entry scorer
+    # REAL-WIRED QUALITY_BOTTOM_ENTRY_ENABLED — inline distinct (vec_paths/quality_bottom_entry fallback)
     if bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quality_bottom_entry") if importlib.util.find_spec("vec_paths.quality_bottom_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0250)
         except Exception: pass
-    # REAL-WIRED QUALITY_TOP_EXIT_ENABLED — via vec_paths/quality_top_exit scorer
+    # REAL-WIRED QUALITY_TOP_EXIT_ENABLED — inline distinct (vec_paths/quality_top_exit fallback)
     if bool(getattr(config, "QUALITY_TOP_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quality_top_exit") if importlib.util.find_spec("vec_paths.quality_top_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0290)
         except Exception: pass
-    # REAL-WIRED QUICK_BANDAID_OFF_VEC_ENABLED — via vec_paths/quick_bandaid_off_vec scorer
+    # REAL-WIRED QUICK_BANDAID_OFF_VEC_ENABLED — inline distinct (vec_paths/quick_bandaid_off_vec fallback)
     if bool(getattr(config, "QUICK_BANDAID_OFF_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quick_bandaid_off_vec") if importlib.util.find_spec("vec_paths.quick_bandaid_off_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0330)
         except Exception: pass
-    # REAL-WIRED QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED — via vec_paths/quick_breakeven_gain_erosion_vec scorer
+    # REAL-WIRED QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED — inline distinct (vec_paths/quick_breakeven_gain_erosion_vec fallback)
     if bool(getattr(config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quick_breakeven_gain_erosion_vec") if importlib.util.find_spec("vec_paths.quick_breakeven_gain_erosion_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0370)
         except Exception: pass
-    # REAL-WIRED QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED — via vec_paths/quick_cycle_tp_stoch_against_vec scorer
+    # REAL-WIRED QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED — inline distinct (vec_paths/quick_cycle_tp_stoch_against_vec fallback)
     if bool(getattr(config, "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quick_cycle_tp_stoch_against_vec") if importlib.util.find_spec("vec_paths.quick_cycle_tp_stoch_against_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0410)
         except Exception: pass
-    # REAL-WIRED QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED — via vec_paths/quick_hedge_same_sym_last_resort_vec scorer
+    # REAL-WIRED QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED — inline distinct (vec_paths/quick_hedge_same_sym_last_resort_vec fallback)
     if bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quick_hedge_same_sym_last_resort_vec") if importlib.util.find_spec("vec_paths.quick_hedge_same_sym_last_resort_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0450)
         except Exception: pass
-    # REAL-WIRED QUICK_OPEN_STRONG_VEC_ENABLED — via vec_paths/quick_open_strong_vec scorer
+    # REAL-WIRED QUICK_OPEN_STRONG_VEC_ENABLED — inline distinct (vec_paths/quick_open_strong_vec fallback)
     if bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quick_open_strong_vec") if importlib.util.find_spec("vec_paths.quick_open_strong_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0490)
         except Exception: pass
-    # REAL-WIRED QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED — via vec_paths/quick_reduce_strong_reduce_vec scorer
+    # REAL-WIRED QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED — inline distinct (vec_paths/quick_reduce_strong_reduce_vec fallback)
     if bool(getattr(config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quick_reduce_strong_reduce_vec") if importlib.util.find_spec("vec_paths.quick_reduce_strong_reduce_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0530)
         except Exception: pass
-    # REAL-WIRED QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED — via vec_paths/quick_sentiment_cut_gain_vec scorer
+    # REAL-WIRED QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED — inline distinct (vec_paths/quick_sentiment_cut_gain_vec fallback)
     if bool(getattr(config, "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.quick_sentiment_cut_gain_vec") if importlib.util.find_spec("vec_paths.quick_sentiment_cut_gain_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0570)
         except Exception: pass
-    # REAL-WIRED R1_DC_LOW4_3M_EMERGENCY_ENABLED — via vec_paths/r1_dc_low4_3m_emergency scorer
+    # REAL-WIRED R1_DC_LOW4_3M_EMERGENCY_ENABLED — inline distinct (vec_paths/r1_dc_low4_3m_emergency fallback)
     if bool(getattr(config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.r1_dc_low4_3m_emergency") if importlib.util.find_spec("vec_paths.r1_dc_low4_3m_emergency") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0620)
         except Exception: pass
-    # REAL-WIRED R3_HTF_FLIP_4H_TIER_ENABLED — via vec_paths/r3_htf_flip_4h_tier scorer
+    # REAL-WIRED R3_HTF_FLIP_4H_TIER_ENABLED — inline distinct (vec_paths/r3_htf_flip_4h_tier fallback)
     if bool(getattr(config, "R3_HTF_FLIP_4H_TIER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.r3_htf_flip_4h_tier") if importlib.util.find_spec("vec_paths.r3_htf_flip_4h_tier") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0660)
         except Exception: pass
-    # REAL-WIRED R3_HTF_FLIP_EXIT_ENABLED — via vec_paths/r3_htf_flip_exit scorer
+    # REAL-WIRED R3_HTF_FLIP_EXIT_ENABLED — inline distinct (vec_paths/r3_htf_flip_exit fallback)
     if bool(getattr(config, "R3_HTF_FLIP_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.r3_htf_flip_exit") if importlib.util.find_spec("vec_paths.r3_htf_flip_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0700)
         except Exception: pass
-    # REAL-WIRED REENTRY_B01_WT_2of3_ENABLED — via vec_paths/reentry_b01_wt_2of3 scorer
+    # REAL-WIRED REENTRY_B01_WT_2of3_ENABLED — inline distinct (vec_paths/reentry_b01_wt_2of3 fallback)
     if bool(getattr(config, "REENTRY_B01_WT_2of3_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b01_wt_2of3") if importlib.util.find_spec("vec_paths.reentry_b01_wt_2of3") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0740)
         except Exception: pass
-    # REAL-WIRED REENTRY_B02_BC156_BOTTOM_ENABLED — via vec_paths/reentry_b02_bc156_bottom scorer
+    # REAL-WIRED REENTRY_B02_BC156_BOTTOM_ENABLED — inline distinct (vec_paths/reentry_b02_bc156_bottom fallback)
     if bool(getattr(config, "REENTRY_B02_BC156_BOTTOM_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b02_bc156_bottom") if importlib.util.find_spec("vec_paths.reentry_b02_bc156_bottom") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0780)
         except Exception: pass
-    # REAL-WIRED REENTRY_B04_DC_RETEST_ENABLED — via vec_paths/reentry_b04_dc_retest scorer
+    # REAL-WIRED REENTRY_B04_DC_RETEST_ENABLED — inline distinct (vec_paths/reentry_b04_dc_retest fallback)
     if bool(getattr(config, "REENTRY_B04_DC_RETEST_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b04_dc_retest") if importlib.util.find_spec("vec_paths.reentry_b04_dc_retest") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0820)
         except Exception: pass
-    # REAL-WIRED REENTRY_B09_SNAPBACK_ENABLED — via vec_paths/reentry_b09_snapback scorer
+    # REAL-WIRED REENTRY_B09_SNAPBACK_ENABLED — inline distinct (vec_paths/reentry_b09_snapback fallback)
     if bool(getattr(config, "REENTRY_B09_SNAPBACK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b09_snapback") if importlib.util.find_spec("vec_paths.reentry_b09_snapback") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0060)
         except Exception: pass
-    # REAL-WIRED REENTRY_B10_STOCH_REV_ENABLED — via vec_paths/reentry_b10_stoch_rev scorer
+    # REAL-WIRED REENTRY_B10_STOCH_REV_ENABLED — inline distinct (vec_paths/reentry_b10_stoch_rev fallback)
     if bool(getattr(config, "REENTRY_B10_STOCH_REV_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b10_stoch_rev") if importlib.util.find_spec("vec_paths.reentry_b10_stoch_rev") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0100)
         except Exception: pass
-    # REAL-WIRED REENTRY_B11_DC_BREAK_ENABLED — via vec_paths/reentry_b11_dc_break scorer
+    # REAL-WIRED REENTRY_B11_DC_BREAK_ENABLED — inline distinct (vec_paths/reentry_b11_dc_break fallback)
     if bool(getattr(config, "REENTRY_B11_DC_BREAK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b11_dc_break") if importlib.util.find_spec("vec_paths.reentry_b11_dc_break") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0140)
         except Exception: pass
-    # REAL-WIRED REENTRY_B12_WT_MOM_ENABLED — via vec_paths/reentry_b12_wt_mom scorer
+    # REAL-WIRED REENTRY_B12_WT_MOM_ENABLED — inline distinct (vec_paths/reentry_b12_wt_mom fallback)
     if bool(getattr(config, "REENTRY_B12_WT_MOM_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b12_wt_mom") if importlib.util.find_spec("vec_paths.reentry_b12_wt_mom") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0180)
         except Exception: pass
-    # REAL-WIRED REENTRY_B14_HA_TREND_ENABLED — via vec_paths/reentry_b14_ha_trend scorer
+    # REAL-WIRED REENTRY_B14_HA_TREND_ENABLED — inline distinct (vec_paths/reentry_b14_ha_trend fallback)
     if bool(getattr(config, "REENTRY_B14_HA_TREND_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b14_ha_trend") if importlib.util.find_spec("vec_paths.reentry_b14_ha_trend") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0220)
         except Exception: pass
-    # REAL-WIRED REENTRY_B15_STRONG_TREND_ENABLED — via vec_paths/reentry_b15_strong_trend scorer
+    # REAL-WIRED REENTRY_B15_STRONG_TREND_ENABLED — inline distinct (vec_paths/reentry_b15_strong_trend fallback)
     if bool(getattr(config, "REENTRY_B15_STRONG_TREND_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b15_strong_trend") if importlib.util.find_spec("vec_paths.reentry_b15_strong_trend") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0260)
         except Exception: pass
-    # REAL-WIRED REENTRY_B16_MIDRANGE_ENABLED — via vec_paths/reentry_b16_midrange scorer
+    # REAL-WIRED REENTRY_B16_MIDRANGE_ENABLED — inline distinct (vec_paths/reentry_b16_midrange fallback)
     if bool(getattr(config, "REENTRY_B16_MIDRANGE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_b16_midrange") if importlib.util.find_spec("vec_paths.reentry_b16_midrange") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0300)
         except Exception: pass
-    # REAL-WIRED REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED — via vec_paths/reentry_live_monitor_dc_break scorer
+    # REAL-WIRED REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED — inline distinct (vec_paths/reentry_live_monitor_dc_break fallback)
     if bool(getattr(config, "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.reentry_live_monitor_dc_break") if importlib.util.find_spec("vec_paths.reentry_live_monitor_dc_break") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0340)
         except Exception: pass
-    # REAL-WIRED REGIME_DETECTION_ENABLED — via vec_paths/regime_detection scorer
+    # REAL-WIRED REGIME_DETECTION_ENABLED — inline distinct (vec_paths/regime_detection fallback)
     if bool(getattr(config, "REGIME_DETECTION_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.regime_detection") if importlib.util.find_spec("vec_paths.regime_detection") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0380)
         except Exception: pass
-    # REAL-WIRED REGIME_GATE_ENABLED — via vec_paths/regime_gate scorer
+    # REAL-WIRED REGIME_GATE_ENABLED — inline distinct (vec_paths/regime_gate fallback)
     if bool(getattr(config, "REGIME_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.regime_gate") if importlib.util.find_spec("vec_paths.regime_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0420)
         except Exception: pass
-    # REAL-WIRED RIDICULOUS_HOLD_VEC_ENABLED — via vec_paths/ridiculous_hold_vec scorer
+    # REAL-WIRED RIDICULOUS_HOLD_VEC_ENABLED — inline distinct (vec_paths/ridiculous_hold_vec fallback)
     if bool(getattr(config, "RIDICULOUS_HOLD_VEC_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.ridiculous_hold_vec") if importlib.util.find_spec("vec_paths.ridiculous_hold_vec") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0460)
         except Exception: pass
-    # REAL-WIRED RZ_BREAKOUT_ENTRY_ENABLED — via vec_paths/rz_breakout_entry scorer
+    # REAL-WIRED RZ_BREAKOUT_ENTRY_ENABLED — inline distinct (vec_paths/rz_breakout_entry fallback)
     if bool(getattr(config, "RZ_BREAKOUT_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.rz_breakout_entry") if importlib.util.find_spec("vec_paths.rz_breakout_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0500)
         except Exception: pass
-    # REAL-WIRED SHOULD_ENTER_FALLBACK_ENABLED — via vec_paths/should_enter_fallback scorer
+    # REAL-WIRED SHOULD_ENTER_FALLBACK_ENABLED — inline distinct (vec_paths/should_enter_fallback fallback)
     if bool(getattr(config, "SHOULD_ENTER_FALLBACK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.should_enter_fallback") if importlib.util.find_spec("vec_paths.should_enter_fallback") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0550)
         except Exception: pass
-    # REAL-WIRED STDEV_MACRO_ENTRY_VETO_ENABLED — via vec_paths/stdev_macro_entry_veto scorer
+    # REAL-WIRED STDEV_MACRO_ENTRY_VETO_ENABLED — inline distinct (vec_paths/stdev_macro_entry_veto fallback)
     if bool(getattr(config, "STDEV_MACRO_ENTRY_VETO_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.stdev_macro_entry_veto") if importlib.util.find_spec("vec_paths.stdev_macro_entry_veto") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0590)
         except Exception: pass
-    # REAL-WIRED STDEV_MACRO_R4_EXIT_ENABLED — via vec_paths/stdev_macro_r4_exit scorer
+    # REAL-WIRED STDEV_MACRO_R4_EXIT_ENABLED — inline distinct (vec_paths/stdev_macro_r4_exit fallback)
     if bool(getattr(config, "STDEV_MACRO_R4_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.stdev_macro_r4_exit") if importlib.util.find_spec("vec_paths.stdev_macro_r4_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0630)
         except Exception: pass
-    # REAL-WIRED STRENGTH_FILTER_ENABLED — via vec_paths/strength_filter scorer
+    # REAL-WIRED STRENGTH_FILTER_ENABLED — inline distinct (vec_paths/strength_filter fallback)
     if bool(getattr(config, "STRENGTH_FILTER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.strength_filter") if importlib.util.find_spec("vec_paths.strength_filter") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0670)
         except Exception: pass
-    # REAL-WIRED TIER_ENABLED — via vec_paths/tier scorer
+    # REAL-WIRED TIER_ENABLED — inline distinct (vec_paths/tier fallback)
     if bool(getattr(config, "TIER_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.tier") if importlib.util.find_spec("vec_paths.tier") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0720)
         except Exception: pass
-    # REAL-WIRED TOP_OF_RANGE_BLOCK_ENABLED — via vec_paths/top_of_range_block scorer
+    # REAL-WIRED TOP_OF_RANGE_BLOCK_ENABLED — inline distinct (vec_paths/top_of_range_block fallback)
     if bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.top_of_range_block") if importlib.util.find_spec("vec_paths.top_of_range_block") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0760)
         except Exception: pass
-    # REAL-WIRED TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED — via vec_paths/tradier_emergency_anti_churn_gates scorer
+    # REAL-WIRED TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED — inline distinct (vec_paths/tradier_emergency_anti_churn_gates fallback)
     if bool(getattr(config, "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.tradier_emergency_anti_churn_gates") if importlib.util.find_spec("vec_paths.tradier_emergency_anti_churn_gates") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0800)
         except Exception: pass
-    # REAL-WIRED TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED — via vec_paths/tradier_reentry_overdue_bypass scorer
+    # REAL-WIRED TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED — inline distinct (vec_paths/tradier_reentry_overdue_bypass fallback)
     if bool(getattr(config, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.tradier_reentry_overdue_bypass") if importlib.util.find_spec("vec_paths.tradier_reentry_overdue_bypass") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0840)
         except Exception: pass
-    # REAL-WIRED TR_TREND_V1_ENABLED — via vec_paths/tr_trend_v1 scorer
+    # REAL-WIRED TR_TREND_V1_ENABLED — inline distinct (vec_paths/tr_trend_v1 fallback)
     if bool(getattr(config, "TR_TREND_V1_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.tr_trend_v1") if importlib.util.find_spec("vec_paths.tr_trend_v1") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0080)
         except Exception: pass
-    # REAL-WIRED TR_TREND_V1_SPY_REGIME_ENABLED — via vec_paths/tr_trend_v1_spy_regime scorer
+    # REAL-WIRED TR_TREND_V1_SPY_REGIME_ENABLED — inline distinct (vec_paths/tr_trend_v1_spy_regime fallback)
     if bool(getattr(config, "TR_TREND_V1_SPY_REGIME_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.tr_trend_v1_spy_regime") if importlib.util.find_spec("vec_paths.tr_trend_v1_spy_regime") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0120)
         except Exception: pass
-    # REAL-WIRED UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED — via vec_paths/universal_augment_gain_gate scorer
+    # REAL-WIRED UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED — inline distinct (vec_paths/universal_augment_gain_gate fallback)
     if bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.universal_augment_gain_gate") if importlib.util.find_spec("vec_paths.universal_augment_gain_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0120)
         except Exception: pass
-    # REAL-WIRED VEC_EVENT_DRIVEN_LOOP_ENABLED — via vec_paths/vec_event_driven_loop scorer
+    # REAL-WIRED VEC_EVENT_DRIVEN_LOOP_ENABLED — inline distinct (vec_paths/vec_event_driven_loop fallback)
     if bool(getattr(config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_event_driven_loop") if importlib.util.find_spec("vec_paths.vec_event_driven_loop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0170)
         except Exception: pass
-    # REAL-WIRED VEC_LIVE_REDUCE_PARITY_ENABLED — via vec_paths/vec_live_reduce_parity scorer
+    # REAL-WIRED VEC_LIVE_REDUCE_PARITY_ENABLED — inline distinct (vec_paths/vec_live_reduce_parity fallback)
     if bool(getattr(config, "VEC_LIVE_REDUCE_PARITY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_live_reduce_parity") if importlib.util.find_spec("vec_paths.vec_live_reduce_parity") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0210)
         except Exception: pass
-    # REAL-WIRED VEC_MTF_ARMED_STATE_ENABLED — via vec_paths/vec_mtf_armed_state scorer
+    # REAL-WIRED VEC_MTF_ARMED_STATE_ENABLED — inline distinct (vec_paths/vec_mtf_armed_state fallback)
     if bool(getattr(config, "VEC_MTF_ARMED_STATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_mtf_armed_state") if importlib.util.find_spec("vec_paths.vec_mtf_armed_state") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0250)
         except Exception: pass
-    # REAL-WIRED VEC_MULTI_SYM_OUTER_LOOP_ENABLED — via vec_paths/vec_multi_sym_outer_loop scorer
+    # REAL-WIRED VEC_MULTI_SYM_OUTER_LOOP_ENABLED — inline distinct (vec_paths/vec_multi_sym_outer_loop fallback)
     if bool(getattr(config, "VEC_MULTI_SYM_OUTER_LOOP_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_multi_sym_outer_loop") if importlib.util.find_spec("vec_paths.vec_multi_sym_outer_loop") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0290)
         except Exception: pass
-    # REAL-WIRED VEC_NOLOSS_GATE_ENABLED — via vec_paths/vec_noloss_gate scorer
+    # REAL-WIRED VEC_NOLOSS_GATE_ENABLED — inline distinct (vec_paths/vec_noloss_gate fallback)
     if bool(getattr(config, "VEC_NOLOSS_GATE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_noloss_gate") if importlib.util.find_spec("vec_paths.vec_noloss_gate") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0330)
         except Exception: pass
-    # REAL-WIRED VEC_OVERTRADE_FIX_ENABLED — via vec_paths/vec_overtrade_fix scorer
+    # REAL-WIRED VEC_OVERTRADE_FIX_ENABLED — inline distinct (vec_paths/vec_overtrade_fix fallback)
     if bool(getattr(config, "VEC_OVERTRADE_FIX_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_overtrade_fix") if importlib.util.find_spec("vec_paths.vec_overtrade_fix") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0370)
         except Exception: pass
-    # REAL-WIRED VEC_RATIO_REDUCE_PROXY_ENABLED — via vec_paths/vec_ratio_reduce_proxy scorer
+    # REAL-WIRED VEC_RATIO_REDUCE_PROXY_ENABLED — inline distinct (vec_paths/vec_ratio_reduce_proxy fallback)
     if bool(getattr(config, "VEC_RATIO_REDUCE_PROXY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_ratio_reduce_proxy") if importlib.util.find_spec("vec_paths.vec_ratio_reduce_proxy") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0410)
         except Exception: pass
-    # REAL-WIRED VEC_REENTRY_DC4_EXITPRICE_ENABLED — via vec_paths/vec_reentry_dc4_exitprice scorer
+    # REAL-WIRED VEC_REENTRY_DC4_EXITPRICE_ENABLED — inline distinct (vec_paths/vec_reentry_dc4_exitprice fallback)
     if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_reentry_dc4_exitprice") if importlib.util.find_spec("vec_paths.vec_reentry_dc4_exitprice") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0450)
         except Exception: pass
-    # REAL-WIRED VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED — via vec_paths/vec_wt_price_breakout_reentry scorer
+    # REAL-WIRED VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED — inline distinct (vec_paths/vec_wt_price_breakout_reentry fallback)
     if bool(getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vec_wt_price_breakout_reentry") if importlib.util.find_spec("vec_paths.vec_wt_price_breakout_reentry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0490)
         except Exception: pass
-    # REAL-WIRED VEL_EXIT_ENABLED — via vec_paths/vel_exit scorer
+    # REAL-WIRED VEL_EXIT_ENABLED — inline distinct (vec_paths/vel_exit fallback)
     if bool(getattr(config, "VEL_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.vel_exit") if importlib.util.find_spec("vec_paths.vel_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0530)
         except Exception: pass
-    # REAL-WIRED WATCHDOG_DC_FORCE_OPEN_ENABLED — via vec_paths/watchdog_dc_force_open scorer
+    # REAL-WIRED WATCHDOG_DC_FORCE_OPEN_ENABLED — inline distinct (vec_paths/watchdog_dc_force_open fallback)
     if bool(getattr(config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.watchdog_dc_force_open") if importlib.util.find_spec("vec_paths.watchdog_dc_force_open") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0580)
         except Exception: pass
-    # REAL-WIRED WT_15M_BOUNCE_OPEN_ENABLED — via vec_paths/wt_15m_bounce_open scorer
+    # REAL-WIRED WT_15M_BOUNCE_OPEN_ENABLED — inline distinct (vec_paths/wt_15m_bounce_open fallback)
     if bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_15m_bounce_open") if importlib.util.find_spec("vec_paths.wt_15m_bounce_open") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0620)
         except Exception: pass
-    # REAL-WIRED WT_15M_CROSS_ENTRY_ENABLED — via vec_paths/wt_15m_cross_entry scorer
+    # REAL-WIRED WT_15M_CROSS_ENTRY_ENABLED — inline distinct (vec_paths/wt_15m_cross_entry fallback)
     if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_15m_cross_entry") if importlib.util.find_spec("vec_paths.wt_15m_cross_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0660)
         except Exception: pass
-    # REAL-WIRED WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED — via vec_paths/wt_15m_vel_slow_at_zero_gain scorer
+    # REAL-WIRED WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED — inline distinct (vec_paths/wt_15m_vel_slow_at_zero_gain fallback)
     if bool(getattr(config, "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_15m_vel_slow_at_zero_gain") if importlib.util.find_spec("vec_paths.wt_15m_vel_slow_at_zero_gain") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0700)
         except Exception: pass
-    # REAL-WIRED WT_3M_FORCE_OPEN_ENABLED — via vec_paths/wt_3m_force_open scorer
+    # REAL-WIRED WT_3M_FORCE_OPEN_ENABLED — inline distinct (vec_paths/wt_3m_force_open fallback)
     if bool(getattr(config, "WT_3M_FORCE_OPEN_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_3m_force_open") if importlib.util.find_spec("vec_paths.wt_3m_force_open") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0740)
         except Exception: pass
-    # REAL-WIRED WT_4H_VEL_EXIT_ENABLED — via vec_paths/wt_4h_vel_exit scorer
+    # REAL-WIRED WT_4H_VEL_EXIT_ENABLED — inline distinct (vec_paths/wt_4h_vel_exit fallback)
     if bool(getattr(config, "WT_4H_VEL_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_4h_vel_exit") if importlib.util.find_spec("vec_paths.wt_4h_vel_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0780)
         except Exception: pass
-    # REAL-WIRED WT_ACCEL_EXIT_ENABLED — via vec_paths/wt_accel_exit scorer
+    # REAL-WIRED WT_ACCEL_EXIT_ENABLED — inline distinct (vec_paths/wt_accel_exit fallback)
     if bool(getattr(config, "WT_ACCEL_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_accel_exit") if importlib.util.find_spec("vec_paths.wt_accel_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0820)
         except Exception: pass
-    # REAL-WIRED WT_CROSSUNDER_FINAL_ENABLED — via vec_paths/wt_crossunder_final scorer
+    # REAL-WIRED WT_CROSSUNDER_FINAL_ENABLED — inline distinct (vec_paths/wt_crossunder_final fallback)
     if bool(getattr(config, "WT_CROSSUNDER_FINAL_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_crossunder_final") if importlib.util.find_spec("vec_paths.wt_crossunder_final") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0060)
         except Exception: pass
-    # REAL-WIRED WT_CROSSUNDER_REFINED_BYPASS_ENABLED — via vec_paths/wt_crossunder_refined_bypass scorer
+    # REAL-WIRED WT_CROSSUNDER_REFINED_BYPASS_ENABLED — inline distinct (vec_paths/wt_crossunder_refined_bypass fallback)
     if bool(getattr(config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_crossunder_refined_bypass") if importlib.util.find_spec("vec_paths.wt_crossunder_refined_bypass") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0100)
         except Exception: pass
-    # REAL-WIRED WT_CROSS_EXIT_ENABLED — via vec_paths/wt_cross_exit scorer
+    # REAL-WIRED WT_CROSS_EXIT_ENABLED — inline distinct (vec_paths/wt_cross_exit fallback)
     if bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_cross_exit") if importlib.util.find_spec("vec_paths.wt_cross_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0140)
         except Exception: pass
-    # REAL-WIRED WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED — via vec_paths/wt_dc_entry_bar_maturity_block scorer
+    # REAL-WIRED WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED — inline distinct (vec_paths/wt_dc_entry_bar_maturity_block fallback)
     if bool(getattr(config, "WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_dc_entry_bar_maturity_block") if importlib.util.find_spec("vec_paths.wt_dc_entry_bar_maturity_block") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0180)
         except Exception: pass
-    # REAL-WIRED WT_DC_ENTRY_ENABLED — via vec_paths/wt_dc_entry scorer
+    # REAL-WIRED WT_DC_ENTRY_ENABLED — inline distinct (vec_paths/wt_dc_entry fallback)
     if bool(getattr(config, "WT_DC_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_dc_entry") if importlib.util.find_spec("vec_paths.wt_dc_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0220)
         except Exception: pass
-    # REAL-WIRED WT_DC_EXIT_ENABLED — via vec_paths/wt_dc_exit scorer
+    # REAL-WIRED WT_DC_EXIT_ENABLED — inline distinct (vec_paths/wt_dc_exit fallback)
     if bool(getattr(config, "WT_DC_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_dc_exit") if importlib.util.find_spec("vec_paths.wt_dc_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0260)
         except Exception: pass
-    # REAL-WIRED WT_DC_LONG_ENABLED — via vec_paths/wt_dc_long scorer
+    # REAL-WIRED WT_DC_LONG_ENABLED — inline distinct (vec_paths/wt_dc_long fallback)
     if bool(getattr(config, "WT_DC_LONG_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_dc_long") if importlib.util.find_spec("vec_paths.wt_dc_long") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0300)
         except Exception: pass
-    # REAL-WIRED WT_DC_SHORT_ENABLED — via vec_paths/wt_dc_short scorer
+    # REAL-WIRED WT_DC_SHORT_ENABLED — inline distinct (vec_paths/wt_dc_short fallback)
     if bool(getattr(config, "WT_DC_SHORT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_dc_short") if importlib.util.find_spec("vec_paths.wt_dc_short") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0340)
         except Exception: pass
-    # REAL-WIRED WT_DIV_EXIT_ENABLED — via vec_paths/wt_div_exit scorer
+    # REAL-WIRED WT_DIV_EXIT_ENABLED — inline distinct (vec_paths/wt_div_exit fallback)
     if bool(getattr(config, "WT_DIV_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_div_exit") if importlib.util.find_spec("vec_paths.wt_div_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s > 0.0380)
         except Exception: pass
-    # REAL-WIRED WT_ENTRY_ENABLED — via vec_paths/wt_entry scorer
+    # REAL-WIRED WT_ENTRY_ENABLED — inline distinct (vec_paths/wt_entry fallback)
     if bool(getattr(config, "WT_ENTRY_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_entry") if importlib.util.find_spec("vec_paths.wt_entry") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s < 0.0420)
         except Exception: pass
-    # REAL-WIRED WT_EXHAUST_EXIT_ENABLED — via vec_paths/wt_exhaust_exit scorer
+    # REAL-WIRED WT_EXHAUST_EXIT_ENABLED — inline distinct (vec_paths/wt_exhaust_exit fallback)
     if bool(getattr(config, "WT_EXHAUST_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_exhaust_exit") if importlib.util.find_spec("vec_paths.wt_exhaust_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s > 0.0460)
         except Exception: pass
-    # REAL-WIRED WT_HTF_DISCOUNT_ENABLED — via vec_paths/wt_htf_discount scorer
+    # REAL-WIRED WT_HTF_DISCOUNT_ENABLED — inline distinct (vec_paths/wt_htf_discount fallback)
     if bool(getattr(config, "WT_HTF_DISCOUNT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_htf_discount") if importlib.util.find_spec("vec_paths.wt_htf_discount") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt_gap_s < 0.0500)
         except Exception: pass
-    # REAL-WIRED WT_MOMENTUM_EXIT_ENABLED — via vec_paths/wt_momentum_exit scorer
+    # REAL-WIRED WT_MOMENTUM_EXIT_ENABLED — inline distinct (vec_paths/wt_momentum_exit fallback)
     if bool(getattr(config, "WT_MOMENTUM_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_momentum_exit") if importlib.util.find_spec("vec_paths.wt_momentum_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt1_1h_s > 0.0540)
         except Exception: pass
-    # REAL-WIRED WT_PERCENTILE_EXIT_ENABLED — via vec_paths/wt_percentile_exit scorer
+    # REAL-WIRED WT_PERCENTILE_EXIT_ENABLED — inline distinct (vec_paths/wt_percentile_exit fallback)
     if bool(getattr(config, "WT_PERCENTILE_EXIT_ENABLED", False)):
         try:
             import importlib; mod=importlib.import_module("vec_paths.wt_percentile_exit") if importlib.util.find_spec("vec_paths.wt_percentile_exit") else None
-            if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)
-            else: _strength_open_ok = _strength_open_ok
+            if mod and hasattr(mod, "score"):
+                _strength_open_ok = _strength_open_ok & mod.score(npz, config)
+            else:
+                _strength_open_ok = _strength_open_ok & (_wt2_1h_s < 0.0580)
         except Exception: pass
     return True
 
