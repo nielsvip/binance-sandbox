@@ -9338,5 +9338,23 @@
     ],
     "timestamp": "2026-08-19T05:09:55.910370+00:00",
     "price": 0.15608
+  },
+  {
+    "symbol": "RAYSOLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T05:21:29.229659+00:00",
+    "price": 0.614
+  },
+  {
+    "symbol": "POLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T05:23:05.966156+00:00",
+    "price": 0.0822
   }
 ]

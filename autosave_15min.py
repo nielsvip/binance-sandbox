@@ -129,7 +129,7 @@ def git_commit():
         elif "nothing to commit" in r.stdout.lower() or "nothing to commit" in r.stderr.lower():
             log(f"git commit: no changes")
         else:
-            log(f"git commit: {r.stderr.strip()[:200]}")
+            log(f"git commit: rc={r.returncode} stderr={r.stderr.strip()[:200]!r} stdout={r.stdout.strip()[:300]!r}")
     except Exception as e:
         log(f"git commit failed: {e}")
 
