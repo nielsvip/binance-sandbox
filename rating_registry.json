@@ -1,35 +1,11 @@
 {
-  "timestamp": "2026-08-19T10:11:51.187654+00:00",
+  "timestamp": "2026-08-19T10:26:52.373471+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 188
   },
   "unified_ranking": [
-    {
-      "symbol": "MRVLUSDT",
-      "net_score": -12.1,
-      "long_score": 0,
-      "short_score": 12.1
-    },
-    {
-      "symbol": "APEUSDT",
-      "net_score": -11.8,
-      "long_score": 0,
-      "short_score": 11.8
-    },
-    {
-      "symbol": "PENDLEUSDT",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
-    },
-    {
-      "symbol": "RKLBUSDT",
-      "net_score": -10.0,
-      "long_score": 0,
-      "short_score": 10.0
-    },
     {
       "symbol": "BEATUSDT",
       "net_score": 0,
@@ -103,7 +79,7 @@
       "short_score": 0
     },
     {
-      "symbol": "APPUSDT",
+      "symbol": "RKLBUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -319,6 +295,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PENDLEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SMCIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -398,6 +380,12 @@
     },
     {
       "symbol": "AMDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -632,6 +620,12 @@
     },
     {
       "symbol": "AXSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LUNA2USDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1021,6 +1015,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BABAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1129,35 +1129,14 @@
       "short_score": 0
     },
     {
-      "symbol": "LUNA2USDT",
+      "symbol": "APPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "MRVLUSDT",
-      12.1,
-      211.96
-    ],
-    [
-      "APEUSDT",
-      11.8,
-      0.1211
-    ],
-    [
-      "PENDLEUSDT",
-      10.2,
-      1.2921
-    ],
-    [
-      "RKLBUSDT",
-      10.0,
-      77.44
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
