@@ -8789,5 +8789,23 @@
     ],
     "timestamp": "2026-08-19T00:34:15.853080+00:00",
     "price": 0.0233
+  },
+  {
+    "symbol": "KSTRUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.8x normal"
+    ],
+    "timestamp": "2026-08-19T00:44:59.937531+00:00",
+    "price": 25.37
+  },
+  {
+    "symbol": "VUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T00:52:26.697814+00:00",
+    "price": 364.87
   }
 ]
