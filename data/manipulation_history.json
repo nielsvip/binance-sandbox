@@ -9383,5 +9383,23 @@
     ],
     "timestamp": "2026-08-19T05:51:31.911880+00:00",
     "price": 1955.0
+  },
+  {
+    "symbol": "FLUXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T05:56:04.479967+00:00",
+    "price": 0.03859
+  },
+  {
+    "symbol": "BRETTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T06:07:51.611074+00:00",
+    "price": 0.003607
   }
 ]

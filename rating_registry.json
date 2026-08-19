@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-08-19T05:55:37.462335+00:00",
+  "timestamp": "2026-08-19T06:10:42.381315+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 190
   },
   "unified_ranking": [
+    {
+      "symbol": "AXTIUSDT",
+      "net_score": -10.6,
+      "long_score": 0,
+      "short_score": 10.6
+    },
+    {
+      "symbol": "SPCXUSD1",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
+    },
     {
       "symbol": "EGLDUSDT",
       "net_score": 0,
@@ -326,12 +338,6 @@
     },
     {
       "symbol": "AIAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AXTIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -668,12 +674,6 @@
     },
     {
       "symbol": "GLWUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SPCXUSD1",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1148,7 +1148,18 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "AXTIUSDT",
+      10.6,
+      79.44
+    ],
+    [
+      "SPCXUSD1",
+      10.3,
+      141.49
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
