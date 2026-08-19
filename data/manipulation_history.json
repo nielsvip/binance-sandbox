@@ -9230,5 +9230,23 @@
     ],
     "timestamp": "2026-08-19T03:42:14.028254+00:00",
     "price": 404.09
+  },
+  {
+    "symbol": "ORCLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T03:55:13.100106+00:00",
+    "price": 141.29
+  },
+  {
+    "symbol": "PENGUUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T03:55:13.100106+00:00",
+    "price": 0.006111
   }
 ]
