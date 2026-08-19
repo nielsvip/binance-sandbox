@@ -432,13 +432,49 @@ def _gui_lab_remote_json(relative: str) -> dict[str, Any]:
 
 
 def _local_vector_status() -> dict[str, Any]:
+    # Bible §16.70+16.71: 5077 must show BOX 135.181.97.66 next_gen beam as canonical (merged), not just old vector_results
+    base = {}
     try:
         vs = json.loads((BASE_PATH / "data" / "reports" / "gui_lab" / "vector_status.json").read_text())
         vr = json.loads((BASE_PATH / "data" / "reports" / "gui_lab" / "vector_results.json").read_text())
         vr_sorted = sorted(vr, key=lambda r: r.get("delta_vs_bh_per_mo_pct", -1e9), reverse=True)[:50]
-        return dict(vector_results_count=vs.get("vector_results_count", len(vr)), vector_status=vs, vector_top50=vr_sorted, vector_all=vr[:200])
+        base = dict(vector_results_count=vs.get("vector_results_count", len(vr)), vector_status=vs, vector_top50=vr_sorted, vector_all=vr[:200])
     except Exception:
-        return {}
+        base = {}
+    # Merge next_gen beam ledger (BOX 135.181.97.66 canonical per §16.71, S1 secondary) so 5077 is never stale
+    try:
+        import pathlib as _pl
+        _ng = _pl.Path(BASE_PATH / "data/reports/gui_lab/next_gen_beam_per_sym.json")
+        _ngs = _pl.Path(BASE_PATH / "data/reports/gui_lab/next_gen_beam_status.json")
+        _ngm = _pl.Path(BASE_PATH / "data/reports/gui_lab/next_gen_monitor_status.json")
+        if _ng.exists():
+            _j = json.loads(_ng.read_text())
+            _ledger = _j.get("ledger", [])
+            base["_next_gen_ledger_n"] = len(_ledger)
+            base["_next_gen_beam_depth"] = _j.get("beam_depth")
+            base["_next_gen_generated_at"] = _j.get("generated_at")
+            base["_next_gen_box_host"] = "135.181.97.66"
+            if _ledger:
+                top = sorted(_ledger, key=lambda x: x.get("best",{}).get("delta_vs_bh", -1e9), reverse=True)[:3]
+                base["_next_gen_top"] = [{"symside": x["symside"], "delta": round(x["best"].get("delta_vs_bh",0),1), "gain": round(x["best"].get("gain_pct",0),1), "bh": round(x["best"].get("bh_gain_pct",0),1)} for x in top]
+                # expose stocks improvement summary if present
+                try:
+                    _imp = json.loads((BASE_PATH / "data/reports/gui_lab/stocks_improvement.json").read_text())
+                    _s = _imp.get("summary",{})
+                    base["_stocks_improvement"] = {"bible_avg": _s.get("bible_avg_gain"), "next_avg": _s.get("next_avg_gain"), "promotable_n": _s.get("next_promotable_n"), "top_improve": _s.get("top10_improvements",[])[:2]}
+                except: pass
+        if _ngs.exists():
+            _js = json.loads(_ngs.read_text())
+            base["_next_gen_status"] = {"symsides": _js.get("symsides"), "remaining": _js.get("remaining"), "elapsed_s": _js.get("elapsed_s")}
+        if _ngm.exists():
+            _jm = json.loads(_ngm.read_text())
+            base["_next_gen_monitor"] = {"ts": _jm.get("ts"), "ledger_n": _jm.get("ledger_n"), "alive_full": _jm.get("alive_full")}
+            if _jm.get("alive_full"):
+                base["vector_results_count"] = max(base.get("vector_results_count",0), 1)
+                base["_health_source"] = "NEXT_GEN_BEAM_§16.71_BOX_135.181.97.66"
+    except Exception as _e:
+        base["_next_gen_error"] = str(_e)[:200]
+    return base
 
 
 def _gui_lab_status_snapshot() -> dict[str, Any]:

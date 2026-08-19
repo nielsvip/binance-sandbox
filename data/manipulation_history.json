@@ -646,5 +646,32 @@
     ],
     "timestamp": "2026-08-19T20:41:35.835281+00:00",
     "price": 69.625
+  },
+  {
+    "symbol": "VRTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T20:47:18.494126+00:00",
+    "price": 262.02
+  },
+  {
+    "symbol": "BATUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T20:57:26.504259+00:00",
+    "price": 0.06184
+  },
+  {
+    "symbol": "BEAMXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T20:58:10.764895+00:00",
+    "price": 0.001389
   }
 ]
