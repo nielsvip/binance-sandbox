@@ -1,23 +1,11 @@
 {
-  "timestamp": "2026-08-19T05:25:15.213816+00:00",
+  "timestamp": "2026-08-19T05:40:29.355651+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 188
+    "total_ranked": 190
   },
   "unified_ranking": [
-    {
-      "symbol": "GLWUSDT",
-      "net_score": -11.5,
-      "long_score": 0,
-      "short_score": 11.5
-    },
-    {
-      "symbol": "AXTIUSDT",
-      "net_score": -10.3,
-      "long_score": 0,
-      "short_score": 10.3
-    },
     {
       "symbol": "EGLDUSDT",
       "net_score": 0,
@@ -283,6 +271,12 @@
       "short_score": 0
     },
     {
+      "symbol": "KSMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MORPHOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -332,6 +326,12 @@
     },
     {
       "symbol": "AIAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AXTIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -410,6 +410,12 @@
     },
     {
       "symbol": "MUUUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -656,6 +662,12 @@
     },
     {
       "symbol": "ENSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GLWUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1136,18 +1148,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "GLWUSDT",
-      11.5,
-      156.63
-    ],
-    [
-      "AXTIUSDT",
-      10.3,
-      80.0
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
