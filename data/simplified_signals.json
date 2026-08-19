@@ -96,7 +96,7 @@
         "crossunder_D": true
     },
     "1000LUNCUSDT": {
-        "latest_crossover_price_3m": 0.04655,
+        "latest_crossover_price_3m": 0.04642827,
         "previous_crossover_price_3m": 0.04655,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 0.04642827,
@@ -1249,8 +1249,8 @@
     },
     "BEAMXUSDT": {
         "latest_crossover_price_3m": 0.001279,
-        "previous_crossover_price_3m": 0.001278,
-        "crossover_3m": true,
+        "previous_crossover_price_3m": 0.001279,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 0.001278,
         "previous_crossunder_price_3m": 0.001278,
         "crossunder_3m": false,
@@ -2336,9 +2336,9 @@
         "crossunder_D": true
     },
     "ENSUSDT": {
-        "latest_crossover_price_3m": 3.80803784,
+        "latest_crossover_price_3m": 3.829,
         "previous_crossover_price_3m": 3.80803784,
-        "crossover_3m": false,
+        "crossover_3m": true,
         "latest_crossunder_price_3m": 3.80803784,
         "previous_crossunder_price_3m": 3.80803784,
         "crossunder_3m": false,
@@ -2368,9 +2368,9 @@
         "crossunder_D": true
     },
     "ETCUSDT": {
-        "latest_crossover_price_3m": 6.046,
+        "latest_crossover_price_3m": 6.093,
         "previous_crossover_price_3m": 6.046,
-        "crossover_3m": false,
+        "crossover_3m": true,
         "latest_crossunder_price_3m": 6.046,
         "previous_crossunder_price_3m": 6.046,
         "crossunder_3m": false,
@@ -2400,7 +2400,7 @@
         "crossunder_D": true
     },
     "ETHFIUSDC": {
-        "latest_crossover_price_3m": 0.4961,
+        "latest_crossover_price_3m": 0.485,
         "previous_crossover_price_3m": 0.4961,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 0.4961,
@@ -5601,7 +5601,7 @@
     },
     "SKYUSDT": {
         "latest_crossover_price_3m": 0.05354322,
-        "previous_crossover_price_3m": 0.05437,
+        "previous_crossover_price_3m": 0.05354322,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 0.05354322,
         "previous_crossunder_price_3m": 0.05354322,
@@ -5921,7 +5921,7 @@
     },
     "STRKUSDT": {
         "latest_crossover_price_3m": 0.02231612,
-        "previous_crossover_price_3m": 0.02264,
+        "previous_crossover_price_3m": 0.02231612,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 0.02231612,
         "previous_crossunder_price_3m": 0.02231612,
@@ -11624,9 +11624,9 @@
         "crossunder_D": false
     },
     "ASMLUSDT": {
-        "latest_crossover_price_3m": 1861.12163037,
-        "previous_crossover_price_3m": 1861.99,
-        "crossover_3m": false,
+        "latest_crossover_price_3m": 1861.99,
+        "previous_crossover_price_3m": 1861.12163037,
+        "crossover_3m": true,
         "latest_crossunder_price_3m": 1861.99,
         "previous_crossunder_price_3m": 1861.99,
         "crossunder_3m": false,
@@ -12841,8 +12841,8 @@
     },
     "NOKUSDT": {
         "latest_crossover_price_3m": 10.59969704,
-        "previous_crossover_price_3m": 10.47,
-        "crossover_3m": true,
+        "previous_crossover_price_3m": 10.59969704,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 10.59969704,
         "previous_crossunder_price_3m": 10.59969704,
         "crossunder_3m": false,
@@ -13320,9 +13320,9 @@
         "crossunder_D": false
     },
     "SMCIUSDT": {
-        "latest_crossover_price_3m": 37.23,
+        "latest_crossover_price_3m": 37.52038454,
         "previous_crossover_price_3m": 37.23,
-        "crossover_3m": false,
+        "crossover_3m": true,
         "latest_crossunder_price_3m": 37.52038454,
         "previous_crossunder_price_3m": 37.15,
         "crossunder_3m": false,

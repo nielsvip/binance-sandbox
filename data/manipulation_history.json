@@ -9761,5 +9761,32 @@
     ],
     "timestamp": "2026-08-19T09:43:46.309485+00:00",
     "price": 2.819
+  },
+  {
+    "symbol": "1000FLOKIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 11.2x normal"
+    ],
+    "timestamp": "2026-08-19T09:57:24.483781+00:00",
+    "price": 0.01994
+  },
+  {
+    "symbol": "MINAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T10:03:48.460880+00:00",
+    "price": 0.04008
+  },
+  {
+    "symbol": "HPEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.2x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T10:10:48.531153+00:00",
+    "price": 54.42
   }
 ]
