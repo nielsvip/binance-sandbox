@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-08-19T07:41:07.530691+00:00",
+  "timestamp": "2026-08-19T07:56:05.126763+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 185
+    "total_ranked": 186
   },
   "unified_ranking": [
+    {
+      "symbol": "SQQQUSDT",
+      "net_score": -10.6,
+      "long_score": 0,
+      "short_score": 10.6
+    },
     {
       "symbol": "BEATUSDT",
       "net_score": 0,
@@ -32,12 +38,6 @@
     },
     {
       "symbol": "RUNEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SHAZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -133,6 +133,12 @@
       "short_score": 0
     },
     {
+      "symbol": "THETAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "IRENUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -152,12 +158,6 @@
     },
     {
       "symbol": "DELLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "KORUUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -997,12 +997,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SQQQUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ONDOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1093,15 +1087,33 @@
       "short_score": 0
     },
     {
+      "symbol": "SHAZUSDT",
+      "net_score": 10.1,
+      "long_score": 10.1,
+      "short_score": 0
+    },
+    {
       "symbol": "JPMUSDT",
       "net_score": 10.9,
       "long_score": 10.9,
       "short_score": 0
     },
     {
+      "symbol": "SPYUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "KORUUSDT",
+      "net_score": 11.8,
+      "long_score": 11.8,
+      "short_score": 0
+    },
+    {
       "symbol": "CAKEUSDT",
-      "net_score": 12.3,
-      "long_score": 12.3,
+      "net_score": 11.9,
+      "long_score": 11.9,
       "short_score": 0
     },
     {
@@ -1109,37 +1121,47 @@
       "net_score": 12.3,
       "long_score": 12.3,
       "short_score": 0
-    },
-    {
-      "symbol": "SPYUSDT",
-      "net_score": 12.3,
-      "long_score": 12.3,
-      "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "CAKEUSDT",
-      12.3,
-      1.537
-    ],
-    [
       "INJUSDT",
       12.3,
-      4.221
+      4.234
+    ],
+    [
+      "CAKEUSDT",
+      11.9,
+      1.5396
+    ],
+    [
+      "KORUUSDT",
+      11.8,
+      19.73
     ],
     [
       "SPYUSDT",
-      12.3,
-      768.81
+      11.7,
+      768.63
     ],
     [
       "JPMUSDT",
       10.9,
       364.15
+    ],
+    [
+      "SHAZUSDT",
+      10.1,
+      70.11
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "SQQQUSDT",
+      10.6,
+      38.3
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

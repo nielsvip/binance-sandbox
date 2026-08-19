@@ -1,12 +1,12 @@
 {
-  "ts": "2026-08-19T07:40:16.990954+00:00",
-  "epoch": 1787125216.9910889,
+  "ts": "2026-08-19T07:55:29.342528+00:00",
+  "epoch": 1787126129.342558,
   "market_open_et": false,
   "accounts": {
-    "ang": false,
-    "inf": false,
+    "ang": true,
+    "inf": true,
     "flz": true,
-    "men": true,
+    "men": false,
     "fin": true,
     "trb": false,
     "trc": false

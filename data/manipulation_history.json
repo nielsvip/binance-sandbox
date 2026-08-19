@@ -9572,5 +9572,23 @@
     ],
     "timestamp": "2026-08-19T07:29:54.348977+00:00",
     "price": 14.88
+  },
+  {
+    "symbol": "ZROUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T07:44:29.932057+00:00",
+    "price": 0.8319
+  },
+  {
+    "symbol": "ENAUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T07:50:29.790466+00:00",
+    "price": 0.08531
   }
 ]
