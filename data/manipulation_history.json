@@ -9806,5 +9806,23 @@
     ],
     "timestamp": "2026-08-19T10:50:45.668116+00:00",
     "price": 38.25
+  },
+  {
+    "symbol": "POPCATUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T11:05:51.231670+00:00",
+    "price": 0.04106
+  },
+  {
+    "symbol": "CSCOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T11:07:21.933569+00:00",
+    "price": 111.61
   }
 ]
