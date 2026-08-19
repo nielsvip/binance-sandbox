@@ -9734,5 +9734,23 @@
     ],
     "timestamp": "2026-08-19T08:52:11.384799+00:00",
     "price": 0.00877
+  },
+  {
+    "symbol": "LPTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-19T09:15:04.589890+00:00",
+    "price": 1.189
+  },
+  {
+    "symbol": "NEOUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T09:29:38.671621+00:00",
+    "price": 1.698
   }
 ]

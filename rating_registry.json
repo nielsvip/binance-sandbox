@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-19T09:11:36.177789+00:00",
+  "timestamp": "2026-08-19T09:41:49.812960+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -1130,18 +1130,12 @@
     },
     {
       "symbol": "APPUSDT",
-      "net_score": 10.9,
-      "long_score": 10.9,
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "APPUSDT",
-      10.9,
-      309.19
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
