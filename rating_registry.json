@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-19T00:54:15.699383+00:00",
+  "timestamp": "2026-08-19T01:09:30.937724+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,46 +13,58 @@
       "short_score": 13.6
     },
     {
-      "symbol": "MRVLUSDT",
+      "symbol": "SEIUSDT",
       "net_score": -11.7,
       "long_score": 0,
       "short_score": 11.7
     },
     {
-      "symbol": "BCHUSDC",
+      "symbol": "EIGENUSDT",
+      "net_score": -11.6,
+      "long_score": 0,
+      "short_score": 11.6
+    },
+    {
+      "symbol": "WLDUSDC",
+      "net_score": -11.6,
+      "long_score": 0,
+      "short_score": 11.6
+    },
+    {
+      "symbol": "SAGAUSDT",
       "net_score": -11.5,
       "long_score": 0,
       "short_score": 11.5
     },
     {
-      "symbol": "SEIUSDT",
+      "symbol": "WDCUSDT",
+      "net_score": -11.4,
+      "long_score": 0,
+      "short_score": 11.4
+    },
+    {
+      "symbol": "SKHYUSDT",
       "net_score": -11.2,
       "long_score": 0,
       "short_score": 11.2
     },
     {
-      "symbol": "RUNEUSDT",
+      "symbol": "DASHUSDT",
       "net_score": -10.9,
       "long_score": 0,
       "short_score": 10.9
-    },
-    {
-      "symbol": "RENDERUSDT",
-      "net_score": -10.8,
-      "long_score": 0,
-      "short_score": 10.8
-    },
-    {
-      "symbol": "SPCXUSD1",
-      "net_score": -10.6,
-      "long_score": 0,
-      "short_score": 10.6
     },
     {
       "symbol": "DRAMUSDT",
       "net_score": -10.4,
       "long_score": 0,
       "short_score": 10.4
+    },
+    {
+      "symbol": "ZENUSDT",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "EGLDUSDT",
@@ -331,19 +343,7 @@
       "short_score": 0
     },
     {
-      "symbol": "EIGENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "JPMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SKHYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -385,12 +385,6 @@
       "short_score": 0
     },
     {
-      "symbol": "WDCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "IBMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -427,12 +421,6 @@
       "short_score": 0
     },
     {
-      "symbol": "WLDUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MUUUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -451,6 +439,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RENDERUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CRVUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -464,12 +458,6 @@
     },
     {
       "symbol": "API3USDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "DASHUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -548,12 +536,6 @@
     },
     {
       "symbol": "HOODUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ZENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -667,6 +649,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SPCXUSD1",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -709,6 +697,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BCHUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "PARTIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -740,6 +734,12 @@
     },
     {
       "symbol": "LLYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -830,12 +830,6 @@
     },
     {
       "symbol": "1000FLOKIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -979,6 +973,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PUMPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "DELLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1039,12 +1039,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SAGAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "COTIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1064,6 +1058,12 @@
     },
     {
       "symbol": "BSVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MRVLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1093,59 +1093,69 @@
       "short_score": 0
     },
     {
-      "symbol": "PUMPUSDT",
-      "net_score": 12.7,
-      "long_score": 12.7,
+      "symbol": "MSFTUSDT",
+      "net_score": 10.0,
+      "long_score": 10.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "PUMPUSDT",
-      12.7,
-      0.003079
+      "MSFTUSDT",
+      10.0,
+      483.03
     ]
   ],
   "top_shorts": [
     [
       "NEARUSDC",
       13.6,
-      1.578
-    ],
-    [
-      "MRVLUSDT",
-      11.7,
-      214.67
-    ],
-    [
-      "BCHUSDC",
-      11.5,
-      202.74
+      1.573
     ],
     [
       "SEIUSDT",
+      11.7,
+      0.0385
+    ],
+    [
+      "EIGENUSDT",
+      11.6,
+      0.1674
+    ],
+    [
+      "WLDUSDC",
+      11.6,
+      0.3162
+    ],
+    [
+      "SAGAUSDT",
+      11.5,
+      0.0132
+    ],
+    [
+      "WDCUSDT",
+      11.4,
+      492.32
+    ],
+    [
+      "SKHYUSDT",
       11.2,
-      0.03857
+      153.48
     ],
     [
-      "RUNEUSDT",
+      "DASHUSDT",
       10.9,
-      0.4006
-    ],
-    [
-      "RENDERUSDT",
-      10.8,
-      1.256
-    ],
-    [
-      "SPCXUSD1",
-      10.6,
-      142.91
+      29.67
     ],
     [
       "DRAMUSDT",
       10.4,
       54.6
+    ],
+    [
+      "ZENUSDT",
+      10.3,
+      3.806
     ]
   ],
   "hedge_usage": {

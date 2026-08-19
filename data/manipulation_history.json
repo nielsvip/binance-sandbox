@@ -8807,5 +8807,23 @@
     ],
     "timestamp": "2026-08-19T00:52:26.697814+00:00",
     "price": 364.87
+  },
+  {
+    "symbol": "1000SHIBUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.0x normal"
+    ],
+    "timestamp": "2026-08-19T00:55:32.022274+00:00",
+    "price": 0.004422
+  },
+  {
+    "symbol": "AAVEUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T01:08:17.327102+00:00",
+    "price": 87.1
   }
 ]
