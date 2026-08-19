@@ -1429,13 +1429,26 @@ class SweepConfig:
             # VEC_SHARE_CHUNK 0 is crypto fractional; stocks use integer shares — keep 0 for % returns but note parity via backtest_v8_engine
             # GOLDEN_RULE defaults already tradier-correct (HTF ladder)
         else:
-            # crypto baseline — ensure crypto-live values
+            # crypto baseline — ensure crypto-live values + wire ALL tradier switches into crypto
+            # 2026-08-19: ETH 1200% model (per_sym:BTCUSDC_LONG 2647% on ETH -49.5% BH) is the template for all crypto
+            # It wires the tradier bottom/top switches (BB extreme bounce, WT dip, structural top, DC reject) that make long on every bottom, out on every top (not reverse)
             cfg.DELTA_ENTRY_ENABLED = True
             cfg.DELTA_ENGINE_ENABLED = True
             cfg.WT_DC_HTF_GATE = "none"
             cfg.WT_DC_ENTRY_THRESHOLD = 0.0
             if hasattr(cfg, "AUGMENT_AT_LOSS_ENABLED"):
                 cfg.AUGMENT_AT_LOSS_ENABLED = False
+            # If ETH 1200 model exists, seed crypto baseline from it so every future sweep starts wired
+            try:
+                import pathlib as _pl2, json as _js2
+                _eth_model = _pl2.Path(__file__).parent / "data" / "eth_1200_baseline_model.json"
+                if _eth_model.exists():
+                    _j = _js2.loads(_eth_model.read_text())
+                    for _k, _v in _j.get("eth_overrides", {}).items():
+                        if hasattr(cfg, _k):
+                            setattr(cfg, _k, _v)
+            except Exception:
+                pass
         return cfg
 
 def sweep_config_for_mode(mode: str):

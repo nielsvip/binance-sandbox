@@ -610,5 +610,41 @@
     ],
     "timestamp": "2026-08-19T18:44:51.659926+00:00",
     "price": 0.01342
+  },
+  {
+    "symbol": "ASTERUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 6.0x normal"
+    ],
+    "timestamp": "2026-08-19T20:39:58.204560+00:00",
+    "price": 0.617
+  },
+  {
+    "symbol": "PUMPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T20:39:58.204560+00:00",
+    "price": 0.003138
+  },
+  {
+    "symbol": "BLURUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-19T20:41:35.835281+00:00",
+    "price": 0.01357
+  },
+  {
+    "symbol": "HYPEUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 9.9x normal"
+    ],
+    "timestamp": "2026-08-19T20:41:35.835281+00:00",
+    "price": 69.625
   }
 ]
