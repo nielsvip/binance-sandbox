@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T21:53:43.143973+00:00",
+  "timestamp": "2026-08-20T22:09:00.267438+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -823,12 +823,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AMATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "INXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1205,9 +1199,21 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "AMATUSDT",
+      "net_score": 10.1,
+      "long_score": 10.1,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "AMATUSDT",
+      10.1,
+      496.24
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

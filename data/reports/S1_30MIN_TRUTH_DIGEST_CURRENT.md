@@ -1,6 +1,6 @@
 # S1 30-minute canonical truth digest
 
-Generated `2026-08-20T21:53:34.471994Z`.
+Generated `2026-08-20T22:08:11.561856Z`.
 
 - Verified unique nonzero physical matrix cells (restored-workbook audit): **19182/2781270**; unresolved **2762088**.
 - Accepted canonical delta over the measured 30-minute window: **0**; rate **0.00/hour**.
