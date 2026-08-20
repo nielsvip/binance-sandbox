@@ -997,5 +997,14 @@
     ],
     "timestamp": "2026-08-20T20:49:49.447835+00:00",
     "price": 95.74
+  },
+  {
+    "symbol": "AVAXUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T20:56:01.117034+00:00",
+    "price": 7.158
   }
 ]

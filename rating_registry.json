@@ -1,16 +1,22 @@
 {
-  "timestamp": "2026-08-20T20:53:21.838174+00:00",
+  "timestamp": "2026-08-20T21:08:21.059983+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 193
+    "total_ranked": 197
   },
   "unified_ranking": [
     {
       "symbol": "PLTRUSDT",
-      "net_score": -13.3,
+      "net_score": -15.8,
       "long_score": 0,
-      "short_score": 13.3
+      "short_score": 15.8
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "QNTXUSDT",
@@ -26,12 +32,6 @@
     },
     {
       "symbol": "SQQQUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -187,6 +187,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "METAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -236,6 +242,12 @@
     },
     {
       "symbol": "WIFUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -565,6 +577,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IBMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ORCLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -799,6 +817,12 @@
       "short_score": 0
     },
     {
+      "symbol": "QTUMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -890,6 +914,12 @@
     },
     {
       "symbol": "DOTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MASKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1157,16 +1187,16 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ARUSDT",
-      "net_score": 13.6,
-      "long_score": 13.6,
-      "short_score": 0
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "ATOMUSDT",
+      10.3,
+      1.488
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
