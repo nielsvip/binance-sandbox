@@ -133,5 +133,14 @@
     ],
     "timestamp": "2026-08-20T08:39:18.532036+00:00",
     "price": 0.05875
+  },
+  {
+    "symbol": "XPLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 21.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T08:53:03.446672+00:00",
+    "price": 0.0828
   }
 ]

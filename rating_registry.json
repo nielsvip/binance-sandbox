@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-08-20T08:42:02.881188+00:00",
+  "timestamp": "2026-08-20T08:57:14.670111+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 202
+    "total_ranked": 204
   },
   "unified_ranking": [
-    {
-      "symbol": "WLFIUSDC",
-      "net_score": -19.9,
-      "long_score": 0,
-      "short_score": 19.9
-    },
     {
       "symbol": "BOTUSDT",
       "net_score": -11.1,
@@ -20,6 +14,12 @@
     },
     {
       "symbol": "EIGENUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ORCLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -146,6 +146,12 @@
     },
     {
       "symbol": "MOVEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ORDIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -391,12 +397,6 @@
       "short_score": 0
     },
     {
-      "symbol": "FWDIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ARMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -404,6 +404,12 @@
     },
     {
       "symbol": "MOVRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -493,19 +499,7 @@
       "short_score": 0
     },
     {
-      "symbol": "BMNRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "COINUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -649,6 +643,12 @@
       "short_score": 0
     },
     {
+      "symbol": "TQQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "COHRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -680,6 +680,12 @@
     },
     {
       "symbol": "BEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PNUTUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -878,6 +884,12 @@
     },
     {
       "symbol": "BBUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "WLFIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1165,9 +1177,9 @@
       "short_score": 0
     },
     {
-      "symbol": "PNUTUSDC",
-      "net_score": 10.1,
-      "long_score": 10.1,
+      "symbol": "FWDIUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     },
     {
@@ -1183,7 +1195,7 @@
       "short_score": 0
     },
     {
-      "symbol": "RUNEUSDT",
+      "symbol": "BMNRUSDT",
       "net_score": 11.1,
       "long_score": 11.1,
       "short_score": 0
@@ -1195,15 +1207,15 @@
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
-      "net_score": 11.8,
-      "long_score": 11.8,
+      "symbol": "RUNEUSDT",
+      "net_score": 11.9,
+      "long_score": 11.9,
       "short_score": 0
     },
     {
-      "symbol": "ASTERUSDT",
-      "net_score": 12.2,
-      "long_score": 12.2,
+      "symbol": "COINUSDT",
+      "net_score": 12.7,
+      "long_score": 12.7,
       "short_score": 0
     },
     {
@@ -1214,16 +1226,16 @@
     },
     {
       "symbol": "BIOUSDC",
-      "net_score": 17.3,
-      "long_score": 17.3,
+      "net_score": 14.8,
+      "long_score": 14.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "BIOUSDC",
-      17.3,
-      0.03177
+      14.8,
+      0.03196
     ],
     [
       "BNCUSDT",
@@ -1231,14 +1243,14 @@
       2.67
     ],
     [
-      "ASTERUSDT",
-      12.2,
-      0.6643
+      "COINUSDT",
+      12.7,
+      170.16747889
     ],
     [
-      "ORDIUSDC",
-      11.8,
-      3.853
+      "RUNEUSDT",
+      11.9,
+      0.4411
     ],
     [
       "CRCLUSDT",
@@ -1246,9 +1258,9 @@
       82.44
     ],
     [
-      "RUNEUSDT",
+      "BMNRUSDT",
       11.1,
-      0.4395
+      21.85
     ],
     [
       "TSMUSDT",
@@ -1261,17 +1273,12 @@
       503.78725
     ],
     [
-      "PNUTUSDC",
-      10.1,
-      0.04953
+      "FWDIUSDT",
+      10.4,
+      5.21772906
     ]
   ],
   "top_shorts": [
-    [
-      "WLFIUSDC",
-      19.9,
-      0.05884
-    ],
     [
       "BOTUSDT",
       11.1,
