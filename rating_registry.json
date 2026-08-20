@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-20T19:21:05.972505+00:00",
+  "timestamp": "2026-08-20T19:37:00.208075+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 190
+    "total_ranked": 191
   },
   "unified_ranking": [
     {
@@ -11,6 +11,12 @@
       "net_score": -14.7,
       "long_score": 0,
       "short_score": 14.7
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "net_score": -11.5,
+      "long_score": 0,
+      "short_score": 11.5
     },
     {
       "symbol": "TQQQUSDT",
@@ -44,12 +50,6 @@
     },
     {
       "symbol": "SQQQUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -655,6 +655,12 @@
       "short_score": 0
     },
     {
+      "symbol": "EGLDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CHRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1155,14 +1161,14 @@
       764.4
     ],
     [
+      "ATOMUSDT",
+      11.5,
+      1.473
+    ],
+    [
       "TQQQUSDT",
       10.5,
       69.89
-    ],
-    [
-      "QQQUSDT",
-      10.2,
-      709.5
     ],
     [
       "ASMLUSDT",

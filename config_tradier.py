@@ -97,8 +97,8 @@ class TradierConfig:
     ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_TURN_K1H: float = 40.0
     ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN: int = 2
     # === WING BUDGETS ===
-    SWING_LONG_BUDGET: float = 2500.0      # was 50000 / orig 100000
-    SWING_SHORT_BUDGET: float = 2500.0     # was 50000 / orig 100000
+    SWING_LONG_BUDGET: float = 40000.0     # 2026-08-20 USER: raised 2.5k->40k for >1k/share (NVDA/ASML etc) was 50000 / orig 100000
+    SWING_SHORT_BUDGET: float = 40000.0    # 2026-08-20 USER: raised 2.5k->40k for >1k/share was 50000 / orig 100000
     SWING_MAX_POSITION_SIZE: float = 1100.0   # was 1000 (DEAD)
     SWING_START_SIZE: float = 200.0          # was 400 (DEAD)
     SCALP_LONG_BUDGET: float = 250.0         # was 500 / orig 1000

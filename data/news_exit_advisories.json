@@ -1,14 +1,46 @@
 {
-  "generated_at": "2026-08-20T19:18:13.884378+00:00",
-  "count": 1,
+  "generated_at": "2026-08-20T19:22:57.709905+00:00",
+  "count": 5,
   "advisories": [
     {
-      "symbol": "ETH",
+      "symbol": "SMCI",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.50 threshold=0.45",
-      "score": 0.495,
-      "ts": "2026-08-20T19:18:13.884164+00:00"
+      "reason": "bullish_news_score=0.67 threshold=0.45",
+      "score": 0.67,
+      "ts": "2026-08-20T19:22:57.709765+00:00"
+    },
+    {
+      "symbol": "TCEHY",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.456,
+      "ts": "2026-08-20T19:22:57.709857+00:00"
+    },
+    {
+      "symbol": "TGT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.459,
+      "ts": "2026-08-20T19:22:57.709867+00:00"
+    },
+    {
+      "symbol": "UUUU",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.521,
+      "ts": "2026-08-20T19:22:57.709870+00:00"
+    },
+    {
+      "symbol": "VLO",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.66 threshold=0.45",
+      "score": 0.662,
+      "ts": "2026-08-20T19:22:57.709872+00:00"
     }
   ]
 }

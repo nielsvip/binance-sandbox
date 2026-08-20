@@ -1,6 +1,6 @@
 # trb (per_sym) vs trc (7D) — live A/B
 
-Start: 2026-06-26T09:50:48Z · elapsed 55.4d · updated 2026-08-20 18:34Z
+Start: 2026-06-26T09:50:48Z · elapsed 55.4d · updated 2026-08-20 19:32Z
 
 | metric | trb · per_sym | trc · 7D | 7D useful? |
 |---|---|---|---|
