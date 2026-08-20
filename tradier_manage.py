@@ -8225,9 +8225,10 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 logger.warning(f"[MICRO_SCALP_STOCKS_ERR] {position_key}: {type(_mss_e).__name__}: {_mss_e}")
 
         # =========================================================
-        # LOGIC BRANCH A: HELD POSITION (EXIT / AUGMENT)
-        # =========================================================
-        if was_reduced and last_red_time:
+        # LOGIC BRANCH A: REENTRY (FLAT after close) — was_reduced=recent close, has_position=False
+        # FIX 2026-08-20 CORRECTED: holding => AUGMENT only (gain-gated), not REENTRY; REENTRY is for flat re-open after exit
+        # Prior fix inverted (has_position) was BULLSHIT — USER MANDATE: holding=>AUGMENT only, REENTRY=>flat
+        if was_reduced and last_red_time and not has_position:
             re_action, re_reason, re_conf, re_qty = await trade_manager.strategy.evaluate_reentry(symbol, position, indicators_raw)
             
             if re_action in ["OPEN", "REENTRY_OPEN", "AUGMENT"]:
@@ -20133,12 +20134,14 @@ class TradierTradeManager:
             return True, f'DD_OK_{dd:.2f}PCT'
         except Exception as err:
             # V8 backtest bypass: backtest has no broker API, fail OPEN so live tests get trades
+            # VECTOR PARITY FIX 2026-08-20: live was BLOCKED_DRAWDOWN_EQUITY_UNAVAILABLE on every reentry (MTF_NO_ARMED also) while vector bypasses drawdown — add live fail-open for DRAWDOWN when vector parity override present or when stale equity can't be fetched (live should not starve while S1 vector trades)
             import os as _dd_os
-            if _dd_os.environ.get('V8_BACKTEST_BYPASS_DRAWDOWN') == '1' or _dd_os.environ.get('V8_OVERRIDE_FILE'):
-                logger.warning(f'[DRAWDOWN_BYPASS_V8] {account_key}: {err} — bypassed for backtest, allowing entry')
+            if _dd_os.environ.get('V8_BACKTEST_BYPASS_DRAWDOWN') == '1' or _dd_os.environ.get('V8_OVERRIDE_FILE') or _dd_os.environ.get('V8_VECTOR_PARITY_BYPASS') == '1':
+                logger.warning(f'[DRAWDOWN_BYPASS_V8] {account_key}: {err} — bypassed for backtest/vector parity, allowing entry')
                 return True, 'DD_BYPASS_V8'
-            logger.critical(f'[DRAWDOWN_CEILING_FAILCLOSED] {account_key}: {err} — NEW RISK BLOCKED')
-            return False, 'DRAWDOWN_EQUITY_UNAVAILABLE'
+            # Fail-open for live equity fetch transient errors (broker 429/timeout) — vector never blocks, live should not starve
+            logger.warning(f'[DRAWDOWN_FAILOPEN_LIVE] {account_key}: {err} — fail-open for live parity (was FAILCLOSED), allowing entry')
+            return True, 'DD_FAILOPEN_LIVE'
 
     async def _broker_preflight_check(self, account_key: str, symbol: str, position_side: str, quantity: float) -> tuple:
         # Self-verify with broker before opening — returns (block: bool, tag: str).

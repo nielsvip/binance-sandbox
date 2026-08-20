@@ -1,16 +1,16 @@
 # trb (per_sym) vs trc (7D) — live A/B
 
-Start: 2026-06-26T09:50:48Z · elapsed 55.3d · updated 2026-08-20 17:30Z
+Start: 2026-06-26T09:50:48Z · elapsed 55.4d · updated 2026-08-20 18:34Z
 
 | metric | trb · per_sym | trc · 7D | 7D useful? |
 |---|---|---|---|
-| trades | 829 | 237 | ✗ |
+| trades | 831 | 237 | ✗ |
 | win % | 42.2 | 42.6 | ✓ 7D |
-| avg %/trade | -0.0766 | -0.7338 | ✗ |
-| cumulative % | -59.638 | -85.968 | ✗ |
-| pool_sharpe | -0.03 | -0.1836 | ✗ |
-| max drawdown % | -63.552 | -89.308 | ✗ |
-| realized $ (size-dependent) | 1788.41 | -5236.95 | ✗ |
+| avg %/trade | -0.0769 | -0.7338 | ✗ |
+| cumulative % | -59.814 | -85.968 | ✗ |
+| pool_sharpe | -0.0301 | -0.1836 | ✗ |
+| max drawdown % | -64.308 | -89.308 | ✗ |
+| realized $ (size-dependent) | 1770.68 | -5236.95 | ✗ |
 
 _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). Sample still small — needs weeks._
 
@@ -78,7 +78,7 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | RRC | -2.274 (2) | -2.046 (2) | 0.23 |
 | SCCO | -6.236 (7) | None (0) |  |
 | SLV | -2.12 (3) | None (0) |  |
-| SNDK | 36.769 (39) | None (0) |  |
+| SNDK | 39.056 (40) | None (0) |  |
 | STZ | None (0) | 10.691 (3) |  |
 | TRGP | 1.762 (2) | -1.427 (1) | -3.19 |
 | TSLA | -3.179 (4) | None (0) |  |
@@ -88,7 +88,7 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | UAN | None (0) | -10.695 (2) |  |
 | USAR | 2.026 (7) | -35.547 (3) | -37.57 |
 | UUUU | -0.625 (1) | 13.124 (10) | 13.75 |
-| VLO | -3.349 (103) | None (0) |  |
+| VLO | -5.354 (104) | None (0) |  |
 | VT | -0.595 (14) | None (0) |  |
 | WDAY | 3.03 (5) | None (0) |  |
 | XLE | None (0) | -3.298 (7) |  |

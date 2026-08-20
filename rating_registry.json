@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T18:34:20.389781+00:00",
+  "timestamp": "2026-08-20T18:49:55.299043+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -392,6 +392,12 @@
     },
     {
       "symbol": "ASTERUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ONDOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1118,20 +1124,14 @@
     },
     {
       "symbol": "MORPHOUSDT",
-      "net_score": 10.1,
-      "long_score": 10.1,
-      "short_score": 0
-    },
-    {
-      "symbol": "ONDOUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
+      "net_score": 11.7,
+      "long_score": 11.7,
       "short_score": 0
     },
     {
       "symbol": "ENAUSDC",
-      "net_score": 11.8,
-      "long_score": 11.8,
+      "net_score": 12.3,
+      "long_score": 12.3,
       "short_score": 0
     },
     {
@@ -1144,13 +1144,13 @@
   "top_longs": [
     [
       "ENAUSDC",
-      11.8,
-      0.10701
+      12.3,
+      0.10843
     ],
     [
       "MORPHOUSDT",
-      10.1,
-      2.3505
+      11.7,
+      2.3545
     ]
   ],
   "top_shorts": [
