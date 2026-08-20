@@ -1,38 +1,46 @@
 {
-  "generated_at": "2026-08-20T17:04:21.869994+00:00",
-  "count": 4,
+  "generated_at": "2026-08-20T17:19:22.797308+00:00",
+  "count": 5,
   "advisories": [
     {
-      "symbol": "MOS",
+      "symbol": "SMCI",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.91 threshold=0.45",
-      "score": 0.906,
-      "ts": "2026-08-20T17:04:21.869954+00:00"
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.527,
+      "ts": "2026-08-20T17:19:22.797057+00:00"
     },
     {
-      "symbol": "PATH",
+      "symbol": "TCEHY",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.54 threshold=0.45",
-      "score": 0.542,
-      "ts": "2026-08-20T17:04:21.869965+00:00"
+      "reason": "bullish_news_score=0.46 threshold=0.45",
+      "score": 0.456,
+      "ts": "2026-08-20T17:19:22.797071+00:00"
     },
     {
-      "symbol": "PBF",
+      "symbol": "TGT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.49 threshold=0.45",
-      "score": 0.486,
-      "ts": "2026-08-20T17:04:21.869968+00:00"
+      "reason": "bullish_news_score=0.45 threshold=0.45",
+      "score": 0.454,
+      "ts": "2026-08-20T17:19:22.797076+00:00"
     },
     {
-      "symbol": "PSX",
+      "symbol": "UUUU",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.59 threshold=0.45",
-      "score": 0.586,
-      "ts": "2026-08-20T17:04:21.869970+00:00"
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.521,
+      "ts": "2026-08-20T17:19:22.797082+00:00"
+    },
+    {
+      "symbol": "VLO",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.66 threshold=0.45",
+      "score": 0.662,
+      "ts": "2026-08-20T17:19:22.797086+00:00"
     }
   ]
 }
