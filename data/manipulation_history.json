@@ -52,5 +52,23 @@
     ],
     "timestamp": "2026-08-20T07:55:12.916023+00:00",
     "price": 0.005546
+  },
+  {
+    "symbol": "FLOWUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T07:59:05.073768+00:00",
+    "price": 0.02873
+  },
+  {
+    "symbol": "IOSTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T08:08:22.563898+00:00",
+    "price": 0.0005565
   }
 ]
