@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T07:41:32.773856+00:00",
+  "timestamp": "2026-08-20T07:56:51.576110+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -307,12 +307,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SPXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SAGAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -404,6 +398,12 @@
     },
     {
       "symbol": "MOVRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -823,12 +823,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BOMEUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -836,6 +830,12 @@
     },
     {
       "symbol": "RKLBUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -944,6 +944,12 @@
     },
     {
       "symbol": "DRAMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AAVEUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1189,50 +1195,39 @@
       "short_score": 0
     },
     {
-      "symbol": "RUNEUSDT",
-      "net_score": 10.7,
-      "long_score": 10.7,
+      "symbol": "SPXUSDT",
+      "net_score": 11.1,
+      "long_score": 11.1,
       "short_score": 0
     },
     {
       "symbol": "ETHFIUSDC",
-      "net_score": 12.0,
-      "long_score": 12.0,
+      "net_score": 12.3,
+      "long_score": 12.3,
       "short_score": 0
     },
     {
-      "symbol": "AAVEUSDC",
-      "net_score": 12.4,
-      "long_score": 12.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASTERUSDT",
-      "net_score": 15.2,
-      "long_score": 15.2,
+      "symbol": "BOMEUSDC",
+      "net_score": 13.5,
+      "long_score": 13.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ASTERUSDT",
-      15.2,
-      0.6585
-    ],
-    [
-      "AAVEUSDC",
-      12.4,
-      96.74
+      "BOMEUSDC",
+      13.5,
+      0.0011095
     ],
     [
       "ETHFIUSDC",
-      12.0,
-      0.5438
+      12.3,
+      0.5652
     ],
     [
-      "RUNEUSDT",
-      10.7,
-      0.4304
+      "SPXUSDT",
+      11.1,
+      0.3743
     ],
     [
       "BMNRUSDT",
