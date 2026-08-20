@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-08-20T07:11:32.949052+00:00",
+  "timestamp": "2026-08-20T07:26:39.685529+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 199
+    "total_ranked": 200
   },
   "unified_ranking": [
+    {
+      "symbol": "BTCDOMUSDT",
+      "net_score": -12.3,
+      "long_score": 0,
+      "short_score": 12.3
+    },
     {
       "symbol": "EIGENUSDT",
       "net_score": 0,
@@ -307,12 +313,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SPXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SAGAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -332,12 +332,6 @@
     },
     {
       "symbol": "BIGTIMEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -524,12 +518,6 @@
     },
     {
       "symbol": "QQQUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BIOUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -829,6 +817,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BOMEUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1099,6 +1093,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IOTAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1189,31 +1189,48 @@
       "short_score": 0
     },
     {
-      "symbol": "ASTERUSDT",
-      "net_score": 13.3,
-      "long_score": 13.3,
+      "symbol": "SPXUSDT",
+      "net_score": 10.3,
+      "long_score": 10.3,
       "short_score": 0
     },
     {
-      "symbol": "BOMEUSDC",
-      "net_score": 16.7,
-      "long_score": 16.7,
+      "symbol": "BIOUSDC",
+      "net_score": 10.4,
+      "long_score": 10.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTERUSDT",
+      "net_score": 15.0,
+      "long_score": 15.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "BOMEUSDC",
-      16.7,
-      0.0010316
+      "ASTERUSDT",
+      15.0,
+      0.6593
     ],
     [
-      "ASTERUSDT",
-      13.3,
-      0.6569
+      "BIOUSDC",
+      10.4,
+      0.03019
+    ],
+    [
+      "SPXUSDT",
+      10.3,
+      0.3767
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "BTCDOMUSDT",
+      12.3,
+      5337.2
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
