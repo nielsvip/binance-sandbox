@@ -128,6 +128,7 @@ faithful engine before they touch live money.
 |----------|------|--------|-----------|-----|------|
 | **Mac** | Darwin | `/opt/anaconda3/envs/binance_env/bin/python` | `/Users/niels/Documents/binance` | `backtest_v8/indicators` | LIVE TRADING + dashboard (never runs backtests) |
 | **S1** | `157.180.125.52` / `s1-int` (Linux, user `niels`) | `/home/niels/.conda/envs/binance_env/bin/python` | `/home/niels/binance-sandbox` | `backtest_v8/indicators` (27G) | **BACKTESTS ONLY** — 10 workers vector + 4 V8 |
+| | **S1 SSH** `s1-int` is `127.0.0.1:2201` via `s1-sftp` tunnel — **run `ssh -fNT s1-sftp` once (or `ssh 157.180.125.52` `s1-pub`/`s1-fallback` direct `157.180.125.52:22` fallback if bridge down, `157.90.168.35` `gateway-internal` `10.0.0.3` `ProxyJump`, `ControlMaster auto` `~/.ssh/cm-s1-int`) before any `ssh s1-int` or it `Connection refused 127.0.0.1:2201`; `hcloud server list` `157.180.125.52` `hel1` `niels` `tradingnet` `10.0.0.3` `2a01:4f9:c013:fdf7::/64` as you verified `14:54 UTC` `niels` `load 26.39` `s1-int ok` + `direct ok`** | | | | |
 | **BOX 135** | `135.181.97.66` (Linux, user `root`) | `/usr/bin/python3` (`/usr/local/dist-packages`) | `/root/binance-sandbox` **ALSO as `/home/niels/binance-sandbox` via `ln -sf /root/binance-sandbox /home/niels/binance-sandbox`** | `backtest_v8/indicators` (27G, same as S1) | **Ephemeral — autodestructs 2026-08-20 ~12:00 UTC — sync ALL results to S1/Mac before death** |
 
 **Path rule:** never hardcode `/home/niels/binance-sandbox` or `/Users/niels/Documents/binance` or `/root/binance-sandbox`. Use:

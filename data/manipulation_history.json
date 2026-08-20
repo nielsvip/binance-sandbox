@@ -700,5 +700,14 @@
     ],
     "timestamp": "2026-08-20T15:26:35.799236+00:00",
     "price": 0.9411
+  },
+  {
+    "symbol": "UMAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 13.3x normal"
+    ],
+    "timestamp": "2026-08-20T15:35:39.228853+00:00",
+    "price": 0.3426
   }
 ]

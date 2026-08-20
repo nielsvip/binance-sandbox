@@ -1,10 +1,10 @@
-PERFORMANCE REPORT — 2026-08-20 15:26 UTC
+PERFORMANCE REPORT — 2026-08-20 15:41 UTC
 ================================================================================
 Total: 103 symbols | A=2 B=80 C=21
 Window: 14 days | Min trades: 5
 
 --- TIER A (2 symbols) ---
-             MSTR  WR=62%  avg=+0.83%  total=+42.1%  trades= 45  mult=8.78
+             MSTR  WR=61%  avg=+0.83%  total=+41.4%  trades= 44  mult=8.66
              CIEN  WR=84%  avg=+1.58%  total=+33.2%  trades= 19  mult=10.00
 
 --- TIER B (80 symbols) ---
@@ -34,6 +34,7 @@ Window: 14 days | Min trades: 5
          ASTSUSDT  WR=60%  avg=+0.05%  total=+0.2%  trades=  5  mult=1.53
        RENDERUSDT  WR=67%  avg=+0.04%  total=+0.2%  trades=  6  mult=1.97
           SKYUSDT  WR=83%  avg=+0.03%  total=+0.2%  trades=  6  mult=2.86
+               MU  WR=46%  avg=+0.02%  total=+0.2%  trades= 41  mult=0.82
           ZRXUSDT  WR=75%  avg=+0.02%  total=+0.1%  trades=  4  mult=1.00
           UNIUSDC  WR=67%  avg=+0.03%  total=+0.1%  trades=  3  mult=1.00
          EGLDUSDT  WR=100%  avg=+0.04%  total=+0.1%  trades=  2  mult=1.00
@@ -82,7 +83,6 @@ Window: 14 days | Min trades: 5
           TIAUSDC  WR=50%  avg=-0.27%  total=-1.1%  trades=  4  mult=1.00
              COPX  WR=0%  avg=-0.57%  total=-1.1%  trades=  2  mult=1.00
      FARTCOINUSDT  WR=25%  avg=-0.34%  total=-1.4%  trades=  4  mult=1.00
-               MU  WR=45%  avg=-0.03%  total=-2.0%  trades= 42  mult=0.68
              LEXX  WR=0%  avg=-2.49%  total=-2.5%  trades=  1  mult=1.00
              MSFT  WR=0%  avg=-1.26%  total=-2.5%  trades=  2  mult=1.00
               NKE  WR=52%  avg=-0.04%  total=-3.2%  trades= 73  mult=1.07
@@ -113,7 +113,7 @@ Window: 14 days | Min trades: 5
              MRVL  WR=45%  avg=-0.52%  total=-15.1%  trades= 29  mult=0.34
 
 SUMMARY:
-  Total PnL (all symbols): +94.3%
+  Total PnL (all symbols): +95.6%
   Avg win rate: 46%
-  A-tier avg mult: 9.39
+  A-tier avg mult: 9.33
   C-tier avg mult: 0.51
