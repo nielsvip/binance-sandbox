@@ -1,4 +1,4 @@
-# Copilot Status — 2026-08-20 22:51:45 UTC
+# Copilot Status — 2026-08-20 23:07:02 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-08-20T22:42:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T22:42:57
-- **STALE_INDICATORS** [tradier]  — 2026-08-20T22:45:07
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T22:45:07
-- **STALE_INDICATORS** [tradier]  — 2026-08-20T22:47:08
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T22:47:08
-- **STALE_INDICATORS** [tradier]  — 2026-08-20T22:49:16
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T22:49:16
-- **STALE_INDICATORS** [tradier]  — 2026-08-20T22:51:23
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T22:51:23
+- **STALE_INDICATORS** [tradier]  — 2026-08-20T22:57:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T22:57:37
+- **STALE_INDICATORS** [tradier]  — 2026-08-20T22:59:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T22:59:41
+- **STALE_INDICATORS** [tradier]  — 2026-08-20T23:01:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T23:01:44
+- **STALE_INDICATORS** [tradier]  — 2026-08-20T23:03:47
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T23:03:47
+- **STALE_INDICATORS** [tradier]  — 2026-08-20T23:05:50
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T23:05:50
 
 ## Missed Trades (trader comparison)
 
@@ -39,8 +39,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (171min)
-- [MEDIUM] tradier_indicators.py running but log stale (171min)
-- [MEDIUM] tradier_rankings.py running but log stale (171min)
-- [MEDIUM] tradier_positions.py running but log stale (171min)
+- [MEDIUM] tradier_prices.py running but log stale (185min)
+- [MEDIUM] tradier_rankings.py running but log stale (185min)
+- [MEDIUM] tradier_positions.py running but log stale (185min)

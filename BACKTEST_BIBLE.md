@@ -9412,4 +9412,23 @@ The `16` (`A_LONG`, `COHR_LONG`, `NUKZ_LONG`, `SPCXUSD1_LONG`, `SNDK_LONG`, `VT_
 
 *Verify:* `ssh s1-int "top -b -n 1 | head; ps aux --sort=-%cpu | grep beam | head"` → `Cpu 47.9%+11.7% 39% idle` is **under** `90%` → watchdog must add `6 beam` shards; after fix `top Cpu 66% us +14% sy 15% idle 80%` `6 beams +4 crypto`; `grep -c 'TRILLIONS FIX' tools/next_gen_beam_per_sym.py→1` and `grep -c 'not added to ledger'→0`; `grep DEADLOCK BREAKER tools/ultimate_watchdog.py`; `ls -lh ~/.config/hcloud/token` exists; `cat /tmp/ultimate_watchdog.log | tail | grep "spawned root cause"`.
 
+### §16.79 — NO LIES LEDGER + BAD→BETTER ONLY SYNC (2026-08-20 — USER EVAL, CRWD -171k / VT -60% LIES)
+
+**All other numbers were also lies — 148/181 (81.7%).** `data/reports/gui_lab/next_gen_beam_per_sym.json` `181` was `16` `provisional amber amber_provisional_retry` (`CRWD_LONG -171754% -171705Δ 609tr avg -282% >-100 cap impossible vs verified +60.7% DD3.01`, `VT_LONG -60%`) + `8` `ZERO_TRADES 0 -999` (`SPCX, ETHFIUSDC...`) + `114` `skipped_bulk beam_depth 1 group_hits 0 overrides:{}` (e.g. `SOL_SHORT 4481%`, `SNDK_SHORT 378%` — stale base carryover, never swept `GROUP_DEFS` 47 groups) + `NEG delta 20` + `DD>30 73`. Only `33` passed `delta>0.1 DD≤30 trades>1 sharpe≥0.2 basics_ok` (`strictly_ok 1`, `STRICT 23/181`). `skipped_bulk`+`amber` came from S1 shards that emitted placeholders when `pos_best` empty and from RAM>90% chunk `continue` skipping all groups — counted as filled, rendered to `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx 292K`.
+
+**Hardened — can never happen again (Mac + S1 synced):**
+
+- `tools/next_gen_beam_per_sym.py:_is_lie()` (`provisional/amber`, `ZERO_TRADES ≤1`, `NEG delta<0.1`, `DD>30`, `SKIP_BULK/no_trade`, `IMPOSSIBLE avg<-100`, `EMPTY_OVERRIDES_NO_SWEEP`) — if no strict `DD≤30 delta>0` exists, **skip symside, no ledger entry**, re-queues for deeper beam; removed `RELATIVE_BEST_NEGATIVE` fake fill. `beam_for_symside` only returns `pos_best` filtered by `not _is_lie`.
+- `_is_lie_record` + `_merge_shard_into_main` drops lies on every shard merge and purges `main` of lies. Per-symside checkpoint + final exit compute `_ledger_score=(clean_count, avg_delta)` and **block overwrite if `new < old`** (`NO_OVERWRITE GUARD: stale/lying write blocked`). Source tagged `NO_LIES bad->better only`.
+- `tools/export_next_gen_spreadsheet.py:load_ledger()` drops all lies with `export_next_gen NO_LIES guard: dropped 148 lies (33/181 clean)` — sheets never show fakes even if ledger reinfects.
+- **Purge** `181→34` (`33` after dedup) `+NO_LIES_PURGE`, deleted `71` shards Mac + `9` S1, rebuilt `STOCKS 64K 30 sym_sides`, killed stale `beam-depth 1` runners.
+
+**Bad→better only sync — NOTHING rewrites if no better data:**
+
+- `tools/sync_next_gen_ledger.sh [check|mac2box|box2mac]` (`chmod +x`) computes `clean avg_delta generated_at raw_len` for both sides (`python -c is_lie` filter). `mac2box` allowed only if `mac_clean > box_clean` or equal but `mac_avg > box_avg`; `box2mac` symmetric. Otherwise `BLOCKED: not better — no overwrite`. **Never bare `rsync -avz ledger.json`** — always via this script. This enforces `old→new and bad→better ALWAYS` per user 2026-08-20; a stale `181` with `16` provisional can never overwrite a `34` clean even if its mtime is newer.
+- Code-level `NO_OVERWRITE GUARD` in `next_gen_beam_per_sym.py` also blocks intra-host stale writes (e.g. resumed `181` process trying to overwrite `34` clean after purge).
+- `per_sym_7d_tradier_overlay.py` stays on S1 (`4× workers 98%` in `ps`) — it writes only `per_sym_active_config.json`, not `next_gen_beam_per_sym.json`/`SPREADSHEETS/*.xlsx`; matrix testing stays on BOX/S1 `next_gen_beam` lane, no cross-contamination.
+
+*Verify:* `python3 -c "import json; d=json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json')); print(len(d['ledger']), d['generated_at'], sum(1 for r in d['ledger'] if r.get('best',{}).get('provisional')))"` → `34 ... 0`; `./tools/sync_next_gen_ledger.sh check` → `MAC 34 ... BOX 34 ...`; `box2mac BLOCKED` when equal; `./tools/sync_next_gen_ledger.sh mac2box` only when Mac strictly better; `python -m py_compile tools/next_gen_beam_per_sym.py && bash -n tools/sync_next_gen_ledger.sh` → `ok`; `ls -lh SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` `64K`.
+
 

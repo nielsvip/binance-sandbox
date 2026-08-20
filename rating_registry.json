@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-20T22:56:22.802215+00:00",
+  "timestamp": "2026-08-20T23:11:41.541861+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 173
+    "total_ranked": 178
   },
   "unified_ranking": [
     {
@@ -140,6 +140,12 @@
     },
     {
       "symbol": "NVDAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CAKEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -373,6 +379,12 @@
       "short_score": 0
     },
     {
+      "symbol": "NOTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RIFUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -559,6 +571,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LRCXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "QCOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -637,13 +655,13 @@
       "short_score": 0
     },
     {
-      "symbol": "AAVEUSDC",
+      "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "BCHUSDC",
+      "symbol": "OPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -668,6 +686,12 @@
     },
     {
       "symbol": "HIMSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "FLOWUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -806,6 +830,12 @@
     },
     {
       "symbol": "THETAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LUNA2USDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1034,26 +1064,26 @@
     },
     {
       "symbol": "AMATUSDT",
-      "net_score": 10.0,
-      "long_score": 10.0,
+      "net_score": 10.1,
+      "long_score": 10.1,
       "short_score": 0
     },
     {
-      "symbol": "LRCXUSDT",
-      "net_score": 11.0,
-      "long_score": 11.0,
+      "symbol": "AAVEUSDC",
+      "net_score": 10.2,
+      "long_score": 10.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "LRCXUSDT",
-      11.0,
-      310.76
+      "AAVEUSDC",
+      10.2,
+      98.48
     ],
     [
       "AMATUSDT",
-      10.0,
+      10.1,
       496.24
     ]
   ],
