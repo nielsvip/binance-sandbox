@@ -1,16 +1,16 @@
 # trb (per_sym) vs trc (7D) — live A/B
 
-Start: 2026-06-26T09:50:48Z · elapsed 55.4d · updated 2026-08-20 19:32Z
+Start: 2026-06-26T09:50:48Z · elapsed 55.4d · updated 2026-08-20 20:30Z
 
 | metric | trb · per_sym | trc · 7D | 7D useful? |
 |---|---|---|---|
-| trades | 831 | 237 | ✗ |
+| trades | 832 | 237 | ✗ |
 | win % | 42.2 | 42.6 | ✓ 7D |
-| avg %/trade | -0.0769 | -0.7338 | ✗ |
-| cumulative % | -59.814 | -85.968 | ✗ |
-| pool_sharpe | -0.0301 | -0.1836 | ✗ |
+| avg %/trade | -0.0771 | -0.7338 | ✗ |
+| cumulative % | -59.922 | -85.968 | ✗ |
+| pool_sharpe | -0.0302 | -0.1836 | ✗ |
 | max drawdown % | -64.308 | -89.308 | ✗ |
-| realized $ (size-dependent) | 1770.68 | -5236.95 | ✗ |
+| realized $ (size-dependent) | 1765.61 | -5236.95 | ✗ |
 
 _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). Sample still small — needs weeks._
 
@@ -19,7 +19,7 @@ _Verdict metric = per-trade return + sharpe (fair; $ differs by account size). S
 | symbol | trb cumul% (n) | trc cumul% (n) | trc−trb |
 |---|---|---|---|
 | A | -0.625 (1) | -10.711 (4) | -10.09 |
-| AAPL | 17.986 (9) | None (0) |  |
+| AAPL | 17.669 (10) | None (0) |  |
 | ADBE | 2.845 (1) | None (0) |  |
 | AGCO | 1.109 (3) | -2.772 (3) | -3.88 |
 | AGI | 6.867 (2) | None (0) |  |

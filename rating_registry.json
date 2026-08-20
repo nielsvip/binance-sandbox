@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T20:23:04.147314+00:00",
+  "timestamp": "2026-08-20T20:38:06.070009+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -31,16 +31,16 @@
       "short_score": 10.5
     },
     {
+      "symbol": "ATOMUSDT",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
+    },
+    {
       "symbol": "QQQUSDT",
       "net_score": -10.2,
       "long_score": 0,
       "short_score": 10.2
-    },
-    {
-      "symbol": "ASMLUSDT",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
     },
     {
       "symbol": "QNTXUSDT",
@@ -56,12 +56,6 @@
     },
     {
       "symbol": "SQQQUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -421,6 +415,12 @@
       "short_score": 0
     },
     {
+      "symbol": "KMNOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -656,6 +656,12 @@
     },
     {
       "symbol": "ADAUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASMLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1153,25 +1159,13 @@
       "short_score": 0
     },
     {
-      "symbol": "KMNOUSDT",
-      "net_score": 10.2,
-      "long_score": 10.2,
-      "short_score": 0
-    },
-    {
       "symbol": "ARUSDT",
       "net_score": 13.6,
       "long_score": 13.6,
       "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "KMNOUSDT",
-      10.2,
-      0.02096
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "SPYUSDT",
@@ -1189,14 +1183,14 @@
       69.89
     ],
     [
+      "ATOMUSDT",
+      10.3,
+      1.486
+    ],
+    [
       "QQQUSDT",
       10.2,
       709.5
-    ],
-    [
-      "ASMLUSDT",
-      10.1,
-      1745.0
     ]
   ],
   "hedge_usage": {
