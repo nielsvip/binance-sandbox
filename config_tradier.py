@@ -1456,8 +1456,6 @@ class TradierConfig:
     EMA_9_21_TIMEFRAME: str = "5m"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER 2026-08-19 kindergarten: LONG only above ema200/sma200/ema9>21 on D/4h — SIDE-AWARE gate in v8_vec_sweep
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
-    EMA_BLANKET_TF: str | None = None  # BLANKET 2026-08-20 — None=OFF else 3m/5m/15m/1h/4h
-    EMA_BLANKET_PERIOD: int = 0  # BLANKET 2026-08-20 — 0=OFF else 50/200
     # --- TTM Squeeze — EXPERIMENTAL, trc only ---
     SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; WIRED 2026-04-16 (priority 80/100) — tradier_manage.py:5286 TRC override destination
     SQUEEZE_SCORE_BONUS: int = 15  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
@@ -3286,6 +3284,21 @@ class TradierConfig:
     HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = False
     HEDGE_DECAY_NUKE_ENABLED: bool = False
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = False
+    # --- S2 BTC BEST re-hooked 2026-08-20 TEST REQUIRED (same 14 as config.py) ---
+    BTC_RZ_WT_DC_MULTIFACTOR: bool = True
+    BTC_TREND_MODE_ENABLED: bool = False
+    DC_LOW4_BYPASS_USE_STANDARD: bool = True
+    DYNAMIC_SCORE_AUGMENT_ENABLED: bool = True
+    HEDGE_DETERIORATING_GAIN_WINDOW_BARS: int = 2
+    INTRADAY_SESSION_FORCE_EXIT_UTC: int = 35100
+    PARTIAL_EXIT_FRAC: float = 0.75
+    QUICK_REENTRY_60MIN_MIN_PCT: float = 0.6
+    RATIO_SENTIMENT_FILTER_ENABLED: bool = True
+    RATIO_SENTIMENT_SHORT_MAX: float = 45.0
+    RZ_CASCADE_MIN_TF_ALIGN: int = 2
+    V8_ENTRY_ENGINE_DC_ENABLED: bool = True
+    V8_ENTRY_ENGINE_WT_ENABLED: bool = True
+    WT_MOMENTUM_EXIT_THRESHOLD: int = 1
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False
     HEDGE_OPEN_OB_CHECK_ENABLED: bool = False
     HEDGE_PROFIT_PROTECT_ENABLED: bool = False

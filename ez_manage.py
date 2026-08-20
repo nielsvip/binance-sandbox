@@ -281,34 +281,6 @@ def compute_applied_ratio(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2. ENTRY ALIGNMENT — 2-of-3 LTF + 2-of-3 HTF required for new entries
 # ═══════════════════════════════════════════════════════════════════════════════
-def _ema_blanket_gate(indicators: Dict[str, Any], is_long: bool, current_price: float = 0) -> Tuple[bool, str]:
-    """BLANKET 2026-08-20 — LONG only above ema_N_TF, SHORT only below. OFF when EMA_BLANKET_TF is None."""
-    try:
-        tf = getattr(config, "EMA_BLANKET_TF", None)
-        period = int(getattr(config, "EMA_BLANKET_PERIOD", 0) or 0)
-        if tf not in ("3m","5m","15m","1h","4h") or period not in (50,200):
-            return True, "BLANKET_OFF"
-        price = float(current_price) if current_price else float(indicators.get("close") or indicators.get("close_3m") or indicators.get("close_5m") or 0)
-        ema = indicators.get(f"ema_{period}_{tf}")
-        if ema is None:
-            return True, f"BLANKET_NO_EMA_{period}_{tf}_ALLOW"
-        try:
-            ema_f = float(ema)
-        except:
-            return True, "BLANKET_EMA_NAN_ALLOW"
-        if ema_f == 0:
-            return True, "BLANKET_EMA_ZERO_ALLOW"
-        if price == 0:
-            return True, "BLANKET_NO_PRICE_ALLOW"
-        if is_long:
-            ok = price > ema_f
-            return ok, f"BLANKET_LONG_{'OK' if ok else 'BLOCK'}_tf={tf}_p={period}_px{price:.4f}_ema{ema_f:.4f}"
-        else:
-            ok = price < ema_f
-            return ok, f"BLANKET_SHORT_{'OK' if ok else 'BLOCK'}_tf={tf}_p={period}_px{price:.4f}_ema{ema_f:.4f}"
-    except Exception as e:
-        return True, f"BLANKET_ERR_{e}"
-
 def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_price: float = 0) -> Tuple[bool, str]:
     """KINDERGARTEN 2026-08-20 REWORKED — BEST BLANKET 4h EMA200 (was simple D ema200/sma200/ema9>21, now 4h200 from 3(5)/15/1h/4h x 50/200 sweep, fallback 1h→15m→5m/3m), SHORT only below. Wired in live via check_entry_alignment (preserves side-aware strictness like v8_vec_sweep). Disabled when KINDERGARTEN_EMA_GATE_ENABLED=False."""
     try:
@@ -372,10 +344,6 @@ def check_entry_alignment(
     # KINDERGARTEN 2026-08-20 — SOFT +5 for tradier: stocks get bonus not hard block, crypto keeps hard block. Live mirrors v8_vec_sweep soft.
     _sym = str(indicators.get("symbol") or indicators.get("sym") or "")
     _is_crypto_live = ('/' in _sym or 'USDC' in _sym or 'USDT' in _sym)
-    # BLANKET 2026-08-20 — hard block both crypto+stocks when enabled, before kindergarten soft
-    _bl_ok, _bl_reason = _ema_blanket_gate(indicators, is_long, float(indicators.get("close") or 0))
-    if not _bl_ok:
-        return False, _bl_reason
     _kg_ok, _kg_reason = _kindergarten_ema_gate(indicators, is_long, float(indicators.get("close") or 0))
     if not _kg_ok and _is_crypto_live:
         return False, _kg_reason

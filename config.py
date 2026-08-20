@@ -4022,6 +4022,21 @@ class Config:
     # already in loss, open opposite-side hedge same notional. Hedge closes when wt 3m+1h
     # flip in hedge's favor + hedge gain ≥ 0 (per memory feedback_hedge_wt3m_close_absolute).
     BTC_HEDGE_SAMESYM_ENABLED: bool = False                               # default OFF — sweep validates before flipping live
+    # --- S2 BTC BEST re-hooked switches 2026-08-20 (TEST REQUIRED — from s2_backup_20260508 override_btc_BEST.json) ---
+    BTC_RZ_WT_DC_MULTIFACTOR: bool = True                                # TEST REQUIRED — S2 BEST true; multifactor WT/DC RZ weighting
+    BTC_TREND_MODE_ENABLED: bool = False                                 # TEST REQUIRED — S2 BEST false; trend-mode entry filter
+    DC_LOW4_BYPASS_USE_STANDARD: bool = True                             # TEST REQUIRED — S2 BEST true; DC low4 bypass uses standard gate
+    DYNAMIC_SCORE_AUGMENT_ENABLED: bool = True                           # TEST REQUIRED — S2 BEST true; dynamic score augment
+    HEDGE_DETERIORATING_GAIN_WINDOW_BARS: int = 2                        # TEST REQUIRED — S2 BEST 2; hedge deteriorating window
+    INTRADAY_SESSION_FORCE_EXIT_UTC: int = 35100                         # TEST REQUIRED — S2 BEST 35100s; intraday session force exit UTC sec
+    PARTIAL_EXIT_FRAC: float = 0.75                                      # TEST REQUIRED — S2 BEST 0.75; partial exit fraction
+    QUICK_REENTRY_60MIN_MIN_PCT: float = 0.6                             # TEST REQUIRED — S2 BEST 0.6; quick reentry 60min min pct
+    RATIO_SENTIMENT_FILTER_ENABLED: bool = True                          # TEST REQUIRED — S2 BEST true; ratio sentiment filter
+    RATIO_SENTIMENT_SHORT_MAX: float = 45.0                              # TEST REQUIRED — S2 BEST 45.0; ratio sentiment short max
+    RZ_CASCADE_MIN_TF_ALIGN: int = 2                                     # TEST REQUIRED — S2 BEST 2; RZ cascade min TF align
+    V8_ENTRY_ENGINE_DC_ENABLED: bool = True                              # TEST REQUIRED — S2 BEST true; V8 entry engine DC
+    V8_ENTRY_ENGINE_WT_ENABLED: bool = True                              # TEST REQUIRED — S2 BEST true; V8 entry engine WT
+    WT_MOMENTUM_EXIT_THRESHOLD: int = 1                                  # TEST REQUIRED — S2 BEST 1; WT momentum exit threshold
     BTC_HEDGE_SAMESYM_TRIGGER_LOSS_PCT: float = -0.3                      # primary pnl ≤ this triggers hedge eligibility
     BTC_HEDGE_SAMESYM_REQUIRE_WT_3M: bool = True                          # wt1_3m against primary side required
     BTC_HEDGE_SAMESYM_REQUIRE_WT_15M: bool = True                         # wt1_15m against required
@@ -4384,8 +4399,6 @@ class Config:
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     EMA_9_21_TIMEFRAME: str = "5m"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER 2026-08-19 kindergarten: LONG only above ema200/sma200/ema9>21 on D/4h — SIDE-AWARE gate in v8_vec_sweep  # PORTED from TradierConfig 2026-08-17
-    EMA_BLANKET_TF: str | None = None  # BLANKET 2026-08-20 — None=OFF else 3m/5m/15m/1h/4h gate LONG>ema SHORT<ema
-    EMA_BLANKET_PERIOD: int = 0  # BLANKET 2026-08-20 — 0=OFF else 50/200
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17
     ENABLE_IP_ROTATION: bool = False  # NOT DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17

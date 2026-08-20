@@ -3082,19 +3082,7 @@ def simulate_one_symbol(
     # This is the real kindergarten filter that was missing — side-aware, applied here where is_long is known via simulate_one_symbol's side param.
     # We defer the strict price>EMA check to entry-mask stage (enter_long/enter_short) below for side correctness.
     # Flag is KINDERGARTEN_EMA_GATE_ENABLED (separate from EMA_9_21_FILTER_ENABLED side-agnostic valid check).
-    # BLANKET EMA 50/200 TF GATE — USER 2026-08-20
-    _blanket_tf = getattr(config, "EMA_BLANKET_TF", None)
-    _blanket_period = int(getattr(config, "EMA_BLANKET_PERIOD", 0) or 0)
-    _blanket_enabled = _blanket_tf in ("3m","5m","15m","1h","4h") and _blanket_period in (50,200)
-    _blanket_gate = None
-    if _blanket_enabled:
-        try:
-            import vec_paths.ema_blanket_filter as _bl_mod
-            _blanket_gate_long = _bl_mod.blanket_gate(npz, True, _blanket_tf, _blanket_period)
-            _blanket_gate_short = _bl_mod.blanket_gate(npz, False, _blanket_tf, _blanket_period)
-            _blanket_gate = (_blanket_gate_long, _blanket_gate_short)
-        except Exception:
-            _blanket_gate = None
+
     # REAL-WIRED EMA_DIST_ENTRY_ENABLED — via vec_paths/ema_dist_entry
     if bool(getattr(config, "EMA_DIST_ENTRY_ENABLED", False)):
         try:
@@ -7603,14 +7591,6 @@ def simulate_one_symbol(
                             continue
                     else:
                         pass  # stocks: soft — no hard block, bonus applied via score (see below)
-                except Exception:
-                    pass
-            # BLANKET EMA GATE — USER 2026-08-20: hard block both crypto+stocks when enabled
-            if _blanket_enabled and _blanket_gate is not None:
-                try:
-                    _bl_arr = _blanket_gate[0] if is_long else _blanket_gate[1]
-                    if not bool(_bl_arr[i]) and not _hard_wt_breakout_reentry:
-                        continue
                 except Exception:
                     pass
             # WT_DC_ENTRY — WT/DC threshold gate (ez_positions_quick.py:2106).

@@ -129,7 +129,12 @@ def clear_stale_index_lock():
     if age < STALE_LOCK_MIN_AGE_S:
         log(f"index.lock is only {age:.0f}s old — a live git may own it, not clearing")
         return False
-    probe = subprocess.run(["lsof", "--", str(lock)], timeout=15, capture_output=True, text=True)
+    lsof_bin = shutil.which("lsof") or "/usr/sbin/lsof"
+    try:
+        probe = subprocess.run([lsof_bin, "--", str(lock)], timeout=15, capture_output=True, text=True)
+    except (OSError, subprocess.SubprocessError) as e:
+        log(f"index.lock age={age:.0f}s but lsof probe unavailable ({e}) — not clearing")
+        return False
     if probe.returncode == 0 and probe.stdout.strip():
         log(f"index.lock age={age:.0f}s but still has an open fd — not clearing")
         return False
