@@ -1,4 +1,4 @@
-# Copilot Status — 2026-08-20 09:25:38 UTC
+# Copilot Status — 2026-08-20 09:41:19 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T09:19:36
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-20T09:19:36
-- **STALE_INDICATORS** [tradier]  — 2026-08-20T09:21:40
-- **BIG_LOSER** [tradier] trb:MSTR_SHORT — 2026-08-20T09:21:40
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T09:21:40
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-20T09:21:40
-- **STALE_INDICATORS** [tradier]  — 2026-08-20T09:23:44
-- **BIG_LOSER** [tradier] trb:MSTR_SHORT — 2026-08-20T09:23:44
-- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T09:23:44
-- **RATIO_IMBALANCE** [tradier] trc — 2026-08-20T09:23:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T09:36:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-20T09:36:05
+- **STALE_INDICATORS** [tradier]  — 2026-08-20T09:38:09
+- **BIG_LOSER** [tradier] trb:MSTR_SHORT — 2026-08-20T09:38:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T09:38:09
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-20T09:38:09
+- **STALE_INDICATORS** [tradier]  — 2026-08-20T09:40:16
+- **BIG_LOSER** [tradier] trb:MSTR_SHORT — 2026-08-20T09:40:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-08-20T09:40:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-08-20T09:40:16
 
 ## Missed Trades (trader comparison)
 
@@ -40,8 +40,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
