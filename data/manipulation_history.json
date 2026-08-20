@@ -934,5 +934,23 @@
     ],
     "timestamp": "2026-08-20T18:17:55.921636+00:00",
     "price": 208.14
+  },
+  {
+    "symbol": "ADAUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_1H: 9.5x normal"
+    ],
+    "timestamp": "2026-08-20T18:21:34.734819+00:00",
+    "price": 0.1989
+  },
+  {
+    "symbol": "PANWUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 26.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T18:32:37.765125+00:00",
+    "price": 351.91
   }
 ]
