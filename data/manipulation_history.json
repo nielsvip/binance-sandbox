@@ -2034,5 +2034,23 @@
     ],
     "timestamp": "2026-08-20T06:09:19.819057+00:00",
     "price": 41.5
+  },
+  {
+    "symbol": "BNBUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:24:21.255543+00:00",
+    "price": 626.3
+  },
+  {
+    "symbol": "VIRTUALUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 25.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:24:21.255543+00:00",
+    "price": 0.6112
   }
 ]
