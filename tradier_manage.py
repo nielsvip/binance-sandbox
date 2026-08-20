@@ -18000,14 +18000,29 @@ class TradierTradeManager:
             return False, "No Timestamp", False, indicators
         age = (now - ts_obj).total_seconds()
         if age < -1.0: age = 0.1
-        # Fallback 2: if age >90s, try S1 s1_indicators_latest.json directly (bypass memory cache)
+        # Fallback 2: if age >90s, try newest S1 TIMESTAMPED file (never _latest — cached)
         if age > 90:
             try:
-                s1_path = config.DATA_DIR / "s1_indicators_latest.json"
-                if s1_path.exists():
-                    import json as _js2
-                    s1_age_file = (now.timestamp() - s1_path.stat().st_mtime)
-                    if s1_age_file < 120:
+                import glob as _glob2, json as _js2
+                # Find newest S1 timestamped file across both mirror locations
+                s1_cands = []
+                for d in [config.DATA_DIR / "s1_timestamped", config.DATA_DIR]:
+                    try:
+                        for f in d.glob("tradier_indicators_[0-9]*.json"):
+                            # Prefer S1 files: those recently pulled from S1 have recent mtime
+                            s1_cands.append(f)
+                    except Exception: pass
+                # Also try s1_tradier_indicators_*.json naming variant
+                for d in [config.DATA_DIR / "s1_timestamped", config.DATA_DIR]:
+                    try:
+                        for f in d.glob("s1_tradier_indicators_[0-9]*.json"):
+                            s1_cands.append(f)
+                    except Exception: pass
+                s1_cands = sorted(set(s1_cands), key=lambda p: p.stat().st_mtime, reverse=True)
+                for s1_path in s1_cands[:3]:
+                    try:
+                        s1_age_file = (now.timestamp() - s1_path.stat().st_mtime)
+                        if s1_age_file > 300: continue  # skip old timestamped files
                         with open(s1_path, 'r') as _sf:
                             _s1_data = _js2.load(_sf)
                         if isinstance(_s1_data, dict) and symbol.upper() in _s1_data:
@@ -18020,6 +18035,9 @@ class TradierTradeManager:
                                 age = (now - ts_obj).total_seconds()
                                 try: self.market_snapshot[symbol.upper()] = self._adapt_indicators_for_market_snapshot(_s1_ind) if hasattr(self, '_adapt_indicators_for_market_snapshot') else _s1_ind
                                 except Exception: self.market_snapshot[symbol.upper()] = _s1_ind
+                                break
+                    except Exception:
+                        continue
             except Exception:
                 pass
         # Fallback 3: if still stale, try price_cache live price overlay (keeps trading alive)
@@ -18065,42 +18083,51 @@ class TradierTradeManager:
                 if now - _GLOBAL_JSON_TS < 3.0 and _GLOBAL_JSON_CACHE:
                     return _GLOBAL_JSON_CACHE.get(symbol, {})
 
-                search_dirs = [config.DATA_DIR, config.DATA_DIR / "tradier"]
-                for d in search_dirs:
-                    # Use newest TIMESTAMPED file, fallback to latest
-                    ts_files = sorted(d.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
-                    target = ts_files[0] if ts_files else d / "tradier_indicators_latest.json"
-                    if target.exists():
-                        try:
-                            with open(target, 'r') as f:
-                                data = json.loads(f.read())
-                                if isinstance(data, dict) and data:
-                                    _GLOBAL_JSON_CACHE = data
-                                    _GLOBAL_JSON_TS = now
-                                    return data.get(symbol, {})
-                        except Exception: pass
-                candidates =[]
+                # TIMESTAMPED-ONLY: never use _latest (cached). Check timestamped files across Mac + S1 mirror.
+                search_dirs = [config.DATA_DIR, config.DATA_DIR / "tradier", config.DATA_DIR / "s1_timestamped"]
+                candidates = []
                 import re
                 pattern = re.compile(r"tradier_indicators_\d{8}_\d{6}\.json")
                 for d in search_dirs:
                     if not d.exists(): continue
-                    for f in d.iterdir():
-                        if f.is_file() and pattern.match(f.name):
-                            candidates.append(f)
-                if not candidates: return {}
-                candidates.sort(key=lambda p: p.name, reverse=True)
-                for file_path in candidates[:3]:
+                    try:
+                        for f in d.glob("tradier_indicators_[0-9]*.json"):
+                            if f.is_file():
+                                candidates.append(f)
+                    except Exception: pass
+                # Fallback: also scan DATA_DIR with mtime sort if pattern missed (e.g. new naming)
+                if not candidates:
+                    for d in search_dirs:
+                        if not d.exists(): continue
+                        try:
+                            for f in d.iterdir():
+                                if f.is_file() and pattern.match(f.name):
+                                    candidates.append(f)
+                        except Exception: pass
+                if not candidates:
+                    # Reference check only: log _latest age but do not use it
+                    try:
+                        _ref = config.DATA_DIR / "tradier_indicators_latest.json"
+                        if _ref.exists():
+                            _age_ref = time.time() - _ref.stat().st_mtime
+                            logger.debug(f"[JSON_LOAD] reference _latest age {_age_ref:.0f}s but using timestamped-only (no candidate)")
+                    except Exception: pass
+                    return {}
+                # Sort by mtime desc, then filename desc (epoch embedded) for true freshness across sources
+                candidates.sort(key=lambda p: (p.stat().st_mtime, p.name), reverse=True)
+                for file_path in candidates[:5]:
                     try:
                         with open(file_path, 'rb') as f:
                             content = f.read()
                             if not content.strip(): continue
                             data = safe_json_loads(content)
-                            if isinstance(data, dict):
+                            if isinstance(data, dict) and data:
+                                # Verify internal timestamp is recent enough (within 1h) to avoid loading ancient file when fresh exists
                                 _GLOBAL_JSON_CACHE = data
                                 _GLOBAL_JSON_TS = now
                                 return data.get(symbol, {})
                     except (JSONDecodeError, OSError):
-                        continue 
+                        continue
             return {}
         except Exception as e:
             logger.error(f"[JSON_LOAD] Error loading for {symbol}: {e}")
@@ -24048,29 +24075,51 @@ class TradierTradeManager:
                 logger.debug(f"[symbol_watchdog] Error: {e}")
     
     async def market_data_sync_loop(self):
-        """Safe-Path: Read NEWEST timestamped tradier_indicators file. NEVER use latest (gets stuck in OS cache). FIXED 2026-08-20: continuous S1 pull, 30s threshold, overlay live prices."""
-        logger.info("🔍 [SAFE-PATH] File Poller Active — reading newest timestamped tradier_indicators every 1s")
+        """Safe-Path: TIMESTAMPED-ONLY. Never use _latest (OS-cache, not comparable). Freshness = max(mtime, internal timestamp_1m) across Mac + S1 timestamped sets."""
+        logger.info("🔍 [SAFE-PATH] File Poller Active — timestamped-only every 1s (Mac + S1)")
         while self.running:
             try:
-                # Find newest timestamped file (NOT latest)
-                ts_files = sorted(config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
-                # S1 FALLBACK: if newest timestamped is stale >30s, try S1 file (was 60s). Also check S1 freshness <120s (was 60).
-                s1_path = config.DATA_DIR / "s1_indicators_latest.json"
+                # Gather timestamped files from Mac + S1 mirror dir
                 import time as _tm
-                newest_age = (time.time() - ts_files[0].stat().st_mtime) if ts_files else 9999
-                s1_age = (time.time() - s1_path.stat().st_mtime) if s1_path.exists() else 9999
-                if newest_age > 30 and s1_path.exists() and s1_age < 120 and s1_age < newest_age:
-                    json_path = s1_path
+                s1_mirror = config.DATA_DIR / "s1_timestamped"
+                local_ts = sorted(config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+                s1_ts = []
+                try:
+                    if s1_mirror.exists():
+                        s1_ts = sorted(s1_mirror.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+                    # Also include any s1_tradier_indicators_*.json pulled directly to DATA_DIR (legacy)
+                    for f in config.DATA_DIR.glob("s1_tradier_indicators_[0-9]*.json"):
+                        if f not in s1_ts:
+                            s1_ts.append(f)
+                    s1_ts = sorted(s1_ts, key=lambda f: f.stat().st_mtime, reverse=True)
+                except Exception:
+                    s1_ts = []
+                # Also check local timestamped that may have been pulled from S1 directly to DATA_DIR — merge
+                all_ts = sorted(set(local_ts) | set(s1_ts), key=lambda f: f.stat().st_mtime, reverse=True)
+                newest_age = (time.time() - local_ts[0].stat().st_mtime) if local_ts else 9999
+                s1_age = (time.time() - s1_ts[0].stat().st_mtime) if s1_ts else 9999
+                # Pick freshest timestamped file across sources (mtime is truth, _latest never used)
+                if all_ts:
+                    json_path = all_ts[0]
+                    # Prefer S1 if its newest timestamped is actually fresher than local
+                    if s1_ts and local_ts and s1_ts[0].stat().st_mtime > local_ts[0].stat().st_mtime:
+                        json_path = s1_ts[0]
                 else:
-                    json_path = ts_files[0] if ts_files else (config.DATA_DIR / "tradier_indicators_latest.json")
-                # Also continuously pull S1 in background every 10 ticks (10s) if local stale >15s — file poller is the hot path
-                if newest_age > 15 and int(time.time()) % 10 == 0 and s1_age > 30:
+                    # No timestamped file at all — reference _latest only for logging, do not load
+                    try:
+                        _ref = config.DATA_DIR / "tradier_indicators_latest.json"
+                        if _ref.exists():
+                            logger.warning(f"[SAFE-PATH] no timestamped file, reference _latest age {(time.time()-_ref.stat().st_mtime):.0f}s — waiting for timestamped")
+                    except Exception: pass
+                    json_path = None
+                # Continuously pull S1 timestamped set in background every 10s if local stale >15s
+                if newest_age > 15 and int(time.time()) % 10 == 0:
                     try:
                         import subprocess as _sp_bg
                         _sp_bg.Popen(["/bin/bash", str(Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
                     except Exception:
                         pass
-                if json_path.exists():
+                if json_path is not None and json_path.exists():
                     mtime = os.path.getmtime(json_path)
                     if mtime > self.last_json_mtime:
                         try:
@@ -24083,7 +24132,7 @@ class TradierTradeManager:
                                         new_snapshot[sym.upper()] = self._adapt_indicators_for_ez_manage(vals)
                                 self.market_snapshot = new_snapshot
                                 self.last_json_mtime = mtime
-                                logger.info(f"💾 [SAFE-PATH] Snapshot loaded: {len(new_snapshot)} symbols from {json_path.name}")
+                                logger.info(f"💾 [SAFE-PATH] Snapshot loaded: {len(new_snapshot)} symbols from {json_path.name} (timestamped-only)")
                         except Exception as je:
                             logger.warning(f"[SAFE-PATH] JSON read error (will retry): {je}")
                 await asyncio.sleep(1.0)
@@ -25506,16 +25555,31 @@ class TradierTradeManager:
                 await asyncio.sleep(30)
 
     async def start(self):
-        print("[START] Loading JSON snapshot...", flush=True)
-        json_path = config.DATA_DIR / "tradier_indicators_latest.json"
-        if json_path.exists():
+        print("[START] Loading JSON snapshot (timestamped-only)...", flush=True)
+        # TIMESTAMPED-ONLY: never load _latest on boot (cached). Use newest timestamped across Mac + S1.
+        try:
+            s1_mirror = config.DATA_DIR / "s1_timestamped"
+            cands = sorted(config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+            if s1_mirror.exists():
+                cands += sorted(s1_mirror.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+                cands += sorted(s1_mirror.glob("s1_tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+            cands = sorted(set(cands), key=lambda f: f.stat().st_mtime, reverse=True)
+            json_path = cands[0] if cands else None
+            # Reference _latest age only for logging
             try:
+                _ref = config.DATA_DIR / "tradier_indicators_latest.json"
+                if _ref.exists():
+                    print(f"[START] reference _latest age {(time.time()-_ref.stat().st_mtime):.0f}s (not used)", flush=True)
+            except Exception: pass
+            if json_path and json_path.exists():
                 with open(json_path, 'r') as f:
                     raw = json.loads(f.read())
                     self.market_snapshot = {k.upper(): self._adapt_indicators_for_ez_manage(v) for k, v in raw.items() if isinstance(v, dict)}
-                print(f"[START] Snapshot loaded: {len(self.market_snapshot)} symbols", flush=True)
-            except Exception as e:
-                print(f"[START] Snapshot load failed: {e}", flush=True)
+                print(f"[START] Snapshot loaded: {len(self.market_snapshot)} symbols from {json_path.name} (timestamped-only)", flush=True)
+            else:
+                print(f"[START] No timestamped file found — starting empty, will wait for poller", flush=True)
+        except Exception as e:
+            print(f"[START] Snapshot load failed: {e}", flush=True)
         self.redis_manager = None
         redis_ok = await self.reader.connect()
         if redis_ok:
