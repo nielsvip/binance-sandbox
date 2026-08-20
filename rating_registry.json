@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-08-20T04:40:07.857975+00:00",
+  "timestamp": "2026-08-20T04:55:13.630218+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 191
+    "total_ranked": 193
   },
   "unified_ranking": [
     {
-      "symbol": "GRASSUSDT",
-      "net_score": -12.9,
+      "symbol": "EIGENUSDT",
+      "net_score": 0,
       "long_score": 0,
-      "short_score": 12.9
+      "short_score": 0
     },
     {
       "symbol": "CRDOUSDT",
@@ -229,6 +229,12 @@
       "short_score": 0
     },
     {
+      "symbol": "EWYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "NOWUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -386,6 +392,12 @@
     },
     {
       "symbol": "ASTERUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GRASSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -662,6 +674,12 @@
     },
     {
       "symbol": "CATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZRXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1135,48 +1153,31 @@
       "short_score": 0
     },
     {
-      "symbol": "EWYUSDT",
-      "net_score": 12.0,
-      "long_score": 12.0,
-      "short_score": 0
-    },
-    {
       "symbol": "PNUTUSDC",
-      "net_score": 12.4,
-      "long_score": 12.4,
+      "net_score": 11.8,
+      "long_score": 11.8,
       "short_score": 0
     },
     {
       "symbol": "COMPUSDT",
-      "net_score": 13.5,
-      "long_score": 13.5,
+      "net_score": 12.2,
+      "long_score": 12.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "COMPUSDT",
-      13.5,
-      19.09
+      12.2,
+      19.11
     ],
     [
       "PNUTUSDC",
-      12.4,
-      0.04777
-    ],
-    [
-      "EWYUSDT",
-      12.0,
-      179.86384871
+      11.8,
+      0.04752
     ]
   ],
-  "top_shorts": [
-    [
-      "GRASSUSDT",
-      12.9,
-      0.291
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
