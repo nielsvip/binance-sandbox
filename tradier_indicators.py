@@ -2212,6 +2212,8 @@ class TradierIndicatorOrchestrator:
         # tradeable_keys watchlist + active position symbols (~120) instead of
         # the 270-symbol master list. 270 × 7 timeframes × 4 concurrency = ~12 min cycle.
         # Narrow + bumped concurrency hits the <60s target.
+        # 2026-08-20 RESILIENCE: also include every symbol from active_config.json (per_sym 169)
+        # so promoted winners never miss indicators — user mandate: all keys in mandatory/TRB are tradeable.
         narrow = bool(getattr(self.config, 'TRADIER_INDICATORS_NARROW_UNIVERSE', True))
         if narrow:
             base_path = Path(getattr(self.config, 'BASE_PATH', '/Users/niels/Documents/binance'))
@@ -2228,6 +2230,20 @@ class TradierIndicatorOrchestrator:
                         collected.update(str(s).upper() for s in data if isinstance(s, str) and s.strip())
                 except Exception as e:
                     logger.warning(f"_load_symbols: {fn} read err: {e}")
+            # 2026-08-20: include active_config symbols (per_sym winners) — fixes 96 missing from 169
+            for _ac in ('data/hourly_reconfig/trb/active_config.json', 'data/hourly_reconfig/trc/active_config.json'):
+                try:
+                    _ac_p = base_path / _ac
+                    if _ac_p.exists():
+                        with open(_ac_p) as f:
+                            _ac_data = json.load(f)
+                        if isinstance(_ac_data, dict):
+                            for k in _ac_data.keys():
+                                _sym = str(k).rsplit('_', 1)[0].upper()
+                                if _sym and _sym.isalpha():
+                                    collected.add(_sym)
+                except Exception as e:
+                    logger.warning(f"_load_symbols: {_ac} read err: {e}")
             for acct in ('trb', 'trc', 'tra'):
                 for side in ('long_positions.json', 'short_positions.json'):
                     p = base_path / acct / side
@@ -2246,7 +2262,7 @@ class TradierIndicatorOrchestrator:
                     except Exception as e:
                         logger.warning(f"_load_symbols: {acct}/{side} read err: {e}")
             if collected:
-                logger.info(f"_load_symbols (narrow): {len(collected)} symbols (watchlist + active positions)")
+                logger.info(f"_load_symbols (narrow): {len(collected)} symbols (watchlist + active positions + active_config)")
                 return sorted(collected)
             logger.warning("_load_symbols (narrow): empty — falling back to SYMBOLS_FILE master list")
         if self.config.SYMBOLS_FILE.exists():

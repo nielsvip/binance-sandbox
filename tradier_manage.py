@@ -7184,23 +7184,69 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             # Update breakout state continuously so it's ready when entry branch fires
             _update_stdev_state(symbol, indicators_raw)
         if not macro_fresh:
-            _fa_floor_hit, _fa_breach, _r1_breached = False, False, False
-            if has_position and position:
+            # 2026-08-20 RESILIENCE: indicators must NEVER block entries per user.
+            # Try emergency refresh (JSON + S1 pull + live price) before declaring stale.
+            # Re-check freshness after attempting JSON reload and live price fallback.
+            _refreshed = False
+            try:
+                _j2 = trade_manager.load_indicators_from_json(symbol) if hasattr(trade_manager, 'load_indicators_from_json') else {}
+                if _j2:
+                    _j2_ts = _j2.get('timestamp_1m') or _j2.get('timestamp') or _j2.get('1m_updated_at')
+                    _j2_dt = safe_datetime(_j2_ts) if not isinstance(_j2_ts, datetime) else _j2_ts
+                    if _j2_dt and (datetime.now(timezone.utc) - _j2_dt).total_seconds() < 1200:
+                        indicators_raw = _j2
+                        freshness_reason = f"Age:{(datetime.now(timezone.utc)-_j2_dt).total_seconds():.0f}s[JSON_FALLBACK]"
+                        macro_fresh = True
+                        _refreshed = True
+            except Exception:
+                pass
+            # If still stale, attempt S1 emergency pull (spawn agent) but DO NOT block flat entries
+            if not _refreshed and not macro_fresh:
+                # Trigger background heal: S1 rsync + tradier_indicators repair agent
                 try:
-                    _is_long = position_side == 'LONG'
-                    _fa_floor_pct = float(getattr(config, 'FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER', -8.0))
-                    _fa_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
-                    _fa_floor_hit = _fa_gain <= _fa_floor_pct
-                    _fa_frozen = getattr(position, '_frozen_dc_act', None)
-                    if _fa_frozen is not None: _fa_breach = ((_is_long and current_price < _fa_frozen) or (not _is_long and current_price > _fa_frozen)) and _fa_gain < 0
-                    _r1_stop = getattr(position, 'r1_stop_price', 0.0) or 0.0
-                    if _r1_stop > 0: _r1_breached = (_is_long and current_price <= _r1_stop) or (not _is_long and current_price >= _r1_stop)
-                except Exception: pass
-            if has_position and not (_fa_floor_hit or _fa_breach or _r1_breached):
+                    import subprocess as _sp2
+                    _age_now = (datetime.now(timezone.utc) - safe_datetime(ts_obj)).total_seconds() if 'ts_obj' in locals() and safe_datetime(ts_obj) else 9999
+                    if _age_now > 60:
+                        _sp2.Popen(["/bin/bash", str(Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                        logger.critical(f"[STALE_NEVER_BLOCK] {symbol}: indicators stale {freshness_reason} age>60s — spawned S1 fallback + repair agent, continuing with best available data (never block)")
+                except Exception:
+                    pass
+                # For positions: keep HOLD unless emergency floor/breach; for flat: NEVER block, continue degraded
+                _fa_floor_hit, _fa_breach, _r1_breached = False, False, False
+                if has_position and position:
+                    try:
+                        _is_long = position_side == 'LONG'
+                        _fa_floor_pct = float(getattr(config, 'FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER', -8.0))
+                        _fa_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                        _fa_floor_hit = _fa_gain <= _fa_floor_pct
+                        _fa_frozen = getattr(position, '_frozen_dc_act', None)
+                        if _fa_frozen is not None: _fa_breach = ((_is_long and current_price < _fa_frozen) or (not _is_long and current_price > _fa_frozen)) and _fa_gain < 0
+                        _r1_stop = getattr(position, 'r1_stop_price', 0.0) or 0.0
+                        if _r1_stop > 0: _r1_breached = (_is_long and current_price <= _r1_stop) or (not _is_long and current_price >= _r1_stop)
+                    except Exception: pass
+                if has_position and not (_fa_floor_hit or _fa_breach or _r1_breached):
+                    logger.warning(f"[STALE_HOLD_DEGRADED] {symbol}: indicators stale {freshness_reason} but HOLDING (stale must never trigger exits) — emergency price-based exits still active")
+                    # Do NOT return — let it continue to price-based emergency exits below, but suppress normal technical exits later via is_stale flag
+                    is_stale = True
+                elif not has_position:
+                    # FLAT entries: NEVER block on stale — proceed with degraded indicators + live price
+                    logger.warning(f"[STALE_NEVER_BLOCK_FLAT] {symbol}: {freshness_reason} stale but proceeding to entry evaluation with best available indicators + live price={current_price:.2f} (user mandate: never stale)")
+                    macro_fresh = True  # force continue
+                    is_stale = True
+                    # fall through to normal entry logic
+                    pass
+                else:
+                    # has_position but floor/breach hit — fall through to emergency close logic below
+                    pass
+            if not macro_fresh and has_position and not (_fa_floor_hit or _fa_breach or _r1_breached):
                 logger.info(f"[STALE_HOLD] {symbol}: indicators stale but HOLDING position (stale data must NEVER trigger exits)")
                 return "STALE_INDICATORS_HELD"
-            elif not has_position:
-                return "STALE_ABSOLUTE_NO_POS"
+            elif not macro_fresh and not has_position:
+                # Should have been handled above as degraded continue; if still here, block only if no indicators at all
+                if not indicators_raw:
+                    return "STALE_ABSOLUTE_NO_POS"
+                logger.warning(f"[STALE_DEGRADED_CONTINUE] {symbol}: stale but has indicators — continuing degraded")
+                macro_fresh = True
         if not force and (now_ts - last_mon < 30):
             return "THROTTLED"
         is_stale = not macro_fresh
@@ -17887,17 +17933,41 @@ class TradierTradeManager:
             return result
 
     async def is_data_fresh(self, symbol: str, position_key: str = None) -> tuple[bool, str, bool, Dict[str, Any]]:
+        # MULTI-SOURCE RESILIENCE 2026-08-20 — indicators must NEVER be stale per user.
+        # Tries memory → JSON timestamped → S1 rsync fallback before declaring stale.
         now = datetime.now(timezone.utc)
         indicators = self.get_indicators(symbol)
         ts_obj = indicators.get('timestamp_1m') or indicators.get('timestamp')
         if not isinstance(ts_obj, datetime):
             ts_obj = safe_datetime(ts_obj)
+        # Fallback 1: try JSON files if memory timestamp missing/stale
+        if not ts_obj or (now - ts_obj).total_seconds() > 1200:
+            try:
+                jdata = self.load_indicators_from_json(symbol)
+                if jdata:
+                    j_ts = jdata.get('timestamp_1m') or jdata.get('timestamp') or jdata.get('1m_updated_at')
+                    j_dt = safe_datetime(j_ts) if not isinstance(j_ts, datetime) else j_ts
+                    if j_dt and (not ts_obj or j_dt > ts_obj):
+                        indicators = jdata
+                        ts_obj = j_dt
+                        # refresh market_snapshot so next get_indicators hits it
+                        try: self.market_snapshot[symbol.upper()] = self._adapt_indicators_for_market_snapshot(jdata) if hasattr(self, '_adapt_indicators_for_market_snapshot') else jdata
+                        except Exception: self.market_snapshot[symbol.upper()] = jdata
+            except Exception:
+                pass
         if not ts_obj:
             return False, "No Timestamp", False, indicators
         age = (now - ts_obj).total_seconds()
         if age < -1.0: age = 0.1 
         m1_fresh = (age < 300.0)  # Was 90s — too tight for stocks. Low-volume symbols don't tick every minute.
         macro_fresh = (age < 1200.0)  # 20 min — indicators cycle is ~2-5 min
+        # If still stale >60s, trigger S1 fallback via emergency script in background (non-blocking)
+        if not macro_fresh and age > 60:
+            try:
+                import subprocess as _sub
+                _sub.Popen(["/bin/bash", str(Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            except Exception:
+                pass
         return macro_fresh, f"Age:{age:.0f}s", m1_fresh, indicators
 
     def load_indicators_from_json(self, symbol: str) -> Dict[str, Any]:
