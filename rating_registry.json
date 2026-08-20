@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-20T06:56:21.700385+00:00",
+  "timestamp": "2026-08-20T07:11:32.949052+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 198
+    "total_ranked": 199
   },
   "unified_ranking": [
     {
@@ -829,12 +829,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BOMEUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1099,6 +1093,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LPTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1190,16 +1190,27 @@
     },
     {
       "symbol": "ASTERUSDT",
-      "net_score": 18.5,
-      "long_score": 18.5,
+      "net_score": 13.3,
+      "long_score": 13.3,
+      "short_score": 0
+    },
+    {
+      "symbol": "BOMEUSDC",
+      "net_score": 16.7,
+      "long_score": 16.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
+      "BOMEUSDC",
+      16.7,
+      0.0010316
+    ],
+    [
       "ASTERUSDT",
-      18.5,
-      0.6647
+      13.3,
+      0.6569
     ]
   ],
   "top_shorts": [],
