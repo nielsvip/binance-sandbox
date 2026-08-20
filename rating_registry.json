@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-20T22:09:00.267438+00:00",
+  "timestamp": "2026-08-20T22:24:22.111612+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 200
+    "total_ranked": 202
   },
   "unified_ranking": [
     {
@@ -20,6 +20,12 @@
     },
     {
       "symbol": "SQQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "KAVAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1082,6 +1088,12 @@
     },
     {
       "symbol": "TSLAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "USUALUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
