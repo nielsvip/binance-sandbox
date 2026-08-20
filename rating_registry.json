@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-08-20T06:41:14.950133+00:00",
+  "timestamp": "2026-08-20T06:56:21.700385+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 198
   },
   "unified_ranking": [
-    {
-      "symbol": "BTCDOMUSDT",
-      "net_score": -10.0,
-      "long_score": 0,
-      "short_score": 10.0
-    },
     {
       "symbol": "EIGENUSDT",
       "net_score": 0,
@@ -338,6 +332,12 @@
     },
     {
       "symbol": "BIGTIMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1190,25 +1190,19 @@
     },
     {
       "symbol": "ASTERUSDT",
-      "net_score": 18.3,
-      "long_score": 18.3,
+      "net_score": 18.5,
+      "long_score": 18.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "ASTERUSDT",
-      18.3,
-      0.6506
+      18.5,
+      0.6647
     ]
   ],
-  "top_shorts": [
-    [
-      "BTCDOMUSDT",
-      10.0,
-      5345.5
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

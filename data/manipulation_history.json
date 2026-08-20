@@ -2070,5 +2070,14 @@
     ],
     "timestamp": "2026-08-20T06:26:14.186330+00:00",
     "price": 0.04128
+  },
+  {
+    "symbol": "CRVUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 31.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:52:45.442663+00:00",
+    "price": 0.2672
   }
 ]
