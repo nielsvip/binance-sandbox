@@ -1,22 +1,28 @@
 {
-  "timestamp": "2026-08-20T19:52:17.671983+00:00",
+  "timestamp": "2026-08-20T20:23:04.147314+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 192
+    "total_ranked": 193
   },
   "unified_ranking": [
-    {
-      "symbol": "ARKMUSDT",
-      "net_score": -17.3,
-      "long_score": 0,
-      "short_score": 17.3
-    },
     {
       "symbol": "SPYUSDT",
       "net_score": -14.7,
       "long_score": 0,
       "short_score": 14.7
+    },
+    {
+      "symbol": "PLTRUSDT",
+      "net_score": -13.3,
+      "long_score": 0,
+      "short_score": 13.3
+    },
+    {
+      "symbol": "LLYUSDT",
+      "net_score": -12.4,
+      "long_score": 0,
+      "short_score": 12.4
     },
     {
       "symbol": "TQQQUSDT",
@@ -301,12 +307,6 @@
       "short_score": 0
     },
     {
-      "symbol": "LLYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ICXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -338,6 +338,12 @@
     },
     {
       "symbol": "AXSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ARKMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -817,12 +823,6 @@
       "short_score": 0
     },
     {
-      "symbol": "PLTRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "USARUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1153,23 +1153,35 @@
       "short_score": 0
     },
     {
+      "symbol": "KMNOUSDT",
+      "net_score": 10.2,
+      "long_score": 10.2,
+      "short_score": 0
+    },
+    {
       "symbol": "ARUSDT",
       "net_score": 13.6,
       "long_score": 13.6,
       "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [
+  "top_longs": [
     [
-      "ARKMUSDT",
-      17.3,
-      0.0956
-    ],
+      "KMNOUSDT",
+      10.2,
+      0.02096
+    ]
+  ],
+  "top_shorts": [
     [
       "SPYUSDT",
       14.7,
       764.4
+    ],
+    [
+      "LLYUSDT",
+      12.4,
+      1246.1
     ],
     [
       "TQQQUSDT",

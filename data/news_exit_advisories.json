@@ -1,14 +1,94 @@
 {
-  "generated_at": "2026-08-20T19:50:59.197392+00:00",
-  "count": 1,
+  "generated_at": "2026-08-20T19:53:23.462660+00:00",
+  "count": 11,
   "advisories": [
+    {
+      "symbol": "DAR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.96 threshold=0.45",
+      "score": 0.958,
+      "ts": "2026-08-20T19:53:23.462518+00:00"
+    },
     {
       "symbol": "ETH",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.482,
-      "ts": "2026-08-20T19:50:59.197313+00:00"
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.538,
+      "ts": "2026-08-20T19:53:23.462532+00:00"
+    },
+    {
+      "symbol": "ETN",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.502,
+      "ts": "2026-08-20T19:53:23.462535+00:00"
+    },
+    {
+      "symbol": "GDXJ",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.45 threshold=0.45",
+      "score": 0.454,
+      "ts": "2026-08-20T19:53:23.462538+00:00"
+    },
+    {
+      "symbol": "GM",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.77 threshold=0.45",
+      "score": 0.77,
+      "ts": "2026-08-20T19:53:23.462541+00:00"
+    },
+    {
+      "symbol": "HII",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.527,
+      "ts": "2026-08-20T19:53:23.462544+00:00"
+    },
+    {
+      "symbol": "INTC",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.557,
+      "ts": "2026-08-20T19:53:23.462547+00:00"
+    },
+    {
+      "symbol": "KGC",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.487,
+      "ts": "2026-08-20T19:53:23.462549+00:00"
+    },
+    {
+      "symbol": "LDOS",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.527,
+      "ts": "2026-08-20T19:53:23.462551+00:00"
+    },
+    {
+      "symbol": "LEXX",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.494,
+      "ts": "2026-08-20T19:53:23.462553+00:00"
+    },
+    {
+      "symbol": "LMT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.492,
+      "ts": "2026-08-20T19:53:23.462555+00:00"
     }
   ]
 }
