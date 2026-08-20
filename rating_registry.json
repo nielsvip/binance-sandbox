@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-20T05:55:41.564398+00:00",
+  "timestamp": "2026-08-20T06:10:59.180288+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 193
+    "total_ranked": 194
   },
   "unified_ranking": [
     {
@@ -121,6 +121,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CRVUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -182,6 +188,12 @@
     },
     {
       "symbol": "PUMPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "COMPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -272,6 +284,12 @@
     },
     {
       "symbol": "1000LUNCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEIROUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -380,6 +398,12 @@
     },
     {
       "symbol": "MOVRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -650,6 +674,12 @@
     },
     {
       "symbol": "BEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PNUTUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1139,54 +1169,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "COMPUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRVUSDC",
-      "net_score": 11.8,
-      "long_score": 11.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "PNUTUSDC",
-      "net_score": 13.7,
-      "long_score": 13.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASTERUSDT",
-      "net_score": 17.9,
-      "long_score": 17.9,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "ASTERUSDT",
-      17.9,
-      0.6538
-    ],
-    [
-      "PNUTUSDC",
-      13.7,
-      0.0472
-    ],
-    [
-      "CRVUSDC",
-      11.8,
-      0.2669
-    ],
-    [
-      "COMPUSDT",
-      11.1,
-      18.96
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

@@ -1944,5 +1944,95 @@
     ],
     "timestamp": "2026-08-20T05:53:11.092477+00:00",
     "price": 0.7391
+  },
+  {
+    "symbol": "RAYSOLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-20T06:02:26.246916+00:00",
+    "price": 0.6604
+  },
+  {
+    "symbol": "MRVLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:03:58.893526+00:00",
+    "price": 239.89
+  },
+  {
+    "symbol": "ICXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 18.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-20T06:04:59.279752+00:00",
+    "price": 0.01601
+  },
+  {
+    "symbol": "MSFTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.3x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-20T06:06:37.718763+00:00",
+    "price": 485.28
+  },
+  {
+    "symbol": "1000SATSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:07:03.546308+00:00",
+    "price": 1.072e-05
+  },
+  {
+    "symbol": "STORJUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 18.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-20T06:07:03.546308+00:00",
+    "price": 0.0377
+  },
+  {
+    "symbol": "TTWOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-20T06:07:03.546308+00:00",
+    "price": 238.42
+  },
+  {
+    "symbol": "WLDUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 47.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:07:03.546308+00:00",
+    "price": 0.3588
+  },
+  {
+    "symbol": "ASTSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:08:29.657729+00:00",
+    "price": 67.15
+  },
+  {
+    "symbol": "BSPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:09:19.819057+00:00",
+    "price": 41.5
   }
 ]
