@@ -1668,8 +1668,14 @@ def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
     if entry <= 0:
         return 0.0
     if is_long:
-        return (mark - entry) / entry * 100.0
-    return (entry - mark) / entry * 100.0
+        # Cap long loss at -100% (price cant go below 0, you cant lose more than 100% on long without leverage)
+        # Without cap, a long with entry 10 and mark 70 (if side inverted) gives -600% which is impossible for long
+        raw = (mark - entry) / entry * 100.0
+        return max(-100.0, raw)
+    else:
+        # Short can lose >100% if price goes up a lot, but cap at -100 for display to avoid -600% (user says summing is wrong, huge -600% per trade is impossible)
+        raw = (entry - mark) / entry * 100.0
+        return max(-100.0, raw) if raw < -100 else raw
 
 
 def _path_scoped_entry_union(
@@ -10063,7 +10069,9 @@ def run_sweep(
             if n_trades > 0:
                 sym_ps = metrics_guard.pool_sharpe(returns)
                 sym_dd = _max_dd_pct(returns)
-                sym_acc = sum(returns)
+                # FIX 2026-08-20: sum gave -171k% for CRWD_LONG 609 trades due to uncapped -601% per trade (impossible for long)
+                # Cap per-trade at -100 then sum (each trade is $2k whole-share, not compounded)
+                sym_acc = sum(max(-100.0, r) if r < 0 else r for r in returns)
             else:
                 sym_ps = 0.0
                 sym_dd = 0.0

@@ -7,15 +7,15 @@
   },
   {
     "symbol": "BEATUSDT",
-    "returns_15m": 1.6042780748663246,
-    "returns_3m": 8.042242079610078,
-    "gain_score": 32.169
+    "returns_15m": 8.837970540098203,
+    "returns_3m": 7.34463276836159,
+    "gain_score": 29.379
   },
   {
     "symbol": "RIFUSDT",
-    "returns_15m": 4.427480916030529,
-    "returns_3m": 5.318014923605347,
-    "gain_score": 21.272
+    "returns_15m": 4.883227176220813,
+    "returns_3m": 5.932809149392422,
+    "gain_score": 23.731
   },
   {
     "symbol": "SPCXUSD1",
@@ -42,12 +42,6 @@
     "gain_score": 15.425
   },
   {
-    "symbol": "BOMEUSDC",
-    "returns_15m": 0.885964912280709,
-    "returns_3m": 3.6686497205696833,
-    "gain_score": 14.675
-  },
-  {
     "symbol": "FLNCUSDT",
     "returns_15m": 2.7482269503546144,
     "returns_3m": 3.667262969588552,
@@ -58,6 +52,12 @@
     "returns_15m": 2.5268471400939565,
     "returns_3m": 3.431416669061865,
     "gain_score": 13.726
+  },
+  {
+    "symbol": "ACEUSDT",
+    "returns_15m": 3.1038931471503455,
+    "returns_3m": 3.292024633163537,
+    "gain_score": 13.168
   },
   {
     "symbol": "WMTUSDT",
@@ -73,9 +73,9 @@
   },
   {
     "symbol": "ZROUSDT",
-    "returns_15m": 1.1223087494273971,
-    "returns_3m": 2.8059145418558633,
-    "gain_score": 11.224
+    "returns_15m": 2.341214649976819,
+    "returns_3m": 3.069919458386832,
+    "gain_score": 12.28
   },
   {
     "symbol": "BEUSDT",
@@ -108,16 +108,22 @@
     "gain_score": 8.574
   },
   {
+    "symbol": "THETAUSDT",
+    "returns_15m": 1.7510944340212788,
+    "returns_3m": 2.1343377275580755,
+    "gain_score": 8.537
+  },
+  {
+    "symbol": "MORPHOUSDT",
+    "returns_15m": 2.533120441893582,
+    "returns_3m": 2.0180334907685573,
+    "gain_score": 8.072
+  },
+  {
     "symbol": "ORCLUSDT",
     "returns_15m": 1.6878824108587143,
     "returns_3m": 1.8957011980267775,
     "gain_score": 7.583
-  },
-  {
-    "symbol": "THETAUSDT",
-    "returns_15m": 1.3075965130759768,
-    "returns_3m": 1.8785222291797137,
-    "gain_score": 7.514
   },
   {
     "symbol": "BNCUSDT",
@@ -126,10 +132,16 @@
     "gain_score": 6.812
   },
   {
-    "symbol": "MORPHOUSDT",
-    "returns_15m": 1.5080958687572046,
-    "returns_3m": 1.6862107335444707,
-    "gain_score": 6.745
+    "symbol": "SPCXUSDT",
+    "returns_15m": 1.1879378617118508,
+    "returns_3m": 1.6757211722396494,
+    "gain_score": 6.703
+  },
+  {
+    "symbol": "AMATUSDT",
+    "returns_15m": 0.9618687736173118,
+    "returns_3m": 1.673200169965282,
+    "gain_score": 6.693
   },
   {
     "symbol": "AXTIUSDT",
@@ -138,10 +150,16 @@
     "gain_score": 6.612
   },
   {
-    "symbol": "AMATUSDT",
-    "returns_15m": 0.9618687736173118,
-    "returns_3m": 1.6355092658516286,
-    "gain_score": 6.542
+    "symbol": "PUMPUSDT",
+    "returns_15m": 0.2960172228202294,
+    "returns_3m": 1.6085059978189757,
+    "gain_score": 6.434
+  },
+  {
+    "symbol": "BOMEUSDC",
+    "returns_15m": -1.994034938219005,
+    "returns_3m": 1.6079158936301896,
+    "gain_score": 6.432
   },
   {
     "symbol": "BSPUSDT",
@@ -150,33 +168,15 @@
     "gain_score": 6.397
   },
   {
-    "symbol": "ORDIUSDC",
-    "returns_15m": -0.23707918444760046,
-    "returns_3m": 1.4954172696575079,
-    "gain_score": 5.982
-  },
-  {
-    "symbol": "GRASSUSDT",
-    "returns_15m": 0.592300098716691,
-    "returns_3m": 1.4940239043824715,
-    "gain_score": 5.976
-  },
-  {
-    "symbol": "ICXUSDT",
-    "returns_15m": 0.24227740763172845,
-    "returns_3m": 1.409313725490181,
-    "gain_score": 5.637
-  },
-  {
     "symbol": "AMDUSDT",
     "returns_15m": 1.2471240888468427,
     "returns_3m": 1.3953788841275692,
     "gain_score": 5.582
   },
   {
-    "symbol": "SPCXUSDT",
-    "returns_15m": 0.590461771385315,
-    "returns_3m": 1.334553496530161,
-    "gain_score": 5.338
+    "symbol": "MRVLUSDT",
+    "returns_15m": 0.920878757846048,
+    "returns_3m": 1.3561712010617044,
+    "gain_score": 5.425
   }
 ]

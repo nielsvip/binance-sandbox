@@ -1,14 +1,70 @@
 {
-  "generated_at": "2026-08-20T16:27:25.032302+00:00",
-  "count": 1,
+  "generated_at": "2026-08-20T16:33:44.421443+00:00",
+  "count": 8,
   "advisories": [
     {
-      "symbol": "NLR",
+      "symbol": "ABBV",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.54 threshold=0.45",
-      "score": 0.536,
-      "ts": "2026-08-20T16:27:25.032228+00:00"
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.488,
+      "ts": "2026-08-20T16:33:44.421373+00:00"
+    },
+    {
+      "symbol": "ABT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.59 threshold=0.45",
+      "score": 0.593,
+      "ts": "2026-08-20T16:33:44.421389+00:00"
+    },
+    {
+      "symbol": "ARM",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.49 threshold=0.45",
+      "score": 0.493,
+      "ts": "2026-08-20T16:33:44.421393+00:00"
+    },
+    {
+      "symbol": "AU",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.526,
+      "ts": "2026-08-20T16:33:44.421396+00:00"
+    },
+    {
+      "symbol": "AXON",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.78 threshold=0.45",
+      "score": 0.784,
+      "ts": "2026-08-20T16:33:44.421398+00:00"
+    },
+    {
+      "symbol": "CHRD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.94 threshold=0.45",
+      "score": 0.942,
+      "ts": "2026-08-20T16:33:44.421402+00:00"
+    },
+    {
+      "symbol": "CIBR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.60 threshold=0.45",
+      "score": 0.603,
+      "ts": "2026-08-20T16:33:44.421403+00:00"
+    },
+    {
+      "symbol": "CLS",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.77 threshold=0.45",
+      "score": 0.771,
+      "ts": "2026-08-20T16:33:44.421405+00:00"
     }
   ]
 }
