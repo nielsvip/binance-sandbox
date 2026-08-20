@@ -952,5 +952,14 @@
     ],
     "timestamp": "2026-08-20T18:32:37.765125+00:00",
     "price": 351.91
+  },
+  {
+    "symbol": "HOTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T19:15:22.792912+00:00",
+    "price": 0.0003449
   }
 ]

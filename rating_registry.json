@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-20T19:05:30.194078+00:00",
+  "timestamp": "2026-08-20T19:21:05.972505+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 189
+    "total_ranked": 190
   },
   "unified_ranking": [
     {
@@ -710,6 +710,12 @@
     },
     {
       "symbol": "LINKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ACTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0

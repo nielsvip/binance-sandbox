@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-08-20 18:59 UTC
+PERFORMANCE REPORT — 2026-08-20 19:16 UTC
 ================================================================================
 Total: 104 symbols | A=2 B=81 C=21
 Window: 14 days | Min trades: 5
@@ -11,7 +11,7 @@ Window: 14 days | Min trades: 5
              SNDK  WR=54%  avg=+3.42%  total=+52.4%  trades= 13  mult=7.30
              ASTS  WR=50%  avg=+1.53%  total=+12.3%  trades=  8  mult=4.60
              ASML  WR=59%  avg=+0.29%  total=+12.3%  trades= 41  mult=4.46
-              VLO  WR=52%  avg=+0.09%  total=+9.6%  trades=107  mult=2.01
+              VLO  WR=53%  avg=+0.10%  total=+10.6%  trades=106  mult=2.16
               TTD  WR=67%  avg=+1.92%  total=+5.8%  trades=  3  mult=1.00
              EXEL  WR=100%  avg=+1.08%  total=+5.5%  trades=  5  mult=5.08
               CME  WR=46%  avg=+0.16%  total=+4.3%  trades= 28  mult=1.41
@@ -71,7 +71,7 @@ Window: 14 days | Min trades: 5
      1000SHIBUSDC  WR=0%  avg=-0.04%  total=-0.1%  trades=  2  mult=1.00
           KSMUSDT  WR=0%  avg=-0.04%  total=-0.1%  trades=  3  mult=1.00
          NBISUSDT  WR=0%  avg=-0.07%  total=-0.1%  trades=  2  mult=1.00
-          LTCUSDC  WR=25%  avg=-0.04%  total=-0.1%  trades=  4  mult=1.00
+          LTCUSDC  WR=25%  avg=-0.04%  total=-0.1%  trades=  4  mult=1.00 ** OPEN **
           ETHUSDC  WR=0%  avg=-0.18%  total=-0.2%  trades=  1  mult=1.00
           APPUSDT  WR=33%  avg=-0.07%  total=-0.2%  trades=  3  mult=1.00
                VT  WR=61%  avg=-0.01%  total=-0.2%  trades= 18  mult=2.73
@@ -104,7 +104,7 @@ Window: 14 days | Min trades: 5
          MEMEUSDT  WR=40%  avg=-0.08%  total=-0.8%  trades= 10  mult=0.66
           SNXUSDT  WR=20%  avg=-0.38%  total=-1.9%  trades=  5  mult=0.53
              RBLX  WR=29%  avg=-0.28%  total=-1.9%  trades=  7  mult=0.53
-         MANAUSDT  WR=0%  avg=-0.41%  total=-2.0%  trades=  5  mult=0.43
+         MANAUSDT  WR=0%  avg=-0.41%  total=-2.0%  trades=  5  mult=0.43 ** OPEN **
          RUNEUSDT  WR=43%  avg=-0.35%  total=-2.5%  trades=  7  mult=0.64
              NVDA  WR=36%  avg=-0.35%  total=-4.8%  trades= 14  mult=0.39
             GOOGL  WR=34%  avg=-0.16%  total=-5.4%  trades= 35  mult=0.37
@@ -114,7 +114,7 @@ Window: 14 days | Min trades: 5
              MRVL  WR=45%  avg=-0.52%  total=-15.1%  trades= 29  mult=0.34
 
 SUMMARY:
-  Total PnL (all symbols): +94.9%
+  Total PnL (all symbols): +95.9%
   Avg win rate: 46%
   A-tier avg mult: 9.33
   C-tier avg mult: 0.51
