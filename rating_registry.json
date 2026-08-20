@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-08-20T07:26:39.685529+00:00",
+  "timestamp": "2026-08-20T07:41:32.773856+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 200
+    "total_ranked": 201
   },
   "unified_ranking": [
-    {
-      "symbol": "BTCDOMUSDT",
-      "net_score": -12.3,
-      "long_score": 0,
-      "short_score": 12.3
-    },
     {
       "symbol": "EIGENUSDT",
       "net_score": 0,
@@ -313,6 +307,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SPXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SAGAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -332,6 +332,12 @@
     },
     {
       "symbol": "BIGTIMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -481,12 +487,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BMNRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZENUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -518,6 +518,12 @@
     },
     {
       "symbol": "QQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BIOUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -835,18 +841,6 @@
       "short_score": 0
     },
     {
-      "symbol": "RUNEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ETHFIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SOLUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -950,12 +944,6 @@
     },
     {
       "symbol": "DRAMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AAVEUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1189,48 +1177,70 @@
       "short_score": 0
     },
     {
-      "symbol": "SPXUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
+      "symbol": "ZKUSDT",
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "BIOUSDC",
+      "symbol": "BMNRUSDT",
       "net_score": 10.4,
       "long_score": 10.4,
       "short_score": 0
     },
     {
+      "symbol": "RUNEUSDT",
+      "net_score": 10.7,
+      "long_score": 10.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETHFIUSDC",
+      "net_score": 12.0,
+      "long_score": 12.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AAVEUSDC",
+      "net_score": 12.4,
+      "long_score": 12.4,
+      "short_score": 0
+    },
+    {
       "symbol": "ASTERUSDT",
-      "net_score": 15.0,
-      "long_score": 15.0,
+      "net_score": 15.2,
+      "long_score": 15.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "ASTERUSDT",
-      15.0,
-      0.6593
+      15.2,
+      0.6585
     ],
     [
-      "BIOUSDC",
+      "AAVEUSDC",
+      12.4,
+      96.74
+    ],
+    [
+      "ETHFIUSDC",
+      12.0,
+      0.5438
+    ],
+    [
+      "RUNEUSDT",
+      10.7,
+      0.4304
+    ],
+    [
+      "BMNRUSDT",
       10.4,
-      0.03019
-    ],
-    [
-      "SPXUSDT",
-      10.3,
-      0.3767
+      21.72
     ]
   ],
-  "top_shorts": [
-    [
-      "BTCDOMUSDT",
-      12.3,
-      5337.2
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
