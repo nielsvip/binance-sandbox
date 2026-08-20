@@ -1006,5 +1006,14 @@
     ],
     "timestamp": "2026-08-20T20:56:01.117034+00:00",
     "price": 7.158
+  },
+  {
+    "symbol": "ARKMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 17.9x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-08-20T21:20:10.962596+00:00",
+    "price": 0.0964
   }
 ]
