@@ -4702,52 +4702,52 @@ def _emit_inf_impulse(base: str, usdt: str, side: str, price: float, reason: str
 # 36 live-only flags surfaced as getattr reads so verify_switches.py detects them.
 # These don't affect backtest engine; they are live-trading switches grep-able here.
 _GROUP_C_READS = (
-    _cfg_auto('ABLATION_DISABLE_AGGRESSIVE_HEDGE', False),
-    _cfg_auto('ABLATION_DISABLE_AUGMENTATION', False),
-    _cfg_auto('ABLATION_DISABLE_CHECK_NOLOSS', False),
-    _cfg_auto('ABLATION_DISABLE_DC_BREACH_REDUCE', False),
-    _cfg_auto('ABLATION_DISABLE_ENTRY_LEADERBOARD', False),
-    _cfg_auto('ABLATION_DISABLE_ENTRY_RANKING', False),
-    _cfg_auto('ABLATION_DISABLE_ENTRY_REVERSAL', False),
-    _cfg_auto('ABLATION_DISABLE_ENTRY_TECHNICAL', False),
-    _cfg_auto('ABLATION_DISABLE_FAST_RISER', False),
-    _cfg_auto('ABLATION_DISABLE_HIGH_GAIN_AUGMENT', False),
-    _cfg_auto('ABLATION_DISABLE_PERIODIC_REENTRY', False),
-    _cfg_auto('ABLATION_DISABLE_RATIO_REBALANCE', False),
-    _cfg_auto('ABLATION_DISABLE_REENTRY', False),
-    _cfg_auto('ABLATION_DISABLE_REENTRY_ENFORCE', False),
-    _cfg_auto('ABLATION_DISABLE_SCALP_GUARD', False),
-    _cfg_auto('ABLATION_DISABLE_SPIKE_FADE_EXIT', False),
-    _cfg_auto('EXIT_ALGO_SCORE_ENABLED', False),
-    _cfg_auto('EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED', False),
-    _cfg_auto('EXIT_BOUNCE_TOP_ENABLED', False),
-    _cfg_auto('EXIT_CONV_FAIL_ENABLED', False),
-    _cfg_auto('EXIT_DC_BREACH_REDUCE_ENABLED', False),
-    _cfg_auto('EXIT_DELTA_SPEED_ENABLED', False),
-    _cfg_auto('EXIT_GAIN_EROSION_ENABLED', False),
-    _cfg_auto('EXIT_HARD_DROP_5M_ENABLED', False),
-    _cfg_auto('EXIT_HTF_QUICK_TP_ENABLED', False),
-    _cfg_auto('MU_CORRECTION_EXIT_ENABLED', False),
-    _cfg_auto('MU_CORRECTION_REENTRY_ENABLED', False),
-    _cfg_auto('EXIT_IBS_EXHAUSTION_ENABLED', False),
-    _cfg_auto('EXIT_K5M_BOUNCE_ENABLED', False),
-    _cfg_auto('EXIT_MI_ENABLED', False),
-    _cfg_auto('EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED', False),
-    _cfg_auto('EXIT_STDEV_BREAKOUT_FAIL_ENABLED', False),
-    _cfg_auto('STDEV_BOUNCE_ENABLED', False),
-    _cfg_auto('STDEV_BOUNCE_PCTB_LONG', 0.05),
-    _cfg_auto('STDEV_BOUNCE_PCTB_SHORT', 0.95),
-    _cfg_auto('STDEV_BOUNCE_RVOL_MIN', 1.2),
-    _cfg_auto('STDEV_REJECT_EXIT_ENABLED', False),
-    _cfg_auto('STDEV_REJECT_EXIT_TF', 'D'),
-    _cfg_auto('STDEV_REJECT_EXIT_ZONE', 0.80),
-    _cfg_auto('STDEV_REJECT_EXIT_RETURN', 0.65),
-    _cfg_auto('EXIT_STRUCT_BREAK_5M_ENABLED', False),
-    _cfg_auto('EXIT_STRUCT_DC_BREAK_ENABLED', False),
-    _cfg_auto('EXIT_TREND_REVERSAL_ENABLED', False),
-    _cfg_auto('MANAGE_REDUCE', False),
-    _cfg_auto('SERVICE_REDUCE', False),
-    _cfg_auto('SERVICE_STOP', False),
+    getattr(config, 'ABLATION_DISABLE_AGGRESSIVE_HEDGE', False),
+    getattr(config, 'ABLATION_DISABLE_AUGMENTATION', False),
+    getattr(config, 'ABLATION_DISABLE_CHECK_NOLOSS', False),
+    getattr(config, 'ABLATION_DISABLE_DC_BREACH_REDUCE', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_LEADERBOARD', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_RANKING', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_REVERSAL', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_TECHNICAL', False),
+    getattr(config, 'ABLATION_DISABLE_FAST_RISER', False),
+    getattr(config, 'ABLATION_DISABLE_HIGH_GAIN_AUGMENT', False),
+    getattr(config, 'ABLATION_DISABLE_PERIODIC_REENTRY', False),
+    getattr(config, 'ABLATION_DISABLE_RATIO_REBALANCE', False),
+    getattr(config, 'ABLATION_DISABLE_REENTRY', False),
+    getattr(config, 'ABLATION_DISABLE_REENTRY_ENFORCE', False),
+    getattr(config, 'ABLATION_DISABLE_SCALP_GUARD', False),
+    getattr(config, 'ABLATION_DISABLE_SPIKE_FADE_EXIT', False),
+    getattr(config, 'EXIT_ALGO_SCORE_ENABLED', False),
+    getattr(config, 'EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED', False),
+    getattr(config, 'EXIT_BOUNCE_TOP_ENABLED', False),
+    getattr(config, 'EXIT_CONV_FAIL_ENABLED', False),
+    getattr(config, 'EXIT_DC_BREACH_REDUCE_ENABLED', False),
+    getattr(config, 'EXIT_DELTA_SPEED_ENABLED', False),
+    getattr(config, 'EXIT_GAIN_EROSION_ENABLED', False),
+    getattr(config, 'EXIT_HARD_DROP_5M_ENABLED', False),
+    getattr(config, 'EXIT_HTF_QUICK_TP_ENABLED', False),
+    getattr(config, 'MU_CORRECTION_EXIT_ENABLED', False),
+    getattr(config, 'MU_CORRECTION_REENTRY_ENABLED', False),
+    getattr(config, 'EXIT_IBS_EXHAUSTION_ENABLED', False),
+    getattr(config, 'EXIT_K5M_BOUNCE_ENABLED', False),
+    getattr(config, 'EXIT_MI_ENABLED', False),
+    getattr(config, 'EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED', False),
+    getattr(config, 'EXIT_STDEV_BREAKOUT_FAIL_ENABLED', False),
+    getattr(config, 'STDEV_BOUNCE_ENABLED', False),
+    getattr(config, 'STDEV_BOUNCE_PCTB_LONG', 0.05),
+    getattr(config, 'STDEV_BOUNCE_PCTB_SHORT', 0.95),
+    getattr(config, 'STDEV_BOUNCE_RVOL_MIN', 1.2),
+    getattr(config, 'STDEV_REJECT_EXIT_ENABLED', False),
+    getattr(config, 'STDEV_REJECT_EXIT_TF', 'D'),
+    getattr(config, 'STDEV_REJECT_EXIT_ZONE', 0.80),
+    getattr(config, 'STDEV_REJECT_EXIT_RETURN', 0.65),
+    getattr(config, 'EXIT_STRUCT_BREAK_5M_ENABLED', False),
+    getattr(config, 'EXIT_STRUCT_DC_BREAK_ENABLED', False),
+    getattr(config, 'EXIT_TREND_REVERSAL_ENABLED', False),
+    getattr(config, 'MANAGE_REDUCE', False),
+    getattr(config, 'SERVICE_REDUCE', False),
+    getattr(config, 'SERVICE_STOP', False),
 )
 del _GROUP_C_READS
 
@@ -4894,7 +4894,7 @@ def _tradier_final_book_get(sym_key: str, param):
     )
     if exact and param == exact_side_flag:
         return True
-    if not bool(_cfg_auto('PERSYM_FINAL_BOOK_ENABLED', False)):
+    if not bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
         return None
     global _tradier_final_book, _tradier_final_book_mtime
     try:
@@ -5469,7 +5469,7 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
     # precedence over config_tradier.py=False and emitted live PPL reductions.
     if (
         param == "PARTIAL_PROFIT_LOCK_ENABLED"
-        and not bool(_cfg_auto('PARTIAL_PROFIT_LOCK_ENABLED', False))
+        and not bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
     ):
         return False
     # R1 is also a global emergency/master switch.  Global OFF is absolute,
@@ -5478,7 +5478,7 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
     # obsolete value and would then ignore the operator's false safety overlay.
     if (
         param == "R1_DC_LOW4_3M_EMERGENCY_ENABLED"
-        and not bool(_cfg_auto('R1_DC_LOW4_3M_EMERGENCY_ENABLED', False))
+        and not bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', False))
     ):
         return False
     if symbol and side:
@@ -8135,6 +8135,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 logger.debug(f"[RULE_A_RETEST] {position_key}: probe err — {_ra_err}")
         was_reduced = getattr(position, 'was_reduced', False)
         last_red_time = getattr(position, 'last_reduction_time', None)
+        # FIX 2026-08-20: gain from prior closed leg must be erased when flat — USER MANDATE: positionAmt==0 => gain 0 (was -10.91% stale)
+        if not has_position and position is not None:
+            try:
+                if float(getattr(position, 'gain', 0) or 0) != 0.0:
+                    position.gain = 0.0
+                    # USER MANDATE 2026-08-20: cycle_peak_gain / max_gain must NOT be reset on flat within cycle — you can go to 0 hundreds of times in 1 cycle, only erase current gain
+            except: pass
         market_context = await trade_manager.get_market_context(symbol)
         sentiment_rank = float(indicators_raw.get('0sentiment_rank') or i.get('0sentiment_rank') or 999)
 
@@ -16954,6 +16961,12 @@ class StockStrategy:
         current_price = float(current_price)
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
         positionAmt = abs(float(getattr(position, 'positionAmt', 0) or 0))
+        # FIX 2026-08-20: gain must be erased when flat — USER MANDATE positionAmt==0 => gain 0
+        if positionAmt == 0:
+            try:
+                position.gain = 0.0
+                # USER MANDATE 2026-08-20: do NOT reset max_gain / cycle_peak_gain on flat — cycle can go to 0 hundreds of times, reset only when not was_reduced
+            except: pass
         # ── REENTRY SELF-HEAL (2026-06-03 user mandate) ──────────────────
         # "all of which should be used to find out whether a symbol has passed
         #  its exit price even if the position object ... is damaged." If the

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T18:49:55.299043+00:00",
+  "timestamp": "2026-08-20T19:05:30.194078+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -409,6 +409,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MORPHOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -602,6 +608,12 @@
     },
     {
       "symbol": "BNBUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ENAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1123,36 +1135,13 @@
       "short_score": 0
     },
     {
-      "symbol": "MORPHOUSDT",
-      "net_score": 11.7,
-      "long_score": 11.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "ENAUSDC",
-      "net_score": 12.3,
-      "long_score": 12.3,
-      "short_score": 0
-    },
-    {
       "symbol": "ARUSDT",
       "net_score": 13.6,
       "long_score": 13.6,
       "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "ENAUSDC",
-      12.3,
-      0.10843
-    ],
-    [
-      "MORPHOUSDT",
-      11.7,
-      2.3545
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "SPYUSDT",
