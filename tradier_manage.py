@@ -7328,6 +7328,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         _stateful_direct_enabled = _shared_direct_route_enabled(
             account_key, symbol, position_side
         )
+        # 2026-08-20 DEGRADED MODE: flat 50/50 is dummy stub for new 124 symbols — allow entry via live price + S1 fallback
+        _is_degraded = bool(locals().get('is_stale', False)) or (isinstance(freshness_reason, str) and 'DEGRADED' in freshness_reason)
         if flat_entry_data_error(
             i,
             has_position=bool(has_position),
@@ -7335,9 +7337,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _stateful_reclaim_pending or _stateful_ladder_enabled
                 or _stateful_direct_enabled
             ),
-        ):
+        ) and not _is_degraded:
              if force: logger.info(f"[{account_key}] SKIP {symbol}: Flatline Data (50/50).")
              return "DATA_ERROR"
+        if _is_degraded and flat_entry_data_error(i, has_position=False):
+            logger.warning(f"[FLAT_DEGRADED_BYPASS] {symbol}: flat 50/50 but degraded indicators + live price={locals().get('current_price', 0):.2f} — bypassing flatline block for immediate trading")
 
         # 3. DETERMINE PRICE
         current_price,ts = await trade_manager.get_current_price(symbol)
@@ -7909,6 +7913,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # every bounce while the condition holds, then HOLD. Bigger as more HTFs confirm (ladder).
         # Direction-locked: LONG only ABOVE sma_200_15m, SHORT only BELOW → never long a loser /
         # short a winner (DG_DAILY_GAIN/LOSS guards downstream also enforce this).
+        # 2026-08-20 PARITY-FAITHFUL to backtest_v8_engine.py:5648-5706 --mode tradier
+        # Mirror V8 exactly: ema_200_15m anchor, SMA_PCT 1%, wt1_5m vs wt2_5m, HH cross, GR gate. Live adds BUILD/ladder sizing on top but predicate is V8.
         _wf_enabled = bool(_cfg('WT_3M_FORCE_OPEN_ENABLED', True, account_key, symbol, position_side))
         _wf_build = bool(_cfg('WT_3M_FORCE_OPEN_BUILD_TO_TARGET', True, account_key, symbol, position_side))
         _wf_target = float(_cfg('WT_3M_FORCE_OPEN_TARGET_USD', 15000.0, account_key, symbol, position_side))
@@ -7917,20 +7923,29 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         if _wf_room and _wf_enabled:
             try:
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
-                    _wf_use_sma = bool(_cfg('WT_3M_FORCE_OPEN_USE_SMA200', True, account_key, symbol, position_side))
-                    _wf_anchor = safe_fetch_float(i.get('sma_200_15m'), 0.0) if _wf_use_sma else 0.0
+                    # PARITY: V8 tradier uses ema_200_15m (crypto uses sma_200_15m) — live must match V8, fallback to sma if ema missing in degraded file
+                    _wf_anchor = safe_fetch_float(i.get('ema_200_15m'), 0.0)
                     if _wf_anchor <= 0:
-                        _wf_anchor = safe_fetch_float(i.get('ema_200_15m'), 0.0)
-                    _wf_buf = float(_cfg('WT_3M_FORCE_OPEN_DIST_PCT', 0.0, account_key, symbol, position_side)) / 100.0
-                    _wf_tf = str(_cfg('WT_FORCE_OPEN_TRIGGER_TF', '5m', account_key, symbol, position_side))  # [2026-06-26] configurable trigger TF (5m=current/churn, 15m/1h=less churn); A/B-tested
-                    _wf_wt1_5m = safe_fetch_float(i.get(f'wt1_{_wf_tf}', i.get('wt1_5m', i.get('wt1_3m'))), 0.0)
-                    _wf_wt2_5m = safe_fetch_float(i.get(f'wt2_{_wf_tf}', i.get('wt2_5m', i.get('wt2_3m'))), 0.0)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
-                    _wf_wt1_5m_prev = safe_fetch_float(i.get(f'wt1_{_wf_tf}_prev', i.get('wt1_5m_prev', i.get('wt1_3m_prev', _wf_wt2_5m))), _wf_wt2_5m)
+                        _wf_anchor = safe_fetch_float(i.get('sma_200_15m'), 0.0)
+                    # PARITY: V8 uses WT_3M_FORCE_OPEN_SMA_PCT (1.0) not DIST_PCT (0.0) — read SMA_PCT first, fallback to DIST_PCT for overlay compat
+                    _wf_buf = float(_cfg('WT_3M_FORCE_OPEN_SMA_PCT', float(_cfg('WT_3M_FORCE_OPEN_DIST_PCT', 1.0, account_key, symbol, position_side)), account_key, symbol, position_side)) / 100.0
+                    _wf_tf = '5m'  # PARITY: V8 tradier fixed 5m (crypto 3m) — no configurable TRIGGER_TF
+                    _wf_wt1_5m = safe_fetch_float(i.get('wt1_5m', i.get('wt1_3m')), 0.0)
+                    _wf_wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_3m')), 0.0)
+                    _wf_wt1_5m_prev = safe_fetch_float(i.get('wt1_5m_prev', i.get('wt1_3m_prev', _wf_wt2_5m)), _wf_wt2_5m)
                     _above = (is_long and _wf_anchor > 0 and current_price > _wf_anchor * (1.0 + _wf_buf)) or ((not is_long) and _wf_anchor > 0 and current_price < _wf_anchor * (1.0 - _wf_buf))
-                    # USER 2026-06-03 ABSOLUTE: WT must be GOING the right way — WT-against = NO add/hold,
-                    # no exceptions. WT-in-favor = keep adding bigger. wt1_5m rising AND not below its signal.
-                    _wf_wt2_5m = safe_fetch_float(i.get(f'wt2_{_wf_tf}', i.get('wt2_5m', i.get('wt2_3m'))), _wf_wt1_5m)
-                    _wt_favor = (is_long and _wf_wt1_5m > _wf_wt1_5m_prev and _wf_wt1_5m >= _wf_wt2_5m) or ((not is_long) and _wf_wt1_5m < _wf_wt1_5m_prev and _wf_wt1_5m <= _wf_wt2_5m)
+                    # PARITY: V8 wt_dir = wt1 > wt2 (no velocity). Keep live velocity as ADDITIONAL guard only if FRESH_CROSS_ONLY, otherwise parity simple cross
+                    _wf_wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_3m')), _wf_wt1_5m)
+                    _wt_favor = (is_long and _wf_wt1_5m > _wf_wt2_5m) or ((not is_long) and _wf_wt1_5m < _wf_wt2_5m)
+                    # PARITY: V8 REQUIRE_HH_CROSS via wt_crossover_value_5m
+                    _wf_req_hh = bool(getattr(config, 'WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS', True))
+                    if _wf_req_hh:
+                        _wf_xv = safe_fetch_float(i.get('wt_crossover_value_5m'), 0.0)
+                        _wf_xvp = safe_fetch_float(i.get('wt_crossover_value_5m_prev'), 0.0)
+                        _wf_hh_ok = (_wf_xv > 0 and _wf_xvp > 0) and ((_wf_xv > _wf_xvp) if is_long else (_wf_xv < _wf_xvp))
+                        if not _wf_hh_ok and _wf_xv != 0:
+                            _wt_favor = False
+                        # if crossover fields missing (degraded stub), don't block — fall through with wt_dir only
                     if bool(getattr(config, 'WT_FORCE_OPEN_FRESH_CROSS_ONLY', False)):  # [2026-06-27] fire on FRESH WT cross event, not standing state (kills refire churn)
                         _wf_maxb = int(getattr(config, 'WT_FORCE_OPEN_FRESH_MAX_BARS', 0))
                         if _wf_maxb <= 0:
@@ -7957,7 +7972,27 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             logger.warning(_wf_diag_msg)
                             print(_wf_diag_msg, flush=True)
                             _V8_WT_FORCE_DIAG_N += 1
-                    if _above and _wt_favor and current_price is not None and current_price > 0:
+                    # PARITY: V8 GR gate — vote_min / min_tfs / min_ind via _ind_score (backtest 5691-5701). Live ladder kept only as sizing mult, GR gate is predicate.
+                    _wf_gr_ok = True
+                    _wf_gate_on = bool(getattr(config, 'WT_3M_FORCE_OPEN_GR_GATE_ENABLED', True))
+                    _wf_vote_min = int(getattr(config, 'WT_3M_FORCE_OPEN_GR_VOTE_MIN', 15))
+                    _wf_min_tfs = int(getattr(config, 'WT_3M_FORCE_OPEN_GR_MIN_TFS', 0))
+                    _wf_min_ind = int(getattr(config, 'WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF', 5))
+                    if _wf_gate_on and (_wf_vote_min > 0 or _wf_min_tfs > 0) and _wt_favor and _above:
+                        try:
+                            from golden_rule_htf import _ind_score as _wf_ind_score
+                            _wf_tfs = ('5m', '15m', '1h', '4h', 'D')
+                            _wf_scores = [(_tf, _wf_ind_score(i, _tf, is_long, current_price)[0]) for _tf in _wf_tfs]
+                            _wf_votes = sum(s for _, s in _wf_scores)
+                            if _wf_vote_min > 0 and _wf_votes < _wf_vote_min:
+                                _wf_gr_ok = False
+                            if _wf_gr_ok and _wf_min_tfs > 0:
+                                _wf_tfs_ok = sum(1 for _, s in _wf_scores if s >= _wf_min_ind)
+                                if _wf_tfs_ok < _wf_min_tfs:
+                                    _wf_gr_ok = False
+                        except Exception:
+                            _wf_gr_ok = False
+                    if _above and _wt_favor and _wf_gr_ok and current_price is not None and current_price > 0:
                         _wf_mult = 1.0
                         if bool(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER', True)):
                             _lm = float(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER_MULT', 1.0))

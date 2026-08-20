@@ -1917,7 +1917,10 @@ def simulate_one_symbol(
     _wf_anchor = np.nan_to_num(npz.get("sma_200_15m" if _wf_mode_crypto else "ema_200_15m", np.zeros(n))).astype(np.float32)
     # 2026-06-03 sma200-distance size-ladder: per-bar entry multiplier (mirrors config.py BREAKOUT_SIZE_*).
     if bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", True)):
-        _ld_dist = np.where(_wf_anchor > 0, ((close - _wf_anchor) / _wf_anchor * 100.0) if is_long else ((_wf_anchor - close) / _wf_anchor * 100.0), 0.0)
+        # FIX 2026-08-20: np.where still evaluates division for _wf_anchor==0 -> divide-by-zero RuntimeWarning/inf
+        # Use np.divide with where= to avoid computing division where anchor==0 (safe for 0/0 and spawn workers)
+        _ld_num = (close - _wf_anchor) if is_long else (_wf_anchor - close)
+        _ld_dist = np.divide(_ld_num, _wf_anchor, out=np.zeros(n, dtype=np.float64), where=_wf_anchor > 0) * 100.0
         _ld_t1 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_PCT", 1.0)); _ld_m1 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_MULT", 1.5))
         _ld_t2 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T2_PCT", 1.5)); _ld_m2 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T2_MULT", 2.0))
         _ld_t3 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T3_PCT", 2.5)); _ld_m3 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T3_MULT", 3.0))

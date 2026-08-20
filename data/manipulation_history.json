@@ -817,5 +817,14 @@
     ],
     "timestamp": "2026-08-20T16:41:10.368759+00:00",
     "price": 0.00862
+  },
+  {
+    "symbol": "SCRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T16:49:19.888983+00:00",
+    "price": 0.02137
   }
 ]

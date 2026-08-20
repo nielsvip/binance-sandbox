@@ -1,70 +1,38 @@
 {
-  "generated_at": "2026-08-20T16:33:44.421443+00:00",
-  "count": 8,
+  "generated_at": "2026-08-20T17:04:21.869994+00:00",
+  "count": 4,
   "advisories": [
     {
-      "symbol": "ABBV",
+      "symbol": "MOS",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.91 threshold=0.45",
+      "score": 0.906,
+      "ts": "2026-08-20T17:04:21.869954+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.542,
+      "ts": "2026-08-20T17:04:21.869965+00:00"
+    },
+    {
+      "symbol": "PBF",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.49 threshold=0.45",
-      "score": 0.488,
-      "ts": "2026-08-20T16:33:44.421373+00:00"
+      "score": 0.486,
+      "ts": "2026-08-20T17:04:21.869968+00:00"
     },
     {
-      "symbol": "ABT",
+      "symbol": "PSX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.59 threshold=0.45",
-      "score": 0.593,
-      "ts": "2026-08-20T16:33:44.421389+00:00"
-    },
-    {
-      "symbol": "ARM",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.49 threshold=0.45",
-      "score": 0.493,
-      "ts": "2026-08-20T16:33:44.421393+00:00"
-    },
-    {
-      "symbol": "AU",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.53 threshold=0.45",
-      "score": 0.526,
-      "ts": "2026-08-20T16:33:44.421396+00:00"
-    },
-    {
-      "symbol": "AXON",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.78 threshold=0.45",
-      "score": 0.784,
-      "ts": "2026-08-20T16:33:44.421398+00:00"
-    },
-    {
-      "symbol": "CHRD",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.94 threshold=0.45",
-      "score": 0.942,
-      "ts": "2026-08-20T16:33:44.421402+00:00"
-    },
-    {
-      "symbol": "CIBR",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.60 threshold=0.45",
-      "score": 0.603,
-      "ts": "2026-08-20T16:33:44.421403+00:00"
-    },
-    {
-      "symbol": "CLS",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.77 threshold=0.45",
-      "score": 0.771,
-      "ts": "2026-08-20T16:33:44.421405+00:00"
+      "score": 0.586,
+      "ts": "2026-08-20T17:04:21.869970+00:00"
     }
   ]
 }

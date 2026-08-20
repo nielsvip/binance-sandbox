@@ -171,6 +171,7 @@ case "$SCRIPT_BASE" in
     ez_mark_prices)      NO_OUTPUT_TIMEOUT=600  ;;  # periodic
     ez_orderbook)        NO_OUTPUT_TIMEOUT=0    ;;  # 2026-04-27: disabled — real heartbeat is Redis (orderbook:* keys), not the log file. The 600s log-mtime check was killing healthy processes every ~10 min in a loop.
     tradier_rankings)    NO_OUTPUT_TIMEOUT=900  ;;  # 2026-07-21: the per-symbol scoring block (tradier_rankings.py ~2126-2216) is one synchronous pandas loop over 224 symbols that logged NOTHING. Measured 553s on 2026-06-13 with 219 symbols; at 224 it crossed the 600s default, so the watchdog SIGKILLed it 67x on 2026-07-21 alone and tradier_rankings.json has not been written since 2026-06-13 03:30. A progress heartbeat was added to the loop; 900s is belt-and-braces headroom, still catches a genuinely dead process.
+    tradier_indicators)  NO_OUTPUT_TIMEOUT=600  ;;  # 2026-08-20: 163 syms * 1m/5m/15m/1h/4h/D with clipping takes 180-300s, give 600s headroom (was default 600 but tradier_manage 0 masked it)
     tradier_manage)      NO_OUTPUT_TIMEOUT=0    ;;  # 2026-06-03: disabled — same failure mode as ez_orderbook. The per-account tradier_manage_{acct}.log is hijack-unreliable (multi-proc RotatingFileHandler race freezes trb/tra's own log while the worker is alive + trading + writing shared logs), so the 600s log-mtime check kill-looped healthy trb/tra every ~10min. Liveness covered by binance_supervisor (proc-aware) + shared tradier_positions/actions logs.
     *)                   NO_OUTPUT_TIMEOUT=600  ;;  # safe default
 esac
