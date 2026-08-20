@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-08-20T23:11:41.541861+00:00",
+  "timestamp": "2026-08-20T23:26:51.328156+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 178
+    "total_ranked": 180
   },
   "unified_ranking": [
+    {
+      "symbol": "WLFIUSDC",
+      "net_score": -10.9,
+      "long_score": 0,
+      "short_score": 10.9
+    },
+    {
+      "symbol": "TRUMPUSDC",
+      "net_score": -10.6,
+      "long_score": 0,
+      "short_score": 10.6
+    },
     {
       "symbol": "RENDERUSDT",
       "net_score": 0,
@@ -26,6 +38,12 @@
     },
     {
       "symbol": "NEARUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "INXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -62,12 +80,6 @@
     },
     {
       "symbol": "KAVAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "WLFIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -218,12 +230,6 @@
     },
     {
       "symbol": "GOOGLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "TRUMPUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -655,6 +661,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AAVEUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -842,6 +854,12 @@
     },
     {
       "symbol": "GRAMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SNXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1067,27 +1085,27 @@
       "net_score": 10.1,
       "long_score": 10.1,
       "short_score": 0
-    },
-    {
-      "symbol": "AAVEUSDC",
-      "net_score": 10.2,
-      "long_score": 10.2,
-      "short_score": 0
     }
   ],
   "top_longs": [
-    [
-      "AAVEUSDC",
-      10.2,
-      98.48
-    ],
     [
       "AMATUSDT",
       10.1,
       496.24
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "WLFIUSDC",
+      10.9,
+      0.06027
+    ],
+    [
+      "TRUMPUSDC",
+      10.6,
+      1.621
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
