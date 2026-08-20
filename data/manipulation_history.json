@@ -70,5 +70,23 @@
     ],
     "timestamp": "2026-08-20T08:08:22.563898+00:00",
     "price": 0.0005565
+  },
+  {
+    "symbol": "GRASSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.4x normal"
+    ],
+    "timestamp": "2026-08-20T08:23:22.116517+00:00",
+    "price": 0.3135
+  },
+  {
+    "symbol": "AAVEUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.6x normal"
+    ],
+    "timestamp": "2026-08-20T08:25:13.582573+00:00",
+    "price": 96.23
   }
 ]
