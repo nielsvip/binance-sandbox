@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T20:38:06.070009+00:00",
+  "timestamp": "2026-08-20T20:53:21.838174+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,40 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "SPYUSDT",
-      "net_score": -14.7,
-      "long_score": 0,
-      "short_score": 14.7
-    },
-    {
       "symbol": "PLTRUSDT",
       "net_score": -13.3,
       "long_score": 0,
       "short_score": 13.3
-    },
-    {
-      "symbol": "LLYUSDT",
-      "net_score": -12.4,
-      "long_score": 0,
-      "short_score": 12.4
-    },
-    {
-      "symbol": "TQQQUSDT",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
-    },
-    {
-      "symbol": "ATOMUSDT",
-      "net_score": -10.3,
-      "long_score": 0,
-      "short_score": 10.3
-    },
-    {
-      "symbol": "QQQUSDT",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
     },
     {
       "symbol": "QNTXUSDT",
@@ -56,6 +26,12 @@
     },
     {
       "symbol": "SQQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -301,6 +277,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LLYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ICXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -356,6 +338,12 @@
     },
     {
       "symbol": "SUIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SPYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -487,6 +475,12 @@
       "short_score": 0
     },
     {
+      "symbol": "QQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ICPUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -560,6 +554,12 @@
     },
     {
       "symbol": "RVNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TQQQUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1166,33 +1166,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "SPYUSDT",
-      14.7,
-      764.4
-    ],
-    [
-      "LLYUSDT",
-      12.4,
-      1246.1
-    ],
-    [
-      "TQQQUSDT",
-      10.5,
-      69.89
-    ],
-    [
-      "ATOMUSDT",
-      10.3,
-      1.486
-    ],
-    [
-      "QQQUSDT",
-      10.2,
-      709.5
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
