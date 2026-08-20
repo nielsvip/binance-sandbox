@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STOCKS / CRYPTO 1YR Matrix — Cell Fill Progress</title>
+<style>
+:root{--bg:#0b0f14;--card:#111824;--muted:#8a94a6;--line:#1e2a3a;--stocks:#2ea8ff;--crypto:#ff9f2e;--good:#1eeb8a;--bad:#ff3b5e}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro",Inter,system-ui,sans-serif;background:var(--bg);color:#e6edf5}
+.wrap{max-width:980px;margin:28px auto;padding:0 20px}
+h1{font-size:22px;margin:0 0 6px;font-weight:700;letter-spacing:-0.02em}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.big{font-size:28px;font-weight:800;letter-spacing:-0.02em;margin:2px 0 4px}
+.meta{font-size:12px;color:var(--muted);line-height:1.5}
+.bar{height:12px;background:#0a1220;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:10px 0 8px}
+.fill{height:100%;width:0%;transition:width .6s ease}
+.fill.stocks{background:linear-gradient(90deg,#2ea8ff,#5ad1ff)}
+.fill.crypto{background:linear-gradient(90deg,#ff9f2e,#ffd07a)}
+.row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.row b{color:#e6edf5}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.kpi{background:#0d1420;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.kpi .v{font-weight:700;font-size:18px}
+.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em}
+.foot{margin-top:14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--line);background:#0d1420;color:var(--muted)}
+.pill.ok{color:var(--good);border-color:#123a2a}
+.pill.bad{color:var(--bad);border-color:#3a1230}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>STOCKS / CRYPTO 1YR REAL MATRIX NEXT GEN — % cells filled</h1>
+<div class="sub">Live % of matrix cells with numbers (ledger → sheets). STOCKS = tradeable 167, CRYPTO = 100. Updates every 3s from <code>next_gen_beam_per_sym.json</code> + <code>incremental.jsonl</code> on S1. No lies.</div>
+<div class="grid">
+<div class="card" id="stocksCard">
+<h2>STOCKS_1YR_REAL_MATRIX_NEXT_GEN</h2>
+<div class="big" id="stocksPct">—%</div>
+<div class="bar"><div class="fill stocks" id="stocksFill"></div></div>
+<div class="row"><span>Filled <b id="stocksFilled">—</b> / <b id="stocksTotal">167</b></span><span id="stocksLeft">— left</span></div>
+<div class="meta" id="stocksMeta">—</div>
+<div class="kpis">
+<div class="kpi"><div class="v" id="stocksNEG">—</div><div class="l">NEG gain</div></div>
+<div class="kpi"><div class="v" id="stocksDD">—</div><div class="l">DD &gt;30</div></div>
+<div class="kpi"><div class="v" id="stocksOK">—</div><div class="l">OK cells</div></div>
+</div>
+</div>
+<div class="card" id="cryptoCard">
+<h2>CRYPTO_1YR_REAL_MATRIX_NEXT_GEN</h2>
+<div class="big" id="cryptoPct">—%</div>
+<div class="bar"><div class="fill crypto" id="cryptoFill"></div></div>
+<div class="row"><span>Filled <b id="cryptoFilled">—</b> / <b id="cryptoTotal">100</b></span><span id="cryptoLeft">— left</span></div>
+<div class="meta" id="cryptoMeta">—</div>
+<div class="kpis">
+<div class="kpi"><div class="v" id="cryptoNEG">—</div><div class="l">NEG gain</div></div>
+<div class="kpi"><div class="v" id="cryptoDD">—</div><div class="l">DD &gt;30</div></div>
+<div class="kpi"><div class="v" id="cryptoOK">—</div><div class="l">OK cells</div></div>
+</div>
+</div>
+</div>
+<div class="card" style="margin-top:16px">
+<div class="row" style="align-items:center"><span><span class="pill" id="statusPill">connecting…</span> <span class="meta" id="statusMeta">S1 157.180.125.52 • ledger + incremental</span></span><span class="meta" id="clock">—</span></div>
+<div class="foot">Source: <code>/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json</code> (ledger) + <code>.incremental.jsonl</code> (every variant fsync) + <code>SPREADSHEETS/*NEXT_GEN.xlsx</code> (report). STOCKS tradeable 167 = TRB 160 + 7 INF, CRYPTO 100. % = filled / tradeable ×100. NEG = delta&lt;0, DD&gt;30 illegal.</div>
+</div>
+</div>
+<script>
+const STOCKS_TOTAL = 167;
+const CRYPTO_TOTAL = 100;
+const S1_LEDGER = "/api/ledger"; // proxied by local server
+const S1_INC = "/api/incremental";
+async function fetchLedger(){
+  try{
+    const r = await fetch(S1_LEDGER + "?t=" + Date.now());
+    if(!r.ok) throw new Error(r.status);
+    return await r.json();
+  }catch(e){ return null; }
+}
+async function fetchInc(){
+  try{
+    const r = await fetch(S1_INC + "?t=" + Date.now());
+    if(!r.ok) throw new Error(r.status);
+    const t = await r.text();
+    return t.split("\n").filter(Boolean).length;
+  }catch(e){ return null; }
+}
+function isCrypto(symside){ return /USDT|USDC|USD1/.test(symside); }
+function render(ledger, incLines){
+  const now = new Date();
+  document.getElementById("clock").textContent = now.toLocaleTimeString();
+  if(!ledger){ document.getElementById("statusPill").textContent="offline"; document.getElementById("statusPill").className="pill bad"; return; }
+  document.getElementById("statusPill").textContent="live"; document.getElementById("statusPill").className="pill ok";
+  const stocks = ledger.ledger.filter(r=>!isCrypto(r.symside));
+  const crypto = ledger.ledger.filter(r=>isCrypto(r.symside));
+  const stocksFilled = stocks.length;
+  const cryptoFilled = crypto.length;
+  const stocksPct = Math.min(100, (stocksFilled/STOCKS_TOTAL)*100);
+  const cryptoPct = Math.min(100, (cryptoFilled/CRYPTO_TOTAL)*100);
+  document.getElementById("stocksFilled").textContent = stocksFilled;
+  document.getElementById("cryptoFilled").textContent = cryptoFilled;
+  document.getElementById("stocksLeft").textContent = Math.max(0, STOCKS_TOTAL - stocksFilled) + " left";
+  document.getElementById("cryptoLeft").textContent = Math.max(0, CRYPTO_TOTAL - cryptoFilled) + " left";
+  document.getElementById("stocksPct").textContent = stocksPct.toFixed(1) + "%";
+  document.getElementById("cryptoPct").textContent = cryptoPct.toFixed(1) + "%";
+  document.getElementById("stocksFill").style.width = stocksPct + "%";
+  document.getElementById("cryptoFill").style.width = cryptoPct + "%";
+  function stats(arr){
+    const neg = arr.filter(r=> (r.best?.delta_vs_bh??0) < 0).length;
+    const dd = arr.filter(r=> (r.best?.max_dd_pct??0) > 30).length;
+    const ok = arr.length - Math.max(neg, dd); // approximate
+    return {neg, dd, ok: Math.max(0, arr.length - neg - (dd - neg>0?1:0))};
+    // simpler: ok = total - NEG - (DD not in NEG)
+  }
+  const ss = { neg: stocks.filter(r=>r.best.delta_vs_bh<0).length, dd: stocks.filter(r=>r.best.max_dd_pct>30).length };
+  ss.ok = Math.max(0, stocksFilled - ss.neg - Math.max(0, ss.dd - ss.neg));
+  const cs = { neg: crypto.filter(r=>r.best.delta_vs_bh<0).length, dd: crypto.filter(r=>r.best.max_dd_pct>30).length };
+  cs.ok = Math.max(0, cryptoFilled - cs.neg - Math.max(0, cs.dd - cs.neg));
+  // more accurate ok = neither NEG nor DD>30
+  const sOK = stocks.filter(r=> r.best.delta_vs_bh>=0 && r.best.max_dd_pct<=30).length;
+  const cOK = crypto.filter(r=> r.best.delta_vs_bh>=0 && r.best.max_dd_pct<=30).length;
+  document.getElementById("stocksNEG").textContent = ss.neg;
+  document.getElementById("stocksDD").textContent = ss.dd;
+  document.getElementById("stocksOK").textContent = sOK;
+  document.getElementById("cryptoNEG").textContent = cs.neg;
+  document.getElementById("cryptoDD").textContent = cs.dd;
+  document.getElementById("cryptoOK").textContent = cOK;
+  document.getElementById("stocksMeta").textContent = `ledger ${stocksFilled} • incremental ${incLines ?? "—"} lines • gen ${ledger.generated_at||"?"}`;
+  document.getElementById("cryptoMeta").textContent = `ledger ${cryptoFilled} • incremental ${incLines ?? "—"} lines • gen ${ledger.generated_at||"?"}`;
+  document.getElementById("statusMeta").textContent = `S1 157.180.125.52 • ledger ${ledger.ledger.length}/267 • inc ${incLines} • ${ledger.generated_at||""}`;
+}
+async function tick(){
+  const [ledger, inc] = await Promise.all([fetchLedger(), fetchInc()]);
+  render(ledger, inc);
+}
+tick();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>
