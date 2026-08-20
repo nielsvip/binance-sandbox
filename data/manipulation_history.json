@@ -88,5 +88,50 @@
     ],
     "timestamp": "2026-08-20T08:25:13.582573+00:00",
     "price": 96.23
+  },
+  {
+    "symbol": "BEAMXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.0x normal"
+    ],
+    "timestamp": "2026-08-20T08:36:58.640104+00:00",
+    "price": 0.001405
+  },
+  {
+    "symbol": "BTCUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.2x normal"
+    ],
+    "timestamp": "2026-08-20T08:37:28.844619+00:00",
+    "price": 71267.6
+  },
+  {
+    "symbol": "GASUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.5x normal"
+    ],
+    "timestamp": "2026-08-20T08:37:28.844619+00:00",
+    "price": 1.009
+  },
+  {
+    "symbol": "1000PEPEUSDC",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.8x normal"
+    ],
+    "timestamp": "2026-08-20T08:39:09.144971+00:00",
+    "price": 0.0029745
+  },
+  {
+    "symbol": "WLFIUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-08-20T08:39:18.532036+00:00",
+    "price": 0.05875
   }
 ]
