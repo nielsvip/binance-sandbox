@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T04:55:13.630218+00:00",
+  "timestamp": "2026-08-20T05:10:25.807463+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -188,6 +188,12 @@
     },
     {
       "symbol": "PUMPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "COMPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1154,27 +1160,16 @@
     },
     {
       "symbol": "PNUTUSDC",
-      "net_score": 11.8,
-      "long_score": 11.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "COMPUSDT",
-      "net_score": 12.2,
-      "long_score": 12.2,
+      "net_score": 14.7,
+      "long_score": 14.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "COMPUSDT",
-      12.2,
-      19.11
-    ],
-    [
       "PNUTUSDC",
-      11.8,
-      0.04752
+      14.7,
+      0.04795
     ]
   ],
   "top_shorts": [],
