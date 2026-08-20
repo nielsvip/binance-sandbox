@@ -1015,5 +1015,23 @@
     ],
     "timestamp": "2026-08-20T21:20:10.962596+00:00",
     "price": 0.0964
+  },
+  {
+    "symbol": "TLMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T21:28:43.935065+00:00",
+    "price": 0.001402
+  },
+  {
+    "symbol": "ACTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T21:32:45.777947+00:00",
+    "price": 0.011031
   }
 ]
