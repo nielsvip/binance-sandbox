@@ -142,5 +142,14 @@
     ],
     "timestamp": "2026-08-20T08:53:03.446672+00:00",
     "price": 0.0828
+  },
+  {
+    "symbol": "KAVAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 39.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T09:07:37.536149+00:00",
+    "price": 0.04114
   }
 ]
