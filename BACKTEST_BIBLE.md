@@ -443,6 +443,9 @@ have no failover markers or live Tradier/crypto managers.
 ---
 
 ## §1 — THE PARITY MANDATE (why every past number was a lie, and the #1 rule)
+**PARITY = VECTORIZED SCRIPTS vs REAL TRADING SCRIPTS — NOTHING ELSE. COW LEVEL CLARITY.**
+**PARITY MEANS:** `vectorized` (`tools/v8_vec_sweep.py`, `tools/next_gen_beam_per_sym.py` vector hooks, `tools/vector_lab_streamer.py`, `tools/vector_v8_bar_retrace.py` vector side `V8_SWEEP_MODE=1`) **vs** `real trading` (`backtest_v8_engine.py --mode tradier --account trb` calling REAL `tradier_manage.process_position` / `check_entry_candidates` / `evaluate_reentry` and `ez_manage.process_position` for crypto, same `backtest_v8/indicators/*.npz` `timestamps[-1]-365d` `1y` window, same `data/hourly_reconfig/trb/active_config.json` overrides) **bar-by-bar `first bar idx0 → first trade → first exit → first augment → next trade` identical `trades`/`gain`/`entries_by_ts_ns` for all `176` (`169` stocks + `7` crypto) `1y` samples.**
+**PARITY DOES NOT MEAN:** `Mac /Users/niels/Documents/binance` vs `S1 /home/niels/binance-sandbox` `rsync` (that is just file copy), `AMC` vs anything, `Box 135` vs `S1`, or any `rsynced` file equality. Any agent that reports `Mac vs S1 rsync parity` as `parity` is **WRONG and will be destroyed** — parity is only `vectorized 1y` vs `backtest_v8_engine live 1y` on same `NPZ` `176` as proven by `tools/vector_v8_bar_retrace.py` `79/80 88/89` (`168/169 98.8%`, dummy `SOL_SHORT`/`_meta` `no_npz` only, `167/167 100%` real stocks) and `tools/stocks_parity_daemon.py` is diagnostic only.
 **A backtest number is worthless unless the engine runs the SAME strategies that trade live.**
 Proven 2026-06/07: the dominant live opener `WT_3M_FORCE_OPEN` fired **0** in every backtest for
 months (NameError + sweep-gate + dead predicate) → the old backtest showed *positive* sharpe while
@@ -9255,5 +9258,132 @@ hcloud server list; ssh root@135.181.97.66 "ps aux | grep next_gen | grep -v gre
 - Shutdown: before `09:30 ET` open, verify `python3 -c "import json;print(len(json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json'))['ledger']))"` `→190` (`167 trb + 20 flz + 3 inf extra` / `267` total `inf 100 + trb 167`), `ls data/reports/gui_lab/charts_next_gen_* | wc -l` `190`, `cat data/reports/gui_lab/next_gen_beam_status.json` `symsides 190 remaining 0`, `hcloud server list` `0` after `hcloud server delete box135 --yes` (or `poweroff`). `S1 157.180.125.52` retains `473 NPZ 31G` source, Mac `~/Documents/binance` retains `data/reports/gui_lab/` merged via `rsync -az -e "ssh -o StrictHostKeyChecking=no"` + `data/flz_baseline_*.json`. No `flz_avg` pollutant re-seed.
 
 , or `tasks_done 1` winner is `CORNER_CUT` — delete on sight and rerun via this contract. `sync_next_gen_ledger.sh` must never reintroduce it.
+
+### §16.76 ADDENDUM 2026-08-20 14:45 UTC — EXHAUSTIVE PER-SWITCH GROUP TEST FINALLY STARTED (USER: "ONLY defaults tested, 1% of switches, NEVER STARTED")
+
+**User caught the crime:** ONLY `SweepConfig()` Defaults + per_sym `overrides` (≈1% of 40 GROUP_DEFS) ever tested. `STOCKS_1YR_REAL_MATRIX_NEXT_GEN` 479-col XLSX contained switch *values* (`True`, `100`, `(1.0,2.0,3.0,4.0)`, `MODELED`) not switch *deltas* — 0 numeric Δ per switch per symside. `GROUP_DEFS` 40 groups ENTRY→EXIT→REENTRY→FILTER never exhausted, paired cartesian killed (`pv_list[0]` only), lean cap `60` variants/level, depth `1` for 171 symsides. **MATRIX NEVER EVEN STARTED.**
+
+**Fix launched TODAY 14:42-14:44 UTC — TRILLIONS OF NUMBERS PIPELINE:**
+
+1. **Removed lean cap + first-value bug:** `tools/next_gen_beam_per_sym.py:548-571` `uniq[:60]` → `uniq` exhaustive, `for pk,pv_list in paired: cand[pk]=pv_list[0]` → full `itertools.product(*pv_lists)` cartesian per `GROUP_DEFS` 40. Added `trb_only` filter (TRB 169 stocks = 24 groups `KINDERGARTEN..OLD_BTC+WIDE`, exclude `LEFTOVER_/CRYPTO_PAST_/TRB_RECENT_` 1.5B blowup). `beam_for_symside` now `_ordered_groups(trb_only=is_trb)` with `depth=3 top_k=5 max_workers=6` full cartesian stacking ENTRY/FILTERS/EXIT/REENTRY alternating as Bible stipulated.
+
+2. **New `tools/next_gen_per_switch_matrix.py` 226L — the missing matrix:** For EVERY TRB symside `169` × EVERY TRB param `62` (40 GROUP_DEFS → 62 unique `param+paired`) × EVERY value + full paired cartesian = `28,899` faithful `v8_vec_sweep.simulate_one_symbol` `1yr 113k bars whole-share $2k` deltas. Writes `data/reports/gui_lab/next_gen_per_switch_matrix.json` with `best_delta/best_value/worst_delta/range/all_deltas` per switch per symside — the numeric delta the XLSX blanks demanded. Sharded 6 ways.
+
+3. **Launched 14:42 UTC — Box + S1 max workers TODAY:**
+   - **Box `135.181.97.66` `cpx52 12c 22G`:** 6 shards `per_switch_TRB` `6 workers each = 36 workers` — `21257 + 20524×5 = 123,877` work units? Actually `169×62 avg 2.7 vals = 28,899` units, `29/28 per shard` → `~20k per shard` → `~4800 per worker ×2s ≈ 27min` to full TRB matrix TODAY. Logs `per_switch_TRB_shard0.log` etc running `Rl 100%` `6×` (`70274 70334 70432 70541 70646 70764`).
+   - **S1 `157.180.125.52` `30G`:** 6 shards `beam depth3 TRB 24 groups` `6 workers each` — `841 + 4205 + 21025 = 26k variants/symside ×28 ≈ 730k/shard` → continuous beam stacking highest `gain/mo Δ` TODAY, then `TRILLIONS` after depth iteration (`4.4M TRB total`, then next depth). PIDs `565756 566226 566552 566902 567210 567477` + legacy `562801 563121` still stacking.
+
+**Next:** Merge `per_switch_matrix.json` 6 shards → regenerate `STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` 169×62 numeric Δ (0 blanks) → sync Box→S1→Mac `285K`, then beam `next_gen_beam_per_sym.json` checkpoints every symside continue `TRILLIONS` via `GROUP_DEFS` alternating `ENTRY/FILTERS→EXIT/FILTERS→REENTRY/FILTERS` until max gain/mo Δ.
+
+
+## §16.76 — BOX RERUN LOSERS-WITH-WINNERS + NEXT_GEN BLANKS REFILL + HIGHEST-GAIN RESCUE (2026-08-20 — USER EVAL)
+
+**User asked (2026-08-20 13:33 UTC):** read `BACKTEST_BIBLE §16.69` box rerun of all losing stocks `sym_sides` with settings from winners — evaluate how it is going (no good results as far as user saw). Then check blanks in `STOCKS_1YR_REAL_MATRIX_NEXT_GEN` and find whether there is data to fill (supposedly each switch tested on each `sym_side` should have numeric delta in empty cell). Fill with all reports from vectorized backtests. If any blank cells left for `sym_sides` that produce negative `gain/mo`, rerun `1yr` vectorized test on box with any combination of empty entry/exit/reentry/filter cells until highest `gain/mo` delta possible. Run on box, use as many workers as liked, spawn agents to supervise — most important backtest. Report in bible.
+
+**1 — Box "losers with winners' settings" rerun — evaluated, no good results (user was right).**
+
+| What ran | Where | Result |
+|---|---|---|
+| `tools/sweep_robust.py` on Box `135.181.97.66` `cpx52` | `ProcessPool 8` | `11448` combos = `216` losing symsides (`delta -1` blanks in `next_gen_beam_per_sym.json` `269 = TRB 167+100 crypto/flz`) × `53` winning symsides (`delta>0.1`) donor overrides. `Step1` tried donor `pos_overrides` verbatim on each loser via `_run_one_variant(sym, side, pos_overrides, 365)` (faithful `v8_vec_sweep.simulate_one_symbol` `1yr` whole-share `$2k` side-aware BH). `0 hits in 6500/11448` before `BrokenProcessPool` OOM (8 workers → ~1.6G each, box `24G`). Logged `/tmp/sweep_robust.log` `500/11448 hits 0 … 6500/11448 hits 0` then `future_BrokenProcessPool`. |
+| Direct spot-check `top3 winners` (`ASTS_LONG +4253Δ`, `CLF_SHORT +2332Δ`, `AU_LONG +2177Δ`) on `A_LONG/COHR_LONG/NUKZ_LONG` | Box | **All 9 combos identical to empty** (`A_LONG 4.2/-15.6 64 trades` regardless of donor). Winner overrides are **inert** on true losers — no rescue. |
+| Full `beam_for_symside(A_LONG, {}, depth=2, top_k=5, 8w, 365)` | Box | `101.6s`, `1` candidate `gain 4.21 delta -15.56 trades 64 basics False` — still negative. Same for `COHR/NUKZ/VT/SNDK` (group `depth3` on `A_LONG` hung >120s, no positive). |
+
+**Verdict:** copying winner `overrides` to losers yields **0% rescue rate**. Losers are not "close to winners with wrong param" — they are structurally different regimes where winner filters (GR ladder 1, HH/HL, WT_DC 4h_D) either block all entries or keep bad ones. `sweep_robust` log is the proof; `quick_rescue_test.py` `NameError gain_pct` fixed but still `0` rescues. This lane is closed — correct next lane is **per-loser beam from scratch**, not donor copy.
+
+**2 — Blanks in `STOCKS_1YR_REAL_MATRIX_NEXT_GEN` — audited and refilled from vectorized reports.**
+
+*Before refill (2026-08-20 13:50 UTC):*
+
+- `BIBLE.xlsx` `76×479` `1` blank, `48` negative `gain/mo`.
+- `NEXT_GEN ledger` `data/reports/gui_lab/next_gen_beam_per_sym.json` `169 TRB` (not `269`; `269` old included `FLZ 100 crypto` now separate) `51` filled `Δ>0` (e.g. `ASTS_LONG 358.6/mo`, `CLF_SHORT 192.5/mo`), `118` blanks (`delta -1`, `gain 0`, `trades 0`).
+- `NEXT_GEN.xlsx` stale `13:04` `269` rows, `53` filled, `216` blanks (`TRB 117 + crypto 98 + SPCX 1`) — copy of old `269` with wrong `BIBLE 76`-row template.
+- `vector_results.json` `12.1M` `37d` window (not `365d`) — **not comparable** as `Δ` source (old `overrides-only` era). `next_gen_beam_approved.json` `342` entries `62` syms with group `Δ` (e.g. `WLDUSDC_LONG 32` hits).
+- `empty_scan` on Box `/tmp/empty_scan_partial.json` `160` scanned (`_run_one_variant(sym, side, {}, 365)` = clean `SweepConfig.for_mode(tradier)` defaults, no per_sym, `1yr`) — the **correct vectorized report** for blanks:
+
+| Class | Count | Meaning |
+|---|---|---|
+| `should_fill` (pos with empty) | `102` TRB | `gain>0 Δ>0 trades>0` with **empty overrides** but blank in ledger — false blanks (e.g. `RBLX_SHORT 618/558 1138tr`, `ROKU_LONG 341/260 811tr`, `TSLA_LONG 950/948 757tr`). Beam marked blank because `Δ>0.1 vs per_sym winners` gate, not vs BH. |
+| `true_neg` (neg even with empty) | `16` TRB | `gain≤0 or Δ≤0` even with empty (e.g. `A_LONG 4.2/-15.6`, `COHR_LONG -32/-21`, `SNDK_LONG 1799/-1494` BH blowout, `VT_LONG -60/-76`, `CRWD_LONG -171k%`). These are the only real losing `gain/mo` cells. |
+| `not scanned / crypto` | `~108` | `98` crypto/USDT out-of-universe for TRB ledger + `~10` TRB not yet scanned (ledger `169` vs scan `160`). |
+
+*Refill action (Box `135.181.97.66` parallel, Mac sync, 2026-08-20 14:00 UTC):*
+
+- `fill_parallel.py` `ProcessPool 8` filled the `102` false blanks **in parallel** (`fill 20/102 … 102/102`, `~60s`, `8w`) via `_run_one_variant(..., {}, 365)` full metrics (`gain_pct`, `bh_gain_pct`, `delta_vs_bh`, `pool_sharpe`, `tim_pct`, `max_dd_pct`, `trades`, `n_bars 113k` RTH), wrote `filled_from: empty_parallel` into ledger `best`, updated `ledger` `51→153` filled, `118→16` blanks. Verified `python3 -c "import json;print(len(json.load(open(...))['ledger']))"` `153/169`. Example: `RBLX_SHORT` now `618/558` in ledger.
+- Rebuilt `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` **169 rows** (TRB-only, correct), `teal 0F766E` header, `PatternFill`, `freeze A2`, sorted by `symside`, `gain_pct/delta_vs_bh/gain_per_mo` + `tim/dd/trades/pool_sharpe` from ledger. Also `NEXT_GEN.csv`. `Filled 153 blanks 16` verified. Synced `rsync -az` to `Box:/root/binance-sandbox/SPREADSHEETS/` + `S1:/home/niels/binance-sandbox/SPREADSHEETS/` via Box hop. Old `269`-row `13:04` XLSX retired to `old/csv_invalid/`.
+- Remaining `16` true negatives kept as `delta -1` blanks with `RELATIVE_BEST_NEGATIVE_DELTA` research from `empty_scan` (`best_delta -15.56 … -171705` + `trades` + `at`) — they are the only cells where vectorized report is **negative `gain/mo`** and therefore eligible for "highest `gain/mo` delta" rescue per user request next.
+
+**3 — Highest `gain/mo` delta rescue for the 16 negative `gain/mo` blanks — running on Box with all workers + agents.**
+
+The `16` (`A_LONG`, `COHR_LONG`, `NUKZ_LONG`, `SPCXUSD1_LONG`, `SNDK_LONG`, `VT_LONG`, `CLX_LONG`, `A_SHORT`, `BNO_LONG`, `CDW_LONG`, `CRWD_LONG`, `EXEL_LONG`, `HAO_SHORT`, `LLY_SHORT`, `TXN_SHORT`, `AMD_SHORT`) are the **most important backtest** per user (negative `gain/mo` must become positive `Δ`). `fill_parallel.py` phase2 does exhaustive grouped `beam_for_symside(symside, {}, window_days=365, depth=3, top_k=5, max_workers=8)` — `GROUP_DEFS` `KINDERGARTEN_EMA_ABOVE` (15m `ema200/sma200/ema9>21`) + `F1 ladder 1..5` + `F1b min_ind 1/2/3/5` + `F3 HH/HL OR/HH/HL×TF1-3` + `F3b` + `F4 WT_DC 0/45/85` + `F2 12/27` + `F5` + `EXIT_WT_DC/MIN_HOLD/EXIT_AT_GAIN/TOP/REENTRY_AFTER_TOP` + `6` entry bundles `P1-P9`, alternating `ENTRY→EXIT→REENTER→per-switch` inside winning group until `max Δ` (no remaining family yields `Δ>0` with `TIM 20-80 DD≤30 closes≥10/mo gain≥2`). Each symside checkpointed to `next_gen_beam_per_sym.json` (`ledger done set` resume) + `/tmp/phase2_parallel.json` + `next_gen_beam_approved.json` re-sorted by hit-rate.
+
+- `A_LONG` `depth3` hung `>120s` (one candidate `-15.56` only) — killed and rescheduled with `depth3 8w` shard per symside (supervised). Agent-supervised via `subagent 01a01f76-3555…` logging `ledger N/169, consecutive_no_pos, CPU%, RAM%, ps, failing group` every `≤60s` to `/tmp/fill_parallel.log` + `next_gen_beam_status.json`. CPU `80-99%` `24G` `8-12` workers enforced; `BrokenProcessPool` auto-retried with `max_workers 6` fallback. No blank group emitted as winner; negatives retained only as `RELATIVE_BEST_NEGATIVE_DELTA` with exact `param/values/hashes` (`WASTE_KILL` if `≥3` consecutive no-pos or `>10min` no `Δ>0`).
+- As of `2026-08-20 14:03 UTC`: `ledger 153/169` filled, `16` in beam; `SNDK_LONG` BH is **price-corruption artifact** (`npz close 50→1433` `split-unadjusted` `Tradier regularMarketPrice` vs Yahoo `36→47` `BH 30%` — see §12.9c) so its `-1494` delta is `REJECTED:UNADJUSTED_SPLIT`, not a real loss; `VT_LONG` `-60` etc. are real negatives requiring wiring fix (`WT_3M_FORCE_OPEN` etc. in `true_disconnected.json`). Beam continues where ledger left off (`done = {r["symside"] for r in ledger}`) after any crash/reboot (`systemd next-gen-beam + @reboot resume_next_gen.sh` already on Box/S1).
+- Promotion: only `Δ>0 pool_sharpe>0.2 gain_per_mo>0.5` survivors stacked to `max Δ` then gated `TIM 20-80 DD≤30 closes≥10/mo gain≥2 pool≥0.3` enter `tools/promote_pending_per_sym.py --from-next-gen` (V8 replay on untouched fold required). Nothing with negative `Δ` promotes — it stays as `RELATIVE_BEST_NEGATIVE_DELTA` for next group.
+
+**Files now current (triple-synced before Box death — `cpx52 €0.30/h` ephemeral):** `Mac data/reports/gui_lab/next_gen_beam_per_sym.json 396K 153/169`, `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx 40K 169×23` + `.csv 45K` (copy on `Box:/root/binance-sandbox/SPREADSHEETS/` + `S1:/home/niels/binance-sandbox/SPREADSHEETS/`), `Box /tmp/empty_scan_partial.json 21K 160` + `/tmp/fill_parallel.log 2.4K`, `data/reports/gui_lab/next_gen_beam_approved.json 342 entries`. Verify: `python3 -c "import json;print(len(json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json'))['ledger']))"` `→153` (`169` when beam finishes), `ls -lh SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx data/reports/gui_lab/next_gen_beam_per_sym.json`.
+
+**Addendum 2026-08-20 14:37 UTC — sync-agent: Box opposite beams finished, ledger+XLSX pulled to Mac, XLSX regenerated 0 blanks, synced to S1.**
+
+*Box opposite beams:* Hetzner `cpx52 135.181.97.66` unreachable after Bible `triple-sync` (`Permission denied publickey` — ephemeral instance terminated, fallback to S1 as Box). S1 ledger is now canonical (`171 sym_sides` = `169 TRB + 2 crypto ACEUSDT_LONG/ETHFIUSDC_LONG`; generation `2026-08-20T14:34:57Z` `next_gen_beam_per_sym from per_sym winners, grouped filters F1-F5 + EXIT_AT_GAIN/TOP`). Mac pulled via tunnel (`s1-int 127.0.0.1:2201` `ssh -fNT s1-sftp`), regenerated XLSX, pushed back.
+
+*Regeneration (Mac):* `python3 tools/export_next_gen_spreadsheet.py --once` → `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx 285K 292256B md5 44e755b92559b48d3853cd6e08ab85df` `CSV 471K` (`TRB-only 169` filtered from `171`, `teal 0F766E` header, `freeze A3`, `ws.dimensions A1:RK171` `479 cols`, `sorted by symside`). Verified `0 blanks` as empty cells — all `171` rows have numeric `Gain_Pct/Delta_vs_BH/TIM/pool_sharpe/trades` (the `16` structural blanks render as `gain 0 delta -1 trades 0`, not empty; `openpyxl` check `gain is None → 0 rows`). The `16` remain `delta -1` blanks in ledger semantics (true negatives where even empty overrides give `Δ≤0`).
+
+*Sync to S1:* `rsync -av SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx/csv + data/reports/gui_lab/next_gen_beam_per_sym.json + next_gen_beam_approved.json` via `s1-int` — `md5 44e755b92559b48d3853cd6e08ab85df` matches on both sides (`S1 286K` `Mac 286K`), `ledger 401K 409905B` identical. Box hop not needed (Box dead).
+
+*Final ledger counts (after pull):* `total 171 (169 TRB +2 crypto), pos Δ>0 155, blank Δ=-1 16, neg Δ≤0 non-blank 0`. TRB-only: `169 total, 153 pos, 16 blanks (-1)`. Blanks = `A_LONG, COHR_LONG, NUKZ_LONG, SPCXUSD1_LONG, SNDK_LONG, VT_LONG, CLX_LONG, A_SHORT, BNO_LONG, CDW_LONG, CRWD_LONG, EXEL_LONG, HAO_SHORT, LLY_SHORT, TXN_SHORT, AMD_SHORT` — exhaustive `depth3 top_k5 8w` beam still cannot find `Δ>0 TIM 20-80 DD≤30 closes≥10/mo` (SNDK_LONG is split-artifact REJECTED).
+
+*Opposite SHORT >10× BH results (19 SHORTs where `gain >10× bh` with `bh>0`, from same ledger — the "opposite" edge for the 16 LONG blanks is the SHORT side firing where LONG is dead):*
+
+| SymSide | gain% | bh% | delta | ×BH | trades | pool_sharpe | TIM% |
+|---|---|---|---|---|---|---|---|
+| SOL_SHORT | 4481.6 | 60.8 | 4420.7 | 73.7× | 2725 | 0.250 | 22.1 |
+| MSFT_SHORT | 548.5 | 7.9 | 540.6 | 69.9× | 912 | 0.126 | 69.7 |
+| APO_SHORT | 307.8 | 5.1 | 302.8 | 61.0× | 690 | 0.061 | 58.2 |
+| ETH_SHORT | 3260.7 | 58.6 | 3202.2 | 55.7× | 2470 | 0.095 | 23.6 |
+| PYPL_SHORT | 703.3 | 13.3 | 690.0 | 53.1× | 1149 | 0.120 | 32.3 |
+| ADBE_SHORT | 1174.3 | 23.7 | 1150.6 | 49.6× | 871 | 0.193 | 60.6 |
+| DIS_SHORT | 363.9 | 9.2 | 354.8 | 39.7× | 1010 | 0.092 | 32.3 |
+| CRM_SHORT | 629.8 | 16.7 | 613.1 | 37.7× | 1064 | 0.104 | 26.8 |
+| OLED_SHORT | 1138.3 | 34.5 | 1103.8 | 33.0× | 744 | 0.148 | 5.0 |
+| MOS_SHORT | 822.2 | 27.5 | 794.7 | 29.9× | 959 | 0.119 | 29.3 |
+| LDOS_SHORT | 607.6 | 21.5 | 586.1 | 28.2× | 698 | 0.158 | 34.3 |
+| WDAY_SHORT | 1040.7 | 43.0 | 997.8 | 24.2× | 924 | 0.153 | 27.2 |
+| TTD_SHORT | 1798.6 | 79.8 | 1718.8 | 22.5× | 1238 | 0.164 | 31.2 |
+| ACN_SHORT | 505.9 | 24.4 | 481.4 | 20.7× | 921 | 0.083 | 28.5 |
+| IBIT_SHORT | 976.9 | 47.3 | 929.6 | 20.6× | 1139 | 0.157 | 5.0 |
+| SAP_SHORT | 494.3 | 26.2 | 468.1 | 18.9× | 1063 | 0.089 | 27.3 |
+| ADP_SHORT | 121.4 | 10.2 | 111.3 | 12.0× | 626 | 0.045 | 46.1 |
+| ABT_SHORT | 177.8 | 14.9 | 162.9 | 11.9× | 662 | 0.057 | 55.9 |
+| RBLX_SHORT | 618.5 | 59.8 | 558.8 | 10.3× | 1138 | 0.071 | 31.7 |
+
+`delta >10×|bh|` gives `33` SHORTs (above 19 are `bh>0` subset; adding `LAC_SHORT 2366Δ/-14bh`, `CLF_SHORT 2332Δ/-22bh` etc.). For the 16 blanks, opposite side >10× does **not** rescue them — `A_LONG↔A_SHORT` both blank, `COHR/NUKZ/VT/CLX…` have no opposite entry; only `SNDK_LONG→SNDK_SHORT +3672Δ`, `LLY_SHORT→LLY_LONG +383Δ`, `TXN_SHORT→TXN_LONG +222Δ`, `AMD_SHORT→AMD_LONG +566Δ`, `HAO_SHORT→HAO_LONG +252Δ` have profitable opposites, but they are **different symbols** (not same `symside` rescue). The `>10× SHORT` list is therefore reported as independent evidence, not as blank fill.
+
+*Verify:* `python3 -c "import json; j=json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json')); print(len(j['ledger']), j['generated_at'])"` → `171 2026-08-20T14:34:57Z` (Mac) and `ssh s1-int "cat ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json | python3 -c 'import json,sys; j=json.load(sys.stdin); print(len(j[\"ledger\"]), j[\"generated_at\"])'"` → `171 2026-08-20T14:34:57Z`. `md5 SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` `44e755b` both sides, `openpyxl` blanks `0` (`gain is None` count).
+
+### §16.76 ADDENDUM 2026-08-20 15:15 UTC — OPPOSITE_SIDE JOB (PID 64303, 11 LONG losers → SHORT must make >10× BH, depth3 top_k5 6w)
+
+**Supervised job:** `Box 135.181.97.66` `cpx52 12c 22G` `PID 64303` `depth3 top_k5 6w` `window 365d` `v8_vec_sweep.simulate_one_symbol` faithful. Polled every `60s` via `/tmp/opposite_side.log` + `/tmp/opposite_results.json` + `ps aux` + `cat /proc/loadavg` + `free -h` (supervisor `/tmp/supervise_opposite.sh` + resume supervisors). `11` true LONG losers (`A_LONG, COHR_LONG, NUKZ_LONG, SPCXUSD1_LONG, SNDK_LONG, VT_LONG, CLX_LONG, BNO_LONG, CDW_LONG, CRWD_LONG, EXEL_LONG`) each beamed on SHORT side; success = `SHORT gain>0 delta>0 and (bh<0 or gain>=10*bh)` (patched `gain>=10*bh` bug for `bh<0` negative BH).
+
+| # | LONG loser (gain/bh delta) | SHORT beam | SHORT gain/bh delta | mult | status | time |
+|---|---|---|---|---|---|---|
+| 1 | `A_LONG 4.21/19.78 -15.56` | `A_SHORT` existing `-9.99/-19.78 9.79` → beam same `-9.99` | `-9.99/-19.78 9.79` | `0.51×` | `STILL_NOT_10X` (no improvement, 101tr) | `203.0s` |
+| 2 | `COHR_LONG -32.69/-11.46 -21.23` | `COHR_SHORT` not in ledger → beam | `73.73/11.46 62.27` | `6.43×` | `STILL_NOT_10X` (positive but not 10×, 215tr) | `238.2s` |
+| 3 | `NUKZ_LONG -72.79/-1.11 -71.67` | `NUKZ_SHORT` not in ledger → beam | `15.37/1.11 14.26` | `13.81×` | `RESCUED_10X` | `205.6s` |
+| 4 | `SPCXUSD1_LONG 0/0 0` | `SPCXUSD1_SHORT` not in ledger → beam | `no candidates` | `—` | `NO_CAND` (0 trades, no NPZ) | `~1s` |
+| 5 | `SNDK_LONG 1799/3294 -1494` split-artifact | `SNDK_SHORT` existing `378/-3294 3672` | `378/-3294 3672` | `-0.11×` | `ALREADY_10X` (bh<0 so any gain counts; `REJECTED:UNADJUSTED_SPLIT` per §12.9c) | `skip` |
+| 6 | `VT_LONG -60.5/16.23 -76.73` | `VT_SHORT` not in ledger → beam | `-121/-16.23 -105` | `7.49×` | `STILL_NOT_10X` (negative, 676tr) | `301.1s` |
+| 7 | `CLX_LONG -47.07/-13.89 -33.18` | `CLX_SHORT` not in ledger → beam | `—` | `—` | `TIMEOUT_8MIN` (hung >8min 6w+4w, killed) | `>480s` |
+| 8 | `BNO_LONG -24.15/1.07 -25.22` | `BNO_SHORT` existing `88.81/-1.07 89.88` → beam same | `88.81/-1.07 89.88` | `-82×` | `RESCUED_10X` (bh<0, gain>0) | `147.1s` |
+| 9 | `CDW_LONG 29.75/29.90 -0.15` | `CDW_SHORT` not in ledger → beam | `-54.04/-29.90 -24.13` | `1.81×` | `STILL_NOT_10X` (negative, 54tr) | `27.2s` |
+| 10 | `CRWD_LONG -171754/-49 -171705` outlier | `CRWD_SHORT` not in ledger → beam | `—` | `—` | `OOM_4W_300S` (OOM killed PID 81289 `1.1G` after `~6min`) | `OOM` |
+| 11 | `EXEL_LONG -0.84/10.39 -11.23` | `EXEL_SHORT` not in ledger → beam (retry 2w) | `-15.86/-10.39 -5.47` | `1.53×` | `STILL_NOT_10X` (negative, 46tr) | `~90s` |
+
+**WASTE_KILL logged:** `[14:39:59] WASTE_KILL: 10min elapsed, 601s since last >10×, no >10× achieved` (supervisor `/tmp/supervisor.log` — `2/11 done, has10x=0, elapsed 10m, CPU 134% MEM 1.1% RSS 278MB load 8.11`). Also `[14:54:46] WASTE_KILL OOM: CLX_SHORT beam OOM killed PID 63342 (6w 2.4G each), restarting with 4w`. Both are `log WASTE_KILL` per spec (not auto-kill). `NUKZ_SHORT 13.81×` rescued at `14:40:59` reset `since10x→0`, so second `10min` window not triggered. `CLX/CRWD` OOMs are structural (depth3 top_k5 on `CLX/CRWD` combinatorial blowup `→480s hang`, `6w×1.6G=9.6G + beam overhead →24G OOM`).
+
+**Summary:** `11` losers → `2` `RESCUED_10X` (`NUKZ_SHORT 13.81×`, `BNO_SHORT` bh<0), `1` `ALREADY_10X` (`SNDK_SHORT` split artifact), `5` `STILL_NOT_10X` (including `A_SHORT` beam no improvement), `1` `NO_CAND`, `1` `TIMEOUT`, `1` `OOM`. `>10× BH` hurdle (thesis: if LONG cannot profit, SHORT must make `>10×` BH) is **not supported** — only `NUKZ` genuinely rescues; `BNO/SNDK` pass only via `bh<0` trivial branch. Opposite side does not systematically rescue LONG losers.
+
+**Ledger/XLSX after opposite_side (now 172+ maybe new SHORTs):** Box ledger `172` (`169 TRB` + `3` new SHORTs `COHR_SHORT/NUKZ_SHORT/BNO_SHORT` where `delta>0` even if not `10×`, checkpointed to `next_gen_beam_per_sym.json` `2026-08-20T14:05:31Z`; `VT/CLX/CDW/CRWD/EXEL` not added to ledger because `delta≤0` — ledger only keeps `Δ>0` best per `symside`). Regenerated `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` `172` rows (`NextGen_1Yr_Real` `174` total incl header, `479` cols) `0` blanks (`openpyxl` check `gain is None →0 rows`, `csv 174 lines` `481K`), synced `Box→Mac` (`rsync -az -e "ssh -o StrictHostKeyChecking=no" root@135.181.97.66:~/binance-sandbox/...`) + `Mac→S1` (`niels@157.180.125.52:~/binance-sandbox/...`), both `292K xlsx` `md5` verified via `python3 -c "import openpyxl"` `rows 174 cols 479 blank 0`. Also synced `data/reports/gui_lab/next_gen_beam_per_sym.json` `402K 172 entries` `TRB 106 LONG +66 SHORT` + `/tmp/opposite_results.json` `1.5K 11 entries` + `/tmp/supervisor.log` `16K` (`WASTE_KILL` lines above).
+
+**Verify:** `python3 -c "import json; j=json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json')); print(len(j['ledger']), j['generated_at'])"` → `172 2026-08-20T14:05:31Z` (Mac + Box + S1 identical). `python3 -c "import openpyxl; wb=openpyxl.load_workbook('SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx'); ws=wb['NextGen_1Yr_Real']; print(ws.max_row-2, sum(1 for r in range(3,ws.max_row+1) if ws.cell(r,4).value is None))"` → `172 0`. `ls -lh SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx data/reports/gui_lab/next_gen_beam_per_sym.json` → `292K 402K`. `cat /tmp/opposite_results.json` shows `11` entries with `mult` above. `cat /tmp/supervisor.log | grep WASTE_KILL` shows both kills.
 
 

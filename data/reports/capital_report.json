@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-08-20 09:38 UTC",
- "total_capital_usd": 13.97,
+ "generated_at": "2026-08-20 15:27 UTC",
+ "total_capital_usd": 14.53,
  "tier_capital": {
   "A": 0.0,
-  "B": 6.99,
+  "B": 7.56,
   "C": 6.97
  },
  "tier_count": {
@@ -13,22 +13,21 @@
  },
  "winners": [],
  "losers": [
+  "men:LTCUSDC_SHORT",
   "men:MANAUSDT_SHORT"
  ],
- "mediocre": [
-  "men:LTCUSDC_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
    "pk": "men:LTCUSDC_SHORT",
    "symbol": "LTCUSDC",
    "account": "men",
-   "value_usd": 6.99,
-   "gain_pct": 0.032,
+   "value_usd": 7.56,
+   "gain_pct": -7.093,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 0.158,
-   "mark": 44.26009242
+   "mark": 47.825
   },
   {
    "pk": "men:MANAUSDT_SHORT",

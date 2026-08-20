@@ -1,14 +1,54 @@
 {
-  "generated_at": "2026-08-19T15:31:13.350212+00:00",
-  "count": 1,
+  "generated_at": "2026-08-20T15:23:34.200514+00:00",
+  "count": 6,
   "advisories": [
     {
-      "symbol": "EPD",
-      "side": "SHORT",
+      "symbol": "COST",
+      "side": "LONG",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.47 threshold=0.45",
-      "score": 0.472,
-      "ts": "2026-08-19T15:31:13.350142+00:00"
+      "reason": "bearish_news_score=-0.56 threshold=-0.45",
+      "score": -0.557,
+      "ts": "2026-08-20T15:23:34.200462+00:00"
+    },
+    {
+      "symbol": "GOLD",
+      "side": "LONG",
+      "action": "CONSIDER_EXIT",
+      "reason": "bearish_news_score=-0.53 threshold=-0.45",
+      "score": -0.527,
+      "ts": "2026-08-20T15:23:34.200477+00:00"
+    },
+    {
+      "symbol": "LOW",
+      "side": "LONG",
+      "action": "CONSIDER_EXIT",
+      "reason": "bearish_news_score=-0.69 threshold=-0.45",
+      "score": -0.695,
+      "ts": "2026-08-20T15:23:34.200481+00:00"
+    },
+    {
+      "symbol": "SHY",
+      "side": "LONG",
+      "action": "CONSIDER_EXIT",
+      "reason": "bearish_news_score=-0.50 threshold=-0.45",
+      "score": -0.505,
+      "ts": "2026-08-20T15:23:34.200487+00:00"
+    },
+    {
+      "symbol": "SPOT",
+      "side": "LONG",
+      "action": "CONSIDER_EXIT",
+      "reason": "bearish_news_score=-0.53 threshold=-0.45",
+      "score": -0.527,
+      "ts": "2026-08-20T15:23:34.200489+00:00"
+    },
+    {
+      "symbol": "WMT",
+      "side": "LONG",
+      "action": "CONSIDER_EXIT",
+      "reason": "bearish_news_score=-0.78 threshold=-0.45",
+      "score": -0.778,
+      "ts": "2026-08-20T15:23:34.200493+00:00"
     }
   ]
 }

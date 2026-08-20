@@ -116,12 +116,41 @@ def backup_cycle():
             if _dirsize(BACKUP_DIR) < MAX_BYTES * 0.7: break
 
 
+STALE_LOCK_MIN_AGE_S = 120
+
+
+def clear_stale_index_lock():
+    """Remove .git/index.lock only when provably abandoned (old + no open fd)."""
+    lock = REPO / ".git" / "index.lock"
+    try:
+        age = time.time() - lock.stat().st_mtime
+    except OSError:
+        return False
+    if age < STALE_LOCK_MIN_AGE_S:
+        log(f"index.lock is only {age:.0f}s old — a live git may own it, not clearing")
+        return False
+    probe = subprocess.run(["lsof", "--", str(lock)], timeout=15, capture_output=True, text=True)
+    if probe.returncode == 0 and probe.stdout.strip():
+        log(f"index.lock age={age:.0f}s but still has an open fd — not clearing")
+        return False
+    try:
+        lock.unlink()
+    except OSError as e:
+        log(f"index.lock removal failed: {e}")
+        return False
+    log(f"CRITICAL: cleared stale .git/index.lock (age={age:.0f}s, no open fd) — autosave was blocked")
+    return True
+
+
 def git_commit():
     """Commit all changes with timestamp message."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
         a = subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=30,
                           capture_output=True, text=True)
+        if a.returncode != 0 and "index.lock" in a.stderr and clear_stale_index_lock():
+            a = subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=30,
+                              capture_output=True, text=True)
         if a.returncode != 0:
             log(f"git add: rc={a.returncode} stderr={a.stderr.strip()[:200]!r}")
         r = subprocess.run(["git", "commit", "-m", f"Autosave {ts}", "--no-verify"],
