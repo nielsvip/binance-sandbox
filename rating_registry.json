@@ -1,22 +1,22 @@
 {
-  "timestamp": "2026-08-20T19:37:00.208075+00:00",
+  "timestamp": "2026-08-20T19:52:17.671983+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 191
+    "total_ranked": 192
   },
   "unified_ranking": [
+    {
+      "symbol": "ARKMUSDT",
+      "net_score": -17.3,
+      "long_score": 0,
+      "short_score": 17.3
+    },
     {
       "symbol": "SPYUSDT",
       "net_score": -14.7,
       "long_score": 0,
       "short_score": 14.7
-    },
-    {
-      "symbol": "ATOMUSDT",
-      "net_score": -11.5,
-      "long_score": 0,
-      "short_score": 11.5
     },
     {
       "symbol": "TQQQUSDT",
@@ -50,6 +50,12 @@
     },
     {
       "symbol": "SQQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -337,12 +343,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ARKMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SPXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -578,6 +578,12 @@
     },
     {
       "symbol": "AXTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1156,19 +1162,24 @@
   "top_longs": [],
   "top_shorts": [
     [
+      "ARKMUSDT",
+      17.3,
+      0.0956
+    ],
+    [
       "SPYUSDT",
       14.7,
       764.4
     ],
     [
-      "ATOMUSDT",
-      11.5,
-      1.473
-    ],
-    [
       "TQQQUSDT",
       10.5,
       69.89
+    ],
+    [
+      "QQQUSDT",
+      10.2,
+      709.5
     ],
     [
       "ASMLUSDT",
