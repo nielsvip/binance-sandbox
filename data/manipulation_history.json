@@ -826,5 +826,14 @@
     ],
     "timestamp": "2026-08-20T16:49:19.888983+00:00",
     "price": 0.02137
+  },
+  {
+    "symbol": "OPUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 29.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T17:45:08.900839+00:00",
+    "price": 0.09624
   }
 ]

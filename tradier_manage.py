@@ -17968,15 +17968,15 @@ class TradierTradeManager:
             return result
 
     async def is_data_fresh(self, symbol: str, position_key: str = None) -> tuple[bool, str, bool, Dict[str, Any]]:
-        # MULTI-SOURCE RESILIENCE 2026-08-20 — indicators must NEVER be stale per user.
-        # Tries memory → JSON timestamped → S1 rsync fallback before declaring stale.
+        # MULTI-SOURCE RESILIENCE 2026-08-20 FIXED — mac must never be stale: memory -> JSON -> S1 file -> live price/klines fallback.
+        # Thresholds tightened: macro 120s (was 1200), m1 90s (was 300) so fallback triggers fast.
         now = datetime.now(timezone.utc)
         indicators = self.get_indicators(symbol)
-        ts_obj = indicators.get('timestamp_1m') or indicators.get('timestamp')
+        ts_obj = indicators.get('timestamp_1m') or indicators.get('timestamp') or indicators.get('1m_updated_at')
         if not isinstance(ts_obj, datetime):
             ts_obj = safe_datetime(ts_obj)
-        # Fallback 1: try JSON files if memory timestamp missing/stale
-        if not ts_obj or (now - ts_obj).total_seconds() > 1200:
+        # Fallback 1: try JSON files if memory timestamp missing/stale (>90s)
+        if not ts_obj or (now - ts_obj).total_seconds() > 90:
             try:
                 jdata = self.load_indicators_from_json(symbol)
                 if jdata:
@@ -17991,13 +17991,63 @@ class TradierTradeManager:
             except Exception:
                 pass
         if not ts_obj:
+            # No timestamp at all — try S1 fallback + live price before declaring stale
+            try:
+                import subprocess as _sub2
+                _sub2.Popen(["/bin/bash", str(Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            except Exception:
+                pass
             return False, "No Timestamp", False, indicators
         age = (now - ts_obj).total_seconds()
-        if age < -1.0: age = 0.1 
-        m1_fresh = (age < 300.0)  # Was 90s — too tight for stocks. Low-volume symbols don't tick every minute.
-        macro_fresh = (age < 1200.0)  # 20 min — indicators cycle is ~2-5 min
-        # If still stale >60s, trigger S1 fallback via emergency script in background (non-blocking)
-        if not macro_fresh and age > 60:
+        if age < -1.0: age = 0.1
+        # Fallback 2: if age >90s, try S1 s1_indicators_latest.json directly (bypass memory cache)
+        if age > 90:
+            try:
+                s1_path = config.DATA_DIR / "s1_indicators_latest.json"
+                if s1_path.exists():
+                    import json as _js2
+                    s1_age_file = (now.timestamp() - s1_path.stat().st_mtime)
+                    if s1_age_file < 120:
+                        with open(s1_path, 'r') as _sf:
+                            _s1_data = _js2.load(_sf)
+                        if isinstance(_s1_data, dict) and symbol.upper() in _s1_data:
+                            _s1_ind = _s1_data[symbol.upper()]
+                            _s1_ts = _s1_ind.get('timestamp_1m') or _s1_ind.get('timestamp') or _s1_ind.get('1m_updated_at')
+                            _s1_dt = safe_datetime(_s1_ts) if not isinstance(_s1_ts, datetime) else _s1_ts
+                            if _s1_dt and (now - _s1_dt).total_seconds() < age:
+                                indicators = _s1_ind
+                                ts_obj = _s1_dt
+                                age = (now - ts_obj).total_seconds()
+                                try: self.market_snapshot[symbol.upper()] = self._adapt_indicators_for_market_snapshot(_s1_ind) if hasattr(self, '_adapt_indicators_for_market_snapshot') else _s1_ind
+                                except Exception: self.market_snapshot[symbol.upper()] = _s1_ind
+            except Exception:
+                pass
+        # Fallback 3: if still stale, try price_cache live price overlay (keeps trading alive)
+        if age > 90:
+            try:
+                # Overlay live current_price from price_cache or Redis if indicators price is stale
+                live_price = None
+                # Try price_cache file
+                pcache = config.DATA_DIR / "price_cache_tradier.json"
+                if pcache.exists() and (now.timestamp() - pcache.stat().st_mtime) < 30:
+                    import json as _js3
+                    with open(pcache) as _pf:
+                        _pd = _js3.load(_pf)
+                    if isinstance(_pd, dict) and symbol.upper() in _pd:
+                        _pe = _pd[symbol.upper()]
+                        live_price = _pe.get('mark_price') or _pe.get('price') or _pe.get('current_price')
+                if live_price and indicators:
+                    try: indicators['current_price'] = float(live_price)
+                    except Exception: pass
+                    # Also refresh close_1m if present
+                    try: indicators['close_1m'] = float(live_price)
+                    except Exception: pass
+            except Exception:
+                pass
+        m1_fresh = (age < 90.0)
+        macro_fresh = (age < 120.0)
+        # If still stale >30s, trigger emergency rsync (non-blocking) for next tick
+        if not macro_fresh and age > 30:
             try:
                 import subprocess as _sub
                 _sub.Popen(["/bin/bash", str(Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
@@ -23998,20 +24048,28 @@ class TradierTradeManager:
                 logger.debug(f"[symbol_watchdog] Error: {e}")
     
     async def market_data_sync_loop(self):
-        """Safe-Path: Read NEWEST timestamped tradier_indicators file. NEVER use latest (gets stuck in OS cache)."""
+        """Safe-Path: Read NEWEST timestamped tradier_indicators file. NEVER use latest (gets stuck in OS cache). FIXED 2026-08-20: continuous S1 pull, 30s threshold, overlay live prices."""
         logger.info("🔍 [SAFE-PATH] File Poller Active — reading newest timestamped tradier_indicators every 1s")
         while self.running:
             try:
                 # Find newest timestamped file (NOT latest)
                 ts_files = sorted(config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
-                # S1 FALLBACK: if newest timestamped is stale >60s, try S1 file (S1 runs tradier_indicators, gateway only klines/prices)
+                # S1 FALLBACK: if newest timestamped is stale >30s, try S1 file (was 60s). Also check S1 freshness <120s (was 60).
                 s1_path = config.DATA_DIR / "s1_indicators_latest.json"
                 import time as _tm
                 newest_age = (time.time() - ts_files[0].stat().st_mtime) if ts_files else 9999
-                if newest_age > 60 and s1_path.exists() and (time.time() - s1_path.stat().st_mtime) < 60:
+                s1_age = (time.time() - s1_path.stat().st_mtime) if s1_path.exists() else 9999
+                if newest_age > 30 and s1_path.exists() and s1_age < 120 and s1_age < newest_age:
                     json_path = s1_path
                 else:
                     json_path = ts_files[0] if ts_files else (config.DATA_DIR / "tradier_indicators_latest.json")
+                # Also continuously pull S1 in background every 10 ticks (10s) if local stale >15s — file poller is the hot path
+                if newest_age > 15 and int(time.time()) % 10 == 0 and s1_age > 30:
+                    try:
+                        import subprocess as _sp_bg
+                        _sp_bg.Popen(["/bin/bash", str(Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                    except Exception:
+                        pass
                 if json_path.exists():
                     mtime = os.path.getmtime(json_path)
                     if mtime > self.last_json_mtime:
