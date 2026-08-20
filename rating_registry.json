@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-20T05:25:24.642399+00:00",
+  "timestamp": "2026-08-20T05:55:41.564398+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -121,12 +121,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CRVUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -188,12 +182,6 @@
     },
     {
       "symbol": "PUMPUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "COMPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -662,12 +650,6 @@
     },
     {
       "symbol": "BEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PNUTUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1159,17 +1141,50 @@
       "short_score": 0
     },
     {
+      "symbol": "COMPUSDT",
+      "net_score": 11.1,
+      "long_score": 11.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRVUSDC",
+      "net_score": 11.8,
+      "long_score": 11.8,
+      "short_score": 0
+    },
+    {
+      "symbol": "PNUTUSDC",
+      "net_score": 13.7,
+      "long_score": 13.7,
+      "short_score": 0
+    },
+    {
       "symbol": "ASTERUSDT",
-      "net_score": 14.5,
-      "long_score": 14.5,
+      "net_score": 17.9,
+      "long_score": 17.9,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "ASTERUSDT",
-      14.5,
-      0.6526
+      17.9,
+      0.6538
+    ],
+    [
+      "PNUTUSDC",
+      13.7,
+      0.0472
+    ],
+    [
+      "CRVUSDC",
+      11.8,
+      0.2669
+    ],
+    [
+      "COMPUSDT",
+      11.1,
+      18.96
     ]
   ],
   "top_shorts": [],
