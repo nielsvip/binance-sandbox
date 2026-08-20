@@ -268,5 +268,23 @@
     ],
     "timestamp": "2026-08-20T09:42:35.506236+00:00",
     "price": 2.67
+  },
+  {
+    "symbol": "BITOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.1x normal"
+    ],
+    "timestamp": "2026-08-20T09:43:03.104234+00:00",
+    "price": 9.71
+  },
+  {
+    "symbol": "VANRYUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 256.7% range"
+    ],
+    "timestamp": "2026-08-20T12:27:26.055887+00:00",
+    "price": 0.003228
   }
 ]

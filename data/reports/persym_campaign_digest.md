@@ -1,4 +1,4 @@
-# PERSYM CAMPAIGN DIGEST — 2026-08-20T09:10:47Z
+# PERSYM CAMPAIGN DIGEST — 2026-08-20T12:09:39Z
 baselines=0 param_cells=0 xlsx=/home/niels/binance-sandbox/data/reports/PARAM_BASELINE_STOCKS.xlsx
 ## B&H WINNERS — capture scoreboard (gain/mo vs b&h/mo; capture<1 = DEFECT per Bible §12.1)
 | key | b&h/mo | gain/mo | capture | trades | tim% | best cell | cell gain/mo | cell capture |
