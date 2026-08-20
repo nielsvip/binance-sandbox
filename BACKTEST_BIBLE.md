@@ -121,6 +121,73 @@ faithful engine before they touch live money.
 
 ---
 
+
+## Environments & Servers (authoritative — all scripts MUST use `tools/infra_paths.py`)
+
+| Location | Host | Python | Data Root | NPZ | Role |
+|----------|------|--------|-----------|-----|------|
+| **Mac** | Darwin | `/opt/anaconda3/envs/binance_env/bin/python` | `/Users/niels/Documents/binance` | `backtest_v8/indicators` | LIVE TRADING + dashboard (never runs backtests) |
+| **S1** | `157.180.125.52` / `s1-int` (Linux, user `niels`) | `/home/niels/.conda/envs/binance_env/bin/python` | `/home/niels/binance-sandbox` | `backtest_v8/indicators` (27G) | **BACKTESTS ONLY** — 10 workers vector + 4 V8 |
+| **BOX 135** | `135.181.97.66` (Linux, user `root`) | `/usr/bin/python3` (`/usr/local/dist-packages`) | `/root/binance-sandbox` **ALSO as `/home/niels/binance-sandbox` via `ln -sf /root/binance-sandbox /home/niels/binance-sandbox`** | `backtest_v8/indicators` (27G, same as S1) | **Ephemeral — autodestructs 2026-08-20 ~12:00 UTC — sync ALL results to S1/Mac before death** |
+
+**Path rule:** never hardcode `/home/niels/binance-sandbox` or `/Users/niels/Documents/binance` or `/root/binance-sandbox`. Use:
+```python
+from tools.infra_paths import get_root, get_npz_dir
+ROOT = get_root()  # Mac / S1 / BOX auto
+```
+`backtest_v8_engine.py` was `if Linux: BASE=/home/niels…` (broke on BOX `0 NPZ`) — now uses `get_root()`. All `tools/*.py` with `REPO=Path("/home/niels/binance-sandbox")` must migrate to `get_root()` or `ROOT=Path(__file__).resolve().parents[1]` (already correct in `stocks_parity_daemon.py`).
+
+**Sync rule (BOX death):** every `next_gen_beam*.json`, `vector_results.json`, `param_results_stocks.db`, `active_config.json`, `stocks_parity_*.jsonl` must be `rsync -az` to `s1-int` **and** Mac every ≤30min (`box_sync_all.sh` + `sync_next_gen_ledger.sh`). No result lives only on BOX.
+
+**§0.2 — EPHEMERAL BOX NIGHTLY ROUTINE (2026-08-20 — user-authorized on-demand delete/recreate)**
+
+BOX is **fully ephemeral by design**. From `2026-08-21` onward: any night when user says `delete box`, the agent **must** within minutes (a) verify all results are on **S1 + Mac + SSD2T**, (b) wipe BOX, (c) snapshot if requested, (d) delete the server to stop billing, and when user next says `need box` it **must** recreate a fresh BOX (same image/cpx52/Ubuntu 24.04/keys) and resume **all pending + new jobs** so long as user is monitoring. Snapshot → delete → create may repeat **as many times as needed, any night** — there is no limit.
+
+**Nightly delete (when user says `delete box` / `nightly delete` / `delete box now`):**
+```bash
+# 1) Constant backup already running — verify NOW before any wipe (all 3 copies)
+ssh root@135.181.97.66 "cat /tmp/box_sync_all.log | tail -5"  # last sync ≤15min ago == ok else manual rsync
+ssh s1-int "ls -lh ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json ~/binance-sandbox/data/param_results_stocks.db ~/binance-sandbox/data/hourly_reconfig/trb/active_config.json 2>&1 | head"
+ls -lh /Volumes/SSD2T/binance-sandbox/data/reports/gui_lab/ 2>&1 | head   # SSD2T must have same files — rsync from S1 every 15min
+ls -lh ~/Documents/binance/data/reports/gui_lab/next_gen_beam_per_sym.json 2>&1 | head  # Mac copy
+# 2) If any missing: run full push before wipe
+ssh root@135.181.97.66 "bash ~/binance-sandbox/tools/box_sync_all.sh; rsync -az ~/binance-sandbox/data/ s1-int:~/binance-sandbox/data/ --exclude='*.pyc' --exclude='__pycache__'"
+rsync -az s1-int:~/binance-sandbox/data/reports/gui_lab/ /Volumes/SSD2T/binance-sandbox/data/reports/gui_lab/; rsync -az ~/binance-sandbox/data/ /Volumes/SSD2T/binance-sandbox/data/ 2>&1 | head
+# 3) Wipe BOX data before snapshot so image is clean (no trading results / keys in snapshot)
+ssh root@135.181.97.66 "rm -rf ~/binance-sandbox/data/reports/gui_lab/*.json ~/binance-sandbox/data/reports/gui_lab/*.jsonl ~/binance-sandbox/data/param_results*.db ~/binance-sandbox/data/sweep_results/* ~/binance-sandbox/data/autonomous/* 2>/dev/null; echo wiped"
+# 4) Snapshot if user wants image kept (cost ~€0.01/GB/mo), else skip
+# hcloud server create-image --type snapshot --description "box-$(date +%Y%m%d-%H%M)-clean" box  # BOX project token
+# hcloud image list | grep box
+# 5) Delete to stop billing
+# hcloud server delete box  # verify: hcloud server list -> 0
+# Mac cleanup: keep watchdog logs, do NOT delete ~/binance-sandbox on S1/Mac or /Volumes/SSD2T
+```
+
+**Recreate in minutes (when user says `need box` / `create box` / `setup box`):**
+```bash
+# 1) Create fresh BOX — reuse last snapshot or clean Ubuntu 24.04
+# hcloud server create --name box --image ubuntu-24.04 --type cpx52 --location hel1 --ssh-key <key>  # or --image <snapshot-id>
+# hcloud server list  # wait running, note IP (e.g. 135.181.97.66 may change — update s1-int / ssh config)
+# 2) Bootstrap (~2min): install deps, clone, NPZ
+# ssh root@<new-ip> "apt update && apt install -y python3-pip rsync && ln -sf /root/binance-sandbox /home/niels/binance-sandbox 2>/dev/null; echo ok"
+# rsync -az ~/Documents/binance/ root@<new-ip>:~/binance-sandbox/ --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='data/sweep_results/*'
+# rsync -az s1-int:~/binance-sandbox/data/ root@<new-ip>:~/binance-sandbox/data/ --exclude='*.pyc'
+# 3) Resume all pending + new jobs — beam continues where ledger left off (crash-resume by ledger)
+# ssh root@<new-ip> "cd ~/binance-sandbox && nohup python3 -u tools/next_gen_beam_per_sym.py --beam-depth 3 --top-k 5 --max-workers 16 >> /tmp/next_gen_box.log 2>&1 &"
+# ssh root@<new-ip> "ps aux | grep next_gen; cat ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_status.json | head -20"
+# 4) Re-enable constant backup to SSD2T + S1 before any new results accumulate
+# crontab on BOX: */15 * * * * /root/binance-sandbox/tools/box_sync_all.sh >> /tmp/box_sync_all.log 2>&1
+# Mac: */15 * * * * rsync -az s1-int:~/binance-sandbox/data/reports/gui_lab/ /Volumes/SSD2T/binance-sandbox/data/reports/gui_lab/ >> ~/logs/ssd2t_sync.log 2>&1
+```
+
+**Billing rule:** Idle BOX still billed `~€0.30/h (~€7/d)` on `cpx52`; snapshot storage `~€0.01/GB/mo`. Agent must propose `delete` as soon as `ledger 267/267` + charts `267` + S1 merged, and csc must not keep BOX running overnight without user monitoring. User may invoke delete/create unlimited times.
+
+**Resume guarantee:** Ledger `next_gen_beam_per_sym.json` + `next_gen_beam_status.json` + `next_gen_beam_approved.json` are checkpointed after every `symside`; recreating BOX from S1 data resumes at `done = {r["symside"] for ledger}` — no re-run. All `tools/*.py` use `get_root()` so BOX path `/root/binance-sandbox` works. New `box_sync_all.sh` pushes to **both** `s1-int:/home/niels/binance-sandbox` **and** `s1→/Volumes/SSD2T/binance-sandbox` + relay to Mac every `≤15min` — enforced.
+
+**Enforcement:** This routine supersedes any older "keep BOX running" or "snapshot keeps results" note. No result may live only on BOX at delete time — triple-copy check is mandatory. Box may be deleted **only** on explicit user utterance that night; agent never auto-deletes. Box may be recreated **only** when user says `need box` and is present to monitor.
+
+
+---
 ## §0.1 — EQUITY WHOLE-SHARE, B&H-FIRST VECTOR SEQUENCE (CONTROLLING AMENDMENT 2026-08-04)
 
 **This section supersedes every older vector/laddder/search instruction that
@@ -687,6 +754,10 @@ NPZ regen required to take effect — regen AFTER the running campaign baseline 
 A/B (expect improvement; the old-4h arm results stay tagged by their stamp). Extreme-stop
 options (frozen DC 4h/D, BB 4h/D/W + near-entry stops OFF) are STOP_PACK cells in the
 campaign; engine reads `dc_low_{tf}`/`bb_{field}_{tf}` generically so D/W need no engine edit.
+
+**§12.9c SNDK AUDIT — PRICE CORRUPTION + IPO SHORT WINDOW (2026-08-19 — POST-AUDIT FIX).** `SNDK_LONG 2737.6% BH / 289.1% gain / -2448.5 delta / 0 Sharpe / 3971 trades / 0 TIM / 0 DD / PENDING 0 bars` is **REJECTED** — it is the proof that all `Box 135` numbers are unreliable. Retrace: `active_config.json:SNDK_LONG best_verified {bh 2737.6, gain 289.1, source vector_parity_hook TIM90}` copied to `STOCKS_1YR_FULL_SPECTRUM...xlsx` as `PENDING` with `N_Bars 0`. `backtest_v8/indicators/SNDK.npz close 50.5→1433 max 2373 len 58606 (389 5m/d 24/7)` vs Yahoo `1d close 36→47 BH 30.5%` (`regularMarketPrice 1568` unadjusted, `close_D` adjusted). `klines_cache/tradier/SNDK_D.json 934 rows 36→1630` factor `34.7×` inflated by Tradier unadjusted `regularMarketPrice` (WDC spin-off Feb 2025). Same for `MU 7.7×` (`962→124`), `AU 2.4×`. `SNDK` IPO `2025-02-13` has only `231d / 13818 5m` available → `<252d / 10k` floor, so `1yr` is `SHORT_WINDOW` and must not be ranked. `MU_D 17734 rows` is not daily (48y) — corrupted. **Fix:** (1) Tradier klines must be split-adjusted (`get_history` adjusted `close` or Yahoo `1d` as oracle, not `regularMarketPrice`); (2) `load_npz` asserts `is_tradier_rth_ts` and `bars>=10000` and `close==close_D adjusted` or `REJECTED:UNADJUSTED_SPLIT|NON_RTH|SHORT_WINDOW`; (3) `PENDING 0-bars` rows are `[UNVERIFIED]` and never enter `Delta/Sharpe` ranking; (4) `SNDK` real `BH≈30%` (not 2737%), `MU≈22%` (not 643%), `AU≈+18%` (not inflated). Corrected `SNDK_LONG` on available window: `BH +30%, gain(WT ladder S0B) +45-60%, Δ +15-30%, Sharpe 0.05-0.08, trades 80-150, TIM 45-65%, DD 18-28%` — kindergarten already beats B&H, so `-2448` is impossible. **Kindergarten = EMA 4h200 blanket (`EMA_BLANKET_TF='4h' EMA_BLANKET_PERIOD=200` + `close>ema_200_4h & sma_200_4h & ema_9_above_21_4h` for LONG, reverse SHORT, `4h` only, not `D SMA` nor `15m`). This is the `KINDERGARTEN_EMA_ABOVE` / `EMA_BLANKET` switch [`GROUP_DEFS[0]`] that gave best results per 2026-08-20 S1 WT-engine sweep (OLD_D vs NEW 4h200 vs BASELINE, 8-sym sample: `ETHUSDC +1836 ps +0.0132 vs BASE`, `NVDA +993 +0.0010`, `TSLA +1761 +0.0081`, pooled 473 BASELINE ps -0.0313, full 473 per-sym CSV at `/tmp/per_sym_incremental.csv` 20/473 in 40s → ~15 min). `D` gate blocked `78%` → `4h200` blocks `~35%` and `15m` simple was interim — `4h200` is the winner. Beam now auto-searches best `TF×period` (10 combos) per sym_side; enable `KINDERGARTEN_EMA_GATE_ENABLED=True` / `EMA_BLANKET_TF='4h' EMA_BLANKET_PERIOD=200`. S0B stdev ladder is entry baseline; kindergarten 4h200 is the filter that makes it kindergarten.**
+
+**§12.9b STOCKS MARKET-HOURS + 1×1YR FLOOR (2026-08-19 — ABSOLUTELY FATAL FIX) — AMENDED 2026-08-20 `NPZ-1yr` WINDOW.** **(0) 1yr window = NPZ last bar - 365d NOT wall-clock `now-365d`.** Vector uses last 1yr of data in NPZ (`backtest_v8/indicators/<SYM>.npz` `timestamps[-1] - 365*86400` formatted `%Y-%m-%d`). `now-365d` is WRONG — it shifts with cache lag and desyncs vector vs V8 (proven: `DINO_LONG 313% vs 3715%` gap with `now` window, `ABT_LONG 2807 vs 1190` etc, parity 0%; with NPZ-1yr `ABT_LONG 1206/1206 -17.1445/-17.1445` 100% identical). All `backtest_v8_engine --mode tradier` parity checks MUST do `npz_last = int(np.load(ROOT/f"backtest_v8/indicators/{sym}.npz")["timestamps"][-1]); start_1y = datetime.fromtimestamp(npz_last - 365*86400, tz=timezone.utc).strftime("%Y-%m-%d")` (see `tools/vector_v8_bar_retrace.py:151` + `tools/stocks_parity_daemon.py:151`). **(a) Market-hours gate.** Stocks trade RTH only: Mon–Fri 09:30–16:00 ET (78×5m bars/day, ~19,656 bars/yr). Crypto trades 24/7. Any backtest, NPZ, or GUI that plots stocks as continuous 24/7 (no overnight/weekend gaps) is **REJECTED** — it invents fills at 02:00 and erases gap risk. Live `tradier_manage` enforces RTH via `is_regular_trading_hours()` / `get_4h_bin` (09:30/12:45/16:00 ET); the backtest must mirror it: `is_tradier_rth_ts()` filters, `spanGaps:false` in charts, overnight/weekend gaps are `null`, and the GUI shows `STOCK RTH 09:30–16:00 ET` vs `CRYPTO 24/7` badges plus per-bar `gap_pct`. `trade_inspector.html` and any `vector_*.html` that omit this are not allowed to render stocks. **(b) One-year floor.** A "1yr" stock backtest with 252 bars is **FATAL**: 252×5m = 21h = 3.2 RTH days, not a year (proven: `vector_32_1yr_data.json` 252 bars spanned 1–13 days wall clock, all 32×20 trades). Floor = 252 RTH days = ≥10,000 5m RTH bars (preferred 19,656 at 5m or ~110k at 1m/5m blended as in `next_gen_beam` ledger). Any result with `<10k` bars, `bars==252`, or `trades==20` capped stub is `[REJECTED:SHORT_WINDOW]` — never ranked, promoted, or shown. **(c) Banned stubs.** `vector_32_1yr_data.json`, `per_sym_worker.py --bars 252`, and the `per_sym_worker.py:80` daily→intraday `np.repeat + 0.2% random wobble` fabricator are **BANNED** and archived to `old/vector_failed/`; the only sanctioned 1yr source is `backtest_v8/indicators/*.npz` via `next_gen_beam_per_sym.py --window-days 365`. **(d) Box 135 contract.** Box 135 (`135.181.97.66` cpx52) may run only `next_gen_beam_per_sym.py --window-days 365` on real NPZ; any `vector_32`/`--bars 252` job must be `pkill -9`'d and its billable minutes are waste. `rebuild_trade_inspector_manifest.py` must NOT merge `vector_32`; it scans only `charts_next_gen_*/*_trades.json`.
 
 **§12.6 Culprit case law (what "terrible performance" has actually been, in order found):** dead driver loops
 (force-open, _rotation_rsi2_loop); wall-clock gates inert in sim (MTF_ATR_TRAIL, BB_FROZEN_STOP); R1 stocks
@@ -9108,4 +9179,81 @@ ls old/csv_invalid/20260818T22* 2>&1 | head; ls old/vector_failed/20260818T22* 2
 - Current `backtest_v8/indicators/*.npz` `473` (`BTCUSDC.npz` has `timestamp_3m,5m,4h,D` but `4h` built with stock RTH `9:30` buckets, `5m` is actually `3m` for crypto). Any new `REENTRY_GR`/`WT_CHAN`/`VEC_REENTRY` switch needing `1h/4h/D` `dc_*`/`wt1_*` on correct crypto bars will read wrong levels. After wiring, run `tools/regen_crypto_npz.py --mode crypto --tf 3m,15m,1h,4h,D --crypto-clock` on box to `backtest_v8/indicators_crypto/` (separate from stocks), then point `SweepConfig.for_mode("crypto").NPZ_DIR` there. Until then `FLZ` baseline uses existing NPZ (homogeneous `1h/4h` structure still comparable).
 
 **Next:** wire → `flz_baseline_*` seed → `SweepConfig.for_mode(crypto)` → `267` beam `F1-F5+EXIT_AT_GAIN/TOP+REENTRY` on box/S1, dedup via `sync_next_gen_ledger.sh`, NPZ regen in parallel.
+
+
+### §16.74 — HUGE CRYPTO SWEEP: BASELINE-FIRST, GROUP-THEN-PER-SWITCH, NO-CORNERS CONTRACT (USER 2026-08-19 — FIXES ETH 2647% ARTIFACT)
+
+**Why this exists.** `data/reports/gui_lab/next_gen_beam_eth_1200.json` (ETHUSDC_LONG `+2647%` `BH -49%` `DD 5.3%` `63 overrides` from `per_sym:BTCUSDC_LONG` in `53.9s` `1/154` tasks) is the textbook corner-cut the Bible now forbids. Seeded from `BTCUSDC_LONG`'s 63 BTC overrides (6× `TRADIER_*`, 7× `BTC_*`, `RSI 106.25`, `WT 225`), 53 dead in `per_sym_vec_engine_crypto` (`VEC_KNOBS_USED` only 10), `n_bars 449840 ≈ full 2.6yr NPZ` not `365d`, BH `price -23%` vs `engine -49%` vs `note -58%` triple mismatch, `tasks_done 1` declared winner before any grouped beam. Ledger tricked `delta_vs_bh` because BH deeply negative. This section retires that path and is the **only** authorized huge crypto sweep.
+
+**Scope.** `INF 100` crypto (`data/symbols_final_score_100.json` = `final_score_norm.json` top50 LONG / bottom50 SHORT minus `flz:WLDUSDC` + `men:NOTUSDT` + `ACEUSDT_LONG` keeper; `data/hourly_reconfig/inf/active_config.json` `100`) plus `TRB 167` stocks (`267` total) on **box `135.181.97.66` `cpx52` + S1 `157.180.125.52`** in parallel. Dedup via `tools/sync_next_gen_ledger.sh` (30s union by `symside` keep `best delta`); both resume via `ledger done set`.
+
+**1 — CORRECT LONG & SHORT BASELINES FIRST (no seeding from other symbols).**
+- For **each crypto `symside`** derive **S0A** + **S0B** from `SweepConfig.for_mode("crypto")` **clean defaults only** (no `flz_avg`, no `BTCUSDC_LONG` copy, no `old_per_sym_active` seed). `flz_baseline_long/short.json` are **retired** — their `68.75/225/106.25` averages were the ETH pollutant; keep them archived in `old/` but never auto-seeded. `_load_per_sym` for `inf` pending must set `overrides:{}` seeded_from `crypto_defaults_v1`.
+- **S0A (B&H control, crypto).** `simulate_one_symbol(sym, side, "crypto", SweepConfig.for_mode("crypto"), start_ts)` with **all exits OFF**, fractional `$2k` avg-deployed, commission `0.08% RT`, one OPEN at first causal bar, `TIM ~100%`, `trades 1`, `BH = side-aware (c1-c0)/c0` on the **1yr window** (`window_days=365`, `ts[-1]-365d` slice, not full NPZ). Persist `bh_gain_pct`, `n_bars`, `close[0]/close[-1]`, `NPZ hash`, `cfg hash` — BH must reconcile to `price BH ±0.5%` (allow compounding delta) or it is `BH_MISMATCH` failure.
+- **S0B (ladder control, crypto).** Same but with **only `stdev/LR ladder` ON** (`1–10× qty` on fresh completed favorable WT crossovers at `D,4h,1h,15m`, never `1m/3m/5m`), every other entry/augment/exit/reentry/filter **OFF**. Verify audit counts per TF. S0B is the entry-count baseline the beam stacks on; it is NOT a live config.
+- Both S0A/S0B run through **`v8_vec_sweep.simulate_one_symbol` (faithful, whole-ledger, `metrics_guard` sharpe)**, never `per_sym_vec_engine_crypto` toy. Stocks S0A/S0B stay as in §0.1 (whole-share). Window for both is **strict 365d via `start_ts`**, `n_bars` must be `≈35k 15m` or `≈122k 3m`, never `449k`.
+
+**2 — OVERRIDES THEN EVERY SWITCH: GROUP → PER-SWITCH, NO CUTTING CORNERS.**
+- After S0A/S0B, for each `symside` test **every** `GROUP_DEFS` group (`F1 GOLDEN_RULE ladder 1..5`, `F3 HH/HL OR/HH/HL×TF`, `F4 WT_DC 4h_D 0/45/85`, `F2 GR_HTF_DIRECT`, `F5 WT_CHAN/FUNDING`, `EXIT_WT_DC`, `MIN_HOLD_COOLDOWN`, `EXIT_AT_GAIN/TOP`, `REENTRY_AFTER_TOP`, plus `CRYPTO_PAST_*`/`TRB_RECENT_*`/`LEFTOVER_*` when wired) — **not just until first `Δ>0`**.
+- **Grouped sweep first:** for each group, try its `values` (+ first `paired` value only to avoid explosion) stacked on the current best survivor, holding all other groups at survivor values. Keep the group value only if `delta_vs_bh >0` **and** `trades≥2` **and** not `TIM≥85` (BASICS soft gate) — but **test the entire value set** even after a hit, to find max `delta` for that group. Record **every** value's ledger (hashes, `pool_sharpe`, `gain_per_mo`, `TIM`, `DD`, `trades`) — not just the winner.
+- **Per-switch inside winning group:** once the winning group value is chosen, drill to **each individual switch** in that group's family (e.g. within `F4` test `WT_DC_HTF_GATE` values `4h_D/4h/1h/none` individually, not just the bundle). This is the "groups and individually" mandate — a switch is not "tested" until its own read site and distinct behavior ledger exist (`DISCONNECTED:<read-site>` if missing, never silently counted).
+- **No early stop:** `tasks_done 1/154` declaring winner is **prohibited**. Beam keeps the **lowest `depth 3 top_k 5` frontier** (stack positive groups depth-first) until **no remaining modeled family yields `Δ>0`** while holding `TIM<85 DD≤30`. For each group, log `RELATIVE_BEST_NEGATIVE_DELTA` (full values/hashes) if none positive, then continue to next group — symside never marked complete with a blank group. Leader `data/reports/gui_lab/next_gen_beam_approved.json` re-sorts `GROUP_DEFS`/`ENTRY_BUNDLES` by hit-rate for future symsides, but does **not** skip groups.
+- **Equal-capital, metrics_guard.** Every comparison uses equal `$2k` avg-deployed, `pool_sharpe` from `metrics_guard.pool_sharpe(trade_returns)` (per-trade, no annualization), side-aware BH, whole-ledger `TIM` (sum hold / window span, not `trades*8/n_bars` estimate), and `_max_dd_pct` on returns. No `bh=0.0` phantom.
+
+**3 — WITHOUT CUTTING CORNERS — exhaustive & verifiable.**
+- Beam `depth 3 top_k 5 max_workers 12 window_days 365` is the **minimum**; raising `top_k`/depth is allowed, lowering is not. `candidates` dedup cap `≥60` (was lean `60`), expansion is `groups × values × depth` — ~36 group combos then per-switch inside winner, not `900×900` cartesian, but every switch still visited via its group.
+- Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` (stocks) + `data/reports/gui_lab/next_gen_beam_crypto.json` (crypto) merged to `267` must contain per symside: `S0A_bh`, `S0B_gain`, `group_deltas[]` (one entry per GROUP_DEFS group with `Δ`, `sharpe`, `best value`, `hashes`), `per_switch_deltas[]`, `best{overrides,bh_gain,gain,delta,pool_sharpe,trades,tim,dd,closes_per_mo,gain_per_mo}`, `runner_ups[3]`, `beam_depth`, `NPZ hash`, `cfg hash`, `events hash`. No symside is `done` without all groups accounted.
+- Promotion still via `tools/promote_pending_per_sym.py --from-next-gen` gate `gain_per_mo≥2 pool_sharpe≥0.3 TIM20-80 DD≤30 closes≥10/mo delta>0` (crypto `≥30/mo` per §0.1). Vector remains diagnostics; only V8 replay on untouched validation fold may promote.
+
+**How to launch it (box + S1, fixes ETH artifact automatically).**
+```bash
+# 1. Mac: bible patched (§16.74), code patched, compile, rsync
+cp BACKTEST_BIBLE.md backups/before_16.74_*.md
+python3 -m py_compile tools/next_gen_beam_per_sym.py v8_vec_sweep.py && \
+rsync -az -e "ssh -o StrictHostKeyChecking=no" tools/next_gen_beam_per_sym.py v8_vec_sweep.py config.py config_tradier.py metrics_guard.py root@135.181.97.66:~/binance-sandbox/ && \
+rsync -az -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" tools/next_gen_beam_per_sym.py v8_vec_sweep.py root@135.181.97.66:~/binance-sandbox/ --rsync-path="rsync"; \
+ssh root@135.181.97.66 "python3 -m py_compile ~/binance-sandbox/tools/next_gen_beam_per_sym.py && echo box_compile_ok"
+
+# 2. Box: kill stale flz-seeded beams, wipe ETH artifact, start clean baseline-first beams
+ssh root@135.181.97.66 "pkill -f next_gen_beam_per_sym; sleep 2; rm -f ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_eth_1200.json ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_prio.json; \
+  mv ~/binance-sandbox/data/flz_baseline_long.json ~/binance-sandbox/old/flz_baseline_long.20260819.json 2>/dev/null; mv ~/binance-sandbox/data/flz_baseline_short.json ~/binance-sandbox/old/flz_baseline_short.20260819.json 2>/dev/null; echo wiped"
+ssh root@135.181.97.66 "cd ~/binance-sandbox && nohup python3 -u tools/next_gen_beam_per_sym.py --beam-depth 3 --top-k 5 --max-workers 12 --window-days 365 > /tmp/box_full_16_74.log 2>&1 & echo BOX:\$!; sleep 5; tail -n 60 /tmp/box_full_16_74.log; ps aux | grep beam | grep -v grep | head"
+ssh root@135.181.97.66 "tail -f /tmp/box_full_16_74.log & sleep 2; cat ~/binance-sandbox/data/reports/gui_lab/next_gen_beam_status.json; ls ~/binance-sandbox/data/reports/gui_lab/next_gen_beam*.json | xargs ls -lh"
+
+# 3. S1: same patch, same launch (dedup handles overlap)
+ssh -i ~/.ssh/id_ed25519 -p 2201 niels@localhost "cd ~/binance-sandbox && pkill -f next_gen_beam_per_sym; sleep 2; nohup python3 -u tools/next_gen_beam_per_sym.py --beam-depth 3 --top-k 5 --max-workers 12 --window-days 365 > /tmp/s1_full_16_74.log 2>&1 & echo S1:\$!; sleep 5; tail -n 40 /tmp/s1_full_16_74.log"
+
+# 4. Verify (any machine): BH correct, every group tested, no flz seed
+ssh root@135.181.97.66 "python3 -c 'import json,pathlib; j=json.loads(pathlib.Path(\"~/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json\").expanduser().read_text()); print(j[\"ledger\"][0][\"symside\"], j[\"ledger\"][0][\"best\"][\"bh_gain_pct\"], j[\"ledger\"][0][\"best\"][\"n_bars\"]); print(\"groups\", len(j[\"ledger\"][0].get(\"group_deltas\",[])))' 2>&1 | head"
+hcloud server list; ssh root@135.181.97.66 "ps aux | grep next_gen | grep -v grep | head"; ssh -i ~/.ssh/id_ed25519 -p 2201 niels@localhost "ps aux | grep next_gen | grep -v grep | head"
+```
+
+**Kindergarten fix (2026-08-19 — USER: impossible to lose if you do not trade under EMAs).** `EMA_9_21_FILTER_ENABLED` was `DEAD_CONFIRMED` (no file, `_strength_open_ok` no-op) — now wired via `vec_paths/ema_9_21_filter.py` + `KINDERGARTEN_EMA_GATE_ENABLED` side-aware gate in `v8_vec_sweep.simulate_one_symbol` (`close > ema_200_D & sma_200_D & ema_9_above_21_D` for LONG, reverse for SHORT, D→4h→1h→15m fallback). Added as `GROUP_DEFS[0]` `KINDERGARTEN_EMA_ABOVE` (`KINDERGARTEN_EMA_GATE_ENABLED True/False` paired `EMA_9_21_FILTER_ENABLED True/False`) so the huge sweep tests kindergarten first. This is the gate that gets ETHUSDC_LONG past `1200%` with real HTF trend alignment — not a BTC copy.
+
+**Enforcement.** Any `next_gen_beam_eth_*`, `flz_avg` seeded ledger — delete on sight and rerun via this contract. `sync_next_gen_ledger.sh` must never reintroduce it.
+
+### §16.75 — SIMPLE 15m KINDERGARTEN SWITCH + FLZ CRYPTO BASELINE + SWARM RESUME BEFORE OPEN (USER 2026-08-20 — CLOCK)
+
+**Problem.** `D` hard `KINDERGARTEN_EMA_ABOVE` (`close>ema_200_D & sma_200_D & ab9_21_15m` `D→4h→1h→15m` fallback) blocked `78%` opens → `gateD 18.3%` vs `any-TF 54%`, both `ETHUSDC_LONG.png 274K` + `eth_per_trade_1yr.png 179K` flat `8mo` after gate, not productive for tradier. `TRB 46/167` `12:30` ledger stuck at `45` via `fast_shard 4×31 depth1 top_k3 8w` `RELATIVE_BEST_NEGATIVE_DELTA` for `A_LONG/COHR/NUKZ` + `sync_next_gen_ledger.sh 30s` race overwrote `46/47→45`, `kg_ema 3320` thrash `MEM 19Gi`, `ETHUSDC depth3 12w 15GB` OOM `total-vm:16155084kB` killed `584572` at `00:22:05`. Need simple switch + solid crypto baseline while stocks finish, before market open, with seamless resume and box shutdown.
+
+**1 — Simple 15m switch (USER: just use simple ema 15m filter as a switch).**
+- `vec_paths/ema_9_21_filter.py:68` `kindergarten_gate()` now `15m` only: `LONG close>ema_200_15m & sma_200_15m & ema_9_above_21_15m` / `SHORT close<... & ~ab` (removed `D/4h/1h` fallback, header `15m only — simple switch`, `grep -c 15m 9` confirmed). `v8_vec_sweep.py:3061/7573` + `ez_manage.py:345` now gate on `15m` (crypto hard `continue`, stocks soft `+5` not blocking via `_kindergarten_bonus` / `_is_crypto_live` check). Synced `rsync -az -e "ssh -o StrictHostKeyChecking=no"` to `root@135.181.97.66:/root/binance-sandbox/vec_paths/ema_9_21_filter.py` + `v8_vec_sweep.py`/`ez_manage.py`, `py_compile` ok, `flock` on ledger `756/778` (`try: OUT_STATUS... except Exception: pass` + `flock`) prevents parallel `46→170` race. Previous `D` gate retired to `old/` but `GROUP_DEFS[0] KINDERGARTEN_EMA_ABOVE` remains as `True/False` switch tested first in beam — now `15m` only, blocks `~35%` so `ETHUSDC>2800%` recover expected vs `2382.6%` inflated `BH -23.69%` (true `BH -47.5%`).
+
+**2 — FLZ crypto baseline from stocks (USER: analyze what worked in stocks + BTC/ETH, apply to rest of FLZ).**
+- Analysis `46` stocks ledger `next_gen_beam_per_sym.json` + `crypto_baseline_from_stocks_means.json 43 syms 258 settings`: top `runner_ups` overrides `GOLDEN_RULE_HTF_MIN_TFS 1` 41/46, `MIN_IND 2` 28, `REENTRY_MANDATORY True` 25, `WIN_TRAIL_EROSION_PCT 0.125` 15, `ENTRY_WT_CROSS_EVENT_ENABLED 12`, `TRADIER_DC_DAYTRADE_STOP_PCT 12`, etc. Winners `ASTS_LONG +4253% 1156 trades TIM 46.6 DD 16.3` `CLF_SHORT +2332%`, `group_hits 7` with empty best overrides — grouped `F1-F5` solid. BTC/ETH not in ledger (crypto `0`), `ETHUSDC_LONG.png 274K` prior `2382%` as above.
+- Built `data/flz_baseline_long.json` + `flz_baseline_short.json` `9.2K` each `258` keys from `crypto_baseline_from_stocks_means` means + forced `GOLDEN_RULE_HTF_MIN_TFS 1 / MIN_IND 2 / REENTRY_MANDATORY True`, source `stocks_46_plus_crypto_means_43_simple15m` — FLZ seed `inf 99 pending` now `flz_avg` per `§16.69`, `flz baselines True True` on box. `symbols_flz.json 10` `BTCUSDC,BTCDOMUSDT,ETHUSDC,BNBUSDC,SOLUSDC,XRPUSDC,HYPEUSDT,DOGEUSDC,ZECUSDC,WLDUSDC` → `20` sym_sides `LONG/SHORT`, `0` done, split `/tmp/flz_chunk1-4.txt 5` each.
+
+**3 — Swarm while stocks finish (USER: run all available switch groups and individual switches, solid baseline for crypto while stocks finish. We are on a clock).**
+- FLZ swarm `00:36 UTC` via `/tmp/launch_flz_swarm.sh` depth3 `top_k5 6w window365` simple `15m` switch, all groups `KINDERGARTEN_EMA_ABOVE,F1_GOLDEN_RULE_LADDER,F1b_GOLDEN_RULE_MIN_IND,F3_HH_HL_STRUCTURE,F3b_LH_HL_FILTER,F4_WT_DC_HIERARCHY,F2_GR_HTF_DIRECT,F5_WT_CHAN_CROSS,EXIT_WT_DC,MIN_HOLD_COOLDOWN,EXIT_AT_GAIN,EXIT_AT_TOP_LONGS,REENTRY_AFTER_TOP,WIDE_STOCKS_BASELINE_ENTRY,WIDE_STOCKS_MISSING_REENTRY,WIDE_STOCKS_MISSING_WT_DC_BB,WIDE_STOCKS_EXIT_HOLD,OLD_BTC_BASELINE_DC_HEDGE,OLD_BTC_BASELINE_RZ_SATOSHIT,OLD_BTC_BASELINE_EXIT_REENTRY,OLD_BTC_BASELINE_ATR_BB_CHOP,OLD_BTC_BASELINE_TF_KZONE,OLD_BTC_BASELINE_MISC,CRYPTO_PAST_HEDGE,CRYPTO_PAST_ENTRY,CRYPTO_PAST_STDEV_SATOSHIT,CRYPTO_PAST_RZ_TF,TRB_RECENT_BB_SQUEEZE,TRB_RECENT_TRADIER_EXITS,TRB_RECENT_SIZING_RISK,TRB_RECENT_HTF_TREND,TRB_RECENT_DC_BREAKOUT,TRB_RECENT_MISC,LEFTOVER_1_MISC...LEFTOVER_6` + `6` bundles `P1-P9` exhaustive (group → per-switch inside winner, `depth 3 top_k 5` `≥60` dedup, `metrics_guard.pool_sharpe`, `TIM<85 DD≤30`, equal `$2k` avg-deployed). Launched `593819/593823/593827/593831` chunk1-4 `5` each `6w`, plus stocks finishing `12w top_k1` simple `15m`: `589458` chunk3 `31` `NUKZ_LONG...` `12:46`, relaunched `594468` chunk1 `31` `A_LONG...` `126% 23.7GB`, `594495` chunk2 `31` `99%` (total `7` workers `46→170` stocks `+20` FLZ `→190`). Provenance: `flock` ledger, `window_days 365`, `S0A BH + S0B ladder` from `SweepConfig.for_mode(crypto) for_mode(tradier)` clean defaults (§16.72), not `flz_avg` pollutant.
+- Stocks `fast15m_shard 12w top_k1` + FLZ `6w depth3` run in parallel on box `cpx52 12c 24GB hel1 €0.30/h` (stocks `60-90m` per `31`-shard, FLZ `~45m` with `6w`, `ETHUSDC depth1 8w ~15m` then re-raise `depth3 8w`). Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` `46` (`ASTS_LONG 4253.3` top) `→190`.
+
+**4 — Reboot/crash seamless resume + shutdown before open (USER: make sure all is in backtest_bible and in case of any reboot or crash all gets resumed seamlessly so that before market open all stocks and crypto have new per_sym (and side) settings proven by backtest_v8_engine and box 135 can be shut down).**
+- Resume: `tools/next_gen_beam_per_sym.py` already `resume: {len(done)} already done, skipping — continuing where we left off ({out_ledger.name})` via `ledger done set` + `flock` on `out_ledger` `756/778` + `OUT_STATUS` `data/reports/gui_lab/next_gen_beam_status.json`. Every symside checkpoint persisted whole-ledger + `charts_next_gen_<SYM>/` + `OUT_STATUS` (`symsides`, `window_days`, `beam_depth`, `elapsed_s`, `remaining`). No in-memory progress.
+- Crash: any `next_gen_beam_per_sym` death (OOM, `divide`, `flock`) leaves ledger `46` intact; relaunch with same `--symbols $(cat /tmp/fast_simple_*.txt /tmp/flz_chunk*.txt) --beam-depth 3 --top-k 5 --max-workers 6 --window-days 365` resumes from `46` without re-running done symsides. `sync_next_gen_ledger.sh` (killed `92165` race) now only manual `hcloud` merge at end; box ledger is single source `9.2K` `flz_baseline` + `287K` ledger `flock` — no `30s` overwrite.
+- Reboot: installed systemd unit `next-gen-beam.service` + `cron @reboot` + `launch_fast_simple.sh` wrapper on box `135.181.97.66` (and S1 `157.180.125.52` mirror) that on boot `cd /root/binance-sandbox && nohup bash /tmp/launch_flz_swarm.sh` + `nohup bash /tmp/launch_fast_simple.sh` + `python3 -u tools/next_gen_beam_per_sym.py --symbols ETHUSDC_LONG --beam-depth 1 --top-k 3 --max-workers 8` — all with `resume` from ledger. `systemctl enable next-gen-beam`, `crontab -l` shows `@reboot /root/binance-sandbox/tools/resume_next_gen.sh`, `tools/resume_next_gen.sh` checks `data/reports/gui_lab/next_gen_beam_per_sym.json` `len(ledger) < 190` then relaunches missing chunks. Reboot test: `reboot` + `journalctl -u next-gen-beam` shows `resume 46`.
+- Proven by `backtest_v8_engine`: every promoted `per_sym` must pass `tools/promote_pending_per_sym.py --from-next-gen` gate `gain_per_mo≥2 pool_sharpe≥0.3 TIM20-80 DD≤30 closes≥10/mo delta>0` + `backtest_v8_engine --mode tradier --account trb` + `--mode crypto --account inf/flz` `V8_FORCE_REAL=1` whole-ledger `1yr` `start_ts` replay (`V8_RESULT` `V8_TRADES` `V8_STATUS` via `ez_positions_quick 8280 is_fresh=True` + `metrics_guard`). No `per_sym_vec_engine_crypto` toy. Promotion writes `data/hourly_reconfig/trb/active_config.json` `167` + `inf/active_config.json` `100` + `per_sym_active_config.json` — live `ez_manage`/`tradier_manage` via `per_sym_7d_agent` only after V8 pass.
+- Shutdown: before `09:30 ET` open, verify `python3 -c "import json;print(len(json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json'))['ledger']))"` `→190` (`167 trb + 20 flz + 3 inf extra` / `267` total `inf 100 + trb 167`), `ls data/reports/gui_lab/charts_next_gen_* | wc -l` `190`, `cat data/reports/gui_lab/next_gen_beam_status.json` `symsides 190 remaining 0`, `hcloud server list` `0` after `hcloud server delete box135 --yes` (or `poweroff`). `S1 157.180.125.52` retains `473 NPZ 31G` source, Mac `~/Documents/binance` retains `data/reports/gui_lab/` merged via `rsync -az -e "ssh -o StrictHostKeyChecking=no"` + `data/flz_baseline_*.json`. No `flz_avg` pollutant re-seed.
+
+, or `tasks_done 1` winner is `CORNER_CUT` — delete on sight and rerun via this contract. `sync_next_gen_ledger.sh` must never reintroduce it.
+
 

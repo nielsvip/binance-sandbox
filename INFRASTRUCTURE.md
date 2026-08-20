@@ -10,7 +10,8 @@
 | Location | Python | Path | Role |
 |----------|--------|------|------|
 | **MacBook** | `/opt/anaconda3/envs/binance_env/bin/python` | `/Users/niels/Documents/binance` | LIVE TRADING (source of truth) |
-| **S1** | `/home/niels/.conda/envs/binance_env/bin/python` | `/home/niels/binance-sandbox` | BACKTESTING ONLY |
+| **S1** | `157.180.125.52` / `s1-int` / `/home/niels/.conda/envs/binance_env/bin/python` | `/home/niels/binance-sandbox` | BACKTESTING ONLY — 1 parity worker (stocks) |
+| **BOX 135** | `135.181.97.66` / `root` / `/usr/bin/python3` | `/root/binance-sandbox` (symlink `/home/niels/binance-sandbox` → `/root/binance-sandbox`) | **BACKTESTS — 2 parity workers + next_gen beam — EPHEMERAL, autodestructs 2026-08-20 ~12:00 UTC — `box_sync_all.sh` pushes ALL answers to S1+Mac every 15min** |
 | **S2** | DEAD (2026-05-08) | — | DO NOT USE |
 | **Klines box** | — | `157.90.168.35` | Klines ONLY |
 

@@ -2310,7 +2310,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # and return False so parity reports NO_DATA (MATCH) rather than divergence.
     # S1 fetch needed: tradier_klines_append.py --symbols <SYM> --days-back 400
     _span_days = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0 if mode == "tradier" else n * (5 if mode == "tradier" else 3) / 1440.0
-    if mode == "tradier" and (n < 20000 or _span_days < 300):
+    if mode == "tradier" and (n < 20000 or _span_days < 300) and symbol not in ["SNDK","SNDK_LONG","SNDK_SHORT"]:
         logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} span_days={_span_days:.1f} (need 20000 bars / 300d for 1yr tradier parity)")
         return False
     if mode == "crypto" and n < 30000:

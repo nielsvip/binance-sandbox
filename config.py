@@ -4380,9 +4380,12 @@ class Config:
     EARNINGS_PEAD_BOOST_ENABLED: bool = False  # post-earnings-drift overlay (start OFF)  # PORTED from TradierConfig 2026-08-17
     EARNINGS_PEAD_BOOST_MULT: float = 1.5  # PORTED from TradierConfig 2026-08-17
     EARNINGS_PEAD_MIN_SURPRISE_PCT: float = 4.0  # PORTED from TradierConfig 2026-08-17
-    EMA_9_21_FILTER_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    EMA_9_21_FILTER_ENABLED: bool = True  # KINDERGARTEN 2026-08-19 — fixes DEAD_CONFIRMED, now wired via vec_paths/ema_9_21_filter.py + v8_vec_sweep kindergarten_gate
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
-    EMA_9_21_TIMEFRAME: str = "5m"  # PORTED from TradierConfig 2026-08-17
+    EMA_9_21_TIMEFRAME: str = "5m"
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER 2026-08-19 kindergarten: LONG only above ema200/sma200/ema9>21 on D/4h — SIDE-AWARE gate in v8_vec_sweep  # PORTED from TradierConfig 2026-08-17
+    EMA_BLANKET_TF: str | None = None  # BLANKET 2026-08-20 — None=OFF else 3m/5m/15m/1h/4h gate LONG>ema SHORT<ema
+    EMA_BLANKET_PERIOD: int = 0  # BLANKET 2026-08-20 — 0=OFF else 50/200
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17
     ENABLE_IP_ROTATION: bool = False  # NOT DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17

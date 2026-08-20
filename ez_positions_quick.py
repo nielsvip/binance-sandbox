@@ -8278,6 +8278,13 @@ class FastDataManager:
                 _v = combined_data.get(_k)
                 if _v is not None: metrics[_k] = _v
         is_fresh = (final_ts > 0) and (abs(now - final_ts) < 60.0)
+        # V8 pure backtest: time warp causes future timestamps -> force fresh when V8_FORCE_REAL=1
+        try:
+            import os
+            if os.environ.get("V8_FORCE_REAL") == "1":
+                is_fresh = True
+        except:
+            pass
         return metrics, combined_data, k_1m, d_1m, k_3m, d_3m, is_fresh
 
     async def get_fresh_price(self, symbol: str) -> tuple[float, float]:

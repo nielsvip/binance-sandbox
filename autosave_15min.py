@@ -120,8 +120,10 @@ def git_commit():
     """Commit all changes with timestamp message."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
-        subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=30,
-                      capture_output=True)
+        a = subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=30,
+                          capture_output=True, text=True)
+        if a.returncode != 0:
+            log(f"git add: rc={a.returncode} stderr={a.stderr.strip()[:200]!r}")
         r = subprocess.run(["git", "commit", "-m", f"Autosave {ts}", "--no-verify"],
                           cwd=str(REPO), timeout=30, capture_output=True, text=True)
         if r.returncode == 0:

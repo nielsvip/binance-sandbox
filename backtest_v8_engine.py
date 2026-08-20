@@ -74,13 +74,21 @@ for _acct in _DUMMY_ACCOUNTS:
 # ═══════════════════════════════════════════════════════════════
 # STEP 1: Import the REAL modules — ALL of them
 # ═══════════════════════════════════════════════════════════════
-IS_SERVER = platform.system() == "Linux"
-if IS_SERVER:
-    BASE_PATH = Path("/home/niels/binance-sandbox")
-    sys.path.insert(0, str(BASE_PATH))  # Import from sandbox, NOT /home/niels/binance
-else:
-    BASE_PATH = Path("/Users/niels/Documents/binance")
+# Unified path resolution: Mac / S1 / BOX 135 (BOX is /root/binance-sandbox, not /home/niels)
+# All scripts MUST use tools/infra_paths.get_root() — BOX autodestructs in hours
+try:
+    from tools.infra_paths import get_root as _get_root
+    BASE_PATH = _get_root()
     sys.path.insert(0, str(BASE_PATH))
+    IS_SERVER = BASE_PATH != Path("/Users/niels/Documents/binance")
+except Exception:
+    IS_SERVER = platform.system() == "Linux"
+    if IS_SERVER:
+        BASE_PATH = Path("/home/niels/binance-sandbox")
+        sys.path.insert(0, str(BASE_PATH))
+    else:
+        BASE_PATH = Path("/Users/niels/Documents/binance")
+        sys.path.insert(0, str(BASE_PATH))
 # Isolated c5 canary only: allow the shadow engine to import the matching
 # shadow tradier_manage/helpers while every c4 worker continues importing the
 # active sandbox tree above.  Production/c4 never sets this variable.

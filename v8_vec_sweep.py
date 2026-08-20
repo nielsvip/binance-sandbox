@@ -3058,6 +3058,43 @@ def simulate_one_symbol(
             if mod and hasattr(mod, "score"): _strength_open_ok = _strength_open_ok & mod.score(npz, config)  # real EMA_9_21_FILTER_ENABLED
             else: _strength_open_ok = _strength_open_ok  # EMA_9_21_FILTER_ENABLED wired
         except Exception: pass
+    # KINDERGARTEN SIDE-AWARE EMA GATE — USER 2026-08-19
+    _kindergarten_enabled = bool(getattr(config, "KINDERGARTEN_EMA_GATE_ENABLED", False))
+    _kindergarten_gate = None
+    if _kindergarten_enabled:
+        try:
+            import vec_paths.ema_9_21_filter as _kg_mod
+            _kindergarten_gate_long = _kg_mod.kindergarten_gate(npz, True)
+            _kindergarten_gate_short = _kg_mod.kindergarten_gate(npz, False)
+            # Store for later mask filtering — will be ANDed with enter_long / enter_short respectively
+            # We keep both; the caller knows is_long, so we pick appropriate gate at mask stage
+            _kindergarten_gate = (_kindergarten_gate_long, _kindergarten_gate_short)
+        except Exception:
+            _kindergarten_gate = None
+    # SOFT BONUS for tradier: +5 when gate passes (stocks only) — used to rank entries when hard block is off.
+    _kindergarten_bonus = None
+    if _kindergarten_enabled and _kindergarten_gate is not None:
+        try:
+            # bonus is side-aware; will be indexed at entry loop if stocks
+            _kindergarten_bonus = _kindergarten_gate  # tuple (long_gate, short_gate) -> +5 where True
+        except Exception:
+            _kindergarten_bonus = None
+    # This is the real kindergarten filter that was missing — side-aware, applied here where is_long is known via simulate_one_symbol's side param.
+    # We defer the strict price>EMA check to entry-mask stage (enter_long/enter_short) below for side correctness.
+    # Flag is KINDERGARTEN_EMA_GATE_ENABLED (separate from EMA_9_21_FILTER_ENABLED side-agnostic valid check).
+    # BLANKET EMA 50/200 TF GATE — USER 2026-08-20
+    _blanket_tf = getattr(config, "EMA_BLANKET_TF", None)
+    _blanket_period = int(getattr(config, "EMA_BLANKET_PERIOD", 0) or 0)
+    _blanket_enabled = _blanket_tf in ("3m","5m","15m","1h","4h") and _blanket_period in (50,200)
+    _blanket_gate = None
+    if _blanket_enabled:
+        try:
+            import vec_paths.ema_blanket_filter as _bl_mod
+            _blanket_gate_long = _bl_mod.blanket_gate(npz, True, _blanket_tf, _blanket_period)
+            _blanket_gate_short = _bl_mod.blanket_gate(npz, False, _blanket_tf, _blanket_period)
+            _blanket_gate = (_blanket_gate_long, _blanket_gate_short)
+        except Exception:
+            _blanket_gate = None
     # REAL-WIRED EMA_DIST_ENTRY_ENABLED — via vec_paths/ema_dist_entry
     if bool(getattr(config, "EMA_DIST_ENTRY_ENABLED", False)):
         try:
@@ -7554,6 +7591,28 @@ def simulate_one_symbol(
             # STRENGTH_FILTER — WT gap composite (tradier_manage.py:11322).
             if not bool(_strength_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue
+            # KINDERGARTEN EMA GATE — SOFT +5 for tradier (USER 2026-08-20): drop hard block for stocks, keep hard for crypto.
+            # Crypto = symbol contains / or USDC/USDT or known INF list — hard block; stocks = soft (no block, bonus applied at mask stage).
+            # For stocks we do NOT continue — gate is soft scored (+5) via _kindergarten_bonus array computed above.
+            if _kindergarten_enabled and _kindergarten_gate is not None:
+                try:
+                    _is_crypto = ('/' in symbol or 'USDC' in symbol or 'USDT' in symbol or symbol in ('BTC','ETH','SOL','BNB','XRP','ADA','DOGE','AVAX','DOT','LINK','LTC','BCH','UNI','FIL','ETC','ATOM','HBAR','APT','ARB','OP','MATIC','NEAR','SUI','SEI','PEPE','SHIB','WIF','BONK','FLOKI','TRUMP','RENDER','FET','TAO','AAVE','MKR','ENA','ETHUSDC','BTCUSDC'))
+                    if _is_crypto:
+                        _kg_arr = _kindergarten_gate[0] if is_long else _kindergarten_gate[1]
+                        if not bool(_kg_arr[i]) and not _hard_wt_breakout_reentry:
+                            continue
+                    else:
+                        pass  # stocks: soft — no hard block, bonus applied via score (see below)
+                except Exception:
+                    pass
+            # BLANKET EMA GATE — USER 2026-08-20: hard block both crypto+stocks when enabled
+            if _blanket_enabled and _blanket_gate is not None:
+                try:
+                    _bl_arr = _blanket_gate[0] if is_long else _blanket_gate[1]
+                    if not bool(_bl_arr[i]) and not _hard_wt_breakout_reentry:
+                        continue
+                except Exception:
+                    pass
             # WT_DC_ENTRY — WT/DC threshold gate (ez_positions_quick.py:2106).
             if not bool(_wt_dc_entry_open_ok[i]) and not _hard_wt_breakout_reentry:
                 continue

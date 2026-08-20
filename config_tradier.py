@@ -167,8 +167,7 @@ class TradierConfig:
     # allowlist remains authoritative for new entries; this list must not be
     # interpreted as exact-V8 validation or as permission to cross LONG/SHORT
     # direction boundaries.
-    ALWAYS_TRADEABLE = ["NVDA",  "GOOG", "META", "MSFT", "GLD", "XOP", "GDX","USO", "CVX", "XOM", "SLV", "SNDK", "MU", "VT", "XLE",  #LEGACY
-        "AXTI", "MNTS", "LSCC", "MP", "AG", "HL", "AU", "PAAS", "COPX", "MU", "SPCX","NEM", "FCX"] #LEGACY 
+    ALWAYS_TRADEABLE = ["NVDA",  "GOOG", "META", "MSFT", "GLD", "XOP", "GDX","USO", "CVX", "XOM", "SLV", "SNDK", "MU", "VT", "XLE", "AXTI", "MNTS", "LSCC", "MP", "AG", "HL", "AU", "PAAS", "COPX", "MU", "SPCX","NEM", "FCX"] #LEGACY 
     # 2026-07-10 USER MANDATE: these must be in the trb universes every rankings cycle
     # ("need to be trading no matter what"); injected by tradier_rankings before save.
     TRADIER_MANDATORY_LONG_TRB = ["MU", "SNDK", "NVDA", "GOOGL", "META", "MSFT", "AAPL", "ASML", "TSLA", "AMZN", "MRVL", "RBLX", "VLO", "INTC", "MSTR", "IBIT", "HOOD", "VT", "GLD", "SLV", "COPX", "QQQ", "SPY"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21; GLD/COPX added USER 2026-08-15 TradingView long (INTC already there, RBLX stays short, PLTR both); QQQ/SPY added USER 2026-08-17 index steady
@@ -1455,7 +1454,10 @@ class TradierConfig:
     # --- 9/21 EMA — PROVEN, on trb+trc ---
     EMA_9_21_FILTER_ENABLED: bool = True
     EMA_9_21_TIMEFRAME: str = "5m"
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER 2026-08-19 kindergarten: LONG only above ema200/sma200/ema9>21 on D/4h — SIDE-AWARE gate in v8_vec_sweep
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    EMA_BLANKET_TF: str | None = None  # BLANKET 2026-08-20 — None=OFF else 3m/5m/15m/1h/4h
+    EMA_BLANKET_PERIOD: int = 0  # BLANKET 2026-08-20 — 0=OFF else 50/200
     # --- TTM Squeeze — EXPERIMENTAL, trc only ---
     SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; WIRED 2026-04-16 (priority 80/100) — tradier_manage.py:5286 TRC override destination
     SQUEEZE_SCORE_BONUS: int = 15  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416

@@ -566,6 +566,12 @@ def combining_dashboard_page():
     return _no_cache(send_from_directory(app.static_folder, "combining_dashboard.html"))
 
 
+@app.route("/monitor")
+@app.route("/progress")
+@app.route("/overview")
+def monitor_page():
+    return _no_cache(send_from_directory(app.static_folder, "monitor.html"))
+
 @app.route("/data/reports/gui_lab/<path:filename>")
 def serve_vector_data(filename):
     # Serve vector results/status + per-symbol trade JSONs for inspector — works on 5077 even when S1 is unreachable
