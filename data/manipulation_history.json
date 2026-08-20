@@ -2052,5 +2052,23 @@
     ],
     "timestamp": "2026-08-20T06:24:21.255543+00:00",
     "price": 0.6112
+  },
+  {
+    "symbol": "RVNUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:26:14.186330+00:00",
+    "price": 0.002832
+  },
+  {
+    "symbol": "SEIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 17.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-08-20T06:26:14.186330+00:00",
+    "price": 0.04128
   }
 ]

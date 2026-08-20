@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-08-20T06:25:55.122032+00:00",
+  "timestamp": "2026-08-20T06:41:14.950133+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 197
+    "total_ranked": 198
   },
   "unified_ranking": [
+    {
+      "symbol": "BTCDOMUSDT",
+      "net_score": -10.0,
+      "long_score": 0,
+      "short_score": 10.0
+    },
     {
       "symbol": "EIGENUSDT",
       "net_score": 0,
@@ -337,12 +343,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BTCDOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -404,12 +404,6 @@
     },
     {
       "symbol": "MOVRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1015,6 +1009,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000SATSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "STRKUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1187,10 +1187,28 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "ASTERUSDT",
+      "net_score": 18.3,
+      "long_score": 18.3,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [],
+  "top_longs": [
+    [
+      "ASTERUSDT",
+      18.3,
+      0.6506
+    ]
+  ],
+  "top_shorts": [
+    [
+      "BTCDOMUSDT",
+      10.0,
+      5345.5
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
