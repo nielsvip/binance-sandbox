@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-08-20T23:57:06.387072+00:00",
+  "timestamp": "2026-08-21T00:12:40.312471+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 186
+    "total_ranked": 187
   },
   "unified_ranking": [
     {
-      "symbol": "AAPLUSDT",
-      "net_score": -14.8,
+      "symbol": "WLFIUSDC",
+      "net_score": -14.7,
       "long_score": 0,
-      "short_score": 14.8
+      "short_score": 14.7
     },
     {
       "symbol": "RENDERUSDT",
@@ -79,12 +79,6 @@
       "short_score": 0
     },
     {
-      "symbol": "WLFIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -110,6 +104,12 @@
     },
     {
       "symbol": "BBUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "DRAMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -751,6 +751,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AAPLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1126,9 +1132,9 @@
   "top_longs": [],
   "top_shorts": [
     [
-      "AAPLUSDT",
-      14.8,
-      312.53
+      "WLFIUSDC",
+      14.7,
+      0.05997
     ]
   ],
   "hedge_usage": {
