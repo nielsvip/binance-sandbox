@@ -1,22 +1,22 @@
 {
-  "timestamp": "2026-08-21T01:43:39.530468+00:00",
+  "timestamp": "2026-08-21T01:58:39.693213+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 198
+    "total_ranked": 199
   },
   "unified_ranking": [
     {
       "symbol": "ZKUSDT",
-      "net_score": -25.9,
+      "net_score": -26.2,
       "long_score": 0,
-      "short_score": 25.9
+      "short_score": 26.2
     },
     {
       "symbol": "THETAUSDT",
-      "net_score": -20.9,
+      "net_score": -21.3,
       "long_score": 0,
-      "short_score": 20.9
+      "short_score": 21.3
     },
     {
       "symbol": "ARKMUSDT",
@@ -25,10 +25,10 @@
       "short_score": 17.6
     },
     {
-      "symbol": "TLMUSDT",
-      "net_score": -10.7,
+      "symbol": "MEMEUSDT",
+      "net_score": -11.9,
       "long_score": 0,
-      "short_score": 10.7
+      "short_score": 11.9
     },
     {
       "symbol": "RENDERUSDT",
@@ -62,6 +62,12 @@
     },
     {
       "symbol": "MVLLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -475,6 +481,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CRVUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SSVUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -512,12 +524,6 @@
     },
     {
       "symbol": "IRENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MEMEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -943,6 +949,12 @@
       "short_score": 0
     },
     {
+      "symbol": "TLMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETHFIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -1187,36 +1199,24 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "CRVUSDC",
-      "net_score": 10.2,
-      "long_score": 10.2,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "CRVUSDC",
-      10.2,
-      0.2849
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "ZKUSDT",
-      25.9,
-      0.008758
+      26.2,
+      0.008784
     ],
     [
       "THETAUSDT",
-      20.9,
-      0.1624
+      21.3,
+      0.1628
     ],
     [
-      "TLMUSDT",
-      10.7,
-      0.001391
+      "MEMEUSDT",
+      11.9,
+      0.0005164
     ]
   ],
   "hedge_usage": {
