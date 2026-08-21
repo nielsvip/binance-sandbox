@@ -183,6 +183,7 @@ PYEOF
 echo "$(date -u +%FT%TZ) autosync_start pid=$$ mode=checksum_macbook_authoritative interval=${SLEEP_SEC}s" >>"$LOG"
 _pull_tick=0
 _chart_tick=0
+_matrix_tick=0
 while true; do
     # A verified transaction clears its edge-trigger request on PASS. Repairs
     # discovered while that transaction is already frozen are queued under a
@@ -249,6 +250,17 @@ while true; do
                 "$S1_HOST:/home/niels/binance/data/hourly_reconfig/$_acct/_trade_lists/" \
                 "$BASE/data/hourly_reconfig/$_acct/_trade_lists/" 2>>"$LOG"
         done
+    fi
+    # Pull CRYPTO matrix + beam ledger + BTC beam log every ~30s so Mac sees S1 progress live (user 2026-08-21)
+    _matrix_tick=$(( (_matrix_tick + 1) % 15 ))
+    if [[ $_matrix_tick -eq 0 ]]; then
+        mkdir -p "$BASE/SPREADSHEETS" "$BASE/data/reports/gui_lab"
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx" "$BASE/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx" 2>>"$LOG" && echo "$(date -u +%FT%TZ) CRYPTO_MATRIX pulled S1→Mac" >>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.csv" "$BASE/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.csv" 2>>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_crypto.json" "$BASE/data/reports/gui_lab/next_gen_beam_crypto.json" 2>>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json" "$BASE/data/reports/gui_lab/next_gen_beam_per_sym.json" 2>>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.incremental.jsonl" "$BASE/data/reports/gui_lab/next_gen_beam_per_sym.incremental.jsonl" 2>>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/tmp/beam_BTC_3000.log" "$BASE/data/reports/gui_lab/beam_BTC_3000_S1.log" 2>>"$LOG" || true
     fi
     # Pull OPT_*.png charts from S1 every ~5 min (per-sym profiler writes them)
     _chart_tick=$(( (_chart_tick + 1) % 150 ))

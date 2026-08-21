@@ -1,34 +1,22 @@
 {
-  "timestamp": "2026-08-21T01:58:39.693213+00:00",
+  "timestamp": "2026-08-21T02:13:47.263475+00:00",
   "market_state": {
-    "panic": false,
+    "panic": true,
     "euphoria": false,
     "total_ranked": 199
   },
   "unified_ranking": [
     {
-      "symbol": "ZKUSDT",
-      "net_score": -26.2,
-      "long_score": 0,
-      "short_score": 26.2
-    },
-    {
       "symbol": "THETAUSDT",
-      "net_score": -21.3,
+      "net_score": -22.2,
       "long_score": 0,
-      "short_score": 21.3
+      "short_score": 22.2
     },
     {
       "symbol": "ARKMUSDT",
       "net_score": -17.6,
       "long_score": 0,
       "short_score": 17.6
-    },
-    {
-      "symbol": "MEMEUSDT",
-      "net_score": -11.9,
-      "long_score": 0,
-      "short_score": 11.9
     },
     {
       "symbol": "RENDERUSDT",
@@ -481,12 +469,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CRVUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SSVUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -529,6 +511,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MEMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LITEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -536,6 +524,12 @@
     },
     {
       "symbol": "AXTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -895,12 +889,6 @@
       "short_score": 0
     },
     {
-      "symbol": "1INCHUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AMZNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1199,24 +1187,37 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "1INCHUSDT",
+      "net_score": 10.5,
+      "long_score": 10.5,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRVUSDC",
+      "net_score": 11.2,
+      "long_score": 11.2,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "CRVUSDC",
+      11.2,
+      0.2895
+    ],
+    [
+      "1INCHUSDT",
+      10.5,
+      0.08957
+    ]
+  ],
   "top_shorts": [
     [
-      "ZKUSDT",
-      26.2,
-      0.008784
-    ],
-    [
       "THETAUSDT",
-      21.3,
-      0.1628
-    ],
-    [
-      "MEMEUSDT",
-      11.9,
-      0.0005164
+      22.2,
+      0.1627
     ]
   ],
   "hedge_usage": {
