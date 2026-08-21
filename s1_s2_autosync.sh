@@ -252,15 +252,63 @@ while true; do
         done
     fi
     # Pull CRYPTO matrix + beam ledger + BTC beam log every ~30s so Mac sees S1 progress live (user 2026-08-21)
+    # All numbers recorded and synced: S1 ledger → Mac ledger → Mac xlsx Delta rebuild so xls shows live deltas
     _matrix_tick=$(( (_matrix_tick + 1) % 15 ))
     if [[ $_matrix_tick -eq 0 ]]; then
         mkdir -p "$BASE/SPREADSHEETS" "$BASE/data/reports/gui_lab"
-        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx" "$BASE/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx" 2>>"$LOG" && echo "$(date -u +%FT%TZ) CRYPTO_MATRIX pulled S1→Mac" >>"$LOG" || true
-        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.csv" "$BASE/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.csv" 2>>"$LOG" || true
+        # Pull S1 ledgers first (source of truth for deltas)
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_crypto.json" "$BASE/data/reports/gui_lab/next_gen_beam_crypto.json" 2>>"$LOG" || true
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json" "$BASE/data/reports/gui_lab/next_gen_beam_per_sym.json" 2>>"$LOG" || true
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.incremental.jsonl" "$BASE/data/reports/gui_lab/next_gen_beam_per_sym.incremental.jsonl" 2>>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/tmp/beam_BTC_FOCUS.log" "$BASE/data/reports/gui_lab/beam_BTC_3000_S1.log" 2>>"$LOG" || true
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/tmp/beam_BTC_3000.log" "$BASE/data/reports/gui_lab/beam_BTC_3000_S1.log" 2>>"$LOG" || true
+        # Rebuild Mac xlsx Delta_vs_BH from ledger so all numbers recorded and xls shows live deltas (replaces word MODELED with delta numbers)
+        /opt/anaconda3/envs/binance_env/bin/python3 - <<'PYEOS' 2>>"$LOG" || true
+import json, csv, pathlib
+from openpyxl import load_workbook
+try:
+    ledgers=[]
+    for p in ["data/reports/gui_lab/next_gen_beam_crypto.json","data/reports/gui_lab/next_gen_beam_per_sym.json"]:
+        try:
+            j=json.load(open(p))
+            for e in j.get("ledger",[]):
+                if isinstance(e, dict) and "symside" in e:
+                    ledgers.append(e)
+        except: pass
+    # Map symside -> Delta_vs_BH, Gain, Pool_Sharpe, Trades
+    m={e["symside"]: (e.get("best",{}).get("delta_vs_bh",0), e.get("best",{}).get("gain_pct",0), e.get("best",{}).get("pool_sharpe",0), e.get("best",{}).get("trades",0)) for e in ledgers}
+    # Update xlsx
+    xlsx="SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx"
+    wb=load_workbook(xlsx)
+    ws=wb.active
+    # Find Delta_vs_BH col (6 = F)
+    header=[c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
+    try:
+        dcol=header.index("Delta_vs_BH")+1
+        gcol=header.index("Gain_Pct")+1
+        pcol=header.index("Pool_Sharpe")+1
+        tcol=header.index("Trades")+1
+    except: raise
+    updated=0
+    for row in range(2, ws.max_row+1):
+        sym=ws.cell(row=row, column=1).value
+        if not sym or sym not in m: continue
+        delta,gain,ps,tr=m[sym]
+        if ws.cell(row=row, column=dcol).value != delta:
+            ws.cell(row=row, column=dcol).value = delta
+            ws.cell(row=row, column=gcol).value = gain
+            ws.cell(row=row, column=pcol).value = ps
+            ws.cell(row=row, column=tcol).value = tr
+            updated+=1
+    if updated:
+        wb.save(xlsx)
+        print(f"CRYPTO xlsx rebuilt {updated} deltas from ledger")
+except Exception as e:
+    print(f"CRYPTO xlsx rebuild skip: {e}")
+PYEOS
+        # Also pull S1 xlsx as fallback if rebuild didn't run
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx" "$BASE/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx" 2>>"$LOG" && echo "$(date -u +%FT%TZ) CRYPTO_MATRIX pulled S1→Mac" >>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.csv" "$BASE/SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.csv" 2>>"$LOG" || true
     fi
     # Pull OPT_*.png charts from S1 every ~5 min (per-sym profiler writes them)
     _chart_tick=$(( (_chart_tick + 1) % 150 ))
