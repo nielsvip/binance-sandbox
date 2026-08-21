@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-08-21T02:13:47.263475+00:00",
+  "timestamp": "2026-08-21T02:29:05.201736+00:00",
   "market_state": {
-    "panic": true,
+    "panic": false,
     "euphoria": false,
-    "total_ranked": 199
+    "total_ranked": 200
   },
   "unified_ranking": [
-    {
-      "symbol": "THETAUSDT",
-      "net_score": -22.2,
-      "long_score": 0,
-      "short_score": 22.2
-    },
     {
       "symbol": "ARKMUSDT",
       "net_score": -17.6,
@@ -374,6 +368,12 @@
     },
     {
       "symbol": "1000PEPEUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "STXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -889,6 +889,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1INCHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AMZNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -902,6 +908,12 @@
     },
     {
       "symbol": "MASKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "THETAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1087,12 +1099,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BTCUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "WLDUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -1189,37 +1195,31 @@
       "short_score": 0
     },
     {
-      "symbol": "1INCHUSDT",
-      "net_score": 10.5,
-      "long_score": 10.5,
+      "symbol": "CRVUSDC",
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     },
     {
-      "symbol": "CRVUSDC",
-      "net_score": 11.2,
-      "long_score": 11.2,
+      "symbol": "BTCUSDC",
+      "net_score": 12.1,
+      "long_score": 12.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "CRVUSDC",
-      11.2,
-      0.2895
+      "BTCUSDC",
+      12.1,
+      74768.7
     ],
     [
-      "1INCHUSDT",
-      10.5,
-      0.08957
+      "CRVUSDC",
+      10.4,
+      0.2986
     ]
   ],
-  "top_shorts": [
-    [
-      "THETAUSDT",
-      22.2,
-      0.1627
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
