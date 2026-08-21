@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-21T02:44:07.127856+00:00",
+  "timestamp": "2026-08-21T02:59:19.139427+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,21 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "THETAUSDT",
-      "net_score": -21.1,
+      "net_score": -20.6,
       "long_score": 0,
-      "short_score": 21.1
+      "short_score": 20.6
     },
     {
       "symbol": "ARKMUSDT",
       "net_score": -17.6,
       "long_score": 0,
       "short_score": 17.6
-    },
-    {
-      "symbol": "SKYUSDT",
-      "net_score": -12.5,
-      "long_score": 0,
-      "short_score": 12.5
     },
     {
       "symbol": "RENDERUSDT",
@@ -835,6 +829,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SKYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "POLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1202,28 +1202,23 @@
     },
     {
       "symbol": "CRVUSDC",
-      "net_score": 12.4,
-      "long_score": 12.4,
+      "net_score": 14.0,
+      "long_score": 14.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "CRVUSDC",
-      12.4,
-      0.3043
+      14.0,
+      0.3055
     ]
   ],
   "top_shorts": [
     [
       "THETAUSDT",
-      21.1,
-      0.1624
-    ],
-    [
-      "SKYUSDT",
-      12.5,
-      0.0615
+      20.6,
+      0.1629
     ]
   ],
   "hedge_usage": {
