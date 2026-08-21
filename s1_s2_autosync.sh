@@ -256,10 +256,12 @@ while true; do
     _matrix_tick=$(( (_matrix_tick + 1) % 15 ))
     if [[ $_matrix_tick -eq 0 ]]; then
         mkdir -p "$BASE/SPREADSHEETS" "$BASE/data/reports/gui_lab"
-        # Pull S1 ledgers first (source of truth for deltas)
+        # Pull S1 ledgers first (source of truth for deltas) — Mac does NOT run backtests, S1 does (user 2026-08-21: sync FROM S1)
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_crypto.json" "$BASE/data/reports/gui_lab/next_gen_beam_crypto.json" 2>>"$LOG" || true
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json" "$BASE/data/reports/gui_lab/next_gen_beam_per_sym.json" 2>>"$LOG" || true
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.incremental.jsonl" "$BASE/data/reports/gui_lab/next_gen_beam_per_sym.incremental.jsonl" 2>>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.all_calcs.jsonl" "$BASE/data/reports/gui_lab/next_gen_beam_per_sym.all_calcs.jsonl" 2>>"$LOG" || true
+        rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_crypto.all_calcs.jsonl" "$BASE/data/reports/gui_lab/next_gen_beam_crypto.all_calcs.jsonl" 2>>"$LOG" || true
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/tmp/beam_BTC_FOCUS.log" "$BASE/data/reports/gui_lab/beam_BTC_3000_S1.log" 2>>"$LOG" || true
         rsync -az --timeout=30 -e "ssh $SSH_OPTS" "$S1_HOST:/tmp/beam_BTC_3000.log" "$BASE/data/reports/gui_lab/beam_BTC_3000_S1.log" 2>>"$LOG" || true
         # Rebuild Mac xlsx Delta_vs_BH from ledger so all numbers recorded and xls shows live deltas (replaces word MODELED with delta numbers)
