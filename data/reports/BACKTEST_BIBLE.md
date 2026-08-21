@@ -187,6 +187,16 @@ ssh root@135.181.97.66 "rm -rf ~/binance-sandbox/data/reports/gui_lab/*.json ~/b
 
 **Enforcement:** This routine supersedes any older "keep BOX running" or "snapshot keeps results" note. No result may live only on BOX at delete time — triple-copy check is mandatory. Box may be deleted **only** on explicit user utterance that night; agent never auto-deletes. Box may be recreated **only** when user says `need box` and is present to monitor.
 
+**§0.2b — NO WIPE WITHOUT SNAPSHOT — 2026-08-21 PER USER niels — HIGHEST AUTHORITY — NEVER ERASE DATA**
+
+**On 2026-08-21 the agent wiped `CRWD_LONG +24.76 (was +40)` and `STOCKS_1YR_REAL_MATRIX 175→32` by `cp 20:10 backup over 23:30 ledger` without snapshot and by raw `rsync S1→Mac` racing `Mac→S1`. All 182 + 175 was recoverable from `backups/before_sol_purge_202608202010.*` only because that backup existed. This must never happen again.**
+
+- **Rule 1 — No `cp`/`rsync`/`mv`/`rm` over `data/reports/gui_lab/next_gen_beam_per_sym.json`, `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.csv/.xlsx`, `data/param_results_stocks.db`, `active_config.json` without `backups/` snapshot first.** Before any overwrite, `cp <dst> backups/before_<reason>_$(date +%Y%m%d%H%M%S).*` on **that host** — Mac, S1, and Box each snapshot their own dest. Agent must `ls -lh backups/before_*` and log SHA before proceeding. Violating `cp` is a hard failure.
+- **Rule 2 — No raw `rsync S1→Mac` for sheets/ledger.** Use only `tools/safe_stocks_sync.sh` (installed `2026-08-21`): it snapshots dest, checks `src lines ≥100` (`xlsx bytes ≥50k`, `ledger len ≥150`), and **skips** the pull if `src` would wipe `dest` (`dest 175 > src 32` and `src <150`). Raw `*/1 rsync -az niels@...:~/.../STOCKS_1YR_REAL_MATRIX_NEXT_GEN.csv /Users/.../SPREADSHEETS/...` is **forbidden** — replaced by `*/1 /bin/bash tools/safe_stocks_sync.sh`. `rsync_to_sandbox.sh` never pushes `SPREADSHEETS/` (only code), so no push-wipe.
+- **Rule 3 — Bible-enforced.** This §0.2b outranks §0.2 delete/recreate, cron, and any agent's `cp`/`rsync`. `tools/sync_backtest_bible.sh` publishes this to S1/Box, and `safe_stocks_sync.sh` is the only allowed pull. Every watchdog must check `backups/auto_*` exists before pull.
+- **Proof after fix:** `wc -l SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.csv` = 175 on Mac+S1+Box, `python -c "len(json.load(...['ledger']))"` = 182, `STOCKS_1YR_LAST_IMPROVED.csv` `CRWD_LONG +24.76` preserved, `/tmp/cron.bak` shows safe wrapper.
+- **If user says `delete box` / `shut down box`, agent must first run `box_sync_all.sh` + `rsync -az s1-int:~/binance-sandbox/data/reports/gui_lab/ /Volumes/SSD2T/...` and verify 3 copies, then `shutdown -h now` — never wipe without verified snapshot.**
+
 
 ---
 ## §0.1 — EQUITY WHOLE-SHARE, B&H-FIRST VECTOR SEQUENCE (CONTROLLING AMENDMENT 2026-08-04)

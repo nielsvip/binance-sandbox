@@ -1,16 +1,46 @@
 {
-  "timestamp": "2026-08-21T00:12:40.312471+00:00",
+  "timestamp": "2026-08-21T00:27:55.292992+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 187
+    "total_ranked": 192
   },
   "unified_ranking": [
     {
-      "symbol": "WLFIUSDC",
-      "net_score": -14.7,
+      "symbol": "ASMLUSDT",
+      "net_score": -15.9,
       "long_score": 0,
-      "short_score": 14.7
+      "short_score": 15.9
+    },
+    {
+      "symbol": "ARKMUSDT",
+      "net_score": -15.8,
+      "long_score": 0,
+      "short_score": 15.8
+    },
+    {
+      "symbol": "WLFIUSDC",
+      "net_score": -15.7,
+      "long_score": 0,
+      "short_score": 15.7
+    },
+    {
+      "symbol": "AMATUSDT",
+      "net_score": -15.4,
+      "long_score": 0,
+      "short_score": 15.4
+    },
+    {
+      "symbol": "AMDUSDT",
+      "net_score": -15.2,
+      "long_score": 0,
+      "short_score": 15.2
+    },
+    {
+      "symbol": "ARMUSDT",
+      "net_score": -14.5,
+      "long_score": 0,
+      "short_score": 14.5
     },
     {
       "symbol": "RENDERUSDT",
@@ -86,12 +116,6 @@
     },
     {
       "symbol": "AVGOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AMDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -223,12 +247,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AMATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "1MBABYDOGEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -302,12 +320,6 @@
     },
     {
       "symbol": "AVAXUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARKMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -451,6 +463,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SSVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SHAZUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -554,12 +572,6 @@
     },
     {
       "symbol": "SOXLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -709,6 +721,12 @@
       "short_score": 0
     },
     {
+      "symbol": "STXXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "FARTCOINUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -769,6 +787,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RKLBUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BRETTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -794,12 +818,6 @@
     },
     {
       "symbol": "BEATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -943,6 +961,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RVNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1022,12 +1046,6 @@
     },
     {
       "symbol": "ALABUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASMLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1127,14 +1145,57 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "VIRTUALUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "APEUSDT",
+      "net_score": 12.1,
+      "long_score": 12.1,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "APEUSDT",
+      12.1,
+      0.1328
+    ]
+  ],
   "top_shorts": [
     [
+      "ASMLUSDT",
+      15.9,
+      1752.39
+    ],
+    [
+      "ARKMUSDT",
+      15.8,
+      0.098
+    ],
+    [
       "WLFIUSDC",
-      14.7,
-      0.05997
+      15.7,
+      0.05999
+    ],
+    [
+      "AMATUSDT",
+      15.4,
+      494.78
+    ],
+    [
+      "AMDUSDT",
+      15.2,
+      468.27
+    ],
+    [
+      "ARMUSDT",
+      14.5,
+      250.28
     ]
   ],
   "hedge_usage": {
