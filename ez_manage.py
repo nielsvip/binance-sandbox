@@ -26611,6 +26611,9 @@ class MultiAccountTradeManager:
                                 logger.warning(f"[BREAKOUT_DC1H_BYPASS] {position_key} side={position_side}: 1h Donchian breakout (px={_mb_px:.6f} {_mb_lvl}) — armed-state requirement bypassed. reason={(reason or '')[:50]}")
             except Exception as _mbe:
                 logger.warning(f"[BREAKOUT_DC1H_BYPASS] check error (fail-closed): {_mbe}")
+            # 2026-08-21 USER FLZ FOTEST: FOTEST per_sym baseline (fotest_baseline_2026-07-08) must NOT be blocked by MTF_NO_ARMED_STATE — FLZ has NO TRADES (0 qty) and MTF re-arms 30-60min, but FOTEST verified 110keys for all FLZ sym_sides must make trades immediately. ROLLBACK: remove this block.
+            if "FOTEST_PERSYM_BASELINE" in str(reason or "") or "OBLIGATORY_OPEN" in (reason or "") or (position_key and "flz:" in position_key.lower()):
+                _mtf_momentum_bypass = True
             # 2026-06-02 USER: the MOMENTUM_WATCHDOG force-opener (sma+1% OR dc_1h breakout, wt in favor) is a
             # DELIBERATE force-open — it must bypass the MTF armed-state gate. COUNTER_TREND_ADD_BLOCK ran above
             # so it still cannot open against the 1h trend.
@@ -29429,6 +29432,10 @@ class MultiAccountTradeManager:
                         f"[OPEN_GUARD] {position_key}: Memory confirms existing {mem_amt:.4f} (${mem_amt * current_price:.2f}) — BLOCKING OPEN."
                     )
                     return "BLOCK_OPEN_POSITION_EXISTS"
+            if current_real_amt <= self.min_qty.get(symbol, 0.0001) and is_augment:
+                logger.critical(f"[FLAT_NOT_AUGMENT_EXEC] {position_key}: positionAmt={current_real_amt:.8f}≈0 → OPEN not augment at EXECUTION; cleared is_augment. action={action} reason={(reason or '')[:60]}")
+                is_augment=False
+                if "AUGMENT" in (action or "").upper(): action=action.upper().replace("AUGMENT","OPEN")
             logger.info(
                 f"[EXEC_TRACE] {position_key}: STEP3_ROUTE is_aug={is_augment} is_red={_is_reduce} amt={current_real_amt:.6f} action={action}"
             )
