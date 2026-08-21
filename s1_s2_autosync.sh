@@ -102,30 +102,81 @@ S1_PLOTS="$S1_HOST:/home/niels/binance-sandbox/plots/"
 MAC_PLOTS="$BASE/plots/"
 
 _merge_persym() {
-    # 2026-08-21 USER MANDATE WIPED: NO per_sym trading until 900*900 vector+live verified — Mac is NO TRADING, do NOT overwrite wiped file from S1.
+    # 2026-08-21 USER: baseline preserved (GOOD 410 keys), new 12000 switches best results added constantly WITHOUT losing baseline — additive improver-only merge.
+    # S1 holds full 12000-switch beam candidates; Mac holds baseline. Merge only if S1 entry is strictly better and passes gates, else keep Mac baseline.
     local mac_path="${PER_SYM_CFG_MAC:-$BASE/data/hourly_reconfig/per_sym_active_config.json}"
-    if [[ -f "$mac_path" ]]; then
-        if /opt/anaconda3/envs/binance_env/bin/python3 -c "import json; d=json.load(open('$mac_path')); m=d.get('_meta',{}); exit(0 if 'WIPED' in str(m.get('purpose','')) or 'WIPED' in str(m.get('wiped_reason','')) else 1)" 2>/dev/null; then
-            echo "$(date -u +%FT%TZ) PER_SYM_CFG WIPED-NO-TRADING — refusing S1 overwrite of $mac_path" >>"$LOG"
-            return 0
-        fi
-    fi
-    # 2026-05-28 S2 DEAD permanently — S1 now runs BOTH crypto AND tradier sweeps,
-    # so its per_sym_active_config.json holds everything. Pull S1 only.
     local s1_tmp=/tmp/per_sym_s1.json
     rsync -az --timeout=10 -e "ssh $SSH_OPTS" "$PER_SYM_CFG_S1" "$s1_tmp" 2>>"$LOG"
-    /opt/anaconda3/envs/binance_env/bin/python3 - <<'PYEOF' && echo "$(date -u +%FT%TZ) PER_SYM_CFG synced S1→Mac" >>"$LOG"
+    /opt/anaconda3/envs/binance_env/bin/python3 - <<'PYEOF' && echo "$(date -u +%FT%TZ) PER_SYM_CFG merged S1→Mac (baseline preserved, 12000 improvers only)" >>"$LOG"
 import json, os, sys
+from pathlib import Path
 s1 = json.load(open('/tmp/per_sym_s1.json')) if os.path.exists('/tmp/per_sym_s1.json') else {}
 if not s1:
     print('s1 empty/missing — keeping existing Mac config (no write)', flush=True)
     sys.exit(0)
-out = os.environ.get('PER_SYM_CFG_MAC', '/tmp/per_sym_merged.json')
-tmp = out + '.tmp'
+mac_path = Path(os.environ.get('PER_SYM_CFG_MAC', '/tmp/per_sym_merged.json'))
+# Load Mac baseline (GOOD 410 keys) — preserved if S1 not better
+try:
+    mac = json.loads(mac_path.read_text()) if mac_path.exists() else {}
+except Exception:
+    mac = {}
+# Gates for 12000-switch promotion: additive improver only
+MIN_TRADES = 30
+MIN_WSHARPE = 0.0
+MIN_GAIN = 5.0
+def is_promotable(e):
+    if not isinstance(e, dict): return False, "not dict"
+    if "PER_SYM_SIDE_DISABLED" in str(e.get("winning_tag","")): return True, "disable_entry"
+    try: ws = float(e.get("wsharpe"))
+    except: return False, "wsharpe NA"
+    if ws <= MIN_WSHARPE: return False, f"wsharpe {ws} <= {MIN_WSHARPE}"
+    g = e.get("total_pnl_pct")
+    if g is None:
+        rr = e.get("raw_returns")
+        if isinstance(rr, list) and rr:
+            try: g = sum(float(x) for x in rr)
+            except: g = None
+    if g is not None and float(g) < MIN_GAIN: return False, f"gain {g} < {MIN_GAIN}"
+    tr = e.get("trades")
+    if tr is not None and int(tr) < MIN_TRADES: return False, f"trades {tr} < {MIN_TRADES}"
+    return True, f"ws {ws:.3f}"
+# Additive merge: start from Mac baseline, apply S1 only if improver
+merged = dict(mac)
+# Preserve _meta baseline info
+if "_meta" not in merged and "_meta" in s1:
+    merged["_meta"] = s1["_meta"]
+improved = 0
+added = 0
+blocked = 0
+for k, v in s1.items():
+    if k.startswith("_"): continue
+    if not isinstance(v, dict): continue
+    ok, reason = is_promotable(v)
+    if not ok:
+        blocked += 1
+        continue
+    live = merged.get(k)
+    if live is None:
+        merged[k] = v
+        added += 1
+    else:
+        try:
+            live_ws = float(live.get("wsharpe", -999))
+            s1_ws = float(v.get("wsharpe", -999))
+            if s1_ws > live_ws:
+                merged[k] = v
+                improved += 1
+            else:
+                blocked += 1
+        except Exception:
+            blocked += 1
+# Never delete baseline keys not in S1 — 410 baseline preserved
+out = Path(os.environ.get('PER_SYM_CFG_MAC', '/tmp/per_sym_merged.json'))
+tmp = out.with_suffix('.tmp')
 with open(tmp, 'w') as f:
-    json.dump(s1, f, indent=2, default=str)
-os.replace(tmp, out)
-print(f'synced {len(s1)} entries from S1', flush=True)
+    json.dump(merged, f, indent=2, default=str)
+tmp.replace(out)
+print(f'merged {len([k for k in merged if not k.startswith("_")])} total ({added} new, {improved} improved, {blocked} blocked/fake) — baseline preserved, S1 12000 best added', flush=True)
 PYEOF
 }
 

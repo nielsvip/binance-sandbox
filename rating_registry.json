@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-08-21T00:43:00.394664+00:00",
+  "timestamp": "2026-08-21T00:58:07.376323+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 193
+    "total_ranked": 194
   },
   "unified_ranking": [
     {
@@ -14,15 +14,9 @@
     },
     {
       "symbol": "WLFIUSDC",
-      "net_score": -17.3,
+      "net_score": -12.3,
       "long_score": 0,
-      "short_score": 17.3
-    },
-    {
-      "symbol": "WIFUSDC",
-      "net_score": -12.5,
-      "long_score": 0,
-      "short_score": 12.5
+      "short_score": 12.3
     },
     {
       "symbol": "RENDERUSDT",
@@ -325,6 +319,12 @@
       "short_score": 0
     },
     {
+      "symbol": "WIFUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ACTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -440,12 +440,6 @@
     },
     {
       "symbol": "IBMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRVUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -614,6 +608,12 @@
     },
     {
       "symbol": "QCOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "1000SATSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1163,19 +1163,26 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "CRVUSDC",
+      "net_score": 11.2,
+      "long_score": 11.2,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "CRVUSDC",
+      11.2,
+      0.2903
+    ]
+  ],
   "top_shorts": [
     [
       "WLFIUSDC",
-      17.3,
-      0.06005
-    ],
-    [
-      "WIFUSDC",
-      12.5,
-      0.1665
+      12.3,
+      0.06
     ]
   ],
   "hedge_usage": {
