@@ -16412,7 +16412,8 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 if current_price <= 0: continue
                 exit_price = safe_fetch_float(data.get('exit_price', 0), 0.0)
                 if exit_price <= 0: continue
-                _price_crossed = (is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price)
+                # 2026-08-21 FLZ FIX: USER "WHEN IT GOES DOWN NOT WHEN IT GOES UP" — invert: LONG dip reentry when price <= exit (buy the dip), SHORT when price >= exit. Was inverted (LONG >= exit = chasing up, suicide).
+                _price_crossed = (is_long and current_price <= exit_price) or (not is_long and current_price >= exit_price)
                 # Pre-check T3 (wt15m cross) — a bullish/bearish crossover is a confirmed bounce signal.
                 # When T3 fires, bypass RALLY_K15M so a mandatory post-reduction reentry is not blocked
                 # just because k_15m is elevated or stale. T1 (price_crossed) still bypasses ALL guards.
@@ -16538,8 +16539,12 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                     logger.warning(f"[REENTRY_ENFORCE_EPQ] {position_key}: {_reason_tag} mult={_qty_mult:.2f} elapsed={_elapsed_s:.0f}s — REENTRY NOW ({reason})")
                     _base_qty = safe_fetch_float(data.get('original_qty', 0), 0.0)
                     if _base_qty <= 0: _base_qty = config.START_POSITION_SIZE / current_price
+                    # 2026-08-21 FLZ FIX: at least max qty — USER "with at least max qty if price crosses exit price"
+                    _pos_for_max = trade_manager.positions.get(position_key) if hasattr(trade_manager, 'positions') else None
+                    _max_q = float(getattr(_pos_for_max, 'max_quantity', 0) or 0) if _pos_for_max else 0.0
+                    if _max_q > 0: _base_qty = max(_base_qty, _max_q)
                     override_qty = _base_qty * _qty_mult
-                    if current_price > 0: override_qty = max(override_qty, config.START_POSITION_SIZE / current_price)
+                    if current_price > 0: override_qty = max(override_qty, config.START_POSITION_SIZE / current_price, _max_q if _max_q>0 else 0)
                     # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                     _ee_mult, _ee_tag = _ee_reentry_boost(symbol, indicators, is_long, config)
                     override_qty = override_qty * _ee_mult; reason = reason + _ee_tag

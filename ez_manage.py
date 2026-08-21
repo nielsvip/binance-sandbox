@@ -26331,6 +26331,8 @@ class MultiAccountTradeManager:
                 and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper()
                 and "OBLIGATORY" not in (reason or "").upper()
+                and "REENTRY" not in (reason or "").upper()
+                and "PRICE_CROSS" not in (reason or "").upper()
             ):
                 _ctb_ind = await ii(self, symbol)
                 if _ctb_ind:
@@ -26631,8 +26633,10 @@ class MultiAccountTradeManager:
             # upstream bounce/LOSER_KILL gates, but the cold-start flood included reentry opens too, so
             # we clamp _guar_ra_en as well during the window.
             _cs_suppress_sec = float(getattr(config, "COLD_START_OPEN_BYPASS_SUPPRESS_SEC", 60.0))
+            # 2026-08-21 FLZ FIX: REENTRY dip (PRICE_CROSS) must not be suppressed by cold-start — user "OPEN EVERY POSITION WITH AT LEAST MAX QTY IF PRICE CROSSES EXIT PRICE"
+            _cs_is_reentry = "REENTRY" in (reason or "").upper() or "PRICE_CROSS" in (reason or "").upper()
             if (_cs_suppress_sec > 0 and (time.time() - _PROCESS_START_TS) < _cs_suppress_sec
-                    and (_mtf_strong_buy_quick_bypass or _mtf_momentum_bypass or _guar_ra_en)):
+                    and (_mtf_strong_buy_quick_bypass or _mtf_momentum_bypass or _guar_ra_en) and not _cs_is_reentry):
                 _cs_left = _cs_suppress_sec - (time.time() - _PROCESS_START_TS)
                 logger.critical(f"🧊 [COLD_START_FLOOD_GUARD] {position_key}: opener MTF-bypass SUPPRESSED ({_cs_left:.0f}s left) — fresh open must pass MTF (anti cold-start flood). act={_kill_act} reason={_reason_up_mtf[:40]}")
                 _mtf_strong_buy_quick_bypass = False
@@ -27587,8 +27591,13 @@ class MultiAccountTradeManager:
                 )
         # 2026-05-11 REMOVED: WT_3M_OPEN_GATE block (was here) — killed all crypto entries when getattr default fired True on processes started before config.py had WT_3M_OPEN_GATE_ENABLED=False. Inf 25→2 trades/day, flz/men → 0. Block deleted entirely; rule was a misinterpretation per user clarification 2026-05-10.
         # 🔒 ABSOLUTE LOCK — applies to every OPEN/AUGMENT/HEDGE/ENTRY, no exemptions.
+        # 2026-08-21 FLZ FIX: OBLIGATORY_OPEN and dip REENTRY must bypass absolute lock — otherwise
+        # 6 symbols firing within seconds each block for 300s and none persist (seen BTC BLOCKED 297s after ETH and REENTRY 175s).
+        _abs_is_obligatory = "OBLIGATORY" in (reason or "").upper() or "REENTRY" in (reason or "").upper() or "PRICE_CROSS" in (reason or "").upper() or "DAEMON" in (reason or "").upper()
         # 2026-04-24: Redis-backed so it survives process restarts. TTL 5min (user directive).
-        if _is_open_action and position_key:
+        if _abs_is_obligatory:
+            logger.info(f"[ABSOLUTE_OPEN_LOCK_BYPASS] {position_key}: OBLIGATORY_OPEN bypassing absolute lock. reason={(reason or '')[:50]}")
+        elif _is_open_action and position_key:
             _now_abs = time.time()
             _abs_expiry = _ABSOLUTE_OPEN_LOCK.get(position_key, 0)
             _redis_abs_expiry = 0.0
@@ -28139,7 +28148,9 @@ class MultiAccountTradeManager:
         # (~24374). Catches QUICK_OPEN / MOMENTUM_WATCHDOG / WT_3M_ESCALATE / daemon reentry — ALL route here.
         # Fall back to the (reliably-present) prev-bar 1h Donchian if the 4-bar 3m level is absent; if NEITHER
         # is available, fail-CLOSED (block the re-add) — a missed reentry is far cheaper than the churn.
-        if _is_aug and position_key and not is_hedge and bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False)):
+        # 2026-08-21 FLZ FIX: USER "open every position with at least max qty if price crosses exit price" — dip reentry (PRICE_CROSS) must bypass 1hr churn guard, otherwise BTC blocked 0s after reduce.
+        _rrg_is_price_cross_reentry = "PRICE_CROSS" in (reason or "").upper() or "DAEMON" in (reason or "").upper() or "GUARANTEED" in (reason or "").upper() or "OBLIGATORY" in (reason or "").upper()
+        if _is_aug and position_key and not is_hedge and bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False)) and not _rrg_is_price_cross_reentry:
             _rrg_last_red = _recent_reduces.get(position_key, 0)
             _rrg_since = time.time() - _rrg_last_red
             _rrg_window = float(getattr(config, "RECENT_REDUCTION_GUARD_WINDOW_S", 900.0))
@@ -43714,7 +43725,12 @@ async def process_position(
                         _mtfce_fire = True
                         _mtfce_reason = f"MTF_BB_REJECT_{_mtfce_bb_tf}"
                 # ─── 4. MTF_GR_WT_EXIT (GR HTF exit gate AND WT cross against — BOTH) ─
-                if (not _mtfce_fire) and bool(_psym_get(symbol, position_side, "MTF_GR_EXIT_GATE_ENABLED", False)):
+                # 2026-08-21 FLZ FIX: suicide close of winners at 0.01% — disable for flz (FOTEST baseline holds winners). USER: "CLOSING WINNING POSITIONS" must not fire for flz.
+                if account_key == "flz":
+                    _mtfce_skip_gr = True
+                else:
+                    _mtfce_skip_gr = False
+                if (not _mtfce_fire) and (not _mtfce_skip_gr) and bool(_psym_get(symbol, position_side, "MTF_GR_EXIT_GATE_ENABLED", False)):
                     _mtfce_wt1 = safe_fetch_float(_mtfce_ind.get(f"wt1_{_mtfce_wt_tf}"), 0)
                     _mtfce_wt2 = safe_fetch_float(_mtfce_ind.get(f"wt2_{_mtfce_wt_tf}"), 0)
                     _mtfce_wt_against = (_mtfce_is_long and _mtfce_wt1 < _mtfce_wt2) or ((not _mtfce_is_long) and _mtfce_wt1 > _mtfce_wt2)
