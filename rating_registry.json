@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-21T01:28:17.027577+00:00",
+  "timestamp": "2026-08-21T01:43:39.530468+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,28 @@
   },
   "unified_ranking": [
     {
+      "symbol": "ZKUSDT",
+      "net_score": -25.9,
+      "long_score": 0,
+      "short_score": 25.9
+    },
+    {
+      "symbol": "THETAUSDT",
+      "net_score": -20.9,
+      "long_score": 0,
+      "short_score": 20.9
+    },
+    {
       "symbol": "ARKMUSDT",
       "net_score": -17.6,
       "long_score": 0,
       "short_score": 17.6
+    },
+    {
+      "symbol": "TLMUSDT",
+      "net_score": -10.7,
+      "long_score": 0,
+      "short_score": 10.7
     },
     {
       "symbol": "RENDERUSDT",
@@ -517,12 +535,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ZKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MUUUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -787,12 +799,6 @@
       "short_score": 0
     },
     {
-      "symbol": "MORPHOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "CATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -907,12 +913,6 @@
       "short_score": 0
     },
     {
-      "symbol": "THETAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SKHYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -938,12 +938,6 @@
     },
     {
       "symbol": "BOTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "TLMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -992,6 +986,12 @@
     },
     {
       "symbol": "RVNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1165,6 +1165,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MORPHOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "PUMPUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1184,30 +1190,35 @@
     },
     {
       "symbol": "CRVUSDC",
-      "net_score": 10.0,
-      "long_score": 10.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCDOMUSDT",
-      "net_score": 14.5,
-      "long_score": 14.5,
+      "net_score": 10.2,
+      "long_score": 10.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "BTCDOMUSDT",
-      14.5,
-      5420.3
-    ],
-    [
       "CRVUSDC",
-      10.0,
-      0.2858
+      10.2,
+      0.2849
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "ZKUSDT",
+      25.9,
+      0.008758
+    ],
+    [
+      "THETAUSDT",
+      20.9,
+      0.1624
+    ],
+    [
+      "TLMUSDT",
+      10.7,
+      0.001391
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
