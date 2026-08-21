@@ -4566,6 +4566,9 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     getattr(config, knob, default)."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return getattr(config, knob, default)
+    # 2026-08-21 USER MANDATE WIPED: NO per_sym trading until 900*900 vector+live verified — honor PER_SYM_CONFIG_ENABLED=False
+    if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
+        return getattr(config, knob, default)
     global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime
     try:
         mtime = _ezm_per_sym_cfgs_path.stat().st_mtime

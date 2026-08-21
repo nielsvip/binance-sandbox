@@ -102,6 +102,14 @@ S1_PLOTS="$S1_HOST:/home/niels/binance-sandbox/plots/"
 MAC_PLOTS="$BASE/plots/"
 
 _merge_persym() {
+    # 2026-08-21 USER MANDATE WIPED: NO per_sym trading until 900*900 vector+live verified — Mac is NO TRADING, do NOT overwrite wiped file from S1.
+    local mac_path="${PER_SYM_CFG_MAC:-$BASE/data/hourly_reconfig/per_sym_active_config.json}"
+    if [[ -f "$mac_path" ]]; then
+        if /opt/anaconda3/envs/binance_env/bin/python3 -c "import json; d=json.load(open('$mac_path')); m=d.get('_meta',{}); exit(0 if 'WIPED' in str(m.get('purpose','')) or 'WIPED' in str(m.get('wiped_reason','')) else 1)" 2>/dev/null; then
+            echo "$(date -u +%FT%TZ) PER_SYM_CFG WIPED-NO-TRADING — refusing S1 overwrite of $mac_path" >>"$LOG"
+            return 0
+        fi
+    fi
     # 2026-05-28 S2 DEAD permanently — S1 now runs BOTH crypto AND tradier sweeps,
     # so its per_sym_active_config.json holds everything. Pull S1 only.
     local s1_tmp=/tmp/per_sym_s1.json

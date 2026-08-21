@@ -1913,7 +1913,7 @@ class Config:
     OBLIGATORY_SMA200_WT3M_ENABLED: bool = True     # 2026-06-04 USER: unblockable obligatory open in momentum_sma_watchdog_loop — runs BEFORE the cooldown/per-tick gates (was missing 24h tumbles: 4800 SKIP cooldown). SHORT when price >OBLIGATORY_SMA200_PCT% BELOW sma_200_15m AND wt1_3m falling; LONG when >PCT% ABOVE AND wt1_3m rising. reason OBLIGATORY_OPEN bypasses COUNTER_TREND (+ shorts bypass MTF); flood rate-breaker/cold-start still apply. OBLIGATORY_OPEN positions receive a frozen tight dc_low4_3m/dc_high4_3m leash (20-bar fallback). ROLLBACK: False.
     OBLIGATORY_SMA200_PCT: float = 1.0              # distance beyond sma_200_15m (%) that triggers the obligatory open
     OBLIGATORY_OPEN_USD: float = 400.0              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
-    PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-05-31 USER "put all new per_sym settings live + block negative-sharpe keys". data/persym_final_book.json: 96 tradeable (>=30tr & ps>0 & not-short-uptrend) enabled + per-sym pct_entry/size_cap; 54 tested-but-excluded -> side disabled (PER_SYM_SIDE_DISABLED gate blocks entries, never exits). ROLLBACK: False.
+    PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-08-21 REVERTED per user: keep True so 900*900 verified winners can promote without config flip. Files wiped 410->0 so NO TRADING until verified repopulates; 96 old tradeable from 110-key sweep is gone.
     CONVICTION_SIZING_ENABLED: bool = True          # 2026-06-02 USER: scale base entry size by per-sym conviction (size_mult from FINAL book) so proven winners (ZEC/MU/SNDK) open BIG, tag-alongs small. Applied in _psym_sps. ROLLBACK: False.
     CONVICTION_SIZING_MAX: float = 8.0              # safety cap on conviction multiplier (crypto-validated cap; prevents runaway). ZEC size_mult ~3.3 -> base $45 x 3.3 ~= $147.
     # ═══════════════════════════════════════════════════════════════════
@@ -3918,9 +3918,9 @@ class Config:
     BTC_DEDICATED_ENABLED: bool = False                                  # 2026-07-01 USER: DISABLED — btc_loop.py v0/WIP has UNBUILT safety knobs (BTC_TECH_EXIT_AT_ANY_PNL wired but BTC_PYRAMID_DISABLED/REGIME_PAUSE/REVERSE_REQUIRE_HTF gate nonexistent logic) → unsafe at 20x. Re-enable only after those are built+proven. ROLLBACK True.
     BTC_DEDICATED_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz", "inf"])  # accounts that route BTC trades through this loop
     BTC_DEDICATED_SYMBOLS: List[str] = field(default_factory=lambda: ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "DOGEUSDC", "ZECUSDC", "BTCDOMUSDT"])  # all flz BTC_DEDICATED symbols
-    BTC_PER_SYM_CONFIG_ENABLED: bool = True                               # load per-symbol overrides from data/hourly_reconfig/flz/active_config.json
+    BTC_PER_SYM_CONFIG_ENABLED: bool = True                               # 2026-08-21 REVERTED per user: keep True so 900*900 verified flz winners can promote without config flip. File wiped 1->0 so NO TRADING until verified.
     BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = False                            # block ang/men/fin from BTCUSDC + BTCUSDC at is_tradeable
-    PER_SYM_CONFIG_ENABLED: bool = True                                    # load per-symbol entry-score overrides from data/hourly_reconfig/per_sym_active_config.json (global, all accounts)
+    PER_SYM_CONFIG_ENABLED: bool = True                                    # 2026-08-21 REVERTED per user: keep True so 900*900 verified winners can promote without config flip. File wiped 410->0 so NO TRADING until verified.
 
     # --- Red zone composition (existing wt_dc + new fib + new round numbers) ---
     BTC_RZ_USE_WT_DC: bool = True
