@@ -1,69 +1,45 @@
 {
- "generated_at": "2026-08-21 03:59 UTC",
- "total_capital_usd": 27.19,
+ "generated_at": "2026-08-21 04:13 UTC",
+ "total_capital_usd": 46.84,
  "tier_capital": {
   "A": 0.0,
-  "B": 13.22,
-  "C": 13.97
+  "B": 19.78,
+  "C": 27.06
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 2
+  "B": 1,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "men:MEMEUSDT_LONG",
-  "men:CRVUSDC_LONG"
+  "flz:WLDUSDC_LONG"
  ],
  "mediocre": [
-  "men:FARTCOINUSDT_LONG",
-  "men:SOLUSDC_LONG"
+  "flz:XRPUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "men:MEMEUSDT_LONG",
-   "symbol": "MEMEUSDT",
-   "account": "men",
-   "value_usd": 6.99,
-   "gain_pct": -0.251,
+   "pk": "flz:WLDUSDC_LONG",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 27.06,
+   "gain_pct": -0.183,
    "tier": "C",
-   "perf_mult": 0.66,
-   "amt": 13613.0,
-   "mark": 0.00051328
+   "perf_mult": 0.65,
+   "amt": 72.6,
+   "mark": 0.37278473
   },
   {
-   "pk": "men:CRVUSDC_LONG",
-   "symbol": "CRVUSDC",
-   "account": "men",
-   "value_usd": 6.98,
-   "gain_pct": -0.049,
-   "tier": "C",
-   "perf_mult": 0.66,
-   "amt": 21.7,
-   "mark": 0.32166845
-  },
-  {
-   "pk": "men:FARTCOINUSDT_LONG",
-   "symbol": "FARTCOINUSDT",
-   "account": "men",
-   "value_usd": 6.98,
-   "gain_pct": 0.0,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 19.78,
+   "gain_pct": -0.274,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 41.2,
-   "mark": 0.1695
-  },
-  {
-   "pk": "men:SOLUSDC_LONG",
-   "symbol": "SOLUSDC",
-   "account": "men",
-   "value_usd": 6.24,
-   "gain_pct": -0.126,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.07,
-   "mark": 89.1976317
+   "amt": 15.1,
+   "mark": 1.3097
   }
  ]
 }

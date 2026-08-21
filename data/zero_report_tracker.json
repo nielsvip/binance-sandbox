@@ -1457,15 +1457,6 @@
       "API_ABSENCE": 1
     }
   },
-  "flz:WLDUSDC_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-07-08T23:18:13.082571+00:00",
-    "last_increment_at": "2026-07-08T23:18:13.082571+00:00",
-    "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-07-08T23:18:29.243860+00:00"
-  },
   "ang:EGLDUSDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-07-10T06:54:01.448431+00:00",
@@ -1546,19 +1537,17 @@
     },
     "last_seen": "2026-07-19T23:02:45.105092+00:00"
   },
-  "men:FARTCOINUSDT_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-07-25T19:45:01.563121+00:00",
-    "last_increment_at": "2026-07-25T19:45:22.117715+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    }
-  },
   "men:LINKUSDC_SHORT": {
     "count": 2,
     "first_seen": "2026-08-01T16:32:44.909636+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-01T16:33:45.488097+00:00"
+  },
+  "fin:PENGUUSDC_LONG": {
+    "count": 2,
+    "first_seen": "2026-08-01T16:34:46.416772+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-01T16:35:47.850433+00:00"
   },
   "fin:AVAXUSDC_LONG": {
     "count": 2,
@@ -1704,5 +1693,29 @@
     "sources": {
       "API_ABSENCE": 1
     }
+  },
+  "flz:HYPEUSDT_LONG": {
+    "count": 1,
+    "first_seen": "2026-08-21T04:06:20.422626+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-21T04:06:20.422639+00:00"
+  },
+  "flz:DOGEUSDC_LONG": {
+    "count": 1,
+    "first_seen": "2026-08-21T04:06:20.422642+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-21T04:06:20.422644+00:00"
+  },
+  "flz:BNBUSDC_LONG": {
+    "count": 1,
+    "first_seen": "2026-08-21T04:06:20.422647+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-21T04:06:20.422649+00:00"
+  },
+  "flz:BTCUSDC_LONG": {
+    "count": 1,
+    "first_seen": "2026-08-21T04:06:20.423439+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-21T04:06:20.423461+00:00"
   }
 }
