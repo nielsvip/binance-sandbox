@@ -24,7 +24,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from v8_vec_structure_sweep import load_npz_slim  # base slim loader
-from v8_vec_sweep import _resolve_npz_path
+from v12_wide_engine import _resolve_npz_path
 from vec_paths.structure_hh_hl import (
     compute_all_structure, _streak_at_value,
     STRUCT_HH, STRUCT_HL, STRUCT_LH, STRUCT_LL,

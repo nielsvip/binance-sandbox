@@ -34,8 +34,8 @@ sys.path.insert(0, str(BASE))
 
 # Lazy imports — fail loud if v8_vec_sweep missing
 try:
-    import v8_vec_sweep
-    from v8_vec_sweep import simulate_one_symbol, SweepConfig
+    import v12_wide_engine as v8_vec_sweep
+    from v12_wide_engine import simulate_one_symbol, SweepConfig
 except ImportError as e:
     print(f"ERROR: v8_vec_sweep import failed: {e}")
     sys.exit(1)

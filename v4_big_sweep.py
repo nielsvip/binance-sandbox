@@ -229,7 +229,7 @@ def run_universe(mode: str, symbols: List[str], cfg: AggressiveCfg, start: str, 
     }
     # max DD across pooled returns
     all_returns = [r for v in returns_by_sym.values() for r in v]
-    from v8_vec_sweep import _max_dd_pct
+    from v12_wide_engine import _max_dd_pct
     row_for_guard["max_dd_pct"] = _max_dd_pct(all_returns)
     try:
         metrics_guard.write_sharpe_row(csv_path, row_for_guard, mode=mode, append=True)

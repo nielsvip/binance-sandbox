@@ -61,7 +61,7 @@ def run_arm(knob, val):
 
 def main():
     sys.path.insert(0, REPO)
-    from v8_vec_sweep import SweepConfig
+    from v12_wide_engine import SweepConfig
     cfg = SweepConfig()
     knob_names = [l.strip() for l in open(KNOBS_FILE) if l.strip() and not l.startswith("#")]
     fld = {f.name: f for f in fields(SweepConfig)}

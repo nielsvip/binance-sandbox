@@ -1248,7 +1248,7 @@ def events_to_trades(events: list, trade_returns: list, side: str) -> list:
     return trades
 
 def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0, only_side: Optional[str] = None) -> Optional[Dict]:
-    from v8_vec_sweep import load_npz, simulate_one_symbol, SweepConfig
+    from v12_wide_engine import load_npz, simulate_one_symbol, SweepConfig
     try: npz, ts = load_npz(sym, "crypto")
     except Exception: return None
     if len(ts) == 0: return None

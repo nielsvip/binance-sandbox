@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
 import metrics_guard
-from v8_vec_sweep import load_npz
+from v12_wide_engine import load_npz
 from uve_engine import simulate_uve
 
 def run_uve_backtest(symbols: List[str], mode: str, is_long: bool, start_ts: int | None = None, config: Any = None) -> Dict[str, Any]:

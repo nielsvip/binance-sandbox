@@ -19,8 +19,8 @@ from typing import Dict, List, Tuple
 REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-import v8_vec_sweep as v8
-from v8_vec_sweep import SweepConfig, load_npz, simulate_one_symbol, _max_dd_pct
+import v12_wide_engine as v8
+from v12_wide_engine import SweepConfig, load_npz, simulate_one_symbol, _max_dd_pct
 import metrics_guard
 
 SYMBOLS = ["HAO","NVDA","GOOGL","SPY","QQQ"]

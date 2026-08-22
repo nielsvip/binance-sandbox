@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).parent
 sys.path.insert(0, str(REPO_ROOT))
-from v8_vec_sweep import SweepConfig, simulate_one_symbol, load_npz, SWEEP_RESULTS_DIR, NPZ_DIR
+from v12_wide_engine import SweepConfig, simulate_one_symbol, load_npz, SWEEP_RESULTS_DIR, NPZ_DIR
 
 # ── Stop sweep grid ──────────────────────────────────────────────────────────
 

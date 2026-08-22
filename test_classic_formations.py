@@ -142,7 +142,7 @@ class ClassicFormationTests(unittest.TestCase):
         self.assertTrue(bool(added["formation_inverse_head_shoulders_1h"][-4]))
 
     def test_v8_vec_loader_forwards_parent_timestamps(self):
-        from v8_vec_sweep import load_npz
+        from v12_wide_engine import load_npz
 
         o, h, l, c = shaped([110, 100, 108, 94, 108, 100, 112], n=40)
         for values in (o, h, l, c):

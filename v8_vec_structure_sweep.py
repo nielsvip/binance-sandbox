@@ -53,7 +53,7 @@ from vec_paths.structure_hh_hl import (
     compose_entry_exit_fires,
     summarize_pivots,
 )
-from v8_vec_sweep import load_npz as _full_load_npz, _max_dd_pct, _gain_pct, TradeEvent, _resolve_npz_path
+from v12_wide_engine import load_npz as _full_load_npz, _max_dd_pct, _gain_pct, TradeEvent, _resolve_npz_path
 
 
 def load_npz_slim(symbol: str, mode: str, start_ts: Optional[int] = None) -> Tuple[Dict[str, np.ndarray], np.ndarray]:

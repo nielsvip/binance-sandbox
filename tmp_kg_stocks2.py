@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, "/Users/niels/Documents/binance")
 import json, pathlib, time
-from v8_vec_sweep import sweep_config_for_mode, load_npz, simulate_one_symbol, _apply_per_task_overrides
+from v12_wide_engine import sweep_config_for_mode, load_npz, simulate_one_symbol, _apply_per_task_overrides
 import metrics_guard
 
 ledger_path = pathlib.Path("/Users/niels/Documents/binance/data/reports/gui_lab/next_gen_beam_per_sym.json")

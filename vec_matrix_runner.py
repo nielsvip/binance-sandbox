@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional, Tuple
 REPO_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from v8_vec_sweep import SweepConfig, run_sweep
+from v12_wide_engine import SweepConfig, run_sweep
 
 # Import grid definitions from backtest_v8_sweep (single source of truth)
 from backtest_v8_sweep import (

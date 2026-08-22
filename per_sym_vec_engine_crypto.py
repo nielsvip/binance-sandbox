@@ -528,7 +528,7 @@ def _run_variant_task_worker(args):
     _ROOT = Path(__file__).resolve().parent
     if str(_ROOT) not in sys.path:
         sys.path.insert(0, str(_ROOT))
-    from v8_vec_sweep import load_npz, SweepConfig
+    from v12_wide_engine import load_npz, SweepConfig
     from uve_engine import simulate_uve
     
     try:
@@ -668,7 +668,7 @@ def sweep_variants(
     n_years_for_yr_metrics: Optional[float] = None,
 ) -> Dict[str, np.ndarray]:
     t0 = time.time()
-    from v8_vec_sweep import load_npz
+    from v12_wide_engine import load_npz
     try:
         npz, ts = load_npz(sym, "crypto", start_ts=None)
         if len(ts) < 50:

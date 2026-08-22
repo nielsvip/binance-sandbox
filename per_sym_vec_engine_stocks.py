@@ -13,7 +13,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from v8_vec_sweep import load_npz, SweepConfig
+from v12_wide_engine import load_npz, SweepConfig
 from uve_engine import simulate_uve
 
 def _run_variant_task_worker_stocks(args):

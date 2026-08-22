@@ -1,6 +1,6 @@
 import numpy as np
 
-from v8_vec_sweep import (
+from v12_wide_engine import (
     SweepConfig,
     _tradier_counter_trend_entry_allowed_vec,
 )

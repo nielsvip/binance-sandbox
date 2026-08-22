@@ -16,7 +16,7 @@ from tools.run_classic_formation_universe import (
     require_complete_universe,
     wanted_formation_direction,
 )
-from v8_vec_sweep import SweepConfig
+from v12_wide_engine import SweepConfig
 
 
 ROOT = Path(__file__).resolve().parent

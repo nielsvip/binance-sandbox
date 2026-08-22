@@ -3,7 +3,7 @@ import types
 import numpy as np
 
 from vec_paths.live_entry_engine import live_entry_engine_passes_vec
-from v8_vec_sweep import _path_scoped_entry_union
+from v12_wide_engine import _path_scoped_entry_union
 from wt_dc_entry_scorer import score_entry
 from wt_dc_entry_scorer_vec import score_entry_multitf_vec
 

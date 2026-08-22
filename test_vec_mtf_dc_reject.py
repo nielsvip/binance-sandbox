@@ -87,7 +87,7 @@ def test_direct_dc_bundle_data_fails_closed_on_missing_band():
 
 
 def test_sweep_route_closes_seeded_ordinary_position_on_later_tick():
-    import v8_vec_sweep as vec
+    import v12_wide_engine as vec
     from tools.c4_vector_bundle_screen import floor_config
 
     n = 60
