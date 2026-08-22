@@ -15,7 +15,7 @@ Variants (derived from the full-universe winning-config distribution):
 import sys, os, json, csv, argparse
 import numpy as np
 sys.path.insert(0, ".")
-import v8_vec_sweep as V
+import v12_wide_engine as V
 from vec_decisions import htf_regime_scale as H
 from vec_decisions import short_elevator as SE
 from tools.persym_htf_validation import g, mode_of, weight_to_trade_returns, net_sharpe, classify_regime

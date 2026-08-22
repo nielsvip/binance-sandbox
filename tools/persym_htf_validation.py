@@ -17,7 +17,7 @@ The shared core is the SAME logic wired live, so a PASS here is a real, parity-f
 import sys, os, glob, json, argparse, math
 import numpy as np
 sys.path.insert(0, ".")
-import v8_vec_sweep as V
+import v12_wide_engine as V
 from vec_decisions import htf_regime_scale as H
 
 LAMBDA_OUTLIER = 0.5

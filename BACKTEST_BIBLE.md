@@ -5,7 +5,42 @@
 
 ---
 
-# 🔴 ENGINE MIGRATION — v8 IS OBSOLETE, v12 IS CANONICAL (2026-08-21)
+# 🔴 ENGINE MIGRATION — v8 IS OBSOLETE, v12 IS CANONICAL (2026-08-21; amended 2026-08-22)
+
+**The v12 generation is TWO engines, not one. They are not interchangeable.**
+
+| engine | real switch reads | sec/eval | role |
+|---|---|---|---|
+| `v12_quick_engine` | 846 | 0.07 | the sweep engine — 38x faster |
+| `v12_wide_engine` (was `v8_vec_sweep`) | 875 | 2.67 | 490 switches QuickConfig cannot express |
+
+Measured head-to-head on 40 sym_sides — same symbol, side, window and NPZ, both
+scored by the same honest metric code (`tools/opt/engine_shootout.py`):
+
+```
+trade-count agreement within 20%      1 of 40
+median trades          wide    376    quick  1,346
+median honest gain%    wide   7.33    quick   9.68
+median max_dd%         wide   6.58    quick  13.01
+```
+
+Shared switch surface is 233 of ~1,488. **Never treat one as a drop-in for the
+other**, and never use them as each other's parity counterpart — parity is
+`v12_quick_engine` (vector) vs `backtest_v12_engine` (live call path).
+
+`v12_quick_engine` declares 1,113 QuickConfig fields but reads 846; **152 of the
+fields it declares are ones `v12_wide_engine` actively uses and Quick never
+reads**. A declared field is not wiring.
+
+**Retired 2026-08-22:** `vector_engine.py` — a fork claiming a stock+crypto
+unification that was never performed (both files had identical MODE handling).
+It holds 5 unported live-parity changes; see
+`old/VECTOR_ENGINE_UNPORTED_CHANGES.md`.
+
+**`v8_vec_sweep.py` is now a deprecation alias** with explicit re-exports. Do not
+"simplify" it to `from v12_wide_engine import *`: a star import cannot carry the
+8 underscore names its readers import, and the previous attempt at that shim
+supplied 2 of 16 names and broke 54 files.
 
 **Anything below that names a v8 engine is superseded.** Read this first; it
 overrides every older engine reference in this file.

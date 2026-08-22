@@ -367,7 +367,7 @@ def fleet_history(
 
 
 def validate_catalog() -> None:
-    from v8_vec_sweep import SweepConfig
+    from v12_wide_engine import SweepConfig
     from vec_paths import vec_refuses_knob
 
     cfg = SweepConfig()
@@ -834,7 +834,7 @@ def run_vec_fold(
     fold_ts = all_ts[begin : begin + int(fold["bars"])]
     fold_close = all_close[begin : begin + int(fold["bars"])]
     try:
-        from v8_vec_sweep import _vec_round_trip_cost_for_sym
+        from v12_wide_engine import _vec_round_trip_cost_for_sym
 
         round_trip_cost_pct = float(_vec_round_trip_cost_for_sym(symbol))
     except (ImportError, TypeError, ValueError):

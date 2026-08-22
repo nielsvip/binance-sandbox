@@ -32,7 +32,7 @@ if not SBX.exists():
 sys.path.insert(0, str(SBX))
 sys.path.insert(0, str(SBX / "tools"))
 
-import v8_vec_sweep as vec  # noqa: E402
+import v12_wide_engine as vec  # noqa: E402
 
 REGISTRY = SBX / "data" / "knob_registry.json"
 MANIFEST = SBX / "data" / "param_sweep_manifest_tradier.json"

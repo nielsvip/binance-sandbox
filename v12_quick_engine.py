@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
-"""v12_quick_engine — DEPRECATED shim for vector_engine (unified stock+crypto, canonical 2026-08-22).
-DEPRECATED: use vector_engine.py — this file re-exports it for backward compat.
+"""v12_quick_engine — the QUICK half of the v12 generation. Canonical sweep engine.
+
+This file briefly carried a docstring calling it a "DEPRECATED shim for
+vector_engine". It never was one: the body was untouched, nothing re-exported
+anything, and every consumer kept importing the full engine from here. A file
+that misdescribes itself is worse than an undocumented one — removed 2026-08-22.
+
+Its counterpart is v12_wide_engine (formerly v8_vec_sweep): 875 real switch reads
+against this file's 846, of which 490 QuickConfig cannot express. They are not
+interchangeable — 1 of 40 sym_sides agreed on trade count within 20%. This one is
+38x faster and is what the sweeps run on.
 
 v12_quick_engine — THE vectorised engine. Supersedes v8_vec_sweep,
 v8_quick_engine, vec_paths/vec_engine_v1 and backtest_v8_engine for sweeps.
