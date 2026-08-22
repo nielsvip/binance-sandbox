@@ -162,6 +162,64 @@ def save_atomic(path: Path, data: list[dict]):
     tmp.replace(path)
 
 
+def backfill_one(symbol: str, token: str, days_back: int, verbose: bool) -> tuple[int, str]:
+    """Extend a cached series BACKWARD from its earliest bar.
+
+    append_one starts at the last existing bar minus 2h whenever any data
+    exists, so
+    --days-back is silently ignored for anything already cached: the file can
+    only ever grow forward. Twelve stocks in the live universe (CDW, EXEL, COE,
+    LSCC, QRVO ...) therefore sat on ~87 days of 15m bars while AAPL had 2.4
+    years, and their NPZs were being scored over a 365-day window they did not
+    cover. Nothing was wrong with the data source — nobody ever asked it for the
+    older bars.
+    """
+    tf = INTERVAL_TO_TF.get(INTERVAL, "15m")
+    path = TRADIER_DIR / f"{symbol}_{tf}.json"
+    existing = load_existing(path)
+    if not existing:
+        return append_one(symbol, token, days_back, verbose)
+    seen = {b.get("timestamp") for b in existing if isinstance(b, dict)}
+    try:
+        first = min(b.get("timestamp", "") for b in existing if b.get("timestamp"))
+        edge = datetime.fromisoformat(first.replace("Z", "+00:00"))
+    except Exception:
+        return (0, f"{symbol}: cannot read earliest timestamp")
+    target = datetime.now(timezone.utc) - timedelta(days=days_back)
+    if edge <= target:
+        return (0, f"{symbol}: already covers {days_back}d (from {first[:10]})")
+
+    new_bars, cursor, empty_runs = [], edge, 0
+    while cursor > target and empty_runs < 6:
+        chunk_start = max(cursor - timedelta(days=7), target)
+        recs = fetch_chunk(token, symbol, chunk_start, cursor)
+        got = 0
+        for r in recs:
+            b = to_canonical_bar(r)
+            if b is None or b["timestamp"] in seen:
+                continue
+            seen.add(b["timestamp"])
+            new_bars.append(b)
+            got += 1
+        if verbose:
+            print(f"  {symbol} {chunk_start.strftime('%Y-%m-%d')} -> "
+                  f"{cursor.strftime('%Y-%m-%d')}: {got} bars")
+        # Six empty weeks in a row means the venue has no more history to give;
+        # walking all the way to the target regardless would burn hundreds of
+        # pointless calls.
+        empty_runs = empty_runs + 1 if got == 0 else 0
+        cursor = chunk_start
+        time.sleep(0.25)
+
+    if not new_bars:
+        return (0, f"{symbol}: no older bars available (earliest {first[:10]})")
+    merged = existing + new_bars
+    merged.sort(key=lambda b: b.get("timestamp", ""))
+    save_atomic(path, merged)
+    return (len(new_bars),
+            f"{symbol}: +{len(new_bars)} older bars (now from {merged[0].get('timestamp','?')[:10]})")
+
+
 def append_one(symbol: str, token: str, days_back: int, verbose: bool) -> tuple[int, str]:
     tf = INTERVAL_TO_TF.get(INTERVAL, "15m")
     path = TRADIER_DIR / f"{symbol}_{tf}.json"
@@ -223,6 +281,10 @@ def main():
     p.add_argument("--days-back", type=int, default=60)
     p.add_argument("--interval", default="15min", choices=["1min", "5min", "15min"], help="bar interval")
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--backfill", action="store_true",
+                   help="extend BACKWARD to --days-back instead of appending the "
+                        "tail. Without this, --days-back does nothing for any "
+                        "symbol that already has cached bars.")
     args = p.parse_args()
     global INTERVAL
     INTERVAL = args.interval
@@ -254,7 +316,8 @@ def main():
     total_added = 0
     for i, sym in enumerate(syms, 1):
         try:
-            n, msg = append_one(sym, token, args.days_back, args.verbose)
+            fn = backfill_one if args.backfill else append_one
+            n, msg = fn(sym, token, args.days_back, args.verbose)
         except Exception as e:
             print(f"[err] {sym}: {e}", file=sys.stderr)
             continue
