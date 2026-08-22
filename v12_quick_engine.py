@@ -4599,20 +4599,37 @@ def load_npz(mode, symbols, start_date, npz_dir=""):
             is_crypto = any(sym.endswith(s) for s in CRYPTO_SUFFIXES)
             if mode == "crypto" and not is_crypto: continue
             if mode == "tradier" and is_crypto: continue
+        # Slice each array AS IT IS READ. `dict(np.load(...))` materialises all
+        # 1,066 arrays first and only then windows them, so peak memory is the
+        # whole file plus the slice: the oldest crypto NPZs hold ~1.1M bars and
+        # cost ~9.7GB that way, and two workers landing on two of them OOM-killed
+        # a 30GB box that also runs live trading (11 kills, 123 broken pools in
+        # one pass). np.load returns a lazy NpzFile, so reading key by key holds
+        # exactly one full array at a time and a 365-day window peaks ~6x lower.
+        base_tf = "5m" if mode == "tradier" else "3m"
         try:
-            data = dict(np.load(str(npz_path), allow_pickle=True))
+            with np.load(str(npz_path), allow_pickle=True) as z:
+                keys = list(z.files)
+                ts_key = 'timestamps' if 'timestamps' in keys else f'timestamp_{base_tf}'
+                ts = z[ts_key] if ts_key in keys else np.array([])
+                if len(ts) == 0:
+                    continue
+                if start_ts and ts[-1] < start_ts:
+                    continue
+                start_idx = int(np.searchsorted(ts, start_ts)) if start_ts else 0
+                sliced = {}
+                for k in keys:
+                    v = z[k]
+                    if isinstance(v, np.ndarray) and getattr(v, "ndim", 0) > 0 and len(v) > start_idx:
+                        # copy() so the parent array is freed on the next iteration
+                        sliced[k] = v[start_idx:].copy() if start_idx else v
+                    else:
+                        sliced[k] = v
+                    del v
         except Exception as e:
             print(f"[WARN] {sym}: {e}")
             continue
-        base_tf = "5m" if mode == "tradier" else "3m"
-        ts = data.get('timestamps', data.get(f'timestamp_{base_tf}', np.array([])))
-        if len(ts) == 0: continue
-        if start_ts and ts[-1] < start_ts: continue
-        start_idx = np.searchsorted(ts, start_ts) if start_ts else 0
-        stores[sym] = {
-            k: v[start_idx:] if isinstance(v, np.ndarray) and getattr(v, "ndim", 0) > 0 and len(v) > start_idx else v
-            for k, v in data.items()
-        }
+        stores[sym] = sliced
     print(f"Loaded {len(stores)} symbols from {d}")
     return stores
 
