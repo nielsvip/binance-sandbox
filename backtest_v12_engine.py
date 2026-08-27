@@ -4705,6 +4705,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _stdev_reason = _stdev_native_events.get((_stdev_sym, _stdev_side, _stdev_ts))
                     if not _stdev_reason:
                         continue
+                    if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+                        _stdev_ledger_row = _quick_ledger_entries.get(
+                            (_stdev_sym, _stdev_side, _stdev_ts), {}
+                        )
+                        if _stdev_ledger_row.get("entry_reason") != _stdev_reason:
+                            continue
                     _stdev_pk = f"{account_key}:{_stdev_sym}_{_stdev_side}"
                     _stdev_pos = trade_manager.positions.get(_stdev_pk)
                     if abs(float(getattr(_stdev_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
@@ -4733,11 +4739,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _golden_notional = _golden_native_events.get((_golden_sym, _golden_side, _golden_ts))
                     if _golden_notional is None:
                         continue
-                    if (
-                        os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1"
-                        and _golden_ts not in _quick_entry_event_sets.get((_golden_sym, _golden_side), set())
-                    ):
-                        continue
+                    if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+                        _golden_ledger_row = _quick_ledger_entries.get(
+                            (_golden_sym, _golden_side, _golden_ts), {}
+                        )
+                        if _golden_ledger_row.get("entry_reason") != "GOLDEN_RULE_ENTRY":
+                            continue
                     _golden_pk = f"{account_key}:{_golden_sym}_{_golden_side}"
                     _golden_pos = trade_manager.positions.get(_golden_pk)
                     if abs(float(getattr(_golden_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
@@ -4770,11 +4777,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     # schedule.  Avoid dispatching thousands of known-invalid
                     # broad B11 predicate bars through the expensive scalar
                     # seam merely to receive its schedule rejection.
-                    if (
-                        os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1"
-                        and _b11_ts not in _quick_entry_event_sets.get((_b11_sym, _b11_side), set())
-                    ):
-                        continue
+                    if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+                        _b11_ledger_row = _quick_ledger_entries.get(
+                            (_b11_sym, _b11_side, _b11_ts), {}
+                        )
+                        if _b11_ledger_row.get("entry_reason") != "B11":
+                            continue
                     _b11_pk = f"{account_key}:{_b11_sym}_{_b11_side}"
                     _b11_pos = trade_manager.positions.get(_b11_pk)
                     if abs(float(getattr(_b11_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
