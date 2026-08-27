@@ -1032,7 +1032,7 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
                 path_timed_out = True
                 break
             evaluated = []
-            futures = {}
+            unevaluated = []
             for trial in choices:
                 overrides = {**path_overrides, **trial.patch()}
                 trial_id = digest({"symside": symside, "base": digest(path_overrides),
@@ -1041,20 +1041,32 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
                 if prior is not None:
                     evaluated.append(prior)
                 else:
-                    futures[pool.submit(_evaluate_task, (symside, overrides))] = (trial, overrides, trial_id)
-            for future in concurrent.futures.as_completed(futures):
-                trial, overrides, trial_id = futures[future]
-                try:
-                    metrics = future.result()
-                except Exception as exc:
-                    metrics = {"valid": False, "invalid_reason": str(exc), "score": float("-inf")}
-                row = {"at": utcnow(), "kind": "entry_filter", "trial_id": trial_id,
-                       "stage": trial.stage, "group": trial.group, "switch": trial.name,
-                       "value": trial.value, "patch": trial.patch(), "base_hash": digest(path_overrides),
-                       "overrides_hash": digest(overrides), "entry_switch": entry.name, "metrics": metrics}
-                _append_jsonl(ledger_path, row)
-                rows.append(row)
-                evaluated.append(row)
+                    unevaluated.append((trial, overrides, trial_id))
+            # Submit at most one worker-sized wave at a time. A knob with many
+            # values must not enqueue minutes of hidden work just before the
+            # budget expires. Completed waves are append-only and reused.
+            while unevaluated:
+                if deadline is not None and time.monotonic() >= deadline:
+                    path_timed_out = True
+                    break
+                wave, unevaluated = unevaluated[:max(1, workers)], unevaluated[max(1, workers):]
+                futures = {pool.submit(_evaluate_task, (symside, overrides)): (trial, overrides, trial_id)
+                           for trial, overrides, trial_id in wave}
+                for future in concurrent.futures.as_completed(futures):
+                    trial, overrides, trial_id = futures[future]
+                    try:
+                        metrics = future.result()
+                    except Exception as exc:
+                        metrics = {"valid": False, "invalid_reason": str(exc), "score": float("-inf")}
+                    row = {"at": utcnow(), "kind": "entry_filter", "trial_id": trial_id,
+                           "stage": trial.stage, "group": trial.group, "switch": trial.name,
+                           "value": trial.value, "patch": trial.patch(), "base_hash": digest(path_overrides),
+                           "overrides_hash": digest(overrides), "entry_switch": entry.name, "metrics": metrics}
+                    _append_jsonl(ledger_path, row)
+                    rows.append(row)
+                    evaluated.append(row)
+            if path_timed_out:
+                break
             winner = max(evaluated, key=lambda row: bible_rank(row["metrics"]), default=None)
             winner_marginal = (_metric_float(winner["metrics"], "delta_vs_bh", -1e9)
                                - _metric_float(path_metrics, "delta_vs_bh", -1e9)) if winner else -1e9
