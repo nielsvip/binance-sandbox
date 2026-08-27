@@ -98,6 +98,42 @@ def test_stage_rejects_legacy_v8_receipt_before_touching_live_files(tmp_path):
         P.stage_promotion(summary_path, receipt_path)
 
 
+def test_v12_staging_and_apply_preserve_full_and_entry_backups(tmp_path, monkeypatch):
+    stocks = tmp_path / "stocks.json"
+    crypto = tmp_path / "crypto.json"
+    stocks.write_text("{}")
+    original_entry = {"overrides": {"LIVE_BASE": 1}, "note": "keep"}
+    crypto.write_text(json.dumps({"BTCUSDC_LONG": original_entry}))
+    monkeypatch.setattr(P, "ROOT", tmp_path)
+    monkeypatch.setattr(P, "LIVE_FILES", (stocks, crypto))
+    baseline = {"valid": True, "score": 1.0, "delta_vs_bh": 1.0,
+                "behavior_fingerprint": "old"}
+    final = {"valid": True, "score": 2.0, "delta_vs_bh": 2.0,
+             "max_dd_pct": 10.0, "tim_pct": 50.0, "pool_sharpe": 0.3,
+             "trades": 32, "behavior_fingerprint": "new"}
+    summary = {"symside": "BTCUSDC_LONG", "recipe_hash": P.digest(original_entry),
+               "baseline": baseline, "final": final,
+               "final_overrides": {"LIVE_BASE": 1, "BETTER": True}}
+    summary_path = tmp_path / "summary.json"
+    summary_path.write_text(json.dumps(summary))
+    receipt = {"verified": True, "engine": "backtest_v12_engine.py",
+               "summary_sha256": P.hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+               "receipt_id": "paired-v12"}
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(json.dumps(receipt))
+
+    manifest_path = P.stage_promotion(summary_path, receipt_path)
+    manifest = json.loads(manifest_path.read_text())
+    backup_path = P.apply_promotion(manifest_path, manifest["promotion_id"])
+
+    assert json.loads(backup_path.read_text()) == {"BTCUSDC_LONG": original_entry}
+    entry_backup = json.loads(backup_path.with_suffix(".entry.json").read_text())
+    assert entry_backup["entry"] == original_entry
+    applied = json.loads(crypto.read_text())["BTCUSDC_LONG"]
+    assert applied["overrides"] == {"LIVE_BASE": 1, "BETTER": True}
+    assert applied["best_verified"]["source"] == "lifecycle_pilot_v12_verified"
+
+
 def test_child_patch_enables_complete_parent_chain():
     trial = P.SwitchTrial("DELTA_ENTRY_ACCEL_THRESHOLD", 2.0, "ENTRY", "ENTRY:DELTA",
                           ("DELTA_ENTRY_ENABLED", "ENTRY_TECHNICAL_ENABLED"))
