@@ -97,6 +97,15 @@ This guard is backtest-only and must never alter the live daemon. A V12 result
 with more trades than Quick fails parity: `quick_trades >= v12_trades` is a
 necessary (not sufficient) promotion condition.
 
+**Native decision versus execution parity.** `V12_PARITY_QUICK_LEDGER_REPLAY=1`
+is a diagnostic-only, backtest-only bridge: it feeds the already-causal Quick
+ledger through V12's scalar fill/position/accounting seam to isolate execution
+differences. Its receipt proves neither a live decision producer nor a switch
+hook, and it is **never promotable**. A promotion receipt must instead run
+with that variable unset, complete the entire fixed NPZ window (set
+`V8_RATE_GUARD_DISABLED=1`; the live wall-clock throughput watchdog may not
+abort a parity replay), and pass the current per_sym wiring contract.
+
 ## MISSION TARGETS — state them as targets, not as achieved
 
 `pool_sharpe > 0.5`, `gain/mo > 20%`, `>= 10x B&H per symbol` are the GOAL.
