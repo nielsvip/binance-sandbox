@@ -5180,6 +5180,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _srs_pk = f"{account_key}:{_srs_sym}_{_srs_side}"
                     _srs_pos = trade_manager.positions.get(_srs_pk)
                     if abs(float(getattr(_srs_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
+                        if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+                            v8_logger.info(
+                                "[V12_SRS_NATIVE_SKIP_ACTIVE] %s ts=%s amount=%.10f",
+                                _srs_pk, _srs_ts,
+                                float(getattr(_srs_pos, "positionAmt", 0.0) or 0.0),
+                            )
                         continue
                     _srs_px = float(price_cache.get(_srs_sym.upper(), 0.0) or 0.0)
                     if _srs_px <= 0.0:
