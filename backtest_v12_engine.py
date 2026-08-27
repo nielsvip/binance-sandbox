@@ -2933,6 +2933,26 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             # up a SHORT lifecycle (and vice versa).
             return f"BLOCKED_SIDE_CONTRACT_{_key_position_side}"
 
+        # Exact parity applies at the crypto fill/P&L seam.  This is distinct
+        # from the Tradier executor below: crypto producers call _crypto_eta
+        # directly, so a guard there is what prevents scalar-only lifecycle
+        # actions from reaching the recorded ledger.
+        if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+            _quick_now = int(_sim_ts[0]) if _sim_ts else 0
+            _quick_kind = "CLOSE" if is_red else "OPEN"
+            _quick_times = (_quick_exit_event_sets if is_red else _quick_entry_event_sets).get(
+                (sym.upper(), _key_position_side)
+            )
+            if _quick_times is None:
+                return "BLOCKED_QUICK_CAUSAL_SCHEDULE_UNAVAILABLE"
+            if _quick_now not in _quick_times:
+                return "BLOCKED_QUICK_CAUSAL_EVENT_SCHEDULE"
+            _quick_token = (sym.upper(), _key_position_side, _quick_now, _quick_kind)
+            _quick_consumed = trade_manager.__dict__.setdefault("_v12_quick_schedule_consumed", set())
+            if _quick_token in _quick_consumed:
+                return "BLOCKED_QUICK_CAUSAL_EVENT_ALREADY_CONSUMED"
+            _quick_consumed.add(_quick_token)
+
         def _unlevered_shadow_qty(candidate_qty):
             """Return an exchange-step-sized fill within the cash shadow.
 
