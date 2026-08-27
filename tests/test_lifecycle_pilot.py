@@ -53,8 +53,10 @@ def test_ratchet_rejects_inert_and_negative_delta():
     negative = {**base, "score": 9.0, "delta_vs_bh": -0.1, "behavior_fingerprint": "new"}
     good = {**base, "score": 2.0, "delta_vs_bh": 2.0, "behavior_fingerprint": "new",
             "pool_sharpe": 0.3, "trades": 32}
+    lower_delta_better_score = {**good, "score": 99.0, "delta_vs_bh": 0.5}
     assert not P.improves(inert, base)
     assert not P.improves(negative, base)
+    assert not P.improves(lower_delta_better_score, base)
     assert P.improves(good, base)
 
 

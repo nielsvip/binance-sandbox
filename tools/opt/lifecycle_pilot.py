@@ -289,7 +289,9 @@ def improves(candidate: Mapping[str, Any], baseline: Mapping[str, Any]) -> bool:
         return False
     if candidate.get("behavior_fingerprint") == baseline.get("behavior_fingerprint"):
         return False
-    if float(candidate.get("delta_vs_bh") or 0.0) <= 0.0:
+    candidate_delta = _metric_float(candidate, "delta_vs_bh", -1e9)
+    baseline_delta = _metric_float(baseline, "delta_vs_bh", -1e9)
+    if candidate_delta <= 0.0 or candidate_delta <= baseline_delta:
         return False
     if float(candidate.get("max_dd_pct") or 999.0) >= 30.0:
         return False
