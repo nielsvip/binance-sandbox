@@ -4266,6 +4266,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _q_cfg = _v12_quick_events.QuickConfig.from_override_file(_override_file)
                     if mode == "tradier":
                         _q_cfg.apply_tradier_defaults()
+                    else:
+                        _q_cfg.MODE = "crypto"
                     # The scalar override was already normalized by the exact
                     # recipe loader.  Copy it directly, including keys Quick
                     # accepts dynamically for wired lifecycle paths.
@@ -4280,7 +4282,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         int(_q_store.timestamps[i]) for i in np.where(_q_entry)[0])
                     _quick_exit_event_sets[(_q_sym, _q_side)] = set(
                         int(_q_store.timestamps[i]) for i in np.where(_q_exit)[0])
-            v8_logger.info("[V12_QUICK_EVENT_GATE] built exact schedules for %d symbol-sides", len(_quick_entry_event_sets))
+            v8_logger.info(
+                "[V12_QUICK_EVENT_GATE] built exact schedules for %d symbol-sides: %s",
+                len(_quick_entry_event_sets),
+                {f"{sym}_{side}": (len(_quick_entry_event_sets[(sym, side)]), len(_quick_exit_event_sets[(sym, side)]))
+                 for sym, side in _quick_entry_event_sets},
+            )
         except Exception as _quick_events_exc:
             # An incomplete schedule is unsafe: exact verification must never
             # silently fall back to the broad scalar path.
