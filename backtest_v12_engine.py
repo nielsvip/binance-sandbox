@@ -4818,7 +4818,6 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if (
                     _wt_row.get("entry_reason") != _wt_meta["reason"]
                     or _wt_row.get("exit_reason") != "WT_CROSS_EXIT"
-                    or not bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False))
                 ):
                     continue
                 _wt_store = stores.get(_wt_sym)
