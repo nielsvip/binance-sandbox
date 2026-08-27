@@ -4357,6 +4357,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _quick_exit_event_sets = {}
     _quick_ledger_entries = {}
     _quick_ledger_exits = {}
+    # Only parity-native producers populate this.  It gives stateful exit
+    # predicates the actual scalar entry timestamp/reason without borrowing
+    # daemon state or treating an unrelated scalar position as a Quick one.
+    _native_entry_meta = {}
+    try:
+        from vec_paths.v12_exit_reduce_gap_batch3 import evaluate_gap_batch3 as _v12_exit_batch3
+    except Exception:
+        _v12_exit_batch3 = None
     if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
         try:
             import v12_quick_engine as _v12_quick_events
@@ -4694,6 +4702,57 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             v8_logger.info("[V12_QUICK_LEDGER_REPLAY] CLOSE %s ts=%s qty=%.10f result=%s",
                                            _ledger_pk, _ledger_ts, _exit_qty, _exit_result)
 
+        # WRONG_SIDE_ABS_KILL is the first stateful Quick exit needed by the
+        # BTC pilot.  It is evaluated from the same frozen bar and the scalar
+        # entry age; the Quick ledger only identifies which native reason is
+        # under parity examination.  No ledger price/quantity is replayed.
+        if _native_entry_meta and _v12_exit_batch3 is not None and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _native_exit_ts = int(ts)
+            for _native_pk, _native_meta in list(_native_entry_meta.items()):
+                _native_sym, _native_side = _native_meta["symbol"], _native_meta["side"]
+                _native_row = _quick_ledger_exits.get((_native_sym, _native_side, _native_exit_ts), {})
+                if (
+                    _native_row.get("entry_reason") != _native_meta["reason"]
+                    or _native_row.get("exit_reason") != "WRONG_SIDE_ABS_KILL"
+                ):
+                    continue
+                _native_store = stores.get(_native_sym)
+                if _native_store is None:
+                    continue
+                _native_idx = int(np.searchsorted(_native_store.timestamps, _native_exit_ts))
+                if _native_idx >= len(_native_store.timestamps) or int(_native_store.timestamps[_native_idx]) != _native_exit_ts:
+                    continue
+                _native_bar = {
+                    _native_key: _native_val[_native_idx:_native_idx + 1]
+                    for _native_key, _native_val in _native_store.arrays.items()
+                    if isinstance(_native_val, np.ndarray) and _native_val.ndim == 1
+                    and len(_native_val) == len(_native_store.timestamps)
+                }
+                _native_exit = _v12_exit_batch3(
+                    _native_bar, config, position_side=_native_side,
+                    gain_pct=0.0,
+                    position_age_minutes=max(0.0, (_native_exit_ts - _native_meta["opened_ts"]) / 60.0),
+                    position_active=True, position_above_min_qty=True,
+                    is_hedge=False, is_reduce=False,
+                )
+                if not bool(_native_exit.masks.get("wrong_side_abs_kill", np.array([False]))[0]):
+                    continue
+                _native_pos = trade_manager.positions.get(_native_pk)
+                _native_qty = abs(float(getattr(_native_pos, "positionAmt", 0.0) or 0.0))
+                _native_px = float(price_cache.get(_native_sym.upper(), 0.0) or 0.0)
+                if _native_qty <= 0.0 or _native_px <= 0.0:
+                    continue
+                _native_result = await _crypto_eta(
+                    account_key=account_key, position_key=_native_pk, symbol=_native_sym,
+                    quantity=_native_qty, current_price=_native_px,
+                    side="SELL" if _native_side == "LONG" else "BUY",
+                    position_side=_native_side, action="CLOSE", reason="WRONG_SIDE_ABS_KILL",
+                    is_full_close=True, is_hedge=False,
+                )
+                if "SUCCESS" in str(_native_result).upper():
+                    _native_entry_meta.pop(_native_pk, None)
+                v8_logger.info("[V12_WRONG_SIDE_NATIVE] %s ts=%s result=%s", _native_pk, _native_exit_ts, _native_result)
+
         # Standalone STDEV source: Quick permits a breakout/retest independently
         # of the generic score route, so scalar must create the same open intent
         # when the causal state machine fires.  The normal scalar fill seam still
@@ -4728,6 +4787,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     )
                     v8_logger.info("[V12_STDEV_NATIVE] %s %s ts=%s result=%s",
                                    _stdev_reason, _stdev_pk, _stdev_ts, _stdev_result)
+                    if "SUCCESS" in str(_stdev_result).upper():
+                        _native_entry_meta[_stdev_pk] = {
+                            "symbol": _stdev_sym, "side": _stdev_side,
+                            "reason": _stdev_reason, "opened_ts": _stdev_ts,
+                        }
 
         # Primary Golden Rule source.  The Quick schedule remains the causal
         # parity gate, while this producer independently evaluates the full
@@ -4762,6 +4826,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     )
                     v8_logger.info("[V12_GOLDEN_NATIVE] %s ts=%s result=%s",
                                    _golden_pk, _golden_ts, _golden_result)
+                    if "SUCCESS" in str(_golden_result).upper():
+                        _native_entry_meta[_golden_pk] = {
+                            "symbol": _golden_sym, "side": _golden_side,
+                            "reason": "GOLDEN_RULE_ENTRY", "opened_ts": _golden_ts,
+                        }
 
         # B11 uses the same scalar fill seam as STDEV, but remains a separately
         # attributed source in receipts and logs.  It may only open flat sides;
@@ -4800,6 +4869,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     )
                     v8_logger.info("[V12_B11_NATIVE] %s %s ts=%s result=%s",
                                    _b11_reason, _b11_pk, _b11_ts, _b11_result)
+                    if "SUCCESS" in str(_b11_result).upper():
+                        _native_entry_meta[_b11_pk] = {
+                            "symbol": _b11_sym, "side": _b11_side,
+                            "reason": _b11_reason, "opened_ts": _b11_ts,
+                        }
 
         # ═══════════════════════════════════════════════════════════════════════════
         # PORTFOLIO-AWARE SENTIMENT INJECTION (crypto path) — 2026-05-12
