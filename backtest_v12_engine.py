@@ -2947,6 +2947,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 return "BLOCKED_QUICK_CAUSAL_SCHEDULE_UNAVAILABLE"
             if _quick_now not in _quick_times:
                 return "BLOCKED_QUICK_CAUSAL_EVENT_SCHEDULE"
+            # A timestamp is not a sufficient causal identity: scalar has
+            # several independent producers that can happen to emit a close
+            # on the same bar.  Letting one of those consume this slot masks
+            # the native vector source (notably HLR re-entry exits).  During
+            # Quick→V12 verification, preserve the complete ledger identity.
+            _quick_row = (_quick_ledger_exits if is_red else _quick_ledger_entries).get(
+                (sym.upper(), _key_position_side, _quick_now), {}
+            )
+            _quick_reason = str(_quick_row.get("exit_reason" if is_red else "entry_reason", "") or "")
+            if not _quick_reason or str(reason or "") != _quick_reason:
+                return "BLOCKED_QUICK_CAUSAL_REASON_MISMATCH"
             _quick_token = (sym.upper(), _key_position_side, _quick_now, _quick_kind)
             _quick_consumed = trade_manager.__dict__.setdefault("_v12_quick_schedule_consumed", set())
             if _quick_token in _quick_consumed:
