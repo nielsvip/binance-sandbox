@@ -4408,12 +4408,20 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _scheduled_sides = ("LONG", "SHORT")
             for _q_sym, _q_store in stores.items():
                 for _q_side in _scheduled_sides:
-                    _q_cfg, _q_npz, _q_loaded_sym, _q_long, *_q_rest = _v12_lifecycle._config_and_month_npz(
-                        f"{_q_sym}_{_q_side}", dict(_overrides))
-                    if _q_npz is None or _q_loaded_sym != _q_sym:
-                        raise RuntimeError(f"Quick ledger unavailable for {_q_sym}_{_q_side}")
-                    _q_ledger = list((_v12_quick_events.simulate_one(
-                        _q_npz, _q_loaded_sym, _q_long, _q_cfg) or {}).get("ledger") or [])
+                    # The scalar account drawdown bypass is not a Quick
+                    # decision switch.  Letting it leak here removed SRS from
+                    # the very causal schedule V12 is supposed to verify.
+                    _quick_drawdown_bypass = os.environ.pop("V8_BACKTEST_BYPASS_DRAWDOWN", None)
+                    try:
+                        _q_cfg, _q_npz, _q_loaded_sym, _q_long, *_q_rest = _v12_lifecycle._config_and_month_npz(
+                            f"{_q_sym}_{_q_side}", dict(_overrides))
+                        if _q_npz is None or _q_loaded_sym != _q_sym:
+                            raise RuntimeError(f"Quick ledger unavailable for {_q_sym}_{_q_side}")
+                        _q_ledger = list((_v12_quick_events.simulate_one(
+                            _q_npz, _q_loaded_sym, _q_long, _q_cfg) or {}).get("ledger") or [])
+                    finally:
+                        if _quick_drawdown_bypass is not None:
+                            os.environ["V8_BACKTEST_BYPASS_DRAWDOWN"] = _quick_drawdown_bypass
                     _q_entries, _q_exits = set(), set()
                     for _q_row in _q_ledger:
                         _q_entry_bar = _q_row.get("bar_entry")
