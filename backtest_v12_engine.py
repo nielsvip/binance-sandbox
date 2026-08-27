@@ -2999,7 +2999,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _is_ladder_seed = (
             reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
             or str(reason).startswith((
-                "STDEV_BREAKOUT", "STDEV_RETEST", "B11", "GOLDEN_RULE_ENTRY",
+                "STDEV_BREAKOUT", "STDEV_RETEST", "B11", "B_SRS_ENTRY", "GOLDEN_RULE_ENTRY",
             ))
         )
         # ═══════════════════════════════════════════════════════════════════════════
@@ -4303,23 +4303,33 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # second approximation here; the sequential ledger gate below still limits
     # this broad predicate to the actual causal Quick entries.
     _b11_native_events = {}
-    if bool(getattr(config, "REENTRY_B11_DC_BREAK_ENABLED", False)):
+    _srs_native_events = {}
+    if (
+        bool(getattr(config, "REENTRY_B11_DC_BREAK_ENABLED", False))
+        or bool(getattr(config, "STRUCTURAL_RANGE_SHIFT_EXIT", False))
+    ):
         try:
             from v12_quick_engine import compute_reentry_blocks as _v12_reentry_blocks
             for _b11_sym, _b11_store in stores.items():
                 for _b11_side in _position_sides:
-                    _b11_mask = _v12_reentry_blocks(
+                    _native_blocks = _v12_reentry_blocks(
                         _b11_store.arrays, len(_b11_store.timestamps),
                         _b11_side == "LONG", config,
-                    ).get("B11")
-                    if _b11_mask is None:
-                        continue
-                    for _b11_idx in np.where(_b11_mask)[0]:
-                        _b11_native_events[(_b11_sym, _b11_side, int(_b11_store.timestamps[_b11_idx]))] = "B11"
+                    )
+                    _b11_mask = _native_blocks.get("B11")
+                    if _b11_mask is not None:
+                        for _b11_idx in np.where(_b11_mask)[0]:
+                            _b11_native_events[(_b11_sym, _b11_side, int(_b11_store.timestamps[_b11_idx]))] = "B11"
+                    _srs_mask = _native_blocks.get("B_SRS_ENTRY")
+                    if _srs_mask is not None:
+                        for _srs_idx in np.where(_srs_mask)[0]:
+                            _srs_native_events[(_b11_sym, _b11_side, int(_b11_store.timestamps[_srs_idx]))] = "B_SRS_ENTRY"
             v8_logger.info("[V12_B11_NATIVE] built %d standalone scalar events", len(_b11_native_events))
+            v8_logger.info("[V12_SRS_NATIVE] built %d standalone scalar events", len(_srs_native_events))
         except Exception as _b11_native_exc:
             v8_logger.exception("[V12_B11_NATIVE] event build failed: %s", _b11_native_exc)
             _b11_native_events = {}
+            _srs_native_events = {}
     # Golden Rule is a primary Quick entry producer.  Build the same frozen
     # decision against the guarded source arrays; its predicate is stateless at
     # the scalar seam, so it must not depend on daemon/Tradier indicators.
@@ -4830,6 +4840,42 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         _native_entry_meta[_golden_pk] = {
                             "symbol": _golden_sym, "side": _golden_side,
                             "reason": "GOLDEN_RULE_ENTRY", "opened_ts": _golden_ts,
+                        }
+
+        # Structural Range Shift is an independent direct Quick entry block.
+        # Its broad predicate is restricted to the matching causal ledger row
+        # during verification; scalar V12 retains ownership of the trade.
+        if _srs_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _srs_ts = int(ts)
+            for _srs_sym in stores:
+                for _srs_side in _position_sides:
+                    _srs_reason = _srs_native_events.get((_srs_sym, _srs_side, _srs_ts))
+                    if not _srs_reason:
+                        continue
+                    if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+                        _srs_ledger_row = _quick_ledger_entries.get((_srs_sym, _srs_side, _srs_ts), {})
+                        if _srs_ledger_row.get("entry_reason") != _srs_reason:
+                            continue
+                    _srs_pk = f"{account_key}:{_srs_sym}_{_srs_side}"
+                    _srs_pos = trade_manager.positions.get(_srs_pk)
+                    if abs(float(getattr(_srs_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
+                        continue
+                    _srs_px = float(price_cache.get(_srs_sym.upper(), 0.0) or 0.0)
+                    if _srs_px <= 0.0:
+                        continue
+                    _srs_qty = float(getattr(config, "START_POSITION_SIZE", 2000.0) or 2000.0) / _srs_px
+                    _srs_result = await _crypto_eta(
+                        account_key=account_key, position_key=_srs_pk, symbol=_srs_sym,
+                        quantity=_srs_qty, current_price=_srs_px,
+                        side="BUY" if _srs_side == "LONG" else "SELL",
+                        position_side=_srs_side, action="OPEN", reason=_srs_reason,
+                        is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_SRS_NATIVE] %s ts=%s result=%s", _srs_pk, _srs_ts, _srs_result)
+                    if "SUCCESS" in str(_srs_result).upper():
+                        _native_entry_meta[_srs_pk] = {
+                            "symbol": _srs_sym, "side": _srs_side,
+                            "reason": _srs_reason, "opened_ts": _srs_ts,
                         }
 
         # B11 uses the same scalar fill seam as STDEV, but remains a separately
