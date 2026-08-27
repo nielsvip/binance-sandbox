@@ -44,6 +44,7 @@ from tools.switch_tf_uniqueness import classify_run_scope, load_specs
 
 REPORT_ROOT = ROOT / "data" / "reports" / "lifecycle_pilot"
 PARITY_CSV = ROOT / "data" / "reports" / "V12_LIVE_VECTOR_PARITY_INVENTORY.csv"
+PER_SYM_PARITY_CONTRACT = ROOT / "data" / "reports" / "lifecycle_pilot" / "per_sym_parity_contract.json"
 CONNECTION_CSV = ROOT / "data" / "reports" / "V12_CURATED_CONNECTION_INVENTORY.csv"
 GROUPS_JSON = ROOT / "data" / "reports" / "gui_lab" / "opt" / "switch_groups.json"
 ALL_PATHS_CSV = ROOT / "data" / "reports" / "ALL_PATHS_ALLOWLIST.csv"
@@ -110,6 +111,22 @@ def load_live_recipes() -> Dict[str, Dict[str, Any]]:
                 "metadata": {k: v for k, v in entry.items() if k != "overrides"},
             }
     return merged
+
+
+def require_per_sym_parity_contract() -> None:
+    """Block lifecycle work unless the current live recipes are wired both ways."""
+    try:
+        payload = json.loads(PER_SYM_PARITY_CONTRACT.read_text())
+    except (OSError, ValueError) as exc:
+        raise RuntimeError(
+            "missing per_sym Quick/V12 wiring contract; run "
+            "python tools/opt/per_sym_parity_contract.py first"
+        ) from exc
+    if not payload.get("pass"):
+        raise RuntimeError(
+            f"per_sym Quick/V12 wiring contract is BLOCKED ({payload.get('summary', {}).get('blockers', '?')} blockers); "
+            "no 15m lifecycle research is permitted"
+        )
 
 
 def is_crypto_symside(symside: str) -> bool:
@@ -208,7 +225,15 @@ def _config_and_month_npz(symside: str, overrides: Mapping[str, Any]):
         raise ValueError(f"no NPZ for {symside}")
     npz, window = exact_month_slice(npz, crypto)
     npz, floor = compact_to_completed_timeframe(npz)
+    from min_decision_tf_guard import clamp_config, guard_npz
+    npz, guard_receipt = guard_npz(npz, EXECUTION_TF)
+    guard_receipt.update(clamp_config(cfg, EXECUTION_TF))
+    cfg._MIN_DECISION_TF_RECEIPT = guard_receipt
     cfg.BASE_TF = EXECUTION_TF
+    # The quick engine consumes this opt-in guard before it computes any
+    # entry/exit/reentry signal.  It also clamps selector settings in the live
+    # per_sym recipe so no stale 3m/5m value leaks into a 15m study.
+    cfg.PARITY_MIN_DECISION_TF = EXECUTION_TF
     window.update(floor)
     window["bars"] = floor["execution_bars"]
     return cfg, npz, symbol, is_long, mode, tokenised, window
@@ -1193,6 +1218,7 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
 def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path,
                 max_switches: int = 0, workers: int = 1,
                 time_budget_minutes: float = 0.0) -> Dict[str, Any]:
+    require_per_sym_parity_contract()
     _memory_preflight()
     ledger_path = run_dir / f"{symside}.jsonl"
     rows = _load_rows(ledger_path)
@@ -1381,6 +1407,7 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
                     "V8_HASHSEED_LOCKED": "1", "EZ_LOG_DIR": str(variant / "logs"),
                     "TRADIER_API_LOG_DIR": str(variant / "logs"),
                     "LIFECYCLE_EXACT_RECIPE_VERIFY": "1",
+                    "V12_PARITY_MIN_DECISION_TF": EXECUTION_TF,
                     "V8_DISABLE_PER_SYM": "1",
                     "V8_BACKTEST_CAPITAL_CONTRACT": "unlevered"})
         started = time.time()
@@ -1423,6 +1450,9 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
         "side_isolated": candidate_override["LONG_ENABLED"] != candidate_override["SHORT_ENABLED"],
         "gain_sign_matches": engine_gain is not None and (float(engine_gain) > 0) == (quick_gain > 0),
         "trades_present": engine_trades is not None and float(engine_trades) >= 2,
+        # A scalar/V12 replay may be equal to Quick, but may never create
+        # additional closes that the 15m causal Quick pass did not expose.
+        "quick_covers_v12_trades": engine_trades is not None and float(engine_trades) <= quick_trades,
         "trade_count_parity": 0.80 <= trade_ratio <= 1.25,
         "gain_parity": gain_abs_error <= max(0.5, 0.15 * abs(quick_gain)),
         "sharpe_sign_matches": engine_sharpe is not None and ((float(engine_sharpe) > 0) == (quick_sharpe > 0)),
@@ -1612,6 +1642,9 @@ def main() -> int:
         print(f"promoted; recoverable backup: {backup}")
         return 0
     recipes = load_live_recipes()
+    # Planning is also blocked: an apparently valid queue is misleading until
+    # every current live override has a reproducible Quick and V12 route.
+    require_per_sym_parity_contract()
     symsides = _parse_symbols(args.symbols, recipes)
     missing = [key for key in symsides if key not in recipes]
     if missing:

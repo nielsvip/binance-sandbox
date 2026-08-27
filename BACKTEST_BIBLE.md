@@ -77,6 +77,26 @@ fails at run time if the live modules are absent. Do not defeat it.
 Run `python3 tools/opt/parity_doctor.py --fix` — it walks all seven checks in
 dependency order and exits non-zero while anything blocks. **It is the spec.**
 
+### 15m lifecycle wiring gate (2026-08-27 — controlling)
+
+Before a per-symbol lifecycle pilot, switch sweep, crystallizer run, V12
+verification, or promotion, run `python tools/opt/per_sym_parity_contract.py`.
+It writes `data/reports/lifecycle_pilot/per_sym_parity_contract.{json,csv}` and
+must report `pass: true`. Every non-orchestration switch in the *current live*
+`per_sym` recipe must be both a causal `v12_quick_engine` read and a real
+`backtest_v12_engine`/live-decision read. `NOT_DECLARED_IN_QUICK`,
+`QUICK_NOT_CAUSAL`, and `V12_NOT_HOOKED` are hard blockers, not candidates for
+synthetic adapters or assumed no-ops. The lifecycle runner refuses to plan or
+run while the contract is absent or blocked.
+
+For all research seeking 15m-or-higher results, set
+`V12_PARITY_MIN_DECISION_TF=15m`. The guard replaces a 3m/5m indicator only
+with its same-field 15m series; if none exists it removes the decision route.
+Named 3m/5m switches are disabled and TF selector values are clamped to 15m.
+This guard is backtest-only and must never alter the live daemon. A V12 result
+with more trades than Quick fails parity: `quick_trades >= v12_trades` is a
+necessary (not sufficient) promotion condition.
+
 ## MISSION TARGETS — state them as targets, not as achieved
 
 `pool_sharpe > 0.5`, `gain/mo > 20%`, `>= 10x B&H per symbol` are the GOAL.

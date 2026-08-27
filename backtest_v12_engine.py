@@ -69,7 +69,12 @@ def _curated_override_subset(overrides: dict) -> dict:
             override_file.relative_to(lifecycle_root)
         except ValueError as exc:
             raise RuntimeError("exact lifecycle recipe must be inside lifecycle_pilot reports") from exc
-        return {str(k): v for k, v in (overrides or {}).items()}
+        selected = {str(k): v for k, v in (overrides or {}).items()}
+        min_tf = os.environ.get("V12_PARITY_MIN_DECISION_TF", "").strip().lower()
+        if min_tf in {"15m", "1h", "4h", "d", "1d"}:
+            from min_decision_tf_guard import clamp_mapping
+            selected = clamp_mapping(selected, min_tf)
+        return selected
     try:
         from tools.curated_paths import require_allowlist
         allowed = require_allowlist()
@@ -1964,6 +1969,9 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
         resolution = "3m" if mode == "crypto" else "5m"
     else:
         npz_dir, resolution = get_npz_dir(mode)
+    _parity_min_tf = os.environ.get("V12_PARITY_MIN_DECISION_TF", "").strip().lower()
+    if _parity_min_tf in {"15m", "1h", "4h", "d", "1d"}:
+        resolution = _parity_min_tf
     v8_logger.info(f"Using {npz_dir} ({resolution} resolution)")
     stores = {}
     start_ts = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if start_date else 0
@@ -2010,6 +2018,13 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
                 v8_logger.warning(f"[NPZ_PRE_FAIL] {sym}: {_pre_e}")
         try:
             store = IndicatorStore(str(npz_path), start_idx=_start_idx)
+            if _parity_min_tf:
+                # IndicatorStore exposes the raw decision arrays as ``arrays``.
+                # Remove every 3m/5m route before scalar/live predicates see it.
+                from min_decision_tf_guard import guard_npz
+                if isinstance(getattr(store, "arrays", None), dict):
+                    store.arrays, _guard_receipt = guard_npz(store.arrays, _parity_min_tf)
+                    store.min_decision_tf_receipt = _guard_receipt
             # Preserve the exact file actually opened so research provenance
             # checks cannot be redirected by a path declared inside a spec.
             store.source_npz_path = str(npz_path.resolve())
