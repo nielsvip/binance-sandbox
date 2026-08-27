@@ -69,15 +69,25 @@ def _get_arr(npz: Dict[str, np.ndarray], key: str, n: int, default: float = 0.0,
     if a is None:
         return np.full(n, default, dtype=dtype)
     a = np.asarray(a)
+    if a.ndim == 0:
+        # A scalar placeholder is not a time series.  Preserve the documented
+        # neutral fallback rather than letting ``len`` or a later cast fail.
+        return np.full(n, default, dtype=dtype)
     if len(a) != n:
         out = np.full(n, default, dtype=dtype)
         m = min(len(a), n)
         out[:m] = a[:m]
         a = out
-    if dtype is np.float32:
-        a = np.nan_to_num(a.astype(np.float32), nan=default)
-    elif dtype is np.int8:
-        a = a.astype(np.int8)
+    try:
+        if dtype is np.float32:
+            a = np.nan_to_num(a.astype(np.float32), nan=default)
+        elif dtype is np.int8:
+            a = a.astype(np.int8)
+    except (TypeError, ValueError):
+        # Optional TF selectors can legitimately name an unavailable series in
+        # a frozen NPZ.  Treat a non-numeric fallback as the documented neutral
+        # value; never turn a missing indicator into a simulation crash.
+        return np.full(n, default, dtype=dtype)
     return a
 
 
