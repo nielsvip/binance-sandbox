@@ -4391,10 +4391,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _native_reentry_meta = {}
     try:
         from vec_paths.v12_exit_reduce_gap_batch3 import evaluate_gap_batch3 as _v12_exit_batch3
+        from vec_paths.v12_exit_reduce_gap_batch2 import evaluate_gap_batch2 as _v12_exit_batch2
         from vec_paths.v12_reentry_augment_gap_batch2 import obligatory_reentry_decision as _v12_obligatory_reentry
         from vec_paths.v12_reentry_augment_gap_batch3 import hlr_reentry_decision as _v12_hlr_reentry
     except Exception:
         _v12_exit_batch3 = None
+        _v12_exit_batch2 = None
         _v12_obligatory_reentry = None
         _v12_hlr_reentry = None
     if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
@@ -4916,6 +4918,54 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _native_entry_meta.pop(_hlr_pk, None)
                     _native_reentry_meta[_hlr_pk] = {"exit_ts": _hlr_exit_ts, "exit_price": _hlr_px, "registry_qty": _hlr_qty}
                 v8_logger.info("[V12_HLR_EXIT_NATIVE] %s ts=%s result=%s", _hlr_pk, _hlr_exit_ts, _hlr_result)
+
+        # Full-close when the configured minimum of WT timeframes is against
+        # the native position.  Batch-2 is the same vector predicate Quick
+        # consumes; scalar supplies its own entry age and position state.
+        if _v12_exit_batch2 is not None and _native_entry_meta and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _all_tf_ts = int(ts)
+            for _all_tf_pk, _all_tf_meta in list(_native_entry_meta.items()):
+                _all_tf_sym, _all_tf_side = _all_tf_meta["symbol"], _all_tf_meta["side"]
+                _all_tf_row = _quick_ledger_exits.get((_all_tf_sym, _all_tf_side, _all_tf_ts), {})
+                if not str(_all_tf_row.get("exit_reason", "")).startswith("ALL_TF_AGAINST_CLOSE") or _all_tf_row.get("entry_reason") != _all_tf_meta["reason"]:
+                    continue
+                _all_tf_store = stores.get(_all_tf_sym)
+                if _all_tf_store is None:
+                    continue
+                _all_tf_idx = int(np.searchsorted(_all_tf_store.timestamps, _all_tf_ts))
+                if _all_tf_idx >= len(_all_tf_store.timestamps) or int(_all_tf_store.timestamps[_all_tf_idx]) != _all_tf_ts:
+                    continue
+                _all_tf_bar = {
+                    _all_tf_key: _all_tf_val[_all_tf_idx:_all_tf_idx + 1]
+                    for _all_tf_key, _all_tf_val in _all_tf_store.arrays.items()
+                    if isinstance(_all_tf_val, np.ndarray) and _all_tf_val.ndim == 1
+                    and len(_all_tf_val) == len(_all_tf_store.timestamps)
+                }
+                _all_tf_pos = trade_manager.positions.get(_all_tf_pk)
+                _all_tf_qty = abs(float(getattr(_all_tf_pos, "positionAmt", 0.0) or 0.0))
+                _all_tf_decision = _v12_exit_batch2(
+                    _all_tf_bar, config, position_side=_all_tf_side, gain_pct=0.0,
+                    position_age_minutes=max(0.0, (_all_tf_ts - _all_tf_meta["opened_ts"]) / 60.0),
+                    position_active=True, position_above_min_qty=_all_tf_qty > 1e-9,
+                    entry_price=0.0, max_gain_pct=0.0, is_hedge=False,
+                    stdev_breakout_active="STDEV_BREAKOUT" in _all_tf_meta["reason"], bar_count=1,
+                )
+                if not bool(_all_tf_decision.masks.get("all_tf_against_close", np.array([False]))[0]):
+                    continue
+                _all_tf_px = float(price_cache.get(_all_tf_sym.upper(), 0.0) or 0.0)
+                if _all_tf_qty <= 0.0 or _all_tf_px <= 0.0:
+                    continue
+                _all_tf_result = await _crypto_eta(
+                    account_key=account_key, position_key=_all_tf_pk, symbol=_all_tf_sym,
+                    quantity=_all_tf_qty, current_price=_all_tf_px,
+                    side="SELL" if _all_tf_side == "LONG" else "BUY",
+                    position_side=_all_tf_side, action="CLOSE", reason=str(_all_tf_row["exit_reason"]),
+                    is_full_close=True, is_hedge=False,
+                )
+                if "SUCCESS" in str(_all_tf_result).upper():
+                    _native_entry_meta.pop(_all_tf_pk, None)
+                    _native_reentry_meta[_all_tf_pk] = {"exit_ts": _all_tf_ts, "exit_price": _all_tf_px, "registry_qty": _all_tf_qty}
+                v8_logger.info("[V12_ALL_TF_EXIT_NATIVE] %s ts=%s result=%s", _all_tf_pk, _all_tf_ts, _all_tf_result)
 
         # Obligatory reentry is stateful: evaluate the exact vector predicate
         # from the scalar's prior native exit rather than fabricating a signal.
