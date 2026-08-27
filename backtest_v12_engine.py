@@ -3000,6 +3000,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
             or str(reason).startswith((
                 "STDEV_BREAKOUT", "STDEV_RETEST", "B11", "B_SRS_ENTRY", "GOLDEN_RULE_ENTRY",
+                "OBLIGATORY_REENTRY",
             ))
         )
         # ═══════════════════════════════════════════════════════════════════════════
@@ -4375,10 +4376,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # predicates the actual scalar entry timestamp/reason without borrowing
     # daemon state or treating an unrelated scalar position as a Quick one.
     _native_entry_meta = {}
+    _native_reentry_meta = {}
     try:
         from vec_paths.v12_exit_reduce_gap_batch3 import evaluate_gap_batch3 as _v12_exit_batch3
+        from vec_paths.v12_reentry_augment_gap_batch2 import obligatory_reentry_decision as _v12_obligatory_reentry
     except Exception:
         _v12_exit_batch3 = None
+        _v12_obligatory_reentry = None
     if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
         try:
             import v12_quick_engine as _v12_quick_events
@@ -4765,6 +4769,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 )
                 if "SUCCESS" in str(_native_result).upper():
                     _native_entry_meta.pop(_native_pk, None)
+                    _native_reentry_meta[_native_pk] = {"exit_ts": _native_exit_ts, "exit_price": _native_px}
                 v8_logger.info("[V12_WRONG_SIDE_NATIVE] %s ts=%s result=%s", _native_pk, _native_exit_ts, _native_result)
 
         # Quick's selected WT cross is a full close (not a partial reduction).
@@ -4812,6 +4817,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 )
                 if "SUCCESS" in str(_wt_result).upper():
                     _native_entry_meta.pop(_wt_pk, None)
+                    _native_reentry_meta[_wt_pk] = {"exit_ts": _wt_exit_ts, "exit_price": _wt_px}
                 v8_logger.info("[V12_WT_CROSS_NATIVE] %s ts=%s result=%s", _wt_pk, _wt_exit_ts, _wt_result)
 
         # STDEV's state machine emits its own failed-breakout close.  The mask
@@ -4842,7 +4848,69 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 )
                 if "SUCCESS" in str(_stdev_result).upper():
                     _native_entry_meta.pop(_stdev_pk, None)
+                    _native_reentry_meta[_stdev_pk] = {"exit_ts": _stdev_exit_ts, "exit_price": _stdev_px}
                 v8_logger.info("[V12_STDEV_EXIT_NATIVE] %s ts=%s result=%s", _stdev_pk, _stdev_exit_ts, _stdev_result)
+
+        # Obligatory reentry is stateful: evaluate the exact vector predicate
+        # from the scalar's prior native exit rather than fabricating a signal.
+        if _v12_obligatory_reentry is not None and _native_reentry_meta and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _obl_ts = int(ts)
+            for _obl_sym in stores:
+                _obl_store = stores[_obl_sym]
+                _obl_idx = int(np.searchsorted(_obl_store.timestamps, _obl_ts))
+                if _obl_idx >= len(_obl_store.timestamps) or int(_obl_store.timestamps[_obl_idx]) != _obl_ts:
+                    continue
+                _obl_bar = {
+                    _obl_key: _obl_val[_obl_idx:_obl_idx + 1]
+                    for _obl_key, _obl_val in _obl_store.arrays.items()
+                    if isinstance(_obl_val, np.ndarray) and _obl_val.ndim == 1
+                    and len(_obl_val) == len(_obl_store.timestamps)
+                }
+                _obl_close = _obl_bar.get("close")
+                if not isinstance(_obl_close, np.ndarray) or len(_obl_close) != 1:
+                    continue
+                _obl_prev = _obl_store.arrays.get("close")
+                _obl_prev_close = float(_obl_prev[_obl_idx - 1] if isinstance(_obl_prev, np.ndarray) and _obl_idx > 0 else _obl_close[0])
+                for _obl_side in _position_sides:
+                    _obl_pk = f"{account_key}:{_obl_sym}_{_obl_side}"
+                    _obl_meta = _native_reentry_meta.get(_obl_pk)
+                    if not _obl_meta:
+                        continue
+                    _obl_row = _quick_ledger_entries.get((_obl_sym, _obl_side, _obl_ts), {})
+                    if _obl_row.get("entry_reason") != "OBLIGATORY_REENTRY":
+                        continue
+                    _obl_pos = trade_manager.positions.get(_obl_pk)
+                    if abs(float(getattr(_obl_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
+                        continue
+                    _obl_decision = _v12_obligatory_reentry(
+                        _obl_bar,
+                        {
+                            "candidate_mask": np.array([True]),
+                            "exit_price": np.array([float(_obl_meta["exit_price"])]),
+                            "prev_close": np.array([_obl_prev_close]),
+                        },
+                        _obl_side == "LONG", config,
+                    )
+                    if not (_obl_decision.available and bool(_obl_decision.mask[0])):
+                        continue
+                    _obl_px = float(price_cache.get(_obl_sym.upper(), 0.0) or 0.0)
+                    if _obl_px <= 0.0:
+                        continue
+                    _obl_notional = float(getattr(config, "START_POSITION_SIZE", 2000.0) or 2000.0) * float(_obl_decision.size_mult[0])
+                    _obl_result = await _crypto_eta(
+                        account_key=account_key, position_key=_obl_pk, symbol=_obl_sym,
+                        quantity=_obl_notional / _obl_px, current_price=_obl_px,
+                        side="BUY" if _obl_side == "LONG" else "SELL",
+                        position_side=_obl_side, action="OPEN", reason="OBLIGATORY_REENTRY",
+                        is_full_close=False, is_hedge=False,
+                    )
+                    if "SUCCESS" in str(_obl_result).upper():
+                        _native_entry_meta[_obl_pk] = {
+                            "symbol": _obl_sym, "side": _obl_side,
+                            "reason": "OBLIGATORY_REENTRY", "opened_ts": _obl_ts,
+                        }
+                        _native_reentry_meta.pop(_obl_pk, None)
+                    v8_logger.info("[V12_OBLIGATORY_NATIVE] %s ts=%s result=%s", _obl_pk, _obl_ts, _obl_result)
 
         # Standalone STDEV source: Quick permits a breakout/retest independently
         # of the generic score route, so scalar must create the same open intent
