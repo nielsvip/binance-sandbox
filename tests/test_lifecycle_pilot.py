@@ -58,6 +58,18 @@ def test_ratchet_rejects_inert_and_negative_delta():
     assert P.improves(good, base)
 
 
+def test_research_ratchet_can_build_tim_before_final_gate():
+    incumbent = {"valid": True, "score": 1.0, "delta_vs_bh": 1.0,
+                 "max_dd_pct": 10, "tim_pct": 1.0,
+                 "pool_sharpe": 0.0, "trades": 2,
+                 "behavior_fingerprint": "old"}
+    useful_step = {**incumbent, "score": 2.0, "delta_vs_bh": 2.0,
+                   "tim_pct": 5.0, "trades": 8,
+                   "behavior_fingerprint": "new"}
+    assert P.ratchet_improves(useful_step, incumbent)
+    assert not P.improves(useful_step, incumbent)
+
+
 def test_stage_fails_closed_without_verified_immutable_receipt(tmp_path):
     summary = {"symside": "BTCUSDC_LONG", "baseline": {"valid": True},
                "final": {"valid": True}, "final_overrides": {}}
@@ -66,6 +78,21 @@ def test_stage_fails_closed_without_verified_immutable_receipt(tmp_path):
     receipt_path = tmp_path / "receipt.json"
     receipt_path.write_text(json.dumps({"verified": False}))
     with pytest.raises(ValueError, match="not verified"):
+        P.stage_promotion(summary_path, receipt_path)
+
+
+def test_stage_rejects_legacy_v8_receipt_before_touching_live_files(tmp_path):
+    summary = {"symside": "BTCUSDC_LONG", "baseline": {"valid": True},
+               "final": {"valid": True}, "final_overrides": {}}
+    summary_path = tmp_path / "summary.json"
+    summary_path.write_text(json.dumps(summary))
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(json.dumps({
+        "verified": True,
+        "engine": "backtest_v8_engine.py",
+        "summary_sha256": P.hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+    }))
+    with pytest.raises(ValueError, match="backtest_v12_engine"):
         P.stage_promotion(summary_path, receipt_path)
 
 

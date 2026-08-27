@@ -10005,24 +10005,56 @@ restore those campaigns. If it produces verified improvements, dedicate the
 available backtest compute to expanding the pilot across current live
 symbol/sides, highest historical opportunity first.
 
-`v12_quick_engine` produces candidates. `backtest_v8_engine.py` is used only as
-the requested real-engine parity verifier, never as the discovery source. Each
-winner requires an immutable summary hash and a successful receipt proving real
-engine execution, isolated side, result presence, comparable trades, and gain/
-Sharpe sign agreement.
+The exact current live `per_sym` recipe for the same symbol/side is the sole
+discovery baseline. The first switch is tested against that recipe; each later
+switch is tested against that recipe plus every conditionally retained positive
+switch. Bible defaults, old report winners, and empty recipes are prohibited as
+baselines. If the live entry changes during a run, its provenance hash becomes
+stale and discovery/verification must restart from the new live recipe.
+
+`v12_quick_engine` produces candidates. `backtest_v12_engine.py` is the required
+real scalar verifier, never the discovery source. It must replay both the
+untouched captured live baseline and the candidate on the identical frozen
+window. Verification requires the candidate to beat the live baseline in V12,
+as well as: isolated side, real-path execution, both results present, candidate
+trade-count ratio `0.80..1.25`, gain absolute error no more than the greater of
+`0.5pp` or `15%` of quick gain, and Sharpe sign agreement with absolute error
+no more than `0.25`. Tune only parity plumbing/configuration when these differ;
+never tune strategy behavior merely to force a match.
 
 Promotion is two-phase and fail-closed:
 
-1. `verify-v8` writes the immutable verification receipt;
+1. `verify-v12` writes the immutable paired baseline/candidate receipt;
 2. `stage` writes `STAGED_NOT_LIVE` without changing a live file;
 3. `promote --confirm <exact promotion_id>` atomically updates only an existing
    live symbol/side and creates a recoverable backup.
 
 Never invent a live symbol/side, overwrite the whole live book, or promote an
-unverified result. Canonical commands:
+unverified result. A 1-month candidate is being compared with settings that may
+have been selected from 1-year evidence, so every apply must preserve both a
+full-file backup and an entry-only backup and retain an immediate rollback path.
+Canonical commands:
 
     python tools/opt/lifecycle_pilot.py hierarchy --symbols SYMBOL_SIDE
     python tools/opt/lifecycle_pilot.py run --symbols SYMBOL_SIDE --workers 12 --time-budget-minutes 15 --run-id RUN_ID
-    python tools/opt/lifecycle_pilot.py verify-v8 SUMMARY_JSON
+    python tools/opt/lifecycle_pilot.py verify-v12 SUMMARY_JSON
     python tools/opt/lifecycle_pilot.py stage SUMMARY_JSON RECEIPT_JSON
     python tools/opt/lifecycle_pilot.py promote MANIFEST_JSON --confirm PROMOTION_ID
+
+### Controlling symbol/side campaign order (2026-08-27)
+
+Initial discovery is 1 month only and uses the persisted queue from
+`tools/opt/lifecycle_campaign.py`. The order is:
+
+1. `symbols_flz.json` crypto in explicit file order, LONG then SHORT per symbol;
+2. `symbols_trb_long.json` LONG only and `symbols_trb_short.json` SHORT only,
+   with symbol/sides actually traded during the last 30 days first (exact-side
+   TRB timestamps, then account trade count; never alphabetical);
+3. MEN crypto, then FIN crypto, then ANG crypto, with recent account activity
+   before file order;
+4. remaining TRB stock sides;
+5. mandatory remaining `symbols_trb_long` LONG and `symbols_trb_short` SHORT.
+
+Deduplicate symbol/sides at their earliest phase and include only an existing
+current live recipe; do not invent a baseline. This campaign ordering changes
+which side receives compute next, never the within-side hierarchy or gates.

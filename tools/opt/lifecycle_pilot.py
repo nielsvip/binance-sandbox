@@ -284,7 +284,7 @@ def candidate_score(metrics: Mapping[str, Any]) -> float:
 
 
 def improves(candidate: Mapping[str, Any], baseline: Mapping[str, Any]) -> bool:
-    """Conditional ratchet gate; positive delta is mandatory, not just score."""
+    """Strict final/promotion gate; positive delta is mandatory, not just score."""
     if not candidate.get("valid"):
         return False
     if candidate.get("behavior_fingerprint") == baseline.get("behavior_fingerprint"):
@@ -300,6 +300,26 @@ def improves(candidate: Mapping[str, Any], baseline: Mapping[str, Any]) -> bool:
     if int(candidate.get("trades") or 0) < 32:
         return False
     return float(candidate.get("score") or float("-inf")) > float(baseline.get("score") or float("-inf"))
+
+
+def ratchet_improves(candidate: Mapping[str, Any], incumbent: Mapping[str, Any]) -> bool:
+    """Research retention gate used while building TIM from a sparse baseline.
+
+    Requiring final TIM/trade/Sharpe floors on every single switch makes it
+    mathematically impossible to accumulate several individually useful entry
+    paths from a 1% TIM baseline. Those remain hard final promotion gates in
+    improves(); the conditional ratchet retains only real, DD-safe, positive
+    marginal delta and then reruns the complete ledger for the next switch.
+    """
+    if not candidate.get("valid"):
+        return False
+    if candidate.get("behavior_fingerprint") == incumbent.get("behavior_fingerprint"):
+        return False
+    if float(candidate.get("max_dd_pct") or 999.0) >= 30.0:
+        return False
+    candidate_delta = _metric_float(candidate, "delta_vs_bh", -1e9)
+    incumbent_delta = _metric_float(incumbent, "delta_vs_bh", -1e9)
+    return candidate_delta > 0.0 and candidate_delta > incumbent_delta
 
 
 def bible_rank(metrics: Mapping[str, Any]) -> tuple:
@@ -977,7 +997,7 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
         toggle_metrics = entry_row["metrics"]
         toggle_marginal = (_metric_float(toggle_metrics, "delta_vs_bh", -1e9)
                            - _metric_float(incumbent_metrics, "delta_vs_bh", -1e9))
-        toggle_accepted = improves(toggle_metrics, incumbent_metrics) and toggle_marginal > 0.0
+        toggle_accepted = ratchet_improves(toggle_metrics, incumbent_metrics)
         if toggle_accepted:
             incumbent_overrides.update(entry.patch())
             incumbent_metrics = dict(toggle_metrics)
@@ -1030,7 +1050,7 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
             winner = max(evaluated, key=lambda row: bible_rank(row["metrics"]), default=None)
             winner_marginal = (_metric_float(winner["metrics"], "delta_vs_bh", -1e9)
                                - _metric_float(path_metrics, "delta_vs_bh", -1e9)) if winner else -1e9
-            if winner and improves(winner["metrics"], path_metrics) and winner_marginal > 0.0:
+            if winner and ratchet_improves(winner["metrics"], path_metrics):
                 path_overrides.update(winner["patch"])
                 path_metrics = winner["metrics"]
                 accepted_filters.append(winner["trial_id"])
@@ -1107,7 +1127,7 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
             winner = max(evaluated, key=lambda row: bible_rank(row["metrics"]), default=None)
             marginal = (_metric_float(winner["metrics"], "delta_vs_bh", -1e9)
                         - _metric_float(before, "delta_vs_bh", -1e9)) if winner else -1e9
-            accepted = bool(winner and improves(winner["metrics"], before) and marginal > 0.0)
+            accepted = bool(winner and ratchet_improves(winner["metrics"], before))
             if accepted:
                 incumbent_overrides.update(winner["patch"])
                 incumbent_metrics = dict(winner["metrics"])
@@ -1234,7 +1254,7 @@ def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path,
                     candidates.append(row)
         incumbent_delta = _metric_float(incumbent, "delta_vs_bh", -1e9)
         positive = [row for row in candidates
-                    if improves(row["metrics"], incumbent)
+                    if ratchet_improves(row["metrics"], incumbent)
                     and _metric_float(row["metrics"], "delta_vs_bh", -1e9) > incumbent_delta]
         if positive:
             winner = max(positive, key=lambda row: float(row["metrics"]["score"]))
@@ -1258,7 +1278,8 @@ def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path,
         "schema": "lifecycle-pilot-v1", "created_at": utcnow(), "symside": symside,
         "window_policy": "30_calendar_days" if is_crypto_symside(symside) else "20_trading_sessions",
         "recipe_source": recipe["source"], "recipe_hash": recipe["source_entry_hash"],
-        "baseline": baseline_row["metrics"], "accepted": accepted,
+        "baseline": baseline_row["metrics"], "baseline_overrides": baseline_overrides,
+        "baseline_overrides_hash": digest(baseline_overrides), "accepted": accepted,
         "entry_paths": entry_paths,
         "final_overrides": incumbent_overrides, "final_overrides_hash": digest(incumbent_overrides),
         "final": final_metrics, "tested_trials": len([row for row in rows if row.get("kind") != "baseline"]),
@@ -1282,22 +1303,24 @@ def _metric_line(path: Path) -> Dict[str, Any]:
     return out
 
 
-def verify_v8(summary_path: Path, timeout: int = 1800) -> Dict[str, Any]:
-    """Run the real legacy engine and issue a fail-closed verification receipt."""
+def verify_engine(summary_path: Path, timeout: int = 1800,
+                  engine_filename: str = "backtest_v12_engine.py") -> Dict[str, Any]:
+    """Replay baseline and candidate in a scalar engine; issue a fail-closed receipt."""
     summary = json.loads(summary_path.read_text())
     symside = summary["symside"]
     symbol, side = E.split_symside(symside)
     npz_symbol, tokenised = E.resolve_tokenised(symbol)
     crypto = is_crypto_symside(symside)
-    work = summary_path.parent / "v8_verify" / symside
+    engine_label = "v12" if engine_filename == "backtest_v12_engine.py" else "v8"
+    work = summary_path.parent / f"{engine_label}_verify" / symside
     work.mkdir(parents=True, exist_ok=True)
-    override = dict(summary["final_overrides"])
-    override.update({"LONG_ENABLED": side == "LONG", "SHORT_ENABLED": side == "SHORT"})
-    override["BASE_TF"] = EXECUTION_TF
-    override_path = work / "override.json"
-    result_path = work / "result.txt"
-    log_path = work / "run.log"
-    override_path.write_text(json.dumps(override, indent=2, sort_keys=True))
+    candidate_override = dict(summary["final_overrides"])
+    baseline_override = dict(summary.get("baseline_overrides") or {})
+    if not baseline_override:
+        raise ValueError("summary predates exact current-per_sym baseline capture; rerun discovery")
+    for override in (candidate_override, baseline_override):
+        override.update({"LONG_ENABLED": side == "LONG", "SHORT_ENABLED": side == "SHORT"})
+        override["BASE_TF"] = EXECUTION_TF
     end_ts = summary["final"].get("window", {}).get("start_timestamp")
     if end_ts and end_ts > 1e11:
         end_ts /= 1000.0
@@ -1305,56 +1328,107 @@ def verify_v8(summary_path: Path, timeout: int = 1800) -> Dict[str, Any]:
     python = os.environ.get("BINANCE_PYTHON", sys.executable)
     # Verify against the identical causal 15m event grid, not the synthetic
     # 3m/5m base file. This also makes legacy replay materially faster.
-    _cfg, compact_npz, _symbol, _is_long, _mode, _tokenised, _window = _config_and_month_npz(symside, override)
+    _cfg, compact_npz, _symbol, _is_long, _mode, _tokenised, _window = _config_and_month_npz(
+        symside, candidate_override)
     compact_dir = work / "npz_15m"
     compact_dir.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(compact_dir / f"{npz_symbol}.npz", **compact_npz)
-    cmd = [python, "-u", str(ROOT / "backtest_v8_engine.py"), "--mode", "crypto" if crypto else "tradier",
-           "--account", "inf" if crypto or tokenised else "trb", "--start", start,
-           "--capital", "1000" if crypto or tokenised else "10000", "--symbols", npz_symbol,
-           "--npz-dir", str(compact_dir)]
-    env = os.environ.copy()
-    env.update({"V8_OVERRIDE_FILE": str(override_path), "V8_RESULT_FILE": str(result_path),
-                "V8_FORCE_REAL": "1", "V8_SWEEP_MODE": "1", "PYTHONHASHSEED": "0",
-                "V8_HASHSEED_LOCKED": "1", "EZ_LOG_DIR": str(work / "logs"),
-                "TRADIER_API_LOG_DIR": str(work / "logs")})
-    started = time.time()
-    with log_path.open("w") as log:
-        try:
-            proc = subprocess.run(cmd, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=timeout)
-            rc = proc.returncode
-            error = ""
-        except subprocess.TimeoutExpired:
-            rc, error = 124, "timeout"
-    metrics = _metric_line(result_path if result_path.exists() else log_path)
+    base_cmd = [python, "-u", str(ROOT / engine_filename), "--mode", "crypto" if crypto else "tradier",
+                "--account", "inf" if crypto or tokenised else "trb", "--start", start,
+                "--capital", "1000" if crypto or tokenised else "10000", "--symbols", npz_symbol,
+                "--npz-dir", str(compact_dir)]
+
+    def replay(label: str, override: Mapping[str, Any]) -> Dict[str, Any]:
+        variant = work / label
+        variant.mkdir(parents=True, exist_ok=True)
+        override_path = variant / "override.json"
+        result_path = variant / "result.txt"
+        log_path = variant / "run.log"
+        override_path.write_text(json.dumps(dict(override), indent=2, sort_keys=True))
+        env = os.environ.copy()
+        env.update({"V8_OVERRIDE_FILE": str(override_path), "V8_RESULT_FILE": str(result_path),
+                    "V8_FORCE_REAL": "1", "V8_SWEEP_MODE": "1", "PYTHONHASHSEED": "0",
+                    "V8_HASHSEED_LOCKED": "1", "EZ_LOG_DIR": str(variant / "logs"),
+                    "TRADIER_API_LOG_DIR": str(variant / "logs")})
+        started = time.time()
+        with log_path.open("w") as log:
+            try:
+                proc = subprocess.run(base_cmd, cwd=ROOT, env=env, stdout=log,
+                                      stderr=subprocess.STDOUT, timeout=timeout)
+                rc, error = proc.returncode, ""
+            except subprocess.TimeoutExpired:
+                rc, error = 124, "timeout"
+        metrics = _metric_line(result_path if result_path.exists() else log_path)
+        return {"label": label, "returncode": rc, "error": error, "metrics": metrics,
+                "elapsed_s": time.time() - started, "log": str(log_path),
+                "override_sha256": hashlib.sha256(override_path.read_bytes()).hexdigest()}
+
+    candidate_run = replay("candidate", candidate_override)
+    baseline_run = replay("current_per_sym_baseline", baseline_override)
+    metrics = candidate_run["metrics"]
+    baseline_engine_metrics = baseline_run["metrics"]
     quick = summary["final"]
-    v8_gain = metrics.get("gain_pct", metrics.get("pnl"))
-    v8_trades = metrics.get("closes", metrics.get("trades"))
-    v8_sharpe = metrics.get("pool_sharpe", metrics.get("sharpe"))
+    engine_gain = metrics.get("gain_pct", metrics.get("pnl"))
+    engine_trades = metrics.get("closes", metrics.get("trades"))
+    engine_sharpe = metrics.get("pool_sharpe", metrics.get("sharpe"))
+    baseline_engine_gain = baseline_engine_metrics.get("gain_pct", baseline_engine_metrics.get("pnl"))
     quick_trades = float(quick.get("trades") or 0)
-    trade_ratio = (float(v8_trades) / quick_trades) if v8_trades is not None and quick_trades else 0.0
+    quick_gain = float(quick.get("gain_pct") or 0.0)
+    quick_sharpe = float(quick.get("pool_sharpe") or 0.0)
+    trade_ratio = (float(engine_trades) / quick_trades) if engine_trades is not None and quick_trades else 0.0
+    gain_abs_error = abs(float(engine_gain) - quick_gain) if engine_gain is not None else float("inf")
+    sharpe_abs_error = abs(float(engine_sharpe) - quick_sharpe) if engine_sharpe is not None else float("inf")
+    # "Sufficient parity" is deliberately tighter than sign-only parity. The
+    # scalar engine must reproduce trade count within 20%, gain within 15%
+    # (with a 0.5-point floor), and pool Sharpe within 0.25.
     checks = {
-        "real_engine_forced": env["V8_FORCE_REAL"] == "1",
-        "zero_exit": rc == 0,
+        "real_engine_forced": True,
+        "candidate_zero_exit": candidate_run["returncode"] == 0,
+        "baseline_zero_exit": baseline_run["returncode"] == 0,
         "result_present": bool(metrics),
-        "side_isolated": override["LONG_ENABLED"] != override["SHORT_ENABLED"],
-        "gain_sign_matches": v8_gain is not None and (float(v8_gain) > 0) == (float(quick.get("gain_pct") or 0) > 0),
-        "trades_present": v8_trades is not None and float(v8_trades) >= 2,
-        "trade_count_comparable": 0.25 <= trade_ratio <= 4.0,
-        "sharpe_sign_matches": v8_sharpe is not None and ((float(v8_sharpe) > 0) == (float(quick.get("pool_sharpe") or 0) > 0)),
+        "baseline_result_present": bool(baseline_engine_metrics),
+        "side_isolated": candidate_override["LONG_ENABLED"] != candidate_override["SHORT_ENABLED"],
+        "gain_sign_matches": engine_gain is not None and (float(engine_gain) > 0) == (quick_gain > 0),
+        "trades_present": engine_trades is not None and float(engine_trades) >= 2,
+        "trade_count_parity": 0.80 <= trade_ratio <= 1.25,
+        "gain_parity": gain_abs_error <= max(0.5, 0.15 * abs(quick_gain)),
+        "sharpe_sign_matches": engine_sharpe is not None and ((float(engine_sharpe) > 0) == (quick_sharpe > 0)),
+        "sharpe_parity": sharpe_abs_error <= 0.25,
+        "v12_improves_current_per_sym": (engine_gain is not None and baseline_engine_gain is not None
+                                         and float(engine_gain) > float(baseline_engine_gain)),
     }
     receipt = {
-        "schema": "lifecycle-pilot-v8-receipt-v1", "created_at": utcnow(), "symside": symside,
+        "schema": f"lifecycle-pilot-{engine_label}-receipt-v2", "created_at": utcnow(), "symside": symside,
+        "engine": engine_filename,
         "summary_path": str(summary_path), "summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
-        "override_sha256": hashlib.sha256(override_path.read_bytes()).hexdigest(), "command": cmd,
-        "forced_real_v8": True, "returncode": rc, "error": error, "elapsed_s": time.time() - started,
+        "candidate_override_sha256": candidate_run["override_sha256"],
+        "baseline_override_sha256": baseline_run["override_sha256"], "command": base_cmd,
+        "forced_real_engine": True, "returncode": candidate_run["returncode"],
+        "error": candidate_run["error"],
+        "elapsed_s": candidate_run["elapsed_s"] + baseline_run["elapsed_s"],
         "quick_metrics": {k: quick.get(k) for k in ("gain_pct", "trades", "pool_sharpe", "max_dd_pct", "tim_pct", "delta_vs_bh")},
-        "v8_metrics": metrics, "checks": checks, "verified": all(checks.values()), "log": str(log_path),
+        "engine_metrics": metrics,
+        "baseline_engine_metrics": baseline_engine_metrics,
+        "v12_marginal_gain_pct": (float(engine_gain) - float(baseline_engine_gain)
+                                  if engine_gain is not None and baseline_engine_gain is not None else None),
+        "parity_deltas": {"trade_ratio": trade_ratio, "gain_abs_error": gain_abs_error,
+                          "sharpe_abs_error": sharpe_abs_error},
+        "checks": checks, "verified": all(checks.values()),
+        "candidate_log": candidate_run["log"], "baseline_log": baseline_run["log"],
     }
     receipt["receipt_id"] = digest(receipt)
     receipt_path = work / "receipt.json"
     receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True))
     return receipt
+
+
+def verify_v12(summary_path: Path, timeout: int = 1800) -> Dict[str, Any]:
+    return verify_engine(summary_path, timeout, "backtest_v12_engine.py")
+
+
+def verify_v8(summary_path: Path, timeout: int = 1800) -> Dict[str, Any]:
+    """Legacy compatibility verifier; new winners require verify_v12()."""
+    return verify_engine(summary_path, timeout, "backtest_v8_engine.py")
 
 
 def stage_promotion(summary_path: Path, receipt_path: Path) -> Path:
@@ -1363,18 +1437,28 @@ def stage_promotion(summary_path: Path, receipt_path: Path) -> Path:
     summary = json.loads(summary_bytes)
     receipt = json.loads(receipt_path.read_text())
     if not receipt.get("verified"):
-        raise ValueError("v8 receipt is not verified")
+        raise ValueError("real-engine receipt is not verified")
+    if receipt.get("engine") != "backtest_v12_engine.py":
+        raise ValueError("promotion requires a backtest_v12_engine receipt")
     if receipt.get("summary_sha256") != hashlib.sha256(summary_bytes).hexdigest():
-        raise ValueError("summary changed after v8 verification")
+        raise ValueError("summary changed after v12 verification")
     if not improves(summary["final"], summary["baseline"]):
         raise ValueError("final recipe does not pass the positive-delta improvement gate")
     symside = summary["symside"]
     live_path = LIVE_FILES[1] if is_crypto_symside(symside) else LIVE_FILES[0]
+    current_live = json.loads(live_path.read_text())
+    if symside not in current_live:
+        raise ValueError("refusing to stage a missing live sym_side")
+    if digest(current_live[symside]) != summary.get("recipe_hash"):
+        raise ValueError("current live per_sym differs from the discovery baseline; rerun discovery")
     manifest = {
         "schema": "lifecycle-pilot-promotion-v1", "created_at": utcnow(), "symside": symside,
         "destination": str(live_path), "summary_sha256": receipt["summary_sha256"],
         "receipt_id": receipt["receipt_id"], "overrides": summary["final_overrides"],
         "metrics": summary["final"], "status": "STAGED_NOT_LIVE",
+        "previous_live_entry_hash": digest(current_live[symside]),
+        "previous_overrides_hash": digest((current_live[symside].get("overrides") or {})),
+        "comparison_warning": "1-month candidate versus historically selected 1-year per_sym; rollback backup mandatory",
     }
     manifest["promotion_id"] = digest(manifest)
     path = summary_path.parent / f"{symside}.promotion.json"
@@ -1402,18 +1486,23 @@ def apply_promotion(manifest_path: Path, confirmation: str) -> Path:
     symside = manifest["symside"]
     if symside not in current:
         raise ValueError("refusing to invent a new live sym_side")
+    if digest(current[symside]) != manifest.get("previous_live_entry_hash"):
+        raise ValueError("live per_sym entry changed after staging; re-verify and re-stage")
     backup_dir = ROOT / "backups" / "lifecycle_pilot"
     backup_dir.mkdir(parents=True, exist_ok=True)
     backup = backup_dir / f"before_{symside}_{int(time.time())}_{hashlib.sha256(destination.read_bytes()).hexdigest()[:12]}.json"
     backup.write_bytes(destination.read_bytes())
+    _atomic_json(backup.with_suffix(".entry.json"), {"symside": symside,
+                 "entry": current[symside], "entry_hash": digest(current[symside]),
+                 "source_file": str(destination), "backed_up_at": utcnow()})
     entry = dict(current[symside])
     entry["overrides"] = manifest["overrides"]
     entry["best_verified"] = {
         **(entry.get("best_verified") or {}),
-        "source": "lifecycle_pilot_v8_verified",
+        "source": "lifecycle_pilot_v12_verified",
         "promotion_id": expected,
         "summary_sha256": manifest["summary_sha256"],
-        "v8_receipt_id": manifest["receipt_id"],
+        "v12_receipt_id": manifest["receipt_id"],
         "gain_pct": manifest["metrics"].get("gain_pct"),
         "delta_vs_bh": manifest["metrics"].get("delta_vs_bh"),
         "pool_sharpe": manifest["metrics"].get("pool_sharpe"),
@@ -1461,9 +1550,12 @@ def main() -> int:
     run.add_argument("--workers", type=int, default=int(os.environ.get("LIFECYCLE_WORKERS", "12")))
     run.add_argument("--time-budget-minutes", type=float, default=15.0,
                      help="per-symbol-side queue budget; 0 runs until the exhaustive queue is empty")
-    verify = sub.add_parser("verify-v8", help="verify one winning summary using real backtest_v8_engine")
-    verify.add_argument("summary", type=Path)
-    verify.add_argument("--timeout", type=int, default=1800)
+    verify12 = sub.add_parser("verify-v12", help="replay baseline and winner through real backtest_v12_engine")
+    verify12.add_argument("summary", type=Path)
+    verify12.add_argument("--timeout", type=int, default=1800)
+    verify8 = sub.add_parser("verify-v8", help="legacy diagnostic only; receipts cannot be promoted")
+    verify8.add_argument("summary", type=Path)
+    verify8.add_argument("--timeout", type=int, default=1800)
     stage = sub.add_parser("stage", help="create a non-live promotion manifest from a verified result")
     stage.add_argument("summary", type=Path)
     stage.add_argument("receipt", type=Path)
@@ -1471,6 +1563,10 @@ def main() -> int:
     promote.add_argument("manifest", type=Path)
     promote.add_argument("--confirm", required=True, help="exact promotion_id from the staged manifest")
     args = parser.parse_args()
+    if args.command == "verify-v12":
+        receipt = verify_v12(args.summary.resolve(), args.timeout)
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 0 if receipt["verified"] else 2
     if args.command == "verify-v8":
         receipt = verify_v8(args.summary.resolve(), args.timeout)
         print(json.dumps(receipt, indent=2, sort_keys=True))
