@@ -6498,9 +6498,14 @@ def main():
     elif ((os.environ.get("V8_SWEEP_MODE", "0") == "1" and _override_file and Path(_override_file).exists()) or (_override_source and _override_source.startswith("AUTO_VECTOR"))) and stores:
         print(f"V8_INIT_HEARTBEAT: vector parity hook triggered for {list(stores.keys())[:3]}", flush=True)
         try:
-            import v8_quick_engine as _ve
-            # EXACT vec_combiner parity: QuickConfig.from_override_file("") + apply_tradier_defaults + _apply
-            # 2026-08-25 INVENTORY FIX: QuickConfig AUTO_WIRED hook re-enabled in v12_quick_engine (3064 switches); this parity hook now runs that identical hook via _ve.simulate_one, so vector vs backtest are byte-identical for all 3000+ switches until causal backfill.
+            # The V12 verifier must execute the same engine searched by the
+            # optimizer.  Importing the retired v8 quick engine here made a
+            # superficially named "V12" replay compare two unrelated switch
+            # inventories and was the source of unexplainable trade gaps.
+            import v12_quick_engine as _ve
+            # Exact V12 QuickConfig construction and the same frozen NPZ are
+            # used for this explicit parity hook.  V8_FORCE_REAL still bypasses
+            # this branch to exercise the scalar decision path.
             _ov_raw = json.load(open(_override_file))
             print(f"V8_INIT_HEARTBEAT: loaded ov {list(_ov_raw.keys())[:5]}", flush=True)
             _qc = _ve.QuickConfig.from_override_file("")
