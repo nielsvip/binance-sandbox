@@ -3000,7 +3000,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
             or str(reason).startswith((
                 "STDEV_BREAKOUT", "STDEV_RETEST", "B11", "B_SRS_ENTRY", "GOLDEN_RULE_ENTRY",
-                "OBLIGATORY_REENTRY",
+                "OBLIGATORY_REENTRY", "HLR_REENTRY",
             ))
         )
         # ═══════════════════════════════════════════════════════════════════════════
@@ -4783,7 +4783,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 )
                 if "SUCCESS" in str(_native_result).upper():
                     _native_entry_meta.pop(_native_pk, None)
-                    _native_reentry_meta[_native_pk] = {"exit_ts": _native_exit_ts, "exit_price": _native_px}
+                    _native_reentry_meta[_native_pk] = {"exit_ts": _native_exit_ts, "exit_price": _native_px, "registry_qty": _native_qty}
                 v8_logger.info("[V12_WRONG_SIDE_NATIVE] %s ts=%s result=%s", _native_pk, _native_exit_ts, _native_result)
 
         # Quick's selected WT cross is a full close (not a partial reduction).
@@ -4831,7 +4831,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 )
                 if "SUCCESS" in str(_wt_result).upper():
                     _native_entry_meta.pop(_wt_pk, None)
-                    _native_reentry_meta[_wt_pk] = {"exit_ts": _wt_exit_ts, "exit_price": _wt_px}
+                    _native_reentry_meta[_wt_pk] = {"exit_ts": _wt_exit_ts, "exit_price": _wt_px, "registry_qty": _wt_qty}
                 v8_logger.info("[V12_WT_CROSS_NATIVE] %s ts=%s result=%s", _wt_pk, _wt_exit_ts, _wt_result)
 
         # STDEV's state machine emits its own failed-breakout close.  The mask
@@ -4862,7 +4862,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 )
                 if "SUCCESS" in str(_stdev_result).upper():
                     _native_entry_meta.pop(_stdev_pk, None)
-                    _native_reentry_meta[_stdev_pk] = {"exit_ts": _stdev_exit_ts, "exit_price": _stdev_px}
+                    _native_reentry_meta[_stdev_pk] = {"exit_ts": _stdev_exit_ts, "exit_price": _stdev_px, "registry_qty": _stdev_qty}
                 v8_logger.info("[V12_STDEV_EXIT_NATIVE] %s ts=%s result=%s", _stdev_pk, _stdev_exit_ts, _stdev_result)
 
         # HLR is used as a close predicate for these short-lived reentries.
@@ -4914,7 +4914,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 )
                 if "SUCCESS" in str(_hlr_result).upper():
                     _native_entry_meta.pop(_hlr_pk, None)
-                    _native_reentry_meta[_hlr_pk] = {"exit_ts": _hlr_exit_ts, "exit_price": _hlr_px}
+                    _native_reentry_meta[_hlr_pk] = {"exit_ts": _hlr_exit_ts, "exit_price": _hlr_px, "registry_qty": _hlr_qty}
                 v8_logger.info("[V12_HLR_EXIT_NATIVE] %s ts=%s result=%s", _hlr_pk, _hlr_exit_ts, _hlr_result)
 
         # Obligatory reentry is stateful: evaluate the exact vector predicate
@@ -4977,6 +4977,62 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         }
                         _native_reentry_meta.pop(_obl_pk, None)
                     v8_logger.info("[V12_OBLIGATORY_NATIVE] %s ts=%s result=%s", _obl_pk, _obl_ts, _obl_result)
+
+        # HLR reentry consumes the scalar exit registry just like the Quick
+        # lifecycle.  It is separately attributed from HLR's close predicate.
+        if _v12_hlr_reentry is not None and _native_reentry_meta and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _hlr_open_ts = int(ts)
+            for _hlr_open_sym in stores:
+                _hlr_open_store = stores[_hlr_open_sym]
+                _hlr_open_idx = int(np.searchsorted(_hlr_open_store.timestamps, _hlr_open_ts))
+                if _hlr_open_idx >= len(_hlr_open_store.timestamps) or int(_hlr_open_store.timestamps[_hlr_open_idx]) != _hlr_open_ts:
+                    continue
+                _hlr_open_bar = {
+                    _hlr_key: _hlr_val[_hlr_open_idx:_hlr_open_idx + 1]
+                    for _hlr_key, _hlr_val in _hlr_open_store.arrays.items()
+                    if isinstance(_hlr_val, np.ndarray) and _hlr_val.ndim == 1
+                    and len(_hlr_val) == len(_hlr_open_store.timestamps)
+                }
+                for _hlr_open_side in _position_sides:
+                    _hlr_open_pk = f"{account_key}:{_hlr_open_sym}_{_hlr_open_side}"
+                    _hlr_open_meta = _native_reentry_meta.get(_hlr_open_pk)
+                    if not _hlr_open_meta:
+                        continue
+                    _hlr_open_row = _quick_ledger_entries.get((_hlr_open_sym, _hlr_open_side, _hlr_open_ts), {})
+                    if _hlr_open_row.get("entry_reason") != "HLR_REENTRY":
+                        continue
+                    _hlr_open_pos = trade_manager.positions.get(_hlr_open_pk)
+                    if abs(float(getattr(_hlr_open_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
+                        continue
+                    _hlr_open_decision = _v12_hlr_reentry(
+                        _hlr_open_bar,
+                        {
+                            "candidate_mask": np.array([True]),
+                            "registry_age_seconds": np.array([max(0.0, _hlr_open_ts - _hlr_open_meta["exit_ts"])]),
+                            "registry_has_qty": np.array([float(_hlr_open_meta.get("registry_qty", 0.0)) > 1e-9]),
+                        },
+                        _hlr_open_side == "LONG", config,
+                    )
+                    if not (_hlr_open_decision.available and bool(_hlr_open_decision.mask[0])):
+                        continue
+                    _hlr_open_px = float(price_cache.get(_hlr_open_sym.upper(), 0.0) or 0.0)
+                    if _hlr_open_px <= 0.0:
+                        continue
+                    _hlr_open_notional = float(getattr(config, "START_POSITION_SIZE", 2000.0) or 2000.0) * float(_hlr_open_decision.multiplier[0])
+                    _hlr_open_result = await _crypto_eta(
+                        account_key=account_key, position_key=_hlr_open_pk, symbol=_hlr_open_sym,
+                        quantity=_hlr_open_notional / _hlr_open_px, current_price=_hlr_open_px,
+                        side="BUY" if _hlr_open_side == "LONG" else "SELL",
+                        position_side=_hlr_open_side, action="OPEN", reason="HLR_REENTRY",
+                        is_full_close=False, is_hedge=False,
+                    )
+                    if "SUCCESS" in str(_hlr_open_result).upper():
+                        _native_entry_meta[_hlr_open_pk] = {
+                            "symbol": _hlr_open_sym, "side": _hlr_open_side,
+                            "reason": "HLR_REENTRY", "opened_ts": _hlr_open_ts,
+                        }
+                        _native_reentry_meta.pop(_hlr_open_pk, None)
+                    v8_logger.info("[V12_HLR_OPEN_NATIVE] %s ts=%s result=%s", _hlr_open_pk, _hlr_open_ts, _hlr_open_result)
 
         # Standalone STDEV source: Quick permits a breakout/retest independently
         # of the generic score route, so scalar must create the same open intent
