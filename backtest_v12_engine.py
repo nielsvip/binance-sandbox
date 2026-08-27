@@ -4583,25 +4583,29 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     if _entry_row is not None:
                         _entry_qty = float(_entry_row.get("qty", 0.0) or 0.0)
                         if _entry_qty > 0.0:
-                            await _crypto_eta(
+                            _entry_result = await _crypto_eta(
                                 account_key=account_key, position_key=_ledger_pk, symbol=_ledger_sym,
                                 quantity=_entry_qty, current_price=_ledger_px,
                                 side="BUY" if _ledger_side == "LONG" else "SELL",
                                 position_side=_ledger_side, action="OPEN",
                                 reason="V12_QUICK_LEDGER_REPLAY", is_full_close=False,
                             )
+                            v8_logger.info("[V12_QUICK_LEDGER_REPLAY] OPEN %s ts=%s qty=%.10f result=%s",
+                                           _ledger_pk, _ledger_ts, _entry_qty, _entry_result)
                     _exit_row = _quick_ledger_exits.get((_ledger_sym, _ledger_side, _ledger_ts))
                     if _exit_row is not None:
                         _ledger_pos = trade_manager.positions.get(_ledger_pk)
                         _exit_qty = abs(float(getattr(_ledger_pos, "positionAmt", 0.0) or 0.0))
                         if _exit_qty > 0.0:
-                            await _crypto_eta(
+                            _exit_result = await _crypto_eta(
                                 account_key=account_key, position_key=_ledger_pk, symbol=_ledger_sym,
                                 quantity=_exit_qty, current_price=_ledger_px,
                                 side="SELL" if _ledger_side == "LONG" else "BUY",
                                 position_side=_ledger_side, action="CLOSE",
                                 reason="V12_QUICK_LEDGER_REPLAY", is_full_close=True,
                             )
+                            v8_logger.info("[V12_QUICK_LEDGER_REPLAY] CLOSE %s ts=%s qty=%.10f result=%s",
+                                           _ledger_pk, _ledger_ts, _exit_qty, _exit_result)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # PORTFOLIO-AWARE SENTIMENT INJECTION (crypto path) — 2026-05-12
