@@ -1377,6 +1377,31 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
     for override in (candidate_override, baseline_override):
         override.update({"LONG_ENABLED": side == "LONG", "SHORT_ENABLED": side == "SHORT"})
         override["BASE_TF"] = EXECUTION_TF
+
+    def resolved_quick_recipe(override: Mapping[str, Any]) -> Dict[str, Any]:
+        """Materialize Quick defaults plus the per_sym recipe for scalar V12.
+
+        A per_sym file intentionally stores only deltas.  Replaying that sparse
+        file in V12 made its unrelated daemon defaults silently differ from the
+        QuickConfig defaults that generated the vector ledger (for example SRS).
+        The scalar verifier must receive the complete resolved Quick recipe;
+        V12 then applies the same 15m clamp before its live modules instantiate.
+        """
+        resolved_cfg, *_ = _config_and_month_npz(symside, dict(override))
+        result: Dict[str, Any] = {}
+        for field_spec in dataclasses.fields(resolved_cfg):
+            value = getattr(resolved_cfg, field_spec.name)
+            try:
+                json.dumps(value)
+            except (TypeError, ValueError):
+                continue
+            result[field_spec.name] = value
+        # Retain dynamic/non-dataclass overrides explicitly supplied by recipe.
+        result.update(dict(override))
+        return result
+
+    candidate_scalar_override = resolved_quick_recipe(candidate_override)
+    baseline_scalar_override = resolved_quick_recipe(baseline_override)
     end_ts = summary["final"].get("window", {}).get("start_timestamp")
     if end_ts and end_ts > 1e11:
         end_ts /= 1000.0
@@ -1441,8 +1466,8 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
                 "elapsed_s": time.time() - started, "log": str(log_path),
                 "override_sha256": hashlib.sha256(override_path.read_bytes()).hexdigest()}
 
-    candidate_run = replay("candidate", candidate_override)
-    baseline_run = replay("current_per_sym_baseline", baseline_override)
+    candidate_run = replay("candidate", candidate_scalar_override)
+    baseline_run = replay("current_per_sym_baseline", baseline_scalar_override)
     metrics = candidate_run["metrics"]
     baseline_engine_metrics = baseline_run["metrics"]
     # Summaries are campaign artifacts and can outlive a Quick wiring repair.
