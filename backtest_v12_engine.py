@@ -7540,6 +7540,20 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_XU_FINAL_DISABLED"
         is_reduce = action.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_reduce else "OPEN")
+        # Exact Quick→scalar parity uses the causal vector entry schedule as
+        # the final admission authority for position-increasing actions.  Live
+        # managers have several reentry/open producers that otherwise bypass
+        # ``check_entry_candidates`` and manufacture scalar-only trades.  This
+        # is verification-only; reductions still follow the real scalar path.
+        _quick_event_gate = os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1"
+        _position_increase = (not is_reduce) and not is_hedge and str(act).upper() in {
+            "OPEN", "QUICK_OPEN", "AUGMENT", "QUICK_AUGMENT", "REENTRY",
+        }
+        if _quick_event_gate and _position_increase:
+            _quick_times = _entry_signal_sets.get(symbol.upper())
+            _quick_now = int(_sim_ts[0]) if _sim_ts else 0
+            if _quick_times is not None and _quick_now not in _quick_times:
+                return "BLOCKED_QUICK_CAUSAL_EVENT_SCHEDULE"
         # The private research prefix is accepted only by this backtest engine
         # and only when the explicit replay adapter invokes this local helper.
         # It bypasses strategy-entry vetoes so the audit measures execution and
