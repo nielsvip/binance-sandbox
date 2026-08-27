@@ -65,7 +65,15 @@ backtest_v8_engine look like it read 1,921 switches.
 ## PARITY — the corrected definition
 
 **Parity = `v12_quick_engine` (vectorised) vs `backtest_v12_engine` (real live
-functions, bar-by-bar) on the SAME symbol/side, SAME `.npz`, SAME 1-year window.**
+decision functions, bar-by-bar) on the SAME symbol/side and SAME frozen `.npz`.
+The pilot window is 30 calendar days for crypto and the equivalent 20 trading
+days for stocks; a one-year replay is a later validation tier, not a substitute
+for this pilot.**
+
+“Live” in this parity definition means the scalar V12 decision/call path, **not
+the running Tradier or crypto daemon and not its indicators**.  Both engines
+must consume only the selected frozen NPZ window.  Do not mix current feed
+values, daemon state, or regenerated indicators into an NPZ parity result.
 
 - NOT Mac<->S1 rsync (that is a file copy)
 - NOT vectorised vs vectorised (proves nothing about live)
