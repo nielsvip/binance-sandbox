@@ -4280,12 +4280,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # admission filter.  Build its causal state machine once from the guarded
     # frozen NPZ and emit it in the crypto scalar loop below.
     _stdev_native_events = {}
+    _stdev_native_exit_events = {}
     if bool(getattr(config, "STDEV_BREAKOUT_ENABLED", False)):
         try:
             from v12_quick_engine import _stdev_breakout_masks as _v12_stdev_masks
             for _stdev_sym, _stdev_store in stores.items():
                 for _stdev_side in _position_sides:
-                    _stdev_breakout, _stdev_retest, _ = _v12_stdev_masks(
+                    _stdev_breakout, _stdev_retest, _stdev_failed = _v12_stdev_masks(
                         _stdev_store.arrays, len(_stdev_store.timestamps),
                         _stdev_side == "LONG", config,
                     )
@@ -4293,10 +4294,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         _stdev_native_events[(_stdev_sym, _stdev_side, int(_stdev_store.timestamps[_stdev_idx]))] = (
                             "STDEV_BREAKOUT" if _stdev_breakout[_stdev_idx] else "STDEV_RETEST"
                         )
-            v8_logger.info("[V12_STDEV_NATIVE] built %d standalone scalar events", len(_stdev_native_events))
+                    for _stdev_idx in np.where(_stdev_failed)[0]:
+                        _stdev_native_exit_events[(_stdev_sym, _stdev_side, int(_stdev_store.timestamps[_stdev_idx]))] = "STDEV_BREAKOUT_EXIT"
+            v8_logger.info("[V12_STDEV_NATIVE] built %d standalone scalar events / %d exits", len(_stdev_native_events), len(_stdev_native_exit_events))
         except Exception as _stdev_native_exc:
             v8_logger.exception("[V12_STDEV_NATIVE] event build failed: %s", _stdev_native_exc)
             _stdev_native_events = {}
+            _stdev_native_exit_events = {}
     # B11 is also a standalone Quick reentry source.  Unlike B10 it does not
     # depend on a low-timeframe oscillator, so it remains valid in the 15m+
     # parity study.  Reuse Quick's exact predicate rather than maintaining a
@@ -4809,6 +4813,36 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if "SUCCESS" in str(_wt_result).upper():
                     _native_entry_meta.pop(_wt_pk, None)
                 v8_logger.info("[V12_WT_CROSS_NATIVE] %s ts=%s result=%s", _wt_pk, _wt_exit_ts, _wt_result)
+
+        # STDEV's state machine emits its own failed-breakout close.  The mask
+        # was built by the same causal state machine as its entry/retest events.
+        if _stdev_native_exit_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _stdev_exit_ts = int(ts)
+            for _stdev_pk, _stdev_meta in list(_native_entry_meta.items()):
+                _stdev_sym, _stdev_side = _stdev_meta["symbol"], _stdev_meta["side"]
+                if not _stdev_native_exit_events.get((_stdev_sym, _stdev_side, _stdev_exit_ts)):
+                    continue
+                _stdev_row = _quick_ledger_exits.get((_stdev_sym, _stdev_side, _stdev_exit_ts), {})
+                if (
+                    _stdev_row.get("entry_reason") != _stdev_meta["reason"]
+                    or _stdev_row.get("exit_reason") != "STDEV_BREAKOUT_EXIT"
+                ):
+                    continue
+                _stdev_pos = trade_manager.positions.get(_stdev_pk)
+                _stdev_qty = abs(float(getattr(_stdev_pos, "positionAmt", 0.0) or 0.0))
+                _stdev_px = float(price_cache.get(_stdev_sym.upper(), 0.0) or 0.0)
+                if _stdev_qty <= 0.0 or _stdev_px <= 0.0:
+                    continue
+                _stdev_result = await _crypto_eta(
+                    account_key=account_key, position_key=_stdev_pk, symbol=_stdev_sym,
+                    quantity=_stdev_qty, current_price=_stdev_px,
+                    side="SELL" if _stdev_side == "LONG" else "BUY",
+                    position_side=_stdev_side, action="CLOSE", reason="STDEV_BREAKOUT_EXIT",
+                    is_full_close=True, is_hedge=False,
+                )
+                if "SUCCESS" in str(_stdev_result).upper():
+                    _native_entry_meta.pop(_stdev_pk, None)
+                v8_logger.info("[V12_STDEV_EXIT_NATIVE] %s ts=%s result=%s", _stdev_pk, _stdev_exit_ts, _stdev_result)
 
         # Standalone STDEV source: Quick permits a breakout/retest independently
         # of the generic score route, so scalar must create the same open intent
