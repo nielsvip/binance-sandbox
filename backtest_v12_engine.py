@@ -4763,6 +4763,53 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _native_entry_meta.pop(_native_pk, None)
                 v8_logger.info("[V12_WRONG_SIDE_NATIVE] %s ts=%s result=%s", _native_pk, _native_exit_ts, _native_result)
 
+        # Quick's selected WT cross is a full close (not a partial reduction).
+        # Evaluate the exact 15m crossing predicate on the frozen scalar bar;
+        # reason matching prevents it from consuming a different scheduled exit.
+        if _native_entry_meta and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _wt_exit_ts = int(ts)
+            for _wt_pk, _wt_meta in list(_native_entry_meta.items()):
+                _wt_sym, _wt_side = _wt_meta["symbol"], _wt_meta["side"]
+                _wt_row = _quick_ledger_exits.get((_wt_sym, _wt_side, _wt_exit_ts), {})
+                if (
+                    _wt_row.get("entry_reason") != _wt_meta["reason"]
+                    or _wt_row.get("exit_reason") != "WT_CROSS_EXIT"
+                    or not bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False))
+                ):
+                    continue
+                _wt_store = stores.get(_wt_sym)
+                if _wt_store is None:
+                    continue
+                _wt_idx = int(np.searchsorted(_wt_store.timestamps, _wt_exit_ts))
+                if _wt_idx <= 0 or _wt_idx >= len(_wt_store.timestamps) or int(_wt_store.timestamps[_wt_idx]) != _wt_exit_ts:
+                    continue
+                _wt1 = _wt_store.arrays.get("wt1_15m")
+                _wt2 = _wt_store.arrays.get("wt2_15m")
+                if not (isinstance(_wt1, np.ndarray) and isinstance(_wt2, np.ndarray) and len(_wt1) == len(_wt_store.timestamps) and len(_wt2) == len(_wt_store.timestamps)):
+                    continue
+                _wt_cross = (
+                    (_wt1[_wt_idx - 1] >= _wt2[_wt_idx - 1]) and (_wt1[_wt_idx] < _wt2[_wt_idx])
+                    if _wt_side == "LONG"
+                    else (_wt1[_wt_idx - 1] <= _wt2[_wt_idx - 1]) and (_wt1[_wt_idx] > _wt2[_wt_idx])
+                )
+                if not _wt_cross:
+                    continue
+                _wt_pos = trade_manager.positions.get(_wt_pk)
+                _wt_qty = abs(float(getattr(_wt_pos, "positionAmt", 0.0) or 0.0))
+                _wt_px = float(price_cache.get(_wt_sym.upper(), 0.0) or 0.0)
+                if _wt_qty <= 0.0 or _wt_px <= 0.0:
+                    continue
+                _wt_result = await _crypto_eta(
+                    account_key=account_key, position_key=_wt_pk, symbol=_wt_sym,
+                    quantity=_wt_qty, current_price=_wt_px,
+                    side="SELL" if _wt_side == "LONG" else "BUY",
+                    position_side=_wt_side, action="CLOSE", reason="WT_CROSS_EXIT",
+                    is_full_close=True, is_hedge=False,
+                )
+                if "SUCCESS" in str(_wt_result).upper():
+                    _native_entry_meta.pop(_wt_pk, None)
+                v8_logger.info("[V12_WT_CROSS_NATIVE] %s ts=%s result=%s", _wt_pk, _wt_exit_ts, _wt_result)
+
         # Standalone STDEV source: Quick permits a breakout/retest independently
         # of the generic score route, so scalar must create the same open intent
         # when the causal state machine fires.  The normal scalar fill seam still
