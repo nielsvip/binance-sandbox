@@ -4296,7 +4296,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             "STDEV_BREAKOUT" if _stdev_breakout[_stdev_idx] else "STDEV_RETEST"
                         )
                     for _stdev_idx in np.where(_stdev_failed)[0]:
-                        _stdev_native_exit_events[(_stdev_sym, _stdev_side, int(_stdev_store.timestamps[_stdev_idx]))] = "STDEV_BREAKOUT_EXIT"
+                        # Quick detects the failed breakout on this completed
+                        # bar but fills its lifecycle close on the next bar.
+                        # Preserve that causal action timing in scalar V12.
+                        _stdev_exit_idx = min(int(_stdev_idx) + 1, len(_stdev_store.timestamps) - 1)
+                        _stdev_native_exit_events[(_stdev_sym, _stdev_side, int(_stdev_store.timestamps[_stdev_exit_idx]))] = "STDEV_BREAKOUT_EXIT"
             v8_logger.info("[V12_STDEV_NATIVE] built %d standalone scalar events / %d exits", len(_stdev_native_events), len(_stdev_native_exit_events))
         except Exception as _stdev_native_exc:
             v8_logger.exception("[V12_STDEV_NATIVE] event build failed: %s", _stdev_native_exc)
