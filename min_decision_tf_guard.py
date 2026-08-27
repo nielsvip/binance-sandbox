@@ -68,6 +68,22 @@ def clamp_config(cfg: Any, min_tf: str = "15m") -> dict[str, list[str]]:
                 setattr(cfg, name, type(value)(new))
                 clamped.append(name)
     setattr(cfg, "BASE_TF", min_tf)
+    # Dataclasses capture their constructor defaults when the class is
+    # generated, so changing ``Field.default`` / the class attribute alone
+    # does not protect a config instance constructed after this call.  The
+    # scalar engine imports decision managers after applying this guard; wrap
+    # that constructor once so their fresh config also obeys the floor.
+    if isinstance(cfg, type) and is_dataclass(cfg) and not getattr(
+        cfg, "_min_decision_tf_guarded_init", False
+    ):
+        original_init = cfg.__init__
+
+        def guarded_init(self: Any, *args: Any, **kwargs: Any) -> None:
+            original_init(self, *args, **kwargs)
+            clamp_config(self, min_tf)
+
+        cfg.__init__ = guarded_init
+        cfg._min_decision_tf_guarded_init = True
     return {"disabled_low_tf_switches": sorted(disabled), "clamped_low_tf_selectors": sorted(clamped)}
 
 

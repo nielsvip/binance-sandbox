@@ -300,6 +300,28 @@ if _overrides:
             except: pass
     v8_logger.info(f"Applied {len(_overrides)} config overrides from {_override_source} (module + class + dataclass default + instances)")
 
+# The 15m parity recipe must suppress low-timeframe *defaults* as well as
+# explicit override keys.  In particular, Config creates fresh instances when
+# ez_manage is imported; only clamping the override mapping left the crypto
+# default WT_3M_FORCE_OPEN_ENABLED=True alive in the scalar path.
+if os.environ.get("V12_PARITY_MIN_DECISION_TF", "").strip().lower() in {"15m", "1h", "4h", "d", "1d"}:
+    from min_decision_tf_guard import clamp_config as _clamp_min_decision_tf
+
+    def _clamp_config_family(_module, _class_name):
+        _min_tf = os.environ["V12_PARITY_MIN_DECISION_TF"].strip().lower()
+        _clamp_min_decision_tf(_module, _min_tf)
+        _cls = getattr(_module, _class_name, None)
+        if _cls is not None:
+            _clamp_min_decision_tf(_cls, _min_tf)
+            for _instance in list(getattr(_cls, "_INSTANCES", [])):
+                _clamp_min_decision_tf(_instance, _min_tf)
+
+    _clamp_config_family(config, "Config")
+    # Import before ez_manage so the identical no-3m/no-5m contract also
+    # applies to its stock-side config family and every fresh instance.
+    import config_tradier as _min_tf_config_tradier
+    _clamp_config_family(_min_tf_config_tradier, "TradierConfig")
+
 # Direct-V8 path census telemetry.  The lab supplies this only for one
 # requested matrix parameter at a time.  It counts *real instance reads* in
 # the engine process and writes a tiny sidecar at interpreter shutdown.  This

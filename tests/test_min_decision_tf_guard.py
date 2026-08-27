@@ -36,3 +36,11 @@ def test_guard_disables_explicit_low_tf_switches_and_clamps_selectors():
     assert cfg.ENTRY_TF == "15m"
     assert cfg.EXIT_TFS == ["15m", "15m", "1h"]
     assert receipt["disabled_low_tf_switches"] == ["WT_TF_3M_ENABLED"]
+
+
+def test_guard_can_clamp_dataclass_defaults_before_fresh_instances():
+    # The scalar engine must clamp the class before it imports a decision
+    # manager that constructs a fresh config instance.
+    clamp_config(_Cfg)
+    assert _Cfg.WT_TF_3M_ENABLED is False
+    assert _Cfg().WT_TF_3M_ENABLED is False
