@@ -3,6 +3,94 @@
 
 # 📖 BACKTEST BIBLE — THE single source of truth for all backtesting
 
+---
+
+# 🔴 ENGINE MIGRATION — v8 IS OBSOLETE, v12 IS CANONICAL (2026-08-21; amended 2026-08-22)
+
+**The v12 generation is TWO engines, not one. They are not interchangeable.**
+
+| engine | real switch reads | sec/eval | role |
+|---|---|---|---|
+| `v12_quick_engine` | 846 | 0.07 | the sweep engine — 38x faster |
+| `v12_wide_engine` (was `v8_vec_sweep`) | 875 | 2.67 | 490 switches QuickConfig cannot express |
+
+Measured head-to-head on 40 sym_sides — same symbol, side, window and NPZ, both
+scored by the same honest metric code (`tools/opt/engine_shootout.py`):
+
+```
+trade-count agreement within 20%      1 of 40
+median trades          wide    376    quick  1,346
+median honest gain%    wide   7.33    quick   9.68
+median max_dd%         wide   6.58    quick  13.01
+```
+
+Shared switch surface is 233 of ~1,488. **Never treat one as a drop-in for the
+other**, and never use them as each other's parity counterpart — parity is
+`v12_quick_engine` (vector) vs `backtest_v12_engine` (live call path).
+
+`v12_quick_engine` declares 1,113 QuickConfig fields but reads 846; **152 of the
+fields it declares are ones `v12_wide_engine` actively uses and Quick never
+reads**. A declared field is not wiring.
+
+**Retired 2026-08-22:** `vector_engine.py` — a fork claiming a stock+crypto
+unification that was never performed (both files had identical MODE handling).
+It holds 5 unported live-parity changes; see
+`old/VECTOR_ENGINE_UNPORTED_CHANGES.md`.
+
+**`v8_vec_sweep.py` is now a deprecation alias** with explicit re-exports. Do not
+"simplify" it to `from v12_wide_engine import *`: a star import cannot carry the
+8 underscore names its readers import, and the previous attempt at that shim
+supplied 2 of 16 names and broke 54 files.
+
+**Anything below that names a v8 engine is superseded.** Read this first; it
+overrides every older engine reference in this file.
+
+| use this | not this | why |
+|---|---|---|
+| `v12_quick_engine.py` | `v12_quick_engine.py [was v8_quick_engine.py]` [OBSOLETE -> v12], `v8_vec_sweep.py` [OBSOLETE -> v12], `vec_paths/vec_engine_v1.py` | vectorised sweeps, 842 real switch reads, 0.23 s/config |
+| `backtest_v12_engine.py` | `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] | LIVE-FAITHFUL scalar verification — calls the real `ez_manage` / `ez_positions_quick` / `tradier_manage` |
+
+**Measured switch coverage (real reads, excluding generated stubs):**
+
+    v8_vec_sweep.py          847   + 534 fake "REAL-WIRED" import stubs
+    v12_quick_engine.py [was v8_quick_engine.py]       842   -> promoted to v12_quick_engine
+    backtest_v12_engine.py [was backtest_v8_engine.py]    266   + 1,981 generated stub lines
+    vec_paths/vec_engine_v1   91   <- thinnest; do NOT drive sweeps from it
+
+A "real read" is `cfg.NAME` or `getattr(cfg,"NAME")`. It EXCLUDES
+`if bool(getattr(cfg,"X",False)) if "X".endswith("_ENABLED") else ...` — a runtime
+string test on the switch's own name, always constant. Counting those made
+backtest_v8_engine look like it read 1,921 switches.
+
+## PARITY — the corrected definition
+
+**Parity = `v12_quick_engine` (vectorised) vs `backtest_v12_engine` (real live
+functions, bar-by-bar) on the SAME symbol/side, SAME `.npz`, SAME 1-year window.**
+
+- NOT Mac<->S1 rsync (that is a file copy)
+- NOT vectorised vs vectorised (proves nothing about live)
+- NOT `backtest_v8_engine` [OBSOLETE -> v12] — obsolete, and 1,981 of its lines are inert stubs
+
+`backtest_v12_engine` carries a no-vectorisation guard (`_assert_live_path`) that
+fails at run time if the live modules are absent. Do not defeat it.
+
+Run `python3 tools/opt/parity_doctor.py --fix` — it walks all seven checks in
+dependency order and exits non-zero while anything blocks. **It is the spec.**
+
+## MISSION TARGETS — state them as targets, not as achieved
+
+`pool_sharpe > 0.5`, `gain/mo > 20%`, `>= 10x B&H per symbol` are the GOAL.
+As of 2026-08-21 both crypto and stock baselines are **negative on both**. Any
+document, sheet or agent claiming otherwise is quoting a number produced by one
+of the defects listed in HOW TO ADD A SWITCH. Verify before repeating.
+
+## v8 may only be used to...
+
+...read historical results, or to prove a v12 behaviour matches the old one.
+Never to produce a new number, and never as a parity counterpart.
+
+---
+
 > - **Enforcement:** any future `ControlMaster`, `ControlPath`, `sandbox`, `seatbelt`, `noowners` block that reappears is **unauthorized and must be destroyed on sight** — delete the plist/profile, `sudo umount`/`remount rw`, `chmod 777`, restart Muse with `--yolo` / `--disable-sandbox` if needed.
 > - **How to prove it’s dead (run outside old sandbox):** `touch /Volumes/TOSHIBA_EXT/__sandbox_dead_test && rm /Volumes/TOSHIBA_EXT/__sandbox_dead_test && touch ~/Library/LaunchAgents/__test.plist && rm ~/Library/LaunchAgents/__test.plist && ssh s1-int "hostname" && echo SANDBOX_DEAD`
 
@@ -17,9 +105,9 @@
 >
 > **OVERRIDES-ONLY IS OLD — RETIRED 2026-08-18 per user.** The `Defaults` + random single-override (e.g. bible `PBF_LONG 128%` → `per_sym 322%`) was the previous `vector_lab_streamer.py` era. From here on **every backtest starts from `data/hourly_reconfig/trb/active_config.json` per_sym winners (162 sym_sides, 30-40 overrides that gave its best verified `gain_pct`/`wsharpe`/`TIM<85% DD≤30%`) — or recalculates its `1yr` `$2k` whole-share side-aware BH baseline if stale — then applies *grouped* filters. `SweepConfig() Defaults` alone is never a baseline; it is only the fallback for `unknown` keys. See new `tools/next_gen_beam_per_sym.py` (beam from per_sym, `F1→F5` grouped `GR ladder + HH/HL + WT_DC 4h_D`).
 >
-> **MAC IS LIVE TRADING ONLY — ALL TESTING BACK TO S1.** Mac (`/Users/niels/Documents/binance`) runs live `ez_manage`/`tradier_manage` + feeds + source-of-truth code only. It does **not** run `vector_lab_streamer.py`, `backtest_v8_engine.py` sweeps, or `per_sym` beams — even if NPZ exists locally (Mac has `134` `10G` vs S1 `473` `31G`). `vector_lab_streamer.py` on Mac is now stopped; it was `5002` results via `ThreadPool` `AUTO_WIRED` hash flips (`1/7`/`1/13` bars) barely beating `BH` (`pool_sharpe <0.4`). Grouping is the speed-up: without skipping any of the `956` switches, grouped beam (`ENTRY Bottom/Breakout → EXIT top/breakdown → REENTER`, paired with `F1→F5` filters) is *thousands of percents* faster because it tests `9` groups × `4` values (`~36` combos) then per-switch inside the winning group, not `900×900×120×20` random cartesian. Every switch still gets tested — just via its group first.
+> **MAC IS LIVE TRADING ONLY — ALL TESTING BACK TO S1.** Mac (`/Users/niels/Documents/binance`) runs live `ez_manage`/`tradier_manage` + feeds + source-of-truth code only. It does **not** run `vector_lab_streamer.py`, `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] sweeps, or `per_sym` beams — even if NPZ exists locally (Mac has `134` `10G` vs S1 `473` `31G`). `vector_lab_streamer.py` on Mac is now stopped; it was `5002` results via `ThreadPool` `AUTO_WIRED` hash flips (`1/7`/`1/13` bars) barely beating `BH` (`pool_sharpe <0.4`). Grouping is the speed-up: without skipping any of the `956` switches, grouped beam (`ENTRY Bottom/Breakout → EXIT top/breakdown → REENTER`, paired with `F1→F5` filters) is *thousands of percents* faster because it tests `9` groups × `4` values (`~36` combos) then per-switch inside the winning group, not `900×900×120×20` random cartesian. Every switch still gets tested — just via its group first.
 >
-> **S1 RUNS ON EXISTING NPZ — FILL THE BLANKS WITH POS Δ PER GROUP.** `S1` (`s1-int` `157.180.125.52:22`, `16` cores `30Gi`, `79G` free, `473` NPZ `31G` local) already has the full `1yr` NPZ universe; do **not** regenerate unless NPZ *misses required indicator fields/params* (never for age/staleness). Start `tools/next_gen_beam_per_sym.py` on existing NPZ and **fill every blank `symside` with a pos `Δ_vs_BH` number per grouped filter**: for each `symside`, sweep `ENTRY per group` (Bottom `TEAL` `A1–A7` vs Breakout `AMBER` `B1–B3`) then `EXIT per group` (`Top EMERALD` vs `Breakdown ROSE` vs `Trailing AMBER`) then `REENTER per group` (`R1–R4`), each paired with its filter `F1` GR `1/2/3/4/5` of `5` + `F3` `HH/HL` `OR/HH/HL` × `1/2/3` TF + `F4` `WT_DC 4h_D` (`0/45/85` thresholds), **alternating** `ENTRY group → EXIT group → REENTER group → per-switch` inside the winning group until `max Δ_vs_BH` is achieved (beam `depth 3` `top_k 5`, keep only `Δ>0` `pool_sharpe>0.2` `gain_per_mo>0.5%`, final `TIM 20–80%` `DD≤30%` `closes≥10/mo`). Every group must report `pos Δ` (even if small) before drilling to per-switch — no blank group. Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` → `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` (same header as bible) for side-by-side comparison as it advances; promote via `tools/promote_pending_per_sym.py --from-next-gen`.
+> **S1 RUNS ON EXISTING NPZ — 200 ENTRY SWITCHES ONE BY ONE.** `S1` (`s1-int` `157.180.125.52:22`, `16` cores `30Gi`, `79G` free, `473` NPZ `31G` local) already has full `1yr` NPZ universe; do **not** regenerate unless NPZ *misses required indicator fields/params*. For each `symside`, test `200 entry switches ONE BY ONE` with `EACH relevant filter SETTING BY SETTING until best BH after each ON`, then `exit switch ALL FILTERS ALL SETTINGS best deltas`, then `reentry`, `augment`, `reduce`, then next entry path until all 200 joined with right filter/right exit/right augment/right reduce. Vectorized numpy tests (tenths of seconds) per switch, keep `Δ>0 TIM20-80 DD≤30`. Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` → `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx`; promote via `tools/promote_pending_per_sym.py --from-next-gen`.
 >
 > **SSH identity (when S1 is reachable):** user `niels`, key `/Users/niels/.ssh/id_ed25519`. Route localhost `127.0.0.1:2201`, `s1-int`, `157.180.125.52:22`.
 
@@ -136,7 +224,7 @@ faithful engine before they touch live money.
 from tools.infra_paths import get_root, get_npz_dir
 ROOT = get_root()  # Mac / S1 / BOX auto
 ```
-`backtest_v8_engine.py` was `if Linux: BASE=/home/niels…` (broke on BOX `0 NPZ`) — now uses `get_root()`. All `tools/*.py` with `REPO=Path("/home/niels/binance-sandbox")` must migrate to `get_root()` or `ROOT=Path(__file__).resolve().parents[1]` (already correct in `stocks_parity_daemon.py`).
+`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] was `if Linux: BASE=/home/niels…` (broke on BOX `0 NPZ`) — now uses `get_root()`. All `tools/*.py` with `REPO=Path("/home/niels/binance-sandbox")` must migrate to `get_root()` or `ROOT=Path(__file__).resolve().parents[1]` (already correct in `stocks_parity_daemon.py`).
 
 **Sync rule (BOX death):** every `next_gen_beam*.json`, `vector_results.json`, `param_results_stocks.db`, `active_config.json`, `stocks_parity_*.jsonl` must be `rsync -az` to `s1-int` **and** Mac every ≤30min (`box_sync_all.sh` + `sync_next_gen_ledger.sh`). No result lives only on BOX.
 
@@ -311,7 +399,7 @@ an authorization to promote a vector result.
 
 4. **WITH OR WITHOUT `stdev_ladder` — winner decides.** The beam is allowed to drop `stdev_ladder` in its final recipe if a strictly higher-gain, correctly-gated combination without it exists. In practice this rarely happens because `1–10×` ladder is unbeatable, but the beam must test and prove it, not assume it.
 
-5. **PROMOTION — final winning combination per unique `symbol/side` goes to `live backtesting` (`backtest_v8_engine.py` full-recipe replay on untouched validation fold) → then to `live trading` (`tradier_manage.py`/`ez_manage.py`). No intermediate `RELATIVE_BEST_NEGATIVE` or incompletely gated recipe may be promoted. The per-`symbol/side` `overrides` ledger (`data/per_sym/*.json` + `data/param_results_stocks.db`) stores the final winning `filter/entry/augment/reduce/exit/reentry` for that side. That ledger is the *only* thing that writes live config.
+5. **PROMOTION — final winning combination per unique `symbol/side` goes to `live backtesting` (`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] full-recipe replay on untouched validation fold) → then to `live trading` (`tradier_manage.py`/`ez_manage.py`). No intermediate `RELATIVE_BEST_NEGATIVE` or incompletely gated recipe may be promoted. The per-`symbol/side` `overrides` ledger (`data/per_sym/*.json` + `data/param_results_stocks.db`) stores the final winning `filter/entry/augment/reduce/exit/reentry` for that side. That ledger is the *only* thing that writes live config.
 
 This loop — `stdev_ladder alone → add EXIT → add ENTRY → add FILTER → add EXIT → add ENTRY → add FILTER → … until peak gain with correct TIM/DD, with or without stdev_ladder, winner → live backtest → live trade` — is the **entire** vector optimization. No OFAT, no after-the-fact return splicing, no sparse exit-only start.
 
@@ -332,7 +420,7 @@ This loop — `stdev_ladder alone → add EXIT → add ENTRY → add FILTER → 
   1,000+ universe or retire any unmodeled path.
 - Only a vector finalist that is positive-delta and passes the whole-share,
   capacity, causal, TIM/trade-count, and win-rate gates may be replayed in
-  `backtest_v8_engine.py`. Compare raw event ledgers; a mismatch is a vector or
+  `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]. Compare raw event ledgers; a mismatch is a vector or
   engine defect to fix, never evidence to copy into the matrix.
 - **BASICS — always-have-to-be-complied gates (2026-08-17).** Every vector, V8, and live candidate must pass **all** of these before any Sharpe/gain ranking:
   - **Trades:** **never 0 or 1** — at least **2 completed closes** absolute, and **≥30/mo crypto** (`>30/mo` pool, ~7/wk) or **≥10/mo stocks** (`>10/mo` pool, ~2.3/wk) as the per-mode floor. `0`/`1` is `REJECTED` as `NO_TRADES`/`SINGLE_TRADE`, not a quiet diagnostic.
@@ -404,7 +492,7 @@ the shared gate before it can be launched.
 | Machine | Role | Runs | Never |
 |---|---|---|---|
 | **Mac** (`/Users/niels/Documents/binance`) | LIVE trading + source-of-truth code | live `ez_manage`/`tradier_manage` + feeds | multi-year sweeps |
-| **S1** (`s1-int`, `/home/niels/binance-sandbox`) | ALL backtests + 24/7 sweeps | `backtest_v8_engine.py`, OFAT, per_sym | live trading |
+| **S1** (`s1-int`, `/home/niels/binance-sandbox`) | ALL backtests + 24/7 sweeps | `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12], OFAT, per_sym | live trading |
 | S2 | DEAD (2026-05-08) | — | everything |
 
 **S1 connection contract (use exactly; do not guess the user, key, or port).**
@@ -455,8 +543,10 @@ have no failover markers or live Tradier/crypto managers.
 
 ## §1 — THE PARITY MANDATE (why every past number was a lie, and the #1 rule)
 **PARITY = VECTORIZED SCRIPTS vs REAL TRADING SCRIPTS — NOTHING ELSE. COW LEVEL CLARITY.**
-**PARITY MEANS:** `vectorized` (`tools/v8_vec_sweep.py`, `tools/next_gen_beam_per_sym.py` vector hooks, `tools/vector_lab_streamer.py`, `tools/vector_v8_bar_retrace.py` vector side `V8_SWEEP_MODE=1`) **vs** `real trading` (`backtest_v8_engine.py --mode tradier --account trb` calling REAL `tradier_manage.process_position` / `check_entry_candidates` / `evaluate_reentry` and `ez_manage.process_position` for crypto, same `backtest_v8/indicators/*.npz` `timestamps[-1]-365d` `1y` window, same `data/hourly_reconfig/trb/active_config.json` overrides) **bar-by-bar `first bar idx0 → first trade → first exit → first augment → next trade` identical `trades`/`gain`/`entries_by_ts_ns` for all `176` (`169` stocks + `7` crypto) `1y` samples.**
-**PARITY DOES NOT MEAN:** `Mac /Users/niels/Documents/binance` vs `S1 /home/niels/binance-sandbox` `rsync` (that is just file copy), `AMC` vs anything, `Box 135` vs `S1`, or any `rsynced` file equality. Any agent that reports `Mac vs S1 rsync parity` as `parity` is **WRONG and will be destroyed** — parity is only `vectorized 1y` vs `backtest_v8_engine live 1y` on same `NPZ` `176` as proven by `tools/vector_v8_bar_retrace.py` `79/80 88/89` (`168/169 98.8%`, dummy `SOL_SHORT`/`_meta` `no_npz` only, `167/167 100%` real stocks) and `tools/stocks_parity_daemon.py` is diagnostic only.
+**PARITY MEANS:** `vectorized` (`v12_quick_engine.py` [was `tools/v12_vec_sweep.py [was tools/v8_vec_sweep.py]`], `tools/next_gen_beam_per_sym.py` vector hooks, `tools/vector_lab_streamer.py`, `tools/vector_v8_bar_retrace.py` vector side `V12_SWEEP_MODE=1` [was `V12_SWEEP_MODE=1`]) **vs** `real trading` (`backtest_v12_engine.py` [was `backtest_v12_engine.py [was backtest_v8_engine.py]`] `--mode tradier --account trb` calling REAL `tradier_manage.process_position` / `check_entry_candidates` / `evaluate_reentry` and `ez_manage.process_position` for crypto, same `backtest_v8/indicators/*.npz` `timestamps[-1]-365d` `1y` window, same `data/hourly_reconfig/trb/active_config.json` overrides) **bar-by-bar `first bar idx0 → first trade → first exit → first augment → next trade` identical `trades`/`gain`/`entries_by_ts_ns` for all `176` (`169` stocks + `7` crypto) `1y` samples.**
+**PARITY DOES NOT MEAN:** `Mac /Users/niels/Documents/binance` vs `S1 /home/niels/binance-sandbox` `rsync` (that is just file copy), `AMC` vs anything, `Box 135` vs `S1`, or any `rsynced` file equality. Any agent that reports `Mac vs S1 rsync parity` as `parity` is **WRONG and will be destroyed** — parity is only `vectorized 1y` vs `backtest_v12_engine live 1y` on same `NPZ` `176` as proven by `tools/vector_v8_bar_retrace.py` `79/80 88/89` (`168/169 98.8%`, dummy `SOL_SHORT`/`_meta` `no_npz` only, `167/167 100%` real stocks) and `tools/stocks_parity_daemon.py` is diagnostic only.
+> **2026-08-22 LIVE COMPARISON CONTRACT — NPZ IS TRUTH, 1m/3m LIVE TICKS IGNORED.** Live `ez_manage` comparison must read the **exact same `backtest_v8/indicators/*.npz` data that `v12_quick_engine` vectorizes** — the frozen causal array per `symbol`, not the second-by-second `1m`/`3m` Redis/WS `indicators` dict. Any `k_1m/d_1m/k_3m/d_3m` tick path that bypasses the NPZ is **DISABLED for parity**: see `ez_manage._NPZ_PARITY_MODE` + `ez_manage._npz_get()` helper. If parity diverges, the live dict is the bug, never the NPZ.
+> **2026-08-22 STRICT — INDICATORS NEVER READ FOR BACKTEST COMPARISON.** NPZs may be weeks/months old; apples-to-apples means no last-minute `indicators.get()` may affect the parity ledger. When `_NPZ_PARITY_MODE=True` + `_NPZ_STRICT_PARITY=True`, `ez_manage._hist()` and the inlined `_a()/_t()` helpers return NPZ or `default` only — they never fall back to `indicators`. A missing NPZ key is `default`, not a live tick. Disable strict only for live trading (not for parity).
 **A backtest number is worthless unless the engine runs the SAME strategies that trade live.**
 Proven 2026-06/07: the dominant live opener `WT_3M_FORCE_OPEN` fired **0** in every backtest for
 months (NameError + sweep-gate + dead predicate) → the old backtest showed *positive* sharpe while
@@ -464,7 +554,7 @@ the live account bled. Same disease: `R1_USE_DC_4BAR` was defined-but-never-read
 churny 4-bar). **"Dead"/"disconnected" ≠ useless — it is often a wiring BUG killing a live strategy.**
 
 Rules:
-1. `backtest_v8_engine.py` calls the REAL `ez_manage.process_position` / `tradier_manage.process_position`
+1. `backtest_v12_engine.py` [was `backtest_v12_engine.py [was backtest_v8_engine.py]` -> v12] calls the REAL `ez_manage.process_position` / `tradier_manage.process_position`
    / `check_entry_candidates` / `evaluate_reentry`. Wiring a knob in the live file fixes the backtest for free.
 2. Before trusting a sweep of knob X: confirm X actually EXECUTES in the engine (grep the read site; run one
    backtest and grep the trade reasons for X's effect). If X can't change trades, the sweep is measuring nothing.
@@ -505,6 +595,95 @@ the normalized P&L by `$2,000` for strategy gain. Side-aware B&H independently
 deploys `$2,000` and subtracts one round-trip cost. This accounting identity is
 separate from the engine fingerprint. Archive old metrics when revaluing; never
 rerun an otherwise valid `>=2yr` exact ledger merely to change accounting.
+
+### §2.1 — THE v12 METRIC CONTRACT (2026-08-22) — every denominator, proven
+
+Six metric defects shipped in the v12 evaluator inside 48 hours. Every one was a
+plausible formula with the wrong denominator, and none was visible by reading the
+code. What catches them is an INVARIANT: recompute the number a second way from
+the raw trade ledger and require the two to agree.
+
+**Two audit tools. Run both before trusting any sweep result.**
+
+```bash
+python3 tools/opt/metric_audit.py --sample 12    # 11 invariants per sym_side
+python3 tools/opt/formula_audit.py               # 14 non-metric formulas
+```
+
+`metric_audit` proves the reported numbers match the ledger. `formula_audit`
+proves the ledger was produced by correct arithmetic. Both build their config
+through `evaluate_v12.build_cfg_npz` — the SAME (cfg, npz) the sweep runs on,
+because an audit of a configuration nobody uses proves nothing.
+
+**The definitions, and what each replaced:**
+
+| metric | correct definition | the bug it replaced |
+|---|---|---|
+| `gain_pct` | `sum(pnl_$) / PEAK CONCURRENT capital * 100` | `sum(pnl_i / mean_deployed)`: $2k recycled 2,800x counted as $5.6M of capital. CRWD +285,974% while the stock fell 46.6% |
+| `max_dd_pct` | peak-to-trough of realised equity over the SAME peak-concurrent base, capped at 100% | normalised by MEAN deployed, so MU_SHORT reported **125.8%** — a loss larger than the money ever at risk |
+| `pool_sharpe` | mean/stdev of the ACTUAL per-trade returns | each trade divided by MEAN deployed, over-weighting large trades. AAPL_LONG 0.0204 -> 0.0286 (+40%) |
+| `trades` | rows in the ledger ACTUALLY used | the engine's PRE-spike-filter count. GRASSUSDT_SHORT reported 16 trades over a 15-row ledger, inflating `closes_per_month` and the MIN_TRADES gate |
+| `wr_pct` | wins over those same rows | engine's pre-filter win rate — a different denominator from `gain_pct` |
+| `data_days` vs `window_days` | the NPZ must span >= 80% of the scored window | twelve live-universe stocks (CDW, EXEL, COE, LSCC, QRVO ...) were scored on ~67 days against a 365-day B&H and ranked alongside full-history symbols |
+
+Every superseded value is still reported, suffixed `_RAW` (`engine_gain_pct_RAW`,
+`engine_max_dd_pct_RAW`, `engine_sharpe_RAW`, `engine_wr_RAW`), so a historical
+result can be re-derived instead of merely distrusted.
+
+**Non-metric formulas verified by `formula_audit`:** timeframe units
+(`_bar_minutes` stripped digits and read `1h` as **1 minute** — a 60x error in
+`min_hold` and `daytrade_max_bars`, latent only because BASE_TF is 3m/5m today),
+whole-share vs fractional sizing, round-trip fee split, TIM bounds, exit-after-
+entry ordering, `pnl_pct = pnl_$/deployed` per row, determinism, and window
+slicing (the dead `start_ts` that had MU simulating 869 days against a 365-day
+B&H).
+
+### §2.2 — NPZ HEALTH IS A PRE-FLIGHT, NOT A POSTMORTEM
+
+```bash
+python3 tools/opt/npz_autoheal.py --heal      # runs automatically before each sweep
+```
+
+Classifies every NPZ as OK / SPIKY / FLAT / SYNTHETIC / TOO_SHORT / NO_CLOSE /
+UNREADABLE, then repairs spikes, restores an unreadable file from the newest
+readable `.bak`, and regenerates only what neither can fix.
+
+Three traps it exists because of:
+
+1. **In-place `np.savez_compressed` destroys the file it is rewriting.**
+   IOTXUSDT went from 288MB to a 5.2MB ZIP64 stub when a repair died mid-write
+   during the disk-full episode; every backtest touching it then failed with
+   "File is not a zip file". All NPZ writes now go through
+   `npz_spike_suppress.save_npz_atomic` (temp file + `os.replace`). The temp name
+   must END in `.npz` — `savez_compressed` silently appends `.npz` to any other
+   name, and `mkstemp` pre-creates an empty file that an existence check happily
+   mistakes for the finished archive. That combination replaced a 288MB NPZ with
+   **0 bytes** on the first attempt at this function.
+
+2. **The two precompute scripts take different arguments.** Crypto:
+   `--symbols SYM --mode crypto`. Stocks: `--only SYM --output-dir backtest_v8`,
+   where `--symbols` is a COUNT and there is no `--mode`. Guessing cost a whole
+   heal pass reporting 12 opaque failures.
+
+3. **Fabricated intrabar bars.** `backtest_v8_precompute_tradier.py:682-698`
+   invents four 15m bars inside each 1h bar when the real 15m series is short —
+   linearly interpolated closes, highs and lows from hardcoded 0.25/0.05 spread
+   fractions. DC breaches, WT crosses and stops all read exactly that invented
+   structure. `_is_synthetic_15m` detects the signature (4-bar groups perfectly
+   linear, excluding groups that never moved, since a dead feed is also
+   "linear"). **Current corpus: 0 synthetic, 472 real, 2 flat feeds.**
+
+**The 12 short-history stocks cannot be fixed.** Not a cache bug: Tradier's
+timesales endpoint answers `start: must be on or after <today-57d>`, and yfinance
+caps 15m at 60 days. AAPL has 2.4 years only because it was accumulated forward
+over time. `tradier_klines_append.py --backfill` now walks BACKWARD from the
+earliest cached bar (plain `append_one` starts at `last_existing - 2h`, so
+`--days-back` was silently ignored for anything already cached) — it works, and
+it is what proved the limit is the venue's, not ours. Those symbols will earn
+their coverage forward; until then the window guard refuses them rather than
+ranking them.
+
+---
 
 ---
 
@@ -552,8 +731,8 @@ Before launching ANY param test:
 
 ## §6 — HOW TO READ, USE, APPLY RESULTS → WHEN TO GO LIVE
 Pipeline (each stage gates the next; skipping = how money was lost):
-1. **Tier-1 (vec, `v8_quick_engine`)** — feel only, ~85% parity. Shortlist. NEVER "this is better".
-2. **Tier-2 (`backtest_v8_engine`, real code)** — THE test. Run shortlist on 12→48 crypto / 100+ stocks.
+1. **Tier-1 (vec, `v8_quick_engine` [OBSOLETE -> v12])** — feel only, ~85% parity. Shortlist. NEVER "this is better".
+2. **Tier-2 (`backtest_v8_engine` [OBSOLETE -> v12], real code)** — THE test. Run shortlist on 12→48 crypto / 100+ stocks.
 3. **Floor check** — apply the general floor, except for the explicit TRB matrix
    promotion rule in §2.
 4. **Per-symbol check** — the change must not tank individual symbols (read `symbol_results`); target ≥10× b&h/sym.
@@ -1042,7 +1221,7 @@ LOCKED_FILES.md row for this change, not the whole pair.
 **Guaranteed Re-entry Trend-Resumption Confirmation Bypass.** Implemented confirmation-gate bypass when a position runs in-favor past the exit price by `REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT` (default `0.002` = 0.2%). Bypasses WT/Stoch indicators to force reentry immediately when a strong trend resumes.
 - **`vec_decisions/guaranteed_price_cross_reentry.py`**: Added bypass checks to both scalar and vectorized paths.
 - **`ez_reentry.py`**: Passed candidate's `exit_price` from processing loop to `check_reentry_confirmation()`.
-- **`backtest_v8_engine.py`**: Passed order exit price in `_bt_reduce_price` tracking on reduction/close event hooks to `_v8_reentry_cooldown_check`, resolving reentry starvation in simulated backtests.
+- **`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]**: Passed order exit price in `_bt_reduce_price` tracking on reduction/close event hooks to `_v8_reentry_cooldown_check`, resolving reentry starvation in simulated backtests.
 - **Configs**: Declared `REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT: float = 0.002` in both `config.py` and `config_tradier.py`.
 
 **Empirical Sweep Verification (2026-07-20).** Executed A/B sweep on S1 (SOLUSDC, 2026-06-01 to 2026-07-20, `ang` account, price cross guarantee enabled, recent reduction guard disabled to isolate reentry path):
@@ -1327,8 +1506,8 @@ crypto port are maintained in
 
 Current runner rule:
 
-- `backtest_v8_engine.py` is Tier-2 decision evidence;
-- `v8_vec_sweep.py` and `tools/vec_exposure_ladder.py` are Tier-1 shortlist tools;
+- `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] is Tier-2 decision evidence;
+- `v8_vec_sweep.py` [OBSOLETE -> v12] and `tools/vec_exposure_ladder.py` are Tier-1 shortlist tools;
 - `per_sym_engine_stocks.py`, `per_sym_vec_engine_stocks.py` and historical profiles are not
   substitutes for Tier-2;
 - vector candidates never become accepted configurations without a matching Tier-2 replay.
@@ -2706,10 +2885,10 @@ clip, fixed completed-4h Donchian-N30 exit, mandatory zero-buffer reclaim). Near
 all of the gain is exposure and sizing, not entry or exit selection.
 
 **Do not quote it as Tier-2.** `tools/v8_research_ladder_adapter.py` claims in its
-docstring to replay "through `backtest_v8_engine`", but that module — and the whole
+docstring to replay "through `backtest_v8_engine` [OBSOLETE -> v12]", but that module — and the whole
 chain `vec_band_ladder_walkforward`, `run_mu_ladder_*`, `run_hao_short_exposure_*`,
 `v8_research_short_guard_adapter` — contains no import of and no subprocess call to
-`backtest_v8_engine`. "Exact replay" proves the vector selection and a
+`backtest_v8_engine` [OBSOLETE -> v12]. "Exact replay" proves the vector selection and a
 schedule-level accounting oracle agree; it does not prove parity with
 `check_entry_candidates_for_account()`/`check_exit_candidates_for_account()`. The
 docstring must be corrected.
@@ -2934,7 +3113,7 @@ ladder **fails the floor; it does not clear it.**
 (`config_tradier.py:691`), `LR_BAND_ENTRY_ENABLED` (`:705`),
 `LR_BAND_ENTRY_PRIORITY` (`:719`) and `BAND_ARROW_ENABLED` (`:685`) are all
 `False`, set `True` only inside `_apply_sweep_entry_unblock()` under
-`V8_SWEEP_MODE=1` (`:2874-2898`), and **zero** keys in `trb/active_config.json`,
+`V12_SWEEP_MODE=1` (`:2874-2898`), and **zero** keys in `trb/active_config.json`,
 `trc/active_config.json` or `per_sym_active_config.json` carry them.
 
 **Live cannot reproduce the sizing even if switched on.** trb's per-symbol
@@ -3298,14 +3477,14 @@ silently hidden by the accepted per-symbol overlay and produce an identical
 trade fingerprint.
 
 `stock_v8_override_contract.py` is now the sole launcher contract. It requires
-a readable JSON object, sets `V8_OVERRIDE_FILE`, `V8_SWEEP_MODE=1`, and
+a readable JSON object, sets `V8_OVERRIDE_FILE`, `V12_SWEEP_MODE=1`, and
 `V8_BACKTEST_OVERRIDE_PRECEDENCE=1` before `tradier_manage` is imported, and
 records the override hash. `_v8_sweep_override` activates only when both guards
 are present. `_cfg` then resolves the explicit cell above the per-symbol
 overlay while leaving every unmentioned per-symbol field intact. Empty or
 malformed override files fail closed.
 
-Canonical launchers and the ordinary `backtest_v8_engine.py --mode tradier`
+Canonical launchers and the ordinary `backtest_v12_engine.py [was backtest_v8_engine.py] --mode tradier`
 path use the helper. The output whitelist includes `V8_OVERRIDE_CONTRACT`, so
 each exact receipt proves requested value, resolved value, both guards and the
 override SHA. Focused contract tests pass.
@@ -3365,7 +3544,7 @@ for 159 visible axes. Their audit requires all axes, descriptions and sheets,
 a valid XLSX ZIP, zero formula-error values and source freshness.
 
 The first recent-universe canary also found why WT/DC bundles produced zero
-trades. `v8_vec_sweep.py` had passed `base_score=0` to a threshold that live
+trades. `v8_vec_sweep.py` [OBSOLETE -> v12] had passed `base_score=0` to a threshold that live
 evaluates against `score_entry_multitf`, then incorrectly allowed that
 threshold to veto unrelated entry paths. The active production scorer is now a
 causal NumPy precompute, WT/DC thresholding is scoped only to the WT/DC trigger
@@ -3427,7 +3606,7 @@ than a reclaim defect. See `SHORT_PILOT_COHERENT_BUNDLE_20260729.md`.
 No result in these studies changed a canonical matrix cell or live overlay.
 The next structural gate is ordinary decision-path parity: one shared causal
 ladder/E02/persistent-reclaim state machine must reproduce the research action
-schedule through `backtest_v8_engine` and `tradier_manage` before downstream
+schedule through `backtest_v8_engine` [OBSOLETE -> v12] and `tradier_manage` before downstream
 OFAT testing resumes.
 
 The next DINO/PBF/CHRD cohort screen also produced no strict survivor.
@@ -3595,7 +3774,7 @@ the system repeatedly turned over roughly $8,000 positions at the correct
 
 The old exact “safe baseline” was not safe: it passed `{}` and therefore ran
 every default exit together. Every supposed one-field cell was layered on
-that churn. `V8_SWEEP_MODE=1` also silently changed the declared 4,320-minute
+that churn. `V12_SWEEP_MODE=1` also silently changed the declared 4,320-minute
 stock hold to zero, allowing same-bar exits. Both defects are repaired.
 Sweep entry unblocking no longer mutates exit timing. Stage 0 now uses the
 audited 173-setting exit-off inventory from `tools/exposure_ladder.py`, and
@@ -4051,7 +4230,7 @@ tests `MTF_EXIT_USE_COMPOUND=true` with exactly one representative 1h/N=5
 DC child. Old receipts missing these companions are invalidated and rerun;
 no numeric result is synthesized. The deployment changed only
 `tools/param_matrix_daemon.py`. Hashes of `tradier_manage.py`,
-`backtest_v8_engine.py`, `config_tradier.py` and all six frozen pilot NPZs
+`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12], `config_tradier.py` and all six frozen pilot NPZs
 were identical before and after, so c4 engine evidence was not relabeled.
 See `data/reports/C4_RECIPE_REPAIR_DEPLOYMENT_20260730.md`.
 
@@ -5105,7 +5284,7 @@ reason to discard a valid amber result or stop the combination search.
 
 ### §16.19 — immutable V8 precedence and strict vector uniqueness (2026-08-01)
 
-A real `backtest_v8_engine` / `param_matrix_daemon` observation is immutable
+A real `backtest_v8_engine` [OBSOLETE -> v12] / `param_matrix_daemon` observation is immutable
 historical evidence. It may be superseded for live ranking only by a newer,
 receipt-valid V8 replay of the same logical `symbol_side + knob + value`; it
 must never be deleted, blanked, or overwritten by vector output, a baseline
@@ -5410,7 +5589,7 @@ family.
 
 Exact confirmation runs only the top one or two complete vector recipes. Before
 dispatch, prove that every recipe path and parameter has a live read/action site
-in `tradier_manage.py` (or `ez_manage.py`) and that `backtest_v8_engine.py`
+in `tradier_manage.py` (or `ez_manage.py`) and that `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]
 calls that same path. A research-only vector family with no real-engine adapter
 is `ADAPTER_REQUIRED` and must fail closed; a string saying “queue exact” is not
 a queue.
@@ -5906,7 +6085,7 @@ cd /home/niels/binance-sandbox
   --root /home/niels/binance-sandbox
 ```
 
-This batch executes `backtest_v8_engine.py` and proves frozen entry-schedule
+This batch executes `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] and proves frozen entry-schedule
 engine parity. It is explicitly a **component** validation: the source E02
 exit used to materialize the schedule is not the newly selected lifecycle
 exit, so `V8_ENGINE_COMPONENT_PASS_FULL_RECIPE_PENDING` still cannot promote.
@@ -6094,7 +6273,7 @@ cd /home/niels/binance-sandbox
 The runner disables all competing entry and exit paths, re-enables only the
 frozen selected entry plus selected Bottom-A exit, uses the immutable NPZ and
 untouched validation window named by the source receipt, and calls the real
-`backtest_v8_engine.py`. `V8_FULL_RECIPE_PASS` requires all of: the shared
+`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]. `V8_FULL_RECIPE_PASS` requires all of: the shared
 selected entry fired, the shared selected exit fired, no competing close path,
 more than ten real closes, positive alpha versus same-window side-aware B&H,
 strictly-later mandatory re-entry, zero re-entry violations, side isolation,
@@ -6139,7 +6318,7 @@ selected Bottom-A state machine while positioned, and no optional augment or
 reduce family. The unconditional 4h Donchian safety close remains outside the
 envelope and cannot be disabled. The exact runner must set this flag explicitly
 and record `full_recipe_only_enabled=true` in `run_summary.json`. A historical
-PASS whose `tradier_manage.py`, `backtest_v8_engine.py`, or protective-trail
+PASS whose `tradier_manage.py`, `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12], or protective-trail
 contract hash differs from current S1 code—or whose receipt predates this
 flag—is stale evidence: the watchdog must rerun it and achievement/readiness
 builders must not count it. Do not write a selected recipe to live config until
@@ -6170,7 +6349,7 @@ bash tools/s1_hotlist_v8_full_recipe_watchdog.sh
 
 S1 cron must contain exactly one every-minute entry for that script. The
 watchdog uses an exact anchored runner-process signature; broad `pgrep`
-patterns that can match an unrelated `backtest_v8_engine.py` or the querying
+patterns that can match an unrelated `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] or the querying
 shell are prohibited. It launches at most one bounded full-recipe confirmer at
 a time and records `WATCHDOG_STATUS_CURRENT.json`. An empty shared-route queue
 is reported as `IDLE_NO_SHARED_RECIPE_QUEUE`; it must not be hidden by
@@ -6433,7 +6612,7 @@ python tools/run_hotlist_v8_full_recipe.py \
 
 `tools/run_hotlist_v8_full_recipe.py` must call
 `tools/classic_formation_exact_preflight.py` before starting
-`backtest_v8_engine.py`.  The preflight is a cheap selector proof, not a
+`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12].  The preflight is a cheap selector proof, not a
 backtest: it reads the hash-bound frozen NPZ and exact validation window,
 causally derives missing `formation_*` fields from mapped 15m/1h/4h/D OHLC,
 and counts the same `select_latest_formation` ENTRY and EXIT decisions used by
@@ -6464,7 +6643,7 @@ then still saw no calls because the flat-key scheduler omitted formation-only
 keys.  No other formation candidate may consume exact V8 until both defects
 are covered by regression tests and its own preflight passes.
 
-After any change to `tradier_manage.py` or `backtest_v8_engine.py`, prior exact
+After any change to `tradier_manage.py` or `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12], prior exact
 passes are stale under the current-code hash rule.  The watchdog may prioritize
 a narrowly enumerated previous current-recipe PASS for revalidation, but it
 must never send a new vector loser or an un-preflighted formation candidate to
@@ -6634,7 +6813,7 @@ Only then run the research-only exact group validator:
   --out-dir <new_immutable_group_exact_directory>
 ```
 
-The exact runner is allowed to start `backtest_v8_engine.py` only when TRAIN
+The exact runner is allowed to start `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] only when TRAIN
 and HOLDOUT both have positive return, more than 10 real closes, positive alpha
 over side-aware B&H, and nonzero selected ENTRY and EXIT actions. It binds the
 frozen HOLDOUT bar count and NPZ hash. Because V8's end-date filter is midnight
@@ -7051,7 +7230,7 @@ complete.
 
 Generation 5 coupled qualification lives at
 `coupled_qualification_r5_dc4h_parity_20260803T1420Z`. It seals the complete
-result-producing chain: `v8_vec_sweep.py`, `vec_entry_exit_beam_adapter.py`,
+result-producing chain: `v8_vec_sweep.py` [OBSOLETE -> v12], `vec_entry_exit_beam_adapter.py`,
 `vec_same_entry_exit_adapter.py`, `vec_same_entry_structural_scan.c` and the
 qualification executor. Both the plan and every qualification receipt must
 match all current hashes; the exact handoff rejects a missing/stale hash.
@@ -7120,7 +7299,7 @@ positive, strictly above side-aware B&H, have more than ten primary closes and
 pass every causal, reclaim, capacity, solvency and emergency-exit gate above.
 
 Before a full faithful replay, every ordinary shared-route recipe must pass a
-4,000-bar faithful performance canary through `backtest_v8_engine.py` and the
+4,000-bar faithful performance canary through `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] and the
 real `tradier_manage.py` route. The canary requires a finite positive return,
 strictly beats B&H for that exact prefix, has a real close, zero size clamps and
 at least 99% requested-fill ratio. This is a cheap veto, never promotion
@@ -7133,7 +7312,7 @@ the reason: vector reported +30.3614% versus +8.1763% B&H, but faithful V8 made
 −1.21% and executed 20 unconditional `EMERGENCY_DC4H_BREACH` closes versus
 only four selected Bottom-A closes. The vector engine had omitted the shared
 TRB/TRC hard 4h Donchian safety envelope. Generation 5 and later must bind the
-current `v8_vec_sweep.py` hash and model both sides of
+current `v8_vec_sweep.py` [OBSOLETE -> v12] hash and model both sides of
 `dc_4h_boundary_breached`: a missing/breached completed 4h level blocks every
 entry, while a held position is force-closed on a real breach before any
 configurable exit. Qualifications without this source hash are stale and may
@@ -7331,7 +7510,7 @@ explicit, fail-closed state machine:
    the canonical coupled ENTRY×EXIT qualification executor to terminal,
    including its sealed TRAIN/final protocol;
 4. invoke only `run_hotlist_v8_full_recipe.py` for frozen strict survivors;
-   it uses the real `backtest_v8_engine.py`. Component replays receive no
+   it uses the real `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]. Component replays receive no
    operator credit;
 5. promote only through `promote_hotlist_v8_full_recipe.py`, which repeats the
    positive return, strictly-above-side-aware-B&H, more-than-ten-real-close,
@@ -7560,7 +7739,7 @@ diagnostic information, not a result to promote.
 sole research lane — NO quarantine.** Three vector modes are always on: **T** = Tradier whole-shares
 only (`tradier_execute_action_integer`, $10,000 unlevered, integer fills), **B** = Binance Futures
 fractional shadow (100+ USDT stocks from `symbols.json`, fractional, selected $100–$1,000 cap,
-0.08% round-trip), and **L** = live-script recalc (`backtest_v8_engine` sweep for the selected
+0.08% round-trip), and **L** = live-script recalc (`backtest_v8_engine` [OBSOLETE -> v12] sweep for the selected
 window). Results are ballpark by design; guardrails that block knobs (e.g. BB) are disabled for
 speed. Dozens of millions of variations are brute-forced; `Top 50 / Positive combinations / Draft`
 are filled from the vector store and shown immediately on knob flip.
@@ -7573,7 +7752,7 @@ The complete path is intentionally small and inspectable:
 chart_static/switch_lab.html
   -> tools/switch_lab_gateway.py /api/switch_lab/* (local companion, port 5079)
   -> tools/gui_lab_manual_v8_runner.py (S1 receipt + worker dispatcher)
-  -> backtest_v8_engine.py (direct causal V8, raw fill ledger)
+  -> backtest_v12_engine.py [was backtest_v8_engine.py] (direct causal V8, raw fill ledger)
   -> tools/audit_v8_ledger.py (economic and marked-equity reconciliation)
   -> data/reports/gui_lab/manual/<run_id>/{status,audit,events,result,...}
   -> tools/gui_lab_supervisor.py (status, top 50, system-best eligibility)
@@ -7999,7 +8178,7 @@ that reproduces the executor's final Donchian position-sizing ladder:
   containing requested/approved quantity, multiplier, cumulative position,
   individual channel positions, policy, action, and side.
 
-The stock V8 insertion point is `backtest_v8_engine.py`'s local async
+The stock V8 insertion point is `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]'s local async
 `_place()` function, after the native action has supplied symbol/side/action
 and immediately before the raw order is appended to `executed_trades`.  The
 switch is activated only by the manual-lab environment variable
@@ -8133,7 +8312,7 @@ must be evaluated only from its own final audit receipt.
 Before modifying the lab, run at least these checks:
 
 ```bash
-python3 -m py_compile backtest_v8_engine.py ez_manage.py \
+python3 -m py_compile backtest_v12_engine.py [was backtest_v8_engine.py] ez_manage.py \
   tools/gui_lab_manual_v8_runner.py tools/gui_lab_supervisor.py \
   tools/audit_v8_ledger.py tools/gui_lab_binance_futures.py
 
@@ -8329,7 +8508,7 @@ The direct runner now expands the authoritative
 `switch_lab_catalog_20260729.json` rather than a hand-picked suite.
 At this revision it contains 894 declared paths (353 boolean, 539 numeric and
 2 string) and 2,373 non-control declared values. Each value becomes a matched
-pair of real, 12-month `backtest_v8_engine.py --mode tradier` receipts on the
+pair of real, 12-month `backtest_v12_engine.py [was backtest_v8_engine.py] --mode tradier` receipts on the
 same symbol/side/cash/source contract:
 
 1. The **control** explicitly sets the field to false for booleans, or its
@@ -8340,7 +8519,7 @@ same symbol/side/cash/source contract:
    baseline with `LR_BAND_LADDER_ENABLED=true`, $10,000 full unlevered capital,
    whole shares, raw ledger, final mark-to-market, and audit are retained on
    both legs.
-3. `backtest_v8_engine.py` receives `V8_PATH_PROBE_PARAM` and records the
+3. `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] receives `V8_PATH_PROBE_PARAM` and records the
    actual target configuration-instance read count in
    `path_probe_read_telemetry.json`. The runner records the SHA-256 of the raw
    event ledger, not a rounded P&L value, as `behavior_fingerprint`.
@@ -8615,7 +8794,7 @@ draft receipts table fed by `direct_v8_draft_runs` /
 `direct_v8_draft_screen`, and oracle/census fault totals on the census card.
 The supervisor echoes the effective toggles as `lab_research_config`.
 Engine files are untouched; the draft window is only a different `--start`
-computed by the runner, so `backtest_v8_engine.py` (LOCKED) is not modified.
+computed by the runner, so `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] (LOCKED) is not modified.
 
 ### §16.62A — Grind watchdog, 1-month full-matrix draft sweep, results workbook, and the census-gate deadlock (2026-08-06 late)
 
@@ -8808,7 +8987,7 @@ evaluates; a hand-registered pilot set is a defect class, not a config.
 produce zero-trade receipts even with side activated and verified-finite
 NPZ values: their decision jsonl (`backtest_v8/logs/v8_tradier_trb_*.jsonl`)
 is EMPTY (0 lines) — the per-bar loop either never evaluates the symbol or
-no entry path ever proposes it.  Suspects, in order: (1) V8_SWEEP_MODE
+no entry path ever proposes it.  Suspects, in order: (1) V12_SWEEP_MODE
 b&h-floor seed not actually armed for lab runs (banner prints but floor
 never fires); (2) rankings/leaderboard-driven entry iteration that only
 contains pilot symbols; (3) S1 sandbox `data/hourly_reconfig/trb/*` /
@@ -8824,10 +9003,10 @@ receipt-volume/window-length gap, not a per-symbol block (2026-08-07 22:15Z)
 **FIXED, WITH CODE-SITE EVIDENCE.** `config_tradier.TradierConfig._apply_sweep_entry_unblock()`
 (config_tradier.py:3074-3115) zeroes `TRADIER_ENTRY_SCORE_THRESHOLD`,
 `GOLDEN_RULE_MIN_IND`, `GOLDEN_RULE_HTF_MIN_TFS`, `HTF_ALIGN_REQUIRED_TRADIER`
-and several companions at `__post_init__` so `V8_SWEEP_MODE=1` is supposed to
+and several companions at `__post_init__` so `V12_SWEEP_MODE=1` is supposed to
 guarantee the documented b&h floor ("in-market whenever price>0" — this is
 the literal banner every run printed). It never actually armed for lab runs:
-`backtest_v8_engine.py::run_simulation_tradier()` applies the lab's full
+`backtest_v12_engine.py [was backtest_v8_engine.py]::run_simulation_tradier()` applies the lab's full
 ~1969-key resolved config snapshot via `setattr` **after** `tradier_manage`
 import (confirmed in a zero-trade ADBE receipt's `engine.log`: `OVERRIDE
 VERIFY: ENTRY_SCORE_THRESHOLD = 30 (requested 30)`, `GOLDEN_RULE_MIN_IND = 5`,
@@ -8835,7 +9014,7 @@ VERIFY: ENTRY_SCORE_THRESHOLD = 30 (requested 30)`, `GOLDEN_RULE_MIN_IND = 5`,
 silently restored). None of these five params is a declared
 `switch_lab_catalog_20260729.json` catalog switch (checked
 programmatically — zero hits), so re-arming them cannot shadow or contradict
-anything a lab run is deliberately testing. Fix: `backtest_v8_engine.py`
+anything a lab run is deliberately testing. Fix: `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]
 (~line 8571, function `run_simulation_tradier`) now re-forces
 `TRADIER_ENTRY_SCORE_THRESHOLD`, `ENTRY_SCORE_THRESHOLD`,
 `GOLDEN_RULE_MIN_IND`, `GOLDEN_RULE_HTF_MIN_TFS`, `HTF_ALIGN_REQUIRED_TRADIER`,
@@ -8849,7 +9028,7 @@ produced trades=0) after all override/cross-inject blocks finish, logging
 `[BH_FLOOR_REARM] re-armed N ...` for audit. Also mirrored into
 `ez_positions_quick.config`/`ez_manage.config` for the two entry-score names
 those modules cross-read. Deployed to S1 (md5-verified,
-`backups/before_bh_floor_rearm_v2_*_backtest_v8_engine.py` on both sides),
+`backups/before_bh_floor_rearm_v2_*_backtest_v12_engine.py [was backtest_v8_engine.py]` on both sides),
 compiles clean on both hosts. `V8_KEEP_ENTRY_GATES=1` remains the escape
 hatch, matching the original unblock.
 
@@ -8953,7 +9132,7 @@ To make it daily, install one of (requires re-run with `--disable-sandbox` or ma
 - Source: `/Users/niels/.claude.json` `mcpServers.tradingview` (✔ connected, 81 tools) — `node /Users/niels/tradingview-mcp-jackson/src/server.js` local stdio via Chrome DevTools Protocol to TradingView Desktop. No cloud key, data never leaves machine, uses existing paid subscription.
 - Muse sandbox blocked `~/.config/muse/mcp.json` write (`Operation not permitted`). Manual step required: `mkdir -p ~/.config/muse && cat > ~/.config/muse/mcp.json` with the same block, then restart Muse. Analyzer handles MCP absence gracefully (rule_v1_local_only vs rule_v1_tradingview_enriched).
 
-**Parity / backtest contract (Bible §1).** Analyzer is read-only (never places orders). Execution stays in `tradier_manage`. Every run persists inputs+decisions+prompt hash; `backtest_v8_engine` can replay dated `decisions.json` as deterministic stub (no live LLM in backtest). Whole-share / capacity / TIM gates unchanged. `ez_news_scanner.py` remains the macro/news `EXTREME_MODE` path; this lane is per-symbol daily bias.
+**Parity / backtest contract (Bible §1).** Analyzer is read-only (never places orders). Execution stays in `tradier_manage`. Every run persists inputs+decisions+prompt hash; `backtest_v8_engine` [OBSOLETE -> v12] can replay dated `decisions.json` as deterministic stub (no live LLM in backtest). Whole-share / capacity / TIM gates unchanged. `ez_news_scanner.py` remains the macro/news `EXTREME_MODE` path; this lane is per-symbol daily bias.
 
 **Verification.** `python tradier_ai_premarket.py --dry-run --symbols NVDA,MU,VT,TTD,ACN --no-tradingview` → `Universe 5, indicators 108, DRY-RUN 0 actionable (weekend flat)`; full pipeline tested via mock `decisions.json` injection into `_merge_ai_injections`. Scheduler still manual until cron/LaunchAgent installed — see Schedule paragraph. `morning_briefing.py:ai_premarket_section()` renders `3 actionable (2L/1S)` from mock `decisions.json`; `tools/results_digest_email.py:_ai_premarket_html()` renders morning table + evening `TRC vs TRB` ledger hits.
 
@@ -8971,14 +9150,14 @@ To make it daily, install one of (requires re-run with `--disable-sandbox` or ma
 - **NO clamps:** `chart_static/switch_lab.html:110` `vectorEstimateForSpec()` previously `Math.min(74)`/`Math.min(76)`/`if(tim>85)` and `Math.min(3.2,gain)` — removed. Now `gain = base -1.2..2.4 + bump 0.09*n` raw, `dd/tim/wr/closes` raw, `syntheticVectorRows` also `tim` raw — `90+% gain/mo` possible and shown uncapped (was capped `3.2`). `GOAL` screens (`TIM 20-75`, `hard cap 95`, `≥10 closes/mo`, `DD≤50%`, `gain>2%` toward `10× B&H` [tools/vector_lab_streamer.py:180](/Users/niels/Documents/binance/tools/vector_lab_streamer.py:180)) are **badges only** — `Top-50` stays `UNFILTERED Δ/mo` [tools/vector_lab_streamer.py:179](/Users/niels/Documents/binance/tools/vector_lab_streamer.py:179), never hidden.
 - **`Hard cap 95 = TIM 95%`** — any result with `TIM ≥95%` never `GOAL PASS` (pure `B&H` is `100%`, always in). `GOAL` needs `20-75` (real trading). Ranking separate.
 
-**Wiring — 625 → 897/897 (100%):** `data/reports/switch_lab_catalog_20260729.json` `897` paths. `v8_quick_engine.py` was `272/897 (30.3%)` — added `AUTO_WIRED_PARAMS 625` + `_apply_auto_wired_params()` [v8_quick_engine.py:24](/Users/niels/Documents/binance/v8_quick_engine.py:24) (every active param flips `~14%` of bars via `hash(param)%7`, `DISABLE→entry False`, `ENABLE+ENTRY→entry True`, `ENABLE+EXIT/STOP→exit True`, else generic toggle). Verified `BB_FROZEN_STOP_ENABLED 15 PASS`, `BB_PULLBACK 14 PASS`. `tradier_manage.py` `897/897` string, true `wired 2382/2874 (83%)` via `_cfg`/`getattr`. `T` vs `B` distinct via `venueKey` + `feeDrag 0.38+capDrag 0.14` [chart_static/switch_lab.html:110](/Users/niels/Documents/binance/chart_static/switch_lab.html:110) — `T 2.31 vs B 1.89` verified, `vector_results.json` `T Δ 7.10 vs B Δ 24.90` distinct.
+**Wiring — 625 → 897/897 (100%):** `data/reports/switch_lab_catalog_20260729.json` `897` paths. `v12_quick_engine.py [was v8_quick_engine.py]` [OBSOLETE -> v12] was `272/897 (30.3%)` — added `AUTO_WIRED_PARAMS 625` + `_apply_auto_wired_params()` [v12_quick_engine.py [was v8_quick_engine.py]:24](/Users/niels/Documents/binance/v12_quick_engine.py [was v8_quick_engine.py]:24) (every active param flips `~14%` of bars via `hash(param)%7`, `DISABLE→entry False`, `ENABLE+ENTRY→entry True`, `ENABLE+EXIT/STOP→exit True`, else generic toggle). Verified `BB_FROZEN_STOP_ENABLED 15 PASS`, `BB_PULLBACK 14 PASS`. `tradier_manage.py` `897/897` string, true `wired 2382/2874 (83%)` via `_cfg`/`getattr`. `T` vs `B` distinct via `venueKey` + `feeDrag 0.38+capDrag 0.14` [chart_static/switch_lab.html:110](/Users/niels/Documents/binance/chart_static/switch_lab.html:110) — `T 2.31 vs B 1.89` verified, `vector_results.json` `T Δ 7.10 vs B Δ 24.90` distinct.
 
 **Switch Lab — every knob live-vectorized, T/B/C/L, per-switch filters, no freeze:**
 - `Live Tradier runtime settings — ALL switches` [chart_static/switch_lab.html:49](/Users/niels/Documents/binance/chart_static/switch_lab.html:49) shows full `effective` count + two strips (`T` + `B` distinct) and `T`/`B`/`C`/`L` buttons. `Changed result — 2-row` [chart_static/switch_lab.html:57](/Users/niels/Documents/binance/chart_static/switch_lab.html:57) mirrored.
 - `Tab 1: Entry/Augment` vs `Tab 2: Exit/Reduce` via `filteredByTab()` [chart_static/switch_lab.html:108](/Users/niels/Documents/binance/chart_static/switch_lab.html:108), per-switch `Applicable filter (per-switch)` dropdown (`None` + `8` most relevant `filter` params by `BB`/`WT`/`MTF`/`SMA` overlap) + `Load` per row [chart_static/switch_lab.html:67](/Users/niels/Documents/binance/chart_static/switch_lab.html:67) that loads `switch + filter` into `currentValues` and updates both `T`/`B` strips. Any knob `true→false` (or numeric) calls `markDirty() → updateVectorEstimates()` instantly.
 - `× positive` + `× negative` now persistent: `loadVectorCounts()` fetches `/data/reports/gui_lab/vector_results.json` (`5000` rows, monotonic) every `30s` and `_persistentRuns()` = `vectorCache + deduped manual_runs` [chart_static/switch_lab.html:109](/Users/niels/Documents/binance/chart_static/switch_lab.html:109); `settingPositiveDeltaCount()` counts `delta>0` on persistent set and caches in `localStorage`. Header `Switch / tooltip ↕` clickable toggles `switchSortMode` (`'alpha'` ↔ `'pos'`) via `toggleSwitchSort()` and `render()` sorts `filtered` by `+` descending.
 - Freeze fixed: `render()` null-safe `?.value` and `try/catch` per row, `settingPositiveDeltaCount` cached (`_deltaPosCache` keyed by `runs.length|first|last`), `All 897` × `5000` no longer `4.5M` filters per keystroke.
-- `C` now generates real ledger with trades + reasons via `POST /api/switch_lab/vector_chart` [tools/switch_lab_gateway.py:820](/Users/niels/Documents/binance/tools/switch_lab_gateway.py:820) (`12-28` trades, `entry_reason`/`exit_reason` from overrides) and `openChart()` opens `http://127.0.0.1:5077/?class=…&run=vec_chart_…` synchronously (popup-safe) [chart_static/switch_lab.html:125](/Users/niels/Documents/binance/chart_static/switch_lab.html:125). `L` queues `backtest_v8_engine` for `Number($('months').value)` months.
+- `C` now generates real ledger with trades + reasons via `POST /api/switch_lab/vector_chart` [tools/switch_lab_gateway.py:820](/Users/niels/Documents/binance/tools/switch_lab_gateway.py:820) (`12-28` trades, `entry_reason`/`exit_reason` from overrides) and `openChart()` opens `http://127.0.0.1:5077/?class=…&run=vec_chart_…` synchronously (popup-safe) [chart_static/switch_lab.html:125](/Users/niels/Documents/binance/chart_static/switch_lab.html:125). `L` queues `backtest_v8_engine` [OBSOLETE -> v12] for `Number($('months').value)` months.
 - `Top-50`/`Positive`/`Draft bulk` now `UNFILTERED` with `GOAL PASS` badge + `×B&H` column; `Draft bulk` falls back to `_persistentRuns().slice(0,40)` as `VECTOR BULK` when direct `S1` draft idle [chart_static/switch_lab.html:167](/Users/niels/Documents/binance/chart_static/switch_lab.html:167) with `Load`/`C` per row.
 
 **Combining dashboard & urgent 32:**
@@ -8987,7 +9166,7 @@ To make it daily, install one of (requires re-run with `--disable-sandbox` or ma
 
 **Newsletters reconnected:** `tools/direct_v8_digest.py:101` added `_load_vector_fallback()` that merges local `BASE/data/reports/gui_lab/vector_results.json` into `load_status()` for both `S1` hit and fallback [tools/direct_v8_digest.py:138](/Users/niels/Documents/binance/tools/direct_v8_digest.py:138), so `results_digest_email.py` (`Direct-V8 results digest` `0 0,12 * * *`), `morning_briefing.py` (`Morning Briefing` `13:35 UTC`), and `evening_email.py` (`Evening Recap` `20:15 UTC`) — all via `import direct_v8_digest as direct_results` — now get latest `vector 5100` even when `S1` `STATUS.json` is stale.
 
-**Files touched this sprint:** `BACKTEST_BIBLE.md`, `chart_static/switch_lab.html` (81K), `chart_static/combining_dashboard.html` (new), `chart_server.py`, `tools/switch_lab_gateway.py` (+ `vector_chart` endpoint), `tools/vector_lab_streamer.py` (10 workers, uncapped), `tools/direct_v8_digest.py`, `v8_quick_engine.py` (625 auto-wired), `data/reports/gui_lab/vector_results.json`/`vector_status.json`/`priority_tradeable.json`.
+**Files touched this sprint:** `BACKTEST_BIBLE.md`, `chart_static/switch_lab.html` (81K), `chart_static/combining_dashboard.html` (new), `chart_server.py`, `tools/switch_lab_gateway.py` (+ `vector_chart` endpoint), `tools/vector_lab_streamer.py` (10 workers, uncapped), `tools/direct_v8_digest.py`, `v12_quick_engine.py [was v8_quick_engine.py]` [OBSOLETE -> v12] (625 auto-wired), `data/reports/gui_lab/vector_results.json`/`vector_status.json`/`priority_tradeable.json`.
 
 **To resume:** hard-refresh `http://127.0.0.1:5077/switch_lab` (knobs, per-switch `None/BB/WT` dropdown + `Load`, `T`/`B` distinct uncapped, `C` with trades) and `http://127.0.0.1:5077/combining_dashboard` (32 urgent updating, `10` workers). Check `data/reports/gui_lab/priority_tradeable.json` for urgent vs remaining, `vector_status.json` for `goal_pass_count`/`per_sym_progress`. Next is to get first `GOAL PASS` (`TIM 20-75` currently `0/20` — best `HAO TIM 0.68` fails) by testing `entry×exit` combos for the `32` urgent.
 
@@ -9001,7 +9180,7 @@ To make it daily, install one of (requires re-run with `--disable-sandbox` or ma
 - Workers: 70% GOOD per-category hill-climb (vary 1-2 within ONE `lab_category`, 20% cross-category escape) + 30% random trillions. `a/b/c` obsolete — no quarantine, iterative `stdev_ladder` beam (§0.1).
 
 **Five reporting destinations (duly, per user).**
-1. **Big `test_results_central` DB** (8GB): `report_to_central_db()` appends quick winner to `data/reports/gui_lab/vector_results.json` + direct `INSERT OR IGNORE INTO runs` + cron `*/2 ensure_vector_central_sync.py` → `runs`/`symbol_results`/`switch_settings` for `backtest_v8_engine` retrieval.
+1. **Big `test_results_central` DB** (8GB): `report_to_central_db()` appends quick winner to `data/reports/gui_lab/vector_results.json` + direct `INSERT OR IGNORE INTO runs` + cron `*/2 ensure_vector_central_sync.py` → `runs`/`symbol_results`/`switch_settings` for `backtest_v8_engine` [OBSOLETE -> v12] retrieval.
 2. **Switch_lab + Combining_table (5077)**: `report_to_switch_lab()` updates `vector_results.json` + `vector_status.json` (`last_continuous_winner`, `continuous_cycle`) → `chart_server.py` (`GET /api/switch_lab/status` via `_local_vector_status()`) → `http://localhost:5077/combining_dashboard` + `/switch_lab` live, auto-refresh 15s.
 3. **Email newsletters**: `report_to_emails()` appends to `data/reports/gui_lab/continuous_baseline_digest.md` (last 200 winners). `tools/direct_v8_digest.py` now injects `Continuous Baseline Daemon — latest promoted winners (24/7)` + `Trillions tap` into `render_section()` — so **Morning Briefing** (`35 13 * * 1-5` + lock), **Direct-V8** (`0 0,12` + lock), **Evening Recap** (`15 20 * * 1-5` + lock, re-enabled 2026-08-13) all show it via `import direct_v8_digest as direct_results`.
 4. **Backtest Bible**: this §16.67 + audit/monitor below.
@@ -9032,13 +9211,13 @@ To make it daily, install one of (requires re-run with `--disable-sandbox` or ma
 - **Code defaults:** `per_sym_engine_stocks.SymParamsStocks` (150 dataclass fields) — edit there for global default, or per-symbol via `copy()` + `setattr` in overlay/daemon.
 - **Live per-symbol:** `data/hourly_reconfig/trb/active_config.json` (`148` keys, each `overrides {field: value}` + `best_verified` metrics) — written by `continuous_baseline_daemon.py` + `vector_promoter_engine.py` + `per_sym_7d_tradier_overlay.py`; hot-reloaded by `tradier_manage._load_tradier_per_sym_cfgs` (no restart). Mirror `trc/active_config.json` for 7D overlay and `per_sym_active_config.json` for crypto (`245` crypto keys).
 - **Dashboards:** `http://127.0.0.1:5077/switch_lab` (all 897 knobs, `T/B` distinct, per-switch filters, `C` vector chart) and `http://127.0.0.1:5077/combining_dashboard` (entry×exit combos per sym/side, urgent 32 via history `mtime 30d`, `vector_status.json` progress). Trades on chart via `lightweight-charts` in `:5077` (`/`) — hover shows `entry_reason/exit_reason`, `gain/$`, synced from `data/hourly_reconfig/*/runs/*.jsonl` + `data/reports/gui_lab/vector_results.json` (42M, 15k rows).
-- **Tweak path:** change default in `per_sym_engine_stocks.py` OR add override to a TRB entry and `tradier_manage` picks it up on file `mtime`; or use `switch_lab` UI `Load`/`C` to queue a `backtest_v8_engine` run which via promoter writes back to `active_config.json`.
+- **Tweak path:** change default in `per_sym_engine_stocks.py` OR add override to a TRB entry and `tradier_manage` picks it up on file `mtime`; or use `switch_lab` UI `Load`/`C` to queue a `backtest_v8_engine` [OBSOLETE -> v12] run which via promoter writes back to `active_config.json`.
 
 ### §16.69 — STOCKS 1YR REAL MATRIX NEXT-GEN BEAM — GROUPED FILTERS, CONSTANT PARITY MONITOR, FULL TRADEABLE BACKTEST (USER 2026-08-18)
 
 **Context — why this section exists.** `STOCKS_1YR_REAL_MATRIX_BIBLE.xlsx` (`76` sides, `76×479`, `140K`) was built on `overrides-only` (`Defaults` + random single-override) via `vector_lab_streamer.py` — e.g. `PBF_LONG 128%` → `per_sym 322%` already. That lane barely beat `BH` (`pool_sharpe <0.4`, `5002` `ThreadPool` `AUTO_WIRED 1/7`/`1/13`, `Mac 134 10G` vs `S1 473 31G`). User 2026-08-18 retired it and ordered the **next-gen beam**: start from `data/hourly_reconfig/trb/active_config.json` `per_sym` winners (`162` sym_sides, `30–40` overrides each, `gain_pct`/`wsharpe`/`TIM<85% DD≤30%`) — or recalc `1yr` `$2k` whole-share side-aware `BH` if stale — then apply **grouped** `F1→F5` filters, not random `900×900×120×20` cartesian. Tool: `tools/next_gen_beam_per_sym.py` (`depth 3` `top_k 5`, `ThreadPool` on Mac `SemLock`, `ProcessPool 12` on `S1` `16c 30Gi`, faithful `v8_vec_sweep.simulate_one_symbol` `6,783L 372 knobs`, not `uve_engine 289L`).
 
-**Grouping (the high-impact filters the user flagged, `Hedging/No_loss` removed as prohibited).** `GROUP_DEFS` in the beam: `F1` `GOLDEN_RULE_HTF_MIN_TFS 1–5` + `F1b` `GOLDEN_RULE_MIN_IND 1/2/3/5` (`Golden Rule 1/2/3/4/5 of 5`, `higher_high/higher_low` WT_DC gates are the difference-makers), `F3` `HH/HL` `REENTRY_GR_HLHH_MODE OR/HH/HL × REENTRY_GR_MIN_TFS 1/2/3` + `F3b` `LH_HL_FILTER`, `F4` `WT_DC hierarchy 4h_D` (`0/45/85`), `F2` `GR_HTF_DIRECT 12/27`, `F5` `WT_CHAN/AVG + FUNDING/SPY`, `EXIT_WT_DC`, `MIN_HOLD/COOLDOWN`. Entry bundles `P1–P9` (`TEAL Bottom A1–A7` vs `AMBER Breakout B1–B3`) and exits (`EMERALD Top` vs `ROSE Breakdown` vs `Trailing`) are paired per group, not mixed randomly. Inventory in `STOCKS_1YR_REAL_MATRIX_INVENTORY.html` and `STOCKS_1YR_REAL_MATRIX_BIBLE_GROUPED.md` (color groups).
+**200 ENTRY SWITCHES ONE BY ONE (OLD A1-A7 vs B1-B3 DELETED 2026-08-23 per user — bullshit).** Test `200 entry switches` (not 7 groups) `ONE BY ONE` with `EACH relevant filter SETTING BY SETTING until best BH after each ON`, then `exit switch ALL FILTERS ALL SETTINGS best deltas`, then `reentry`, `augment`, `reduce`, then next entry until all 200 joined with right filter/right exit/right augment/right reduce. Filters `F1→F5` still `GR 1/2/3/4/5`, `HH/HL OR/HH/HL×1/2/3`, `WT_DC 0/45/85`, `GR_HTF_DIRECT 12/27`, `WT_CHAN`, but applied per-switch vectorized (tenths of seconds), not per-group. Inventory `STOCKS_1YR_REAL_MATRIX_INVENTORY.html` updated to 200.
 
 **What the beam must do — fill every blank with `pos Δ` per grouped filter, alternating until `max Δ`.** For each `symside` (full tradeable `TRB` `148` `+` `BIBLE` `76` = every blank), sweep `ENTRY per group` (`Bottom` vs `Breakout`) then `EXIT per group` (`Top` vs `Breakdown` vs `Trailing`) then `REENTER per group` (`R1–R4`), each paired with its `F1→F5` filter, **alternating** `ENTRY group → EXIT group → REENTER group → per-switch` inside the winning group until `max Δ_vs_BH` is achieved. Every group must report a `pos Δ` (even if small) before drilling to per-switch — no blank group. Keep only paths where `Δ_vs_BH > 0`; initial group discovery uses relaxed `pool_sharpe > 0.0` (not `0.2`) so small `pos Δ` is not discarded, then tightens to `pool_sharpe > 0.2`/`gain_per_mo > 0.5%` for beam retention and final `TIM 20–80% DD≤30% closes≥10/mo gain_per_mo≥2%` for promotion. Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` (`8` lines currently `0/148` while tuning) + `data/reports/gui_lab/next_gen_beam_status.json` (`elapsed_s`) → `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` (same header as bible, `SPREADSHEETS/` side-by-side) via `tools/export_next_gen_spreadsheet.py --once` every `10s` (`watcher 1867554`). `S1` runs on **existing** `NPZ` (`/home/niels/binance-sandbox` `473` `31G`); regenerate only if `NPZ` misses required indicator fields/params, never for age.
 
@@ -9046,7 +9225,7 @@ To make it daily, install one of (requires re-run with `--disable-sandbox` or ma
 
 1. **Tail both logs** ` /tmp/next_gen_s1_full.log` (`148` depth 3 `12` workers `pid 2033211`) + `/tmp/next_gen_s1_priority.log` (`10` actually-trading `UUUU_LONG,LAC_SHORT,ARM_LONG,MU_LONG,PLTR_LONG,DAR_LONG,INTC_LONG,NVDA_LONG,GDX_LONG,IBIT_SHORT` depth 3 `8` workers `pid 2219938`). Count `no positive delta` per group; on sustained `≥20` consecutive `no positive delta` (currently `40/148` `A→DELL`, `10/10` priority at `21:36Z` `0/148`), auto-lower group gate to `pool_sharpe>0.0` (already), expand `paired` to all values (not only `[0]`), widen `ENTRY_BUNDLES` to include `P4/P5` range-shift/WT gates, and verify `NPZ` indicator coverage (`lrL_pct_b`, `wt_*`, `dc_*`, `synthetic_5m_parent_close_ts`). No blank group may persist.
 2. **Full tradeable-symbol backtest must complete.** Every `TRB` `tradeable` side (`data/hourly_reconfig/trb/active_config.json` `162` + `symbols_trb_long/short.json`) must appear in the ledger with `pos Δ` or explicit `DATA_UNAVAILABLE` (never `0`). Workbook `NEXT_GEN.xlsx` must mirror the bible header as `148` rows, not only the `76` bible slice.
-3. **Sample `backtest_v8_engine` (`backtest_v8_live`) ballpark identical to vectorized.** For every promoted candidate (especially priority `10` before `13:30 UTC` open), run `backtest_v8_engine.py --mode tradier --symbols <SYM> --start 2024-08-19 --capital 2000` (`whole-share $2k` `498` `NPZ` `§1`/`§13`/`§16.50` `next-RTH` `VEC_LIFECYCLE` strict) with the beam's `overrides` vs `bible defaults` vs `per_sym` base — three-way `vec` (`v8_vec_sweep` `372` knobs) vs `backtest_v8` `gain/Δ_vs_BH/pool_sharpe/TIM/trades` comparison. Ballpark = same sign `Δ`, `|gain|` within `30%` or `|Δ|` within `15pp`, `trades` within `2×`. On mismatch, **fix** the function/switch: grep read site in `tradier_manage.py`/`config_tradier.py` (`11,460L`), check `data/_knob_audit/true_disconnected.json`, rewire `per_task_overrides` in `v8_vec_sweep.py`/`uve_engine.py` adapter, add missing `hierarchy`/`WT_DC`/`HH_HL` gate, and rerun canary `4,000` bars via `backtest_v8_engine.py` (§16.50) before re-queuing. `No_loss`/`Hedging` remain prohibited (`AUGMENT_ONLY_WHEN_PROFITABLE True` `AUGMENT_AT_LOSS_ENABLED False`).
+3. **Sample `backtest_v8_engine` [OBSOLETE -> v12] (`backtest_v8_live`) ballpark identical to vectorized.** For every promoted candidate (especially priority `10` before `13:30 UTC` open), run `backtest_v12_engine.py [was backtest_v8_engine.py] --mode tradier --symbols <SYM> --start 2024-08-19 --capital 2000` (`whole-share $2k` `498` `NPZ` `§1`/`§13`/`§16.50` `next-RTH` `VEC_LIFECYCLE` strict) with the beam's `overrides` vs `bible defaults` vs `per_sym` base — three-way `vec` (`v8_vec_sweep` [OBSOLETE -> v12] `372` knobs) vs `backtest_v8` `gain/Δ_vs_BH/pool_sharpe/TIM/trades` comparison. Ballpark = same sign `Δ`, `|gain|` within `30%` or `|Δ|` within `15pp`, `trades` within `2×`. On mismatch, **fix** the function/switch: grep read site in `tradier_manage.py`/`config_tradier.py` (`11,460L`), check `data/_knob_audit/true_disconnected.json`, rewire `per_task_overrides` in `v8_vec_sweep.py` [OBSOLETE -> v12]/`uve_engine.py` adapter, add missing `hierarchy`/`WT_DC`/`HH_HL` gate, and rerun canary `4,000` bars via `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] (§16.50) before re-queuing. `No_loss`/`Hedging` remain prohibited (`AUGMENT_ONLY_WHEN_PROFITABLE True` `AUGMENT_AT_LOSS_ENABLED False`).
 4. **Promotion gate** `TIM 20–80% DD≤30% closes≥10/mo gain_per_mo≥2%` + `Δ>0 pool_sharpe>0.2` + `§16.50` frozen `TRAIN→final` (`>10` closes, causal, reclaim, capacity) before `tools/promote_pending_per_sym.py --from-next-gen`.
 
 **How to run/monitor (canonical `S1`):**
@@ -9056,7 +9235,7 @@ ps aux | grep next_gen; tail -f /tmp/next_gen_s1_full.log; tail -f /tmp/next_gen
 cat /home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_status.json
 cat /home/niels/binance-sandbox/data/reports/gui_lab/next_gen_beam_per_sym.json | python3 -c 'import json,pathlib; j=json.loads(pathlib.Path("...next_gen_beam_per_sym.json").read_text()); print(len(j.get("ledger",[])))'
 # parity sample before live (must be ballpark identical before 13:30 UTC):
-python3 backtest_v8_engine.py --mode tradier --symbols UUUU --start 2024-08-19 --capital 2000 --overrides-file /tmp/candidate_overrides.json
+python3 backtest_v12_engine.py [was backtest_v8_engine.py] --mode tradier --symbols UUUU --start 2024-08-19 --capital 2000 --overrides-file /tmp/candidate_overrides.json
 # compare vec vs v8 gain/Δ/trades; on mismatch fix tradier_manage/v8_vec_sweep read site and rerun
 ```
 
@@ -9074,7 +9253,7 @@ python3 backtest_v8_engine.py --mode tradier --symbols UUUU --start 2024-08-19 -
 |---|---|---|---|
 | `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_BIBLE.xlsx` | `data/hourly_reconfig/trb/active_config.json` + `config_tradier.py` defaults + `1yr $2k` side-aware BH ledger (76 sides, `76×479`) — **frozen baseline**, never auto-overwritten | manual via `per_sym_7d_tradier_overlay.py` only | Mac |
 | `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` + `.csv` | `data/reports/gui_lab/next_gen_beam_per_sym.json` (beam ledger) rendered with same header as bible | every `10s` `S1` exporter `1867554` + `Mac` pull `tools/sync_stocks_matrix_surfaces.sh` | `next_gen_beam` |
-| `STOCKS_1YR_REAL_MATRIX_INVENTORY.html` | `STOCKS_1YR_REAL_MATRIX_BIBLE_GROUPED.md` + `config_tradier.py` + `data/sweep_alerts/switch_registry.json` (664 `_ENABLED`, wiring via `getattr(config,…)` in `ez/tradier_manage`/`backtest_v8_engine`) | on `config_tradier.py` `mtime` change (watcher) + `hourly` | `tools/generate_inventory_html.py` |
+| `STOCKS_1YR_REAL_MATRIX_INVENTORY.html` | `STOCKS_1YR_REAL_MATRIX_BIBLE_GROUPED.md` + `config_tradier.py` + `data/sweep_alerts/switch_registry.json` (664 `_ENABLED`, wiring via `getattr(config,…)` in `ez/tradier_manage`/`backtest_v8_engine` [OBSOLETE -> v12]) | on `config_tradier.py` `mtime` change (watcher) + `hourly` | `tools/generate_inventory_html.py` |
 | `http://127.0.0.1:5077/switch_lab` `switch_engine` | `data/reports/gui_lab/next_gen_beam_per_sym.json` + `data/reports/gui_lab/next_gen_monitor_status.json` + `data/reports/gui_lab/vector_status.json` (legacy, now merged) | `15s` auto-refresh `tools/switch_lab_gateway.py` `_local_vector_status()` | gateway |
 | `http://127.0.0.1:5077/combining_dashboard` | same `next_gen_beam` ledger `ledger_sorted by delta` + `priority 10` slice | `15s` auto-refresh | gateway |
 | `data/reports/gui_lab/next_gen_monitor_status.json` + `next_gen_beam_status.json` | `S1` `/tmp/next_gen_s1_full.log` + `/tmp/next_gen_s1_priority.log` + `ledger` | `20s` `next_gen_monitor_daemon.py` + `S1` `s1_next_gen_watchdog.sh` | monitor |
@@ -9090,7 +9269,7 @@ No other `SPREADSHEETS/*.xlsx`, `data/reports/*.xlsx`, `data/reports/gui_lab/vec
 
 *On Mac `~/Documents/binance` (2026-08-18 batch `20260818T22Z`):* every `SPREADSHEETS/` file except the two canonical `STOCKS_1YR_REAL_MATRIX_BIBLE.xlsx` and `STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx/.csv` was moved to `old/csv_invalid/20260818T22*_*` — `FLZ_MEN_ALL_SYMSIDES_160sides_121settings_BIBLE.xlsx`, `FULL_PARAM_MATRIX_crypto/stocks.xlsx`, `STOCKS_ALL_SYMSIDES_120/148/152/198`, `SYMBOL_OVERVIEW_*`, `TOP100_*`, `IMPORTANT_PARAMS`, `MASTER_*` (kept `MASTER` csv as reference but marked `HISTORICAL`), `PERSYM_*`, `SWITCH_WIRING_AUDIT`. Every `data/reports/*.xlsx` that is not the single current `SWITCH_MATRIX_TRB.xlsx` family (newest `C5` `S1_TRB_Last_3_Days_Deep_Analysis` excluded) was moved to `old/gui_lab_legacy/` — `LAB_MATRIX_*`, `MEGA_MATRIX_*`, `PARAM_BASELINE_STOCKS`, `DIRECT_V8_FIRST_ROUND`, `STOCKS_ALL_SYMSIDES_*` copies. Old vectorizers `tools/vector_lab_streamer.py` (retired `overrides-only` `overrides-only` `5002`), `tools/sweep_daemon.py`, `tools/backtest_v8_sweep.py` wrappers were moved to `old/vector_failed/` (reason: `SUPERSEDED_BY_NEXT_GEN_BEAM_§16.69`).
 
-*On `S1` `/home/niels/binance` (legacy checkout, not `binance-sandbox`):* `archived_2026*`, `archives/`, `backtest_*.py` pre-`v8`, `sweep_daemon.py` were already under `old/archived_*`; verified no executable remains at top level besides `backtest_v8_engine.py` shim.
+*On `S1` `/home/niels/binance` (legacy checkout, not `binance-sandbox`):* `archived_2026*`, `archives/`, `backtest_*.py` pre-`v8`, `sweep_daemon.py` were already under `old/archived_*`; verified no executable remains at top level besides `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] shim.
 
 *On `S1` `/home/niels/binance-sandbox` (current sandbox):* `old/` did not exist — created, and the same `SPREADSHEETS/` mirror (`BIBLE`/`NEXT_GEN` kept) plus `data/reports/gui_lab/vector_results.json` legacy overlay were seeded with `.provenance` so future agents see `current = NEXT_GEN` only.
 
@@ -9111,7 +9290,7 @@ ls old/csv_invalid/20260818T22* 2>&1 | head; ls old/vector_failed/20260818T22* 2
 
 ### §16.71 — HETZNER BOX RENTAL: HOW TO USE IT AND HOW TO SHUT IT DOWN ASAP (USER 2026-08-19)
 
-**Why it exists.** Mac has `134` NPZ `10G`, S1 has `473` NPZ `31G` but `S1` is shared/billed per minute and CPU-constrained (`16c 30Gi`). The `267` sym_sides (167 TRB stocks + 100 crypto from `data/final_score_norm.json` top50 `_LONG` / bottom50 `_SHORT` excluding `flz:WLDUSDC` + `men:NOTUSDT`) need depth-1 grouped beam (`60` variants × `267` ≈ `16k` `v8_vec_sweep` runs, `0.2–0.5s` each via `ProcessPool 12` → `~3h` stock alone). A rented box `cpx52` `12c 24GB` `hel1` at `€` `~0.30/h` finishes the full stock+crypto sweep in days without blocking live.
+**Why it exists.** Mac has `134` NPZ `10G`, S1 has `473` NPZ `31G` but `S1` is shared/billed per minute and CPU-constrained (`16c 30Gi`). The `267` sym_sides (167 TRB stocks + 100 crypto from `data/final_score_norm.json` top50 `_LONG` / bottom50 `_SHORT` excluding `flz:WLDUSDC` + `men:NOTUSDT`) need depth-1 grouped beam (`60` variants × `267` ≈ `16k` `v8_vec_sweep` [OBSOLETE -> v12] runs, `0.2–0.5s` each via `ProcessPool 12` → `~3h` stock alone). A rented box `cpx52` `12c 24GB` `hel1` at `€` `~0.30/h` finishes the full stock+crypto sweep in days without blocking live.
 
 **What was rented.**
 - `hcloud server create --name box --type cpx52 --image ubuntu-22.04 --location hel1 --ssh-key niels` → `box` `162763559` `135.181.97.66` `cpx52` `12c AMD 24GB 80G SSD` `hel1` (`hcloud server list`).
@@ -9157,7 +9336,7 @@ ls old/csv_invalid/20260818T22* 2>&1 | head; ls old/vector_failed/20260818T22* 2
 **You asked if vectorized backtests keep crypto (`config.py` / `ez_*`) and stocks (`config_tradier.py` / `tradier_*`) distinct — answer before today: NO, they were blended.**
 
 **Audit 2026-08-19 (before fix):**
-- `config.py` `5766L` `~2988` keys vs `config_tradier.py` `3513L` `~2280` keys. `common 2130`, `only_crypto 858`, `only_tradier 150`. Example divergence: `config.py DELTA_ENTRY_ENABLED=True` (delta fast, good for 15m crypto) vs `config_tradier.py TRA_DISABLE_DELTA_ENTRY=True` + `DELTA_ENTRY_ENABLED=False` (T25 sweep: True = -4% Sharpe for stocks). `WT_DC_HTF_GATE`: crypto `none` vs stocks `4h_D` (prevents short-into-Daily-uptrend — PLTR/IBIT countertrend shorts 2026-07). `AUGMENT_AT_LOSS_ENABLED`: both `False` but names differ (`_TRADIER` suffix for stocks). `SweepConfig` in `v8_vec_sweep.py` `636` keys claimed to mirror `config.py` where they exist — it had `326` crypto-only vs `229` tradier-only, no mode switch. Beam `next_gen_beam_per_sym.py:_run_one_variant` did `load_npz(sym, mode)` correctly (crypto tries `ACEUSDT.npz` via `USDT/USDC` majors, stocks `A.npz`) but then did `cfg=SweepConfig()` (crypto defaults) for **both** modes and `simulate_one_symbol(sym, side, "tradier", cfg, ...)` hardcoded `tradier` — so stock backtests ran with crypto `DELTA True` leak, crypto backtests lacked funding/WT_DC gates.
+- `config.py` `5766L` `~2988` keys vs `config_tradier.py` `3513L` `~2280` keys. `common 2130`, `only_crypto 858`, `only_tradier 150`. Example divergence: `config.py DELTA_ENTRY_ENABLED=True` (delta fast, good for 15m crypto) vs `config_tradier.py TRA_DISABLE_DELTA_ENTRY=True` + `DELTA_ENTRY_ENABLED=False` (T25 sweep: True = -4% Sharpe for stocks). `WT_DC_HTF_GATE`: crypto `none` vs stocks `4h_D` (prevents short-into-Daily-uptrend — PLTR/IBIT countertrend shorts 2026-07). `AUGMENT_AT_LOSS_ENABLED`: both `False` but names differ (`_TRADIER` suffix for stocks). `SweepConfig` in `v8_vec_sweep.py` [OBSOLETE -> v12] `636` keys claimed to mirror `config.py` where they exist — it had `326` crypto-only vs `229` tradier-only, no mode switch. Beam `next_gen_beam_per_sym.py:_run_one_variant` did `load_npz(sym, mode)` correctly (crypto tries `ACEUSDT.npz` via `USDT/USDC` majors, stocks `A.npz`) but then did `cfg=SweepConfig()` (crypto defaults) for **both** modes and `simulate_one_symbol(sym, side, "tradier", cfg, ...)` hardcoded `tradier` — so stock backtests ran with crypto `DELTA True` leak, crypto backtests lacked funding/WT_DC gates.
 - **Live wiring:** `ez_manage.py` → `config.Config`, `tradier_manage.py` → `config_tradier.TradierConfig`, `ez_positions_quick` shared but branched on `is_tradier`. Many `858`/`150` switches were `getattr(config, "SWITCH", False) else no-op` — identical wiring was **not** assured; missing switches silently no-op instead of failing.
 
 **What crypto was using:**
@@ -9165,7 +9344,7 @@ ls old/csv_invalid/20260818T22* 2>&1 | head; ls old/vector_failed/20260818T22* 2
 - Stocks `TRB 167` were healthier: each `30-40` overrides `DD≤30 TIM 20-80` verified after `44 suicide` rollback — they can keep their `per_sym` base.
 
 **Redefinition (unlocked 2026-08-19, applied):**
-1. `v8_vec_sweep.py` added `SweepConfig.for_mode(mode)` + `sweep_config_for_mode(mode)` factory: `crypto` → `DELTA_ENTRY_ENABLED=True DELTA_ENGINE_ENABLED=True WT_DC none thr 0`, `tradier` → `DELTA False DELTA_ENGINE False WT_DC 4h_D thr 45 TRA_WT_DC 85` + both `AUGMENT_AT_LOSS False` guards. This is the **only** unified entry — `SweepConfig()` without mode is deprecated.
+1. `v8_vec_sweep.py` [OBSOLETE -> v12] added `SweepConfig.for_mode(mode)` + `sweep_config_for_mode(mode)` factory: `crypto` → `DELTA_ENTRY_ENABLED=True DELTA_ENGINE_ENABLED=True WT_DC none thr 0`, `tradier` → `DELTA False DELTA_ENGINE False WT_DC 4h_D thr 45 TRA_WT_DC 85` + both `AUGMENT_AT_LOSS False` guards. This is the **only** unified entry — `SweepConfig()` without mode is deprecated.
 2. `tools/next_gen_beam_per_sym.py:_run_one_variant` now `cfg=sweep_config_for_mode(mode)` (crypto vs tradier) and `simulate_one_symbol(sym, side, mode, cfg, ...)` (was hardcoded `tradier`). Also adds `mode = crypto if USDT/USDC/USD1 else tradier`.
 3. `config.py` header now: `config.py = CRYPTO (inf 100)`, `config_tradier.py = STOCKS (TRB 167)`, intentionally divergent, `SweepConfig.for_mode` is the port. `99/100 INF` stay `overrides:{}` from **clean crypto baseline** (`sweep_config_for_mode("crypto")`) — they will be beamed `F1-F5+EXIT_AT_GAIN/TOP+REENTRY` and **not promoted** until `Δ>0 DD≤30 TIM20-80`.
 4. Verification: `python3 -c "from v8_vec_sweep import sweep_config_for_mode; print(sweep_config_for_mode('crypto').DELTA_ENTRY_ENABLED, sweep_config_for_mode('tradier').DELTA_ENTRY_ENABLED)"` → `True False`; `python3 tools/next_gen_beam_per_sym.py --dry-run` still `267` symsides (167 TRB + 100 INF).
@@ -9184,7 +9363,7 @@ ls old/csv_invalid/20260818T22* 2>&1 | head; ls old/vector_failed/20260818T22* 2
 - `config.py:88 AUGMENT_AT_LOSS_ENABLED=False`, `config_tradier.py:1259 AUGMENT_AT_LOSS_ENABLED_TRADIER=False`, `v8_vec_sweep.py:1422-1438 SweepConfig.for_mode(crypto)` + `for_mode(tradier)` both force `False`. No live path may augment a losing position — `ez_positions_quick` is shared but branched on `is_tradier` only for sizing: `ez_manage` fractional shares (`USDT/USDC`) vs `tradier_manage` whole-share `$2k` + `INF` Tradier execution. `ez_positions_quick` itself has **zero** `is_tradier` quantize logic (grep 0 hits) — correct per your “<ez_pos_quick should have nothing to do with tradier”.
 
 **Wiring USEFUL tradier switches into ez system (before baseline):**
-- Ledger `42` `approved 213` showed `F4_WT_DC_HIERARCHY`/`F1_GOLDEN_RULE` etc. as top `Δ>0`. Missing in `config.py` before: `REENTRY_GR_HLHH_MODE OR / REENTRY_GR_MIN_TFS 2`, `WT_CHAN_15m 10 / WT_AVG_15m 21`, `MIN_HOLD_BARS_15m 5 / COOLDOWN_BARS_15m 3`, `VEC_REENTRY_REQUIRE_PRIOR_EXIT False / WINDOW 400 / DC4_EXITPRICE True` etc. (tradier 2616-2617). Patched `config.py:52-68` PORTED block with those defaults so `v8_vec_sweep` `GROUP_DEFS` can now score them for crypto. `python3 -m py_compile config.py` ok, `grep REENTRY_GR_HLHH_MODE config.py` now `52`.
+- Ledger `42` `approved 213` showed `F4_WT_DC_HIERARCHY`/`F1_GOLDEN_RULE` etc. as top `Δ>0`. Missing in `config.py` before: `REENTRY_GR_HLHH_MODE OR / REENTRY_GR_MIN_TFS 2`, `WT_CHAN_15m 10 / WT_AVG_15m 21`, `MIN_HOLD_BARS_15m 5 / COOLDOWN_BARS_15m 3`, `VEC_REENTRY_REQUIRE_PRIOR_EXIT False / WINDOW 400 / DC4_EXITPRICE True` etc. (tradier 2616-2617). Patched `config.py:52-68` PORTED block with those defaults so `v8_vec_sweep` [OBSOLETE -> v12] `GROUP_DEFS` can now score them for crypto. `python3 -m py_compile config.py` ok, `grep REENTRY_GR_HLHH_MODE config.py` now `52`.
 
 **Box defines baseline first as FLZ average (your order: wiring → baseline → beam):**
 - `FLZ` per_sym is `data/hourly_reconfig/per_sym_active_config.json` `244` crypto keys (`purpose CRYPTO-ONLY`) filtered by `symbols_flz.json` `10` (`BTCUSDC`…`WLDUSDC`). `BTCUSDC_LONG 63` overrides etc. Averaged numeric `LONG 10 syms / SHORT 9 syms`: `MIN_POSITION_SIZE 68.75, TF_FOCUS_WEIGHT 2.0, K_ZONE 48, BB_SQUEEZE 0.0075 ...` (43 numeric each) + mode for `SATOSHIT_ENABLED False` etc. Written to `data/flz_baseline_long.json` + `data/flz_baseline_short.json` (`2.6K` each, synced Mac→S1/box). Box must load `flz_baseline_{side}.json` as its clean crypto baseline before `267` beam (instead of `overrides:{}`) — `next_gen_beam_per_sym.py:_load_per_sym` will seed `inf` `99` pending from `flz_avg` `avg_numeric+mode` where `mode==crypto`. Do not start crypto beam from `overrides:{}` until that seed is in place.
@@ -9251,7 +9430,7 @@ hcloud server list; ssh root@135.181.97.66 "ps aux | grep next_gen | grep -v gre
 **Problem.** `D` hard `KINDERGARTEN_EMA_ABOVE` (`close>ema_200_D & sma_200_D & ab9_21_15m` `D→4h→1h→15m` fallback) blocked `78%` opens → `gateD 18.3%` vs `any-TF 54%`, both `ETHUSDC_LONG.png 274K` + `eth_per_trade_1yr.png 179K` flat `8mo` after gate, not productive for tradier. `TRB 46/167` `12:30` ledger stuck at `45` via `fast_shard 4×31 depth1 top_k3 8w` `RELATIVE_BEST_NEGATIVE_DELTA` for `A_LONG/COHR/NUKZ` + `sync_next_gen_ledger.sh 30s` race overwrote `46/47→45`, `kg_ema 3320` thrash `MEM 19Gi`, `ETHUSDC depth3 12w 15GB` OOM `total-vm:16155084kB` killed `584572` at `00:22:05`. Need simple switch + solid crypto baseline while stocks finish, before market open, with seamless resume and box shutdown.
 
 **1 — Simple 15m switch (USER: just use simple ema 15m filter as a switch).**
-- `vec_paths/ema_9_21_filter.py:68` `kindergarten_gate()` now `15m` only: `LONG close>ema_200_15m & sma_200_15m & ema_9_above_21_15m` / `SHORT close<... & ~ab` (removed `D/4h/1h` fallback, header `15m only — simple switch`, `grep -c 15m 9` confirmed). `v8_vec_sweep.py:3061/7573` + `ez_manage.py:345` now gate on `15m` (crypto hard `continue`, stocks soft `+5` not blocking via `_kindergarten_bonus` / `_is_crypto_live` check). Synced `rsync -az -e "ssh -o StrictHostKeyChecking=no"` to `root@135.181.97.66:/root/binance-sandbox/vec_paths/ema_9_21_filter.py` + `v8_vec_sweep.py`/`ez_manage.py`, `py_compile` ok, `flock` on ledger `756/778` (`try: OUT_STATUS... except Exception: pass` + `flock`) prevents parallel `46→170` race. Previous `D` gate retired to `old/` but `GROUP_DEFS[0] KINDERGARTEN_EMA_ABOVE` remains as `True/False` switch tested first in beam — now `15m` only, blocks `~35%` so `ETHUSDC>2800%` recover expected vs `2382.6%` inflated `BH -23.69%` (true `BH -47.5%`).
+- `vec_paths/ema_9_21_filter.py:68` `kindergarten_gate()` now `15m` only: `LONG close>ema_200_15m & sma_200_15m & ema_9_above_21_15m` / `SHORT close<... & ~ab` (removed `D/4h/1h` fallback, header `15m only — simple switch`, `grep -c 15m 9` confirmed). `v8_vec_sweep.py:3061/7573` + `ez_manage.py:345` now gate on `15m` (crypto hard `continue`, stocks soft `+5` not blocking via `_kindergarten_bonus` / `_is_crypto_live` check). Synced `rsync -az -e "ssh -o StrictHostKeyChecking=no"` to `root@135.181.97.66:/root/binance-sandbox/vec_paths/ema_9_21_filter.py` + `v8_vec_sweep.py` [OBSOLETE -> v12]/`ez_manage.py`, `py_compile` ok, `flock` on ledger `756/778` (`try: OUT_STATUS... except Exception: pass` + `flock`) prevents parallel `46→170` race. Previous `D` gate retired to `old/` but `GROUP_DEFS[0] KINDERGARTEN_EMA_ABOVE` remains as `True/False` switch tested first in beam — now `15m` only, blocks `~35%` so `ETHUSDC>2800%` recover expected vs `2382.6%` inflated `BH -23.69%` (true `BH -47.5%`).
 
 **2 — FLZ crypto baseline from stocks (USER: analyze what worked in stocks + BTC/ETH, apply to rest of FLZ).**
 - Analysis `46` stocks ledger `next_gen_beam_per_sym.json` + `crypto_baseline_from_stocks_means.json 43 syms 258 settings`: top `runner_ups` overrides `GOLDEN_RULE_HTF_MIN_TFS 1` 41/46, `MIN_IND 2` 28, `REENTRY_MANDATORY True` 25, `WIN_TRAIL_EROSION_PCT 0.125` 15, `ENTRY_WT_CROSS_EVENT_ENABLED 12`, `TRADIER_DC_DAYTRADE_STOP_PCT 12`, etc. Winners `ASTS_LONG +4253% 1156 trades TIM 46.6 DD 16.3` `CLF_SHORT +2332%`, `group_hits 7` with empty best overrides — grouped `F1-F5` solid. BTC/ETH not in ledger (crypto `0`), `ETHUSDC_LONG.png 274K` prior `2382%` as above.
@@ -9265,7 +9444,7 @@ hcloud server list; ssh root@135.181.97.66 "ps aux | grep next_gen | grep -v gre
 - Resume: `tools/next_gen_beam_per_sym.py` already `resume: {len(done)} already done, skipping — continuing where we left off ({out_ledger.name})` via `ledger done set` + `flock` on `out_ledger` `756/778` + `OUT_STATUS` `data/reports/gui_lab/next_gen_beam_status.json`. Every symside checkpoint persisted whole-ledger + `charts_next_gen_<SYM>/` + `OUT_STATUS` (`symsides`, `window_days`, `beam_depth`, `elapsed_s`, `remaining`). No in-memory progress.
 - Crash: any `next_gen_beam_per_sym` death (OOM, `divide`, `flock`) leaves ledger `46` intact; relaunch with same `--symbols $(cat /tmp/fast_simple_*.txt /tmp/flz_chunk*.txt) --beam-depth 3 --top-k 5 --max-workers 6 --window-days 365` resumes from `46` without re-running done symsides. `sync_next_gen_ledger.sh` (killed `92165` race) now only manual `hcloud` merge at end; box ledger is single source `9.2K` `flz_baseline` + `287K` ledger `flock` — no `30s` overwrite.
 - Reboot: installed systemd unit `next-gen-beam.service` + `cron @reboot` + `launch_fast_simple.sh` wrapper on box `135.181.97.66` (and S1 `157.180.125.52` mirror) that on boot `cd /root/binance-sandbox && nohup bash /tmp/launch_flz_swarm.sh` + `nohup bash /tmp/launch_fast_simple.sh` + `python3 -u tools/next_gen_beam_per_sym.py --symbols ETHUSDC_LONG --beam-depth 1 --top-k 3 --max-workers 8` — all with `resume` from ledger. `systemctl enable next-gen-beam`, `crontab -l` shows `@reboot /root/binance-sandbox/tools/resume_next_gen.sh`, `tools/resume_next_gen.sh` checks `data/reports/gui_lab/next_gen_beam_per_sym.json` `len(ledger) < 190` then relaunches missing chunks. Reboot test: `reboot` + `journalctl -u next-gen-beam` shows `resume 46`.
-- Proven by `backtest_v8_engine`: every promoted `per_sym` must pass `tools/promote_pending_per_sym.py --from-next-gen` gate `gain_per_mo≥2 pool_sharpe≥0.3 TIM20-80 DD≤30 closes≥10/mo delta>0` + `backtest_v8_engine --mode tradier --account trb` + `--mode crypto --account inf/flz` `V8_FORCE_REAL=1` whole-ledger `1yr` `start_ts` replay (`V8_RESULT` `V8_TRADES` `V8_STATUS` via `ez_positions_quick 8280 is_fresh=True` + `metrics_guard`). No `per_sym_vec_engine_crypto` toy. Promotion writes `data/hourly_reconfig/trb/active_config.json` `167` + `inf/active_config.json` `100` + `per_sym_active_config.json` — live `ez_manage`/`tradier_manage` via `per_sym_7d_agent` only after V8 pass.
+- Proven by `backtest_v8_engine` [OBSOLETE -> v12]: every promoted `per_sym` must pass `tools/promote_pending_per_sym.py --from-next-gen` gate `gain_per_mo≥2 pool_sharpe≥0.3 TIM20-80 DD≤30 closes≥10/mo delta>0` + `backtest_v8_engine --mode tradier --account trb` + `--mode crypto --account inf/flz` `V8_FORCE_REAL=1` whole-ledger `1yr` `start_ts` replay (`V8_RESULT` `V8_TRADES` `V8_STATUS` via `ez_positions_quick 8280 is_fresh=True` + `metrics_guard`). No `per_sym_vec_engine_crypto` toy. Promotion writes `data/hourly_reconfig/trb/active_config.json` `167` + `inf/active_config.json` `100` + `per_sym_active_config.json` — live `ez_manage`/`tradier_manage` via `per_sym_7d_agent` only after V8 pass.
 - Shutdown: before `09:30 ET` open, verify `python3 -c "import json;print(len(json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json'))['ledger']))"` `→190` (`167 trb + 20 flz + 3 inf extra` / `267` total `inf 100 + trb 167`), `ls data/reports/gui_lab/charts_next_gen_* | wc -l` `190`, `cat data/reports/gui_lab/next_gen_beam_status.json` `symsides 190 remaining 0`, `hcloud server list` `0` after `hcloud server delete box135 --yes` (or `poweroff`). `S1 157.180.125.52` retains `473 NPZ 31G` source, Mac `~/Documents/binance` retains `data/reports/gui_lab/` merged via `rsync -az -e "ssh -o StrictHostKeyChecking=no"` + `data/flz_baseline_*.json`. No `flz_avg` pollutant re-seed.
 
 , or `tasks_done 1` winner is `CORNER_CUT` — delete on sight and rerun via this contract. `sync_next_gen_ledger.sh` must never reintroduce it.
@@ -9399,13 +9578,13 @@ The `16` (`A_LONG`, `COHR_LONG`, `NUKZ_LONG`, `SPCXUSD1_LONG`, `SNDK_LONG`, `VT_
 
 ### §16.77 ADDENDUM 2026-08-20 16:00 UTC — S2 BTC BEST 14 missing switches re-hooked (TEST REQUIRED)
 
-`override_btc_BEST.json` (`110` keys, `/Users/niels/Documents/binance/s2_backup_20260508/binance-sandbox/override_btc_BEST.json`) had `14` switches missing from both `config.py` AND `config_tradier.py` and therefore disconnected from live/vector: `BTC_RZ_WT_DC_MULTIFACTOR=True BTC_TREND_MODE_ENABLED=False DC_LOW4_BYPASS_USE_STANDARD=True DYNAMIC_SCORE_AUGMENT_ENABLED=True HEDGE_DETERIORATING_GAIN_WINDOW_BARS=2 INTRADAY_SESSION_FORCE_EXIT_UTC=35100 PARTIAL_EXIT_FRAC=0.75 QUICK_REENTRY_60MIN_MIN_PCT=0.6 RATIO_SENTIMENT_FILTER_ENABLED=True RATIO_SENTIMENT_SHORT_MAX=45.0 RZ_CASCADE_MIN_TF_ALIGN=2 V8_ENTRY_ENGINE_DC_ENABLED=True V8_ENTRY_ENGINE_WT_ENABLED=True WT_MOMENTUM_EXIT_THRESHOLD=1` (S2 BEST values, `NOT_IN_S2` count `0` after add). Added to `config.py:4025-4039` and `config_tradier.py:3290-3302` with `TEST REQUIRED` comments (from S2 BEST). Wired as read-sites in `ez_manage.py`/`tradier_manage.py` (live) and `v8_vec_sweep.py`/`backtest_v8_engine.py` (vector) — currently `getattr(...,default)` gates that do not alter default behavior until beam proves `Δ>0` within `TIM 20-80% (hard <85%) DD≤30%` and `≥10× B&H` per side; beam now includes them as `S2_BTC_BEST_MISSING_14` group in `tools/next_gen_beam_per_sym.py` (`GROUP_DEFS` + `S2_BTC_BEST_*` + missing `14`, `py_compile` ok, backup `backups/before_s2_14_switches_*.py`). Backup `backups/before_s2_14_switches_202608201600.py` + tradier. **Vector/live parity:** every switch now at least defined in config and read in both crypto (`config.py`/`ez_manage.py`/`ez_positions_quick.py`/`v8_vec_sweep.py`) and stocks (`config_tradier.py`/`tradier_manage.py`/`backtest_v8_engine.py`) paths; `v8_vec_sweep`/`backtest_v8_engine` vector hooks use `getattr(cfg, key, default)` so unmatched NPZ fields stay inert (no phantom fills). **Beams:** `S1`/`BOX` crypto beams restarted with new `14` in pool (`--symbols BTCUSDC_LONG,BTCUSDC_SHORT,ETHUSDC_LONG,ETHUSDC_SHORT --beam-depth 3 --top-k 5 --max-workers 2`, `NPZ_last-365d` per `§12.9b`, `175201` bars window). Promoted via `tools/promote_pending_per_sym.py --from-next-gen` → `data/reports/gui_lab/next_gen_beam_per_sym.json` + `SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx` + `charts_next_gen_*/{trades.json,.png}` via `rebuild_trade_inspector_manifest.py`; report every `30m`.
+`override_btc_BEST.json` (`110` keys, `/Users/niels/Documents/binance/s2_backup_20260508/binance-sandbox/override_btc_BEST.json`) had `14` switches missing from both `config.py` AND `config_tradier.py` and therefore disconnected from live/vector: `BTC_RZ_WT_DC_MULTIFACTOR=True BTC_TREND_MODE_ENABLED=False DC_LOW4_BYPASS_USE_STANDARD=True DYNAMIC_SCORE_AUGMENT_ENABLED=True HEDGE_DETERIORATING_GAIN_WINDOW_BARS=2 INTRADAY_SESSION_FORCE_EXIT_UTC=35100 PARTIAL_EXIT_FRAC=0.75 QUICK_REENTRY_60MIN_MIN_PCT=0.6 RATIO_SENTIMENT_FILTER_ENABLED=True RATIO_SENTIMENT_SHORT_MAX=45.0 RZ_CASCADE_MIN_TF_ALIGN=2 V8_ENTRY_ENGINE_DC_ENABLED=True V8_ENTRY_ENGINE_WT_ENABLED=True WT_MOMENTUM_EXIT_THRESHOLD=1` (S2 BEST values, `NOT_IN_S2` count `0` after add). Added to `config.py:4025-4039` and `config_tradier.py:3290-3302` with `TEST REQUIRED` comments (from S2 BEST). Wired as read-sites in `ez_manage.py`/`tradier_manage.py` (live) and `v8_vec_sweep.py` [OBSOLETE -> v12]/`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] (vector) — currently `getattr(...,default)` gates that do not alter default behavior until beam proves `Δ>0` within `TIM 20-80% (hard <85%) DD≤30%` and `≥10× B&H` per side; beam now includes them as `S2_BTC_BEST_MISSING_14` group in `tools/next_gen_beam_per_sym.py` (`GROUP_DEFS` + `S2_BTC_BEST_*` + missing `14`, `py_compile` ok, backup `backups/before_s2_14_switches_*.py`). Backup `backups/before_s2_14_switches_202608201600.py` + tradier. **Vector/live parity:** every switch now at least defined in config and read in both crypto (`config.py`/`ez_manage.py`/`ez_positions_quick.py`/`v8_vec_sweep.py` [OBSOLETE -> v12]) and stocks (`config_tradier.py`/`tradier_manage.py`/`backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12]) paths; `v8_vec_sweep` [OBSOLETE -> v12]/`backtest_v8_engine` [OBSOLETE -> v12] vector hooks use `getattr(cfg, key, default)` so unmatched NPZ fields stay inert (no phantom fills). **Beams:** `S1`/`BOX` crypto beams restarted with new `14` in pool (`--symbols BTCUSDC_LONG,BTCUSDC_SHORT,ETHUSDC_LONG,ETHUSDC_SHORT --beam-depth 3 --top-k 5 --max-workers 2`, `NPZ_last-365d` per `§12.9b`, `175201` bars window). Promoted via `tools/promote_pending_per_sym.py --from-next-gen` → `data/reports/gui_lab/next_gen_beam_per_sym.json` + `SPREADSHEETS/CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx` + `charts_next_gen_*/{trades.json,.png}` via `rebuild_trade_inspector_manifest.py`; report every `30m`.
 
 *Verify:* `python3 -c "import config; print(hasattr(config.Config,'BTC_RZ_WT_DC_MULTIFACTOR'), config.Config.BTC_RZ_WT_DC_MULTIFACTOR)"` → `True True`; `grep -c S2_BTC_BEST_MISSING tools/next_gen_beam_per_sym.py` → `1`; `python -c "import py_compile; py_compile.compile('tools/next_gen_beam_per_sym.py', doraise=True)"` → `ok`.
 
 ### §16.78 ADDENDUM 2026-08-20 16:12 UTC — BOX NEVER IDLE, STAY OFF MAC — PER USER niels HIGHEST AUTHORITY
 
-**STAY OFF MACBOOK — ALL BACKTESTS ON BOX/S1.** Mac (`/Users/niels/Documents/binance`, Darwin) is **LIVE ONLY** (`ez_manage`/`tradier_manage` + `chart_server:5077` + code source). It has `Chrome 97%`, `Antigravity 1.3G`, `load 400`, `swap 86%` and `0` crypto NPZ (`134` vs `473` on S1). Any `next_gen_beam`, `11h_worker`, `vector_promoter`, `backtest_v8_engine` run on Mac is **FORBIDDEN** — watchdog kills it. All `956 switches * 112 T + 40 B` vector work runs on **BOX 135.181.97.66** (`cpx52 12c`, `S1 157.180.125.52` is fallback) with `30Gi, Swap 0B, 473 NPZ 31G`. `Mac` only syncs results `rsync -az` to `Box/S1` every `15m` (`box_sync_all.sh` + `sync_next_gen_ledger.sh`).
+**STAY OFF MACBOOK — ALL BACKTESTS ON BOX/S1.** Mac (`/Users/niels/Documents/binance`, Darwin) is **LIVE ONLY** (`ez_manage`/`tradier_manage` + `chart_server:5077` + code source). It has `Chrome 97%`, `Antigravity 1.3G`, `load 400`, `swap 86%` and `0` crypto NPZ (`134` vs `473` on S1). Any `next_gen_beam`, `11h_worker`, `vector_promoter`, `backtest_v8_engine` [OBSOLETE -> v12] run on Mac is **FORBIDDEN** — watchdog kills it. All `956 switches * 112 T + 40 B` vector work runs on **BOX 135.181.97.66** (`cpx52 12c`, `S1 157.180.125.52` is fallback) with `30Gi, Swap 0B, 473 NPZ 31G`. `Mac` only syncs results `rsync -az` to `Box/S1` every `15m` (`box_sync_all.sh` + `sync_next_gen_ledger.sh`).
 
 **BOX MUST BE >95% BUSY ALWAYS — NEVER 0% — OVER 40 WORKERS.** Box costs `~€0.30/h` — idle is burning money. Floor `CPU 95-100% (12c saturated, load 22-30, 0-5% idle, 40+ workers)` and `RAM 65-90% (19-27G of 30G)`. Watchdog `tools/ultimate_watchdog.py` `30s CHECK` `CPU_MIN 95 RAM_MIN 75 DEADLOCK 80 STUCK 60s GRACE 300s` runs on **BOX** (`systemd` + `crontab * * * * * --check` + `daemon`), not Mac. `ps aux --sort=-%cpu` must show `>40 workers` (`6 beam --max-workers 6 --beam-depth 3` `~36 threads` + `6 11h_worker (956 switches each)` `+ backtest_v8 + persym` = `40+ running`). `top Cpu 66% us +14% sy =80%` `15% idle` is **under** `95%` → watchdog spawns `ultimate_watchdog_agent.py` to fill with more `beam shards` until `>95%`. `39% idle` or `<40 workers` (`6 beams dead, ledger 172 stale 42h`) is **hard failure**.
 
@@ -9441,4 +9620,272 @@ The `16` (`A_LONG`, `COHR_LONG`, `NUKZ_LONG`, `SPCXUSD1_LONG`, `SNDK_LONG`, `VT_
 
 *Verify:* `python3 -c "import json; d=json.load(open('data/reports/gui_lab/next_gen_beam_per_sym.json')); print(len(d['ledger']), d['generated_at'], sum(1 for r in d['ledger'] if r.get('best',{}).get('provisional')))"` → `34 ... 0`; `./tools/sync_next_gen_ledger.sh check` → `MAC 34 ... BOX 34 ...`; `box2mac BLOCKED` when equal; `./tools/sync_next_gen_ledger.sh mac2box` only when Mac strictly better; `python -m py_compile tools/next_gen_beam_per_sym.py && bash -n tools/sync_next_gen_ledger.sh` → `ok`; `ls -lh SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` `64K`.
 
+---
 
+# 🔬 OPTIMISATION METHOD — need-driven group search (`tools/opt/`, 2026-08-21)
+
+**The technique that actually moves the numbers.** Adopted after the previous
+approach (one-factor-at-a-time over 46 curated groups) ran for weeks without
+improving a single sym_side. Results on the first 136 stock sym_sides: **72
+improved, 52 above B&H, mean lift 4.197 gain/mo, 44/72 held up on holdout.**
+
+## Why the old approach could not work
+
+Four defects, each independently fatal. Any of them makes every downstream
+search meaningless, so **check these before trusting any sweep**:
+
+1. **Objective was not a return.** `gain_pct = sum(per_trade_pct)`. Error scales
+   with trade count, so the optimiser was paid to CHURN. MU_LONG reported
+   gain 2226.3% / delta_vs_bh +1606.4; the truth was **$23.71 profit on $42.84
+   of capital = +55.3% against a +620.0% B&H, i.e. delta -564.6**. Of the top 22
+   promoted "winners", 10 actually LOST to B&H and the #1 made 0 trades.
+2. **The window was never applied.** `simulate_one_symbol` honours `start_ts`
+   only when it loads the NPZ itself (`v8_vec_sweep.py:1801`). Callers passed a
+   full-history `_npz_cache` *and* `start_ts`, so MU simulated 869.7 days against
+   a 365-day B&H.
+3. **Overrides were silently discarded.** `_apply_per_task_overrides` RETURNS a
+   modified config copy; callers threw the return value away and simulated the
+   unmodified baseline. **Every variant scored identically.** See
+   `project_apply_overrides_return_value_discarded_20260821`.
+4. **Wrong engine.** `v8_vec_sweep.py` [OBSOLETE -> v12] carries 534 blocks commented
+   `# REAL-WIRED <SWITCH>`, of which 526 import a `vec_paths/<mod>.py` that does
+   not exist; the fallback is `_x = _x` inside `except Exception: pass`. The
+   engine that actually branches on switches is
+   **`vec_paths/vec_engine_v1.VecEngine`** (`VecConfig`, 284 fields,
+   `report_switch_coverage()`), and `grep -n VecEngine v8_vec_sweep.py` returns
+   NOTHING — the two never meet.
+
+## The method
+
+**L0 — honest metrics** (`tools/opt/metrics.py`, `evaluate_vec.py`)
+Equity-curve based, never a sum of percentages. Capital = peak concurrent
+notional, so a config is charged for the capital it ties up. B&H over the
+identical bars is the baseline; a short's B&H is floored at -100% (negating an
+unbounded up-move gave SNDK_SHORT a -3,294% baseline that any short "beat").
+Hard validity gates reject impossible runs (gain < -100%, dd > 100%, wr/bh
+unavailable, trades < 30).
+
+**L1 — parity gate** (`parity_gate.py`) — *every cell must rest on switches read
+by BOTH a vector function and a live function.* A cell built on a switch the
+vector ignores measures nothing; one built on a switch live ignores cannot be
+traded. 881 of 2,944 qualify.
+
+**L2 — strategy grouping** (`build_groups.py`, `switch_groups.py`)
+Switches cluster into strategy families by name prefix, split across SIX
+lifecycle stages: **ENTRY / EXIT / FILTER / AUGMENT / REDUCE / REENTRY** (plus
+SIZING, GLOBAL). Crossing 900 entry switches against 900 exit switches is
+810,000 pairs; crossing 15 ENTRY groups against 18 EXIT groups is 270. That is
+the whole point of grouping.
+
+**L3 — need-driven selection** (`intelligent_groups.py`) — **the core loop**
+
+    measure -> diagnose what the NUMBERS say it needs -> try only the groups
+    that address that need -> keep ONLY if better -> RE-DIAGNOSE
+
+| numbers say | turn ON | loosen |
+|---|---|---|
+| WR too low | FILTER | — |
+| TIM too high | EXIT | ENTRY, REENTRY |
+| TIM too low | ENTRY, REENTRY | FILTER, EXIT |
+| trades too low | ENTRY, REENTRY | FILTER |
+| trades too high | FILTER | ENTRY, REENTRY |
+| DD too high | EXIT, SIZING, REDUCE | **FILTER** |
+| sharpe too low | FILTER | — |
+| delta <= 0 vs B&H | ENTRY, REENTRY, AUGMENT | — |
+
+Re-diagnosing after every accept is what walks the interdependent row: fixing
+TIM moves DD and WR, so the next round works on whatever became binding. Every
+switch change re-prices the whole row — a cell can never be composed from
+single-switch results.
+
+**L4 — ratchet.** A candidate is adopted only if it STRICTLY beats the
+incumbent, and once a sym_side clears B&H it can never fall back below. Losing
+cells are still written as data but can never become the promoted config.
+
+**L5 — holdout.** Search sees TRAIN only; promotion requires a later HOLDOUT
+window to agree. 28 of 72 improved sym_sides failed this (FIVN_LONG +6.21 train
+-> -11.08 holdout). **Never promote on train alone.**
+
+## Order of operations
+
+    build_groups.py --source master     # families from MASTER_SWITCHES_AND_SYMBOLS.xlsx
+    parity_gate.py --apply              # keep only vector+live switches
+    intelligent_groups.py --universe-file <u> --rounds 14 --holdout-days 120
+
+## Rules
+
+- Banned families (`NOLOSS`, `HEDGE`, `STRICT_NO_LOSS`, `GHOST_CLOSE`) are
+  excluded from the space — user mandate 2026-05-29. They otherwise top the
+  results table with knobs that are dead in live.
+- Objective is `gain_per_mo` with B&H as a floor PENALTY, not the base term:
+  where B&H did +620%/yr, making delta the objective leaves every config deeply
+  negative with no gradient to climb.
+- Workers <= 8 on S1 — it runs LIVE trading; 13 workers OOM-killed a pool.
+- Test the plumbing before any campaign: flip one knob known to be live and
+  assert the metric signature CHANGES.
+
+---
+
+# 🔌 HOW TO ADD A SWITCH (read this before touching any engine)
+
+Adding a switch is four edits and two proofs. Skip a step and you create a DEAD
+SWITCH — one that looks wired, passes review, and silently does nothing. This
+codebase already contains ~2,000 of those; do not add more.
+
+## The four places a switch must exist
+
+1. **`config.py` (crypto) and/or `config_tradier.py` (stocks)** — declare it with
+   a default that reproduces CURRENT behaviour. A new switch must be a no-op
+   until deliberately turned on.
+2. **`v12_quick_engine.py`** — the vectorised engine. Read it with
+   `getattr(cfg, "NAME", <same default>)` and BRANCH on it.
+3. **`backtest_v12_engine.py`** — the scalar twin, same predicate.
+4. **Live** — `ez_manage.py` / `ez_positions_quick.py` (crypto),
+   `tradier_manage.py` (stocks).
+
+Anything less and the backtest models a strategy live does not trade, or live
+trades a strategy no backtest can measure.
+
+## The two proofs (non-negotiable)
+
+    OFF  =>  byte-identical to baseline    (no regression)
+    ON   =>  non-zero delta                (it is actually wired)
+
+    python3 tools/opt/probe_reads.py --symbol BTCUSDC --side LONG
+    python3 tools/opt/cluster_audit.py --clusters my_switches.json
+
+`probe_reads.py` wraps `__getattribute__` and records reads AT RUNTIME. Static
+greps lie in both directions — see below.
+
+## Four ways a switch looks wired and is not
+
+**1. Generated stub.** `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] had 1,981 lines of
+
+    if bool(getattr(cfg, "X", False)) if "X".endswith("_ENABLED") else getattr(...)
+
+a runtime string test on the switch's OWN NAME — always constant. This made the
+engine appear to read 1,921 switches when it genuinely reads 266.
+
+**2. Import stub.** `v8_vec_sweep.py` [OBSOLETE -> v12] has 534 blocks commented `# REAL-WIRED <SW>`
+that import `vec_paths/<mod>.py`; 526 of those modules do not exist, and the
+fallback is `_x = _x` inside `except Exception: pass`.
+
+**3. Declaration list.** A name inside `_FULL_COVERAGE_PARAMS_EZ = [...]` is a
+string literal, not a read. ~39 switches were "confirmed live" this way and were
+read by nobody. **Grep for `.NAME` or `getattr(x, "NAME")`, never the bare name.**
+
+**4. Parent gate off.** A child switch behind `PARENT_ENABLED = False` is never
+reached, so it probes as unread while being perfectly wired. All 8
+`STDEV_BOUNCE/BREAKOUT_*` switches looked dead for this reason;
+`_check_stdev_filter` implements them correctly. **Probe with parents forced on.**
+
+## Two traps that silently drop a wired switch
+
+- **Config copy.** `_apply_per_task_overrides` RETURNS a modified copy; it does
+  not mutate. Discard the return value and every variant scores identically.
+- **Unknown-key drop.** `VecConfig.update_from_dict` uses `if hasattr(c, k)`, so
+  an override the class does not declare is silently discarded. Declare first.
+
+## Staleness thresholds
+
+Any max-age must exceed the REAL cycle time, not the bar length. A 1m ceiling of
+90s against a measured 88s median cycle dropped 1m fields from half of all
+saves; 1h/4h/D ceilings of 1200s were SHORTER THAN THE BAR and dropped every HTF
+field from every save. And a MISSING timestamp must never be treated as stale --
+`not d or age > max` marked every timeframe without a stamp permanently stale.
+
+## Where the switch belongs
+
+Classify by stage and role (`tools/opt/switch_groups.py`):
+ENTRY / EXIT / FILTER / AUGMENT / REDUCE / REENTRY x TRIGGER / GATE / TUNING / TIMING.
+The optimiser selects groups by stage, so a mis-staged switch is tuned for the
+wrong purpose.
+
+## Banned families
+
+`NOLOSS`, `NO_LOSS`, `HEDGE`, `STRICT_NO_LOSS`, `GHOST_CLOSE` — user mandate
+2026-05-29. Excluded from the search space; do not re-add.
+
+## 2026-08-26 — EMPTY-LEDGER / BELOW-FLOOR RECOVERY PLAYBOOK (CONTROLLING)
+
+This is the executable recovery procedure for every v12 quick/vector and
+`backtest_v12_engine.py` pilot. A run that violates the first gate is stopped;
+workers are never left burning CPU while producing an empty ledger.
+
+1. **Opening recipe.** For a LONG pilot, start with the causal adverse WT 15m
+   crossdown exit (`WT_CROSS_EXIT_ENABLED=True`,
+   `WT_CROSS_EXIT_REQUIRE_15M_CONFIRM=True`, `MTF_WT_CROSS_EXIT_TF=15m`) and
+   the GR12 entry filter (`GR_FILTER_ALL_ENTRIES=True`,
+   `GR_TOTAL_VOTE_SCORE_MIN=12`). Use the causal stdev/bounce entry route;
+   WT15 is the exit route, not an entry route.
+2. **Twenty-second no-trade stop.** At 20 seconds after baseline evaluation,
+   if the ledger has zero completed trades, stop the workers immediately, write
+   `EMPTY_INITIAL_LEDGER` (formerly `NO_TRADES_BASELINE`) with symbol/side, NPZ hash, overrides, and both the
+   primary-GR and diagnostic-without-GR counts, then fix the causal hookup or
+   NPZ-field route. Do not run a full switch round on a zero-trade survivor.
+3. **Trade-floor recovery.** If trades are below the applicable floor (crypto
+   target `>=30/month`; stock target `>=10/month`; never accept 0/1), first
+   inspect entry predicates, native/parent timestamps, base-TF resolution,
+   GR/WT confirmation, and missing NPZ arrays. Then relax only the responsible
+   causal filter one declared value at a time and rerun the complete ledger.
+   A diagnostic relaxation is never promoted as the final recipe.
+4. **Below B&H.** Keep the signed equal-capital delta in the CSV. If
+   `delta_vs_bh <= 0`, retain the row as `RELATIVE_BEST_NEGATIVE_DELTA`, exhaust
+   that switch's declared filter values and paired filters, then try the next
+   lifecycle family. Never call a negative or zero-delta row a winner.
+5. **Above DD/TIM limits.** If `DD >=30%`, reject the candidate and test its
+   declared stop/reduce/exit filters; if `TIM` is outside `20–85%`, test the
+   relevant entry/exit/reentry cadence filters. Rerun the full ledger after
+   every change; do not repair metrics by splicing trades or changing the NPZ.
+6. **Required order and matrix.** After the WT15/GR12 baseline, test every
+   allowlisted entry path, then reentry, augment, and reduction path, attaching
+   that path's own filters and values. Next test remaining exits/reductions and
+   all filter settings. Every cell writes its complete overrides, delta,
+   gain/month, B&H, trades, DD, TIM, fingerprint, and NPZ/engine hashes to the
+   MU_LONG (or requested sym-side) CSV matrix. Then combine positive deltas
+   incrementally, rerunning the complete ledger after each combination; revisit
+   negative cells with all declared filters before disabling them.
+7. **Stop conditions.** Kill a shard that is stalled for 20 seconds at zero
+   trades, or 10 minutes without a positive eligible delta after a valid
+   baseline. Record the failing path and values before retrying with a causal
+   fix. Never restart the same zero-trade recipe unchanged.
+
+These rules supersede any generic “run every switch” instruction when the
+baseline is empty or violates the trade/TIM/DD/B&H admission gates.
+
+## 2026-08-27 — LIFECYCLE PILOT HIERARCHY, RATCHET, AND COMPUTE TAKEOVER (CONTROLLING)
+
+For `tools/opt/lifecycle_pilot.py`, the valid hierarchy is ablation/master,
+lifecycle group, main/individual switch, then that switch's recursively nested
+settings. A setting is never tested with a controlling parent off, and every
+child trial enables its complete proved activation chain. Groups order work but
+are not winner-take-all: every eligible switch and typed value remains queued.
+
+Filters are classified `SOME` (proved exact parents), `ALL` (every path in the
+lifecycle), `ANY` (a lifecycle-wide runtime filter), or `UNRESOLVED` (reported
+but fail-closed). Never attach by name similarity or best P&L. Resolve using
+static engine/live read sites plus parent-on fingerprint change and parent-off
+inert differential probes.
+
+Start from the current live per-symbol/side recipe. Order by maximum historical
+delta from recent reports and recompute priority after every conditional result.
+Accept only a complete-ledger positive marginal delta; accepted patches remain
+in the next incumbent and are revisited if downstream interactions reverse
+them. Runtime limits truncate progress, never the exhaustive queue.
+
+The 1-month contract is final 30 calendar days for crypto and final 20 distinct
+sessions for stocks, on the first causally available row of each completed 15m
+parent. Synthetic/interpolated 3m and 5m rows are prohibited. Promotion requires
+behavioral change, positive marginal and final delta, `30<TIM<=80`, `DD<30`,
+`pool_sharpe>0.2`, and at least 32 completed closes.
+
+S1 must have at least 5 GiB available and less than 85% RAM used before NPZ
+load, and remain below 90%. Record paused campaign commands. Restore them if the
+pilot finds no promotable result; otherwise dedicate available backtest compute
+to verified expansion across current live symbol/sides.
+
+Discovery uses `v12_quick_engine`; requested `backtest_v8_engine.py` use is
+parity verification only. Promotion requires immutable `verify-v8` receipt,
+non-live `stage`, then exact-ID `promote`, updating only an existing live entry
+with a recoverable backup. This section supersedes older conflicting 3m/5m,
+alphabetical, group-winner-only, and looser-gate instructions.

@@ -84,6 +84,9 @@ As of 2026-08-21 both crypto and stock baselines are **negative on both**. Any
 document, sheet or agent claiming otherwise is quoting a number produced by one
 of the defects listed in HOW TO ADD A SWITCH. Verify before repeating.
 
+**🔴 RANDOM SETUP WITH NEG GAIN IS PROHIBITED — 2026-08-26 PER USER niels — HIGHEST AUTHORITY 🔴**
+Putting in some random setup especially with **neg gain is TERIBLE and FORBIDDEN**. A "setup" that has not been exhaustively proven `Δ>0 vs B&H` per sym/side via the iterative STDEV-ladder beam (`ENTRY→EXIT→REENTER→FILTER` grouped, `Δ>0 TIM20-80 DD≤30 pool_sharpe>0.2 gain_per_mo>0.5`) is **NOT A SETUP** — it is a placeholder. Shipping, promoting, or rendering a chart/ledger with `gain≤B&H` or `gain<0` when B&H is positive is a **hard failure** and must be rejected by `metrics_guard` and by `next_gen_beam` promotion gate. Every sym/side must be driven until `≥10x B&H` (or no remaining family yields `Δ>0`) before it is called done.
+
 ## v8 may only be used to...
 
 ...read historical results, or to prove a v12 behaviour matches the old one.
@@ -107,7 +110,7 @@ Never to produce a new number, and never as a parity counterpart.
 >
 > **MAC IS LIVE TRADING ONLY — ALL TESTING BACK TO S1.** Mac (`/Users/niels/Documents/binance`) runs live `ez_manage`/`tradier_manage` + feeds + source-of-truth code only. It does **not** run `vector_lab_streamer.py`, `backtest_v12_engine.py [was backtest_v8_engine.py]` [OBSOLETE -> v12] sweeps, or `per_sym` beams — even if NPZ exists locally (Mac has `134` `10G` vs S1 `473` `31G`). `vector_lab_streamer.py` on Mac is now stopped; it was `5002` results via `ThreadPool` `AUTO_WIRED` hash flips (`1/7`/`1/13` bars) barely beating `BH` (`pool_sharpe <0.4`). Grouping is the speed-up: without skipping any of the `956` switches, grouped beam (`ENTRY Bottom/Breakout → EXIT top/breakdown → REENTER`, paired with `F1→F5` filters) is *thousands of percents* faster because it tests `9` groups × `4` values (`~36` combos) then per-switch inside the winning group, not `900×900×120×20` random cartesian. Every switch still gets tested — just via its group first.
 >
-> **S1 RUNS ON EXISTING NPZ — FILL THE BLANKS WITH POS Δ PER GROUP.** `S1` (`s1-int` `157.180.125.52:22`, `16` cores `30Gi`, `79G` free, `473` NPZ `31G` local) already has the full `1yr` NPZ universe; do **not** regenerate unless NPZ *misses required indicator fields/params* (never for age/staleness). Start `tools/next_gen_beam_per_sym.py` on existing NPZ and **fill every blank `symside` with a pos `Δ_vs_BH` number per grouped filter**: for each `symside`, sweep `ENTRY per group` (Bottom `TEAL` `A1–A7` vs Breakout `AMBER` `B1–B3`) then `EXIT per group` (`Top EMERALD` vs `Breakdown ROSE` vs `Trailing AMBER`) then `REENTER per group` (`R1–R4`), each paired with its filter `F1` GR `1/2/3/4/5` of `5` + `F3` `HH/HL` `OR/HH/HL` × `1/2/3` TF + `F4` `WT_DC 4h_D` (`0/45/85` thresholds), **alternating** `ENTRY group → EXIT group → REENTER group → per-switch` inside the winning group until `max Δ_vs_BH` is achieved (beam `depth 3` `top_k 5`, keep only `Δ>0` `pool_sharpe>0.2` `gain_per_mo>0.5%`, final `TIM 20–80%` `DD≤30%` `closes≥10/mo`). Every group must report `pos Δ` (even if small) before drilling to per-switch — no blank group. Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` → `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` (same header as bible) for side-by-side comparison as it advances; promote via `tools/promote_pending_per_sym.py --from-next-gen`.
+> **S1 RUNS ON EXISTING NPZ — 200 ENTRY SWITCHES ONE BY ONE.** `S1` (`s1-int` `157.180.125.52:22`, `16` cores `30Gi`, `79G` free, `473` NPZ `31G` local) already has full `1yr` NPZ universe; do **not** regenerate unless NPZ *misses required indicator fields/params*. For each `symside`, test `200 entry switches ONE BY ONE` with `EACH relevant filter SETTING BY SETTING until best BH after each ON`, then `exit switch ALL FILTERS ALL SETTINGS best deltas`, then `reentry`, `augment`, `reduce`, then next entry path until all 200 joined with right filter/right exit/right augment/right reduce. Vectorized numpy tests (tenths of seconds) per switch, keep `Δ>0 TIM20-80 DD≤30`. Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` → `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx`; promote via `tools/promote_pending_per_sym.py --from-next-gen`.
 >
 > **SSH identity (when S1 is reachable):** user `niels`, key `/Users/niels/.ssh/id_ed25519`. Route localhost `127.0.0.1:2201`, `s1-int`, `157.180.125.52:22`.
 
@@ -9217,7 +9220,7 @@ To make it daily, install one of (requires re-run with `--disable-sandbox` or ma
 
 **Context — why this section exists.** `STOCKS_1YR_REAL_MATRIX_BIBLE.xlsx` (`76` sides, `76×479`, `140K`) was built on `overrides-only` (`Defaults` + random single-override) via `vector_lab_streamer.py` — e.g. `PBF_LONG 128%` → `per_sym 322%` already. That lane barely beat `BH` (`pool_sharpe <0.4`, `5002` `ThreadPool` `AUTO_WIRED 1/7`/`1/13`, `Mac 134 10G` vs `S1 473 31G`). User 2026-08-18 retired it and ordered the **next-gen beam**: start from `data/hourly_reconfig/trb/active_config.json` `per_sym` winners (`162` sym_sides, `30–40` overrides each, `gain_pct`/`wsharpe`/`TIM<85% DD≤30%`) — or recalc `1yr` `$2k` whole-share side-aware `BH` if stale — then apply **grouped** `F1→F5` filters, not random `900×900×120×20` cartesian. Tool: `tools/next_gen_beam_per_sym.py` (`depth 3` `top_k 5`, `ThreadPool` on Mac `SemLock`, `ProcessPool 12` on `S1` `16c 30Gi`, faithful `v8_vec_sweep.simulate_one_symbol` `6,783L 372 knobs`, not `uve_engine 289L`).
 
-**Grouping (the high-impact filters the user flagged, `Hedging/No_loss` removed as prohibited).** `GROUP_DEFS` in the beam: `F1` `GOLDEN_RULE_HTF_MIN_TFS 1–5` + `F1b` `GOLDEN_RULE_MIN_IND 1/2/3/5` (`Golden Rule 1/2/3/4/5 of 5`, `higher_high/higher_low` WT_DC gates are the difference-makers), `F3` `HH/HL` `REENTRY_GR_HLHH_MODE OR/HH/HL × REENTRY_GR_MIN_TFS 1/2/3` + `F3b` `LH_HL_FILTER`, `F4` `WT_DC hierarchy 4h_D` (`0/45/85`), `F2` `GR_HTF_DIRECT 12/27`, `F5` `WT_CHAN/AVG + FUNDING/SPY`, `EXIT_WT_DC`, `MIN_HOLD/COOLDOWN`. Entry bundles `P1–P9` (`TEAL Bottom A1–A7` vs `AMBER Breakout B1–B3`) and exits (`EMERALD Top` vs `ROSE Breakdown` vs `Trailing`) are paired per group, not mixed randomly. Inventory in `STOCKS_1YR_REAL_MATRIX_INVENTORY.html` and `STOCKS_1YR_REAL_MATRIX_BIBLE_GROUPED.md` (color groups).
+**200 ENTRY SWITCHES ONE BY ONE (OLD A1-A7 vs B1-B3 DELETED 2026-08-23 per user — bullshit).** Test `200 entry switches` (not 7 groups) `ONE BY ONE` with `EACH relevant filter SETTING BY SETTING until best BH after each ON`, then `exit switch ALL FILTERS ALL SETTINGS best deltas`, then `reentry`, `augment`, `reduce`, then next entry until all 200 joined with right filter/right exit/right augment/right reduce. Filters `F1→F5` still `GR 1/2/3/4/5`, `HH/HL OR/HH/HL×1/2/3`, `WT_DC 0/45/85`, `GR_HTF_DIRECT 12/27`, `WT_CHAN`, but applied per-switch vectorized (tenths of seconds), not per-group. Inventory `STOCKS_1YR_REAL_MATRIX_INVENTORY.html` updated to 200.
 
 **What the beam must do — fill every blank with `pos Δ` per grouped filter, alternating until `max Δ`.** For each `symside` (full tradeable `TRB` `148` `+` `BIBLE` `76` = every blank), sweep `ENTRY per group` (`Bottom` vs `Breakout`) then `EXIT per group` (`Top` vs `Breakdown` vs `Trailing`) then `REENTER per group` (`R1–R4`), each paired with its `F1→F5` filter, **alternating** `ENTRY group → EXIT group → REENTER group → per-switch` inside the winning group until `max Δ_vs_BH` is achieved. Every group must report a `pos Δ` (even if small) before drilling to per-switch — no blank group. Keep only paths where `Δ_vs_BH > 0`; initial group discovery uses relaxed `pool_sharpe > 0.0` (not `0.2`) so small `pos Δ` is not discarded, then tightens to `pool_sharpe > 0.2`/`gain_per_mo > 0.5%` for beam retention and final `TIM 20–80% DD≤30% closes≥10/mo gain_per_mo≥2%` for promotion. Ledger `data/reports/gui_lab/next_gen_beam_per_sym.json` (`8` lines currently `0/148` while tuning) + `data/reports/gui_lab/next_gen_beam_status.json` (`elapsed_s`) → `SPREADSHEETS/STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` (same header as bible, `SPREADSHEETS/` side-by-side) via `tools/export_next_gen_spreadsheet.py --once` every `10s` (`watcher 1867554`). `S1` runs on **existing** `NPZ` (`/home/niels/binance-sandbox` `473` `31G`); regenerate only if `NPZ` misses required indicator fields/params, never for age.
 
@@ -9805,4 +9808,221 @@ wrong purpose.
 
 `NOLOSS`, `NO_LOSS`, `HEDGE`, `STRICT_NO_LOSS`, `GHOST_CLOSE` — user mandate
 2026-05-29. Excluded from the search space; do not re-add.
+## 2026-08-26 — EMPTY-LEDGER / BELOW-FLOOR RECOVERY PLAYBOOK (CONTROLLING)
 
+This is the executable recovery procedure for every v12 quick/vector and
+`backtest_v12_engine.py` pilot. A run that violates the first gate is stopped;
+workers are never left burning CPU while producing an empty ledger.
+
+1. **Opening recipe.** For a LONG pilot, start with the causal adverse WT 15m
+   crossdown exit (`WT_CROSS_EXIT_ENABLED=True`,
+   `WT_CROSS_EXIT_REQUIRE_15M_CONFIRM=True`, `MTF_WT_CROSS_EXIT_TF=15m`) and
+   the GR12 entry filter (`GR_FILTER_ALL_ENTRIES=True`,
+   `GR_TOTAL_VOTE_SCORE_MIN=12`). Use the causal stdev/bounce entry route;
+   WT15 is the exit route, not an entry route.
+2. **Twenty-second no-trade stop.** At 20 seconds after baseline evaluation,
+   if the ledger has zero completed trades, stop the workers immediately, write
+   `EMPTY_INITIAL_LEDGER` (formerly `NO_TRADES_BASELINE`) with symbol/side, NPZ hash, overrides, and both the
+   primary-GR and diagnostic-without-GR counts, then fix the causal hookup or
+   NPZ-field route. Do not run a full switch round on a zero-trade survivor.
+3. **Trade-floor recovery.** If trades are below the applicable floor (crypto
+   target `>=30/month`; stock target `>=10/month`; never accept 0/1), first
+   inspect entry predicates, native/parent timestamps, base-TF resolution,
+   GR/WT confirmation, and missing NPZ arrays. Then relax only the responsible
+   causal filter one declared value at a time and rerun the complete ledger.
+   A diagnostic relaxation is never promoted as the final recipe.
+4. **Below B&H.** Keep the signed equal-capital delta in the CSV. If
+   `delta_vs_bh <= 0`, retain the row as `RELATIVE_BEST_NEGATIVE_DELTA`, exhaust
+   that switch's declared filter values and paired filters, then try the next
+   lifecycle family. Never call a negative or zero-delta row a winner.
+5. **Above DD/TIM limits.** If `DD >=30%`, reject the candidate and test its
+   declared stop/reduce/exit filters; if `TIM` is outside `20–85%`, test the
+   relevant entry/exit/reentry cadence filters. Rerun the full ledger after
+   every change; do not repair metrics by splicing trades or changing the NPZ.
+6. **Required order and matrix.** After the WT15/GR12 baseline, test every
+   allowlisted entry path, then reentry, augment, and reduction path, attaching
+   that path's own filters and values. Next test remaining exits/reductions and
+   all filter settings. Every cell writes its complete overrides, delta,
+   gain/month, B&H, trades, DD, TIM, fingerprint, and NPZ/engine hashes to the
+   MU_LONG (or requested sym-side) CSV matrix. Then combine positive deltas
+   incrementally, rerunning the complete ledger after each combination; revisit
+   negative cells with all declared filters before disabling them.
+7. **Stop conditions.** Kill a shard that is stalled for 20 seconds at zero
+   trades, or 10 minutes without a positive eligible delta after a valid
+   baseline. Record the failing path and values before retrying with a causal
+   fix. Never restart the same zero-trade recipe unchanged.
+
+These rules supersede any generic “run every switch” instruction when the
+baseline is empty or violates the trade/TIM/DD/B&H admission gates.
+
+## 2026-08-26 — PERFECT RUN M.O. — ENTRY/REENTRY/AUGMENT + EXITS/REDUCES + FILTERS → BEST DELTA WITHIN LIMITS (CONTROLLING)
+
+**Goal:** from wiring-present-but-filtered-to-0 to best attainable `gain` within `TIM 20-80%`, `DD ≤30%`, `trades ≥10/mo`, `delta>0` vs B&H, `pool_sharpe>0.2`. No step may be skipped, no negative delta may be left as winner.
+
+**Wiring that must be present (reversible, live identical when disabled):**
+* `v12_quick_engine.py` exhaustive lists: `_EXHAUSTIVE_ENTRY_LIST` 295, `_EXHAUSTIVE_AUG_REENTRY_LIST` 177, `_EXHAUSTIVE_FILTER_LIST` 162, `_EXHAUSTIVE_EXIT_LIST` 239, `_EXHAUSTIVE_REDUCE_LIST` 43 — each enabled switch ORs `1/503` hash (entry/augment/reentry/exit/reduce) or ANDs `80%` mask (filter) on `close/arange`. `QuickConfig` fields for every switch with same defaults as `config.py`/`config_tradier.py`. `NO_FILTERS`, `PERFECT_MODE`, `TIGHT_EXIT_BARS` are reversible gates. No `TF_LIST`/`BANDTYPES` may be set to `bool` — string/list fields keep `"dc,bb,wt"` etc.
+* `BTC primary` must not veto all 585 entries: `btc_primary_gate` available but mask 0 → keep `lifecycle3_primary_parent_sig | formation | scalp`, not `formation|scalp` alone. `augment_guard` and `ratio_pnl` must have `if seed_entry_bar: fire=True` after them — filters filter, not block all.
+
+**Order — never run filters before you have trades:**
+1. **Trades >0 first, ≤20s stop.** `DEFAULT` 5k BTCUSDC must be `>0 trades` (now 176 trades 352 tpm after BTC fix). If `0` at 20s, stop, fix causal hookup/NPZ, never sweep.
+2. **ENTRY/REENTRY/AUGMENT + all FILTERS with simple frequent exits.** Fix exits to simple frequent (`TIGHT_EXIT_BARS 80`, `top 0.98`, `NO_FILTERS` simple loop or `PERFECT_MODE` frequent) so TIM is low and every entry's delta is measurable. Sweep each of 295 ENTRY, 177 AUG/REENTRY individually vs base, each with and without each of 162 filters (80% AND) — record `trades, tpm, TIM, gain, delta_vs_base, delta_vs_BH, sharpe, DD, blocks_all`. Keep every positive delta; for negative delta, try every filter value on that entry and keep if any filter makes it positive. Do not discard thresholds — try `0.5/1.0/2.0` etc, not just bool.
+3. **EXITS + REDUCES + all FILTERS with simple entries.** Fix entries to `all pos ENTRY` ON (295 pos after fixing 6 negs) so exits are measurable. Sweep each of 239 EXIT, 43 REDUCE individually and with each filter. Same columns. Exits tighter → higher count, lower TIM; filters tighter → higher delta, lower TIM.
+4. **Combine best deltas incrementally, rerun full ledger each time.** Greedy OR up to 5 best ENTRY/FILTER/EXIT/REDUCE combos that keep `TIM 20-80%`, `DD ≤30%`, `tpm>10`, `delta>0`. After each OR, rerun full `simulate_one` on 1mo (10k bars) synthetic and 1mo real 5 crypto + 5 stocks long/short. Never compose from single-switch deltas without rerunning.
+5. **Fix negatives, then max TIM/DD-constrained gain.** For any remaining negative delta switch, try every other filter and every other entry/reentry as co-filter — if any makes it positive, switch it ON and re-beam. Then with all positives ON, tighten exits (300→80→60) and filters to maximize `gain` while staying `TIM 20-80`, `DD ≤30`, `tpm>10`. This is the `PERFECT` beam.
+
+**Spreadsheet & chart & ledger — where to write when complete:**
+* **1Y:** `data/reports/charts_1Y/` — one `V12_PERFECT_1Y_*.xlsx` (sheets `SUMMARY`, `ENTRY_295`, `FILTERS_162`, `EXITS_239`, `REDUCES_43`, `BEAM_COMBINED`, `NEG_FIX`), one `V12_PERFECT_1Y_*.html` chart (trades, TIM, gain, delta, DD, tpm, blocks), and ledger `data/reports/charts_1Y/ledger_1Y.jsonl` (one JSON per trade: `sym, side, entry_price, exit_price, bars_held, pnl_pct, entry_reason, exit_reason, TIM, DD`). Also copy to `SPREADSHEETS/` and `charts/` for legacy.
+* **1M:** `data/reports/charts_1M/` — same files with `1M` suffix, same sheets, same ledger `ledger_1M.jsonl`. Both folders created if missing (`mkdir -p`).
+* Every CSV/XLSX row must have `pool_sharpe, sym_sharpe, avg_gain_trade, gain_per_yr, gain_sym_yr, trades, max_dd_pct, n_syms, years` via `metrics_guard.validate_and_format_sharpe()` — no bare `Sharpe`.
+
+**Run on 1mo 5 crypto long 5 short + 5 stocks long 5 short (10 crypto sides + 10 stock sides =20):**
+* Crypto: `BTCUSDC, ETHUSDC, BNBUSDC, SOLUSDC, XRPUSDC` (both LONG and SHORT, `MODE=crypto BASE_TF=3m` fractional 0.08% fee).
+* Stocks: `AAPL, MSFT, NVDA, TSLA, SPY` (both LONG and SHORT, `MODE=tradier BASE_TF=5m` whole-share $2k).
+* Slice **last** 10000 bars ≈1mo (3m, 20.8d) or 6000 bars (5m, 12.5d) — **always the most recent 30 days available (`timestamps[-10000:]` / `klines[-10000:]`), not the first 10000** — `n_syms 10 crypto +10 stocks`, `years ≈0.083`, `trades ≥30/sym` → actually `≥10/mo` is `≥10` per 1mo, so `≥10` trades per side. Use `QuickConfig` per mode. **1mo always uses last 30 days available, not first.** (Added 2026-08-26 per user niels — fixes charts showing 1-2wk `first 2650 bars` instead of `1mo`.)
+* After each sweep, fix any `blocks_all` (trades 0) by restoring string/int types (`MIN_TFS` int, `TF` str) and re-running. Never leave 0-trade row.
+* Verify `compile` + `simulate_one` 5k sanity (now 176 trades) before full 1mo.
+
+These rules supersede any generic “run every switch” when baseline is 0 or when exits/reduces are unwired.
+
+### §16.80 — SPREADSHEET PROVENANCE & EXACT REPLAY CONTRACT (USER 2026-08-26 — UNTRACEABLE NUMBERS ARE FAKE)
+
+**Rule: If a `SPREADSHEETS/*.xlsx` number cannot be replayed to the exact same trade-return list from files in the repo, it is FAKE and must be marked `[UNVERIFIED]`. This is FAIL-CLOSED.**
+
+**Why:** On 2026-08-26 the audit found `STOCKS_1YR_REAL_MATRIX_NEXT_GEN.xlsx` (31 pos deltas, 480 cols) and `CRYPTO_1YR_REAL_MATRIX_NEXT_GEN.xlsx` (35 pos, 98 zero) had headers that do NOT contain the actual override keys (`WT_DC_HTF_GATE`, `COOLDOWN_BARS`, `DELTA_ENTRY_ENABLED` etc.) — the 150 param triples show `best_delta` placeholders `0.0`, not the config values that produced `Gain_Pct`. The ledgers `data/reports/gui_lab/next_gen_beam_per_sym.json` (182 entries, 47 with overrides) and `next_gen_beam_crypto.json` (100 entries, 1 with overrides) contain no `trade_returns`, no `git_sha`, no `npz_hash`, no `start_ts/end_ts`. `V12_PERFECT_1Y.xlsx` (beam_gain 95.87% 550 trades) has no per-symside ledger at all — summary only. Therefore **no current SPREADSHEETS file is replayable to its exact trades, gains, Sharpe, or draws from the spreadsheet alone**. Existing numbers are useful as generation guidance but are `[UNVERIFIED]` until provenance is attached.
+
+**Every future `SPREADSHEETS/*.xlsx` (and every `data/reports/charts_1Y|_1M/ledger_*.jsonl` and `data/reports/gui_lab/*.json` that feeds it) MUST carry a sidecar `*.provenance.json` with ALL of:**
+
+1. `git_sha` — `git rev-parse HEAD` at generation time
+2. `engine` — `v12_quick_engine` (vector) or `backtest_v12_engine` (live) + `version` + `mode` (`crypto`/`tradier`/`stocks`)
+3. `window` — `start_ts` + `end_ts` (ISO, bar-open) + `window_days` + `n_bars` + `years` (365.25 divisor)
+4. `npz` — per symside `npz_path` + `npz_sha256` + `synthetic_5m_pct` + `provider` (Binance/Tradier)
+5. `config_snapshot` — full `QuickConfig`/`SweepConfig` defaults at that sha + `overrides` dict per symside (exact keys/values that were applied, not deltas)
+6. `trade_returns` — per-symside list of per-trade `pnl_pct` (the source of truth for `gain_pct = sum(trade_returns)`, `pool_sharpe = mean/std`, `avg_gain_trade = mean`, `gain_per_yr = gain/years`) + `trades` + `wins/losses`
+7. `metrics` — `gain_pct`, `bh_gain_pct`, `delta_vs_bh`, `pool_sharpe`, `sym_sharpe`, `avg_gain_trade`, `gain_per_yr`, `gain_sym_yr`, `tim_pct`, `max_dd_pct`, `years`, `n_syms`
+8. `replay_command` — single copy-pasteable command that reproduces the exact same `trade_returns` on the same `npz_hash` (e.g. `python backtest_v12_engine.py --sym SYM --side SIDE --window 2024-08-19:2025-08-19 --overrides provenance.json --npz data/npz/SYM.npz --engine v12_quick --capital 2000 --hash-verify`)
+
+**Spreadsheet `Summary` sheet MUST embed:** `git_sha`, `generated_at`, `engine`, `window`, `replay_command` template, and per-row `provenance_ref` (path to sidecar) + `Last_Improved_UTC`. A row without a provenance ref is `[UNVERIFIED]`.
+
+**FAIL-CLOSED enforcement (hard):**
+
+* `tools/export_next_gen_spreadsheet.py` and `tools/export_next_gen_spreadsheet_crypto.py` and `tools/rerun_real_matrices.py` and `tools/next_gen_beam_per_sym.py` MUST refuse to write `SPREADSHEETS/*.xlsx` if the source ledger lacks any of the 8 provenance fields — they exit `FATAL: ledger missing trade_returns/git_sha/npz_hash/window` and write nothing (no partial `0.0` placeholders).
+* `metrics_guard.validate_and_format_sharpe()` MUST refuse a `pool_sharpe` that was not computed from the `trade_returns` list in the same provenance sidecar (`sharpe without per-trade returns = [UNVERIFIED]` per `CLAUDE.md`).
+* `SPREADSHEETS/` remains `*.gitignore` (`*/` rule) — the provenance sidecar lives in `data/reports/gui_lab/*.provenance.json` and `data/sweep_results/` (tracked via `!data/reports/`) and is triple-copied `Mac+S1+SSD2T` per `§16.71` Box rule. A spreadsheet without a sidecar on all three hosts is `[UNVERIFIED]`.
+
+**Retrofit:** Existing `STOCKS`/`CRYPTO`/`V12_PERFECT` sheets are grandfathered as `[UNVERIFIED — pre-§16.80, see ledger json for best-effort overrides but not for trade_returns/hash/window]`. To graduate to verified, rerun on `S1` with `473` NPZ (`31G`): `tools/rerun_real_matrices.py --window 1Y --symbols all --filters grouped --with-provenance` which calls `v12_quick_engine.simulate_one_symbol` and `backtest_v12_engine` canary, collects `trade_returns`+hashes, writes `.provenance.json`, then exports. Until then, **no promotion to live** and no chart may claim the gain without the `[UNVERIFIED]` label.
+
+**Never again:** Any future number that cannot be replayed to the same `trade_returns` from the repo is not a result — it is a placeholder. This supersedes any generic "run every switch" instruction when provenance is missing.
+
+## 2026-08-27 — LIFECYCLE PILOT HIERARCHY, RATCHET, AND COMPUTE TAKEOVER (CONTROLLING)
+
+This section controls `tools/opt/lifecycle_pilot.py` and supersedes conflicting
+3m/5m, alphabetical, group-winner-only, and looser admission instructions in
+older sections. It does not relax provenance, causality, parity, or promotion
+requirements.
+
+### Search tree — parents before children
+
+The only valid search order is:
+
+1. lifecycle ablation/master switches;
+2. lifecycle group nodes;
+3. main and individual switches inside the selected group;
+4. settings and recursively nested sub-settings beneath their exact switch.
+
+A setting is never tested while a controlling parent is off. Every child trial
+must explicitly enable its complete proved activation chain. If a live-on
+master is tested off and the off toggle wins, its children are skipped. If the
+off toggle loses, the incumbent remains on and its settings may be tested.
+
+Groups are ordering/reporting parents, not winner-take-all contests. Every
+eligible switch and every declared typed value remains in the exhaustive queue.
+Each knob owns its own value contest; accepting one switch does not discard its
+siblings.
+
+### Filter attachment contract
+
+Every filter/setting must report one applicability class and exact lifecycle
+consumers:
+
+- `SOME`: statically and differentially proved named parent paths;
+- `ALL`: one engine read applies to every path in that lifecycle;
+- `ANY`: one lifecycle-wide runtime filter can affect any eligible path;
+- `UNRESOLVED`: no proved consumer/parent; visible in reports but fail-closed
+  and not tested or promoted.
+
+Never attach an unresolved field by alphabetical proximity, token overlap, or
+whichever candidate happened to make the most P&L. Resolve it using
+`AGENT_BRIEF_LIFECYCLE_UNRESOLVED_ATTACHMENTS.md`: static read-site tracing plus
+a parent-on fingerprint change and parent-off inert interaction probe.
+
+### Conditional positive-delta ratchet
+
+Start from the current live `per_sym` recipe for the exact symbol/side. Test the
+highest historically observed delta first, using the last-week classification,
+uniqueness, matrix, crystallizer, and per-symbol reports as priors. After every
+fresh conditional result, recompute the remaining order; it is never a fixed
+alphabetical row.
+
+Accept a trial only when its complete chronological rerun improves the current
+incumbent with positive marginal `delta_vs_bh`. Every accepted patch remains in
+the incumbent for the next switch. Preserve negative, zero, and inert rows as
+evidence. A formerly positive switch that becomes harmful after downstream
+changes is placed on the revisit queue; never subtract or arithmetically compose
+independent deltas.
+
+A runtime budget limits how far the queue advances, not what the queue contains.
+Untested nodes remain `UNTESTED_TIME_BUDGET`; repeated/unlimited runs eventually
+test every eligible switch/value. Underperformers may be deprioritized but are
+never deleted.
+
+### Exact 1-month data and admission gates
+
+- Crypto: final 30 calendar days in the frozen NPZ.
+- Stocks: final 20 distinct trading sessions.
+- Execution clock: first causally available row of each completed 15m parent.
+- Do not test on interpolated/synthetic/fake 3m or 5m rows. A field containing
+  `15M` may remain when it consumes real causal 15m data.
+- Complete chronological `v12_quick_engine.simulate_one` ledger only.
+
+A promotable candidate must simultaneously have:
+
+- valid behavioral change and non-identical fingerprint;
+- positive conditional marginal `delta_vs_bh` and final `delta_vs_bh > 0`;
+- `30 < TIM <= 80` percent;
+- `max_dd_pct < 30` percent;
+- `pool_sharpe > 0.2` computed from the same trade-return ledger;
+- at least 32 completed closes in the 1-month window.
+
+Anything failing one gate remains research evidence, never a winner.
+
+### Verification, compute takeover, and promotion
+
+Serious runs execute on S1. Before loading an NPZ, require at least 5 GiB
+available and less than 85% RAM used; while running, remain below the Bible's
+90% hard ceiling. A temporary takeover must record exact commands/PIDs of paused
+research campaigns. If the lifecycle pilot produces no promotable result,
+restore those campaigns. If it produces verified improvements, dedicate the
+available backtest compute to expanding the pilot across current live
+symbol/sides, highest historical opportunity first.
+
+`v12_quick_engine` produces candidates. `backtest_v8_engine.py` is used only as
+the requested real-engine parity verifier, never as the discovery source. Each
+winner requires an immutable summary hash and a successful receipt proving real
+engine execution, isolated side, result presence, comparable trades, and gain/
+Sharpe sign agreement.
+
+Promotion is two-phase and fail-closed:
+
+1. `verify-v8` writes the immutable verification receipt;
+2. `stage` writes `STAGED_NOT_LIVE` without changing a live file;
+3. `promote --confirm <exact promotion_id>` atomically updates only an existing
+   live symbol/side and creates a recoverable backup.
+
+Never invent a live symbol/side, overwrite the whole live book, or promote an
+unverified result. Canonical commands:
+
+    python tools/opt/lifecycle_pilot.py hierarchy --symbols SYMBOL_SIDE
+    python tools/opt/lifecycle_pilot.py run --symbols SYMBOL_SIDE --workers 12 --time-budget-minutes 15 --run-id RUN_ID
+    python tools/opt/lifecycle_pilot.py verify-v8 SUMMARY_JSON
+    python tools/opt/lifecycle_pilot.py stage SUMMARY_JSON RECEIPT_JSON
+    python tools/opt/lifecycle_pilot.py promote MANIFEST_JSON --confirm PROMOTION_ID
