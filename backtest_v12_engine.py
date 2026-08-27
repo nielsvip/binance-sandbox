@@ -4321,10 +4321,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             from v12_quick_engine import compute_reentry_blocks as _v12_reentry_blocks
             for _b11_sym, _b11_store in stores.items():
                 for _b11_side in _position_sides:
-                    _native_blocks = _v12_reentry_blocks(
-                        _b11_store.arrays, len(_b11_store.timestamps),
-                        _b11_side == "LONG", config,
-                    )
+                    # ``V8_BACKTEST_BYPASS_DRAWDOWN`` is an account-only
+                    # scalar bypass.  It must not erase SRS while we build
+                    # Quick's causal source masks from frozen NPZ data.
+                    _srs_drawdown_bypass = os.environ.pop("V8_BACKTEST_BYPASS_DRAWDOWN", None)
+                    try:
+                        _native_blocks = _v12_reentry_blocks(
+                            _b11_store.arrays, len(_b11_store.timestamps),
+                            _b11_side == "LONG", config,
+                        )
+                    finally:
+                        if _srs_drawdown_bypass is not None:
+                            os.environ["V8_BACKTEST_BYPASS_DRAWDOWN"] = _srs_drawdown_bypass
                     _b11_mask = _native_blocks.get("B11")
                     if _b11_mask is not None:
                         for _b11_idx in np.where(_b11_mask)[0]:
