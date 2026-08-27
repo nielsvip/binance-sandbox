@@ -4392,9 +4392,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     try:
         from vec_paths.v12_exit_reduce_gap_batch3 import evaluate_gap_batch3 as _v12_exit_batch3
         from vec_paths.v12_reentry_augment_gap_batch2 import obligatory_reentry_decision as _v12_obligatory_reentry
+        from vec_paths.v12_reentry_augment_gap_batch3 import hlr_reentry_decision as _v12_hlr_reentry
     except Exception:
         _v12_exit_batch3 = None
         _v12_obligatory_reentry = None
+        _v12_hlr_reentry = None
     if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
         try:
             import v12_quick_engine as _v12_quick_events
@@ -4862,6 +4864,58 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _native_entry_meta.pop(_stdev_pk, None)
                     _native_reentry_meta[_stdev_pk] = {"exit_ts": _stdev_exit_ts, "exit_price": _stdev_px}
                 v8_logger.info("[V12_STDEV_EXIT_NATIVE] %s ts=%s result=%s", _stdev_pk, _stdev_exit_ts, _stdev_result)
+
+        # HLR is used as a close predicate for these short-lived reentries.
+        # It sees scalar-native age/quantity and the persisted current bar.
+        if _v12_hlr_reentry is not None and _native_entry_meta and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _hlr_exit_ts = int(ts)
+            for _hlr_pk, _hlr_meta in list(_native_entry_meta.items()):
+                _hlr_sym, _hlr_side = _hlr_meta["symbol"], _hlr_meta["side"]
+                _hlr_row = _quick_ledger_exits.get((_hlr_sym, _hlr_side, _hlr_exit_ts), {})
+                if (
+                    _hlr_row.get("entry_reason") != _hlr_meta["reason"]
+                    or _hlr_row.get("exit_reason") != "HLR_REENTRY_EXIT"
+                ):
+                    continue
+                _hlr_store = stores.get(_hlr_sym)
+                if _hlr_store is None:
+                    continue
+                _hlr_idx = int(np.searchsorted(_hlr_store.timestamps, _hlr_exit_ts))
+                if _hlr_idx >= len(_hlr_store.timestamps) or int(_hlr_store.timestamps[_hlr_idx]) != _hlr_exit_ts:
+                    continue
+                _hlr_bar = {
+                    _hlr_key: _hlr_val[_hlr_idx:_hlr_idx + 1]
+                    for _hlr_key, _hlr_val in _hlr_store.arrays.items()
+                    if isinstance(_hlr_val, np.ndarray) and _hlr_val.ndim == 1
+                    and len(_hlr_val) == len(_hlr_store.timestamps)
+                }
+                _hlr_pos = trade_manager.positions.get(_hlr_pk)
+                _hlr_qty = abs(float(getattr(_hlr_pos, "positionAmt", 0.0) or 0.0))
+                _hlr_decision = _v12_hlr_reentry(
+                    _hlr_bar,
+                    {
+                        "candidate_mask": np.array([True]),
+                        "registry_age_seconds": np.array([max(0.0, _hlr_exit_ts - _hlr_meta["opened_ts"])]),
+                        "registry_has_qty": np.array([_hlr_qty > 1e-9]),
+                    },
+                    _hlr_side == "LONG", config,
+                )
+                if not (_hlr_decision.available and bool(_hlr_decision.mask[0])):
+                    continue
+                _hlr_px = float(price_cache.get(_hlr_sym.upper(), 0.0) or 0.0)
+                if _hlr_qty <= 0.0 or _hlr_px <= 0.0:
+                    continue
+                _hlr_result = await _crypto_eta(
+                    account_key=account_key, position_key=_hlr_pk, symbol=_hlr_sym,
+                    quantity=_hlr_qty, current_price=_hlr_px,
+                    side="SELL" if _hlr_side == "LONG" else "BUY",
+                    position_side=_hlr_side, action="CLOSE", reason="HLR_REENTRY_EXIT",
+                    is_full_close=True, is_hedge=False,
+                )
+                if "SUCCESS" in str(_hlr_result).upper():
+                    _native_entry_meta.pop(_hlr_pk, None)
+                    _native_reentry_meta[_hlr_pk] = {"exit_ts": _hlr_exit_ts, "exit_price": _hlr_px}
+                v8_logger.info("[V12_HLR_EXIT_NATIVE] %s ts=%s result=%s", _hlr_pk, _hlr_exit_ts, _hlr_result)
 
         # Obligatory reentry is stateful: evaluate the exact vector predicate
         # from the scalar's prior native exit rather than fabricating a signal.
