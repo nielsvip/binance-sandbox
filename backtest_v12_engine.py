@@ -2996,7 +2996,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # 2026-07-30 crypto matrix-primitive port (mirror of tradier :6571): the
         # stage-0 B&H seed must bypass strategy-entry vetoes so the ladder floor
         # measures execution, not entry filters. Test-only reason — live never emits it.
-        _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED"
+        _is_ladder_seed = reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (parity with ez_manage.py execute_now ~22720) —
         # block OPEN/AUGMENT/ENTRY/REENTRY (NOT hedge) when price sits in the top
@@ -4276,6 +4276,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Keep the live admission prefilter above for ordinary scalar simulations.
     _quick_entry_event_sets = {}
     _quick_exit_event_sets = {}
+    _quick_ledger_entries = {}
+    _quick_ledger_exits = {}
     if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
         try:
             import v12_quick_engine as _v12_quick_events
@@ -4295,10 +4297,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     for _q_row in _q_ledger:
                         _q_entry_bar = _q_row.get("bar_entry")
                         if isinstance(_q_entry_bar, (int, np.integer)) and 0 <= int(_q_entry_bar) < len(_q_npz["timestamps"]):
-                            _q_entries.add(int(_q_npz["timestamps"][int(_q_entry_bar)]))
+                            _q_entry_ts = int(_q_npz["timestamps"][int(_q_entry_bar)])
+                            _q_entries.add(_q_entry_ts)
+                            _quick_ledger_entries[(_q_sym, _q_side, _q_entry_ts)] = _q_row
                         _q_exit_ts = _q_row.get("ts")
                         if _q_exit_ts is not None:
-                            _q_exits.add(int(float(_q_exit_ts)))
+                            _q_exit_ts = int(float(_q_exit_ts))
+                            _q_exits.add(_q_exit_ts)
+                            _quick_ledger_exits[(_q_sym, _q_side, _q_exit_ts)] = _q_row
                     _quick_entry_event_sets[(_q_sym, _q_side)] = _q_entries
                     _quick_exit_event_sets[(_q_sym, _q_side)] = _q_exits
             v8_logger.info(
@@ -4313,6 +4319,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             v8_logger.exception("[V12_QUICK_EVENT_GATE] schedule build failed: %s", _quick_events_exc)
             _quick_entry_event_sets = {}
             _quick_exit_event_sets = {}
+            _quick_ledger_entries = {}
+            _quick_ledger_exits = {}
     # ─────────────────────────────────────────────────────────────────────────
 
     # Start the OrderQueue processor (REAL)
@@ -4557,6 +4565,43 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _ladder_initial_seeded = True
                 print(f"V8_LADDER_SEED: symbol={_seed_sym} side={_ladder_side_c} price={_seed_px:.6f} qty={_seed_qty:.6f}", flush=True)
                 break
+
+        # Diagnostic execution-parity bridge.  It deliberately exists only
+        # under an explicit backtest environment flag: Quick supplies the
+        # already-causal decision ledger, while the real crypto action seam
+        # supplies fills, position accounting, fees and close bookkeeping.
+        # Promotion still requires native-decision parity separately.
+        if os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") == "1":
+            _ledger_ts = int(ts)
+            for _ledger_sym in stores:
+                for _ledger_side in _scheduled_sides if "_scheduled_sides" in locals() else ("LONG", "SHORT"):
+                    _ledger_pk = f"{account_key}:{_ledger_sym}_{_ledger_side}"
+                    _ledger_px = float(price_cache.get(_ledger_sym.upper(), 0.0) or 0.0)
+                    if _ledger_px <= 0.0:
+                        continue
+                    _entry_row = _quick_ledger_entries.get((_ledger_sym, _ledger_side, _ledger_ts))
+                    if _entry_row is not None:
+                        _entry_qty = float(_entry_row.get("qty", 0.0) or 0.0)
+                        if _entry_qty > 0.0:
+                            await _crypto_eta(
+                                account_key=account_key, position_key=_ledger_pk, symbol=_ledger_sym,
+                                quantity=_entry_qty, current_price=_ledger_px,
+                                side="BUY" if _ledger_side == "LONG" else "SELL",
+                                position_side=_ledger_side, action="OPEN",
+                                reason="V12_QUICK_LEDGER_REPLAY", is_full_close=False,
+                            )
+                    _exit_row = _quick_ledger_exits.get((_ledger_sym, _ledger_side, _ledger_ts))
+                    if _exit_row is not None:
+                        _ledger_pos = trade_manager.positions.get(_ledger_pk)
+                        _exit_qty = abs(float(getattr(_ledger_pos, "positionAmt", 0.0) or 0.0))
+                        if _exit_qty > 0.0:
+                            await _crypto_eta(
+                                account_key=account_key, position_key=_ledger_pk, symbol=_ledger_sym,
+                                quantity=_exit_qty, current_price=_ledger_px,
+                                side="SELL" if _ledger_side == "LONG" else "BUY",
+                                position_side=_ledger_side, action="CLOSE",
+                                reason="V12_QUICK_LEDGER_REPLAY", is_full_close=True,
+                            )
 
         # ═══════════════════════════════════════════════════════════════════════════
         # PORTFOLIO-AWARE SENTIMENT INJECTION (crypto path) — 2026-05-12
