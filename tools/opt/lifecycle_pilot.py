@@ -992,6 +992,8 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
                                           + context_boost.get(trial.name, 0.0)), trial.name))
         entry = pending.pop(0)
         attempted += 1
+        entry_start_overrides = dict(incumbent_overrides)
+        entry_start_metrics = dict(incumbent_metrics)
         prior_score, prior_evidence = historical_priority(entry.name, symside)
         before_delta = _metric_float(incumbent_metrics, "delta_vs_bh", -1e9)
         entry_row = _record_trial(ledger_path, rows, symside=symside, base=incumbent_overrides,
@@ -1024,7 +1026,11 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
             # knobs together would evaluate them but retain only one, which is
             # not parameter optimization.
             grouped.setdefault(trial.name, []).append(trial)
+        path_timed_out = False
         for _setting_name, choices in grouped.items():
+            if deadline is not None and time.monotonic() >= deadline:
+                path_timed_out = True
+                break
             evaluated = []
             futures = {}
             for trial in choices:
@@ -1058,6 +1064,16 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
                 accepted_filters.append(winner["trial_id"])
                 incumbent_overrides = dict(path_overrides)
                 incumbent_metrics = dict(path_metrics)
+        if path_timed_out:
+            # Do not crystallize a partly searched family. Its append-only rows
+            # remain reusable, while the family returns to the exhaustive queue
+            # and the next invocation deterministically reconstructs its best
+            # complete setting chain from those cached rows.
+            incumbent_overrides = entry_start_overrides
+            incumbent_metrics = entry_start_metrics
+            pending.append(entry)
+            persist_queue()
+            break
         after_delta = _metric_float(path_metrics, "delta_vs_bh", -1e9)
         marginal_delta = after_delta - before_delta
         accepted = bool(toggle_accepted or accepted_filters)
