@@ -3962,9 +3962,22 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
 
     # ═══ SET UP TRADEABLE KEYS + EMPTY POSITION SHELLS ═══
     # Every NPZ symbol gets LONG + SHORT position shells so entry scanners find them
+    # A per_sym replay is different: it validates exactly one recipe/side.
+    # Filtering only the allowlist later is insufficient because several live
+    # producers iterate these shells directly and can otherwise open the
+    # opposite side (e.g. LONG verification emitting STRONG_SELL).
+    _verify_side = os.environ.get("V8_ISOLATE_SIDE", "").upper()
+    if _verify_side not in {"LONG", "SHORT"}:
+        _long_enabled = bool(getattr(config, "LONG_ENABLED", True))
+        _short_enabled = bool(getattr(config, "SHORT_ENABLED", True))
+        _verify_side = "LONG" if _long_enabled and not _short_enabled else (
+            "SHORT" if _short_enabled and not _long_enabled else "")
+    _position_sides = [_verify_side] if _verify_side else ["LONG", "SHORT"]
+    if _verify_side:
+        v8_logger.info("V8 side-isolated scalar replay: %s", _verify_side)
     all_position_keys = set()
     for sym in stores.keys():
-        for side in ["LONG", "SHORT"]:
+        for side in _position_sides:
             pk = f"{account_key}:{sym}_{side}"
             all_position_keys.add(pk)
             if pk not in trade_manager.positions:
