@@ -1379,7 +1379,10 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
         env.update({"V8_OVERRIDE_FILE": str(override_path), "V8_RESULT_FILE": str(result_path),
                     "V8_FORCE_REAL": "1", "V8_SWEEP_MODE": "1", "PYTHONHASHSEED": "0",
                     "V8_HASHSEED_LOCKED": "1", "EZ_LOG_DIR": str(variant / "logs"),
-                    "TRADIER_API_LOG_DIR": str(variant / "logs")})
+                    "TRADIER_API_LOG_DIR": str(variant / "logs"),
+                    "LIFECYCLE_EXACT_RECIPE_VERIFY": "1",
+                    "V8_DISABLE_PER_SYM": "1",
+                    "V8_BACKTEST_CAPITAL_CONTRACT": "unlevered"})
         started = time.time()
         with log_path.open("w") as log:
             try:
