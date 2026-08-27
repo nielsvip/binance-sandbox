@@ -2996,7 +2996,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # 2026-07-30 crypto matrix-primitive port (mirror of tradier :6571): the
         # stage-0 B&H seed must bypass strategy-entry vetoes so the ladder floor
         # measures execution, not entry filters. Test-only reason — live never emits it.
-        _is_ladder_seed = reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
+        _is_ladder_seed = (
+            reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
+            or str(reason).startswith(("STDEV_BREAKOUT", "STDEV_RETEST"))
+        )
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (parity with ez_manage.py execute_now ~22720) —
         # block OPEN/AUGMENT/ENTRY/REENTRY (NOT hedge) when price sits in the top
@@ -4271,6 +4274,27 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _gate_total_checks = 0
     _gate_pct_logged = False
     v8_logger.info(f"[SIGNAL_GATE] Built for {len(_entry_signal_sets)} symbols. Sample: {list(_entry_signal_sets.keys())[:3]}")
+    # Standalone STDEV breakout/retest is a real Quick entry producer, not an
+    # admission filter.  Build its causal state machine once from the guarded
+    # frozen NPZ and emit it in the crypto scalar loop below.
+    _stdev_native_events = {}
+    if bool(getattr(config, "STDEV_BREAKOUT_ENABLED", False)):
+        try:
+            from v12_quick_engine import _stdev_breakout_masks as _v12_stdev_masks
+            for _stdev_sym, _stdev_store in stores.items():
+                for _stdev_side in _position_sides:
+                    _stdev_breakout, _stdev_retest, _ = _v12_stdev_masks(
+                        _stdev_store.arrays, len(_stdev_store.timestamps),
+                        _stdev_side == "LONG", config,
+                    )
+                    for _stdev_idx in np.where(_stdev_breakout | _stdev_retest)[0]:
+                        _stdev_native_events[(_stdev_sym, _stdev_side, int(_stdev_store.timestamps[_stdev_idx]))] = (
+                            "STDEV_BREAKOUT" if _stdev_breakout[_stdev_idx] else "STDEV_RETEST"
+                        )
+            v8_logger.info("[V12_STDEV_NATIVE] built %d standalone scalar events", len(_stdev_native_events))
+        except Exception as _stdev_native_exc:
+            v8_logger.exception("[V12_STDEV_NATIVE] event build failed: %s", _stdev_native_exc)
+            _stdev_native_events = {}
     # Exact parity mode needs Quick's sequential ledger, not a raw predicate
     # mask: the latter is intentionally broad and has no position/hold state.
     # Keep the live admission prefilter above for ordinary scalar simulations.
@@ -4606,6 +4630,35 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             )
                             v8_logger.info("[V12_QUICK_LEDGER_REPLAY] CLOSE %s ts=%s qty=%.10f result=%s",
                                            _ledger_pk, _ledger_ts, _exit_qty, _exit_result)
+
+        # Standalone STDEV source: Quick permits a breakout/retest independently
+        # of the generic score route, so scalar must create the same open intent
+        # when the causal state machine fires.  The normal scalar fill seam still
+        # owns sizing, position state and all subsequent exits.
+        if _stdev_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _stdev_ts = int(ts)
+            for _stdev_sym in stores:
+                for _stdev_side in _position_sides:
+                    _stdev_reason = _stdev_native_events.get((_stdev_sym, _stdev_side, _stdev_ts))
+                    if not _stdev_reason:
+                        continue
+                    _stdev_pk = f"{account_key}:{_stdev_sym}_{_stdev_side}"
+                    _stdev_pos = trade_manager.positions.get(_stdev_pk)
+                    if abs(float(getattr(_stdev_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
+                        continue
+                    _stdev_px = float(price_cache.get(_stdev_sym.upper(), 0.0) or 0.0)
+                    if _stdev_px <= 0.0:
+                        continue
+                    _stdev_qty = float(getattr(config, "START_POSITION_SIZE", 2000.0) or 2000.0) / _stdev_px
+                    _stdev_result = await _crypto_eta(
+                        account_key=account_key, position_key=_stdev_pk, symbol=_stdev_sym,
+                        quantity=_stdev_qty, current_price=_stdev_px,
+                        side="BUY" if _stdev_side == "LONG" else "SELL",
+                        position_side=_stdev_side, action="OPEN", reason=_stdev_reason,
+                        is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_STDEV_NATIVE] %s %s ts=%s result=%s",
+                                   _stdev_reason, _stdev_pk, _stdev_ts, _stdev_result)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # PORTFOLIO-AWARE SENTIMENT INJECTION (crypto path) — 2026-05-12
