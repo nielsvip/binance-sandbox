@@ -1403,7 +1403,10 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
         override_path.write_text(json.dumps(dict(override), indent=2, sort_keys=True))
         env = os.environ.copy()
         env.update({"V8_OVERRIDE_FILE": str(override_path), "V8_RESULT_FILE": str(result_path),
-                    "V8_FORCE_REAL": "1", "V8_SWEEP_MODE": "1", "PYTHONHASHSEED": "0",
+                    # Forced-real verification must not inherit sandbox sweep
+                    # behavior: it changes admission/reentry decisions and can
+                    # manufacture hundreds of closes absent from Quick.
+                    "V8_FORCE_REAL": "1", "V8_SWEEP_MODE": "0", "PYTHONHASHSEED": "0",
                     "V8_HASHSEED_LOCKED": "1", "EZ_LOG_DIR": str(variant / "logs"),
                     "TRADIER_API_LOG_DIR": str(variant / "logs"),
                     "LIFECYCLE_EXACT_RECIPE_VERIFY": "1",
