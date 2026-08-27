@@ -7601,6 +7601,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_QUICK_CAUSAL_SCHEDULE_UNAVAILABLE"
             if _quick_now not in _quick_times:
                 return "BLOCKED_QUICK_CAUSAL_EVENT_SCHEDULE"
+            # One Quick ledger event represents one state transition.  Several
+            # scalar producers may request duplicate partial actions on the
+            # same bar; consuming the event once prevents one vector close or
+            # entry from becoming a burst of scalar-only trades.
+            _quick_kind = "OPEN" if _position_increase else "CLOSE"
+            _quick_consumed = manager.__dict__.setdefault("_v12_quick_schedule_consumed", set())
+            _quick_token = (symbol.upper(), _quick_side, _quick_now, _quick_kind)
+            if _quick_token in _quick_consumed:
+                return "BLOCKED_QUICK_CAUSAL_EVENT_ALREADY_CONSUMED"
+            _quick_consumed.add(_quick_token)
         # The private research prefix is accepted only by this backtest engine
         # and only when the explicit replay adapter invokes this local helper.
         # It bypasses strategy-entry vetoes so the audit measures execution and
