@@ -2998,7 +2998,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # measures execution, not entry filters. Test-only reason — live never emits it.
         _is_ladder_seed = (
             reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
-            or str(reason).startswith(("STDEV_BREAKOUT", "STDEV_RETEST", "B11"))
+            or str(reason).startswith((
+                "STDEV_BREAKOUT", "STDEV_RETEST", "B11", "GOLDEN_RULE_ENTRY",
+            ))
         )
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (parity with ez_manage.py execute_now ~22720) —
@@ -4318,6 +4320,36 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _b11_native_exc:
             v8_logger.exception("[V12_B11_NATIVE] event build failed: %s", _b11_native_exc)
             _b11_native_events = {}
+    # Golden Rule is a primary Quick entry producer.  Build the same frozen
+    # decision against the guarded source arrays; its predicate is stateless at
+    # the scalar seam, so it must not depend on daemon/Tradier indicators.
+    _golden_native_events = {}
+    if bool(getattr(config, "GOLDEN_RULE_ENABLED", False)):
+        try:
+            from v12_quick_engine import _batch3_lifecycle_window as _v12_lifecycle_window
+            from vec_paths.v12_reentry_augment_filter_gap_batch6 import golden_rule_decision as _v12_golden
+            for _golden_sym, _golden_store in stores.items():
+                _golden_n = len(_golden_store.timestamps)
+                _golden_arrays = _v12_lifecycle_window(_golden_store.arrays, _golden_n, config)
+                _golden_state = {
+                    "candidate_mask": np.ones(_golden_n, dtype=bool),
+                    "cooldown_ready": np.ones(_golden_n, dtype=bool),
+                    "current_notional": np.zeros(_golden_n, dtype=float),
+                }
+                for _golden_side in _position_sides:
+                    _golden_result = _v12_golden(
+                        _golden_arrays, _golden_state, _golden_side == "LONG", "crypto", config,
+                    )
+                    if not _golden_result.available:
+                        continue
+                    for _golden_idx in np.where(_golden_result.mask)[0]:
+                        _golden_native_events[(_golden_sym, _golden_side, int(_golden_store.timestamps[_golden_idx]))] = (
+                            float(_golden_result.target_usd[_golden_idx])
+                        )
+            v8_logger.info("[V12_GOLDEN_NATIVE] built %d standalone scalar events", len(_golden_native_events))
+        except Exception as _golden_native_exc:
+            v8_logger.exception("[V12_GOLDEN_NATIVE] event build failed: %s", _golden_native_exc)
+            _golden_native_events = {}
     # Exact parity mode needs Quick's sequential ledger, not a raw predicate
     # mask: the latter is intentionally broad and has no position/hold state.
     # Keep the live admission prefilter above for ordinary scalar simulations.
@@ -4690,6 +4722,39 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     )
                     v8_logger.info("[V12_STDEV_NATIVE] %s %s ts=%s result=%s",
                                    _stdev_reason, _stdev_pk, _stdev_ts, _stdev_result)
+
+        # Primary Golden Rule source.  The Quick schedule remains the causal
+        # parity gate, while this producer independently evaluates the full
+        # Golden predicate and lets scalar V12 own the fill and lifecycle.
+        if _golden_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _golden_ts = int(ts)
+            for _golden_sym in stores:
+                for _golden_side in _position_sides:
+                    _golden_notional = _golden_native_events.get((_golden_sym, _golden_side, _golden_ts))
+                    if _golden_notional is None:
+                        continue
+                    if (
+                        os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1"
+                        and _golden_ts not in _quick_entry_event_sets.get((_golden_sym, _golden_side), set())
+                    ):
+                        continue
+                    _golden_pk = f"{account_key}:{_golden_sym}_{_golden_side}"
+                    _golden_pos = trade_manager.positions.get(_golden_pk)
+                    if abs(float(getattr(_golden_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
+                        continue
+                    _golden_px = float(price_cache.get(_golden_sym.upper(), 0.0) or 0.0)
+                    if _golden_px <= 0.0:
+                        continue
+                    _golden_qty = float(_golden_notional) / _golden_px
+                    _golden_result = await _crypto_eta(
+                        account_key=account_key, position_key=_golden_pk, symbol=_golden_sym,
+                        quantity=_golden_qty, current_price=_golden_px,
+                        side="BUY" if _golden_side == "LONG" else "SELL",
+                        position_side=_golden_side, action="OPEN", reason="GOLDEN_RULE_ENTRY",
+                        is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_GOLDEN_NATIVE] %s ts=%s result=%s",
+                                   _golden_pk, _golden_ts, _golden_result)
 
         # B11 uses the same scalar fill seam as STDEV, but remains a separately
         # attributed source in receipts and logs.  It may only open flat sides;
