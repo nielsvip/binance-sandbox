@@ -4251,48 +4251,36 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _gate_total_checks = 0
     _gate_pct_logged = False
     v8_logger.info(f"[SIGNAL_GATE] Built for {len(_entry_signal_sets)} symbols. Sample: {list(_entry_signal_sets.keys())[:3]}")
-    # Exact parity mode needs the *actual V12 Quick* schedules, not the broad
-    # live admission prefilter above.  Keep the latter for ordinary scalar
-    # simulations, but use these side-aware masks at the final execution seam
-    # so scalar-only opens/reductions cannot inflate its trade count.
+    # Exact parity mode needs Quick's sequential ledger, not a raw predicate
+    # mask: the latter is intentionally broad and has no position/hold state.
+    # Keep the live admission prefilter above for ordinary scalar simulations.
     _quick_entry_event_sets = {}
     _quick_exit_event_sets = {}
     if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
         try:
             import v12_quick_engine as _v12_quick_events
+            from tools.opt import lifecycle_pilot as _v12_lifecycle
+            _scheduled_sides = (os.environ.get("V8_ISOLATE_SIDE", "").upper(),)
+            if _scheduled_sides[0] not in {"LONG", "SHORT"}:
+                _scheduled_sides = ("LONG", "SHORT")
             for _q_sym, _q_store in stores.items():
-                _q_n = len(_q_store.timestamps)
-                for _q_side, _q_long in (("LONG", True), ("SHORT", False)):
-                    _q_cfg = _v12_quick_events.QuickConfig.from_override_file(_override_file)
-                    if mode == "tradier":
-                        _q_cfg.apply_tradier_defaults()
-                    else:
-                        _q_cfg.MODE = "crypto"
-                    # Per_sym uses an empty string to mean "use this Quick
-                    # field's default" for optional timeframe selectors.
-                    # Normalize it before a dormant vector family builds a
-                    # field suffix such as ``wt_divergence_``.
-                    for _q_name in dir(_q_cfg):
-                        if not _q_name.endswith(("_TF", "_TFS")):
-                            continue
-                        _q_current = getattr(_q_cfg, _q_name, None)
-                        _q_default = getattr(_v12_quick_events.QuickConfig, _q_name, None)
-                        if isinstance(_q_current, str) and not _q_current.strip() and isinstance(_q_default, str):
-                            setattr(_q_cfg, _q_name, _q_default)
-                    # ``from_override_file`` is the vector evaluator's own
-                    # coercion path.  Do not raw-set the mapping afterwards:
-                    # blank optional TF values (valid in per_sym JSON) must
-                    # retain its normalization rather than become invalid
-                    # NumPy field suffixes such as ``wt_divergence_``.
-                    _q_cfg.BASE_TF = os.environ.get("V12_PARITY_MIN_DECISION_TF", "15m")
-                    _q_entry = _v12_quick_events.compute_entry_signals(
-                        _q_store.arrays, _q_n, _q_long, _q_cfg)
-                    _q_exit = _v12_quick_events.compute_exit_signals(
-                        _q_store.arrays, _q_n, _q_long, _q_cfg)
-                    _quick_entry_event_sets[(_q_sym, _q_side)] = set(
-                        int(_q_store.timestamps[i]) for i in np.where(_q_entry)[0])
-                    _quick_exit_event_sets[(_q_sym, _q_side)] = set(
-                        int(_q_store.timestamps[i]) for i in np.where(_q_exit)[0])
+                for _q_side in _scheduled_sides:
+                    _q_cfg, _q_npz, _q_loaded_sym, _q_long, *_q_rest = _v12_lifecycle._config_and_month_npz(
+                        f"{_q_sym}_{_q_side}", dict(_overrides))
+                    if _q_npz is None or _q_loaded_sym != _q_sym:
+                        raise RuntimeError(f"Quick ledger unavailable for {_q_sym}_{_q_side}")
+                    _q_ledger = list((_v12_quick_events.simulate_one(
+                        _q_npz, _q_loaded_sym, _q_long, _q_cfg) or {}).get("ledger") or [])
+                    _q_entries, _q_exits = set(), set()
+                    for _q_row in _q_ledger:
+                        _q_entry_bar = _q_row.get("bar_entry")
+                        if isinstance(_q_entry_bar, (int, np.integer)) and 0 <= int(_q_entry_bar) < len(_q_npz["timestamps"]):
+                            _q_entries.add(int(_q_npz["timestamps"][int(_q_entry_bar)]))
+                        _q_exit_ts = _q_row.get("ts")
+                        if _q_exit_ts is not None:
+                            _q_exits.add(int(float(_q_exit_ts)))
+                    _quick_entry_event_sets[(_q_sym, _q_side)] = _q_entries
+                    _quick_exit_event_sets[(_q_sym, _q_side)] = _q_exits
             v8_logger.info(
                 "[V12_QUICK_EVENT_GATE] built exact schedules for %d symbol-sides: %s",
                 len(_quick_entry_event_sets),
