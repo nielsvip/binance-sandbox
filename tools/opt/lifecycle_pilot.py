@@ -1400,6 +1400,10 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
         override_path = variant / "override.json"
         result_path = variant / "result.txt"
         log_path = variant / "run.log"
+        # A failed/early-aborted subprocess may not create a result file.  A
+        # previous receipt in this reusable directory must never be parsed as
+        # the new run's metric evidence.
+        result_path.unlink(missing_ok=True)
         override_path.write_text(json.dumps(dict(override), indent=2, sort_keys=True))
         env = os.environ.copy()
         env.update({"V8_OVERRIDE_FILE": str(override_path), "V8_RESULT_FILE": str(result_path),
