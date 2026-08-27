@@ -7305,6 +7305,18 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             else:
                 ps = "LONG"; act = "OPEN"
             pk = f"{account_key}:{sym}_{ps}"
+            if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+                _capture_now = int(_sim_ts[0]) if _sim_ts else 0
+                _capture_times = (_quick_entry_event_sets if act == "OPEN" else _quick_exit_event_sets).get(
+                    (sym.upper(), ps.upper())
+                )
+                if _capture_times is None or _capture_now not in _capture_times:
+                    return {"status": "blocked_quick_causal_event_schedule"}
+                _capture_token = (sym.upper(), ps.upper(), _capture_now, act)
+                _capture_used = manager.__dict__.setdefault("_v12_quick_schedule_consumed", set())
+                if _capture_token in _capture_used:
+                    return {"status": "blocked_quick_causal_event_already_consumed"}
+                _capture_used.add(_capture_token)
             executed_trades.append({"timestamp": _sim_ts[0], "symbol": sym, "side": side, "price": px, "quantity": qty, "reason": kw.get("reason",""), "action": act, "position_key": pk, "position_side": ps})
             return {"id": len(executed_trades), "status": "filled", "avg_fill_price": str(kw.get("price",0)), "exec_quantity": str(kw.get("quantity",0))}
         async def get_positions(self, *a, **kw): return []
@@ -7601,16 +7613,6 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_QUICK_CAUSAL_SCHEDULE_UNAVAILABLE"
             if _quick_now not in _quick_times:
                 return "BLOCKED_QUICK_CAUSAL_EVENT_SCHEDULE"
-            # One Quick ledger event represents one state transition.  Several
-            # scalar producers may request duplicate partial actions on the
-            # same bar; consuming the event once prevents one vector close or
-            # entry from becoming a burst of scalar-only trades.
-            _quick_kind = "OPEN" if _position_increase else "CLOSE"
-            _quick_consumed = manager.__dict__.setdefault("_v12_quick_schedule_consumed", set())
-            _quick_token = (symbol.upper(), _quick_side, _quick_now, _quick_kind)
-            if _quick_token in _quick_consumed:
-                return "BLOCKED_QUICK_CAUSAL_EVENT_ALREADY_CONSUMED"
-            _quick_consumed.add(_quick_token)
         # The private research prefix is accepted only by this backtest engine
         # and only when the explicit replay adapter invokes this local helper.
         # It bypasses strategy-entry vetoes so the audit measures execution and
