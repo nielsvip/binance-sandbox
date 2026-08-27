@@ -1421,6 +1421,11 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
                     # explicit so no opposite-side producer can enter it.
                     "V8_ISOLATE_SIDE": side,
                     "V8_DISABLE_PER_SYM": "1",
+                    # RateGuard is a live throughput watchdog.  It measures
+                    # wall-clock startup speed and aborts a cold scalar replay
+                    # before its first 15m ledger event, so it is invalid for
+                    # fixed-window parity verification.
+                    "V8_RATE_GUARD_DISABLED": "1",
                     "V8_BACKTEST_CAPITAL_CONTRACT": "unlevered"})
         started = time.time()
         with log_path.open("w") as log:
