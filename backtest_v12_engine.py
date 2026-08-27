@@ -4251,6 +4251,42 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _gate_total_checks = 0
     _gate_pct_logged = False
     v8_logger.info(f"[SIGNAL_GATE] Built for {len(_entry_signal_sets)} symbols. Sample: {list(_entry_signal_sets.keys())[:3]}")
+    # Exact parity mode needs the *actual V12 Quick* schedules, not the broad
+    # live admission prefilter above.  Keep the latter for ordinary scalar
+    # simulations, but use these side-aware masks at the final execution seam
+    # so scalar-only opens/reductions cannot inflate its trade count.
+    _quick_entry_event_sets = {}
+    _quick_exit_event_sets = {}
+    if os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1":
+        try:
+            import v12_quick_engine as _v12_quick_events
+            for _q_sym, _q_store in stores.items():
+                _q_n = len(_q_store.timestamps)
+                for _q_side, _q_long in (("LONG", True), ("SHORT", False)):
+                    _q_cfg = _v12_quick_events.QuickConfig.from_override_file(_override_file)
+                    if mode == "tradier":
+                        _q_cfg.apply_tradier_defaults()
+                    # The scalar override was already normalized by the exact
+                    # recipe loader.  Copy it directly, including keys Quick
+                    # accepts dynamically for wired lifecycle paths.
+                    for _q_key, _q_value in _overrides.items():
+                        setattr(_q_cfg, _q_key, _q_value)
+                    _q_cfg.BASE_TF = os.environ.get("V12_PARITY_MIN_DECISION_TF", "15m")
+                    _q_entry = _v12_quick_events.compute_entry_signals(
+                        _q_store.arrays, _q_n, _q_long, _q_cfg)
+                    _q_exit = _v12_quick_events.compute_exit_signals(
+                        _q_store.arrays, _q_n, _q_long, _q_cfg)
+                    _quick_entry_event_sets[(_q_sym, _q_side)] = set(
+                        int(_q_store.timestamps[i]) for i in np.where(_q_entry)[0])
+                    _quick_exit_event_sets[(_q_sym, _q_side)] = set(
+                        int(_q_store.timestamps[i]) for i in np.where(_q_exit)[0])
+            v8_logger.info("[V12_QUICK_EVENT_GATE] built exact schedules for %d symbol-sides", len(_quick_entry_event_sets))
+        except Exception as _quick_events_exc:
+            # An incomplete schedule is unsafe: exact verification must never
+            # silently fall back to the broad scalar path.
+            v8_logger.exception("[V12_QUICK_EVENT_GATE] schedule build failed: %s", _quick_events_exc)
+            _quick_entry_event_sets = {}
+            _quick_exit_event_sets = {}
     # ─────────────────────────────────────────────────────────────────────────
 
     # Start the OrderQueue processor (REAL)
@@ -7549,10 +7585,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         _position_increase = (not is_reduce) and not is_hedge and str(act).upper() in {
             "OPEN", "QUICK_OPEN", "AUGMENT", "QUICK_AUGMENT", "REENTRY",
         }
-        if _quick_event_gate and _position_increase:
-            _quick_times = _entry_signal_sets.get(symbol.upper())
+        if _quick_event_gate and (_position_increase or is_reduce):
+            _quick_side = (position_side or ("LONG" if str(side).upper() == "BUY" else "SHORT")).upper()
+            _quick_times = (_quick_entry_event_sets if _position_increase else _quick_exit_event_sets).get(
+                (symbol.upper(), _quick_side)
+            )
             _quick_now = int(_sim_ts[0]) if _sim_ts else 0
-            if _quick_times is not None and _quick_now not in _quick_times:
+            if _quick_times is None:
+                return "BLOCKED_QUICK_CAUSAL_SCHEDULE_UNAVAILABLE"
+            if _quick_now not in _quick_times:
                 return "BLOCKED_QUICK_CAUSAL_EVENT_SCHEDULE"
         # The private research prefix is accepted only by this backtest engine
         # and only when the explicit replay adapter invokes this local helper.
