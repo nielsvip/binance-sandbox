@@ -4693,6 +4693,15 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _b11_reason = _b11_native_events.get((_b11_sym, _b11_side, _b11_ts))
                     if not _b11_reason:
                         continue
+                    # In exact parity mode the Quick ledger is the causal
+                    # schedule.  Avoid dispatching thousands of known-invalid
+                    # broad B11 predicate bars through the expensive scalar
+                    # seam merely to receive its schedule rejection.
+                    if (
+                        os.environ.get("V12_PARITY_QUICK_EVENT_GATE", "0") == "1"
+                        and _b11_ts not in _quick_entry_event_sets.get((_b11_sym, _b11_side), set())
+                    ):
+                        continue
                     _b11_pk = f"{account_key}:{_b11_sym}_{_b11_side}"
                     _b11_pos = trade_manager.positions.get(_b11_pk)
                     if abs(float(getattr(_b11_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
