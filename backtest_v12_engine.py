@@ -2998,7 +2998,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # measures execution, not entry filters. Test-only reason — live never emits it.
         _is_ladder_seed = (
             reason in {"V8_LADDER_INITIAL_BH_SEED", "V12_QUICK_LEDGER_REPLAY"}
-            or str(reason).startswith(("STDEV_BREAKOUT", "STDEV_RETEST"))
+            or str(reason).startswith(("STDEV_BREAKOUT", "STDEV_RETEST", "B11"))
         )
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (parity with ez_manage.py execute_now ~22720) —
@@ -4295,6 +4295,29 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _stdev_native_exc:
             v8_logger.exception("[V12_STDEV_NATIVE] event build failed: %s", _stdev_native_exc)
             _stdev_native_events = {}
+    # B11 is also a standalone Quick reentry source.  Unlike B10 it does not
+    # depend on a low-timeframe oscillator, so it remains valid in the 15m+
+    # parity study.  Reuse Quick's exact predicate rather than maintaining a
+    # second approximation here; the sequential ledger gate below still limits
+    # this broad predicate to the actual causal Quick entries.
+    _b11_native_events = {}
+    if bool(getattr(config, "REENTRY_B11_DC_BREAK_ENABLED", False)):
+        try:
+            from v12_quick_engine import compute_reentry_blocks as _v12_reentry_blocks
+            for _b11_sym, _b11_store in stores.items():
+                for _b11_side in _position_sides:
+                    _b11_mask = _v12_reentry_blocks(
+                        _b11_store.arrays, len(_b11_store.timestamps),
+                        _b11_side == "LONG", config,
+                    ).get("B11")
+                    if _b11_mask is None:
+                        continue
+                    for _b11_idx in np.where(_b11_mask)[0]:
+                        _b11_native_events[(_b11_sym, _b11_side, int(_b11_store.timestamps[_b11_idx]))] = "B11"
+            v8_logger.info("[V12_B11_NATIVE] built %d standalone scalar events", len(_b11_native_events))
+        except Exception as _b11_native_exc:
+            v8_logger.exception("[V12_B11_NATIVE] event build failed: %s", _b11_native_exc)
+            _b11_native_events = {}
     # Exact parity mode needs Quick's sequential ledger, not a raw predicate
     # mask: the latter is intentionally broad and has no position/hold state.
     # Keep the live admission prefilter above for ordinary scalar simulations.
@@ -4659,6 +4682,34 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     )
                     v8_logger.info("[V12_STDEV_NATIVE] %s %s ts=%s result=%s",
                                    _stdev_reason, _stdev_pk, _stdev_ts, _stdev_result)
+
+        # B11 uses the same scalar fill seam as STDEV, but remains a separately
+        # attributed source in receipts and logs.  It may only open flat sides;
+        # all sizing, lifecycle and exit behavior remains native scalar V12.
+        if _b11_native_events and os.environ.get("V12_PARITY_QUICK_LEDGER_REPLAY", "0") != "1":
+            _b11_ts = int(ts)
+            for _b11_sym in stores:
+                for _b11_side in _position_sides:
+                    _b11_reason = _b11_native_events.get((_b11_sym, _b11_side, _b11_ts))
+                    if not _b11_reason:
+                        continue
+                    _b11_pk = f"{account_key}:{_b11_sym}_{_b11_side}"
+                    _b11_pos = trade_manager.positions.get(_b11_pk)
+                    if abs(float(getattr(_b11_pos, "positionAmt", 0.0) or 0.0)) > 1e-10:
+                        continue
+                    _b11_px = float(price_cache.get(_b11_sym.upper(), 0.0) or 0.0)
+                    if _b11_px <= 0.0:
+                        continue
+                    _b11_qty = float(getattr(config, "START_POSITION_SIZE", 2000.0) or 2000.0) / _b11_px
+                    _b11_result = await _crypto_eta(
+                        account_key=account_key, position_key=_b11_pk, symbol=_b11_sym,
+                        quantity=_b11_qty, current_price=_b11_px,
+                        side="BUY" if _b11_side == "LONG" else "SELL",
+                        position_side=_b11_side, action="OPEN", reason=_b11_reason,
+                        is_full_close=False, is_hedge=False,
+                    )
+                    v8_logger.info("[V12_B11_NATIVE] %s %s ts=%s result=%s",
+                                   _b11_reason, _b11_pk, _b11_ts, _b11_result)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # PORTFOLIO-AWARE SENTIMENT INJECTION (crypto path) — 2026-05-12
