@@ -1416,6 +1416,7 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
                     "LIFECYCLE_EXACT_RECIPE_VERIFY": "1",
                     "V12_PARITY_MIN_DECISION_TF": EXECUTION_TF,
                     "V12_PARITY_QUICK_EVENT_GATE": "1",
+                    "V12_PARITY_REPORT_EVERY": "500",
                     # The scalar engine creates empty position shells before
                     # its live producers run.  Make the requested side
                     # explicit so no opposite-side producer can enter it.

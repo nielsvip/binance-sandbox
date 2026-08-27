@@ -4376,6 +4376,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     t0 = _real_time_module.time()
     # In sweep mode: report every 200 steps for fast feedback. Normal: every 2000 (60 reports/run).
     report_every = 200 if _SWEEP_MODE else max(1, min(2000, len(sorted_ts) // 60))
+    # Fixed-window parity needs complete receipts, not sixty expensive progress
+    # snapshots.  This changes observability only; the decision loop remains
+    # identical and the wall-clock heartbeat below still reports every minute.
+    if os.environ.get("V12_PARITY_REPORT_EVERY"):
+        try:
+            report_every = max(1, int(os.environ["V12_PARITY_REPORT_EVERY"]))
+        except ValueError:
+            pass
     _last_heartbeat = _real_time_module.time()
     # V8_MAX_BARS env var (for profiling / diagnostic runs) — cap total bars processed
     _v8_max_bars = int(os.environ.get("V8_MAX_BARS", "0") or 0)
