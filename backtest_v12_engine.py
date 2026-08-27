@@ -4268,6 +4268,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         _q_cfg.apply_tradier_defaults()
                     else:
                         _q_cfg.MODE = "crypto"
+                    # Per_sym uses an empty string to mean "use this Quick
+                    # field's default" for optional timeframe selectors.
+                    # Normalize it before a dormant vector family builds a
+                    # field suffix such as ``wt_divergence_``.
+                    for _q_name in dir(_q_cfg):
+                        if not _q_name.endswith(("_TF", "_TFS")):
+                            continue
+                        _q_current = getattr(_q_cfg, _q_name, None)
+                        _q_default = getattr(_v12_quick_events.QuickConfig, _q_name, None)
+                        if isinstance(_q_current, str) and not _q_current.strip() and isinstance(_q_default, str):
+                            setattr(_q_cfg, _q_name, _q_default)
                     # ``from_override_file`` is the vector evaluator's own
                     # coercion path.  Do not raw-set the mapping afterwards:
                     # blank optional TF values (valid in per_sym JSON) must
