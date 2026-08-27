@@ -4268,11 +4268,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         _q_cfg.apply_tradier_defaults()
                     else:
                         _q_cfg.MODE = "crypto"
-                    # The scalar override was already normalized by the exact
-                    # recipe loader.  Copy it directly, including keys Quick
-                    # accepts dynamically for wired lifecycle paths.
-                    for _q_key, _q_value in _overrides.items():
-                        setattr(_q_cfg, _q_key, _q_value)
+                    # ``from_override_file`` is the vector evaluator's own
+                    # coercion path.  Do not raw-set the mapping afterwards:
+                    # blank optional TF values (valid in per_sym JSON) must
+                    # retain its normalization rather than become invalid
+                    # NumPy field suffixes such as ``wt_divergence_``.
                     _q_cfg.BASE_TF = os.environ.get("V12_PARITY_MIN_DECISION_TF", "15m")
                     _q_entry = _v12_quick_events.compute_entry_signals(
                         _q_store.arrays, _q_n, _q_long, _q_cfg)
