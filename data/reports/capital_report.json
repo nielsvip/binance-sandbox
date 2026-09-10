@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-10 17:03 UTC",
- "total_capital_usd": 7.55,
+ "generated_at": "2026-09-10 17:33 UTC",
+ "total_capital_usd": 15.74,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.55,
+  "B": 15.74,
   "C": 0.0
  },
  "tier_count": {
@@ -14,19 +14,19 @@
  "winners": [],
  "losers": [],
  "mediocre": [
-  "ang:SPCXUSD1_LONG"
+  "flz:WLDUSDC_SHORT"
  ],
  "positions": [
   {
-   "pk": "ang:SPCXUSD1_LONG",
-   "symbol": "SPCXUSD1",
-   "account": "ang",
-   "value_usd": 7.55,
-   "gain_pct": -0.28,
+   "pk": "flz:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 15.74,
+   "gain_pct": -0.169,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.05,
-   "mark": 151.04
+   "perf_mult": 0.6,
+   "amt": 38.9,
+   "mark": 0.40458373
   }
  ]
 }

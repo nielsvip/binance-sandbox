@@ -1081,6 +1081,14 @@ def _zec_flz_long_size_mult(account_key, symbol, is_long, config_obj) -> float:
 def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, config_obj, trade_manager, tracker_data: Dict[str, Any] = None, is_long: bool = True, indicators: Dict[str, Any] = None, metrics: Dict[str, Any] = None, curr_amt: float = 0.0, account_key: Optional[str] = None) -> float:
     if current_price <= 0: return 0.0
     _htfc = 0; base_usdc_size = safe_fetch_float(getattr(config_obj, 'START_POSITION_SIZE', 45.0), 45.0)
+    # 2026-05-21 ZEC FLZ 5x — mirror ez_manage execute_now sizing. Must be first so all downstream mults scale from 5x base.
+    try:
+        _zec_mult = _zec_flz_long_size_mult(account_key or '', symbol, is_long, config_obj)
+        if _zec_mult != 1.0:
+            base_usdc_size = base_usdc_size * _zec_mult
+            logger.info(f"[ZEC_FLZ_5X_QTY] {account_key}:{symbol}_{'LONG' if is_long else 'SHORT'} base_usdc_size *= {_zec_mult}x -> ${base_usdc_size:.0f}")
+    except Exception:
+        pass
     # SIZE_TIER multiplier based on HTF alignment + relative volume (same logic as rate())
     if indicators:
         _rv3 = safe_fetch_float(indicators.get('relative_volume_3m'), 1.0)
@@ -12205,12 +12213,11 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                     _ch_cnt = 0
                 if _ch_cnt >= _ch_max:
                     logger.critical(f"🛑 [CHURN_BRAKE_10/MIN] {account_key}: {_ch_cnt} trades/min — BLOCKED. Max {_ch_max}. position={position_key} action={action}")
-                    if account_key == "flz":
-                        try:
-                            _hp = _ChPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / ".FLZ_TRADING_HALTED"
-                            _hp.write_text(f"HALTED {_ch_dt.now(_ch_tz.utc).isoformat()} 10trades/min\n")
-                        except Exception:
-                            pass
+                    try:
+                        _hp = _ChPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / f".{account_key.upper()}_TRADING_HALTED" if account_key else _ChPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / ".FLZ_TRADING_HALTED"
+                        _hp.write_text(f"HALTED {account_key} {_ch_dt.now(_ch_tz.utc).isoformat()} {_ch_cnt}trades/min\n")
+                    except Exception:
+                        pass
                     return False, "BLOCKED_CHURN_10_PER_MIN"
     except Exception as _ch_e:
         logger.debug(f"[CHURN_BRAKE] Error: {_ch_e}")
