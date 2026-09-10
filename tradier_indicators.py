@@ -3100,8 +3100,69 @@ class TradierIndicatorOrchestrator:
                 if tmp.exists():
                     try: os.remove(tmp)
                     except Exception: pass
-                    
+        def _write_timestamped():
+            try:
+                ts_file = self.config.DATA_DIR / f"tradier_indicators_{int(time.time())}.json"
+                tmp2 = ts_file.with_name(f".{ts_file.name}.tmp")
+                with open(tmp2, 'wb') as f:
+                    f.write(payload_bytes if isinstance(payload_bytes, bytes) else payload_bytes.encode('utf-8'))
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp2, ts_file)
+            except Exception as e:
+                logger.warning(f"Timestamped write error: {e}")
+        def _retention():
+            try:
+                now_ts = time.time()
+                all_ts = sorted(self.config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+                keep = set(all_ts[:5])
+                cutoff_1h = now_ts - 3600
+                by_15m = {}
+                for p in all_ts[5:]:
+                    mtime = p.stat().st_mtime
+                    if mtime < cutoff_1h:
+                        continue
+                    if mtime >= now_ts - 3*60:
+                        continue
+                    bucket = int(mtime // 900)
+                    by_15m.setdefault(bucket, []).append(p)
+                for bucket, lst in by_15m.items():
+                    keep.add(max(lst, key=lambda p: p.stat().st_mtime))
+                cutoff_4h = now_ts - 4*3600
+                by_hour = {}
+                for p in all_ts:
+                    if p in keep:
+                        continue
+                    mtime = p.stat().st_mtime
+                    if mtime < cutoff_4h or mtime >= cutoff_1h:
+                        continue
+                    bucket = int(mtime // 3600)
+                    by_hour.setdefault(bucket, []).append(p)
+                for bucket, lst in by_hour.items():
+                    keep.add(max(lst, key=lambda p: p.stat().st_mtime))
+                by_day = {}
+                for p in all_ts:
+                    if p in keep:
+                        continue
+                    mtime = p.stat().st_mtime
+                    if mtime >= cutoff_4h:
+                        continue
+                    bucket = int(mtime // 86400)
+                    by_day.setdefault(bucket, []).append(p)
+                for bucket, lst in by_day.items():
+                    keep.add(max(lst, key=lambda p: p.stat().st_mtime))
+                for p in all_ts:
+                    if p not in keep:
+                        try: p.unlink()
+                        except Exception: pass
+            except Exception as _e:
+                logger.debug(f"timestamp retention error: {_e}")
         await asyncio.to_thread(_write_file, l_file)
+        await asyncio.to_thread(_write_timestamped)
+        try:
+            await asyncio.to_thread(_retention)
+        except Exception:
+            pass
         
         if self.redis_manager:
             # We strictly pass the DICT to set() so simple_redis_manager formats it, preventing double encoding

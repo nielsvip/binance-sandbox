@@ -10185,7 +10185,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # 2026-09-08 FIX: target must respect HARD_MAX 2500 — before default 15000 allowed 6× overexposure (CRWV 70k).
         _wf_hard_cap = float(_cfg_auto('HARD_MAX_SYMBOL_VALUE_TRADIER', 2500.0) or 2500.0)
         _wf_raw_target = float(_cfg('WT_3M_FORCE_OPEN_TARGET_USD', 2500.0, account_key, symbol, position_side))
-        _wf_target = min(_wf_raw_target, _wf_hard_cap, float(getattr(self.config, 'TRB_MAX_SYMBOL_VALUE', 2500.0) or 2500.0))
+        _wf_target = min(_wf_raw_target, _wf_hard_cap, float(getattr(trade_manager.config, 'TRB_MAX_SYMBOL_VALUE', 2500.0) or 2500.0))
         _wf_pos_val = abs(float(getattr(position, 'positionAmt', 0) or 0)) * current_price if position else 0.0
         _wf_room = (_wf_pos_val < _wf_target) if _wf_build else (not has_position)
         if _wf_room and _wf_enabled:
@@ -20787,36 +20787,60 @@ class TradierTradeManager:
                 if now - _GLOBAL_JSON_TS < 3.0 and _GLOBAL_JSON_CACHE:
                     return _GLOBAL_JSON_CACHE.get(symbol, {})
 
-                # TIMESTAMPED-ONLY: never use _latest (cached). Check timestamped files across Mac + S1 mirror.
+                # Prefer timestamped but fallback to _latest if timestamped stale/missing — NEVER stay empty when _latest is fresh
                 search_dirs = [config.DATA_DIR, config.DATA_DIR / "tradier", config.DATA_DIR / "s1_timestamped"]
                 candidates = []
                 import re
-                pattern = re.compile(r"tradier_indicators_\d{8}_\d{6}\.json")
+                # Accept both naming conventions: tradier_indicators_20260827_180546.json AND tradier_indicators_1787759350.json
+                pattern = re.compile(r"tradier_indicators_\d+.*\.json")
                 for d in search_dirs:
                     if not d.exists(): continue
                     try:
                         for f in d.glob("tradier_indicators_[0-9]*.json"):
-                            if f.is_file():
+                            if f.is_file() and f.name != "tradier_indicators_latest.json":
                                 candidates.append(f)
                     except Exception: pass
-                # Fallback: also scan DATA_DIR with mtime sort if pattern missed (e.g. new naming)
                 if not candidates:
                     for d in search_dirs:
                         if not d.exists(): continue
                         try:
                             for f in d.iterdir():
-                                if f.is_file() and pattern.match(f.name):
+                                if f.is_file() and pattern.match(f.name) and f.name != "tradier_indicators_latest.json":
                                     candidates.append(f)
                         except Exception: pass
-                if not candidates:
-                    # Reference check only: log _latest age but do not use it
+                # If timestamped stale or missing, fallback to _latest IMMEDIATELY when fresh
+                _latest_path = config.DATA_DIR / "tradier_indicators_latest.json"
+                _ts_stale = True
+                if candidates:
+                    _newest_ts_age = (now - max(p.stat().st_mtime for p in candidates))
+                    _ts_stale = _newest_ts_age > 90
+                if (not candidates or _ts_stale) and _latest_path.exists():
                     try:
-                        _ref = config.DATA_DIR / "tradier_indicators_latest.json"
-                        if _ref.exists():
-                            _age_ref = time.time() - _ref.stat().st_mtime
-                            logger.debug(f"[JSON_LOAD] reference _latest age {_age_ref:.0f}s but using timestamped-only (no candidate)")
+                        _latest_age = (now - _latest_path.stat().st_mtime)
+                        if _latest_age < 120:
+                            # Use _latest directly — heal timestamped from it as side effect
+                            try:
+                                with open(_latest_path, 'rb') as f:
+                                    content = f.read()
+                                if content.strip():
+                                    data = safe_json_loads(content)
+                                    if isinstance(data, dict) and data and symbol in data:
+                                        _GLOBAL_JSON_CACHE = data
+                                        _GLOBAL_JSON_TS = now
+                                        logger.info(f"[JSON_LOAD] _latest fallback age {_latest_age:.0f}s for {symbol} (timestamped stale)")
+                                        # Self-heal: create timestamped copy so next load has timestamped
+                                        try:
+                                            import shutil as _sh3
+                                            _heal = config.DATA_DIR / f"tradier_indicators_{int(now)}.json"
+                                            _sh3.copy2(str(_latest_path), str(_heal))
+                                        except Exception: pass
+                                        return data.get(symbol, {})
+                            except Exception: pass
+                        if not candidates:
+                            logger.debug(f"[JSON_LOAD] no timestamped, _latest age {_latest_age:.0f}s but using fallback path above")
                     except Exception: pass
-                    return {}
+                    if not candidates:
+                        return {}
                 # Sort by mtime desc, then filename desc (epoch embedded) for true freshness across sources
                 candidates.sort(key=lambda p: (p.stat().st_mtime, p.name), reverse=True)
                 for file_path in candidates[:5]:
@@ -26948,11 +26972,12 @@ class TradierTradeManager:
                 logger.debug(f"[symbol_watchdog] Error: {e}")
     
     async def market_data_sync_loop(self):
-        """Safe-Path: TIMESTAMPED-ONLY. Never use _latest (OS-cache, not comparable). Freshness = max(mtime, internal timestamp_1m) across Mac + S1 timestamped sets."""
-        logger.info("🔍 [SAFE-PATH] File Poller Active — timestamped-only every 1s (Mac + S1)")
+        """SAFE-PATH with multi-layer fallback: timestamped (preferred) -> _latest (immediate heal) -> S1/gateway -> Redis."""
+        logger.info("🔍 [SAFE-PATH] File Poller Active — timestamped + _latest fallback every 1s (Mac + S1 + gateway)")
+        _latest_mtime_used = 0.0
+        _stale_warned_at = 0.0
         while self.running:
             try:
-                # Gather timestamped files from Mac + S1 mirror dir
                 import time as _tm
                 s1_mirror = config.DATA_DIR / "s1_timestamped"
                 local_ts = sorted(config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
@@ -26960,41 +26985,76 @@ class TradierTradeManager:
                 try:
                     if s1_mirror.exists():
                         s1_ts = sorted(s1_mirror.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
-                    # Also include any s1_tradier_indicators_*.json pulled directly to DATA_DIR (legacy)
                     for f in config.DATA_DIR.glob("s1_tradier_indicators_[0-9]*.json"):
                         if f not in s1_ts:
                             s1_ts.append(f)
                     s1_ts = sorted(s1_ts, key=lambda f: f.stat().st_mtime, reverse=True)
                 except Exception:
                     s1_ts = []
-                # Also check local timestamped that may have been pulled from S1 directly to DATA_DIR — merge
                 all_ts = sorted(set(local_ts) | set(s1_ts), key=lambda f: f.stat().st_mtime, reverse=True)
                 newest_age = (time.time() - local_ts[0].stat().st_mtime) if local_ts else 9999
-                s1_age = (time.time() - s1_ts[0].stat().st_mtime) if s1_ts else 9999
-                # Pick freshest timestamped file across sources (mtime is truth, _latest never used)
+                json_path = None
+                _use_latest_fallback = False
+                # Check _latest freshness first — it is now also the writer's primary output
+                _latest_path = config.DATA_DIR / "tradier_indicators_latest.json"
+                _latest_mtime = 0.0
+                try:
+                    if _latest_path.exists():
+                        _latest_mtime = _latest_path.stat().st_mtime
+                except Exception:
+                    pass
+                _latest_age = (time.time() - _latest_mtime) if _latest_mtime else 9999
                 if all_ts:
+                    # Pick freshest timestamped; but if timestamped stale >90s and _latest fresh <30s, use _latest
                     json_path = all_ts[0]
-                    # Prefer S1 if its newest timestamped is actually fresher than local
                     if s1_ts and local_ts and s1_ts[0].stat().st_mtime > local_ts[0].stat().st_mtime:
                         json_path = s1_ts[0]
+                    _ts_age = (time.time() - json_path.stat().st_mtime)
+                    if _ts_age > 90 and _latest_age < 30 and _latest_mtime > _latest_mtime_used:
+                        json_path = _latest_path
+                        _use_latest_fallback = True
+                        if time.time() - _stale_warned_at > 60:
+                            logger.warning(f"[SAFE-PATH] timestamped stale {_ts_age:.0f}s, falling back to _latest age {_latest_age:.0f}s (heal)")
+                            _stale_warned_at = time.time()
                 else:
-                    # No timestamped file at all — reference _latest only for logging, do not load
-                    try:
-                        _ref = config.DATA_DIR / "tradier_indicators_latest.json"
-                        if _ref.exists():
-                            logger.warning(f"[SAFE-PATH] no timestamped file, reference _latest age {(time.time()-_ref.stat().st_mtime):.0f}s — waiting for timestamped")
-                    except Exception: pass
-                    json_path = None
-                # Continuously pull S1 timestamped set in background every 10s if local stale >15s
+                    # No timestamped at all — use _latest immediately if fresh
+                    if _latest_path.exists() and _latest_age < 120:
+                        json_path = _latest_path
+                        _use_latest_fallback = True
+                        if time.time() - _stale_warned_at > 60:
+                            logger.warning(f"[SAFE-PATH] no timestamped file, using _latest age {_latest_age:.0f}s")
+                            _stale_warned_at = time.time()
+                    else:
+                        try:
+                            if _latest_path.exists():
+                                logger.warning(f"[SAFE-PATH] no timestamped file, reference _latest age {_latest_age:.0f}s — waiting")
+                        except Exception: pass
+                        json_path = None
+                # Emergency heal: if timestamped stale >15s, try to produce a timestamped from _latest and pull from gateway/S1
                 if newest_age > 15 and int(time.time()) % 10 == 0:
                     try:
-                        import subprocess as _sp_bg
-                        _sp_bg.Popen(["/bin/bash", str(Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                        _emergency = Path(config.BASE_PATH) / "tools" / "emergency_tradier_indicators_rsync.sh"
+                        if _emergency.exists():
+                            import subprocess as _sp_bg
+                            _sp_bg.Popen(["/bin/bash", str(_emergency)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                        else:
+                            # Self-heal: copy _latest -> timestamped if _latest is fresh
+                            if _latest_path.exists() and _latest_age < 30:
+                                try:
+                                    import shutil as _sh
+                                    _heal_target = config.DATA_DIR / f"tradier_indicators_{int(time.time())}.json"
+                                    _sh.copy2(str(_latest_path), str(_heal_target))
+                                    logger.info(f"[SAFE-PATH] self-heal: copied _latest -> {_heal_target.name}")
+                                except Exception: pass
                     except Exception:
                         pass
                 if json_path is not None and json_path.exists():
                     mtime = os.path.getmtime(json_path)
-                    if mtime > self.last_json_mtime:
+                    # For _latest fallback, track separately so we reload each time _latest updates
+                    _is_latest = (json_path == _latest_path)
+                    _effective_mtime = mtime if not _is_latest else _latest_mtime
+                    _last_ref = _latest_mtime_used if _is_latest else self.last_json_mtime
+                    if _effective_mtime > _last_ref:
                         try:
                             with open(json_path, 'r') as f:
                                 raw_data = json.loads(f.read())
@@ -27004,8 +27064,19 @@ class TradierTradeManager:
                                     if isinstance(vals, dict):
                                         new_snapshot[sym.upper()] = self._adapt_indicators_for_ez_manage(vals)
                                 self.market_snapshot = new_snapshot
-                                self.last_json_mtime = mtime
-                                logger.info(f"💾 [SAFE-PATH] Snapshot loaded: {len(new_snapshot)} symbols from {json_path.name} (timestamped-only)")
+                                if _is_latest:
+                                    _latest_mtime_used = _effective_mtime
+                                    self.last_json_mtime = _effective_mtime
+                                    logger.info(f"💾 [SAFE-PATH] Snapshot loaded: {len(new_snapshot)} symbols from {json_path.name} (LATEST FALLBACK)")
+                                    # Also create timestamped from this load so next cycle has timestamped
+                                    try:
+                                        _ts_copy = config.DATA_DIR / f"tradier_indicators_{int(time.time())}.json"
+                                        import shutil as _sh2
+                                        _sh2.copy2(str(json_path), str(_ts_copy))
+                                    except Exception: pass
+                                else:
+                                    self.last_json_mtime = mtime
+                                    logger.info(f"💾 [SAFE-PATH] Snapshot loaded: {len(new_snapshot)} symbols from {json_path.name} (timestamped)")
                         except Exception as je:
                             logger.warning(f"[SAFE-PATH] JSON read error (will retry): {je}")
                 await asyncio.sleep(1.0)
@@ -27013,6 +27084,99 @@ class TradierTradeManager:
                 logger.error(f"Sync Loop Error: {e}")
                 await asyncio.sleep(5)
     
+    async def indicator_staleness_watchdog(self):
+        """Market-hours guard: if indicators >90s stale, scream on every channel so user knows IMMEDIATELY."""
+        logger.info("[STALE_WATCHDOG] Task started — will alert if indicators >90s stale during market hours")
+        _last_alert = 0.0
+        _consecutive_stale = 0
+        while self.running:
+            try:
+                await asyncio.sleep(15)
+                if not is_regular_trading_hours():
+                    _consecutive_stale = 0
+                    continue
+                now = time.time()
+                _latest_path = config.DATA_DIR / "tradier_indicators_latest.json"
+                snap = self.market_snapshot or {}
+                # Check file mtime freshness
+                _file_age = (now - _latest_path.stat().st_mtime) if _latest_path.exists() else 9999
+                # Check internal timestamp freshness (sample 5 symbols, worst age wins)
+                _internal_age = 0.0
+                _worst_sym = ""
+                for sym in list(snap.keys())[:30]:
+                    vals = snap[sym] if isinstance(snap[sym], dict) else {}
+                    ts_raw = vals.get('timestamp_1m') or vals.get('timestamp') or vals.get('1m_updated_at')
+                    dt = safe_datetime(ts_raw) if not isinstance(ts_raw, datetime) else ts_raw
+                    if dt:
+                        if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                        age = (datetime.now(timezone.utc) - dt).total_seconds()
+                        if age > _internal_age:
+                            _internal_age = age
+                            _worst_sym = sym
+                _is_stale = (_file_age > 90 or _internal_age > 90)
+                if _is_stale:
+                    _consecutive_stale += 1
+                    if now - _last_alert >= 60:
+                        msg = f"🚨 INDICATORS STALE {_consecutive_stale}x: file_age={_file_age:.0f}s internal_age={_internal_age:.0f}s worst={_worst_sym} mtime={_file_age:.0f}s — TRADING DEGRADED!"
+                        logger.critical(msg)
+                        # Write alert file for desktop widget
+                        try:
+                            alert_path = config.DATA_DIR / "ALERT_INDICATORS_STALE" if hasattr(config, 'DATA_DIR') else Path(config.BASE_PATH) / "data" / "ALERT_INDICATORS_STALE"
+                            # Also write to data/ALERT_NOT_TRADING for phone/desktop polling
+                            for ap in [config.DATA_DIR / "ALERT_INDICATORS_STALE", Path(config.BASE_PATH) / "data" / "ALERT_NOT_TRADING"]:
+                                try:
+                                    ap.parent.mkdir(parents=True, exist_ok=True)
+                                    ap.write_text(f"{datetime.now(timezone.utc).isoformat()} STALE file={_file_age:.0f}s internal={_internal_age:.0f}s worst={_worst_sym} consec={_consecutive_stale}\n")
+                                except Exception: pass
+                        except Exception: pass
+                        # macOS desktop notification (best-effort, never fails trading)
+                        try:
+                            import subprocess as _sp
+                            _sp.Popen(["osascript", "-e", f'display notification \"Indicators stale {_file_age:.0f}s / {_internal_age:.0f}s ({_worst_sym})\" with title \"🚨 TRADIER STALE\" sound name \"Sosumi\"'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        except Exception: pass
+                        # After 3 consecutive stale (45s), force heal
+                        if _consecutive_stale >= 3:
+                            try:
+                                if _latest_path.exists() and _file_age < 120:
+                                    import shutil as _sh
+                                    _heal = config.DATA_DIR / f"tradier_indicators_{int(now)}.json"
+                                    _sh.copy2(str(_latest_path), str(_heal))
+                                    logger.critical(f"[STALE_WATCHDOG] forced heal: copied _latest -> {_heal.name}")
+                                # Try Redis fallback directly
+                                if self.redis_manager:
+                                    try:
+                                        raw = await asyncio.wait_for(self.redis_manager.get("tradier_indicators_latest"), timeout=2.0)
+                                        if raw:
+                                            md = json.loads(raw) if isinstance(raw, str) else raw
+                                            payload = md.get("data", md) if isinstance(md, dict) else md
+                                            if isinstance(payload, dict) and len(payload) > 10:
+                                                for sym, vals in payload.items():
+                                                    if isinstance(vals, dict):
+                                                        self.market_snapshot[sym.upper()] = self._adapt_indicators_for_ez_manage(vals)
+                                                logger.critical(f"[STALE_WATCHDOG] Redis heal: loaded {len(payload)} symbols into market_snapshot")
+                                    except Exception: pass
+                            except Exception: pass
+                        _last_alert = now
+                else:
+                    if _consecutive_stale > 0:
+                        logger.info(f"[STALE_WATCHDOG] recovered: file_age={_file_age:.0f}s internal={_internal_age:.0f}s after {_consecutive_stale} stale cycles")
+                    _consecutive_stale = 0
+                    # Clear alert file on recovery
+                    try:
+                        for ap in [config.DATA_DIR / "ALERT_INDICATORS_STALE", Path(config.BASE_PATH) / "data" / "ALERT_NOT_TRADING"]:
+                            if ap.exists():
+                                # Only clear if content is stale alert, not other alerts
+                                txt = ap.read_text() if ap.exists() else ""
+                                if "STALE" in txt:
+                                    try: ap.unlink()
+                                    except Exception: pass
+                    except Exception: pass
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.debug(f"[STALE_WATCHDOG] error: {e}")
+                await asyncio.sleep(5)
+
     async def market_snapshot_refresh_loop(self, interval: float = 5.0):
         logger.info("[market_snapshot_refresh]  Task started")
         while self.running:
@@ -27165,8 +27329,17 @@ class TradierTradeManager:
         while self.running:
             try:
                 if not self.redis_manager:
-                    pass  # DISABLED: tradier does not use server Redis
+                    try:
+                        self.redis_manager = await get_simple_redis_manager()
+                    except Exception:
+                        pass
+                    if not self.redis_manager:
+                        await asyncio.sleep(10)
+                        continue
                 client = await self.redis_manager._get_or_connect("local")
+                if not client:
+                    await asyncio.sleep(10)
+                    continue
                 pubsub = client.pubsub()
                 await pubsub.subscribe("tradier_indicators_channel")
                 while self.running:
@@ -28485,8 +28658,7 @@ class TradierTradeManager:
                 await asyncio.sleep(30)
 
     async def start(self):
-        print("[START] Loading JSON snapshot (timestamped-only)...", flush=True)
-        # TIMESTAMPED-ONLY: never load _latest on boot (cached). Use newest timestamped across Mac + S1.
+        print("[START] Loading JSON snapshot (timestamped + _latest fallback)...", flush=True)
         try:
             s1_mirror = config.DATA_DIR / "s1_timestamped"
             cands = sorted(config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
@@ -28494,19 +28666,36 @@ class TradierTradeManager:
                 cands += sorted(s1_mirror.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
                 cands += sorted(s1_mirror.glob("s1_tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
             cands = sorted(set(cands), key=lambda f: f.stat().st_mtime, reverse=True)
-            json_path = cands[0] if cands else None
-            # Reference _latest age only for logging
-            try:
-                _ref = config.DATA_DIR / "tradier_indicators_latest.json"
-                if _ref.exists():
-                    print(f"[START] reference _latest age {(time.time()-_ref.stat().st_mtime):.0f}s (not used)", flush=True)
-            except Exception: pass
-            if json_path and json_path.exists():
-                with open(json_path, 'r') as f:
+            _latest_path = config.DATA_DIR / "tradier_indicators_latest.json"
+            _latest_age = (time.time() - _latest_path.stat().st_mtime) if _latest_path.exists() else 9999
+            # If timestamped stale >90s and _latest fresh <120s, boot from _latest
+            _chosen = None
+            _ts_age = (time.time() - cands[0].stat().st_mtime) if cands else 9999
+            if not cands or (_ts_age > 90 and _latest_age < 120 and _latest_path.exists()):
+                if _latest_path.exists():
+                    print(f"[START] timestamped stale {_ts_age:.0f}s, booting from _latest age {_latest_age:.0f}s", flush=True)
+                    _chosen = _latest_path
+                    # Heal: copy _latest -> timestamped so poller has it
+                    try:
+                        import shutil as _sh
+                        _heal = config.DATA_DIR / f"tradier_indicators_{int(time.time())}.json"
+                        _sh.copy2(str(_latest_path), str(_heal))
+                    except Exception: pass
+                else:
+                    print(f"[START] No file found — starting empty, will wait for poller (latest age {_latest_age:.0f}s)", flush=True)
+            else:
+                _chosen = cands[0]
+                try:
+                    if _latest_path.exists():
+                        print(f"[START] reference _latest age {_latest_age:.0f}s (ts age {_ts_age:.0f}s, using timestamped)", flush=True)
+                except Exception: pass
+            if _chosen and _chosen.exists():
+                with open(_chosen, 'r') as f:
                     raw = json.loads(f.read())
                     self.market_snapshot = {k.upper(): self._adapt_indicators_for_ez_manage(v) for k, v in raw.items() if isinstance(v, dict)}
-                print(f"[START] Snapshot loaded: {len(self.market_snapshot)} symbols from {json_path.name} (timestamped-only)", flush=True)
-            else:
+                src_label = "_latest FALLBACK" if _chosen == _latest_path else "timestamped"
+                print(f"[START] Snapshot loaded: {len(self.market_snapshot)} symbols from {_chosen.name} ({src_label})", flush=True)
+            elif not _chosen:
                 print(f"[START] No timestamped file found — starting empty, will wait for poller", flush=True)
         except Exception as e:
             print(f"[START] Snapshot load failed: {e}", flush=True)
@@ -28568,6 +28757,7 @@ class TradierTradeManager:
         self.background_tasks.append(asyncio.create_task(self.redis_listener_indicators())) # Fast Path
         self.background_tasks.append(asyncio.create_task(self.redis_listener_prices()))
         self.background_tasks.append(asyncio.create_task(self.market_data_sync_loop())) # Safe Path
+        self.background_tasks.append(asyncio.create_task(self.indicator_staleness_watchdog())) # Stale alert + heal
         self.background_tasks.append(asyncio.create_task(self.update_all_positions_prices()))
         self.background_tasks.append(asyncio.create_task(self.monitor_system_state()))
         self.background_tasks.append(asyncio.create_task(self.order_queue.process_orders()))
