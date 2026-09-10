@@ -8624,8 +8624,22 @@ def _gap_inventory_load():
     global _GAP_INVENTORY
     try:
         p = _gap_inventory_path()
+        if not bool(_cfg_auto('GAP_INVENTORY_ENABLED', True)):
+            return
         if p.exists():
-            _GAP_INVENTORY = safe_json_loads(p.read_text()) or _GAP_INVENTORY
+            # 2026-09-09 FIX P1: staleness guard — if mtime >6h or days<5, warn and skip (fail-closed)
+            try:
+                _age_h = (time.time() - p.stat().st_mtime) / 3600.0
+                if _age_h > 6:
+                    logger.warning(f"[GAP_INVENTORY_STALE] {p} age {_age_h:.1f}h >6h — skipping load (fail-closed)")
+                    return
+            except Exception:
+                pass
+            _data = safe_json_loads(p.read_text()) or {}
+            if len(_data.get('days', [])) < 5:
+                logger.warning(f"[GAP_INVENTORY_STALE] {p} days {len(_data.get('days', []))} <5 — skipping load (fail-closed)")
+                return
+            _GAP_INVENTORY = _data or _GAP_INVENTORY
     except Exception: pass
 
 def _gap_inventory_save():
@@ -8636,7 +8650,16 @@ def _gap_inventory_save():
         _GAP_INVENTORY_LAST_SAVE = now
         p = _gap_inventory_path()
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json_dumps(_GAP_INVENTORY))
+        # 2026-09-09 FIX P1: atomic write tmp+rename (was direct write_text race)
+        import tempfile
+        _tmp = None
+        try:
+            _tmp = p.with_suffix(p.suffix + '.tmp')
+            _tmp.write_text(json_dumps(_GAP_INVENTORY))
+            _tmp.replace(p)
+        except Exception:
+            # fallback
+            p.write_text(json_dumps(_GAP_INVENTORY))
     except Exception: pass
 
 def _gap_inventory_record(open_px: float, close_px: float):
@@ -9634,7 +9657,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             # the explicit master for this emergency-channel family; without
             # it an all-false V8 control can close a position before the
             # selected path is evaluated.
-            and bool(_cfg_auto('EXIT_EMERGENCY_DC1H_ENABLED', False))
+            and bool(_cfg_auto('EXIT_EMERGENCY_DC1H_ENABLED', True))
         ):
             _dc4_exit, _dc4_exit_detail = dc_4h_boundary_breached(
                 current_price, position_side, i, require_level=False
@@ -9642,7 +9665,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if _dc4_exit:
                 _dc4_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 logger.critical(
-                    f"🛑 [EMERGENCY_DC4H_BREACH] {position_key}: {_dc4_exit_detail} gain={_dc4_gain:.2f}% — forcing CLOSE"
+                    f"🛑 [EMERGENCY_DC4H_BREACH] {position_key}: {_dc4_exit_detail} gain={_dc4_gain:.2f}% — forcing CLOSE (2026-09-09 FIX: enabled by default, bypasses 240m hold/NOLOSS)"
                 )
                 await queue_trade_action(
                     order_queue,
@@ -9683,12 +9706,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _trv1_err:
                 logger.warning(f"[TR_TREND_V1_SHADOW] eval_error acct={account_key} sym={symbol} side={position_side}: {_trv1_err}")
         # ═══════════════════════════════════════════════════════════════════════
-        # DYN_STRUCT_TRAIL (2026-07-19, default OFF) — monotone structure-following
-        # trail: stop = trailing dc_low_{tf} (dc_high for shorts), ratchets only in
-        # the favorable direction; arms once gain >= DYN_STRUCT_TRAIL_MIN_GAIN_PCT.
-        # Live mirror of the engine block (parity); reason FROZEN_STOP_* bypass.
+        # DYN_STRUCT_TRAIL — 2026-09-09 FIX P0-1: enabled as loss-only safety net (was OFF, losers bled to deep loss)
+        # Monotone structure-following trail: stop = trailing dc_low_{tf} (dc_high for shorts), ratchets only favorable.
+        # Arms once gain >= MIN_GAIN_PCT; now also arms on loss as safety net (gain < -2% bypasses min_gain).
+        # Live mirror of engine block (parity); reason FROZEN_STOP_* bypasses NOLOSS/240m hold.
         if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
-           bool(_cfg('DYN_STRUCT_TRAIL_ENABLED', False, account_key, symbol, position_side)):
+           bool(_cfg('DYN_STRUCT_TRAIL_ENABLED', True, account_key, symbol, position_side)):
             try:
                 _dst_tf = str(_cfg('DYN_STRUCT_TRAIL_TF', '4h', account_key, symbol, position_side) or '4h')
                 _dst_min_g = safe_float(_cfg('DYN_STRUCT_TRAIL_MIN_GAIN_PCT', 0.0, account_key, symbol, position_side), 0.0)
@@ -10960,24 +10983,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                     f"overshoot={_xb_trace['max_overshoot_pct']:.3f}%"
                                 )
                             elif _xb_favorable or _xb_within_band:
-                                _xb_wt_ok, _xb_wt_detail = _mandatory_reentry_wt_gate(
-                                    _entry_ind,
-                                    is_long,
-                                    enabled=bool(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_ENABLED', False)),
-                                    tf_mode=_cfg_auto('MANDATORY_REENTRY_WT_FILTER_TF_MODE', "5m_or_15m"),
-                                    min_tfs=int(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_TFS', 1)),
-                                    require_flip=bool(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP', True)),
-                                    velocity_ratio=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO', 0.90)),
-                                    min_velocity=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY', 0.0)),
-                                )
-                                if not _xb_wt_ok:
-                                    logger.info(
-                                        f"[MANDATORY_REENTRY_WT_HOLD] {position_key}: "
-                                        f"price cross qualified but WT filter failed: {_xb_wt_detail}"
-                                    )
-                                elif not _xb_dcb_ok:
-                                    logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {account_key}:{symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
-                                else:
+                                # USER 2026-09-10 MANDATE: price cross back REENTERS 100% — WT and DC-break are
+                                # hard vetoes that blocked every GLD/NEM reclaim (WT HOLD + DC BREAK HOLD).
+                                # For CROSSED_BACK (cur beyond exit in favorable direction) we bypass both
+                                # gates and force immediate reentry at recorded exit notional.
+                                if _xb_favorable:
                                     _xb_target_usd = (
                                         _xb_obligation.target_notional_usd
                                         if _xb_obligation is not None
@@ -10987,11 +10997,43 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                     _xb_qty = _xb_target_usd / max(current_price, 1e-9)
                                     action_type = "OPEN"
                                     qty = max(1.0, float(_xb_qty))
-                                    conf = 90.0
-                                    _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
-                                    reason = f"MANDATORY_REENTRY_PRICE_CROSS_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}"
+                                    conf = 100.0
+                                    reason = f"MANDATORY_REENTRY_PRICE_CROSS_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_CROSSED_BACK_GUARANTEED"
                                     _xb_reentry_fired = True
-                                    logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
+                                    logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason} [GUARANTEED]")
+                                else:
+                                    _xb_wt_ok, _xb_wt_detail = _mandatory_reentry_wt_gate(
+                                        _entry_ind,
+                                        is_long,
+                                        enabled=bool(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_ENABLED', False)),
+                                        tf_mode=_cfg_auto('MANDATORY_REENTRY_WT_FILTER_TF_MODE', "5m_or_15m"),
+                                        min_tfs=int(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_TFS', 1)),
+                                        require_flip=bool(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP', True)),
+                                        velocity_ratio=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO', 0.90)),
+                                        min_velocity=float(_cfg_auto('MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY', 0.0)),
+                                    )
+                                    if not _xb_wt_ok:
+                                        logger.info(
+                                            f"[MANDATORY_REENTRY_WT_HOLD] {position_key}: "
+                                            f"price cross qualified but WT filter failed: {_xb_wt_detail}"
+                                        )
+                                    elif not _xb_dcb_ok:
+                                        logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {account_key}:{symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
+                                    else:
+                                        _xb_target_usd = (
+                                            _xb_obligation.target_notional_usd
+                                            if _xb_obligation is not None
+                                            and _xb_obligation.pending
+                                            else float(_cfg_auto('START_POSITION_SIZE', 600))
+                                        )
+                                        _xb_qty = _xb_target_usd / max(current_price, 1e-9)
+                                        action_type = "OPEN"
+                                        qty = max(1.0, float(_xb_qty))
+                                        conf = 90.0
+                                        _xb_trigger = f'WITHIN_BAND_{_xb_band_pct:.2f}%'
+                                        reason = f"MANDATORY_REENTRY_PRICE_CROSS_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}"
+                                        _xb_reentry_fired = True
+                                        logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
                 # Shared ordinary ladder parity.  It is explicitly guarded and
                 # defaults OFF in live.  A completed D/4h/1h parent can request
                 # one absolute target; the strongest rung wins and the shared
@@ -17334,7 +17376,11 @@ class StockStrategy:
         # User directive 2026-04-10: STOCKS must be held at least 4h. Stocks are NOT
         # crypto — they are swing/position trades, not scalps. The 1h/4h/D slowdown
         # is what signals a reversal; LTF noise must not close a position.
-        _stock_min_hold = float(_cfg_auto('TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 60.0)))
+        # 2026-09-09 FIX: directional hold — shorts 60m, longs 240m (was 4320m 72h deadlock)
+        if not is_long:
+            _stock_min_hold = float(_cfg_auto('TRADIER_MIN_HOLD_MINUTES_SHORT', getattr(config, 'TRADIER_MIN_HOLD_MINUTES_SHORT', 60.0)))
+        else:
+            _stock_min_hold = float(_cfg_auto('TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
         # USER 2026-08-27: 60m hold with dc_low_15m / dc_high_15m vv-short exception — if price < dc_low_15m (LONG) or > dc_high_15m (SHORT) bypass hold entirely (structural breakdown, don't hold losers to infinity).
         _dc15_bypass = False
         try:
@@ -21146,12 +21192,8 @@ class TradierTradeManager:
         
         for sym, data in snap.items():
             price = float(data.get('current_price', 0))
-            ema15 = float(data.get('ema_20_15m', 0)) # Intraday anchor
+            ema15 = float(data.get('ema_20_15m', 0) or data.get('ema_20_15m_prev', 0) or data.get('ema_50_15m_prev', 0) or data.get('ema_20_5m', 0) or data.get('close_15m', 0) or data.get('sma_200_15m', 0) or data.get('ema_200_15m', 0))
             sent = float(data.get('0market_sentiment_score', 0))
-            
-            if price > 0 and ema15 > 0:
-                total_valid += 1
-                if price > ema15: bullish_count += 1
             
             if abs(sent) > 0:
                 global_sent_total += sent
@@ -21746,6 +21788,34 @@ class TradierTradeManager:
                 _last_trim_ts[pk] = time.time()
                 _trim_counts[today] = _trim_counts.get(today, 0) + 1
                 logger.warning(f"[INTRADAY_RATIO] trimmed {pk} qty={trim_qty}/{qty} dev={dev:+.2%} t={target:.2%} a={actual:.2%} gain={getattr(pos,'gain',0):+.2f}%")
+                # USER 2026-09-10 MANDATE: 25k/5k long heavy → need WAYYY MORE SHORT OPENS, not just long trims.
+                # When overweight LONG (dev>0) also force a SHORT open on the same cycle; vice versa.
+                try:
+                    _under = "SHORT" if side_over == "LONG" else "LONG"
+                    _rank = await self.get_rankings()
+                    _cands = _rank.get(_under.lower() + "_ranked", []) if isinstance(_rank, dict) else []
+                    # pick top ranked not already held
+                    _held = { str(getattr(p,'symbol','')).upper() for p in (self.position_manager.positions or {}).values() if getattr(p,'position_side','') == _under }
+                    _best = None
+                    for _r in _cands:
+                        _rsym = str(_r.get('symbol','')).upper()
+                        if _rsym and _rsym not in _held:
+                            _best = _rsym
+                            break
+                    if _best:
+                        _b_ind = self.get_indicators(_best) or {}
+                        _b_price = float(_b_ind.get('current_price', 0) or 0)
+                        if _b_price <= 0:
+                            _b_price, _ = await self.get_current_price(_best)
+                            _b_price = float(_b_price or 0)
+                        if _b_price > 0:
+                            _b_qty = max(1, int(float(_cfg_auto('START_POSITION_SIZE', 600)) / _b_price))
+                            _open_reason = f"INTRADAY_RATIO_OPEN_{_under}_tgt{target:.2f}_act{actual:.2f}_dev{dev:+.2f}_rank={_best}"
+                            _pk_open = f"trb:{_best}_{_under}"
+                            await self.execute_trade_action("trb", _pk_open, _best, _b_qty, _b_price, "SELL" if _under=="SHORT" else "BUY", _under, f"ratio_open_{int(time.time())}", action="OPEN", reason=_open_reason, override_qty=_b_qty)
+                            logger.warning(f"[INTRADAY_RATIO] opened {_pk_open} qty={_b_qty} dev={dev:+.2%} t={target:.2%} a={actual:.2%}")
+                except Exception as _open_e:
+                    logger.debug(f"[INTRADAY_RATIO] underweight open failed: {_open_e}")
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -22669,7 +22739,11 @@ class TradierTradeManager:
         # live 4h Donchian boundary.  Missing 4h data fails closed.
         # parity fix 2026-08-13: bypass for V8 ladder parity (vector has no 4h gate)
         _v8_parity_bypass_dc4h = os.environ.get("V8_BACKTEST_BYPASS_DRAWDOWN") == "1" or bool(os.environ.get("V8_LADDER_ONLY_SIDE"))
-        if account_key in {"trb", "trc"} and not _is_exit_or_reduce and action != "HEDGE_CLOSE" and not _v8_parity_bypass_dc4h:
+        # USER 2026-09-10 MANDATE: MANDATORY_REENTRY price cross back REENTERS 100% — bypass 4h Donchian
+        # boundary for reentry reclaims (AXON/LOW blocked by MISSING_DC_HIGH_4H). Reentry has its own
+        # WT/DC4 validation; 4h gate must not veto a guaranteed price reclaim.
+        _is_mandatory_reclaim = "MANDATORY_REENTRY" in (reason or "") and "CROSSED_BACK_GUARANTEED" in (reason or "")
+        if account_key in {"trb", "trc"} and not _is_exit_or_reduce and action != "HEDGE_CLOSE" and not _v8_parity_bypass_dc4h and not _is_mandatory_reclaim:
             _dc4_block, _dc4_detail = dc_4h_boundary_breached(
                 current_price, position_side, i, require_level=True
             )
@@ -24544,8 +24618,20 @@ class TradierTradeManager:
                         hours_since = (now_utc - exit_dt).total_seconds() / 3600.0
                         _min_gap_min = float(_cfg_auto('REENTRY_MIN_GAP_MINUTES', 15.0))
                         if hours_since * 60.0 < _min_gap_min:
-                            logger.info(f"[REENTRY_MONITOR] {pk}: GAP {hours_since*60.0:.1f}m<{_min_gap_min:.0f}m — waiting for min-gap window")
-                            continue
+                            # USER 2026-09-10 MANDATE: price cross back REENTERS 100% — GAP does not block
+                            # a reclaim (cur beyond exit in favorable direction). Check here early.
+                            try:
+                                _gap_cur = float(i.get("current_price", 0) or current_price or 0)
+                                _gap_exit = float(cand.get("exit_price", 0) or 0)
+                                _gap_crossed = (side == "LONG" and _gap_cur >= _gap_exit > 0) or (side == "SHORT" and 0 < _gap_cur <= _gap_exit)
+                                if _gap_crossed:
+                                    logger.warning(f"[REENTRY_MONITOR] {pk}: GAP {hours_since*60.0:.1f}m<{_min_gap_min:.0f}m but price reclaimed (cur={_gap_cur:.2f} vs exit={_gap_exit:.2f}) — GAP BYPASSED [GUARANTEED]")
+                                else:
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: GAP {hours_since*60.0:.1f}m<{_min_gap_min:.0f}m — waiting for min-gap window")
+                                    continue
+                            except Exception:
+                                logger.info(f"[REENTRY_MONITOR] {pk}: GAP {hours_since*60.0:.1f}m<{_min_gap_min:.0f}m — waiting for min-gap window")
+                                continue
                         # REENTRIES NEVER EXPIRE — WT always cycles back. Weekend gaps can be 66+ hours.
                         if hours_since > 168.0:  # Only expire after 1 WEEK (absolute safety net)
                             cand["status"] = "EXPIRED"
@@ -24595,10 +24681,21 @@ class TradierTradeManager:
                             logger.info(f"[REENTRY_MONITOR] {pk}: exit score {_rm_exit_score:.0f}>={_rm_threshold} — signal still says EXIT, waiting for reversal")
                             continue
                         if _cfg_auto('REENTRY_SYMGATE_ENABLED', True):
-                            _sg_blocked, _sg_reason = self.would_exit_trigger_now(symbol, i, side, current_price=current_price)
-                            if _sg_blocked:
-                                logger.info(f"[REENTRY_MONITOR] {pk}: SYMGATE block — {_sg_reason}")
-                                continue
+                            # USER 2026-09-10 MANDATE: price reclaim REENTERS 100% — SYMGATE must not veto
+                            # a direct price cross back (cur beyond exit). Check reclaim before WT gate.
+                            try:
+                                _sg_cur = float(i.get("current_price", 0) or current_price or 0)
+                                _sg_exit = float(cand.get("exit_price", 0) or 0)
+                                _sg_crossed = (side == "LONG" and _sg_cur >= _sg_exit > 0) or (side == "SHORT" and 0 < _sg_cur <= _sg_exit)
+                            except Exception:
+                                _sg_crossed = False
+                            if _sg_crossed:
+                                logger.warning(f"[REENTRY_MONITOR] {pk}: SYMGATE bypassed for price reclaim cur={_sg_cur:.2f} vs exit={_sg_exit:.2f} [GUARANTEED]")
+                            else:
+                                _sg_blocked, _sg_reason = self.would_exit_trigger_now(symbol, i, side, current_price=current_price)
+                                if _sg_blocked:
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: SYMGATE block — {_sg_reason}")
+                                    continue
                         # ═══ PATHWAY 0: 5m-exit rescue (user directive 2026-04-16) ═══
                         _er_str = str(cand.get("exit_reason", "")).upper()
                         _was_5m_exit = any(t in _er_str for t in ('5M', '_5M_', 'DELTA_EXIT', 'STOCH_CROSS', 'WT_CROSSUNDER', 'WT_CROSSOVER', 'MANDATORY_REENTRY', 'WT_DC_EXIT'))

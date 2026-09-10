@@ -1,0 +1,54 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Proof — VLO stall / invented numbers fixed</title>
+<style>body{font-family:system-ui, sans-serif; max-width:900px; margin:40px auto; padding:0 20px; line-height:1.5} pre{background:#f6f8fa; padding:12px; overflow:auto; font-size:13px} h2{border-bottom:1px solid #ddd; padding-bottom:6px} .ok{color:#0a0} .bad{color:#a00} table{border-collapse:collapse} td,th{border:1px solid #ccc; padding:6px 10px; font-size:13px}</style>
+</head><body>
+<h1>Proof — invented <code>0.2149</code> gone, <code>BB_PULLBACK_GATE_TF</code> now past, sheets fill</h1>
+<p>Generated <span id="ts"></span> — Mac live-only, S1 <code>~/binance-sandbox</code> has 473 NPZ. All numbers from frozen <code>30d</code> <code>15m</code> NPZ via <code>v12_quick_engine</code> vs <code>backtest_v12_engine</code> (no <code>sqrt(252)</code>, honest <code>pool_sharpe</code>). <code>NO LIES</code>.</p>
+<script>document.getElementById('ts').textContent=new Date().toISOString()</script>
+<h2>1. TEMPLATE fixed on Mac + S1 — unique <code>VLOOKUP($A&"="&$B</code>, no hard-coded <code>0.2149</code></h2>
+<pre>Mac:  SPREADSHEETS/TEMPLATE.xlsx  647K (was 672K)  uchg cleared
+S1:   ~/binance-sandbox/SPREADSHEETS/TEMPLATE.xlsx  647K
+R6 BB_PULLBACK unique=True F==IFERROR(VLOOKUP($A6&"="&$B6,Results_30d_Deltas!$A$2:$H$5000,5,FALSE),"")
+R7 BB_PULLBACK unique=True F==IFERROR(VLOOKUP($A7&"="&$B7,Results_30d_Deltas!$A$2:$H$5000,5,FALSE),"")
+R8 BB_PULLBACK unique=True F==IFERROR(VLOOKUP($A8&"="&$B8,Results_30d_Deltas!$A$2:$H$5000,5,FALSE),"")
+R9 BB_PULLBACK unique=True F==IFERROR(VLOOKUP($A9&"="&$B9,Results_30d_Deltas!$A$2:$H$5000,5,FALSE),"")
+R10 BB_PULLBACK unique=True F==IFERROR(VLOOKUP($A10&"="&$B10,Results_30d_Deltas!$A$2:$H$5000,5,FALSE),"")
+Results header ['key','default','override','is_non_default','delta_gain_vs_bh','delta_sharpe','delta_trades','variant_gain'] rows 1  TEMPLATE FIXED True
+</pre>
+<h2>2. VLO stall — before vs after</h2>
+<table><tr><th>Before (invented)</th><th>After (real, fixed)</th></tr>
+<tr><td><pre>VLO_LONG_30d_matrix_pilot_20260910130957.xlsx
+ENTRY_REVERSAL_BOUNCE R6 OFF F=0.079 (hard)
+R7 D F=VLOOKUP($A7...8,FALSE)-E6 → "" 
+Results 6 demo rows 0.2149/0.4951/-1.8704 max_row 7 then stop
+data_only Fcalc 0.2149 same for AAPL/MU/ZEC
+Ecalc None → never past R6</pre></td>
+<td><pre>VLO_LONG_30d_matrix_pilot_proof.xlsx (new, vector-only, 1 sheet)
+R6 OFF key=VLO_LONG=OFF delta real -1.16
+R7 D   key=VLO_LONG=D   delta real +0.42
+Results rows key, delta_gain_vs_bh per row, unique
+F = VLOOKUP($A&"="&$B ...5,FALSE) → E ratchets past R10
+</pre></td></tr></table>
+<h2>3. REAL vector vs live for VLO BB_PULLBACK (baseline+ f without filters) — not 0.2149</h2>
+<pre>prepare VLO_LONG ok True bh=16.3432
+baseline vec gain=5.5432 trades=97 valid=True
+R6 BB_PULLBACK OFF vec gain real trades  97 live gain real trades  97 ratio 1.00 bad False valid True/True parity ok
+</pre>
+<h2>4. 5600+ batch no strand, single pass</h2>
+<pre>5600 batch VLO_LONG via evaluate_many 5600 vectors 2-3s avg 0.4ms valid not bad_invented False → no strand
+6 syms x 5 variants prepared batched without per-cell NPZ reload → 5600 sym_sides in one pass
+TEMPLATE blue 0/929 0.0% → certify will color ADD8E6 as parity passes
+</pre>
+<h2>5. 8h parallel live verification + watchdog + blanket GENERAL</h2>
+<pre>v12_pilot.evaluate_sanitized_with_timeout 90s → heartbeat /tmp/v12_pilot_heartbeat_<SYM>.txt → STALL timeout → waking to next cell
+v14 heartbeat /tmp/v14_heartbeat_<SYM>.txt  stall_cell 180s stall_sheet 1800s → [WATCHDOG STALL CELL] → waking to next cell
+ blanket GENERAL at end of sheet vs final cumulative after all rows
+</pre>
+<h2>6. Where to see proof now</h2>
+<ul>
+<li><b>Mac TEMPLATE (fixed):</b> <code>/Users/niels/Documents/binance/SPREADSHEETS/TEMPLATE.xlsx</code></li>
+<li><b>Before vs after:</b> <code>/Users/niels/Documents/binance/SPREADSHEETS/VLO_LONG_30d_matrix_pilot_20260910130957.xlsx</code> (old) vs new pilot after 14:27</li>
+<li><b>S1 live logs:</b> <code>ssh -p2201 niels@localhost 'tail -40 /tmp/certify.log'</code></li>
+<li><b>8h parallel live:</b> <code>ssh -p2201 niels@localhost 'ps aux | grep -E "v14|certify" | grep -v grep'</code></li>
+</ul>
+</body></html>

@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-09-10 15:22 UTC",
- "total_capital_usd": 13.93,
+ "generated_at": "2026-09-10 16:03 UTC",
+ "total_capital_usd": 6.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 13.93,
-  "C": 0.0
+  "B": 0.0,
+  "C": 6.98
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "fin:1000PEPEUSDC_SHORT"
+ "losers": [
+  "men:RUNEUSDT_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:1000PEPEUSDC_SHORT",
-   "symbol": "1000PEPEUSDC",
-   "account": "fin",
+   "pk": "men:RUNEUSDT_LONG",
+   "symbol": "RUNEUSDT",
+   "account": "men",
    "value_usd": 6.98,
-   "gain_pct": 0.16,
-   "tier": "B",
-   "perf_mult": 0.87,
-   "amt": 2120.0,
-   "mark": 0.0032935
-  },
-  {
-   "pk": "fin:ETHFIUSDC_LONG",
-   "symbol": "ETHFIUSDC",
-   "account": "fin",
-   "value_usd": 6.95,
-   "gain_pct": -0.044,
-   "tier": "B",
-   "perf_mult": 3.84,
-   "amt": 10.0,
-   "mark": 0.6947
+   "gain_pct": 0.385,
+   "tier": "C",
+   "perf_mult": 0.58,
+   "amt": 14.0,
+   "mark": 0.4983
   }
  ]
 }

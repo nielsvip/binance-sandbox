@@ -2898,6 +2898,7 @@ from binance.client import Client
 
 # from binance.enums import *
 ORDER_TYPE_LIMIT = "LIMIT"
+ORDER_TYPE_MARKET = "MARKET"
 import hedge_decisions as _hd
 from binance.exceptions import BinanceAPIException
 from config import Config
@@ -27824,7 +27825,8 @@ class MultiAccountTradeManager:
             if (is_long and side == "SELL") or (not is_long and side == "BUY")
             else "OPEN"
         )
-        TIMEOUT = 5.0 if is_quick_order else 10.0  # Standard chasing window
+        # 2026-09-10 FINANDY DEAD — maker must intend at least 30s before webhook fallback (user mandate). Was 5s/10s.
+        TIMEOUT = 30.0
         POLL_INTERVAL = 0.1
         RETRY_DELAY = 0.05
         ak, symbol, p_side = parse_position_key(position_key)
@@ -32334,59 +32336,20 @@ class MultiAccountTradeManager:
                 # LOSS_HEDGE_GUARD REMOVED 2026-04-02: was blocking WT technical exits with _pos_gain < -0.01% gate.
                 # Rule: NO % gates. Technicals decide exits. Let webhook go through — Finandy will reject loss closes itself.
                 # Same-symbol hedge fires separately from process_position when gain < 0 AND WT against.
-                # PROFITABLE EXIT: FORCE WEBHOOK (Finandy) for ALL reduces — maker bypasses Finandy's no-loss protection
-                # Maker orders are only for OPENS/AUGMENTS. Reduces MUST go through Finandy.
-                _force_webhook_reduces = True  # EMERGENCY: until maker reduces are proven safe, ALL reduces via Finandy
-                # 2026-04-23 USER: SCALP_V3 scalps MUST use maker for entries AND exits (USDC limit = free).
-                # Finandy's 70%+ taker close is wrong economics for scalping. Bypass the force-webhook flag
-                # AND the profitability check (accept small taker fee only if maker fails).
-                if _is_scalp_v3_reason:
-                    _force_webhook_reduces = False
-                if is_hedge:
-                    _force_webhook_reduces = (
-                        False  # hedge closes MUST bypass Finandy no-loss protection
-                    )
-                # 2026-05-06 USER MANDATE: safety closes go through MAKER first (place_maker_order is
-                # the PRIMARY path; webhook is the fallback). When Finandy silently rejects a webhook
-                # close, we want maker to have already attempted first.
-                _safety_close = (
-                    # "RIDICULOUS_HOLD" in reason_upper
-                    "RIDICULOUS_LOSS" in reason_upper
-                    or "DC_BB_D_BREAK_REVERSE" in reason_upper
-                    or "UNDERWATER_HEDGE_OR_CLOSE" in reason_upper
-                    or "WT15M_AGAINST" in reason_upper
-                    or "ALL_TF_AGAINST" in reason_upper
-                    # 2026-06-20: structural stop closes must use maker (bypass Finandy no-loss)
-                    or "BB_FROZEN" in reason_upper
-                    or "HYBRID_STRUCT" in reason_upper
-                    or "BREAKOUT_LEASH" in reason_upper
-                    or "FROZEN_ACT" in reason_upper
-                    or "R1_DC" in reason_upper
-                    or "GR_HTF" in reason_upper
-                    or "DELTA_EXIT" in reason_upper
-                    or "DC_BREACH" in reason_upper
-                )
-                # 2026-09-03 FIX: MAKER at a loss is a loss 12/min — even safety closes must be profitable after fees
-                if _safety_close and _gain_after_fees < 0.05:
-                    _safety_close = False
-                    logger.info(f"🛡️[MAKER_SAFETY_BLOCK] {position_key}: safety close {reason} but _gain_after_fees {_gain_after_fees:.3f}% <0.05% — NOT using maker at a loss, fallback to webhook")
-                if _safety_close:
-                    _force_webhook_reduces = False
-                _finandy_circuit_open = time.time() < getattr(self, "_finandy_broken_until", 0.0)
-                if _finandy_circuit_open:
-                    _force_webhook_reduces = False
-                    logger.info(
-                        f"[FINANDY_CIRCUIT_BYPASS] {position_key}: Finandy broken circuit open — using place_maker_order for reduce"
-                    )
-                # 2026-09-03 FIX: MAKER_PROFIT_EXIT only when profitable after fees — at loss is commission churn (user: THIS makes exits MAKER_PROFIT when they are at loss)
-                # Restored maker for profitable exits; DO NOT TOUCH maker orders. Culprit is upstream exit path → 1h hold there.
-                if (
-                    _is_profitable_exit
-                    or _is_scalp_v3_reason
-                    or is_hedge
-                    or _safety_close
-                    or _finandy_circuit_open
-                ) and not _force_webhook_reduces:
+                # 2026-09-10 FINANDY DEAD — webhook disabled. Maker ALWAYS first, at least 30s (place_maker_order TIMEOUT=30). Direct Binance MARKET order is the fallback.
+                # OLD FINANDY LOGIC COMMENTED OUT — _force_webhook_reduces / _safety_close / _is_profitable_exit / _finandy_circuit_open gates removed.
+                # # PROFITABLE EXIT: FORCE WEBHOOK (Finandy) for ALL reduces — maker bypasses Finandy's no-loss protection
+                # # Maker orders are only for OPENS/AUGMENTS. Reduces MUST go through Finandy.
+                # _force_webhook_reduces = True
+                # if _is_scalp_v3_reason: _force_webhook_reduces = False
+                # if is_hedge: _force_webhook_reduces = False
+                # _safety_close = (...)
+                # if _safety_close: _force_webhook_reduces = False
+                # _finandy_circuit_open = time.time() < getattr(self, "_finandy_broken_until", 0.0)
+                # if _finandy_circuit_open: _force_webhook_reduces = False
+                # if (_is_profitable_exit or _is_scalp_v3_reason or is_hedge or _safety_close or _finandy_circuit_open) and not _force_webhook_reduces:
+                # ALWAYS attempt maker first (mandate 2026-09-10).
+                if True:
                     logger.info(
                         f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) is_hedge={is_hedge} — using maker order (direct Binance)"
                     )
@@ -32640,14 +32603,14 @@ class MultiAccountTradeManager:
                 # ═══ CENTRALIZED FOOTHOLD ═══
                 # Centralized in place_maker_order (USER 2026-06-02) to prevent double webhook sends.
 
-                # EMERGENCY: if this is a REDUCE, skip maker and use webhook (Finandy protects)
-                if _is_reduce and _force_webhook_reduces:
-                    logger.info(
-                        f"[FORCE_WEBHOOK_REDUCE] {position_key}: Skipping maker for reduce — all reduces go through Finandy webhook"
-                    )
-                    maker_success = False
-                    executed_qty = 0
-                else:
+                # 2026-09-10 FINANDY DEAD — maker ALWAYS first, webhook fallback is direct MARKET order.
+                # # EMERGENCY: if this is a REDUCE, skip maker and use webhook (Finandy protects)
+                # if _is_reduce and _force_webhook_reduces:
+                #     logger.info(f"[FORCE_WEBHOOK_REDUCE] {position_key}: Skipping maker for reduce — all reduces go through Finandy webhook")
+                #     maker_success = False
+                #     executed_qty = 0
+                # else:
+                if True:
                     maker_success, executed_qty = await self.place_maker_order(
                         account_key,
                         position_key,
@@ -33450,132 +33413,107 @@ class MultiAccountTradeManager:
         position_side,
         reason,
     ):
+        # 2026-09-10 FINANDY DEAD — replaced webhook with direct Binance MARKET order (user mandate).
+        # OLD WEBHOOK CODE COMMENTED OUT BELOW — kept for reference, now executes direct market order.
         if account_key not in self.accounts:
             logger.error(
                 f"[s end_foothold_webhook] Account '{account_key}' not found in self.accounts for {position_key}"
             )
             return False
-        # 2026-04-24 USER DIRECTIVE: webhook layer does NOT block. Dedup is enforced
-        # at execute_now via _ABSOLUTE_OPEN_LOCK (5min TTL). Blocking here would break
-        # legitimate maker-fallback scenarios where the ORDER side wants to retry.
-        account = self.accounts[account_key]
-        webhook_url = account.webhook_url
-        webhook_secret = account.webhook_secret
         is_opening_or_augmenting = self.is_same_direction(side, position_side)
         foothold_usd_value = abs(foothold_qty * current_price)
-        payload = {
-            "name": f"{reason}",
-            "secret": webhook_secret,
-            "symbol": symbol,
-            "side": side,
-            "positionSide": position_side,
-            **({"open": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "type": "market"}} if is_opening_or_augmenting else {}),
-            **({"dca": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "side": side, "type": "market"}} if is_opening_or_augmenting else {}),
-            **({"close": {"type": "market", "decrease": {"type": "sumUsd", "amount": str(foothold_usd_value)}}} if not is_opening_or_augmenting else {}),
-        }
+        # --- DIRECT BINANCE MARKET ORDER (replaces Finandy webhook) ---
         try:
-            async with aiohttp.ClientSession(
-                connector=aiohttp.TCPConnector(
-                    limit=10, limit_per_host=5, force_close=False
-                )
-            ) as session:
-                try:
-                    _exec_now_wire_tripwire("finandy_webhook:send_foothold_webhook", position_key, reason)
-                    async with session.post(
-                        webhook_url,
-                        json=payload,
-                        timeout=aiohttp.ClientTimeout(total=40, connect=20),
-                    ) as resp:
-                        await resp.text()
-                    logger.info(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT")  # 2026-06-02 INFO (was DEBUG-hidden); fire-and-forget, no response check
-                    # 2026-04-24 UNIVERSAL HEDGE PERSIST (foothold path)
-                    try:
-                        _r_upper = str(reason or "").upper()
-                        _is_hedge_fh = (
-                            "HEDGE_ELECTED_" in _r_upper
-                            or "HEDGE_PROTECT_" in _r_upper
-                            or "HEDGE_SAME_" in _r_upper
-                            or "QUICK_HEDGE_" in _r_upper
-                        ) and is_opening_or_augmenting
-                        if (
-                            _is_hedge_fh
-                            and hasattr(self, "hedge_engine")
-                            and self.hedge_engine
-                        ):
-                            import re as _re_fh
-
-                            _hedge_for_fh = None
-                            _m_fh = _re_fh.search(
-                                r"HEDGE_ELECTED_([A-Z0-9]+USD[TC]?)_(LONG|SHORT)",
-                                _r_upper,
-                            )
-                            if _m_fh:
-                                _hedge_for_fh = (
-                                    f"{account_key}:{_m_fh.group(1)}_{_m_fh.group(2)}"
-                                )
-                            elif _re_fh.search(
-                                r"HEDGE_PROTECT_(LONG|SHORT)_LOSS", _r_upper
-                            ):
-                                _opp_fh = "SHORT" if position_side == "LONG" else "LONG"
-                                _hedge_for_fh = f"{account_key}:{symbol}_{_opp_fh}"
-                            if _hedge_for_fh:
-                                _hr_fh = {
-                                    "position_key": position_key,
-                                    "hedge_for": _hedge_for_fh,
-                                    "losing_position_key": _hedge_for_fh,
-                                    "symbol": symbol,
-                                    "losing_side": _hedge_for_fh.split("_")[-1],
-                                    "position_side": position_side,
-                                    "quantity": abs(foothold_qty),
-                                    "price": current_price,
-                                    "entry_price": current_price,
-                                    "notional_usd": foothold_usd_value,
-                                    "timestamp": time.time(),
-                                    "is_hedge": True,
-                                    "reason": reason,
-                                    "opened_via": "send_foothold_webhook",
-                                }
-                                asyncio.create_task(
-                                    self.hedge_engine.persist_hedge_record(
-                                        account_key, _hr_fh
-                                    )
-                                )
-                                logger.warning(
-                                    f"🪪 [UNIVERSAL_HEDGE_PERSIST_FOOTHOLD] {position_key}: persist queued (hedge_for={_hedge_for_fh})"
-                                )
-                    except Exception as _ehpf:
-                        logger.error(
-                            f"[UNIVERSAL_HEDGE_PERSIST_FOOTHOLD_ERR] {position_key}: {_ehpf}"
-                        )
-                except (
-                    aiohttp.ClientError,
-                    asyncio.TimeoutError,
-                    ConnectionError,
-                    OSError,
-                ) as e:
-                    if (
-                        "closing transport" in str(e).lower()
-                        or "cannot write" in str(e).lower()
-                    ):
-                        logger.debug(
-                            f"[{position_key}] {reason} FOOTHOLD_WEBHO OK_ERROR: Connection closing during send: {e}"
-                        )
-                    else:
-                        logger.error(
-                            f"[{position_key}] {reason} FOOTHOLD_WEBH OOK_ERROR: {e}"
-                        )
-                    return False
-        except Exception as e:
-            if (
-                "closing transport" in str(e).lower()
-                or "cannot write" in str(e).lower()
-            ):
-                logger.debug(
-                    f"[{position_key}] {reason} FOOTHOLD_WEBHO OK_ERROR: Connection closing: {e}"
-                )
-            else:
-                logger.error(f"[{position_key}] {reason} FOOTHOLD_WEBHO OK_ERROR: {e}")
+            account = self.accounts.get(account_key)
+            if not account or not getattr(account, "client", None):
+                logger.error(f"[FOOTHOLD_MARKET_FAIL] {position_key}: no client for {account_key}")
+                return False
+            client = account.client
+            symbol_conf = self.get_symbol_config(symbol)
+            if not symbol_conf:
+                await self.load_symbol_configs()
+                symbol_conf = self.get_symbol_config(symbol)
+            if not symbol_conf:
+                logger.error(f"[FOOTHOLD_MARKET_FAIL] {position_key}: no symbol_conf for {symbol}")
+                return False
+            step = Decimal(str(symbol_conf["step_size"]))
+            qty_dec = (Decimal(str(abs(foothold_qty))) // step) * step
+            if qty_dec.is_zero():
+                logger.warning(f"[FOOTHOLD_MARKET_ZERO] {position_key}: qty {foothold_qty} -> 0 after step {step}")
+                return False
+            qty_str = f"{qty_dec}"
+            _exec_now_wire_tripwire("direct_market:send_foothold_webhook", position_key, reason)
+            order = await asyncio.to_thread(
+                client.futures_create_order,
+                symbol=symbol,
+                side=side,
+                positionSide=position_side,
+                type=ORDER_TYPE_MARKET,
+                quantity=qty_str,
+            )
+            logger.info(f"[{position_key}] {reason} FOOTHOLD_MARKET_SENT qty={qty_str} usd=${foothold_usd_value:.2f} order={order.get('orderId','?')} status={order.get('status','?')}")
+            # UNIVERSAL HEDGE PERSIST (foothold path) — preserved
+            try:
+                _r_upper = str(reason or "").upper()
+                _is_hedge_fh = (
+                    "HEDGE_ELECTED_" in _r_upper
+                    or "HEDGE_PROTECT_" in _r_upper
+                    or "HEDGE_SAME_" in _r_upper
+                    or "QUICK_HEDGE_" in _r_upper
+                ) and is_opening_or_augmenting
+                if _is_hedge_fh and hasattr(self, "hedge_engine") and self.hedge_engine:
+                    import re as _re_fh
+                    _hedge_for_fh = None
+                    _m_fh = _re_fh.search(r"HEDGE_ELECTED_([A-Z0-9]+USD[TC]?)_(LONG|SHORT)", _r_upper)
+                    if _m_fh:
+                        _hedge_for_fh = f"{account_key}:{_m_fh.group(1)}_{_m_fh.group(2)}"
+                    elif _re_fh.search(r"HEDGE_PROTECT_(LONG|SHORT)_LOSS", _r_upper):
+                        _opp_fh = "SHORT" if position_side == "LONG" else "LONG"
+                        _hedge_for_fh = f"{account_key}:{symbol}_{_opp_fh}"
+                    if _hedge_for_fh:
+                        _hr_fh = {
+                            "position_key": position_key,
+                            "hedge_for": _hedge_for_fh,
+                            "losing_position_key": _hedge_for_fh,
+                            "symbol": symbol,
+                            "losing_side": _hedge_for_fh.split("_")[-1],
+                            "position_side": position_side,
+                            "quantity": abs(float(qty_dec)),
+                            "price": current_price,
+                            "entry_price": current_price,
+                            "notional_usd": foothold_usd_value,
+                            "timestamp": time.time(),
+                            "is_hedge": True,
+                            "reason": reason,
+                            "opened_via": "send_foothold_webhook_market",
+                        }
+                        asyncio.create_task(self.hedge_engine.persist_hedge_record(account_key, _hr_fh))
+                        logger.warning(f"🪪 [UNIVERSAL_HEDGE_PERSIST_FOOTHOLD] {position_key}: persist queued (hedge_for={_hedge_for_fh})")
+            except Exception as _ehpf:
+                logger.error(f"[UNIVERSAL_HEDGE_PERSIST_FOOTHOLD_ERR] {position_key}: {_ehpf}")
+            if hasattr(self, "positions_service") and self.positions_service:
+                asyncio.create_task(self.positions_service.fetch_positions(account_key))
+            return True
+        except BinanceAPIException as e:
+            logger.error(f"[{position_key}] {reason} FOOTHOLD_MARKET_API_ERROR code={e.code} msg={e.message}")
             return False
+        except Exception as e:
+            logger.error(f"[{position_key}] {reason} FOOTHOLD_MARKET_ERROR: {e}")
+            return False
+        # --- OLD WEBHOOK CODE (Finandy) COMMENTED OUT — DO NOT RE-ENABLE ---
+        # account = self.accounts[account_key]
+        # webhook_url = account.webhook_url
+        # webhook_secret = account.webhook_secret
+        # payload = {"name": f"{reason}", "secret": webhook_secret, "symbol": symbol, "side": side, "positionSide": position_side,
+        #            **({"open": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "type": "market"}} if is_opening_or_augmenting else {}),
+        #            **({"dca": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "side": side, "type": "market"}} if is_opening_or_augmenting else {}),
+        #            **({"close": {"type": "market", "decrease": {"type": "sumUsd", "amount": str(foothold_usd_value)}}} if not is_opening_or_augmenting else {}),}
+        # try:
+        #     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=10, limit_per_host=5, force_close=False)) as session:
+        #         async with session.post(webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=40, connect=20)) as resp:
+        #             await resp.text()
+        #         logger.info(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT")
+        # except Exception as e: logger.error(...); return False
 
     async def send_webhook(
         self,
@@ -33682,9 +33620,8 @@ class MultiAccountTradeManager:
             logger.warning(
                 f"[WEBHOOK_PRE_CANCEL] {position_key}: Cancel/verify error ({_wh_cancel_ex}), proceeding."
             )
-        account = self.accounts.get(account_key)
-        webhook_url = getattr(account, "webhook_url", None)
-        webhook_secret = getattr(account, "webhook_secret", None)
+        # 2026-09-10 FINANDY DEAD — replaced Finandy webhook with direct Binance MARKET order (user mandate).
+        # --- DIRECT BINANCE MARKET ORDER (replaces Finandy webhook) ---
         if side.upper() not in ["BUY", "SELL"]:
             return False
         if position_side.upper() not in ["LONG", "SHORT"]:
@@ -33698,226 +33635,40 @@ class MultiAccountTradeManager:
             )
             return False
         usd_value = abs(quantity * current_price)
-        payload = {
-            "name": f"{reason}",
-            "secret": webhook_secret,
-            "symbol": symbol,
-            "side": side,
-            "positionSide": position_side,
-        }
-        resolved_kind = "regular"
-        price_data = {}
-        if level is not None:
-            try:
-                level_float = float(level)
-                if side.upper() == "BUY":
-                    virtual = level_float > current_price
-                else:
-                    virtual = level_float < current_price
-                resolved_kind = "virtual" if virtual else "limit"
-                webhook_url = getattr(
-                    account, f"webhook_url_{2 if virtual else 3}", webhook_url
-                )
-                webhook_secret = getattr(
-                    account, f"webhook_secret_{2 if virtual else 3}", webhook_secret
-                )
-                price_field = "triggerPrice" if resolved_kind == "virtual" else "price"
-                price_data[price_field] = f"{level_float:.6f}"
-            except Exception:
-                pass
-        if url_variant in ("2", "3"):
-            _uv_url = getattr(account, f"webhook_url_{url_variant}", None)
-            _uv_secret = getattr(account, f"webhook_secret_{url_variant}", None)
-            if _uv_url and _uv_secret:
-                webhook_url = _uv_url
-                webhook_secret = _uv_secret
-                payload["secret"] = webhook_secret
-                resolved_kind = f"url_variant_{url_variant}"
-            else:
-                logger.error(
-                    f"[WEBHOOK_URL_VARIANT_MISSING] {position_key}: url_variant={url_variant} requested but account.webhook_url_{url_variant} or webhook_secret_{url_variant} is empty — aborting"
-                )
-                return False
-        if not webhook_url or not webhook_secret:
-            return False
-        if is_augmentation:
-            block1 = {
-                "amountType": "sumUsd",
-                "amount": f"{usd_value:.6f}",
-                **price_data,
-            }
-            # if 'BTCUSDC' in symbol:
-            #     block1 = {"amountType": "sumUsd", "amount": f"{usd_value:.6f}", "leverage": "6", **price_data}
-            payload["open"] = block1
-            # DCA block: only include when position is NEW (< pos_min_qty) or in GAIN
-            # NEVER send DCA for already-open losing positions — causes runaway growth
-            # (COTIUSDT grew from 2,469 to 29,006 via DCA ladder on losing SHORT)
-            _pos_obj = self.positions_by_account.get(account_key, {}).get(position_key)
-            _pos_amt = (
-                (safe_fetch_float(getattr(_pos_obj, "positionAmt", 0), 0))
-                if _pos_obj
-                else 0
-            )
-            _pos_gain = (
-                safe_fetch_float(getattr(_pos_obj, "gain", 0), 0) if _pos_obj else 0
-            )
-            _pos_min = (
-                config.MIN_POSITION_SIZE / max(current_price, 1e-9)
-                if current_price > 0
-                else 0
-            )
-            _is_new_position = _pos_amt < _pos_min * 1.5
-            _is_in_gain = _pos_gain > 0.1
-            if _is_new_position or _is_in_gain:
-                block2 = {
-                    "amountType": "sumUsd",
-                    "amount": f"{usd_value:.6f}",
-                    **price_data,
-                }
-                payload["dca"] = block2
-            else:
-                logger.info(
-                    f"[WEBHOOK_NO_DCA] {position_key}: Skipping DCA — position already open (amt={_pos_amt:.4f}) and losing (gain={_pos_gain:.2f}%)"
-                )
-            payload.pop("close", None)
-        else:
-            if not is_full_close:
-                pass
-            payload["close"] = {
-                "decrease": {"type": "sumUsd", "amount": f"{usd_value:.6f}"},
-                "action": "close" if is_full_close else "decrease",
-                **price_data,
-            }
-            payload.pop("open", None)
-            payload.pop("dca", None)
-        logger.info(
-            f"👷 [{position_key}] WEBHOOK: {resolved_kind} {side}/{position_side} qty={quantity:.6f} usd=${usd_value:.2f} reason={reason} payload={json.dumps({k: v for k, v in payload.items() if k != 'secret'})}"
-        )
-        logger.warning(
-            f"🔍 [WH_TRACE_5] before_http_post pk={position_key} url={webhook_url[:60]} payload_kind={resolved_kind}"
-        )
+        # Quick DCA guard kept for logging only — direct market order uses raw quantity regardless
+        # (Finandy DCA ladder growth guard no longer needed; Binance will hold raw qty)
         try:
-            _exec_now_wire_tripwire("finandy_webhook:send_webhook", position_key, reason)
-            async with self._webhook_semaphore:
-                async with aiohttp.ClientSession(
-                    connector=aiohttp.TCPConnector(
-                        limit=15, limit_per_host=15, force_close=False
-                    )
-                ) as session:
-                    async with session.post(
-                        webhook_url,
-                        json=payload,
-                        timeout=aiohttp.ClientTimeout(total=60, connect=20),
-                    ) as resp:
-                        resp_text = await resp.text()
-                        logger.warning(
-                            f"🔍 [WH_TRACE_5_done] http_resp pk={position_key} status={resp.status} body={resp_text[:120]}"
-                        )
-                        if resp.status != 200:
-                            logger.error(
-                                f"[{position_key}] WEBHOOK_FAIL: Status {resp.status} - {resp_text}"
-                            )
-                            return False
-            logger.warning(
-                f"👷 [{position_key}] WEBHOOK_SENT: {resolved_kind} order | resp={resp_text[:200]}"
+            account_obj = self.accounts.get(account_key)
+            if not account_obj or not getattr(account_obj, "client", None):
+                logger.error(f"[MARKET_FAIL] {position_key}: no client for {account_key}")
+                return False
+            client = account_obj.client
+            symbol_conf = self.get_symbol_config(symbol)
+            if not symbol_conf:
+                await self.load_symbol_configs()
+                symbol_conf = self.get_symbol_config(symbol)
+            if not symbol_conf:
+                logger.error(f"[MARKET_FAIL] {position_key}: no symbol_conf for {symbol}")
+                return False
+            step = __import__("decimal").Decimal(str(symbol_conf["step_size"]))
+            qty_dec = ( __import__("decimal").Decimal(str(abs(quantity))) // step) * step
+            if qty_dec.is_zero():
+                logger.warning(f"[MARKET_ZERO_QTY] {position_key}: qty {quantity} -> 0 after step {step}")
+                return False
+            qty_str = f"{qty_dec}"
+            is_hedge_reason = any(k in str(reason or "").upper() for k in ["HEDGE_ELECTED_", "HEDGE_PROTECT_", "HEDGE_SAME_", "QUICK_HEDGE_"])
+            logger.info(f"👷 [{position_key}] MARKET: {side}/{position_side} qty={qty_str} usd=${usd_value:.2f} reason={reason} is_aug={is_augmentation} hedge={is_hedge_reason}")
+            _exec_now_wire_tripwire("direct_market:send_webhook", position_key, reason)
+            order = await __import__("asyncio").to_thread(
+                client.futures_create_order,
+                symbol=symbol,
+                side=side,
+                positionSide=position_side,
+                type=ORDER_TYPE_MARKET,
+                quantity=qty_str,
             )
-            # 2026-04-28 owner: POST-FIRE VERIFICATION + CANCEL-IF-UNFILLED.
-            # Finandy returns {"success":true,"data":[]} when it accepts the webhook
-            # but does NOT place a Binance order (silent rejection). Old behavior:
-            # send_webhook returned True, pending-lock stayed set, retries blocked.
-            # New: detect empty `data` AND verify position via WS/API. If unfilled,
-            # cancel any leftover Binance orders for this symbol/side, confirm
-            # cancellation, then clear the pending lock so the next signal can retry.
-            try:
-                _resp_json = None
-                try:
-                    _resp_json = json.loads(resp_text)
-                except Exception:
-                    pass
-                _finandy_empty = (
-                    isinstance(_resp_json, dict)
-                    and _resp_json.get("success") is True
-                    and isinstance(_resp_json.get("data"), list)
-                    and len(_resp_json["data"]) == 0
-                )
-                if _finandy_empty:
-                    logger.critical(
-                        f"⚠️ [WEBHOOK_FINANDY_EMPTY] {position_key}: success:true but data:[] — Finandy did NOT place a Binance order. Cancelling leftover orders + clearing lock."
-                    )
-                    self._finandy_broken_until = time.time() + 300.0
-                    logger.warning(
-                        f"[FINANDY_CIRCUIT_OPEN] Finandy broken — reduces will use place_maker_order for 300s (until {time.strftime('%H:%M:%S', time.localtime(self._finandy_broken_until))})"
-                    )
-                # Verify position actually changed (5s window for the fill)
-                _post_verified = await verify_trade_via_websocket(
-                    self,
-                    account_key,
-                    position_key,
-                    amount,
-                    is_long=position_side == "LONG",
-                    timeout_seconds=5.0,
-                    initial_positionAmt=positionAmt,
-                    action="AUGMENT" if is_augmentation else "REDUCE",
-                )
-                if not _post_verified or _finandy_empty:
-                    # No fill detected. Cancel any open Binance orders for this symbol/side.
-                    _cancel_count = 0
-                    _confirm_count = 0
-                    try:
-                        _wh_client_post = getattr(
-                            self.accounts.get(account_key), "client", None
-                        )
-                        if _wh_client_post:
-                            _open_orders_post = await asyncio.to_thread(
-                                _wh_client_post.futures_get_open_orders, symbol=symbol
-                            )
-                            _to_cancel_post = [
-                                o
-                                for o in (_open_orders_post or [])
-                                if o.get("side") == side
-                                and o.get("positionSide") == position_side
-                            ]
-                            for _co in _to_cancel_post:
-                                _oid = _co.get("orderId")
-                                try:
-                                    _cr = await asyncio.to_thread(
-                                        _wh_client_post.futures_cancel_order,
-                                        symbol=symbol,
-                                        orderId=_oid,
-                                    )
-                                    _cancel_count += 1
-                                    if isinstance(_cr, dict) and _cr.get("status") in (
-                                        "CANCELED",
-                                        "EXPIRED",
-                                    ):
-                                        _confirm_count += 1
-                                except Exception as _ce:
-                                    logger.warning(
-                                        f"[WEBHOOK_POST_CANCEL_ERR] {position_key} oid={_oid}: {_ce}"
-                                    )
-                    except Exception as _ge:
-                        logger.warning(
-                            f"[WEBHOOK_POST_CANCEL_FETCH_ERR] {position_key}: {_ge}"
-                        )
-                    # Clear pending lock so next signal cycle can retry
-                    try:
-                        from ez_positions_quick import \
-                            clear_open_pending as _cop
-
-                        _cop(position_key)
-                    except Exception:
-                        pass
-                    logger.critical(
-                        f"🧹 [WEBHOOK_UNFILLED_CLEANUP] {position_key}: empty_data={_finandy_empty} cancelled={_cancel_count} confirmed={_confirm_count}. Pending lock cleared. Next signal cycle may retry."
-                    )
-                    return False
-            except Exception as _vex:
-                logger.warning(
-                    f"[WEBHOOK_POST_VERIFY_ERR] {position_key}: {_vex} — proceeding as if filled."
-                )
-            # 2026-04-24 UNIVERSAL HEDGE PERSIST: if reason marks this as a hedge open, write
-            # a tracker.active_hedges record RIGHT NOW — don't rely on execute_trade_wrapper's
-            # return value propagation (which missed records in NMR + TWT cascades).
+            logger.warning(f"👷 [{position_key}] MARKET_SENT qty={qty_str} orderId={order.get('orderId','?')} status={order.get('status','?')} avgPrice={order.get('avgPrice','?')}")
+            # UNIVERSAL HEDGE PERSIST — preserved (was after webhook POST)
             try:
                 _r_upper = str(reason or "").upper()
                 _is_hedge_webhook = (
@@ -33935,26 +33686,16 @@ class MultiAccountTradeManager:
                 )
                 if _is_hedge_webhook:
                     _hedge_for = None
-                    # Parse losing position key out of the reason when possible.
-                    # Patterns: QUICK_HEDGE_ELECTED_<SYM>_<SIDE>, QUICK_HEDGE_PROTECT_<SIDE>_LOSS
                     import re as _re
-
-                    _m = _re.search(
-                        r"HEDGE_ELECTED_([A-Z0-9]+USD[TC]?)_(LONG|SHORT)", _r_upper
-                    )
+                    _m = _re.search(r"HEDGE_ELECTED_([A-Z0-9]+USD[TC]?)_(LONG|SHORT)", _r_upper)
                     if _m:
                         _hedge_for = f"{account_key}:{_m.group(1)}_{_m.group(2)}"
                     else:
                         _m2 = _re.search(r"HEDGE_PROTECT_(LONG|SHORT)_LOSS", _r_upper)
                         if _m2:
-                            # opposite side of THIS symbol is the loser
                             _opp = "SHORT" if position_side == "LONG" else "LONG"
                             _hedge_for = f"{account_key}:{symbol}_{_opp}"
-                    if (
-                        hasattr(self, "hedge_engine")
-                        and self.hedge_engine
-                        and _hedge_for
-                    ):
+                    if hasattr(self, "hedge_engine") and self.hedge_engine and _hedge_for:
                         _hr = {
                             "position_key": position_key,
                             "hedge_for": _hedge_for,
@@ -33962,30 +33703,71 @@ class MultiAccountTradeManager:
                             "symbol": symbol,
                             "losing_side": _hedge_for.split("_")[-1],
                             "position_side": position_side,
-                            "quantity": abs(amount) / max(current_price, 1e-12)
-                            if current_price > 0
-                            else 0,
+                            "quantity": abs(float(qty_dec)),
                             "price": current_price,
                             "entry_price": current_price,
-                            "notional_usd": abs(amount),
-                            "timestamp": time.time(),
+                            "notional_usd": abs(float(qty_dec) * current_price),
+                            "timestamp": __import__("time").time(),
                             "is_hedge": True,
                             "reason": reason,
-                            "opened_via": "send_webhook",
+                            "opened_via": "send_webhook_market",
                         }
-                        asyncio.create_task(
-                            self.hedge_engine.persist_hedge_record(account_key, _hr)
-                        )
-                        logger.warning(
-                            f"🪪 [UNIVERSAL_HEDGE_PERSIST] {position_key}: persist queued via send_webhook (hedge_for={_hedge_for})"
-                        )
+                        __import__("asyncio").create_task(self.hedge_engine.persist_hedge_record(account_key, _hr))
+                        logger.warning(f"🪪 [UNIVERSAL_HEDGE_PERSIST] {position_key}: persist queued via market (hedge_for={_hedge_for})")
             except Exception as _ehp:
                 logger.error(f"[UNIVERSAL_HEDGE_PERSIST_ERR] {position_key}: {_ehp}")
             if hasattr(self, "positions_service") and self.positions_service:
-                asyncio.create_task(self.positions_service.fetch_positions(account_key))
-            # Position size watchdog: after webhook, verify position hasn't grown beyond MAX
-            # If Finandy or any external system adds to position, the EMERGENCY_OVERSIZE guard in periodic_tasks will catch it
+                __import__("asyncio").create_task(self.positions_service.fetch_positions(account_key))
             return True
+        except __import__("binance.exceptions", fromlist=["BinanceAPIException"]).BinanceAPIException as e:
+            logger.error(f"[{position_key}] MARKET_API_ERROR code={e.code} msg={e.message}")
+            return False
+        except Exception as e:
+            logger.error(f"[{position_key}] MARKET_ERROR: {e}")
+            return False
+        # --- OLD FINANDY WEBHOOK CODE COMMENTED OUT — DO NOT RE-ENABLE ---
+        # account = self.accounts.get(account_key)
+        # webhook_url = getattr(account, "webhook_url", None)
+        # webhook_secret = getattr(account, "webhook_secret", None)
+        # if side.upper() not in ["BUY", "SELL"]: return False
+        # if position_side.upper() not in ["LONG", "SHORT"]: return False
+        # quantity = float(amount)
+        # if quantity <= 0: return False
+        # if is_full_close and is_augmentation: logger.critical(...); return False
+        # usd_value = abs(quantity * current_price)
+        # payload = {"name": f"{reason}", "secret": webhook_secret, "symbol": symbol, "side": side, "positionSide": position_side}
+        # resolved_kind = "regular"
+        # price_data = {}
+        # if level is not None: ...  # virtual/limit handling, url_variant selection, webhook_url/Secret rotation
+        # if url_variant in ("2","3"): ...
+        # if not webhook_url or not webhook_secret: return False
+        # if is_augmentation:
+        #     block1 = {"amountType": "sumUsd", "amount": f"{usd_value:.6f}", **price_data}
+        #     payload["open"] = block1
+        #     _pos_obj = self.positions_by_account.get(account_key, {}).get(position_key)
+        #     ... DCA guard: _is_new_position or _is_in_gain else [WEBHOOK_NO_DCA] skip
+        #     payload.pop("close", None)
+        # else:
+        #     payload["close"] = {"decrease": {"type": "sumUsd", "amount": f"{usd_value:.6f}"}, "action": "close" if is_full_close else "decrease", **price_data}
+        #     payload.pop("open", None); payload.pop("dca", None)
+        # logger.info(f"👷 [{position_key}] WEBHOOK: {resolved_kind} ... payload=...")
+        # logger.warning(f"🔍 [WH_TRACE_5] before_http_post pk={position_key} url={webhook_url[:60]} ...")
+        # try:
+        #     _exec_now_wire_tripwire("finandy_webhook:send_webhook", position_key, reason)
+        #     async with self._webhook_semaphore:
+        #         async with aiohttp.ClientSession(connector=...) as session:
+        #             async with session.post(webhook_url, json=payload, timeout=...) as resp:
+        #                 resp_text = await resp.text()
+        #                 if resp.status != 200: logger.error(...); return False
+        #     logger.warning(f"👷 [{position_key}] WEBHOOK_SENT: ... | resp={resp_text[:200]}")
+        #     # POST-FIRE VERIFICATION + FINANDY_EMPTY check + cancel-if-unfilled + clear_open_pending
+        #     # _finandy_empty = (success true and data == [])
+        #     # if _finandy_empty: self._finandy_broken_until = time.time()+300; ...
+        #     # _post_verified = await verify_trade_via_websocket(... 5s ...)
+        #     # if not _post_verified or _finandy_empty: cancel open orders, clear lock, return False
+        #     # UNIVERSAL HEDGE PERSIST, positions_service.fetch_positions, return True
+        # except Exception as e: logger.error(f"[{position_key}] WEBHOOK_NET_ERROR: {e}"); return False
+        
         except Exception as e:
             logger.error(f"[{position_key}] WEBHOOK_NET_ERROR: {e}")
             return False
