@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-10T15:43:58.672990+00:00",
+  "timestamp": "2026-09-10T15:44:14.940694+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -853,12 +853,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AAPLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ONDOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -943,17 +937,28 @@
       "short_score": 0
     },
     {
+      "symbol": "AAPLUSDT",
+      "net_score": 10.1,
+      "long_score": 10.1,
+      "short_score": 0
+    },
+    {
       "symbol": "ETHFIUSDC",
-      "net_score": 14.9,
-      "long_score": 14.9,
+      "net_score": 14.8,
+      "long_score": 14.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "ETHFIUSDC",
-      14.9,
-      0.6964269
+      14.8,
+      0.69617163
+    ],
+    [
+      "AAPLUSDT",
+      10.1,
+      323.99319463
     ]
   ],
   "top_shorts": [],
