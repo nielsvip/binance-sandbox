@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-10T11:09:45.575327+00:00",
+  "timestamp": "2026-09-10T11:27:25.619992+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,52 +13,34 @@
       "short_score": 17.4
     },
     {
-      "symbol": "BCHUSDC",
-      "net_score": -14.5,
-      "long_score": 0,
-      "short_score": 14.5
-    },
-    {
       "symbol": "ALGOUSDT",
-      "net_score": -12.7,
+      "net_score": -12.8,
       "long_score": 0,
-      "short_score": 12.7
+      "short_score": 12.8
     },
     {
-      "symbol": "CELOUSDT",
-      "net_score": -12.2,
-      "long_score": 0,
-      "short_score": 12.2
-    },
-    {
-      "symbol": "POPCATUSDT",
+      "symbol": "BCHUSDC",
       "net_score": -12.1,
       "long_score": 0,
       "short_score": 12.1
     },
     {
-      "symbol": "LPTUSDT",
-      "net_score": -11.4,
+      "symbol": "ASTSUSDT",
+      "net_score": -11.3,
       "long_score": 0,
-      "short_score": 11.4
-    },
-    {
-      "symbol": "ASMLUSDT",
-      "net_score": -10.8,
-      "long_score": 0,
-      "short_score": 10.8
-    },
-    {
-      "symbol": "WUSDT",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
+      "short_score": 11.3
     },
     {
       "symbol": "DOTUSDT",
-      "net_score": -10.3,
+      "net_score": -10.1,
       "long_score": 0,
-      "short_score": 10.3
+      "short_score": 10.1
+    },
+    {
+      "symbol": "POPCATUSDT",
+      "net_score": -10.1,
+      "long_score": 0,
+      "short_score": 10.1
     },
     {
       "symbol": "ZENUSDT",
@@ -356,6 +338,12 @@
     },
     {
       "symbol": "ROSEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LPTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -667,7 +655,7 @@
       "short_score": 0
     },
     {
-      "symbol": "ASTSUSDT",
+      "symbol": "WUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -734,12 +722,6 @@
     },
     {
       "symbol": "DASHUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -907,7 +889,19 @@
       "short_score": 0
     },
     {
+      "symbol": "ASMLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RSRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CELOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -941,49 +935,46 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "RUNEUSDT",
+      "net_score": 11.5,
+      "long_score": 11.5,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "RUNEUSDT",
+      11.5,
+      0.5021925
+    ]
+  ],
   "top_shorts": [
     [
-      "BCHUSDC",
-      14.5,
-      245.19697321
-    ],
-    [
       "ALGOUSDT",
-      12.7,
-      0.09647673
+      12.8,
+      0.09686682
     ],
     [
-      "CELOUSDT",
-      12.2,
-      0.07390024
-    ],
-    [
-      "POPCATUSDT",
+      "BCHUSDC",
       12.1,
-      0.04834219
+      245.14
     ],
     [
-      "LPTUSDT",
-      11.4,
-      1.38939842
-    ],
-    [
-      "ASMLUSDT",
-      10.8,
-      1711.27571933
-    ],
-    [
-      "WUSDT",
-      10.5,
-      0.009514
+      "ASTSUSDT",
+      11.3,
+      61.69003867
     ],
     [
       "DOTUSDT",
-      10.3,
-      1.09679536
+      10.1,
+      1.09964181
+    ],
+    [
+      "POPCATUSDT",
+      10.1,
+      0.04864
     ]
   ],
   "hedge_usage": {

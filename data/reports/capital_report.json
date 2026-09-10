@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-10 10:56 UTC",
- "total_capital_usd": 5.31,
+ "generated_at": "2026-09-10 11:11 UTC",
+ "total_capital_usd": 7.35,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.31,
+  "B": 7.35,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "ang:SPCXUSD1_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:WMTUSDT_SHORT",
-   "symbol": "WMTUSDT",
-   "account": "inf",
-   "value_usd": 5.31,
-   "gain_pct": 0.001,
+   "pk": "ang:SPCXUSD1_LONG",
+   "symbol": "SPCXUSD1",
+   "account": "ang",
+   "value_usd": 7.35,
+   "gain_pct": -2.624,
    "tier": "B",
-   "perf_mult": 2.34,
+   "perf_mult": 1.0,
    "amt": 0.05,
-   "mark": 106.21480704
+   "mark": 146.95580621
   }
  ]
 }
