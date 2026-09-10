@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-10 07:58 UTC",
- "total_capital_usd": 14.15,
+ "generated_at": "2026-09-10 08:11 UTC",
+ "total_capital_usd": 7.36,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.15,
+  "B": 7.36,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "ang:SPCXUSD1_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 14.15,
-   "gain_pct": -0.358,
+   "pk": "ang:SPCXUSD1_LONG",
+   "symbol": "SPCXUSD1",
+   "account": "ang",
+   "value_usd": 7.36,
+   "gain_pct": -2.506,
    "tier": "B",
-   "perf_mult": 1.24,
-   "amt": 0.17,
-   "mark": 83.252
+   "perf_mult": 1.0,
+   "amt": 0.05,
+   "mark": 147.12905833
   }
  ]
 }
