@@ -2838,5 +2838,14 @@
     ],
     "timestamp": "2026-09-10T22:54:53.790655+00:00",
     "price": 7.45296395
+  },
+  {
+    "symbol": "URNMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-10T23:11:27.703768+00:00",
+    "price": 55.02147641
   }
 ]
