@@ -1522,6 +1522,12 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-04T16:57:23.895551+00:00"
   },
+  "men:FLOWUSDT_SHORT": {
+    "count": 2,
+    "first_seen": "2026-08-04T23:42:18.186455+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-08-04T23:42:38.049827+00:00"
+  },
   "inf:XLMUSDT_SHORT": {
     "count": 2,
     "first_seen_zero_at": "2026-08-06T18:07:53.299422+00:00",
@@ -1669,13 +1675,5 @@
       "API_ABSENCE": 1
     },
     "last_seen": "2026-09-09T20:15:38.364259+00:00"
-  },
-  "ang:SPCXUSD1_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-09-10T17:27:49.114468+00:00",
-    "last_increment_at": "2026-09-10T17:28:14.680011+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    }
   }
 }
