@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-09-10 10:11 UTC",
- "total_capital_usd": 7.37,
+ "generated_at": "2026-09-10 10:48 UTC",
+ "total_capital_usd": 77.92,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.37,
-  "C": 0.0
+  "B": 0.0,
+  "C": 77.92
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:SPCXUSD1_LONG"
+  "flz:BTCUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SPCXUSD1_LONG",
-   "symbol": "SPCXUSD1",
-   "account": "ang",
-   "value_usd": 7.37,
-   "gain_pct": -2.293,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.05,
-   "mark": 147.45568293
+   "pk": "flz:BTCUSDC_SHORT",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 77.92,
+   "gain_pct": -0.07,
+   "tier": "C",
+   "perf_mult": 0.59,
+   "amt": 0.001,
+   "mark": 77924.3
   }
  ]
 }
