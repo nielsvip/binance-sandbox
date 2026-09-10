@@ -19777,6 +19777,14 @@ class StockStrategy:
                     from ez_reentry import \
                         check_reentry_confirmation as _chk_re
                     _xb_gate_ok, _xb_gate_reason = _chk_re(i, is_long, config)
+                    # 2026-09-11: require WT 5m+15m in favorable direction — prevents reentering when wt going down (k<80 alone not enough)
+                    if _xb_gate_ok:
+                        _xb_wt1_5 = float(i.get('wt1_5m', 0) or 0); _xb_wt2_5 = float(i.get('wt2_5m', 0) or 0)
+                        _xb_wt1_15 = float(i.get('wt1_15m', 0) or 0); _xb_wt2_15 = float(i.get('wt2_15m', 0) or 0)
+                        _xb_wt_ok = (is_long and _xb_wt1_5 > _xb_wt2_5 and _xb_wt1_15 > _xb_wt2_15) or ((not is_long) and _xb_wt1_5 < _xb_wt2_5 and _xb_wt1_15 < _xb_wt2_15)
+                        if not _xb_wt_ok and bool(_cfg_auto('RECOVERY_AUGMENT_REQUIRE_WT_CROSS', True)):
+                            _xb_gate_ok = False
+                            _xb_gate_reason = f"WT_5M_15M_AGAINST_{'bear' if is_long else 'bull'}_wt5={_xb_wt1_5:.1f}/{_xb_wt2_5:.1f}_wt15={_xb_wt1_15:.1f}/{_xb_wt2_15:.1f}"
                     # 2026-05-29 USER: also require a 4-bar Donchian breakout (dc_high4_5m / dc_low4_5m
                     # on already-closed bars). Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK. Fail-open.
                     _xb_dcb_ok = True
@@ -19832,16 +19840,25 @@ class StockStrategy:
                     # Directional cross check: LONG wants price >= last_reduction_price, SHORT <=
                     _ra_dir_ok = (is_long and current_price >= _ra_last_px) or ((not is_long) and current_price <= _ra_last_px)
                     if _ra_dist_pct <= _ra_band_pct and _ra_dir_ok:
-                        _ra_require_wt = bool(_cfg_auto('RECOVERY_AUGMENT_REQUIRE_WT_CROSS', False))
+                        _ra_require_wt = bool(_cfg_auto('RECOVERY_AUGMENT_REQUIRE_WT_CROSS', True))
                         _ra_wt_ok = True
                         if _ra_require_wt:
-                            _ra_w1 = float(i.get('wt1_5m', 0) or 0); _ra_w2 = float(i.get('wt2_5m', 0) or 0)
-                            _ra_wt_ok = (is_long and _ra_w1 > _ra_w2) or ((not is_long) and _ra_w1 < _ra_w2)
+                            _ra_w1_5 = float(i.get('wt1_5m', 0) or 0); _ra_w2_5 = float(i.get('wt2_5m', 0) or 0)
+                            _ra_w1_15 = float(i.get('wt1_15m', 0) or 0); _ra_w2_15 = float(i.get('wt2_15m', 0) or 0)
+                            # REQUIRE both 5m and 15m WT in favorable direction — prevents reentering when wt going down
+                            if is_long:
+                                _ra_wt_ok = (_ra_w1_5 > _ra_w2_5) and (_ra_w1_15 > _ra_w2_15)
+                            else:
+                                _ra_wt_ok = (_ra_w1_5 < _ra_w2_5) and (_ra_w1_15 < _ra_w2_15)
                         _ra_gate_ok = True
                         if bool(_cfg_auto('REENTRY_CONFIRMATION_GATES_ENABLED', True)):
                             _k5 = float(i.get('k_5m', 50) or 50); _kp5 = float(i.get('k_5m_prev', 50) or 50); _wt1 = float(i.get('wt1_5m', 0) or 0); _wt2 = float(i.get('wt2_5m', 0) or 0)
-                            if is_long: _ra_gate_ok = (_k5 < float(_cfg_auto('REENTRY_STOCH_K_MAX_LONG', 40.0))) or (_k5 > _kp5 and _wt1 > _wt2)
-                            else: _ra_gate_ok = (_k5 > float(_cfg_auto('REENTRY_STOCH_K_MIN_SHORT', 60.0))) or (_k5 < _kp5 and _wt1 < _wt2)
+                            _wt1_15 = float(i.get('wt1_15m', 0) or 0); _wt2_15 = float(i.get('wt2_15m', 0) or 0)
+                            # 2026-09-11: k<80 alone not enough — also require WT 5m+15m bull (LONG) / bear (SHORT) to avoid entering when wt going down
+                            if is_long:
+                                _ra_gate_ok = ((_k5 < float(_cfg_auto('REENTRY_STOCH_K_MAX_LONG', 80.0))) and (_wt1 > _wt2) and (_wt1_15 > _wt2_15)) or (_k5 > _kp5 and _wt1 > _wt2 and _wt1_15 > _wt2_15)
+                            else:
+                                _ra_gate_ok = ((_k5 > float(_cfg_auto('REENTRY_STOCH_K_MIN_SHORT', 20.0))) and (_wt1 < _wt2) and (_wt1_15 < _wt2_15)) or (_k5 < _kp5 and _wt1 < _wt2 and _wt1_15 < _wt2_15)
                         if _ra_wt_ok and _ra_gate_ok and _ra_gain_ok:
                             _ra_size_pct = float(_cfg_auto('RECOVERY_AUGMENT_SIZE_PCT', 1.0))
                             _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct

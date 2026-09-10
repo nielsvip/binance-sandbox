@@ -1875,7 +1875,7 @@ class TradierConfig:
     RECOVERY_AUGMENT_ENABLED: bool = True  # REENTRY semantics (see header). ON by default 2026-09-11.
     RECOVERY_AUGMENT_BAND_PCT: float = 1.0       # 2026-05-21 widened 0.3→1.0 (rally past 0.3% band was leaving positions stranded)
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # mirrors PRICE_CROSS_BACK_MAX_AGE_MIN
-    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, also require a favorable WT cross on 5m before firing
+    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = True  # 2026-09-11: REQUIRE WT 5m+15m bull for LONG (bear for SHORT) — prevents reentering when wt going down. Was False.
     RECOVERY_AUGMENT_SIZE_PCT: float = 1.0       # 1.0 = 1× START_POSITION_SIZE (matches PRICE_CROSS_BACK qty)
     RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # set Position.recovery_fired after firing; cleared on next REDUCE
     # === SENTIMENT_FADE_MODE (2026-05-21 — test matrix per user 'make it a close if useful, else discard') ===

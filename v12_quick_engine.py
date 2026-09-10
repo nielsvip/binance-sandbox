@@ -5561,7 +5561,7 @@ class QuickConfig:
     RECOVERY_AUGMENT_ENABLED: bool = True  # REENTRY re-open after partial REDUCE (ON by default 2026-09-11) — bypasses HARD wall at gain>=0.5*MIN_GAIN
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # REENTRY window ; auto-wired 625 baseline 120
     RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # REENTRY one-fire ; auto-wired 625
-    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # REENTRY WT cross gate ; auto-wired 625
+    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = True  # 2026-09-11 REENTRY WT 5m+15m bull/bear required — prevents entering when wt going down (was False)
     RECOVERY_AUGMENT_SIZE_PCT: float = 1.0  # REENTRY size 1x START ; auto-wired 625 baseline 0.5
     RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     RED_ZONE_TRADIER_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625

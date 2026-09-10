@@ -637,7 +637,7 @@ class Config:
     RECOVERY_AUGMENT_ENABLED: bool = True
     RECOVERY_AUGMENT_BAND_PCT: float = 0.3       # within 0.3% of last_reduction_price
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # only fire within 4h of the reduction
-    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, require favorable WT cross on 3m before firing
+    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = True  # 2026-09-11: REQUIRE WT 5m+15m bull for LONG (bear for SHORT) — prevents reentering when wt going down (k<80 alone not enough). Was False.
     RECOVERY_AUGMENT_SIZE_PCT: float = 1.0       # 1.0 = 1× START_POSITION_SIZE
     RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # set Position.recovery_fired after firing; cleared on next REDUCE
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
