@@ -2847,5 +2847,14 @@
     ],
     "timestamp": "2026-09-10T23:11:27.703768+00:00",
     "price": 55.02147641
+  },
+  {
+    "symbol": "RIVNUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.3x normal"
+    ],
+    "timestamp": "2026-09-10T23:28:22.801422+00:00",
+    "price": 16.21844879
   }
 ]
