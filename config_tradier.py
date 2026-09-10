@@ -1860,18 +1860,19 @@ class TradierConfig:
     # 2026-05-21 19:06 shows every NEW open blocked by `OVERTRADE_GUARD ... cap=8`
     # despite crypto cap=50. Adding here closes the parity gap. ROLLBACK: set to 8.
     TRADES_PER_SYM_PER_DAY_MAX: int = 8  # 2026-06-24 ROLLED BACK: 50→8. WT_3M_FORCE_OPEN bypasses this cap when needed; 50 was causing 6x churn flood with pool_sharpe degradation.
-    # === RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ===
-    # PRICE_CROSS_BACK above only fires when positionAmt == 0 (fully closed). The
-    # "forgotten winner" pattern is dominated by SENTIMENT_FADE REDUCEs that leave
-    # positionAmt > 0 (partial close). With gain < MIN_GAIN, both AUGMENT (gate at
-    # ~tradier_manage.py:9768) and REENTRY (gate at ~tradier_manage.py:3288) are
-    # blocked — the position is frozen. RECOVERY_AUGMENT fires AUGMENT with a
-    # distinct reason string starting "RECOVERY_AUG_" when price crosses back
-    # through last_reduction_price within the band+age window. The HARD_MIN_GAIN_WALL
-    # has a new bypass `_is_recovery_aug` (reason-based: 'RECOVERY_AUG' in reason).
-    # Default OFF — flip to True only after backtest validation on the 7-day
-    # "forgotten" set (713 closes, see data/today_bt_baseline diff).
-    RECOVERY_AUGMENT_ENABLED: bool = True  # 2026-05-21 USER MANDATE post-SNDK — "GET RIGHT BACK IN" on partial-close cross-back (sibling to PRICE_CROSS_BACK for positionAmt>0). 2026-05-29 USER MANDATE: gated in tradier_manage.py to fire ONLY when current gain >= 0.5*MIN_GAIN (>=1.5%) — never a martingale add to a net loser.
+    # === RECOVERY_AUGMENT — PARTIAL-CLOSE RECOVERY REENTRY (2026-05-20 → 2026-09-11 CLARIFIED) ===
+    # SEMANTICS: This is a REENTRY / RE-OPEN, NOT an AUGMENT of a winning position.
+    # PRICE_CROSS_BACK only fires when positionAmt == 0 (fully closed). The "forgotten
+    # winner" pattern is dominated by SENTIMENT_FADE REDUCEs that leave positionAmt > 0
+    # (partial close). With gain < MIN_GAIN, both AUGMENT (gate ~tradier_manage:9768)
+    # and REENTRY (gate ~tradier_manage:3288) are blocked — position is frozen.
+    # RECOVERY_AUGMENT fires REENTRY_OPEN with distinct reason "RECOVERY_AUG_PARTIAL_*"
+    # when price crosses back through last_reduction_price within band+age. Bypasses
+    # NO_DOUBLE_OPEN_BLOCK (queue) and HARD_MIN_GAIN_WALL (execute) via reason-based
+    # `_is_recovery_aug` (= 'RECOVERY_AUG' in reason). Gated to gain >= 0.5*MIN_GAIN.
+    # ENABLED BY DEFAULT (ON) — sibling to PRICE_CROSS_BACK for positionAmt>0. 2026-05-29
+    # gated: fires ONLY when current gain >= 0.5*MIN_GAIN (>=1.5%) — never martingale.
+    RECOVERY_AUGMENT_ENABLED: bool = True  # REENTRY semantics (see header). ON by default 2026-09-11.
     RECOVERY_AUGMENT_BAND_PCT: float = 1.0       # 2026-05-21 widened 0.3→1.0 (rally past 0.3% band was leaving positions stranded)
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # mirrors PRICE_CROSS_BACK_MAX_AGE_MIN
     RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, also require a favorable WT cross on 5m before firing

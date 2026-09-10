@@ -12849,7 +12849,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             # 2026-04-29 USER RULE: post-close cooldown. After a CLOSE, block re-OPEN of same symbol
             # for TRADIER_POST_CLOSE_COOLDOWN_MIN minutes. Stops the 1-share open→close→reopen flap
             # observed today on NVDA/USO/MSFT/GOOGL (LONG BUY firing every ~30s).
-            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and not _mandatory_reentry_qta and not _ordinary_parity_qta:
+            # RECOVERY_AUG (partial-close reclaim) is a REENTRY, not a reopen-flap — exempt.
+            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and not _mandatory_reentry_qta and not _ordinary_parity_qta and not _is_recovery_aug_qta:
                 _pc_cooldown_min = float(_cfg_auto('TRADIER_POST_CLOSE_COOLDOWN_MIN', 15.0))
                 if _pc_cooldown_min > 0:
                     _pc_last_red = getattr(position, 'last_reduction_time', None)
@@ -19798,14 +19799,15 @@ class StockStrategy:
                         _xb_trigger = f"{'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'}_{_xb_gate_reason}"
                         logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} — REOPEN")
                         return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}", 90.0, _xb_qty
-        # ═══ RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ═══════
+        # ═══ RECOVERY_AUGMENT — PARTIAL-CLOSE RECOVERY REENTRY (2026-05-20 → 2026-09-11 REENTRY CLARIFIED) ═══
         # Sibling to PRICE_CROSS_BACK: fires when position is PARTIALLY closed
         # (positionAmt > 0 after SENTIMENT_FADE / DELTA_EXIT / WT_BANDAID REDUCE)
         # and price crosses back through last_reduction_price within band+age.
-        # Reason contains "RECOVERY_AUG_" — execute_now's HARD_MIN_GAIN_WALL and
-        # NO_DOUBLE_OPEN_BLOCK have matching `_is_recovery_aug` bypasses (search
-        # for RECOVERY_AUG in tradier_manage.py).  Default OFF behind
-        # RECOVERY_AUGMENT_ENABLED.  Single-fire per reduction cycle when
+        # SEMANTICS: This is a REENTRY / RE-OPEN, NOT an AUGMENT of a winner.
+        # Action is REENTRY_OPEN with reason "RECOVERY_AUG_PARTIAL_*" — treated as
+        # REENTRY everywhere (queue NO_DOUBLE_OPEN bypass, execute HARD wall bypass,
+        # alignment/zone exempt). Fires ONLY when gain >= 0.5*MIN_GAIN.
+        # ENABLED BY DEFAULT (ON). Single-fire per reduction cycle when
         # RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE=True via Position.recovery_fired.
         if positionAmt > 0 and bool(_cfg_auto('RECOVERY_AUGMENT_ENABLED', False)):
             _ra_entry_px = float(getattr(position, 'entry_price', current_price) or current_price)
@@ -22490,7 +22492,7 @@ class TradierTradeManager:
 
         # 1. Variables and Flags
         is_long = position_side == 'LONG'
-        is_entry_action = action in ['OPEN', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN']
+        is_entry_action = action in ['OPEN', 'REENTRY', 'REENTRY_OPEN', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN']
         is_reduce = action in ['REDUCE', 'PROFIT_TAKE']
         is_exit_action = action in ['CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'REDUCE']
         is_hedge = action in ['HEDGE_OPEN', 'HEDGE_CLOSE']
@@ -22504,8 +22506,8 @@ class TradierTradeManager:
             if not _dd_ok:
                 logger.critical(f'[{account_key}] [DRAWDOWN_CEILING_BLOCK] {position_key}: {action} refused: {_dd_tag}')
                 return f'BLOCKED_{_dd_tag}'
-        # BACKTEST_CHANGE_T31: hedge disabled, negative EV in all 5 backtest configs
-        if is_hedge and not _cfg_auto('HEDGE_MODE_TRADIER', True):
+        # BACKTEST_CHANGE_T31: hedge disabled, negative EV in all 5 backtest configs — block OPENs only, allow CLOSEs to unwind legacy hedges
+        if action == "HEDGE_OPEN" and not _cfg_auto('HEDGE_MODE_TRADIER', True):
             logger.info(f"[{account_key}] [HEDGE_DISABLED] Blocking {action} for {symbol}: HEDGE_MODE_TRADIER=False")
             return "BLOCKED_HEDGE_DISABLED"
         # tra is a CASH account — block any SHORT order at the execution layer too,
@@ -22587,7 +22589,9 @@ class TradierTradeManager:
 
         # ═══ TRADIER V1: ZONE GATE + ALIGNMENT ═══
         # Primary TF = 1h for swing. During market open (9:30-10:00) and last 2h (14:00-16:00) use 15m for faster entries.
-        _is_reentry = action == 'REENTRY' or 'REENTRY' in (reason or '').upper()
+        # RECOVERY_AUG is a REENTRY/RE-OPEN (not profit-add AUGMENT) — include it here so it
+        # bypasses AUGMENT-only gates (MIN_GAIN, alignment, zone) like any other reclaim.
+        _is_reentry = action in ('REENTRY', 'REENTRY_OPEN') or 'REENTRY' in (reason or '').upper() or 'RECOVERY_AUG' in (reason or '').upper()
         _is_augment_or_entry = not _is_exit_or_reduce
         _reason_upper = (reason or '').upper()
         _is_rotation = 'ROTATION_ENTRY' in _reason_upper
@@ -22810,7 +22814,8 @@ class TradierTradeManager:
                 logger.error(f"[TRADE] {position_key}: Position not found in memory or disk — cannot execute trade without position data")
                 return "POSITION_NOT_FOUND"
 
-        # 4. Entry/Augment Blockers — REENTRY and WT_D_BOUNCE_AUG are EXEMPT
+        # 4. Entry/Augment Blockers — REENTRY (incl. RECOVERY_AUG re-open), WT_D_BOUNCE_AUG are EXEMPT
+        _is_recovery_aug_exec = "RECOVERY_AUG" in (reason or "").upper()
         _is_wt_d_aug = "WT_D_BOUNCE_AUG" in str(reason)
         # USER 2026-06-03 "keep getting bigger on every favorable WT bounce, NO EXCEPTIONS": the
         # with-trend WT_3M_FORCE_OPEN build is add-to-STRENGTH (gated above-200MA + WT-favor upstream),
@@ -22834,8 +22839,9 @@ class TradierTradeManager:
             logger.warning(f"[AUGMENT_MIN_GAIN_BLOCK] {position_key}: gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED")
             return f"BLOCKED_MIN_GAIN_{position.gain:.2f}pct<{_min_aug_gain}pct"
         # HARD WALL: position already open → NO buy of any kind without MIN_GAIN. No exceptions.
+        # EXEMPT: REENTRY/RECOVERY_AUG (price reclaim after partial fade) — gated upstream to 0.5*MIN_GAIN, not martingale. HEDGE_CLOSE always allowed to unwind.
         _pos_qty_hw = abs(float(getattr(position, 'positionAmt', 0) or 0))
-        if not is_exit_action and not _is_wt_d_aug and not _is_wf_force_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
+        if not is_exit_action and action != "HEDGE_CLOSE" and not _is_reentry and not _is_recovery_aug_exec and not _is_wt_d_aug and not _is_wf_force_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
             logger.warning(f"[HARD_MIN_GAIN_WALL] {position_key}: positionAmt={_pos_qty_hw} gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED action={action}")
             return f"BLOCKED_MIN_GAIN_WALL_{position.gain:.2f}pct<{_min_aug_gain}pct"
 

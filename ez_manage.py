@@ -8621,10 +8621,11 @@ class AccountConfig:
             missing.append(f"{self.prefix.lower()}_API_KEY")
         if not self.api_secret:
             missing.append(f"{self.prefix.lower()}_API_SECRET")
-        if not self.webhook_url:
-            missing.append(f"{self.prefix.lower()}_WEBHOOK_URL")
-        if not self.webhook_secret:
-            missing.append(f"{self.prefix.lower()}_WEBHOOK_SECRET")
+        # 2026-09-10 FINANDY DEAD — webhooks no longer required (direct MARKET). Keep fields for compat but do not fail.
+        # if not self.webhook_url:
+        #     missing.append(f"{self.prefix.lower()}_WEBHOOK_URL")
+        # if not self.webhook_secret:
+        #     missing.append(f"{self.prefix.lower()}_WEBHOOK_SECRET")
         if missing:
             raise ValueError(
                 f"Missing environment variables for account '{self.prefix}': {', '.join(missing)}"

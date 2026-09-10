@@ -5557,12 +5557,12 @@ class QuickConfig:
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     R3_HTF_FLIP_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     RATIO_MULTIPLIER_TRADIER: float = 1.75  # auto-wired 625
-    RECOVERY_AUGMENT_BAND_PCT: float = 0.5  # auto-wired 625
-    RECOVERY_AUGMENT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    RECOVERY_AUGMENT_MAX_AGE_MIN: float = 120.0  # auto-wired 625
-    RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # auto-wired 625
-    RECOVERY_AUGMENT_SIZE_PCT: float = 0.5  # auto-wired 625
+    RECOVERY_AUGMENT_BAND_PCT: float = 1.0  # REENTRY (not profit-add) — tradier 1.0 / crypto 0.3 ; auto-wired 625 baseline 0.5
+    RECOVERY_AUGMENT_ENABLED: bool = True  # REENTRY re-open after partial REDUCE (ON by default 2026-09-11) — bypasses HARD wall at gain>=0.5*MIN_GAIN
+    RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # REENTRY window ; auto-wired 625 baseline 120
+    RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # REENTRY one-fire ; auto-wired 625
+    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # REENTRY WT cross gate ; auto-wired 625
+    RECOVERY_AUGMENT_SIZE_PCT: float = 1.0  # REENTRY size 1x START ; auto-wired 625 baseline 0.5
     RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     RED_ZONE_TRADIER_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     RED_ZONE_TRADIER_MIN_DISTANCE_PCT: float = 0.25  # auto-wired 625
@@ -6801,7 +6801,7 @@ class QuickConfig:
     HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP: bool = True
     HEDGE_CLOSE_MODE: str = 'wt_3m_and_1h'
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = False
-    HEDGE_CLOSE_SCALP_MODE: bool = True
+    HEDGE_CLOSE_SCALP_MODE: bool = False  # 2026-09-11 hedge+scalp DISABLED — was True fast hedge close, now OFF (HEDGE_MODE=False → inert)
     HEDGE_CLOSE_WT_DC_THRESHOLD: float = 25.0
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3
     HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 60

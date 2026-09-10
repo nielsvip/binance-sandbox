@@ -439,7 +439,7 @@ class Config:
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 60.0  # USER 2026-05-10: lowered 3600→60 to match HEDGE_COMPLETED_LOCKOUT_SECONDS — re-hedge cycles must be allowed.
     # REVERTED 2026-05-18 18:30: 3600 had no sample-floor evidence (violates 2026-05-16 mandate). Restoring 2026-05-10 root-cause fix value 60. Isolated vec sweep queued.
     HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 60  # REVERTED 2026-05-18 18:30 (was 3600 since 2026-05-17, was 60 since 2026-05-10)
-    HEDGE_CLOSE_SCALP_MODE: bool = True  # 2026-04-24: user directive — close hedge on ANY 1m/3m LH/HH/LL/HL against hedge. Don't wait for wt_3m+wt_1h confirmation (too slow for scalp cycles). Original wt_3m+wt_1h gate still fires first if it matches.
+    HEDGE_CLOSE_SCALP_MODE: bool = False  # 2026-09-11 USER MANDATE: hedge+scalp DISABLED everywhere — hedge closes inert (HEDGE_MODE=False → no hedges to close). True was 2026-04-24 fast-close for scalp hedge cycles; now OFF.
     HEDGE_SCALP_MAX_AGE_MIN: float = 15.0  # 2026-04-25 Rule C: losing hedge stuck >15min → close (prevents dual-losing pair like WIFUSDC -0.62%/-0.25%).
     SCALP_V3_PEAK_GIVEBACK_PCT: float = 0.15  # 2026-04-25: if V3 position peaked ≥0.3% and gave back this pp, exit to lock profit. Separate from SCALP_V3_PG_ARM_PCT/_PG_GIVEBACK_PCT which gate only >0.5% peaks.
     STRICT_NO_LOSS_ACCOUNTS = []#'ang','flz', 'men', 'fin', 'inf']  # 2026-04-24: added 'inf'. MOVR -13% was hit with DC_BREACH_REDUCE_UNHEDGED instead of DC_BREACH_HEDGE_TRIGGER because inf was missing from this list (the hedge branch at ez_manage.py:14491 requires STRICT_NO_LOSS membership). RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
@@ -626,13 +626,15 @@ class Config:
     REENTRY_TIER2_PRICE_PCT: float = 0.003  # 0.3% price move past exit triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES: float = 10.0  # Minimum minutes before Tier 2 activates
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
-    # === RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix, mirrors config_tradier) ===
-    # Fires AUGMENT with distinct reason "RECOVERY_AUG_*" when a partially-reduced
-    # position (positionAmt > 0 after SENTIMENT_FADE / WT_BANDAID / DELTA_EXIT REDUCE)
-    # sees price cross back through last_reduction_price within the band+age window.
-    # Bypasses HARD_MIN_GAIN_WALL via reason-based `_is_recovery_aug` flag in execute_now.
-    # Default OFF — flip only after backtest on the 7-day "forgotten" set (713 closes).
-    RECOVERY_AUGMENT_ENABLED: bool = False
+    # === RECOVERY_AUGMENT — PARTIAL-CLOSE RECOVERY REENTRY (2026-05-20 → 2026-09-11 CLARIFIED) ===
+    # SEMANTICS: This is a REENTRY / RE-OPEN, NOT an AUGMENT of a winning position.
+    # It fires when positionAmt > 0 after a partial REDUCE (SENTIMENT_FADE / WT_BANDAID /
+    # DELTA_EXIT) and price crosses back through last_reduction_price within band+age.
+    # Action is REENTRY_OPEN with reason "RECOVERY_AUG_PARTIAL_*" — it re-opens what was
+    # faded, bypassing NO_DOUBLE_OPEN_BLOCK and HARD_MIN_GAIN_WALL via reason-based
+    # `_is_recovery_aug` (= 'RECOVERY_AUG' in reason). Gated to gain >= 0.5*MIN_GAIN.
+    # ENABLED BY DEFAULT (ON) — was OFF pre-2026-09-11, now ON for both trb/trc + crypto.
+    RECOVERY_AUGMENT_ENABLED: bool = True
     RECOVERY_AUGMENT_BAND_PCT: float = 0.3       # within 0.3% of last_reduction_price
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # only fire within 4h of the reduction
     RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, require favorable WT cross on 3m before firing
