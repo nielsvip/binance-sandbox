@@ -1312,9 +1312,9 @@
         "crossunder_D": true
     },
     "BIGTIMEUSDT": {
-        "latest_crossover_price_3m": 0.006888,
-        "previous_crossover_price_3m": 0.00685752,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 0.006865,
+        "previous_crossover_price_3m": 0.006888,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 0.00686926,
         "previous_crossunder_price_3m": 0.006904,
         "crossunder_3m": true,
@@ -1667,8 +1667,8 @@
         "latest_crossover_price_3m": 0.00214572,
         "previous_crossover_price_3m": 0.00216262,
         "crossover_3m": false,
-        "latest_crossunder_price_3m": 0.00214904,
-        "previous_crossunder_price_3m": 0.002168,
+        "latest_crossunder_price_3m": 0.00211976,
+        "previous_crossunder_price_3m": 0.00214904,
         "crossunder_3m": true,
         "latest_crossover_price_15m": 0.002174,
         "previous_crossover_price_15m": 0.002269,
@@ -1763,9 +1763,9 @@
         "latest_crossover_price_3m": 0.01656,
         "previous_crossover_price_3m": 0.01649178,
         "crossover_3m": true,
-        "latest_crossunder_price_3m": 0.01651492,
-        "previous_crossunder_price_3m": 0.01649,
-        "crossunder_3m": false,
+        "latest_crossunder_price_3m": 0.01614,
+        "previous_crossunder_price_3m": 0.01651492,
+        "crossunder_3m": true,
         "latest_crossover_price_15m": 0.01602,
         "previous_crossover_price_15m": 0.01632,
         "crossover_15m": false,
@@ -2179,8 +2179,8 @@
         "latest_crossover_price_3m": 0.04874,
         "previous_crossover_price_3m": 0.05038377,
         "crossover_3m": false,
-        "latest_crossunder_price_3m": 0.04988873,
-        "previous_crossunder_price_3m": 0.05156,
+        "latest_crossunder_price_3m": 0.04809,
+        "previous_crossunder_price_3m": 0.04988873,
         "crossunder_3m": true,
         "latest_crossover_price_15m": 0.05086,
         "previous_crossover_price_15m": 0.05086,
@@ -2272,9 +2272,9 @@
         "crossunder_D": true
     },
     "ENAUSDC": {
-        "latest_crossover_price_3m": 0.15075,
-        "previous_crossover_price_3m": 0.15065,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 0.14958,
+        "previous_crossover_price_3m": 0.15075,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 0.15086,
         "previous_crossunder_price_3m": 0.15086,
         "crossunder_3m": false,
@@ -8416,9 +8416,9 @@
         "crossunder_D": true
     },
     "PUMPUSDT": {
-        "latest_crossover_price_3m": 0.00407529,
-        "previous_crossover_price_3m": 0.00405069,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 0.004011,
+        "previous_crossover_price_3m": 0.00407529,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 0.003993,
         "previous_crossunder_price_3m": 0.00393579,
         "crossunder_3m": false,
@@ -9579,8 +9579,8 @@
         "latest_crossover_price_3m": 0.005955,
         "previous_crossover_price_3m": 0.005955,
         "crossover_3m": false,
-        "latest_crossunder_price_3m": 0.00563526,
-        "previous_crossunder_price_3m": 0.005612,
+        "latest_crossunder_price_3m": 0.005784,
+        "previous_crossunder_price_3m": 0.00563526,
         "crossunder_3m": false,
         "latest_crossover_price_15m": 0.005503,
         "previous_crossover_price_15m": 0.00597,
@@ -10088,9 +10088,9 @@
         "crossunder_D": false
     },
     "GOOGLUSDT": {
-        "latest_crossover_price_3m": 331.68435841,
-        "previous_crossover_price_3m": 331.80594162,
-        "crossover_3m": false,
+        "latest_crossover_price_3m": 331.82458029,
+        "previous_crossover_price_3m": 331.68435841,
+        "crossover_3m": true,
         "latest_crossunder_price_3m": 331.79,
         "previous_crossunder_price_3m": 331.84,
         "crossunder_3m": true,
@@ -10120,8 +10120,8 @@
         "crossunder_D": true
     },
     "MRVLUSDT": {
-        "latest_crossover_price_3m": 234.67,
-        "previous_crossover_price_3m": 235.04,
+        "latest_crossover_price_3m": 231.06866545,
+        "previous_crossover_price_3m": 234.67,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 232.56,
         "previous_crossunder_price_3m": 233.62404603,
@@ -10155,9 +10155,9 @@
         "latest_crossover_price_3m": 492.7,
         "previous_crossover_price_3m": 492.57,
         "crossover_3m": true,
-        "latest_crossunder_price_3m": 492.55,
+        "latest_crossunder_price_3m": 491.86,
         "previous_crossunder_price_3m": 492.55,
-        "crossunder_3m": false,
+        "crossunder_3m": true,
         "latest_crossover_price_15m": 492.55,
         "previous_crossover_price_15m": 492.55,
         "crossover_15m": false,
@@ -10280,9 +10280,9 @@
         "crossunder_D": false
     },
     "RKLBUSDT": {
-        "latest_crossover_price_3m": 63.48660461,
-        "previous_crossover_price_3m": 63.45,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 62.91,
+        "previous_crossover_price_3m": 63.48660461,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 63.14,
         "previous_crossunder_price_3m": 63.16278669,
         "crossunder_3m": true,
@@ -10312,9 +10312,9 @@
         "crossunder_D": false
     },
     "TSLAUSDT": {
-        "latest_crossover_price_3m": 366.96,
-        "previous_crossover_price_3m": 366.66,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 365.47,
+        "previous_crossover_price_3m": 366.96,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 366.79049739,
         "previous_crossunder_price_3m": 367.27739095,
         "crossunder_3m": true,
@@ -10728,9 +10728,9 @@
         "crossunder_D": false
     },
     "CRCLUSDT": {
-        "latest_crossover_price_3m": 92.99883344,
-        "previous_crossover_price_3m": 92.96076508,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 91.61240884,
+        "previous_crossover_price_3m": 92.99883344,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 92.81,
         "previous_crossunder_price_3m": 92.99,
         "crossunder_3m": true,
@@ -10792,9 +10792,9 @@
         "crossunder_D": false
     },
     "AXTIUSDT": {
-        "latest_crossover_price_3m": 68.35502499,
-        "previous_crossover_price_3m": 68.02525651,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 67.17191567,
+        "previous_crossover_price_3m": 68.35502499,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 67.04,
         "previous_crossunder_price_3m": 67.22212052,
         "crossunder_3m": true,
@@ -11720,8 +11720,8 @@
         "crossunder_D": false
     },
     "BITOUSDT": {
-        "latest_crossover_price_3m": 10.52,
-        "previous_crossover_price_3m": 10.53587396,
+        "latest_crossover_price_3m": 10.5193358,
+        "previous_crossover_price_3m": 10.52,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 10.51995875,
         "previous_crossunder_price_3m": 10.54,
@@ -12072,9 +12072,9 @@
         "crossunder_D": false
     },
     "GMEUSDT": {
-        "latest_crossover_price_3m": 20.06480256,
-        "previous_crossover_price_3m": 19.97017244,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 19.99280005,
+        "previous_crossover_price_3m": 20.06480256,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 20.02387159,
         "previous_crossunder_price_3m": 19.97247996,
         "crossunder_3m": false,
@@ -12200,9 +12200,9 @@
         "crossunder_D": false
     },
     "HOODUSDT": {
-        "latest_crossover_price_3m": 114.91,
-        "previous_crossover_price_3m": 114.33842343,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 114.60609207,
+        "previous_crossover_price_3m": 114.91,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 114.81933822,
         "previous_crossunder_price_3m": 114.65,
         "crossunder_3m": false,
@@ -12296,8 +12296,8 @@
         "crossunder_D": false
     },
     "INTCUSDT": {
-        "latest_crossover_price_3m": 104.65,
-        "previous_crossover_price_3m": 105.58,
+        "latest_crossover_price_3m": 104.64,
+        "previous_crossover_price_3m": 104.65,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 105.16,
         "previous_crossunder_price_3m": 104.92057812,
@@ -12776,9 +12776,9 @@
         "crossunder_D": false
     },
     "NBISUSDT": {
-        "latest_crossover_price_3m": 236.28130682,
-        "previous_crossover_price_3m": 236.14456741,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 233.73,
+        "previous_crossover_price_3m": 236.28130682,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 234.76,
         "previous_crossunder_price_3m": 237.03680086,
         "crossunder_3m": true,
@@ -12840,7 +12840,7 @@
         "crossunder_D": false
     },
     "NOKUSDT": {
-        "latest_crossover_price_3m": 10.76,
+        "latest_crossover_price_3m": 10.70290256,
         "previous_crossover_price_3m": 10.76,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 10.76,
@@ -13064,9 +13064,9 @@
         "crossunder_D": false
     },
     "PENGUSDT": {
-        "latest_crossover_price_3m": 50.8331891,
-        "previous_crossover_price_3m": 50.83,
-        "crossover_3m": true,
+        "latest_crossover_price_3m": 50.7239512,
+        "previous_crossover_price_3m": 50.8331891,
+        "crossover_3m": false,
         "latest_crossunder_price_3m": 50.76449617,
         "previous_crossunder_price_3m": 51.12,
         "crossunder_3m": true,
@@ -13352,8 +13352,8 @@
         "crossunder_D": false
     },
     "SMHUSDT": {
-        "latest_crossover_price_3m": 572.13941695,
-        "previous_crossover_price_3m": 573.3,
+        "latest_crossover_price_3m": 569.52682165,
+        "previous_crossover_price_3m": 572.13941695,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 572.79,
         "previous_crossunder_price_3m": 572.28,
@@ -13384,7 +13384,7 @@
         "crossunder_D": false
     },
     "SNDKUSDT": {
-        "latest_crossover_price_3m": 1759.93,
+        "latest_crossover_price_3m": 1743.77629945,
         "previous_crossover_price_3m": 1759.93,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 1748.10522438,
@@ -14056,8 +14056,8 @@
         "crossunder_D": false
     },
     "URNMUSDT": {
-        "latest_crossover_price_3m": 56.27,
-        "previous_crossover_price_3m": 56.38,
+        "latest_crossover_price_3m": 56.26,
+        "previous_crossover_price_3m": 56.27,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 56.65504123,
         "previous_crossunder_price_3m": 56.63345788,
