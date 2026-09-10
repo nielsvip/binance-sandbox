@@ -1,63 +1,32 @@
 {
- "generated_at": "2026-09-10 21:03 UTC",
- "total_capital_usd": 26.95,
+ "generated_at": "2026-09-10 22:03 UTC",
+ "total_capital_usd": 11.99,
  "tier_capital": {
   "A": 0.0,
-  "B": 26.95,
+  "B": 11.99,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
+  "B": 1,
   "C": 0
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "men:GALAUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "fin:INXUSDT_SHORT",
-   "symbol": "INXUSDT",
-   "account": "fin",
-   "value_usd": 6.91,
-   "gain_pct": 1.464,
+   "pk": "men:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "men",
+   "value_usd": 11.99,
+   "gain_pct": -0.096,
    "tier": "B",
-   "perf_mult": 0.69,
-   "amt": 1273.0,
-   "mark": 0.005425
-  },
-  {
-   "pk": "fin:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 6.78,
-   "gain_pct": 2.491,
-   "tier": "B",
-   "perf_mult": 2.52,
-   "amt": 23.9,
-   "mark": 0.2837
-  },
-  {
-   "pk": "fin:TIAUSDC_SHORT",
-   "symbol": "TIAUSDC",
-   "account": "fin",
-   "value_usd": 6.75,
-   "gain_pct": 0.32,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 18.0,
-   "mark": 0.37496297
-  },
-  {
-   "pk": "fin:RUNEUSDT_LONG",
-   "symbol": "RUNEUSDT",
-   "account": "fin",
-   "value_usd": 6.51,
-   "gain_pct": 0.788,
-   "tier": "B",
-   "perf_mult": 1.84,
-   "amt": 13.0,
-   "mark": 0.50089538
+   "perf_mult": 0.63,
+   "amt": 7021.0,
+   "mark": 0.00170788
   }
  ]
 }
