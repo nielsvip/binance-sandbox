@@ -31,6 +31,12 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-03-29T00:01:49.001152+00:00"
   },
+  "men:KASUSDT_LONG": {
+    "count": 1,
+    "first_seen": "2026-03-29T00:01:49.001172+00:00",
+    "source": "phantom_kill_bootstrap",
+    "last_seen": "2026-03-29T00:01:49.001186+00:00"
+  },
   "men:1000LUNCUSDT_SHORT": {
     "count": 1,
     "first_seen": "2026-03-29T00:01:49.001249+00:00",
@@ -1547,6 +1553,14 @@
     "first_seen": "2026-08-12T22:40:46.124970+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-12T22:40:46.124971+00:00"
+  },
+  "men:RUNEUSDT_SHORT": {
+    "count": 2,
+    "first_seen_zero_at": "2026-08-12T23:40:44.690873+00:00",
+    "last_increment_at": "2026-08-12T23:59:14.583278+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    }
   },
   "fin:MASKUSDT_SHORT": {
     "count": 2,
