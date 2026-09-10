@@ -1,16 +1,22 @@
 {
-  "timestamp": "2026-09-10T23:11:32.243004+00:00",
+  "timestamp": "2026-09-10T23:23:33.898637+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 128
+    "total_ranked": 130
   },
   "unified_ranking": [
     {
-      "symbol": "STRKUSDT",
-      "net_score": -13.5,
+      "symbol": "SNXUSDT",
+      "net_score": -16.0,
       "long_score": 0,
-      "short_score": 13.5
+      "short_score": 16.0
+    },
+    {
+      "symbol": "STRKUSDT",
+      "net_score": -14.4,
+      "long_score": 0,
+      "short_score": 14.4
     },
     {
       "symbol": "1000PEPEUSDC",
@@ -19,28 +25,28 @@
       "short_score": 13.3
     },
     {
-      "symbol": "AXSUSDT",
-      "net_score": -12.2,
-      "long_score": 0,
-      "short_score": 12.2
-    },
-    {
       "symbol": "FLOWUSDT",
-      "net_score": -11.4,
+      "net_score": -12.4,
       "long_score": 0,
-      "short_score": 11.4
+      "short_score": 12.4
     },
     {
-      "symbol": "ALGOUSDT",
-      "net_score": -10.5,
+      "symbol": "GRTUSDT",
+      "net_score": -12.1,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 12.1
     },
     {
-      "symbol": "BCHUSDC",
-      "net_score": -10.1,
+      "symbol": "ADAUSDC",
+      "net_score": -11.8,
       "long_score": 0,
-      "short_score": 10.1
+      "short_score": 11.8
+    },
+    {
+      "symbol": "OPUSDT",
+      "net_score": -10.9,
+      "long_score": 0,
+      "short_score": 10.9
     },
     {
       "symbol": "GALAUSDT",
@@ -133,6 +139,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ZILUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -205,13 +217,13 @@
       "short_score": 0
     },
     {
-      "symbol": "GRTUSDT",
+      "symbol": "BIOUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "BIOUSDC",
+      "symbol": "AXSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -319,6 +331,12 @@
       "short_score": 0
     },
     {
+      "symbol": "WUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RIFUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -416,12 +434,6 @@
     },
     {
       "symbol": "DASHUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "OPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -547,12 +559,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SNXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ACTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -607,7 +613,7 @@
       "short_score": 0
     },
     {
-      "symbol": "ADAUSDC",
+      "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -709,6 +715,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ALGOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "TRBUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -770,48 +782,53 @@
     },
     {
       "symbol": "PYPLUSDT",
-      "net_score": 18.8,
-      "long_score": 18.8,
+      "net_score": 18.4,
+      "long_score": 18.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "PYPLUSDT",
-      18.8,
-      53.25114205
+      18.4,
+      53.23143583
     ]
   ],
   "top_shorts": [
     [
+      "SNXUSDT",
+      16.0,
+      0.2035
+    ],
+    [
       "STRKUSDT",
-      13.5,
-      0.02826
+      14.4,
+      0.028
     ],
     [
       "1000PEPEUSDC",
       13.3,
-      0.0032503
-    ],
-    [
-      "AXSUSDT",
-      12.2,
-      0.8896
+      0.00324488
     ],
     [
       "FLOWUSDT",
-      11.4,
-      0.02742528
+      12.4,
+      0.02736
     ],
     [
-      "ALGOUSDT",
-      10.5,
-      0.09191
+      "GRTUSDT",
+      12.1,
+      0.0177
     ],
     [
-      "BCHUSDC",
-      10.1,
-      223.42193499
+      "ADAUSDC",
+      11.8,
+      0.20531152
+    ],
+    [
+      "OPUSDT",
+      10.9,
+      0.09404
     ]
   ],
   "hedge_usage": {

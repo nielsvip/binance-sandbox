@@ -498,6 +498,22 @@ def _purge_stale_spaces():
         pass
 
 
+def check_wallpaper_memory():
+    """Watchdog: kill wallpaper extensions if they exceed 1GB to prevent 63G leak"""
+    try:
+        for name in ["WallpaperImageExtension", "WallpaperAerialsExtension"]:
+            rc, out, err = run(f"ps aux | grep {name} | grep -v grep | awk '{{print $2, $6}}'", timeout=3)
+            for line in out.splitlines():
+                parts = line.split()
+                if len(parts) == 2 and parts[1].isdigit():
+                    pid, rss_kb = parts[0], int(parts[1])
+                    if rss_kb > 1048576:
+                        logger.warning(f"{name} PID {pid} RSS {rss_kb//1024}MB >1GB, restarting to prevent leak")
+                        run(f"kill -9 {pid}", timeout=3)
+    except Exception:
+        pass
+
+
 def cleanup_old(subdir, keep_per_prefix=KEEP_GENERATIONS):
     prefix_map = {}
     for f in subdir.glob("*.png"):
@@ -609,11 +625,15 @@ def main_loop():
     last_sync = 0
     page_idx = 0
     last_rotate = 0
+    last_memcheck = 0
     int_pages = []
     ext_pages = []
     while True:
         try:
             now = time.time()
+            if now - last_memcheck >= 300:
+                check_wallpaper_memory()
+                last_memcheck = now
             if now - last_sync >= SYNC_SECONDS:
                 sync_plots()
                 last_sync = now

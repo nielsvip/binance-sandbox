@@ -1,5 +1,9 @@
-OUTLIER REPORT — 2026-09-10 23:11 UTC
+OUTLIER REPORT — 2026-09-10 23:23 UTC
 ================================================================================
-Scanned: 0 open positions | Alerts: 0
+Scanned: 4 open positions | Alerts: 4
 
-  No outliers detected.
+--- STALE_ACTIVITY (4) ---
+  [WARN]                   fin:RUNEUSDT_LONG  idle_h=7.9
+  [WARN]                   fin:RLCUSDT_SHORT  idle_h=7.7
+  [WARN]                   fin:INXUSDT_SHORT  idle_h=7.8
+  [WARN]                   fin:TIAUSDC_SHORT  idle_h=7.6
