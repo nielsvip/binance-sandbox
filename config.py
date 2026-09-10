@@ -873,11 +873,13 @@ class Config:
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED: bool = False
     REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT: float = 0.002
     UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True
-    BREAKOUT_LEASH_ENABLED: bool = False  # 2026-09-03 DISABLED per user: MAKER_PROFIT_EXIT_BREAKOUT_LEASH_EXIT_DROPPED_BACK always losing (BREAKOUT culprit — 10/min churn)
-    BREAKOUT_LEASH_MAX_PER_MIN: int = 10  # 2026-09-03 FLZ 10/min CHURN GUARD — aligned with EMERGENCY_BRAKE_MAX_TRADES_PER_MIN
+    BREAKOUT_LEASH_ENABLED: bool = True  # 2026-09-10 RE-ENABLED per user breakout improvement: enter always, exit easily on LH/LL or dropped back BEFORE loss, reenter +25% at better price. Was False due to 10/min churn — now gated by MAX_PER_MIN 3 + gain gate.
+    BREAKOUT_LEASH_MAX_PER_MIN: int = 3  # 2026-09-10: 10→3 (churn cap 3/min vs 10, matches previous anti-churn)
     BREAKOUT_LEASH_QTY_MULT: float = 0.25
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.50
     BREAKOUT_LEASH_TF: str = "3m"
+    BREAKOUT_LEASH_MAX_LOSS_PCT: float = -0.5  # 2026-09-10: only leash-exit BEFORE loss (gain > -0.5). Prevents holding big loser then leash churn; easy exit only when still near BE.
+    BREAKOUT_REENTRY_BETTER_PRICE_MULT: float = 1.25  # 2026-09-10: +25% on reentry at better price after breakout leash exit (before loss). Stacks with dip/breakout mults.
     # Queue consumer: reads daemon command files, calls execute_now.
     EZ_REENTRY_QUEUE_CONSUMER_ENABLED: bool = True
     EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S: float = 5.0

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-10 04:12:30 UTC
+# Copilot Status — 2026-09-10 04:27:55 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-10T04:03:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:03:43
-- **STALE_INDICATORS** [tradier]  — 2026-09-10T04:05:50
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:05:50
-- **STALE_INDICATORS** [tradier]  — 2026-09-10T04:07:54
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:07:54
-- **STALE_INDICATORS** [tradier]  — 2026-09-10T04:09:57
 - **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:09:57
 - **STALE_INDICATORS** [tradier]  — 2026-09-10T04:12:00
 - **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:12:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:14:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:16:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:18:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:20:14
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:22:17
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:24:20
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T04:26:23
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 11 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 11 | **Watching for reentry:** 2 | **Reentered:** 0
 
 - HELD: **CIBR** LONG (tradier) peak +15.0%, now +5.9%
 - HELD: **AXON** SHORT (tradier) peak +8.5%, now +7.6%
@@ -42,7 +42,6 @@ _None_
 
 - WATCHING: **TSLA** LONG (tradier) peaked +5.2%, exited 0m ago
 - WATCHING: **QBTS** SHORT (tradier) peaked +5.0%, exited 0m ago
-- WATCHING: **XTZUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
 
 ## Supervisor
 

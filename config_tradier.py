@@ -2204,10 +2204,13 @@ class TradierConfig:
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
     REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 20.0
     REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT: float = 0.002
-    BREAKOUT_LEASH_ENABLED: bool = True
+    BREAKOUT_LEASH_ENABLED: bool = True  # 2026-09-10 KEEP True for breakout improvement (easy exit before loss +25% reentry) — crypto re-enabled with gain gate
+    BREAKOUT_LEASH_MAX_PER_MIN: int = 3  # 2026-09-10 stocks: 3/min anti-churn (was missing, default 10)
     BREAKOUT_LEASH_QTY_MULT: float = 0.25
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.50
-    BREAKOUT_LEASH_TF: str = "3m"
+    BREAKOUT_LEASH_TF: str = "5m"  # 2026-09-10 stocks: 5m (crypto 3m) — matches stock TF
+    BREAKOUT_LEASH_MAX_LOSS_PCT: float = -0.5  # only leash-exit BEFORE loss
+    BREAKOUT_REENTRY_BETTER_PRICE_MULT: float = 1.25
     # EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S removed 2026-04-28 — see config.py for context.
     # 2026-04-28 — PPL-fired positions get effective gain doubled. See config.py.
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True

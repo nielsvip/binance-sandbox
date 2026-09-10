@@ -40942,16 +40942,24 @@ async def process_single_reentry_evaluation(
             if reentry_amount and reentry_amount > 0:
                 reentry_amount = reentry_amount * _re_size_mult
             # 2026-09-09 rally sizing: +25% after profitable exit (bottom-of-retrace reentry into rally)
+            # 2026-09-10 breakout improvement: also +25% at better price after BREAKOUT_LEASH exit before loss (gain > -0.5)
             try:
                 _pos_mult = float(getattr(config, "REENTRY_POSITIVE_EXIT_SIZE_MULT", 1.25))
-                if _pos_mult != 1.0 and reentry_amount and reentry_amount > 0:
+                _breakout_mult = float(getattr(config, "BREAKOUT_REENTRY_BETTER_PRICE_MULT", 1.25))
+                if reentry_amount and reentry_amount > 0:
                     _exit_gain = 0.0
+                    _exit_reason = ""
                     if isinstance(reentry_data, dict):
                         _exit_gain = safe_fetch_float(reentry_data.get("gain", reentry_data.get("exit_gain", 0)), 0)
+                        _exit_reason = str(reentry_data.get("reason", reentry_data.get("exit_reason", "")) or "").upper()
                     if _exit_gain == 0 and position is not None:
                         _exit_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
-                    if _exit_gain > 0:
+                    _is_profit_reentry = _exit_gain > 0
+                    _is_breakout_better = ("BREAKOUT_LEASH" in _exit_reason and _exit_gain > float(getattr(config, "BREAKOUT_LEASH_MAX_LOSS_PCT", -0.5)) and ((is_long and current_price < reentry_level) or ((not is_long) and current_price > reentry_level)))
+                    if _is_profit_reentry:
                         reentry_amount = reentry_amount * _pos_mult
+                    elif _is_breakout_better:
+                        reentry_amount = reentry_amount * _breakout_mult
             except Exception:
                 pass
         except Exception:
@@ -46324,11 +46332,26 @@ async def process_position(
                     f"[R3_HTF_FLIP_ERR] {position_key}: {_r3hf_outer}"
                 )
     # ═══ END R3_HTF_FLIP ═══
-    # Breakout Short Leash Exit (2026-05-25, user-authorized)
+    # Breakout Short Leash Exit — 2026-09-10 REVISED per user breakout improvement: enter always, exit easily (LH/LL or dropped back) BEFORE loss, reenter +25% at better price
     _leash_pos_amt = abs(safe_float(getattr(position, "positionAmt", 0))) if position else 0.0
     if _leash_pos_amt > 0.0 and bool(getattr(config, "BREAKOUT_LEASH_ENABLED", True)):
-        _leash_aug_reason = str(getattr(position, "augment_reason", "") or "").upper()
-        if "BREAKOUT" in _leash_aug_reason or "GOLDEN_RULE" in _leash_aug_reason:
+        _leash_aug_reason = str(getattr(position, "augment_reason", "") or getattr(position, "entry_reason", "") or "").upper()
+        _is_breakout_entry = ("BREAKOUT" in _leash_aug_reason or "GOLDEN_RULE" in _leash_aug_reason or "DC_HIGH" in _leash_aug_reason or "BB_UPPER" in _leash_aug_reason or "STDEV" in _leash_aug_reason)
+        if _is_breakout_entry:
+            # per-min throttle (was 10→3 to stop churn)
+            _leash_max_per_min = int(getattr(config, "BREAKOUT_LEASH_MAX_PER_MIN", 3))
+            try:
+                if not hasattr(trade_manager, "_breakout_leash_ts"):
+                    trade_manager._breakout_leash_ts = {}
+                _now = time.time()
+                _lst = [t for t in trade_manager._breakout_leash_ts.get(symbol, []) if _now - t < 60]
+                if len(_lst) >= _leash_max_per_min:
+                    _is_breakout_entry = False
+                else:
+                    trade_manager._breakout_leash_ts[symbol] = _lst
+            except Exception:
+                pass
+        if _is_breakout_entry:
             try:
                 _leash_tf = str(getattr(config, "BREAKOUT_LEASH_TF", "3m"))
                 if _pp_shared_ind is None:
@@ -46347,12 +46370,26 @@ async def process_position(
                     if _ll_now > 0.0 and _ll_prev > 0.0 and _ll_now > _ll_prev and _lh_now > _lh_prev: _lh_ll = True
                     if _dc_l_prev > 0.0 and current_price > _dc_l_prev: _dropped_back = True
                 if _lh_ll or _dropped_back:
-                    _leash_reason = f"BREAKOUT_LEASH_EXIT_{'LH_LL' if _lh_ll else 'DROPPED_BACK'}"
-                    _close_side = "SELL" if position_side == "LONG" else "BUY"
-                    logger.warning(f"⚡ [BREAKOUT_LEASH_EXIT] {position_key}: Closing positionAmt={_leash_pos_amt:.4f} reason={_leash_reason} px={current_price:.6f}")
-                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_leash_pos_amt, side=_close_side, position_side=position_side, quantity=_leash_pos_amt, old_price=current_price, unique_id=f"LEASH_EXIT_{int(time.time())}", reason=_leash_reason, is_full_close=True, action="CLOSE")
-                    trade_manager.processing_keys.discard(position_key)
-                    return f"{EvalStatus.ACTION_TAKEN}:{_leash_reason}"
+                    # 2026-09-10: only leash-exit BEFORE loss (gain > max_loss_pct); prevents churning losers. Falling back at +0.2% should exit, at -2% should hold for hedge/noloss.
+                    try:
+                        _leash_entry_px = safe_float(getattr(position, "entry_price", current_price) or current_price)
+                        _leash_gain = (current_price - _leash_entry_px) / _leash_entry_px * 100.0 if position_side == "LONG" else (_leash_entry_px - current_price) / _leash_entry_px * 100.0
+                    except Exception:
+                        _leash_gain = 0.0
+                    _leash_max_loss = float(getattr(config, "BREAKOUT_LEASH_MAX_LOSS_PCT", -0.5))
+                    if _leash_gain <= _leash_max_loss:
+                        logger.info(f"[BREAKOUT_LEASH_SKIP] {position_key}: LH_LL={_lh_ll} dropped={_dropped_back} but gain {_leash_gain:.2f}% <= {_leash_max_loss:.2f}% — HOLD (before-loss gate)")
+                    else:
+                        _leash_reason = f"BREAKOUT_LEASH_EXIT_{'LH_LL' if _lh_ll else 'DROPPED_BACK'}"
+                        _close_side = "SELL" if position_side == "LONG" else "BUY"
+                        logger.warning(f"⚡ [BREAKOUT_LEASH_EXIT] {position_key}: Closing positionAmt={_leash_pos_amt:.4f} reason={_leash_reason} px={current_price:.6f} gain={_leash_gain:.2f}%")
+                        try:
+                            trade_manager._breakout_leash_ts[symbol].append(time.time())
+                        except Exception:
+                            pass
+                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_leash_pos_amt, side=_close_side, position_side=position_side, quantity=_leash_pos_amt, old_price=current_price, unique_id=f"LEASH_EXIT_{int(time.time())}", reason=_leash_reason, is_full_close=True, action="CLOSE")
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:{_leash_reason}"
             except Exception as _leash_err:
                 logger.error(f"[BREAKOUT_LEASH_EXIT_ERR] {position_key}: {_leash_err}")
     # ═══════════════════════════════════════════════════════════════════════════

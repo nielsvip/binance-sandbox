@@ -1,32 +1,44 @@
 {
- "generated_at": "2026-09-10 04:11 UTC",
- "total_capital_usd": 7.36,
+ "generated_at": "2026-09-10 04:21 UTC",
+ "total_capital_usd": 13.66,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.36,
-  "C": 0.0
+  "B": 0.0,
+  "C": 13.65
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "ang:SPCXUSD1_LONG"
+  "men:RUNEUSDT_SHORT",
+  "men:1000FLOKIUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SPCXUSD1_LONG",
-   "symbol": "SPCXUSD1",
-   "account": "ang",
-   "value_usd": 7.36,
-   "gain_pct": -2.406,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.05,
-   "mark": 147.29329441
+   "pk": "men:1000FLOKIUSDT_SHORT",
+   "symbol": "1000FLOKIUSDT",
+   "account": "men",
+   "value_usd": 6.99,
+   "gain_pct": 0.04,
+   "tier": "C",
+   "perf_mult": 0.45,
+   "amt": 283.0,
+   "mark": 0.02471
+  },
+  {
+   "pk": "men:RUNEUSDT_SHORT",
+   "symbol": "RUNEUSDT",
+   "account": "men",
+   "value_usd": 6.66,
+   "gain_pct": -0.341,
+   "tier": "C",
+   "perf_mult": 0.58,
+   "amt": 14.0,
+   "mark": 0.47589708
   }
  ]
 }
