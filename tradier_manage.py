@@ -21790,6 +21790,8 @@ class TradierTradeManager:
                 logger.warning(f"[INTRADAY_RATIO] trimmed {pk} qty={trim_qty}/{qty} dev={dev:+.2%} t={target:.2%} a={actual:.2%} gain={getattr(pos,'gain',0):+.2f}%")
                 # USER 2026-09-10 MANDATE: 25k/5k long heavy → need WAYYY MORE SHORT OPENS, not just long trims.
                 # When overweight LONG (dev>0) also force a SHORT open on the same cycle; vice versa.
+                # FALLBACK: rankings often empty (scoring 222 takes ~5m) → use tradier_indicators latest sorted
+                # by most bearish/bullish (price vs EMA + sentiment) so shorts actually open.
                 try:
                     _under = "SHORT" if side_over == "LONG" else "LONG"
                     _rank = await self.get_rankings()
@@ -21802,6 +21804,31 @@ class TradierTradeManager:
                         if _rsym and _rsym not in _held:
                             _best = _rsym
                             break
+                    # Fallback when rankings empty (common: scoring in progress)
+                    if not _best:
+                        try:
+                            _snap = self.market_snapshot or {}
+                            _scored = []
+                            for _s, _d in _snap.items():
+                                if not isinstance(_d, dict): continue
+                                if _s.upper() in _held: continue
+                                _price = float(_d.get('current_price', 0) or 0)
+                                if _price <= 0: continue
+                                _sent = float(_d.get('0market_sentiment_score', 0) or 0)
+                                _ema = float(_d.get('ema_20_15m_prev', 0) or _d.get('ema_20_15m', 0) or 0)
+                                # Bearish score for SHORT: price<EMA and most negative sentiment
+                                # Bullish score for LONG: price>EMA and most positive sentiment
+                                if _under == "SHORT":
+                                    _score = (1 if _price < _ema and _ema > 0 else 0) * 2 - _sent/100.0
+                                else:
+                                    _score = (1 if _price > _ema and _ema > 0 else 0) * 2 + _sent/100.0
+                                _scored.append((_score, _s))
+                            if _scored:
+                                _scored.sort(reverse=True)
+                                _best = _scored[0][1]
+                                logger.info(f"[INTRADAY_RATIO] rankings empty, fallback picked {_best} via indicators (score={_scored[0][0]:.2f})")
+                        except Exception as _fb_e:
+                            logger.debug(f"[INTRADAY_RATIO] fallback pick failed: {_fb_e}")
                     if _best:
                         _b_ind = self.get_indicators(_best) or {}
                         _b_price = float(_b_ind.get('current_price', 0) or 0)

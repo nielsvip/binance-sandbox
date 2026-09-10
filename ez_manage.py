@@ -27912,24 +27912,7 @@ class MultiAccountTradeManager:
                 logger.error(f"[{account_key}] [MAKER_CRITICAL_FAIL] {position_key}: Symbol config missing for {symbol}")
                 await release_locks()
                 return False, 0.0
-            # 2026-06-03 USER: re-add CLOSE foothold so exits announce their reason. send_foothold_webhook is
-            # direction-aware (sends close/decrease for the REDUCE side), so this reduces a first slice + logs reason.
-            if ta == "OPEN" or (ta == "REDUCE" and bool(getattr(config, "CLOSE_FOOTHOLD_ENABLED", True))):
-                foothold_qty = max(7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3)
-                logger.info(f"⚓ [CENTRALIZED_FOOTHOLD] Sending foothold webhook for {position_key}: quantity={foothold_qty:.6f}")
-                await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
-                if qty_abs > foothold_qty:
-                    qty_abs = qty_abs - foothold_qty
-                    step = Decimal(str(symbol_conf["step_size"]))
-                    qty_dec_test = (Decimal(str(qty_abs)) // step) * step
-                    if qty_dec_test.is_zero():
-                        logger.info(f"[FOOTHOLD_NEARLY_ONLY] {position_key}: remaining quantity {qty_abs:.6f} rounds to 0 — no separate maker")
-                        await release_locks(success_fill=True)
-                        return True, qty_abs + foothold_qty
-                else:
-                    logger.info(f"[FOOTHOLD_ONLY] {position_key}: qty_abs {qty_abs:.6f} <= foothold {foothold_qty:.6f} — order sent via foothold webhook, no separate maker")
-                    await release_locks(success_fill=True)
-                    return True, qty_abs
+            # 2026-09-10 FOOTHOLD DELETED — entire order only, no small / reason slice. Single maker order for full qty_abs.
             tick = Decimal(str(symbol_conf["tick_size"]))
             step = Decimal(str(symbol_conf["step_size"]))
             qty_dec = (Decimal(str(qty_abs)) // step) * step
@@ -33402,118 +33385,8 @@ class MultiAccountTradeManager:
             return True
         return False
 
-    async def send_foothold_webhook(
-        self,
-        position_key,
-        account_key,
-        symbol,
-        foothold_qty,
-        current_price,
-        side,
-        position_side,
-        reason,
-    ):
-        # 2026-09-10 FINANDY DEAD — replaced webhook with direct Binance MARKET order (user mandate).
-        # OLD WEBHOOK CODE COMMENTED OUT BELOW — kept for reference, now executes direct market order.
-        if account_key not in self.accounts:
-            logger.error(
-                f"[s end_foothold_webhook] Account '{account_key}' not found in self.accounts for {position_key}"
-            )
-            return False
-        is_opening_or_augmenting = self.is_same_direction(side, position_side)
-        foothold_usd_value = abs(foothold_qty * current_price)
-        # --- DIRECT BINANCE MARKET ORDER (replaces Finandy webhook) ---
-        try:
-            account = self.accounts.get(account_key)
-            if not account or not getattr(account, "client", None):
-                logger.error(f"[FOOTHOLD_MARKET_FAIL] {position_key}: no client for {account_key}")
-                return False
-            client = account.client
-            symbol_conf = self.get_symbol_config(symbol)
-            if not symbol_conf:
-                await self.load_symbol_configs()
-                symbol_conf = self.get_symbol_config(symbol)
-            if not symbol_conf:
-                logger.error(f"[FOOTHOLD_MARKET_FAIL] {position_key}: no symbol_conf for {symbol}")
-                return False
-            step = Decimal(str(symbol_conf["step_size"]))
-            qty_dec = (Decimal(str(abs(foothold_qty))) // step) * step
-            if qty_dec.is_zero():
-                logger.warning(f"[FOOTHOLD_MARKET_ZERO] {position_key}: qty {foothold_qty} -> 0 after step {step}")
-                return False
-            qty_str = f"{qty_dec}"
-            _exec_now_wire_tripwire("direct_market:send_foothold_webhook", position_key, reason)
-            order = await asyncio.to_thread(
-                client.futures_create_order,
-                symbol=symbol,
-                side=side,
-                positionSide=position_side,
-                type=ORDER_TYPE_MARKET,
-                quantity=qty_str,
-            )
-            logger.info(f"[{position_key}] {reason} FOOTHOLD_MARKET_SENT qty={qty_str} usd=${foothold_usd_value:.2f} order={order.get('orderId','?')} status={order.get('status','?')}")
-            # UNIVERSAL HEDGE PERSIST (foothold path) — preserved
-            try:
-                _r_upper = str(reason or "").upper()
-                _is_hedge_fh = (
-                    "HEDGE_ELECTED_" in _r_upper
-                    or "HEDGE_PROTECT_" in _r_upper
-                    or "HEDGE_SAME_" in _r_upper
-                    or "QUICK_HEDGE_" in _r_upper
-                ) and is_opening_or_augmenting
-                if _is_hedge_fh and hasattr(self, "hedge_engine") and self.hedge_engine:
-                    import re as _re_fh
-                    _hedge_for_fh = None
-                    _m_fh = _re_fh.search(r"HEDGE_ELECTED_([A-Z0-9]+USD[TC]?)_(LONG|SHORT)", _r_upper)
-                    if _m_fh:
-                        _hedge_for_fh = f"{account_key}:{_m_fh.group(1)}_{_m_fh.group(2)}"
-                    elif _re_fh.search(r"HEDGE_PROTECT_(LONG|SHORT)_LOSS", _r_upper):
-                        _opp_fh = "SHORT" if position_side == "LONG" else "LONG"
-                        _hedge_for_fh = f"{account_key}:{symbol}_{_opp_fh}"
-                    if _hedge_for_fh:
-                        _hr_fh = {
-                            "position_key": position_key,
-                            "hedge_for": _hedge_for_fh,
-                            "losing_position_key": _hedge_for_fh,
-                            "symbol": symbol,
-                            "losing_side": _hedge_for_fh.split("_")[-1],
-                            "position_side": position_side,
-                            "quantity": abs(float(qty_dec)),
-                            "price": current_price,
-                            "entry_price": current_price,
-                            "notional_usd": foothold_usd_value,
-                            "timestamp": time.time(),
-                            "is_hedge": True,
-                            "reason": reason,
-                            "opened_via": "send_foothold_webhook_market",
-                        }
-                        asyncio.create_task(self.hedge_engine.persist_hedge_record(account_key, _hr_fh))
-                        logger.warning(f"🪪 [UNIVERSAL_HEDGE_PERSIST_FOOTHOLD] {position_key}: persist queued (hedge_for={_hedge_for_fh})")
-            except Exception as _ehpf:
-                logger.error(f"[UNIVERSAL_HEDGE_PERSIST_FOOTHOLD_ERR] {position_key}: {_ehpf}")
-            if hasattr(self, "positions_service") and self.positions_service:
-                asyncio.create_task(self.positions_service.fetch_positions(account_key))
-            return True
-        except BinanceAPIException as e:
-            logger.error(f"[{position_key}] {reason} FOOTHOLD_MARKET_API_ERROR code={e.code} msg={e.message}")
-            return False
-        except Exception as e:
-            logger.error(f"[{position_key}] {reason} FOOTHOLD_MARKET_ERROR: {e}")
-            return False
-        # --- OLD WEBHOOK CODE (Finandy) COMMENTED OUT — DO NOT RE-ENABLE ---
-        # account = self.accounts[account_key]
-        # webhook_url = account.webhook_url
-        # webhook_secret = account.webhook_secret
-        # payload = {"name": f"{reason}", "secret": webhook_secret, "symbol": symbol, "side": side, "positionSide": position_side,
-        #            **({"open": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "type": "market"}} if is_opening_or_augmenting else {}),
-        #            **({"dca": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "side": side, "type": "market"}} if is_opening_or_augmenting else {}),
-        #            **({"close": {"type": "market", "decrease": {"type": "sumUsd", "amount": str(foothold_usd_value)}}} if not is_opening_or_augmenting else {}),}
-        # try:
-        #     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=10, limit_per_host=5, force_close=False)) as session:
-        #         async with session.post(webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=40, connect=20)) as resp:
-        #             await resp.text()
-        #         logger.info(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT")
-        # except Exception as e: logger.error(...); return False
+    # 2026-09-10 FOOTHOLD DELETED — send_foothold_webhook removed; entire order only via place_maker_order → send_webhook MARKET fallback.
+    # Stubs kept only if external callers import it: deleted implementation, no small / reason slice.
 
     async def send_webhook(
         self,
