@@ -1,32 +1,43 @@
 {
- "generated_at": "2026-09-10 08:11 UTC",
- "total_capital_usd": 7.36,
+ "generated_at": "2026-09-10 08:46 UTC",
+ "total_capital_usd": 11.67,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.36,
+  "B": 11.66,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:SPCXUSD1_LONG"
+ "losers": [],
+ "mediocre": [
+  "inf:USARUSDT_SHORT"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SPCXUSD1_LONG",
-   "symbol": "SPCXUSD1",
-   "account": "ang",
-   "value_usd": 7.36,
-   "gain_pct": -2.506,
+   "pk": "inf:USARUSDT_SHORT",
+   "symbol": "USARUSDT",
+   "account": "inf",
+   "value_usd": 5.98,
+   "gain_pct": 0.138,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.05,
-   "mark": 147.12905833
+   "amt": 0.35,
+   "mark": 17.08636749
+  },
+  {
+   "pk": "inf:RKLBUSDT_SHORT",
+   "symbol": "RKLBUSDT",
+   "account": "inf",
+   "value_usd": 5.68,
+   "gain_pct": -0.142,
+   "tier": "B",
+   "perf_mult": 5.36,
+   "amt": 0.09,
+   "mark": 63.16651238
   }
  ]
 }
