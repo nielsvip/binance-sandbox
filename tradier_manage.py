@@ -19858,17 +19858,23 @@ class StockStrategy:
             if _wt1_4h < _wt2_4h: _wt_fav += 1
         logger.info(f"[REENTRY_GATE] {symbol} {'L' if is_long else 'S'}: wt_fav={_wt_fav}/4 5m={_wt1_5m:.0f}/{_wt2_5m:.0f} 15m={_wt1_15m:.0f}/{_wt2_15m:.0f} 1h={_wt1_1h:.0f}/{_wt2_1h:.0f} 4h={_wt1_4h:.0f}/{_wt2_4h:.0f} k5m={k_5m_t2:.0f}/prev={k_5m_prev_t2:.0f}")
         if _wt_fav >= 2:
-            # STOCH GATE: k_5m favorable (LONG: <50 rising; SHORT: >50 falling).
-            # 2026-06-09: when overdue (>2h) AND wt_fav>=2, bypass stoch entirely — k5m=50 was
-            # blocking GLD (26h overdue) and USO (24h overdue) because 50 is NOT < 50.0.
+            # STOCH GATE: 2026-09-10 REENTRY FIX STOCKS: <50→<65 (>50→>35) + bar-turn bypass. Old 50 blocked valid 55-65 continuations where WT already favors.
             _stoch_overdue = last_red_age_min >= 120.0
-            if not _stoch_overdue:
-                if is_long and not (k_5m_t2 < 50.0 and k_5m_t2 > k_5m_prev_t2):
-                    logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
-                    return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_lt50_rising", 0.0, 0.0
-                if not is_long and not (k_5m_t2 > 50.0 and k_5m_t2 < k_5m_prev_t2):
-                    logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
-                    return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_gt50_falling", 0.0, 0.0
+            # Bar-turn on 5m (stocks 5m = crypto 3m): HH/HL for LONG, LL/LH for SHORT lifts stoch gate
+            _bar_h = float(i.get('high_5m', 0) or i.get('high_15m', 0) or 0)
+            _bar_h_prev = float(i.get('high_5m_prev', 0) or i.get('high_15m_prev', 0) or 0)
+            _bar_l = float(i.get('low_5m', 0) or i.get('low_15m', 0) or 0)
+            _bar_l_prev = float(i.get('low_5m_prev', 0) or i.get('low_15m_prev', 0) or 0)
+            _bar_turn_long = _bar_h > 0 and _bar_h_prev > 0 and _bar_h > _bar_h_prev and _bar_l > _bar_l_prev
+            _bar_turn_short = _bar_h > 0 and _bar_h_prev > 0 and _bar_h < _bar_h_prev and _bar_l < _bar_l_prev
+            _bar_turn_ok = _bar_turn_long if is_long else _bar_turn_short
+            if not _stoch_overdue and not _bar_turn_ok:
+                if is_long and not (k_5m_t2 < 65.0 and k_5m_t2 > k_5m_prev_t2):
+                    logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue} bar_turn={_bar_turn_ok}")
+                    return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_lt65_rising", 0.0, 0.0
+                if not is_long and not (k_5m_t2 > 35.0 and k_5m_t2 < k_5m_prev_t2):
+                    logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue} bar_turn={_bar_turn_ok}")
+                    return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_gt35_falling", 0.0, 0.0
             else:
                 logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_BYPASSED overdue={last_red_age_min:.0f}m k5m={k_5m_t2:.0f} wt_fav={_wt_fav}")
             # RALLY GATE: optional k15m level cap + HTF WT count (sweep knobs)
@@ -19968,7 +19974,9 @@ class StockStrategy:
         _m_ret = float(_cfg_auto('GOLDEN_RULE_MULT_RETEST', 5.0))
         size_mult = 1.0
         dc_info = "above_basis"
-        if _cfg_auto('GOLDEN_RULE_ENABLED', True):
+        # 2026-09-10 REENTRY FIX STOCKS: golden block OFF for reentry (trend continuation should reenter even if extended). Guarded by WT2of3 + stoch.
+        _golden_reentry_block = bool(_cfg_auto('REENTRY_GOLDEN_BLOCK_ENABLED', False))
+        if _cfg_auto('GOLDEN_RULE_ENABLED', True) and _golden_reentry_block:
             if is_long:
                 _above_dch = dc_high_1h > 0 and current_price > dc_high_1h
                 _above_bbu = bb_upper_1h > 0 and current_price > bb_upper_1h

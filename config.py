@@ -832,7 +832,7 @@ class Config:
     # inside ez_manage immediately after exits. Daemon subprocess owns this path now.
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True   # 2026-09-04 CORRECTED per user: NOT FALSE — too late is feature, last resort if bounce missed (user: IT NEEDS TO BE ON AS A LAST RESORT IF YOU FUCKED UP AND DID NT GET BACK IN INTIME). 5s interval + 0.10% pct + 300s gap = late guarantee.
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
-    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.10  # 2026-07-08 GAINMO anti-churn: 0.0→0.10 — daemon reentry requires 0.10% price improvement past the cross (bare cross-back was #1 fill reason; commission = 41% of the 16d loss)
+    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.001  # 2026-09-10 REENTRY FIX CRYPTO: was 0.10 (10% as fraction — BUG, blocked 99% of guaranteed reentries). 0.001 = 0.10% improvement as intended (comment said 0.10% but value was 10%). Restores last-resort guarantee. ROLLBACK: 0.10
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0   # 2026-09-07 UNLOCK obligatory reentry per user — was 300 (5min anti-churn). Lowered to 60s so daemon guarantee reentry fires within 1min while obligatory. Commission churn not observed on FLZ at current 48-hold. ROLLBACK: 300.
     # 2026-06-03 DISABLED — DO NOT re-enable in the daemon. The reentry DAEMON has NO indicators
     # (Redis indicators:{sym} keys don't exist on its 6379 feed → dc_high4_3m always 0), so this
@@ -851,7 +851,7 @@ class Config:
     # all route through execute_now. Reuses the existing _recent_reduces stamp. DEFAULT-OFF — proven in
     # backtest/counterfactual before enabling live. ROLLBACK: RECENT_REDUCTION_GUARD_ENABLED=False.
     RECENT_REDUCTION_GUARD_ENABLED: bool = True   # 2026-06-03 ENABLED (USER: crypto churning) — blocks bare exit-price cross-back re-adds (DAEMON_PRICE_CROSS_REENTRY/QUICK_OPEN/WT_3M_ESCALATE) within WINDOW_S of a reduce unless a genuine Donchian breakout. ROLLBACK: False.
-    RECENT_REDUCTION_GUARD_WINDOW_S: float = 450.0   # 2026-09-09 USER: 900→450s (7.5min). ROLLBACK: 900 / 3600.
+    RECENT_REDUCTION_GUARD_WINDOW_S: float = 300.0   # 2026-09-10 REENTRY FIX CRYPTO: 450→300s (5min) — 450 blocked valid 5-7min trend continuations (golden DC-break). 300 keeps anti-churn (3 fires/tick + DC filter) but recaptures missed rallies. Stocks stays 450. ROLLBACK: 450.
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
     # 2026-06-03 USER MANDATE: S1 = live trader, Mac = testing only. On a NON-server box, execute_now
     # + send_webhook refuse live orders when the server holds a fresh heartbeat for the account → no
@@ -1559,8 +1559,8 @@ class Config:
     REENTRY_BAR_TURN_ENABLED: bool = True  # 2026-09-09 USER: soften confirmation — also open if WT not flipped but 3m bar turning (HH/HL long, LL/LH short)
     REENTRY_BAR_TURN_TF: str = "3m"  # TF for bar-turn check (3m crypto, 5m stocks via fallback)
     REENTRY_BAR_TURN_REQUIRE_BOTH: bool = False  # False=HH or HL fires, True=need both HH and HL
-    REENTRY_STOCH_K_MAX_LONG: float = 40.0
-    REENTRY_STOCH_K_MIN_SHORT: float = 60.0
+    REENTRY_STOCH_K_MAX_LONG: float = 80.0  # 2026-09-10 REENTRY FIX CRYPTO: was 40 (over-strict — 75% of bars went EXTREME requiring 2-WT). 80 restores SAFE single-WT path for most reentries; extreme still protects >80 (<- last churn fix over-corrected)
+    REENTRY_STOCH_K_MIN_SHORT: float = 20.0  # was 60 — mirror fix (SAFE unless <20)
     REENTRY_WAVETREND_CONFIRM_ENABLED: bool = True
     # 2026-05-21 USER: bypass MTF_FILTER for STRONG_BUY and QUICK_OPEN reasons. Same pattern as
     # DELTA_GATE_STRONG_BUY_QUICK_BYPASS — MTF state wipes every restart and takes hours to re-arm,

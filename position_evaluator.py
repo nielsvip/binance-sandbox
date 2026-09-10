@@ -191,11 +191,11 @@ def evaluate_reentry_core(
             return ReentrySignal(reason=f'B12_WT_MOM_LONG_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty_base)
         if not is_long and wt1_3m < wt2_3m and wt1_15m < wt2_15m and wt1_1h < wt2_1h and wt_vel_3m < -1.0:
             return ReentrySignal(reason=f'B12_WT_MOM_SHORT_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty_base)
-    # B14: HA TREND CONFIRMATION
+    # B14: HA TREND CONFIRMATION — 2026-09-10 REENTRY FIX: k3m<60→<70 / >40→>30 (was blocking 60-70 range that is still trend-continuation; HA 3× already confirms trend)
     if getattr(config, 'REENTRY_B14_HA_TREND_ENABLED', True):
-        if is_long and _ha_val(ha_3m) == 1 and _ha_val(ha_15m) == 1 and _ha_val(ha_1h) == 1 and k_3m < 60:
+        if is_long and _ha_val(ha_3m) == 1 and _ha_val(ha_15m) == 1 and _ha_val(ha_1h) == 1 and k_3m < 70:
             return ReentrySignal(reason=f'B14_HA_TREND_LONG_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty_base)
-        if not is_long and _ha_val(ha_3m) == -1 and _ha_val(ha_15m) == -1 and _ha_val(ha_1h) == -1 and k_3m > 40:
+        if not is_long and _ha_val(ha_3m) == -1 and _ha_val(ha_15m) == -1 and _ha_val(ha_1h) == -1 and k_3m > 30:
             return ReentrySignal(reason=f'B14_HA_TREND_SHORT_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty_base)
     # B10: STOCHASTIC REVERSAL
     if getattr(config, 'REENTRY_B10_STOCH_REV_ENABLED', True):
@@ -222,9 +222,9 @@ def evaluate_reentry_core(
     if getattr(config, 'REENTRY_B16_MIDRANGE_ENABLED', True):
         _dc_span_1h = max(dc_high_1h - dc_low_1h, 1e-9) if dc_high_1h > 0 and dc_low_1h > 0 else 0
         _dc_pos_1h = (current_price - dc_low_1h) / _dc_span_1h if _dc_span_1h > 0 else 0.5
-        if is_long and _dc_pos_1h > 0.5 and wt1_15m > wt2_15m and wt_vel_15m > 0 and k_15m < 78:
+        if is_long and _dc_pos_1h > 0.5 and wt1_15m > wt2_15m and wt_vel_15m > 0 and k_15m < 85:  # 2026-09-10: 78→85 (trend continuation often 78-85)
             return ReentrySignal(reason=f'B16_MIDRANGE_LONG_dcpos={_dc_pos_1h:.2f}_wt15={wt1_15m:.0f}_k15={k_15m:.0f}', conviction=68.0, quantity=re_qty_base)
-        if not is_long and _dc_pos_1h < 0.5 and wt1_15m < wt2_15m and wt_vel_15m < 0 and k_15m > 22:
+        if not is_long and _dc_pos_1h < 0.5 and wt1_15m < wt2_15m and wt_vel_15m < 0 and k_15m > 15:  # 22→15
             return ReentrySignal(reason=f'B16_MIDRANGE_SHORT_dcpos={_dc_pos_1h:.2f}_wt15={wt1_15m:.0f}_k15={k_15m:.0f}', conviction=68.0, quantity=re_qty_base)
     return None
 

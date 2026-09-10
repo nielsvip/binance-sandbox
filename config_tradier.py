@@ -1298,7 +1298,10 @@ class TradierConfig:
     # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict
     REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20
     REENTRY_RALLY_HTF_MIN: int = 3          # 2026-04-18: sqlite reentry analysis — wt_all3 avg_sharpe 0.1036 vs wt_2of3 -0.0468. Was 2.
-    TRADIER_REENTRY_HARDCOOL_MIN: float = 30.0  # 2026-04-26 NEW: was hardcoded at tradier_manage.py:5392. Default 30 preserves prior behavior. Sweep candidate values: 5/10/15/30. Lower → more reentry surface (helps reentry_rate=3.7% problem) but risk of churn the 30-min was originally protecting against.
+    TRADIER_REENTRY_HARDCOOL_MIN: float = 15.0  # 2026-09-10 REENTRY FIX STOCKS: 30→15min (crypto proven 300s/5min recaptures continuations). Stocks need slightly longer than crypto but 30 blocked valid 15-25m bounces (REENTRY_PENDING logs 30m overdue). 15 keeps churn guard (PRICE_CROSS_BACK 0.3% + WT2of3) but doubles reentry surface. ROLLBACK: 30.0
+    REENTRY_STOCH_K_MAX_LONG: float = 80.0  # 2026-09-10 STOCKS ALIGN CRYPTO: was default 40 via fallback (over-strict). 80 restores SAFE single-WT path
+    REENTRY_STOCH_K_MIN_SHORT: float = 20.0
+    REENTRY_GOLDEN_BLOCK_ENABLED: bool = False  # 2026-09-10 STOCKS: golden DC-high block was killing trending reentries (price>dc_high 1h). OFF for reentry — trend continuation should reenter even if extended; HTF WT still protects
     TRADIER_REENTRY_ANTI_CHURN_ENABLED: bool = False  # 2026-05-10 USER MANDATE: REENTRY guaranteed — ANTI_CHURN_exit_score gate was blocking reentries when wt_dc still indicated exit. Default OFF.
     TRADIER_REENTRY_RZ_BLOCK_ENABLED: bool = False    # 2026-05-10 USER MANDATE: REENTRY guaranteed — RZ_BLOCK_REENTRY_LONG_AT_TOP / SHORT_AT_BOTTOM gate was blocking reentries via DELTA zone. Default OFF.
     # P2-D: REENTRY_BREAKOUT — re-enter after DC break, structural stop if price falls back through breakout level
