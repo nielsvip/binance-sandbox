@@ -2721,5 +2721,14 @@
     ],
     "timestamp": "2026-09-10T21:20:18.127386+00:00",
     "price": 0.03385433
+  },
+  {
+    "symbol": "SUNUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-10T21:31:54.831235+00:00",
+    "price": 0.016817
   }
 ]
