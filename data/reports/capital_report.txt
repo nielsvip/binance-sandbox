@@ -1,19 +1,20 @@
-CAPITAL ALLOCATION REPORT — 2026-09-10 06:11 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-10 06:58 UTC
 ================================================================================
-Total capital deployed: $7.37 across 1 positions
+Total capital deployed: $85.38 across 2 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $      7.37 (100.0%) — 1 positions
-  Tier C: $      0.00 (  0.0%) — 0 positions
+  Tier B: $      6.99 (  8.2%) — 1 positions
+  Tier C: $     78.39 ( 91.8%) — 1 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
+  ** C-tier OVERWEIGHT: 92% vs target <20% — reduce poor performers **
 
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
 LOSERS — reduce allocation (C-tier or losing) [1]:
-                    ang:SPCXUSD1_LONG  $    7.37  gain=-2.38%  tier=B  mult=1.00
+                    flz:BTCUSDC_SHORT  $   78.39  gain=-0.28%  tier=C  mult=0.60
 
 MEDIOCRE — capital sitting idle [0]:
   (none)
