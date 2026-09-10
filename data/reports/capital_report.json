@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-10 05:21 UTC",
- "total_capital_usd": 13.32,
+ "generated_at": "2026-09-10 05:58 UTC",
+ "total_capital_usd": 93.16,
  "tier_capital": {
   "A": 0.0,
-  "B": 13.31,
+  "B": 93.16,
   "C": 0.0
  },
  "tier_count": {
@@ -12,33 +12,30 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "men:ETHFIUSDC_LONG",
-  "men:AXSUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:ETHFIUSDC_LONG",
-   "symbol": "ETHFIUSDC",
-   "account": "men",
-   "value_usd": 6.91,
-   "gain_pct": -0.715,
+   "pk": "flz:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 79.73,
+   "gain_pct": 0.377,
    "tier": "B",
-   "perf_mult": 3.39,
-   "amt": 11.1,
-   "mark": 0.6227
+   "perf_mult": 2.81,
+   "amt": 191.8,
+   "mark": 0.4157
   },
   {
-   "pk": "men:AXSUSDT_SHORT",
-   "symbol": "AXSUSDT",
-   "account": "men",
-   "value_usd": 6.4,
-   "gain_pct": -0.563,
+   "pk": "flz:HYPEUSDT_SHORT",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 13.43,
+   "gain_pct": -0.302,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 7.0,
-   "mark": 0.91492463
+   "perf_mult": 1.01,
+   "amt": 0.16,
+   "mark": 83.92182857
   }
  ]
 }
