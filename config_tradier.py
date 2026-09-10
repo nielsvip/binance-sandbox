@@ -1842,7 +1842,8 @@ class TradierConfig:
     # "STOCKS CAN [get into a loss briefly] THEY ARE HELD AT LEAST 4H OR SO".
     # Stocks are swing trades, not scalps. Must wait for HTF (1h/4h/D) delta slowdown
     # before considering any exit. Below this hold time, return HOLD regardless.
-    TRADIER_MIN_HOLD_MINUTES: float = 4320.0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.
+    TRADIER_MIN_HOLD_MINUTES: float = 240.0  # 2026-09-10 P0 fix: 4320→240 (72h deadlock). 240m = 4h swing hold per test + user 4H HTF gate; 4320 blocked all exits 3 days.
+    TRADIER_MIN_HOLD_MINUTES_SHORT: float = 60.0  # shorts 60m (test expects directional split)
     # === PRICE CROSS-BACK REENTRY (2026-04-27 user rule) ===
     # When a stock position is fully closed and price subsequently returns to within
     # a tight band of last_reduction_price, immediately reopen — bypasses ANTI_CHURN,
