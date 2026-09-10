@@ -2802,5 +2802,14 @@
     ],
     "timestamp": "2026-09-10T22:01:39.474999+00:00",
     "price": 7.52419076
+  },
+  {
+    "symbol": "RKLBUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-10T22:19:06.986769+00:00",
+    "price": 62.19751619
   }
 ]
