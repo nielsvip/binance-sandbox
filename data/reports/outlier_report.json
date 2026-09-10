@@ -5,31 +5,31 @@
    "symbol": "RUNEUSDT",
    "type": "STALE_ACTIVITY",
    "severity": "WARNING",
-   "idle_h": 7.4
+   "idle_h": 7.6
   },
   {
    "position_key": "fin:RLCUSDT_SHORT",
    "symbol": "RLCUSDT",
    "type": "STALE_ACTIVITY",
    "severity": "WARNING",
-   "idle_h": 7.2
+   "idle_h": 7.4
   },
   {
    "position_key": "fin:INXUSDT_SHORT",
    "symbol": "INXUSDT",
    "type": "STALE_ACTIVITY",
    "severity": "WARNING",
-   "idle_h": 7.2
+   "idle_h": 7.5
   },
   {
    "position_key": "fin:TIAUSDC_SHORT",
    "symbol": "TIAUSDC",
    "type": "STALE_ACTIVITY",
    "severity": "WARNING",
-   "idle_h": 7.1
+   "idle_h": 7.3
   }
  ],
- "last_scan": "2026-09-10T22:50:54.809442+00:00",
+ "last_scan": "2026-09-10T23:06:58.007067+00:00",
  "summary": {
   "stuck": 0,
   "runaway_loss": 0,

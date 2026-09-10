@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-10 22:03 UTC",
- "total_capital_usd": 11.99,
+ "generated_at": "2026-09-10 23:03 UTC",
+ "total_capital_usd": 11.9,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.99,
+  "B": 11.9,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "men:GALAUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
    "pk": "men:GALAUSDT_SHORT",
    "symbol": "GALAUSDT",
    "account": "men",
-   "value_usd": 11.99,
-   "gain_pct": -0.096,
+   "value_usd": 11.9,
+   "gain_pct": 1.134,
    "tier": "B",
    "perf_mult": 0.63,
    "amt": 7021.0,
-   "mark": 0.00170788
+   "mark": 0.0016943
   }
  ]
 }

@@ -2829,5 +2829,14 @@
     ],
     "timestamp": "2026-09-10T22:35:53.538111+00:00",
     "price": 0.003653
+  },
+  {
+    "symbol": "WENUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-10T22:54:53.790655+00:00",
+    "price": 7.45296395
   }
 ]

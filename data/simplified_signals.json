@@ -3,9 +3,9 @@
         "latest_crossover_price_3m": 0.002719,
         "previous_crossover_price_3m": 0.002719,
         "crossover_3m": false,
-        "latest_crossunder_price_3m": 0.002724,
+        "latest_crossunder_price_3m": 0.00265834,
         "previous_crossunder_price_3m": 0.002724,
-        "crossunder_3m": false,
+        "crossunder_3m": true,
         "latest_crossover_price_15m": 0.002726,
         "previous_crossover_price_15m": 0.002785,
         "crossover_15m": false,
@@ -4960,7 +4960,7 @@
         "crossunder_D": false
     },
     "QNTUSDT": {
-        "latest_crossover_price_3m": 65.39,
+        "latest_crossover_price_3m": 64.82,
         "previous_crossover_price_3m": 65.39,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 65.51,
@@ -6848,8 +6848,8 @@
         "crossunder_D": true
     },
     "VETUSDT": {
-        "latest_crossover_price_3m": 0.00773671,
-        "previous_crossover_price_3m": 0.008051,
+        "latest_crossover_price_3m": 0.00761879,
+        "previous_crossover_price_3m": 0.00773671,
         "crossover_3m": false,
         "latest_crossunder_price_3m": 0.008339,
         "previous_crossunder_price_3m": 0.008311,
@@ -8291,8 +8291,8 @@
         "latest_crossover_price_3m": 0.02248,
         "previous_crossover_price_3m": 0.0222,
         "crossover_3m": true,
-        "latest_crossunder_price_3m": 0.02266,
-        "previous_crossunder_price_3m": 0.0228,
+        "latest_crossunder_price_3m": 0.02234506,
+        "previous_crossunder_price_3m": 0.02266,
         "crossunder_3m": true,
         "latest_crossover_price_15m": 0.02273,
         "previous_crossover_price_15m": 0.02297,
@@ -9992,9 +9992,9 @@
         "crossunder_D": true
     },
     "WLFIUSDC": {
-        "latest_crossover_price_3m": 0.05605,
+        "latest_crossover_price_3m": 0.05629293,
         "previous_crossover_price_3m": 0.05605,
-        "crossover_3m": false,
+        "crossover_3m": true,
         "latest_crossunder_price_3m": 0.05650483,
         "previous_crossunder_price_3m": 0.05641647,
         "crossunder_3m": false,
