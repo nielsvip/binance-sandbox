@@ -5513,5 +5513,50 @@
     ],
     "timestamp": "2026-09-10T07:19:34.377260+00:00",
     "price": 332.26
+  },
+  {
+    "symbol": "NVOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-10T07:30:22.736601+00:00",
+    "price": 44.87519308
+  },
+  {
+    "symbol": "GSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 18.9x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-10T07:31:23.121105+00:00",
+    "price": 1033.30199306
+  },
+  {
+    "symbol": "PLTRUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.2x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-10T07:31:23.121105+00:00",
+    "price": 169.1
+  },
+  {
+    "symbol": "METAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-10T07:37:55.037910+00:00",
+    "price": 655.21886833
+  },
+  {
+    "symbol": "SPXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-10T07:41:56.383472+00:00",
+    "price": 0.49120708
   }
 ]

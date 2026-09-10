@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-09-10T07:22:29.155144+00:00",
+  "timestamp": "2026-09-10T07:42:45.532451+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 157
   },
   "unified_ranking": [
+    {
+      "symbol": "LPTUSDT",
+      "net_score": -12.3,
+      "long_score": 0,
+      "short_score": 12.3
+    },
+    {
+      "symbol": "WUSDT",
+      "net_score": -11.0,
+      "long_score": 0,
+      "short_score": 11.0
+    },
     {
       "symbol": "MRVLUSDT",
       "net_score": 0,
@@ -547,12 +559,6 @@
       "short_score": 0
     },
     {
-      "symbol": "LPTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ORDIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -644,12 +650,6 @@
     },
     {
       "symbol": "ALGOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "WUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -950,7 +950,18 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "LPTUSDT",
+      12.3,
+      1.405
+    ],
+    [
+      "WUSDT",
+      11.0,
+      0.009617
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

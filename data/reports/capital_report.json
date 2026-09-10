@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-09-10 07:11 UTC",
- "total_capital_usd": 7.37,
+ "generated_at": "2026-09-10 07:36 UTC",
+ "total_capital_usd": 7.0,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.37,
-  "C": 0.0
+  "B": 0.0,
+  "C": 7.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:SPCXUSD1_LONG"
+  "men:1000SHIBUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SPCXUSD1_LONG",
-   "symbol": "SPCXUSD1",
-   "account": "ang",
-   "value_usd": 7.37,
-   "gain_pct": -2.344,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.05,
-   "mark": 147.37384651
+   "pk": "men:1000SHIBUSDC_SHORT",
+   "symbol": "1000SHIBUSDC",
+   "account": "men",
+   "value_usd": 7.0,
+   "gain_pct": -0.002,
+   "tier": "C",
+   "perf_mult": 0.5,
+   "amt": 1356.0,
+   "mark": 0.00516564
   }
  ]
 }
