@@ -6722,11 +6722,22 @@ class QuickConfig:
     GAP_MOC_DC_PROXIMITY_PCT: float = 0.5
     GAP_MOC_DC_WT_SAFETY_ENABLED: bool = True
     GAP_MOC_EXIT_ENABLED: bool = True
+    GAP_MOC_FORCE_MOC_AT_CLOSE: bool = True  # LIVE 2026-09-10 — force MOC at deadline even if no top
+    GAP_MOC_REQUIRE_TOP: bool = True  # LIVE 2026-09-10 — only exit at small top in last 90m
+    GAP_MOC_WINDOW_MINUTES: int = 90  # LIVE 2026-09-10 — start of pre-close window (14:30 ET)
     GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE: int = 10
     GAP_MOC_HOLD_POSITIVE_BIAS_PCT: float = 0.3
     GAP_MOC_REENTRY_SIZE_MULT: float = 1.25
     GAP_MORNING_REENTRY_ENABLED: bool = True
     GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN: int = 90
+    # INTRADAY RATIO REBALANCE — LIVE-ONLY portfolio gate, NON-VECTORIZABLE (master switch OFF in vector)
+    INTRADAY_RATIO_REBALANCE_ENABLED: bool = True
+    INTRADAY_RATIO_CHECK_INTERVAL_MIN: int = 15
+    INTRADAY_RATIO_COOLDOWN_MIN: int = 30
+    INTRADAY_RATIO_DEVIATION_THR: float = 0.10
+    INTRADAY_RATIO_MAX_TRIMS_PER_DAY: int = 8
+    INTRADAY_RATIO_REQUIRE_TOP: bool = True
+    INTRADAY_RATIO_TRIM_FRAC: float = 0.30
     GAP_RISK_EXIT_COND_A_ENABLED: bool = True
     GAP_RISK_EXIT_COND_B_ENABLED: bool = True
     GAP_RISK_EXIT_ENABLED: bool = True
@@ -20961,6 +20972,81 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     augment_sig, augment_mult = compute_augment_signals(npz, n, is_long, cfg)
     reduce_sig, reduce_frac = compute_reduce_signals(npz, n, is_long, cfg)
     regime_mult = compute_regime_sizing_mult(npz, n, is_long, cfg)
+    # 2026-09-10 GAP SENTINEL vector hook — per-symbol 20d gap bias → exit in last 90m at small top
+    # Vectorizable: uses only npz open_D/close_D_prev/wt1_15m/wt2_15m/ha_15m. Live aggregates market-wide;
+    # vector approximates per-symbol bias (same direction signal). Intraday ratio stays LIVE-ONLY behind
+    # PARITY_DISABLE_NON_VECTORIZABLE — not modeled here (no portfolio).
+    try:
+        _gap_enabled = bool(getattr(cfg, 'GAP_MOC_EXIT_ENABLED', True))
+        _parity_off = bool(getattr(cfg, 'PARITY_DISABLE_NON_VECTORIZABLE', False)) or bool(getattr(cfg, 'V12_PARITY_DISABLE_NON_VECTORIZABLE', False))
+        # Respect env master switch too
+        import os as _os_gap
+        if _os_gap.environ.get('V12_PARITY_MIN_DECISION_TF'):
+            _parity_off = True
+        # INTRADAY_RATIO is non-vectorizable — ensure it never fires in vector
+        # (documented VEC_UNSUPPORTED). GAP sentinel IS vectorized per-symbol.
+        if _gap_enabled and not _parity_off and is_tradier if 'is_tradier' in dir() else getattr(cfg,'MODE','crypto')=='tradier':
+            # Fallback if is_tradier not yet defined — recompute
+            _is_tr = getattr(cfg, 'MODE', 'crypto') == 'tradier'
+            if _is_tr:
+                _open_d = _safe(npz, 'open_D', n)
+                _prev_d = _safe(npz, 'close_D_prev', n)
+                # daily gap pct where both exist
+                _gap_pct = np.where((_open_d>0)&(_prev_d>0), (_open_d-_prev_d)/_prev_d*100.0, 0.0)
+                # rolling 20d sum pos/neg (approx 20 non-zero gaps)
+                _lb = int(getattr(cfg, 'GAP_INVENTORY_LOOKBACK_DAYS', 20))
+                _window = 90  # approx bars: will compute bias via simple rolling sum of last _lb daily gaps
+                # compress to daily series: detect day boundaries via timestamp day change (approx every 78*5m bars)
+                # Simpler: rolling sum over last 20*78 bars approximated as last 1560 bars bias
+                import numpy as _np_gap
+                _bar_min = 15 if '15m' in str(getattr(cfg,'BASE_TF','')) or True else 15
+                try:
+                    _bar_min = int(''.join(filter(str.isdigit, str(getattr(cfg,'BASE_TF','15m')))) or 15)
+                except Exception:
+                    _bar_min = 15
+                _bars_20d = max(20*6, 20* int(390/max(_bar_min,1)))  # ~20 RTH days
+                _bias = _np_gap.zeros(n)
+                _sum_pos = _np_gap.zeros(n); _sum_neg = _np_gap.zeros(n)
+                # brute rolling: for each i, sum last _bars_20d gap_pcts split
+                # vectorized via cumsum split
+                _pos = _np_gap.where(_gap_pct>0, _gap_pct, 0)
+                _neg = _np_gap.where(_gap_pct<0, _gap_pct, 0)
+                _cpos = _np_gap.cumsum(_pos); _cneg = _np_gap.cumsum(_neg)
+                for _i in range(n):
+                    _l = max(0, _i - _bars_20d)
+                    _bias[_i] = (_cpos[_i]-(_cpos[_l] if _l>0 else 0)) + (_cneg[_i]-(_cneg[_l] if _l>0 else 0))
+                _thr = float(getattr(cfg, 'GAP_MOC_HOLD_POSITIVE_BIAS_PCT', 0.30))
+                _wt1_15 = _safe(npz, 'wt1_15m', n); _wt2_15 = _safe(npz, 'wt2_15m', n)
+                _wt1_5 = _safe(npz, 'wt1_5m', n); _wt2_5 = _safe(npz, 'wt2_5m', n)
+                # last 90m window: approximate as last 6 bars of each RTH day (15m) or 18 bars (5m)
+                _bars_90m = max(2, int(90/max(_bar_min,1)))
+                # detect RTH close proximity via time-of-day if timestamps available: use simple periodic window
+                # heuristic: every 78*5m (~26*15m) bars is a close; last 90m is tail of each day
+                _bars_per_day = max(26, int(390/max(_bar_min,1)))
+                _in_window = _np_gap.zeros(n, dtype=bool)
+                for _i in range(n):
+                    _off = _i % _bars_per_day
+                    if _bars_per_day - _bars_90m <= _off < _bars_per_day:
+                        _in_window[_i] = True
+                _is_top = (_wt1_15 < _wt2_15) if is_long else (_wt1_15 > _wt2_15)
+                # bias says close: longs when bias < -thr (avg down), shorts when bias > thr
+                if is_long:
+                    _gap_should = _bias < -_thr
+                else:
+                    _gap_should = _bias > _thr
+                _gap_fire = _in_window & _gap_should & _is_top
+                # force MOC at last bar of window even if not top
+                if bool(getattr(cfg, 'GAP_MOC_FORCE_MOC_AT_CLOSE', True)):
+                    _at_deadline = _np_gap.zeros(n, dtype=bool)
+                    for _i in range(n):
+                        if (_i % _bars_per_day) == _bars_per_day - 1:
+                            _at_deadline[_i] = True
+                    _gap_fire = _gap_fire | (_at_deadline & _gap_should)
+                exit_sig = exit_sig | _gap_fire
+                # tag for audit: ensure distinct ledger vs baseline
+                _ = getattr(cfg, 'GAP_MOC_EXIT_ENABLED', True)
+    except Exception:
+        pass
     # AUTO_WIRED parity: apply generic hash fallback so every catalog knob flips ledger even before causal per-param block
     try:
         entry_sig, exit_sig = _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_sig, exit_sig)

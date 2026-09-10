@@ -1175,12 +1175,22 @@ class TradierConfig:
     # === GAP_INVENTORY + PRE-CLOSE / MORNING REENTRY (2026-09-09: harvest overnight gaps) ===
     # Tradier has no commissions — exiting on intraday tops (vv) / bottoms is free.
     # Danger is open/close gaps: inventory tracks sum(% open<close) vs sum(% open>close).
+    # Sheet logic (SPREADSHEETS/TEMPLATE.xlsx gap sheet): sum pos gaps and sum neg gaps over
+    # last month (20d) → bias = sum_pos + sum_neg. Longs close before close at any small
+    # top in last 90min when bias negative (avg open down); shorts v.v. Reenter next morning
+    # first opportunity if trend still favorable. This sentinel IS vectorized via NPZ
+    # open_D/close_D_prev per-symbol; portfolio bias aggregated market-wide live.
     GAP_INVENTORY_ENABLED: bool = True  # track cumulative gap sums to data/gap_inventory_tradier.json
     GAP_INVENTORY_FILE: str = "data/gap_inventory_tradier.json"
     GAP_INVENTORY_LOOKBACK_DAYS: int = 20  # rolling window for bias (20 trading days)
-    # Pre-close exit + morning rebuy (uses inventory bias)
+    # Pre-close sentinel window: poll every 2m from 90m before close (14:30 ET) until
+    # 10m before close (15:50 ET); exit at small top/bottom if bias says close. Force MOC
+    # at 15:59 if still not exited (gap safety fallback).
     GAP_MOC_EXIT_ENABLED: bool = True  # exit before close per inventory bias
-    GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE: int = 10  # 15:50 ET
+    GAP_MOC_WINDOW_MINUTES: int = 90  # start trimming window (90m before close = 14:30 ET)
+    GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE: int = 10  # hard MOC deadline (15:50 ET)
+    GAP_MOC_REQUIRE_TOP: bool = True  # only exit longs at small top (WT down / HA flip), shorts at bottom
+    GAP_MOC_FORCE_MOC_AT_CLOSE: bool = True  # force MOC at deadline even if no top (gap safety)
     GAP_MORNING_REENTRY_ENABLED: bool = True  # re-enter first hours if trend still right
     GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN: int = 90  # 09:30-11:00 ET window
     GAP_MOC_HOLD_POSITIVE_BIAS_PCT: float = 0.30  # if sum_pos_gap - sum_neg_gap >0.30% keep open hoping for pos gap (unless dc_4h_high danger)
@@ -1189,6 +1199,18 @@ class TradierConfig:
     GAP_MOC_DC_PROXIMITY_PCT: float = 0.50  # within 0.50% of dc_4h_high = "close to high"
     # Reentry sizing mirrors crypto: +25% after profitable gap exit
     GAP_MOC_REENTRY_SIZE_MULT: float = 1.25
+    # === INTRADAY L/S RATIO REBALANCE — LIVE-ONLY PORTFOLIO GATE (NON-VECTORIZABLE) ===
+    # Enforces portfolio long/short ratio = f(market sentiment) throughout the day by
+    # slimming down the overweight-side underperformers at favorable intraday tops/
+    # bottoms. Vector engines set PARITY_DISABLE_NON_VECTORIZABLE=True so this never
+    # fires in backtest (no portfolio to measure). Live stays ON.
+    INTRADAY_RATIO_REBALANCE_ENABLED: bool = True  # LIVE-ONLY (see BACKTEST_REPLICA_SWITCHES §16)
+    INTRADAY_RATIO_DEVIATION_THR: float = 0.10  # |actual_long - target_long| >10% triggers trim
+    INTRADAY_RATIO_CHECK_INTERVAL_MIN: int = 15  # check every 15m during market hours
+    INTRADAY_RATIO_TRIM_FRAC: float = 0.30  # trim 30% of worst performer on overweight side
+    INTRADAY_RATIO_REQUIRE_TOP: bool = True  # trim longs only at small top, shorts at bottom
+    INTRADAY_RATIO_COOLDOWN_MIN: int = 30  # don't re-trim same symbol within 30m
+    INTRADAY_RATIO_MAX_TRIMS_PER_DAY: int = 8  # safety cap
 
     # === FIRST-HOUR MOMENTUM (BACKTEST_CHANGE_MT3) ===
     # Research: First 30min > ±0.5% predicts day direction 82% of time (3,560 days, 10 symbols)

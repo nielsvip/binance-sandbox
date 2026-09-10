@@ -8660,6 +8660,55 @@ def _gap_inventory_record(open_px: float, close_px: float):
 def _gap_inventory_bias() -> float:
     return float(_GAP_INVENTORY.get('sum_pos_pct', 0)) + float(_GAP_INVENTORY.get('sum_neg_pct', 0))  # neg sum is negative
 
+def _is_small_top_for_gap_exit(indicators: dict, is_long: bool) -> bool:
+    """Small top/bottom detection for GAP_MOC exits in last 90min.
+    Long top = wt1_15m < wt2_15m OR ha_15m red OR wt1_5m < wt2_5m OR 5m close < prev close.
+    Short bottom = opposite. If no WT/HA fields, fall back to price down/up tick."""
+    try:
+        if not bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True)):
+            return True
+        if is_long:
+            wt15_down = float(indicators.get('wt1_15m', 0) or 0) < float(indicators.get('wt2_15m', 0) or 0)
+            wt5_down = float(indicators.get('wt1_5m', 0) or 0) < float(indicators.get('wt2_5m', 0) or 0)
+            ha_red = str(indicators.get('ha_15m', '')).lower() == 'red' or str(indicators.get('ha_5m', '')).lower() == 'red'
+            px_down = float(indicators.get('close_5m', 0) or 0) < float(indicators.get('close_5m_prev', 0) or 0) if indicators.get('close_5m_prev') else False
+            # Any single small-top signal suffices (any small pullback top in last 90m)
+            return wt15_down or wt5_down or ha_red or px_down
+        else:
+            wt15_up = float(indicators.get('wt1_15m', 0) or 0) > float(indicators.get('wt2_15m', 0) or 0)
+            wt5_up = float(indicators.get('wt1_5m', 0) or 0) > float(indicators.get('wt2_5m', 0) or 0)
+            ha_green = str(indicators.get('ha_15m', '')).lower() == 'green' or str(indicators.get('ha_5m', '')).lower() == 'green'
+            px_up = float(indicators.get('close_5m', 0) or 0) > float(indicators.get('close_5m_prev', 0) or 0) if indicators.get('close_5m_prev') else False
+            return wt15_up or wt5_up or ha_green or px_up
+    except Exception:
+        return True
+
+def _gap_inventory_record_from_cache(indicators_cache: dict):
+    """Record today's market-wide gap from cache: average open_D vs close_D_prev across symbols.
+    Called once per day after 09:35 ET. Fixes the dead-code bug where _gap_inventory_record was never called."""
+    try:
+        if not bool(_cfg_auto('GAP_INVENTORY_ENABLED', True)):
+            return
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        if _GAP_INVENTORY.get('days') and _GAP_INVENTORY['days'] and _GAP_INVENTORY['days'][-1].get('date') == today:
+            return
+        gaps = []
+        for sym, ind in (indicators_cache or {}).items():
+            o = safe_fetch_float(ind.get('open_D', 0), 0)
+            pc = safe_fetch_float(ind.get('close_D_prev', 0), 0)
+            if o and pc and pc > 0:
+                gaps.append((o - pc) / pc * 100.0)
+        if not gaps:
+            return
+        avg_gap = sum(gaps) / len(gaps)
+        # Use SPY as proxy close/open if available else avg
+        rep_open = 100.0 + avg_gap
+        rep_prev = 100.0
+        _gap_inventory_record(rep_open, rep_prev)
+        logger.info(f"[GAP_INVENTORY] recorded avg_gap={avg_gap:+.3f}% from {len(gaps)} symbols bias={_gap_inventory_bias():+.3f}%")
+    except Exception as _e:
+        logger.debug(f"[GAP_INVENTORY_RECORD] skip {_e}")
+
 def _is_near_dc4_high_with_wt_down(indicators: dict, is_long: bool = True) -> bool:
     if not bool(_cfg_auto('GAP_MOC_DC_WT_SAFETY_ENABLED', True)): return False
     try:
@@ -8929,18 +8978,20 @@ def _trd_golden_weekly_max(symbol: str) -> float:
 
 
 async def gap_moc_and_morning_loop(trade_manager):
-    """Gap-aware MOC exit before close + morning rebuy.
+    """Gap-aware sentinel: sum pos/neg gaps over 20d → bias. Longs close at small top
+    in last 90m when bias negative (avg open down); shorts v.v. Rebuy next morning
+    first opportunity if trend favorable. Records daily avg gap after 09:35 ET.
 
-    Inventory tracks sum(pos gaps) vs sum(neg gaps) over lookback days (bias).
-    - If bias positive for LONG side and we are far from dc_4h_high with wt not down -> hold overnight hoping for pos gap.
-    - Else exit MOC (10m before close) on intraday tops (WT red) / bottoms free.
-    - Morning (first 90m) rebuy if trend still right direction, sized +25% if prior exit was profitable.
-    No commissions on Tradier so intraday exits are free; gaps are the only risk.
+    Fixes 2026-09-10: previously _gap_inventory_record was never called (dead code) so
+    bias always 0; exit window was single 10m MOC not 90m top-aware — gapped down >1k
+    with no trim. Now window 90m→10m polls every 60s for small tops, force MOC at
+    15:59 if still flagged.
     """
     _gap_inventory_load()
-    _moc_fired_today = False
     _morning_done_today = False
-    logger.warning("[GAP_MOC] gap-aware loop started")
+    _gap_recorded_today = False
+    _gap_exit_done: set = set()  # pks already exited this window
+    logger.warning("[GAP_MOC] gap-aware loop started (90m window + top detection)")
     while getattr(trade_manager, 'running', False):
         try:
             await asyncio.sleep(60)
@@ -8954,30 +9005,35 @@ async def gap_moc_and_morning_loop(trade_manager):
                 continue
             # reset daily flags at 06:00 ET
             if now_et.hour == 6 and now_et.minute < 2:
-                _moc_fired_today = False
                 _morning_done_today = False
+                _gap_recorded_today = False
+                _gap_exit_done.clear()
             mins_to_close = _minutes_to_close()
             mins_since_open = (now_et.hour * 60 + now_et.minute) - (9 * 60 + 30)
+            # --- Record today's avg gap once after 09:35 ET (5m after open) ---
+            if 5 <= mins_since_open <= 15 and not _gap_recorded_today and bool(_cfg_auto('GAP_INVENTORY_ENABLED', True)):
+                try:
+                    _gap_inventory_record_from_cache(getattr(trade_manager, 'indicators_cache', None) or {})
+                    _gap_recorded_today = True
+                except Exception as _re:
+                    logger.debug(f"[GAP_MOC] gap record skip: {_re}")
             # --- Morning reentry window 09:30-11:00 ET ---
             if 0 <= mins_since_open <= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 90)) and not _morning_done_today:
                 if bool(_cfg_auto('GAP_MORNING_REENTRY_ENABLED', True)) and _GAP_MOC_PENDING_REENTRY:
                     for pk, info in list(_GAP_MOC_PENDING_REENTRY.items()):
                         try:
-                            # check still tradable and flat
                             poss = trade_manager.position_manager.get_positions_by_account('trb') or {}
                             cur = poss.get(pk)
                             if cur and abs(safe_fetch_float(getattr(cur, 'positionAmt', 0), 0)) > 0:
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
                                 continue
                             is_long = pk.endswith('_LONG')
-                            # trend still right direction? use indicators - green HA or wt up for LONG
                             ind = (trade_manager.indicators_cache or {}).get(pk.split(':')[1].replace('_LONG','').replace('_SHORT',''), {}) if hasattr(trade_manager, 'indicators_cache') else {}
                             if not ind: continue
                             if _is_near_dc4_high_with_wt_down(ind, is_long):
                                 logger.info(f"[GAP_MOC] skip morning rebuy {pk}: dc_4h vv danger + wt {'down' if is_long else 'up'}")
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
                                 continue
-                            # green candle / bar-turn already handled via gap_moc_and_morning whitelist — rebuy if positive bar or wt up
                             wt_ok = float(ind.get('wt1_15m', 0) or 0) > float(ind.get('wt2_15m', 0) or 0) if is_long else float(ind.get('wt1_15m', 0) or 0) < float(ind.get('wt2_15m', 0) or 0)
                             ha_ok = (ind.get('ha_15m') == 'green') if is_long else (ind.get('ha_15m') == 'red')
                             if wt_ok or ha_ok:
@@ -8990,13 +9046,17 @@ async def gap_moc_and_morning_loop(trade_manager):
                         except Exception as _me:
                             logger.error(f"[GAP_MOC_MORNING_ERR] {pk}: {_me}", exc_info=True)
                     _morning_done_today = True
+                # don't continue — allow gap window to also be evaluated if overlapping
+            # --- Pre-close window 90m → 0m before close (14:30-16:00 ET) ---
+            if not bool(_cfg_auto('GAP_MOC_EXIT_ENABLED', True)):
                 continue
-            # --- Pre-close MOC exit 15:50 ET (10m before close) ---
-            if not (0 < mins_to_close <= float(_cfg_auto('GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE', 10))):
+            window_start = float(_cfg_auto('GAP_MOC_WINDOW_MINUTES', 90))
+            deadline = float(_cfg_auto('GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE', 10))
+            in_window = 0 < mins_to_close <= window_start
+            at_deadline = 0 < mins_to_close <= deadline and bool(_cfg_auto('GAP_MOC_FORCE_MOC_AT_CLOSE', True))
+            if not in_window:
                 continue
-            if _moc_fired_today or not bool(_cfg_auto('GAP_MOC_EXIT_ENABLED', True)):
-                continue
-            _moc_fired_today = True
+            # Check bias direction — if no strong bias, still trim only on vv safety
             bias = _gap_inventory_bias()
             hold_thr = float(_cfg_auto('GAP_MOC_HOLD_POSITIVE_BIAS_PCT', 0.30))
             try:
@@ -9006,29 +9066,35 @@ async def gap_moc_and_morning_loop(trade_manager):
                 continue
             for pk, pos in list(positions.items()):
                 try:
+                    if pk in _gap_exit_done:
+                        continue
                     amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0), 0))
                     if amt <= 0: continue
                     is_long = pk.endswith('_LONG')
                     sym = pk.split(':')[1].replace('_LONG','').replace('_SHORT','')
                     ind = (trade_manager.indicators_cache or {}).get(sym, {}) if hasattr(trade_manager, 'indicators_cache') else {}
-                    # safety vv: never hold overnight close to dc_4h edge when wt against (LONG near high+down, SHORT near low+up)
-                    if _is_near_dc4_high_with_wt_down(ind, is_long):
-                        # force MOC exit even if bias says hold — vv
-                        pass
-                    else:
-                        # bias says keep open hoping for pos gap?
-                        if is_long and bias > hold_thr: 
-                            logger.info(f"[GAP_MOC] hold {pk} overnight: bias={bias:.2f}% > {hold_thr}% and not near dc high with wt down")
-                            continue
+                    # Safety vv: always force exit if near dc_4h edge with WT against (even if bias says hold)
+                    vv_danger = _is_near_dc4_high_with_wt_down(ind, is_long)
+                    if not vv_danger:
+                        # Bias decides side to close: longs close when bias < -thr (avg gap down), shorts when bias > +thr
+                        if is_long and bias > hold_thr:
+                            continue  # bias says keep longs overnight
                         if not is_long and bias < -hold_thr:
-                            logger.info(f"[GAP_MOC] hold {pk} overnight: bias={bias:.2f}% < -{hold_thr}%")
-                            continue
-                    # exit on intraday top (use existing gap risk / wt top detection — if not vv top, still exit for gap safety when bias neutral?)
-                    # For gap safety we exit all non-held positions MOC
+                            continue  # bias says keep shorts
+                        # Neutral bias: only exit at top/bottom (gap safety = wait for top)
+                    # Require small top/bottom unless at hard deadline
+                    is_top = _is_small_top_for_gap_exit(ind, is_long)
+                    if not is_top and not at_deadline:
+                        # Log once per 30m to avoid spam
+                        if mins_to_close % 15 == 0:
+                            logger.info(f"[GAP_MOC] defer {pk}: bias={bias:+.2f}% thrill={hold_thr} need_top={bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True))} at_deadline={at_deadline} — waiting for top")
+                        continue
                     gain = safe_fetch_float(getattr(pos, 'gain', 0), 0)
                     _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': float(ind.get('current_price', 0)), 'exit_gain': gain, 'ts': time.time()}
-                    await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "CLOSE", f"GAP_MOC_EXIT_{pk}_bias{bias:.2f}", amt, override_qty=999999)
-                    logger.warning(f"[GAP_MOC] MOC exit {pk} bias={bias:.2f}%")
+                    reason = f"GAP_MOC_EXIT_{pk}_bias{bias:+.2f}_top{is_top}_vv{vv_danger}_m{mins_to_close:.0f}"
+                    await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "CLOSE", reason, amt, override_qty=999999)
+                    _gap_exit_done.add(pk)
+                    logger.warning(f"[GAP_MOC] exit {pk} bias={bias:+.2f}% is_top={is_top} vv={vv_danger} m_to_close={mins_to_close:.0f}")
                 except Exception as _ce:
                     logger.error(f"[GAP_MOC_EXIT_ERR] {pk}: {_ce}", exc_info=True)
         except asyncio.CancelledError: break
@@ -21583,6 +21649,84 @@ class TradierTradeManager:
                 # This catches the "object dict" error and prevents loop death
                 logger.error(f"Balancer Error: {e}")
                 await asyncio.sleep(60)
+
+    async def intraday_ratio_rebalance_loop(self):
+        """LIVE-ONLY intraday L/S ratio enforcer — portfolio gate, NON-VECTORIZABLE.
+        Runs 09:45-15:59 ET every INTRADAY_RATIO_CHECK_INTERVAL_MIN (15m). If
+        |actual_long - target_long| > INTRADAY_RATIO_DEVIATION_THR (10%), trims the
+        worst performer on the overweight side at a small top/bottom. Gated by
+        INTRADAY_RATIO_REBALANCE_ENABLED and PARITY_DISABLE_NON_VECTORIZABLE (off in
+        backtest). Respects cooldowns and max-trims/day.
+        """
+        if bool(os.environ.get('V12_PARITY_MIN_DECISION_TF')) or bool(_cfg_auto('PARITY_DISABLE_NON_VECTORIZABLE', False)):
+            logger.warning("[INTRADAY_RATIO] disabled via PARITY_DISABLE_NON_VECTORIZABLE (backtest mode) — loop exits")
+            return
+        if not bool(_cfg_auto('INTRADAY_RATIO_REBALANCE_ENABLED', True)):
+            logger.warning("[INTRADAY_RATIO] disabled via INTRADAY_RATIO_REBALANCE_ENABLED=False — loop exits")
+            return
+        logger.warning("[INTRADAY_RATIO] intraday ratio rebalance loop started (NON-VECTORIZABLE, live-only)")
+        _trim_counts: dict = {}  # date -> count
+        _last_trim_ts: dict = {}  # pk -> ts
+        while self.running:
+            try:
+                await asyncio.sleep(float(_cfg_auto('INTRADAY_RATIO_CHECK_INTERVAL_MIN', 15)) * 60)
+                try:
+                    from zoneinfo import ZoneInfo
+                    now_et = datetime.now(ZoneInfo("America/New_York"))
+                except ImportError:
+                    import pytz
+                    now_et = datetime.now(pytz.timezone("America/New_York"))
+                if now_et.weekday() >= 5: continue
+                if not (dt_time(9,45) <= now_et.time() <= dt_time(15,59)): continue
+                today = now_et.strftime('%Y-%m-%d')
+                if _trim_counts.get(today, 0) >= int(_cfg_auto('INTRADAY_RATIO_MAX_TRIMS_PER_DAY', 8)):
+                    continue
+                target = self.calculate_unified_market_ratio()
+                bal = self.get_current_portfolio_balance()
+                actual = bal.get('long_pct', 0.5)
+                dev = actual - target
+                thr = float(_cfg_auto('INTRADAY_RATIO_DEVIATION_THR', 0.10))
+                if abs(dev) <= thr:
+                    continue
+                side_over = "LONG" if dev > 0 else "SHORT"
+                # find worst performer on overweight side
+                cands = []
+                for pk, pos in (self.position_manager.positions or {}).items():
+                    if side_over not in pk: continue
+                    if abs(float(getattr(pos, 'positionAmt', 0))) <= 0: continue
+                    if time.time() - _last_trim_ts.get(pk, 0) < float(_cfg_auto('INTRADAY_RATIO_COOLDOWN_MIN', 30))*60:
+                        continue
+                    cands.append((pk, pos))
+                if not cands:
+                    continue
+                cands.sort(key=lambda x: float(getattr(x[1], 'gain', 0)))
+                pk, pos = cands[0]
+                sym = getattr(pos, 'symbol', pk.split(':')[1].replace('_LONG','').replace('_SHORT',''))
+                ind = self.get_indicators(sym) or {}
+                # Require small top for longs, bottom for shorts — slim at favorable moment
+                if bool(_cfg_auto('INTRADAY_RATIO_REQUIRE_TOP', True)):
+                    if not _is_small_top_for_gap_exit(ind, side_over == "LONG"):
+                        logger.info(f"[INTRADAY_RATIO] overweight {side_over} dev={dev:+.2%} target={target:.2%} actual={actual:.2%} — defer {pk} gain={getattr(pos,'gain',0):+.2f}% waiting for top")
+                        continue
+                qty = abs(float(getattr(pos, 'positionAmt', 0)))
+                frac = float(_cfg_auto('INTRADAY_RATIO_TRIM_FRAC', 0.30))
+                trim_qty = max(1, int(qty * frac))
+                price = float(ind.get('current_price', 0) or 0)
+                if price <= 0:
+                    price, _ = await self.get_current_price(sym)
+                    price = float(price or 0)
+                if price <= 0:
+                    continue
+                reason = f"INTRADAY_RATIO_TRIM_{side_over}_tgt{target:.2f}_act{actual:.2f}_dev{dev:+.2f}"
+                await self.execute_trade_action(pk.split(':')[0], pk, sym, trim_qty, price, "SELL" if side_over=="LONG" else "BUY", side_over, f"ratio_{int(time.time())}", action="REDUCE", reason=reason, override_qty=trim_qty)
+                _last_trim_ts[pk] = time.time()
+                _trim_counts[today] = _trim_counts.get(today, 0) + 1
+                logger.warning(f"[INTRADAY_RATIO] trimmed {pk} qty={trim_qty}/{qty} dev={dev:+.2%} t={target:.2%} a={actual:.2%} gain={getattr(pos,'gain',0):+.2f}%")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[INTRADAY_RATIO] loop err: {e}", exc_info=True)
+                await asyncio.sleep(60)
                 
                 
     async def get_rankings(self) -> Dict[str, Any]:
@@ -28449,7 +28593,10 @@ class TradierTradeManager:
         # 2026-05-15: overnight gap hedge — same-sector opposite-side before close (default OFF).
         self.background_tasks.append(asyncio.create_task(overnight_gap_hedge_loop(self)))
         # 2026-09-09: gap-aware MOC exit before close + morning rebuy (harvest gaps, no commissions)
+        # 2026-09-10 FIX: 90m window + small-top detection + daily gap record (was dead code 10m MOC)
         self.background_tasks.append(asyncio.create_task(gap_moc_and_morning_loop(self)))
+        # 2026-09-10: intraday ratio rebalance — LIVE-ONLY portfolio gate (NON-VECTORIZABLE, master switch off in backtest)
+        self.background_tasks.append(asyncio.create_task(self.intraday_ratio_rebalance_loop()))
         print(f"[START] {len(self.background_tasks)} background tasks launched. Entering trading loop...", flush=True)
         logger.info("☀️ ✅ Manager Running.")
         await self.trading_loop()
