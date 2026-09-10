@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-10 14:42:12 UTC
+# Copilot Status — 2026-09-10 15:02:34 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-10T14:38:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:38:53
-- **STALE_INDICATORS** [tradier]  — 2026-09-10T14:39:23
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:39:23
-- **STALE_INDICATORS** [tradier]  — 2026-09-10T14:39:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:39:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:40:26
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:40:59
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:41:30
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:42:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:58:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:58:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:59:17
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T14:59:47
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T15:00:19
+- **STALE_INDICATORS** [tradier]  — 2026-09-10T15:00:49
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T15:00:49
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T15:01:23
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T15:01:53
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-10T15:02:24
 
 ## Missed Trades (trader comparison)
 
@@ -29,16 +29,16 @@ _None_
 
 **Held:** 13 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +6.7%
-- HELD: **AXON** SHORT (tradier) peak +10.1%, now +8.0%
-- HELD: **SNDK** LONG (tradier) peak +7.5%, now +-1.9%
-- HELD: **MCD** SHORT (tradier) peak +6.9%, now +6.8%
-- HELD: **BABA** SHORT (tradier) peak +6.7%, now +6.0%
-- HELD: **PYPL** SHORT (tradier) peak +6.4%, now +5.0%
-- HELD: **DELL** LONG (tradier) peak +4.8%, now +-3.9%
-- HELD: **MU** LONG (tradier) peak +4.7%, now +-2.6%
-- HELD: **VLO** LONG (tradier) peak +4.6%, now +2.4%
-- HELD: **MRVL** LONG (tradier) peak +4.5%, now +-0.9%
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +6.8%
+- HELD: **AXON** SHORT (tradier) peak +10.1%, now +8.9%
+- HELD: **SNDK** LONG (tradier) peak +7.5%, now +-2.1%
+- HELD: **MCD** SHORT (tradier) peak +7.1%, now +7.0%
+- HELD: **BABA** SHORT (tradier) peak +6.7%, now +5.7%
+- HELD: **PYPL** SHORT (tradier) peak +6.4%, now +4.7%
+- HELD: **DELL** LONG (tradier) peak +4.8%, now +-3.4%
+- HELD: **MU** LONG (tradier) peak +4.7%, now +-3.2%
+- HELD: **VLO** LONG (tradier) peak +4.6%, now +3.7%
+- HELD: **MRVL** LONG (tradier) peak +4.5%, now +-1.3%
 
 - WATCHING: **QBTS** SHORT (tradier) peaked +6.5%, exited 1m ago
 - WATCHING: **TSLA** LONG (tradier) peaked +5.2%, exited 1m ago

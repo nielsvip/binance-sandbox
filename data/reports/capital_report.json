@@ -1,30 +1,32 @@
 {
- "generated_at": "2026-09-10 14:11 UTC",
- "total_capital_usd": 7.57,
+ "generated_at": "2026-09-10 14:52 UTC",
+ "total_capital_usd": 11.94,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.57,
-  "C": 0.0
+  "B": 0.0,
+  "C": 11.94
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "men:VETUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SPCXUSD1_LONG",
-   "symbol": "SPCXUSD1",
-   "account": "ang",
-   "value_usd": 7.57,
-   "gain_pct": 0.355,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.05,
-   "mark": 151.4515969
+   "pk": "men:VETUSDT_LONG",
+   "symbol": "VETUSDT",
+   "account": "men",
+   "value_usd": 11.94,
+   "gain_pct": -0.572,
+   "tier": "C",
+   "perf_mult": 0.33,
+   "amt": 1435.0,
+   "mark": 0.008324
   }
  ]
 }
