@@ -1,22 +1,14 @@
 {
-  "generated_at": "2026-09-09T19:59:10.235909+00:00",
-  "count": 2,
+  "generated_at": "2026-09-10T13:33:32.253551+00:00",
+  "count": 1,
   "advisories": [
-    {
-      "symbol": "DHR",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.482,
-      "ts": "2026-09-09T19:59:10.235762+00:00"
-    },
     {
       "symbol": "GE",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.59 threshold=0.45",
       "score": 0.586,
-      "ts": "2026-09-09T19:59:10.235833+00:00"
+      "ts": "2026-09-10T13:33:32.252920+00:00"
     }
   ]
 }
