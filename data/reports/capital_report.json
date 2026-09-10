@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-10 12:36 UTC",
- "total_capital_usd": 5.03,
+ "generated_at": "2026-09-10 13:11 UTC",
+ "total_capital_usd": 7.27,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.03,
+  "B": 7.27,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "inf:AMZNUSDT_SHORT"
+ "losers": [
+  "ang:SPCXUSD1_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:AMZNUSDT_SHORT",
-   "symbol": "AMZNUSDT",
-   "account": "inf",
-   "value_usd": 5.03,
-   "gain_pct": -0.024,
+   "pk": "ang:SPCXUSD1_LONG",
+   "symbol": "SPCXUSD1",
+   "account": "ang",
+   "value_usd": 7.27,
+   "gain_pct": -3.608,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 0.02,
-   "mark": 251.47
+   "amt": 0.05,
+   "mark": 145.40203787
   }
  ]
 }

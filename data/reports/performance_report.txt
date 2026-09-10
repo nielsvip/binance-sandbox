@@ -1,12 +1,12 @@
-PERFORMANCE REPORT — 2026-09-10 13:03 UTC
+PERFORMANCE REPORT — 2026-09-10 13:21 UTC
 ================================================================================
-Total: 141 symbols | A=1 B=111 C=29
+Total: 141 symbols | A=1 B=110 C=30
 Window: 14 days | Min trades: 5
 
 --- TIER A (1 symbols) ---
           ZECUSDT  WR=79%  avg=+1.30%  total=+42.8%  trades= 28  mult=10.00
 
---- TIER B (111 symbols) ---
+--- TIER B (110 symbols) ---
              CRWV  WR=86%  avg=+8.10%  total=+71.0%  trades=  7  mult=6.40
              COHR  WR=100%  avg=+7.91%  total=+16.4%  trades=  2  mult=1.00
              QBTS  WR=100%  avg=+9.75%  total=+9.8%  trades=  1  mult=1.00
@@ -75,7 +75,6 @@ Window: 14 days | Min trades: 5
          INTCUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
          ADBEUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
           ARMUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  2  mult=1.00
-         AMZNUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  4  mult=1.00
          QCOMUSDT  WR=50%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
              META  WR=0%  avg=-0.03%  total=-0.0%  trades=  1  mult=1.00
          MEMEUSDT  WR=75%  avg=-0.01%  total=-0.1%  trades=  4  mult=1.00
@@ -119,13 +118,14 @@ Window: 14 days | Min trades: 5
               ARM  WR=0%  avg=-6.32%  total=-12.2%  trades=  2  mult=1.00
              HOOD  WR=0%  avg=-5.96%  total=-16.8%  trades=  3  mult=1.00
 
---- TIER C (29 symbols) ---
+--- TIER C (30 symbols) ---
          GALAUSDT  WR=27%  avg=-0.00%  total=-0.1%  trades= 15  mult=0.41
               AMD  WR=17%  avg=-0.01%  total=-0.1%  trades=  6  mult=0.55
         1INCHUSDT  WR=25%  avg=-0.01%  total=-0.1%  trades= 12  mult=0.45
     1000FLOKIUSDT  WR=0%  avg=-0.03%  total=-0.2%  trades=  6  mult=0.45
           NOTUSDT  WR=40%  avg=-0.01%  total=-0.2%  trades= 15  mult=0.61
          FLOWUSDT  WR=12%  avg=-0.03%  total=-0.2%  trades=  8  mult=0.45
+         AMZNUSDT  WR=40%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.80
           BTCUSDC  WR=41%  avg=-0.01%  total=-0.3%  trades= 34  mult=0.58
           CRMUSDT  WR=20%  avg=-0.08%  total=-0.4%  trades=  5  mult=0.60
          LINKUSDC  WR=44%  avg=-0.03%  total=-0.5%  trades= 16  mult=0.68
@@ -151,7 +151,7 @@ Window: 14 days | Min trades: 5
               SLV  WR=0%  avg=-3.95%  total=-30.5%  trades=  9  mult=0.22
 
 SUMMARY:
-  Total PnL (all symbols): -49.5%
+  Total PnL (all symbols): -49.8%
   Avg win rate: 46%
   A-tier avg mult: 10.00
-  C-tier avg mult: 0.49
+  C-tier avg mult: 0.50
