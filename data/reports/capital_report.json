@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-09-10 09:11 UTC",
- "total_capital_usd": 7.36,
+ "generated_at": "2026-09-10 09:51 UTC",
+ "total_capital_usd": 6.91,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.36,
-  "C": 0.0
+  "B": 0.0,
+  "C": 6.91
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:SPCXUSD1_LONG"
+  "men:KASUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SPCXUSD1_LONG",
-   "symbol": "SPCXUSD1",
-   "account": "ang",
-   "value_usd": 7.36,
-   "gain_pct": -2.479,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.05,
-   "mark": 147.22574029
+   "pk": "men:KASUSDT_LONG",
+   "symbol": "KASUSDT",
+   "account": "men",
+   "value_usd": 6.91,
+   "gain_pct": -0.943,
+   "tier": "C",
+   "perf_mult": 0.51,
+   "amt": 178.0,
+   "mark": 0.03884
   }
  ]
 }
