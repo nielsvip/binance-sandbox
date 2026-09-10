@@ -19852,10 +19852,10 @@ class StockStrategy:
                                 _ra_wt_ok = _ra_wt1_15 < _ra_wt1_15_prev
                         _ra_gate_ok = True
                         if bool(_cfg_auto('REENTRY_CONFIRMATION_GATES_ENABLED', True)):
-                            _k5 = float(i.get('k_5m', 50) or 50); _kp5 = float(i.get('k_5m_prev', 50) or 50)
-                            # k_5m<80 stays as extra live filter — no vec equivalent (5m not in NPZ)
-                            if is_long: _ra_gate_ok = (_k5 < float(_cfg_auto('REENTRY_STOCH_K_MAX_LONG', 80.0))) or (_k5 > _kp5)
-                            else: _ra_gate_ok = (_k5 > float(_cfg_auto('REENTRY_STOCH_K_MIN_SHORT', 20.0))) or (_k5 < _kp5)
+                            _k5 = float(i.get('k_5m', 50) or 50)
+                            # k_5m<80 stays as extra live filter — no vec equivalent (5m not in NPZ) — AND wt rising (separate _ra_wt_ok)
+                            if is_long: _ra_gate_ok = (_k5 < float(_cfg_auto('REENTRY_STOCH_K_MAX_LONG', 80.0)))
+                            else: _ra_gate_ok = (_k5 > float(_cfg_auto('REENTRY_STOCH_K_MIN_SHORT', 20.0)))
                         if _ra_wt_ok and _ra_gate_ok and _ra_gain_ok:
                             _ra_size_pct = float(_cfg_auto('RECOVERY_AUGMENT_SIZE_PCT', 1.0))
                             _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
@@ -21210,7 +21210,11 @@ class TradierTradeManager:
             price = float(data.get('current_price', 0))
             ema15 = float(data.get('ema_20_15m', 0) or data.get('ema_20_15m_prev', 0) or data.get('ema_50_15m_prev', 0) or data.get('ema_20_5m', 0) or data.get('close_15m', 0) or data.get('sma_200_15m', 0) or data.get('ema_200_15m', 0))
             sent = float(data.get('0market_sentiment_score', 0))
-            
+            # Breadth: price vs ema15 — bullish if price > ema, bearish if < (dead code before fix 2026-09-11)
+            if price > 0 and ema15 > 0:
+                total_valid += 1
+                if price > ema15:
+                    bullish_count += 1
             if abs(sent) > 0:
                 global_sent_total += sent
                 sent_count += 1
@@ -25106,10 +25110,11 @@ class TradierTradeManager:
                     return False
             # YOUTUBE_CONSENSUS: 9/21 EMA alignment confirmation
             if _cfg_auto('EMA_9_21_FILTER_ENABLED', False):
-                _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '5m')
-                _ema9_above = float(indicators.get(f'ema_9_above_21_{_tf_ema}', -1) or -1)
+                _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '1h')
+                _raw = indicators.get(f'ema_9_above_21_{_tf_ema}', -1)
+                _ema9_above = float(_raw if _raw is not None else -1)
                 if _ema9_above == 0.0:
-                    if config.VERBOSE: logger.info(f"[EMA_9_21] LONG {symbol} BLOCKED: 9 EMA < 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '5m')}")
+                    if config.VERBOSE: logger.info(f"[EMA_9_21] LONG {symbol} BLOCKED: 9 EMA < 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '1h')}")
                     return False
             # YOUTUBE_CONSENSUS: RVOL gate for non-mean-reversion strategies
             _rvol_5m = float(indicators.get('rel_vol_5m', 1.0) or 1.0)
@@ -25394,10 +25399,11 @@ class TradierTradeManager:
                     return False
             # YOUTUBE_CONSENSUS: 9/21 EMA alignment confirmation
             if _cfg_auto('EMA_9_21_FILTER_ENABLED', False):
-                _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '5m')
-                _ema9_above = float(indicators.get(f'ema_9_above_21_{_tf_ema}', -1) or -1)
+                _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '1h')
+                _raw = indicators.get(f'ema_9_above_21_{_tf_ema}', -1)
+                _ema9_above = float(_raw if _raw is not None else -1)
                 if _ema9_above == 1.0:
-                    if config.VERBOSE: logger.info(f"[EMA_9_21] SHORT {symbol} BLOCKED: 9 EMA > 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '5m')}")
+                    if config.VERBOSE: logger.info(f"[EMA_9_21] SHORT {symbol} BLOCKED: 9 EMA > 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '1h')}")
                     return False
             # YOUTUBE_CONSENSUS: RVOL gate for non-mean-reversion strategies
             _rvol_5m = float(indicators.get('rel_vol_5m', 1.0) or 1.0)

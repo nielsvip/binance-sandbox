@@ -1,10 +1,10 @@
-CAPITAL ALLOCATION REPORT — 2026-09-10 18:38 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-10 20:03 UTC
 ================================================================================
-Total capital deployed: $80.08 across 1 positions
+Total capital deployed: $26.94 across 4 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     80.08 (100.0%) — 1 positions
+  Tier B: $     26.94 (100.0%) — 4 positions
   Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
@@ -12,8 +12,9 @@ TIER DISTRIBUTION:
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [0]:
-  (none)
+LOSERS — reduce allocation (C-tier or losing) [2]:
+                    fin:TIAUSDC_SHORT  $    6.74  gain=-0.75%  tier=B  mult=1.00
+                    fin:RUNEUSDT_LONG  $    6.47  gain=-0.61%  tier=B  mult=1.84
 
-MEDIOCRE — capital sitting idle [1]:
-                    flz:WLDUSDC_SHORT  $   80.08  gain=-0.08%  tier=B
+MEDIOCRE — capital sitting idle [0]:
+  (none)

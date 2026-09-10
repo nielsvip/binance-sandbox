@@ -1603,8 +1603,8 @@ class TradierConfig:
     RVOL_SCORE_BOOST_THRESHOLD: float = 2.0  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     RVOL_SCORE_BOOST_PCT: float = 0.20  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # --- 9/21 EMA — PROVEN, on trb+trc ---
-    EMA_9_21_FILTER_ENABLED: bool = True
-    EMA_9_21_TIMEFRAME: str = "5m"
+    EMA_9_21_FILTER_ENABLED: bool = True  # 9/21 1h kindergarten — no entries if 9 on wrong side of 21 — True both platforms 2026-09-10 (exits always allowed)
+    EMA_9_21_TIMEFRAME: str = "1h"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA 9/21 + EMA200 gate — blocks counter-trend. User: EMA filters have not been applied at all + trades against trend. Hardened default.
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # --- TTM Squeeze — EXPERIMENTAL, trc only ---

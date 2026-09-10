@@ -4496,9 +4496,9 @@ class Config:
     EARNINGS_PEAD_BOOST_ENABLED: bool = False  # post-earnings-drift overlay (start OFF)  # PORTED from TradierConfig 2026-08-17
     EARNINGS_PEAD_BOOST_MULT: float = 1.5  # PORTED from TradierConfig 2026-08-17
     EARNINGS_PEAD_MIN_SURPRISE_PCT: float = 4.0  # PORTED from TradierConfig 2026-08-17
-    EMA_9_21_FILTER_ENABLED: bool = True  # KINDERGARTEN 2026-08-19 — fixes DEAD_CONFIRMED, now wired via vec_paths/ema_9_21_filter.py + v8_vec_sweep kindergarten_gate
+    EMA_9_21_FILTER_ENABLED: bool = True  # KINDERGARTEN 2026-08-19 — 9/21 1h (no entries if 9 on wrong side) defaults True both platforms 2026-09-10
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
-    EMA_9_21_TIMEFRAME: str = "5m"
+    EMA_9_21_TIMEFRAME: str = "1h"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA 9/21 + EMA200 gate — blocks counter-trend. User: EMA filters have not been applied at all + trades against trend. Hardened default.
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17

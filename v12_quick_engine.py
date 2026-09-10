@@ -5584,8 +5584,8 @@ class QuickConfig:
     REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 10.0  # auto-wired 625
     REENTRY_MIN_GAP_MINUTES: float = 1.0  # auto-wired 625
     REENTRY_NEVER_SKIP_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    REENTRY_STOCH_K_MAX_LONG: float = 40.0  # auto-wired 625
-    REENTRY_STOCH_K_MIN_SHORT: float = 30.0  # auto-wired 625
+    REENTRY_STOCH_K_MAX_LONG: float = 80.0  # 2026-09-10 crypto fix: was 40 (over-strict). 80 restores SAFE single-WT path — matches config.py
+    REENTRY_STOCH_K_MIN_SHORT: float = 20.0  # was 60/30 — mirror fix (SAFE unless <20) — matches config.py
     REENTRY_SYMGATE_ENABLED: bool = False  # auto-wired 625
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # auto-wired 625
     REENTRY_TIER2_MAX_MINUTES_TRADIER: float = 60.0  # auto-wired 625
