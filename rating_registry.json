@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-10T06:04:33.137261+00:00",
+  "timestamp": "2026-09-10T06:24:51.754134+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 154
   },
   "unified_ranking": [
+    {
+      "symbol": "STRKUSDT",
+      "net_score": -11.6,
+      "long_score": 0,
+      "short_score": 11.6
+    },
     {
       "symbol": "ASMLUSDT",
       "net_score": 0,
@@ -445,12 +451,6 @@
       "short_score": 0
     },
     {
-      "symbol": "STRKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "PENGUUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -727,6 +727,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IOTXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LPTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -788,12 +794,6 @@
     },
     {
       "symbol": "KAVAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ZRXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -919,7 +919,7 @@
       "short_score": 0
     },
     {
-      "symbol": "IOTXUSDT",
+      "symbol": "ZRXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -932,7 +932,13 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "STRKUSDT",
+      11.6,
+      0.02982
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
