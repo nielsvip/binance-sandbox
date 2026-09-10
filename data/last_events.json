@@ -32141,8 +32141,8 @@
         "15m": {
             "stoch_crossover": {
                 "latest": {
-                    "price": 1.0465,
-                    "timestamp": "2026-09-10T08:15:00.000000Z"
+                    "price": 1.0439,
+                    "timestamp": "2026-09-10T13:30:00.000000Z"
                 },
                 "previous": {
                     "price": 1.0465,
@@ -32151,19 +32151,19 @@
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 1.0563,
-                    "timestamp": "2026-09-10T12:00:00.000000Z"
-                },
-                "previous": {
                     "price": 1.0534,
                     "timestamp": "2026-09-10T11:45:00.000000Z"
+                },
+                "previous": {
+                    "price": 1.0517,
+                    "timestamp": "2026-09-10T05:45:00.000000Z"
                 }
             },
-            "stoch_k": 11.57544285384598,
-            "stoch_d": 6.914827319630324,
-            "stoch_k_prev": 1.7321490829131285,
-            "stoch_d_prev": 8.199257261058154,
-            "stoch_timestamp": "2026-09-10T13:30:00.000000Z"
+            "stoch_k": 93.63657845260848,
+            "stoch_d": 73.66100247903377,
+            "stoch_k_prev": 73.94370729889185,
+            "stoch_d_prev": 53.6929502570707,
+            "stoch_timestamp": "2026-09-10T15:30:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
@@ -32282,25 +32282,25 @@
                     "timestamp": "2026-09-10T13:30:00.000000Z"
                 },
                 "previous": {
-                    "price": 0.1026,
+                    "price": 0.1028,
                     "timestamp": "2026-09-10T11:15:00.000000Z"
                 }
             },
             "stoch_crossunder": {
                 "latest": {
-                    "price": 0.1029,
-                    "timestamp": "2026-09-10T08:30:00.000000Z"
-                },
-                "previous": {
                     "price": 0.103,
                     "timestamp": "2026-09-10T08:15:00.000000Z"
+                },
+                "previous": {
+                    "price": 0.1025,
+                    "timestamp": "2026-09-10T04:30:00.000000Z"
                 }
             },
-            "stoch_k": 30.55626663888265,
-            "stoch_d": 20.042670330741544,
-            "stoch_k_prev": 17.116779039322793,
-            "stoch_d_prev": 14.020139419534374,
-            "stoch_timestamp": "2026-09-10T13:30:00.000000Z"
+            "stoch_k": 43.917704598088456,
+            "stoch_d": 44.009336621961175,
+            "stoch_k_prev": 38.80259494209742,
+            "stoch_d_prev": 45.46902305378686,
+            "stoch_timestamp": "2026-09-10T15:30:00.000000Z"
         },
         "1h": {
             "stoch_crossover": {
