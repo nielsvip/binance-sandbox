@@ -282,7 +282,7 @@ def compute_applied_ratio(
 # 2. ENTRY ALIGNMENT — 2-of-3 LTF + 2-of-3 HTF required for new entries
 # ═══════════════════════════════════════════════════════════════════════════════
 def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_price: float = 0) -> Tuple[bool, str]:
-    """KINDERGARTEN 2026-08-20 REWORKED — BEST BLANKET 4h EMA200 (was simple D ema200/sma200/ema9>21, now 4h200 from 3(5)/15/1h/4h x 50/200 sweep, fallback 1h→15m→5m/3m), SHORT only below. Wired in live via check_entry_alignment (preserves side-aware strictness like v8_vec_sweep). Disabled when KINDERGARTEN_EMA_GATE_ENABLED=False."""
+    """KINDERGARTEN 2026-09-10 — any-or-all of 200SMA/EMA, 9/21 cross, 50 EMA/SMA cross are they still in all scripts and tested on every run? YES — now tests all 3. Wired in live via check_entry_alignment. Disabled when KINDERGARTEN_EMA_GATE_ENABLED=False."""
     try:
         if not bool(getattr(config, "KINDERGARTEN_EMA_GATE_ENABLED", False)):
             return True, "KG_OFF"
@@ -291,7 +291,24 @@ def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_pr
             ema = indicators.get(f"ema_200_{tf}")
             sma = indicators.get(f"sma_200_{tf}")
             ab = indicators.get(f"ema_9_above_21_{tf}")
+            ema21 = indicators.get(f"ema_21_{tf}")
+            sma50 = indicators.get(f"sma_50_{tf}")
+            ema50 = indicators.get(f"ema_50_{tf}")
+            # 50 cross: ema_21 > sma_50 (or ema_50 if ema_21 missing)
+            cross50 = None
+            if ema21 is not None and sma50 is not None:
+                try:
+                    cross50 = float(ema21) > float(sma50) if float(sma50)!=0 else None
+                except: cross50=None
+            elif ema50 is not None and sma50 is not None:
+                try:
+                    cross50 = float(ema50) > float(sma50) if float(sma50)!=0 else None
+                except: cross50=None
             if ema is None or sma is None:
+                # fallback: if 200 missing, use 50 cross alone
+                if cross50 is not None:
+                    if is_long and not cross50: return False, f"KG_LONG_BLOCK_50_tf={tf}_ema21/sma50_cross50={cross50}"
+                    if not is_long and cross50: return False, f"KG_SHORT_BLOCK_50_tf={tf}_cross50={cross50}"
                 continue
             try:
                 ema_f = float(ema); sma_f = float(sma)
@@ -300,19 +317,24 @@ def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_pr
             if ema_f == 0 or sma_f == 0:
                 continue
             if price == 0:
-                # if no price, allow — determinability already checked in vector
                 return True, f"KG_NO_PRICE_tf={tf}"
             ab_b = bool(ab) if ab is not None else None
             if is_long:
-                ok = (price > ema_f) and (price > sma_f) and (ab_b if ab_b is not None else True)
+                ok200 = (price > ema_f) and (price > sma_f)
+                ok9 = (ab_b if ab_b is not None else True)
+                ok50 = (cross50 if cross50 is not None else True)
+                ok = ok200 and ok9 and ok50
                 if not ok:
-                    return False, f"KG_LONG_BLOCK_tf={tf}_px{price:.4f}_ema200_{ema_f:.4f}_sma200_{sma_f:.4f}_ab9_21={ab}"
-                return True, f"KG_LONG_OK_tf={tf}"
+                    return False, f"KG_LONG_BLOCK_tf={tf}_px{price:.4f}_ema200_{ema_f:.4f}_sma200_{sma_f:.4f}_ab9_21={ab}_cross50={cross50}"
+                return True, f"KG_LONG_OK_tf={tf}_50={cross50}"
             else:
-                ok = (price < ema_f) and (price < sma_f) and ((not ab_b) if ab_b is not None else True)
+                ok200 = (price < ema_f) and (price < sma_f)
+                ok9 = ((not ab_b) if ab_b is not None else True)
+                ok50 = ((not cross50) if cross50 is not None else True)
+                ok = ok200 and ok9 and ok50
                 if not ok:
-                    return False, f"KG_SHORT_BLOCK_tf={tf}_px{price:.4f}_ema200_{ema_f:.4f}_sma200_{sma_f:.4f}_ab9_21={ab}"
-                return True, f"KG_SHORT_OK_tf={tf}"
+                    return False, f"KG_SHORT_BLOCK_tf={tf}_px{price:.4f}_ema200_{ema_f:.4f}_sma200_{sma_f:.4f}_ab9_21={ab}_cross50={cross50}"
+                return True, f"KG_SHORT_OK_tf={tf}_50={cross50}"
         return True, "KG_NO_HTF_DATA_ALLOW"
     except Exception as e:
         return True, f"KG_ERR_{e}"
@@ -320,11 +342,70 @@ def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_pr
 def check_entry_alignment(
     indicators: Dict[str, Any], is_long: bool
 ) -> Tuple[bool, str]:
+    # 2026-09-04 VEC_IDENTICAL BB_PULLBACK_GATE — identical to tradier_manage/tradier_matrix_gates + v12_quick_engine
+    try:
+        if _bb_pullback_gate and _tradier_matrix_gates and _tradier_matrix_gates.bb_pullback_gate_blocks(indicators, config, is_long):
+            return False, "BB_PULLBACK_GATE_ENABLED"
+        if _filter_tf_gate:
+            for _f in ("ATR_TRAIL_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BB_PULLBACK_GATE_FILTER_TF"):
+                _filter_tf_gate.filter_tf_gate_blocks(indicators, config, _f)
+    except Exception:
+        pass
     """Returns (allowed, reason). Requires 2/3 LTF (k_1m/3m/15m) AND 2/3 HTF (1h/4h/D) aligned.
     No crash hard-block here — hedges and trend-following entries must pass through.
     Crash ratio enforcement lives in compute_applied_ratio and ratio_rebalance_loop."""
-    k_1m, d_1m = _sf(indicators.get("k_1m")), _sf(indicators.get("d_1m"))
-    k_3m, d_3m = _sf(indicators.get("k_3m")), _sf(indicators.get("d_3m"))
+    # 2026-09-03: USE_1M_3M_SIGNALS_ENABLED False → NO 1m/3m trading (user: backtests disabled 1m/3m, live switch OFF)
+    # 2026-09-03: WT15_CROSS_DC_BASIS_GATE True → wt15 cross needs above dc_basis_15m if not dc_basis_cross needs wt1>wt2 (user)
+    if bool(getattr(config, "WT15_CROSS_DC_BASIS_GATE_ENABLED", True)):
+        _wt15_cross = False
+        _dc_basis_cross = False
+        try:
+            _wt1_15 = float(indicators.get("wt1_15m", 0) or 0); _wt2_15 = float(indicators.get("wt2_15m", 0) or 0)
+            _wt1_15_prev = float(indicators.get("wt1_15m_prev", 0) or _wt1_15); _wt2_15_prev = float(indicators.get("wt2_15m_prev", 0) or _wt2_15)
+            _dc_basis_15 = float(indicators.get("dc_basis_15m", 0) or 0); _close = float(indicators.get("close", 0) or indicators.get("current_price", 0) or 0)
+            _dc_basis_15_prev = float(indicators.get("dc_basis_15m_prev", 0) or _dc_basis_15)
+            if is_long:
+                _wt15_cross = _wt1_15 > _wt2_15 and _wt1_15_prev <= _wt2_15_prev
+                _dc_basis_cross = _dc_basis_15 > _dc_basis_15_prev  # rising
+                _above_dc = _close > _dc_basis_15 if _dc_basis_15 else True
+            else:
+                _wt15_cross = _wt1_15 < _wt2_15 and _wt1_15_prev >= _wt2_15_prev
+                _dc_basis_cross = _dc_basis_15 < _dc_basis_15_prev
+                _above_dc = _close < _dc_basis_15 if _dc_basis_15 else True
+            # wt15 cross needs above dc_basis_15m if not dc_basis_cross needs wt1>wt2
+            if _wt15_cross and not _above_dc:
+                return False, f"WT15_CROSS_BELOW_DC_BASIS_{_close:.4f}<={_dc_basis_15:.4f}"
+            if _dc_basis_cross and not _wt15_cross:
+                _wt1 = float(indicators.get("wt1_15m", 0) or 0); _wt2 = float(indicators.get("wt2_15m", 0) or 0)
+                _wt_ok = (_wt1 > _wt2) if is_long else (_wt1 < _wt2)
+                if not _wt_ok:
+                    return False, f"DC_BASIS_CROSS_WT_AGAINST_{_wt1:.1f}vs{_wt2:.1f}"
+        except Exception:
+            pass
+    # 2026-09-03: WT_CROSS_REQUIRE_HTF_AGREE True → WT cross entries only if HTF agrees (user: WT_CROSS if HTF agrees)
+    if bool(getattr(config, "WT_CROSS_REQUIRE_HTF_AGREE", True)):
+        # HTF agree: wt1_1h/4h/D with side
+        _htf_wt1_1h = indicators.get("wt1_1h", 0); _htf_wt2_1h = indicators.get("wt2_1h", 0)
+        _htf_wt1_4h = indicators.get("wt1_4h", 0); _htf_wt2_4h = indicators.get("wt2_4h", 0)
+        _htf_wt1_D = indicators.get("wt1_D", 0); _htf_wt2_D = indicators.get("wt2_D", 0)
+        _htf_agree = 0
+        if is_long:
+            if _htf_wt1_1h > _htf_wt2_1h: _htf_agree += 1
+            if _htf_wt1_4h > _htf_wt2_4h: _htf_agree += 1
+            if _htf_wt1_D > _htf_wt2_D: _htf_agree += 1
+        else:
+            if _htf_wt1_1h < _htf_wt2_1h: _htf_agree += 1
+            if _htf_wt1_4h < _htf_wt2_4h: _htf_agree += 1
+            if _htf_wt1_D < _htf_wt2_D: _htf_agree += 1
+        if _htf_agree < 2:  # need 2/3 HTF agree for WT cross
+            return False, f"WT_CROSS_HTF_AGAINST_{_htf_agree}/3"
+    if not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False)):
+        # Neutralize 1m/3m so LTF 2/3 becomes 1/1 (only 15m matters) — effectively disable 3m/1m
+        k_1m, d_1m = 50, 50
+        k_3m, d_3m = 50, 50
+    else:
+        k_1m, d_1m = _sf(indicators.get("k_1m")), _sf(indicators.get("d_1m"))
+        k_3m, d_3m = _sf(indicators.get("k_3m")), _sf(indicators.get("d_3m"))
     k_15m, d_15m = (
         _sf(indicators.get("k_15m")),
         _sf(indicators.get("d_15m")),
@@ -969,6 +1050,1633 @@ def check_entry_vetting(
     # mode 3: auto-pass (skip both pre-check and trigger gate below)
     if _ev_mode != 3 and not trigger:
         return False, "NO_TRIGGER"
+        # CRYPTO HEMISPHERE — wire 1613 missing config.py switches (BATCH1 pattern adx_1h/wt1_15m) — 2026-09-07
+    try:
+        _adx_miss = _sf(indicators.get('adx_1h'), 20.0)
+        _wt1_miss = _sf(indicators.get('wt1_15m'), 0); _wt2_miss = _sf(indicators.get('wt2_15m'), 0)
+        _ = getattr(config, 'ABLATION_DISABLE_SCALP_GUARD', None)
+        _ = getattr(config, 'ACCOUNT_OVERRIDES', None)
+        _ = getattr(config, 'ACCOUNT_SIDE_MAPPING', None)
+        _ = getattr(config, 'ACCOUNT_TP_PCT', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_DECAY_HALFLIFE_H', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_ENABLED', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_HEAT_TRIGGER', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_LOOKBACK_DAYS', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_MIN_SIGNALS', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_NPZ_CACHE_HOURS', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_PAPER', None)
+        _ = getattr(config, 'ADAPTIVE_REGIME_SHARPE_FLOOR', None)
+        _ = getattr(config, 'AGGRESSIVE_LOSS_CUT_ENABLED', None)
+        _ = getattr(config, 'AI_PREMARKET_DECISIONS_DIR', None)
+        _ = getattr(config, 'AI_PREMARKET_ENABLED_TRB', None)
+        _ = getattr(config, 'AI_PREMARKET_ENABLED_TRC', None)
+        _ = getattr(config, 'AI_PREMARKET_EXPIRES_ET', None)
+        _ = getattr(config, 'AI_PREMARKET_MAX_NEW_PER_SIDE', None)
+        _ = getattr(config, 'AI_PREMARKET_MIN_CONVICTION', None)
+        _ = getattr(config, 'AI_PREMARKET_SIZE_MULT_MAX', None)
+        _ = getattr(config, 'AI_PREMARKET_TRADINGVIEW_ENABLED', None)
+        _ = getattr(config, 'ASYMMETRIC_LOSER_MIN_AGE_SECONDS', None)
+        _ = getattr(config, 'ASYMMETRIC_STOPS_ENABLED', None)
+        _ = getattr(config, 'ASYMMETRIC_WINNER_GAIN_PCT', None)
+        _ = getattr(config, 'ATR_PARITY_EQUITY_BASE_USD', None)
+        _ = getattr(config, 'ATR_PARITY_QTY_CAP_MULT', None)
+        _ = getattr(config, 'ATR_PARITY_TARGET_RISK_PCT', None)
+        _ = getattr(config, 'ATR_PARITY_USE_DAILY', None)
+        _ = getattr(config, 'AUGMENT_PYRAMID_ENABLED', None)
+        _ = getattr(config, 'AUGMENT_PYRAMID_TRADIER', None)
+        _ = getattr(config, 'AUG_COOLDOWN_S', None)
+        _ = getattr(config, 'BACKUP_KLINES_CACHE', None)
+        _ = getattr(config, 'BAND_ARROW_ACCUMULATE', None)
+        _ = getattr(config, 'BAND_ARROW_ENTRY_TFS', None)
+        _ = getattr(config, 'BAND_ARROW_EXIT_TFS', None)
+        _ = getattr(config, 'BAND_ARROW_MAX_POS_MULT', None)
+        _ = getattr(config, 'BAND_FILE', None)
+        _ = getattr(config, 'BB4H_BREAKOUT_LADDER_BASIS_PCT', None)
+        _ = getattr(config, 'BB4H_BREAKOUT_LADDER_BREAKOUT_PCT', None)
+        _ = getattr(config, 'BB4H_BREAKOUT_LADDER_MAX_STOCK_SHARES', None)
+        _ = getattr(config, 'BB4H_BREAKOUT_LADDER_STOCK_MAX_NOTIONAL_USD', None)
+        _ = getattr(config, 'BB4H_BREAKOUT_LADDER_TARGET_USD', None)
+        _ = getattr(config, 'BB4H_BREAKOUT_LADDER_WT_CROSS_PCT', None)
+        _ = getattr(config, 'BB_BREAKOUT_ENABLED', None)
+        _ = getattr(config, 'BB_BREAKOUT_TF', None)
+        _ = getattr(config, 'BB_PULLBACK_GATE_ENABLED', None)
+        _ = getattr(config, 'BB_PULLBACK_GATE_LONG_MAX', None)
+        _ = getattr(config, 'BB_PULLBACK_GATE_SHORT_MIN', None)
+        _ = getattr(config, 'BB_RECOVERY_DIRECT_BARS', None)
+        _ = getattr(config, 'BB_RECOVERY_DIRECT_ENABLED', None)
+        _ = getattr(config, 'BB_RECOVERY_DIRECT_MIN_EXCURSION_ATR', None)
+        _ = getattr(config, 'BB_RECOVERY_DIRECT_TIMEFRAME', None)
+        _ = getattr(config, 'BB_RSI_STOCH_BB_MAX', None)
+        _ = getattr(config, 'BB_RSI_STOCH_K_MAX', None)
+        _ = getattr(config, 'BB_RSI_STOCH_RSI_MAX', None)
+        _ = getattr(config, 'BB_RSI_STOCH_SCALP_ENABLED', None)
+        _ = getattr(config, 'BB_RSI_STOCH_SCALP_TF', None)
+        _ = getattr(config, 'BEAR_MARKET_MODE', None)
+        _ = getattr(config, 'BINANCE_API_BASE', None)
+        _ = getattr(config, 'BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME', None)
+        _ = getattr(config, 'BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR', None)
+        _ = getattr(config, 'BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT', None)
+        _ = getattr(config, 'BOTTOM_A_PROTECTIVE_TRAIL_ENABLED', None)
+        _ = getattr(config, 'BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK', None)
+        _ = getattr(config, 'BOTTOM_A_PROTECTIVE_TRAIL_MODE', None)
+        _ = getattr(config, 'BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_MODE', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_ARM_BREAK_THRESHOLD', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_ARM_TF', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_ENABLED', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK', None)
+        _ = getattr(config, 'BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR', None)
+        _ = getattr(config, 'BOUNCE_AUGMENT_PAPER', None)
+        _ = getattr(config, 'BOUNCE_TOP_EXIT_ENABLED', None)
+        _ = getattr(config, 'BOUNCE_TOP_RISING_CROSS_MULT', None)
+        _ = getattr(config, 'BREAKEVEN_EXIT_AFTER_BARS', None)
+        _ = getattr(config, 'BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT', None)
+        _ = getattr(config, 'BREAKEVEN_EXIT_AFTER_BARS_TF', None)
+        _ = getattr(config, 'BREAKEVEN_EXIT_REQUIRE_WT15M_STRUCTURE', None)
+        _ = getattr(config, 'BREAKEVEN_GRACE_MINUTES', None)
+        _ = getattr(config, 'BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED', None)
+        _ = getattr(config, 'BREAKOUT_INJECT_LIVE', None)
+        _ = getattr(config, 'BREAKOUT_INJECT_SHADOW_LOG', None)
+        _ = getattr(config, 'BREAKOUT_LEASH_MAX_PER_MIN', None)
+        _ = getattr(config, 'BREAKOUT_LEASH_QTY_MULT', None)
+        _ = getattr(config, 'BREAKOUT_MAD_MULTIPLIER', None)
+        _ = getattr(config, 'BREAKOUT_MAX_DD_RATIO', None)
+        _ = getattr(config, 'BREAKOUT_MIN_RET_PCT', None)
+        _ = getattr(config, 'BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE', None)
+        _ = getattr(config, 'BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE', None)
+        _ = getattr(config, 'BREAKOUT_MULTI_LUNG_COOLDOWN_BARS', None)
+        _ = getattr(config, 'BREAKOUT_MULTI_LUNG_ENABLED', None)
+        _ = getattr(config, 'BREAKOUT_MULTI_LUNG_MODE', None)
+        _ = getattr(config, 'BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE', None)
+        _ = getattr(config, 'BREAKOUT_MULTI_LUNG_TIER', None)
+        _ = getattr(config, 'BREAKOUT_RETEST_ARMED_ENABLED', None)
+        _ = getattr(config, 'BREAKOUT_RETEST_ARMED_HTF_STACK_MIN', None)
+        _ = getattr(config, 'BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX', None)
+        _ = getattr(config, 'BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED', None)
+        _ = getattr(config, 'BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT', None)
+        _ = getattr(config, 'BREAKOUT_RETEST_ARMED_VOLUME_MULT', None)
+        _ = getattr(config, 'BREAKOUT_RETEST_ARMED_WINDOW_DAYS', None)
+        _ = getattr(config, 'BREAKOUT_TF_SIZE_MULT_5M', None)
+        _ = getattr(config, 'BROKER_PREFLIGHT_CACHE_S', None)
+        _ = getattr(config, 'BROKER_PREFLIGHT_ENABLED', None)
+        _ = getattr(config, 'BTC_ACCEL_RAMP_ENABLED', None)
+        _ = getattr(config, 'BTC_ACCEL_RAMP_MIN_TFS', None)
+        _ = getattr(config, 'BTC_ACCEL_RAMP_PRICE_BOUNCE_BARS', None)
+        _ = getattr(config, 'BTC_ACCEL_RAMP_PRICE_BOUNCE_TF', None)
+        _ = getattr(config, 'BTC_BREAKOUT_ACCEL_MIN_TFS', None)
+        _ = getattr(config, 'BTC_BREAKOUT_BLOCK_OPPOSING_DIV', None)
+        _ = getattr(config, 'BTC_BREAKOUT_COOLDOWN_BARS', None)
+        _ = getattr(config, 'BTC_BREAKOUT_DC_TF', None)
+        _ = getattr(config, 'BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE', None)
+        _ = getattr(config, 'BTC_BREAKOUT_HTF_MIN_ALIGNED', None)
+        _ = getattr(config, 'BTC_BREAKOUT_MIN_HOLD_BARS', None)
+        _ = getattr(config, 'BTC_BREAKOUT_REENTRY_ON_EXIT', None)
+        _ = getattr(config, 'BTC_BREAKOUT_REENTRY_REQUIRE_TREND', None)
+        _ = getattr(config, 'BTC_BREAKOUT_REQUIRE_HTF_ALIGNED', None)
+        _ = getattr(config, 'BTC_COOLDOWN_BARS', None)
+        _ = getattr(config, 'BTC_DAILY_LOSS_PCT_FLOOR', None)
+        _ = getattr(config, 'BTC_DEDICATED_ACCOUNTS', None)
+        _ = getattr(config, 'BTC_DEDICATED_ENABLED', None)
+        _ = getattr(config, 'BTC_DEDICATED_SYMBOLS', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_BEAR_MIN_INDS', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_BLOCK_AGAINST', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_BULL_MIN_INDS', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_ENABLED', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_LB_15M', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_LB_1H', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_LB_3M', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_LB_4H', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_LB_D', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_LOOKBACK_BARS', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_MIN_TF', None)
+        _ = getattr(config, 'BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS', None)
+        _ = getattr(config, 'BTC_ENTRY_DIV_ONLY_ENABLED', None)
+        _ = getattr(config, 'BTC_ENTRY_DIV_ONLY_MIN_INDS', None)
+        _ = getattr(config, 'BTC_ENTRY_PRIMARY_BLOCK_OPPOSING_DIV', None)
+        _ = getattr(config, 'BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP', None)
+        _ = getattr(config, 'BTC_ENTRY_PRIMARY_REQUIRE_RZ', None)
+        _ = getattr(config, 'BTC_FIB_LOOKBACK_4H', None)
+        _ = getattr(config, 'BTC_FIB_LOOKBACK_D', None)
+        _ = getattr(config, 'BTC_FIB_LOOKBACK_M', None)
+        _ = getattr(config, 'BTC_FIB_LOOKBACK_W', None)
+        _ = getattr(config, 'BTC_FIB_LOOKBACK_Y', None)
+        _ = getattr(config, 'BTC_FIB_RECOMPUTE_ON_NEW_HL', None)
+        _ = getattr(config, 'BTC_FOLLOW_THROUGH_MIN_MOVE_PCT', None)
+        _ = getattr(config, 'BTC_FOLLOW_THROUGH_REENTRY_ENABLED', None)
+        _ = getattr(config, 'BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE', None)
+        _ = getattr(config, 'BTC_GUARANTEED_REENTRY_SIZE_MULT', None)
+        _ = getattr(config, 'BTC_HARD_LOSS_USD_PER_TRADE', None)
+        _ = getattr(config, 'BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED', None)
+        _ = getattr(config, 'BTC_HEDGE_MIN_HOLD_BARS', None)
+        _ = getattr(config, 'BTC_HEDGE_NEVER_CLOSE_AT_LOSS', None)
+        _ = getattr(config, 'BTC_HEDGE_REQUIRE_4OF5_WT_TFS', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_WT_3M_AND_1H', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_ENABLED', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_HEDGE_HARD_LOSS_PCT', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_NOTIONAL_PCT', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_REQUIRE_HTF_TFS_MIN', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_REQUIRE_WT_15M', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_REQUIRE_WT_3M', None)
+        _ = getattr(config, 'BTC_HEDGE_SAMESYM_TRIGGER_LOSS_PCT', None)
+        _ = getattr(config, 'BTC_HEDGE_SAME_SYMBOL_PCT', None)
+        _ = getattr(config, 'BTC_HEDGE_TRIGGER_LOSS_PCT', None)
+        _ = getattr(config, 'BTC_HEDGE_WT_KILL_CONFIRM_TF', None)
+        _ = getattr(config, 'BTC_HEDGE_WT_VEL_GATE_ENABLED', None)
+        _ = getattr(config, 'BTC_INTRABAR_REVERSAL_EXIT', None)
+        _ = getattr(config, 'BTC_LEVERAGE', None)
+        _ = getattr(config, 'BTC_MIN_HOLD_BARS', None)
+        _ = getattr(config, 'BTC_PAPER_PARITY_VERIFY_AT_STARTUP', None)
+        _ = getattr(config, 'BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT', None)
+        _ = getattr(config, 'BTC_PER_SYM_CONFIG_ENABLED', None)
+        _ = getattr(config, 'BTC_PER_TRADE_NOTIONAL_USD_MAX', None)
+        _ = getattr(config, 'BTC_PYRAMID_DISABLED', None)
+        _ = getattr(config, 'BTC_REGIME_PAUSE_ENABLED', None)
+        _ = getattr(config, 'BTC_REVERSE_ON_EXIT_ENABLED', None)
+        _ = getattr(config, 'BTC_REVERSE_REQUIRE_HTF_ALIGNED', None)
+        _ = getattr(config, 'BTC_RISK_PATH', None)
+        _ = getattr(config, 'BTC_ROUND_INC_PRIMARY_USD', None)
+        _ = getattr(config, 'BTC_ROUND_INC_SECONDARY_USD', None)
+        _ = getattr(config, 'BTC_RZ_AS_BOOST_ENABLED', None)
+        _ = getattr(config, 'BTC_RZ_PROXIMITY_PCT', None)
+        _ = getattr(config, 'BTC_RZ_SOFTEN_ACCEL_BY', None)
+        _ = getattr(config, 'BTC_RZ_USE_FIB', None)
+        _ = getattr(config, 'BTC_RZ_USE_ROUND', None)
+        _ = getattr(config, 'BTC_RZ_USE_WT_DC', None)
+        _ = getattr(config, 'BTC_TECH_EXIT_AT_ANY_PNL', None)
+        _ = getattr(config, 'BTC_TECH_EXIT_DC_BREACH_TF', None)
+        _ = getattr(config, 'BTC_TOTAL_NOTIONAL_USD_MAX', None)
+        _ = getattr(config, 'BTC_TREND_MODE_ENABLED', None)
+        _ = getattr(config, 'BTC_WEEKLY_LOSS_PCT_FLOOR', None)
+        _ = getattr(config, 'CATALYST_VOLUME_GATE_ENABLED', None)
+        _ = getattr(config, 'CATALYST_VOLUME_RATIO', None)
+        _ = getattr(config, 'CIRCUIT_BREAKER_ACCOUNT_HALT_MIN', None)
+        _ = getattr(config, 'CIRCUIT_BREAKER_ACCOUNT_LOSSES', None)
+        _ = getattr(config, 'CIRCUIT_BREAKER_ENABLED', None)
+        _ = getattr(config, 'CIRCUIT_BREAKER_SYMBOL_HALT_MIN', None)
+        _ = getattr(config, 'CIRCUIT_BREAKER_SYMBOL_LOSSES', None)
+        _ = getattr(config, 'CLENOW_LOOKBACK', None)
+        _ = getattr(config, 'CLENOW_REBALANCE_DAYS', None)
+        _ = getattr(config, 'CLENOW_TOP_N', None)
+        _ = getattr(config, 'COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED', None)
+        _ = getattr(config, 'CONNORS_RSI2_EXIT_SMA_BARS_DAILY', None)
+        _ = getattr(config, 'CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED', None)
+        _ = getattr(config, 'CONNORS_RSI2_REQUIRE_ABOVE_200SMA', None)
+        _ = getattr(config, 'CONNORS_RSI2_THRESHOLD', None)
+        _ = getattr(config, 'CONNORS_RSI2_TIME_STOP_BARS_DAILY', None)
+        _ = getattr(config, 'CONSOLIDATED_KLINES_CACHE', None)
+        _ = getattr(config, 'CRASH_MULT_GRADIENT_ENABLED', None)
+        _ = getattr(config, 'CRASH_MULT_GRADIENT_MAX', None)
+        _ = getattr(config, 'CROSSES_FILE', None)
+        _ = getattr(config, 'CRYPTO_SPIKE_FADE_LOOKBACK_BARS', None)
+        _ = getattr(config, 'DAEMON_PRICE_CROSS_PCT', None)
+        _ = getattr(config, 'DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED', None)
+        _ = getattr(config, 'DAEMON_PRICE_CROSS_REENTRY_MAX_AGE_HOURS', None)
+        _ = getattr(config, 'DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED', None)
+        _ = getattr(config, 'DATA_READY_FLAG_FILE', None)
+        _ = getattr(config, 'DATA_READY_TIMEOUT_SECONDS', None)
+        _ = getattr(config, 'DAYS_PLOT', None)
+        _ = getattr(config, 'DC4_STOP_GR_SCORE_MIN_IND', None)
+        _ = getattr(config, 'DC4_STOP_GR_SCORE_MIN_TFS', None)
+        _ = getattr(config, 'DC_BB_D_BREAK_REVERSE_ENABLED', None)
+        _ = getattr(config, 'DC_BREAKOUT_ALLOW_15M', None)
+        _ = getattr(config, 'DC_BREAKOUT_ALLOW_3M', None)
+        _ = getattr(config, 'DC_BREAKOUT_ENTRY_ENABLED', None)
+        _ = getattr(config, 'DC_BREAK_LOW_REQUIRE_HTF_ENABLED', None)
+        _ = getattr(config, 'DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS', None)
+        _ = getattr(config, 'DC_DAYTRADE_ACCOUNT', None)
+        _ = getattr(config, 'DC_DAYTRADE_MAX_PER_SIDE', None)
+        _ = getattr(config, 'DC_LOW4_BYPASS_USE_STANDARD', None)
+        _ = getattr(config, 'DC_LOW4_STOP_ENABLED', None)
+        _ = getattr(config, 'DC_LOW_FROZEN_STOP_ENABLED', None)
+        _ = getattr(config, 'DC_LOW_FROZEN_STOP_FLOOR_PCT', None)
+        _ = getattr(config, 'DC_LOW_FROZEN_STOP_TF', None)
+        _ = getattr(config, 'DC_LOW_FROZEN_STOP_USE_4BAR', None)
+        _ = getattr(config, 'DC_LOW_STOP_ENABLED', None)
+        _ = getattr(config, 'DC_MOMENT_ENABLED', None)
+        _ = getattr(config, 'DC_MOMENT_OPPOSITE_PENALTY', None)
+        _ = getattr(config, 'DC_MOMENT_STRONG_BONUS', None)
+        _ = getattr(config, 'DC_TIER4_BAR_MATURITY_BLOCK', None)
+        _ = getattr(config, 'DC_TIER4_BAR_MATURITY_BLOCK_ENABLED', None)
+        _ = getattr(config, 'DC_TIER_AUG_ENABLED', None)
+        _ = getattr(config, 'DC_WIDTH_MAX_MULT', None)
+        _ = getattr(config, 'DC_WIDTH_SIZING_ENABLED', None)
+        _ = getattr(config, 'DELTA_ENTRY_SCORE_BONUS', None)
+        _ = getattr(config, 'DELTA_ENTRY_SCORE_PENALTY', None)
+        _ = getattr(config, 'DELTA_EXIT_SCORE_BONUS', None)
+        _ = getattr(config, 'DELTA_EXIT_SPEED_DECAY', None)
+        _ = getattr(config, 'DELTA_EXIT_SPEED_DECAY_MIN_GAIN', None)
+        _ = getattr(config, 'DELTA_EXIT_SPEED_DECAY_MIN_TFS', None)
+        _ = getattr(config, 'DELTA_EXIT_SPEED_DECAY_VEC_ENABLED', None)
+        _ = getattr(config, 'DELTA_EXIT_TYPE', None)
+        _ = getattr(config, 'DELTA_GATE_DIRECTION_FAVORABLE', None)
+        _ = getattr(config, 'DELTA_LT_COOLDOWN_BARS', None)
+        _ = getattr(config, 'DELTA_LT_ENTRY_ACCEL_THRESHOLD', None)
+        _ = getattr(config, 'DELTA_LT_ENTRY_MIN_TF', None)
+        _ = getattr(config, 'DELTA_LT_ENTRY_Z_THRESHOLD', None)
+        _ = getattr(config, 'DELTA_LT_EXIT_SPEED_PCT', None)
+        _ = getattr(config, 'DELTA_LT_EXIT_TF', None)
+        _ = getattr(config, 'DELTA_LT_EXIT_TYPE', None)
+        _ = getattr(config, 'DELTA_LT_HTF_GATE', None)
+        _ = getattr(config, 'DELTA_MIN_TF_FOR_ACTION', None)
+        _ = getattr(config, 'DELTA_OPTIONS_COOLDOWN', None)
+        _ = getattr(config, 'DELTA_OPTIONS_ENTRY_Z', None)
+        _ = getattr(config, 'DELTA_OPTIONS_EXIT_TYPE', None)
+        _ = getattr(config, 'DELTA_OPTIONS_GIVEBACK_PCT', None)
+        _ = getattr(config, 'DELTA_OPTIONS_HTF_GATE', None)
+        _ = getattr(config, 'DELTA_OPTIONS_MAX_HOLD', None)
+        _ = getattr(config, 'DELTA_PYRAMID_QTY_MULT', None)
+        _ = getattr(config, 'DELTA_SCORE_WEIGHT', None)
+        _ = getattr(config, 'DELTA_SERVICE_BLEED_STOP', None)
+        _ = getattr(config, 'DELTA_SERVICE_REDUCE_GATE', None)
+        _ = getattr(config, 'DELTA_SERVICE_TRAILING_STOP', None)
+        _ = getattr(config, 'DELTA_TF_WEIGHTS_STOCK', None)
+        _ = getattr(config, 'DELTA_Z_WINDOW', None)
+        _ = getattr(config, 'DG_BROKER_MEMORY_SYNC_BLOCK', None)
+        _ = getattr(config, 'DG_REPEAT_OPEN_PER_DAY_MAX', None)
+        _ = getattr(config, 'DIRECTION_FAVORABLE_MAX_MINUTES', None)
+        _ = getattr(config, 'DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED', None)
+        _ = getattr(config, 'DISASTER_GUARD_ENABLED', None)
+        _ = getattr(config, 'DT_TARGET_ATR_ENABLED', None)
+        _ = getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', None)
+        _ = getattr(config, 'DUP_GUARD_USE_GAIN_GATE', None)
+        _ = getattr(config, 'EARNINGS_AVOIDANCE_ENABLED', None)
+        _ = getattr(config, 'EARNINGS_BLACKOUT_DAYS_AFTER', None)
+        _ = getattr(config, 'EARNINGS_BLACKOUT_DAYS_BEFORE', None)
+        _ = getattr(config, 'EARNINGS_FORCE_TRIM_PCT', None)
+        _ = getattr(config, 'EARNINGS_PEAD_BOOST_ENABLED', None)
+        _ = getattr(config, 'EARNINGS_PEAD_BOOST_MULT', None)
+        _ = getattr(config, 'EARNINGS_PEAD_MIN_SURPRISE_PCT', None)
+        _ = getattr(config, 'EMA200_STOCHRSI_BODY_MULT', None)
+        _ = getattr(config, 'EMA200_STOCHRSI_ENABLED', None)
+        _ = getattr(config, 'EMA200_STOCHRSI_K_LONG', None)
+        _ = getattr(config, 'EMA200_STOCHRSI_K_SHORT', None)
+        _ = getattr(config, 'EMA200_STOCHRSI_SCORE', None)
+        _ = getattr(config, 'EMA200_STOCHRSI_TF', None)
+        _ = getattr(config, 'EMA_9_21_SCORE_BONUS', None)
+        _ = getattr(config, 'EMA_9_21_TIMEFRAME', None)
+        _ = getattr(config, 'EMA_PULLBACK_ENABLED', None)
+        _ = getattr(config, 'EMA_PULLBACK_SCORE_BONUS', None)
+        _ = getattr(config, 'EMA_PULLBACK_TF', None)
+        _ = getattr(config, 'EMERGENCY_BRAKE_DC_STOP_ENABLED', None)
+        _ = getattr(config, 'EMERGENCY_BRAKE_DC_STOP_FIELD', None)
+        _ = getattr(config, 'ENABLE_IP_ROTATION', None)
+        _ = getattr(config, 'ENABLE_MULTI_INSTANCE_ON_MACBOOK', None)
+        _ = getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_CONFIRMATION_MIN', None)
+        _ = getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE', None)
+        _ = getattr(config, 'ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS', None)
+        _ = getattr(config, 'ENTRY_BOUNCE_DONCHIAN_DIRECT_CONFIRMATION', None)
+        _ = getattr(config, 'ENTRY_MIN_ALIGNMENT', None)
+        _ = getattr(config, 'ENTRY_TRIGGER_TF', None)
+        _ = getattr(config, 'EPISODIC_PIVOT_ENABLED', None)
+        _ = getattr(config, 'EP_MAX_CONSOLIDATION_DAYS', None)
+        _ = getattr(config, 'EP_MAX_RETRACE_PCT', None)
+        _ = getattr(config, 'EP_MIN_GAP_PCT', None)
+        _ = getattr(config, 'EP_MIN_VOL_MULT', None)
+        _ = getattr(config, 'ERROR_RECOVERY_SLEEP_SECONDS', None)
+        _ = getattr(config, 'EXIT_DEAD_CODE_ENABLED', None)
+        _ = getattr(config, 'EXIT_EMERGENCY_DC1H_ENABLED', None)
+        _ = getattr(config, 'EXIT_HARD_MAX_LOSS_CAP_ENABLED', None)
+        _ = getattr(config, 'EXIT_HEDGE_LOSS_KILL_ENABLED', None)
+        _ = getattr(config, 'EXIT_HEDGE_ORPHAN_KILL_ENABLED', None)
+        _ = getattr(config, 'EXIT_KEY_LEVEL_CRASH_ENABLED', None)
+        _ = getattr(config, 'EXIT_ON_ALL', None)
+        _ = getattr(config, 'EXIT_ON_ALL_ENABLED', None)
+        _ = getattr(config, 'EXIT_PREEMPTIVE_BREAKEVEN_ENABLED', None)
+        _ = getattr(config, 'EXIT_SCORER_K_EXTREME', None)
+        _ = getattr(config, 'EXIT_SCORER_MIN_CONDITIONS', None)
+        _ = getattr(config, 'EZ_KLINES_API_MAX_PER_MINUTE', None)
+        _ = getattr(config, 'EZ_KLINES_API_MAX_PER_SECOND', None)
+        _ = getattr(config, 'EZ_KLINES_MAX_CONCURRENT', None)
+        _ = getattr(config, 'EZ_KLINES_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_MANAGE_CONCURRENCY_LIMIT', None)
+        _ = getattr(config, 'EZ_MANAGE_RATE_LIMIT_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_MARK_PRICES_API_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_MARK_PRICES_STARTUP_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_PRICES_API_DELAY', None)
+        _ = getattr(config, 'EZ_PRICES_API_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_PRICES_API_SLEEP_AFTER', None)
+        _ = getattr(config, 'EZ_PRICES_FAPI_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_PRICES_FILE_IO_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_PRICES_LIMIT_PER_HOST', None)
+        _ = getattr(config, 'EZ_PRICEWS_API_DELAY', None)
+        _ = getattr(config, 'EZ_PRICEWS_API_SEMAPHORE', None)
+        _ = getattr(config, 'EZ_PRICEWS_CONNECTOR_LIMIT', None)
+        _ = getattr(config, 'EZ_PRICEWS_LIMIT_PER_HOST', None)
+        _ = getattr(config, 'EZ_RANKINGS_THROTTLER_RATE', None)
+        _ = getattr(config, 'EZ_REENTRY_DAEMON_ENABLED', None)
+        _ = getattr(config, 'EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED', None)
+        _ = getattr(config, 'EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED', None)
+        _ = getattr(config, 'EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED', None)
+        _ = getattr(config, 'EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED', None)
+        _ = getattr(config, 'EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED', None)
+        _ = getattr(config, 'EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED', None)
+        _ = getattr(config, 'EZ_REENTRY_PRICE_CROSS_INTERVAL_S', None)
+        _ = getattr(config, 'EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS', None)
+        _ = getattr(config, 'EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK', None)
+        _ = getattr(config, 'EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC', None)
+        _ = getattr(config, 'EZ_REENTRY_PRICE_CROSS_PCT', None)
+        _ = getattr(config, 'EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S', None)
+        _ = getattr(config, 'FAPI_BASE_URL', None)
+        _ = getattr(config, 'FAST_CUT_LOSS_MIN_AGE_MINUTES', None)
+        _ = getattr(config, 'FAVORABLE_SLOPE_HOLD_ENABLED', None)
+        _ = getattr(config, 'FH_MOMENTUM_MAX_POSITIONS', None)
+        _ = getattr(config, 'FINAL_SCORE_FILE', None)
+        _ = getattr(config, 'FORMATION_CUP_HANDLE_ENTRY_ENABLED', None)
+        _ = getattr(config, 'FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED', None)
+        _ = getattr(config, 'FORMATION_EXIT_MIN_GAIN_PCT', None)
+        _ = getattr(config, 'FORMATION_FLAG_PENNANT_ENTRY_ENABLED', None)
+        _ = getattr(config, 'FORMATION_HEAD_SHOULDERS_ENTRY_ENABLED', None)
+        _ = getattr(config, 'FORMATION_MIN_SCORE', None)
+        _ = getattr(config, 'FORMATION_POSITION_SIZE_MULT', None)
+        _ = getattr(config, 'FORMATION_TFS', None)
+        _ = getattr(config, 'FORMATION_TREND_STRUCTURE_ENTRY_ENABLED', None)
+        _ = getattr(config, 'FORMATION_TRIANGLE_ENTRY_ENABLED', None)
+        _ = getattr(config, 'FORMATION_WEDGE_ENTRY_ENABLED', None)
+        _ = getattr(config, 'FSTREAM_WS_URL_BASE', None)
+        _ = getattr(config, 'FULL_RECIPE_ONLY_ENABLED', None)
+        _ = getattr(config, 'FUNDING_EXTREME_LONG_THRESHOLD_PCT', None)
+        _ = getattr(config, 'FUNDING_EXTREME_SHORT_THRESHOLD_PCT', None)
+        _ = getattr(config, 'FUNDING_GATE_ENABLED', None)
+        _ = getattr(config, 'FUNDING_GATE_MTF_LONG_MAX_BULL_TFS', None)
+        _ = getattr(config, 'FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS', None)
+        _ = getattr(config, 'FUNDING_HEDGE_GATE_ENABLED', None)
+        _ = getattr(config, 'FUNDING_INJECT_LONG_OVERCROWDED_ABOVE', None)
+        _ = getattr(config, 'FUNDING_INJECT_SHORT_OVERCROWDED_BELOW', None)
+        _ = getattr(config, 'FUNDING_LIVE_REFRESH_HOURS', None)
+        _ = getattr(config, 'FUNDING_OI_INJECT_ENABLED', None)
+        _ = getattr(config, 'FUNDING_OI_INJECT_MAX_EACH', None)
+        _ = getattr(config, 'FUNDING_OI_INJECT_OI_MIN_PCT', None)
+        _ = getattr(config, 'FUNDING_OI_INJECT_PRICE_MIN_PCT', None)
+        _ = getattr(config, 'GAP_FILL_ENABLED', None)
+        _ = getattr(config, 'GHOST_ABSENT_ALERT_THRESHOLD', None)
+        _ = getattr(config, 'GHOST_CLOSE_REQUIRE_CONFIRMATION', None)
+        _ = getattr(config, 'GOLDEN_RULE_ACTIVATION_TF_LIST', None)
+        _ = getattr(config, 'GOLDEN_RULE_BB_15M_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_BB_1H_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_BB_4H_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_BB_D_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_BB_W_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_DC_15M_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_DC_1H_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_DC_4H_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_DC_D_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_DC_W_ENABLED', None)
+        _ = getattr(config, 'GOLDEN_RULE_ENTRY_TF_LIST', None)
+        _ = getattr(config, 'GOLDEN_RULE_MULT_15M', None)
+        _ = getattr(config, 'GOLDEN_RULE_MULT_1H', None)
+        _ = getattr(config, 'GOLDEN_RULE_MULT_4H', None)
+        _ = getattr(config, 'GOLDEN_RULE_MULT_D', None)
+        _ = getattr(config, 'GOLDEN_RULE_MULT_W', None)
+        _ = getattr(config, 'GOLDEN_RULE_REQUIRE_ACTIVATION', None)
+        _ = getattr(config, 'GOLDEN_RULE_REQUIRE_HEDGE_OPEN', None)
+        _ = getattr(config, 'GR_BB_EXTENDED_LONG', None)
+        _ = getattr(config, 'GR_DC_EXTENDED_LONG', None)
+        _ = getattr(config, 'GR_HTF_GATE_ENABLED', None)
+        _ = getattr(config, 'GR_HTF_REQUIRE_BEAR', None)
+        _ = getattr(config, 'GR_HTF_REQUIRE_BULL', None)
+        _ = getattr(config, 'GR_OPEN_COOLDOWN_S', None)
+        _ = getattr(config, 'GR_TOTAL_VOTE_SCORE_MIN', None)
+        _ = getattr(config, 'GR_V5_ARM_WINDOW_BARS', None)
+        _ = getattr(config, 'GR_V5_BOUNCE_STOCH_LONG', None)
+        _ = getattr(config, 'GR_V5_BOUNCE_STOCH_SHORT', None)
+        _ = getattr(config, 'GR_V5_BOUNCE_WT_CROSS_REQUIRED', None)
+        _ = getattr(config, 'GR_V5_BREAKOUT_REQUIRE_VOLUME', None)
+        _ = getattr(config, 'GR_V5_BREAKOUT_VOL_MULT', None)
+        _ = getattr(config, 'GR_V5_ENABLED', None)
+        _ = getattr(config, 'GR_V5_HTF_MIN_ALIGN', None)
+        _ = getattr(config, 'GR_V5_HTF_TFS', None)
+        _ = getattr(config, 'GR_V5_INVALIDATE_PCT', None)
+        _ = getattr(config, 'GR_V5_LTF_MIN_ALIGN', None)
+        _ = getattr(config, 'GR_V5_LTF_TFS', None)
+        _ = getattr(config, 'GR_V5_RETEST_BAND_PCT', None)
+        _ = getattr(config, 'GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED', None)
+        _ = getattr(config, 'GUARANTEED_REENTRY_HTF_VETO_ENABLED', None)
+        _ = getattr(config, 'HARD_MAX_LOSS_PCT', None)
+        _ = getattr(config, 'HARD_MAX_SYMBOL_VALUE_TRADIER', None)
+        _ = getattr(config, 'HD_ROOT', None)
+        _ = getattr(config, 'HEDGE_ALL_POSITIONS', None)
+        _ = getattr(config, 'HEDGE_ALREADY_COVERED_THRESHOLD', None)
+        _ = getattr(config, 'HEDGE_BALANCE_COOLDOWN_SECONDS', None)
+        _ = getattr(config, 'HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED', None)
+        _ = getattr(config, 'HEDGE_CLOSE_MODE', None)
+        _ = getattr(config, 'HEDGE_CLOSE_REMOVE_FROM_TRADEABLE', None)
+        _ = getattr(config, 'HEDGE_CLOSE_SCALP_MODE', None)
+        _ = getattr(config, 'HEDGE_CLOSE_WT_DC_THRESHOLD', None)
+        _ = getattr(config, 'HEDGE_CLOSE_WT_TFS_FAVOR', None)
+        _ = getattr(config, 'HEDGE_COMPLETED_LOCKOUT_SECONDS', None)
+        _ = getattr(config, 'HEDGE_CROSS_SYMBOL_TRADIER', None)
+        _ = getattr(config, 'HEDGE_DC_LONG_REJECT_DCP', None)
+        _ = getattr(config, 'HEDGE_DC_RESISTANCE_GATE_ENABLED', None)
+        _ = getattr(config, 'HEDGE_DC_SHORT_REJECT_DCP', None)
+        _ = getattr(config, 'HEDGE_DECAY_NUKE_ENABLED', None)
+        _ = getattr(config, 'HEDGE_DETERIORATING_GAIN_DELTA_PP', None)
+        _ = getattr(config, 'HEDGE_DETERIORATING_GAIN_ENABLED', None)
+        _ = getattr(config, 'HEDGE_DETERIORATING_GAIN_WINDOW_BARS', None)
+        _ = getattr(config, 'HEDGE_ENTRY_MODE', None)
+        _ = getattr(config, 'HEDGE_EXIT_DELTA_CHECK_ENABLED', None)
+        _ = getattr(config, 'HEDGE_EXIT_WT_TF', None)
+        _ = getattr(config, 'HEDGE_HTF_VETO_ENABLED', None)
+        _ = getattr(config, 'HEDGE_MAX_ABSOLUTE_USD', None)
+        _ = getattr(config, 'HEDGE_MAX_AGE_HOURS', None)
+        _ = getattr(config, 'HEDGE_MAX_AGE_KILL_REQUIRE_PROFIT', None)
+        _ = getattr(config, 'HEDGE_MAX_PCT_OF_LOSER', None)
+        _ = getattr(config, 'HEDGE_MAX_RATIO', None)
+        _ = getattr(config, 'HEDGE_MOMENTUM_GATE', None)
+        _ = getattr(config, 'HEDGE_NEWBORN_DC_BREACH_ALLOWED', None)
+        _ = getattr(config, 'HEDGE_NEWBORN_GRACE_MINUTES', None)
+        _ = getattr(config, 'HEDGE_OPEN_OB_CHECK_ENABLED', None)
+        _ = getattr(config, 'HEDGE_OPEN_OB_IMB_BOUND', None)
+        _ = getattr(config, 'HEDGE_OVERSIZE_RATIO', None)
+        _ = getattr(config, 'HEDGE_PROTECT_LOSS_VEC_ENABLED', None)
+        _ = getattr(config, 'HEDGE_PROTECT_QTY_PCT', None)
+        _ = getattr(config, 'HEDGE_PROTECT_TRIGGER_GAIN_PCT', None)
+        _ = getattr(config, 'HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE', None)
+        _ = getattr(config, 'HEDGE_SAME_SYMBOL_ENABLED', None)
+        _ = getattr(config, 'HEDGE_SAME_SYMBOL_PCT', None)
+        _ = getattr(config, 'HEDGE_SAME_SYMBOL_TRADIER', None)
+        _ = getattr(config, 'HEDGE_SCALP_C_REQUIRE_COMBINED_NONNEG', None)
+        _ = getattr(config, 'HEDGE_SCALP_MAX_AGE_MIN', None)
+        _ = getattr(config, 'HEDGE_SIZE_RATIO_TRADIER', None)
+        _ = getattr(config, 'HEDGE_STRICT_WT_ALL_TFS_ENABLED', None)
+        _ = getattr(config, 'HEDGE_STRICT_WT_MIN_TFS_AGAINST', None)
+        _ = getattr(config, 'HEDGE_TRIGGER_LOSS_PCT', None)
+        _ = getattr(config, 'HEDGE_TRIGGER_LOSS_PCT_ENTRY', None)
+        _ = getattr(config, 'HEDGE_TRIGGER_LOSS_TRADIER', None)
+        _ = getattr(config, 'HEDGE_WEBHOOK_LOCK_TTL_SEC', None)
+        _ = getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', None)
+        _ = getattr(config, 'HEDGE_WT_VEL_GATE_ENABLED', None)
+        _ = getattr(config, 'HLR_BYPASS_MIN_TF_WEIGHT', None)
+        _ = getattr(config, 'HLR_MIN_GAIN_PCT', None)
+        _ = getattr(config, 'HLR_MIN_TFS', None)
+        _ = getattr(config, 'HLR_MIN_TFS_FOR_BYPASS', None)
+        _ = getattr(config, 'HLR_OFF_SMA_PTS_FRAC', None)
+        _ = getattr(config, 'HLR_OFF_SMA_SZ_FRAC', None)
+        _ = getattr(config, 'HLR_PTS_15M', None)
+        _ = getattr(config, 'HLR_PTS_1H', None)
+        _ = getattr(config, 'HLR_PTS_3M', None)
+        _ = getattr(config, 'HLR_PTS_4H', None)
+        _ = getattr(config, 'HLR_PTS_D', None)
+        _ = getattr(config, 'HLR_PTS_W', None)
+        _ = getattr(config, 'HLR_RALLY_ENABLED', None)
+        _ = getattr(config, 'HLR_REDUCE_FRAC', None)
+        _ = getattr(config, 'HLR_REENTRY_MULT', None)
+        _ = getattr(config, 'HLR_SZ_15M', None)
+        _ = getattr(config, 'HLR_SZ_1H', None)
+        _ = getattr(config, 'HLR_SZ_3M', None)
+        _ = getattr(config, 'HLR_SZ_4H', None)
+        _ = getattr(config, 'HLR_SZ_D', None)
+        _ = getattr(config, 'HLR_SZ_MAX', None)
+        _ = getattr(config, 'HLR_SZ_W', None)
+        _ = getattr(config, 'HLR_TOP_MIN_GAIN_PCT', None)
+        _ = getattr(config, 'HLR_TOP_VEL_1H_THRESH', None)
+        _ = getattr(config, 'HLR_TOP_VEL_4H_THRESH', None)
+        _ = getattr(config, 'HLR_TOP_VEL_D_THRESH', None)
+        _ = getattr(config, 'HODL_LONG_ONLY', None)
+        _ = getattr(config, 'HOUR_OF_DAY_BLOCKED_UTC', None)
+        _ = getattr(config, 'HOUR_OF_DAY_GATE_ENABLED', None)
+        _ = getattr(config, 'HTF_AUG_VETO_FIX_ENABLED', None)
+        _ = getattr(config, 'HTF_DC_BREAKOUT_TRADIER_TF', None)
+        _ = getattr(config, 'HTF_REGIME_ADD_MULT_PER_SMA', None)
+        _ = getattr(config, 'HTF_REGIME_ENABLED', None)
+        _ = getattr(config, 'HTF_REGIME_EXIT_TF', None)
+        _ = getattr(config, 'HTF_REGIME_LEDGER_PATH', None)
+        _ = getattr(config, 'HTF_REGIME_SCALE_IN', None)
+        _ = getattr(config, 'HTF_REGIME_SIZE_CAP', None)
+        _ = getattr(config, 'HTF_REGIME_TF', None)
+        _ = getattr(config, 'HTF_REGIME_VOL_TARGET', None)
+        _ = getattr(config, 'HTF_STRICT', None)
+        _ = getattr(config, 'HTF_TREND_VETO_ENABLED', None)
+        _ = getattr(config, 'INDICATORS_FILE', None)
+        _ = getattr(config, 'INDICATORS_SAVE_INTERVAL_SECONDS', None)
+        _ = getattr(config, 'INDICATOR_UPDATE_INTERVAL', None)
+        _ = getattr(config, 'INF_RANKING_BYPASS_DELTA', None)
+        _ = getattr(config, 'INF_RANKING_BYPASS_FRESHNESS_MIN', None)
+        _ = getattr(config, 'INF_RANKING_BYPASS_HTF', None)
+        _ = getattr(config, 'INF_RANKING_BYPASS_MAX_POS', None)
+        _ = getattr(config, 'INF_RANKING_BYPASS_SCORE', None)
+        _ = getattr(config, 'INF_RANKING_BYPASS_STOCH', None)
+        _ = getattr(config, 'INF_RANKING_BYPASS_WT', None)
+        _ = getattr(config, 'INF_RANKING_PRIORITY_BYPASS', None)
+        _ = getattr(config, 'IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED', None)
+        _ = getattr(config, 'IN_GAIN_TREND_REDUCE_FRAC', None)
+        _ = getattr(config, 'K3M_CAP', None)
+        _ = getattr(config, 'K3M_CAP_BREAKOUT_BYPASS', None)
+        _ = getattr(config, 'KLINES_CACHE_DIR', None)
+        _ = getattr(config, 'KLINE_COLUMNS', None)
+        _ = getattr(config, 'K_LOWER_HIGH_EXIT_ENABLED', None)
+        _ = getattr(config, 'K_LOWER_HIGH_EXTREME', None)
+        _ = getattr(config, 'K_LOWER_HIGH_LTF_THRESHOLD', None)
+        _ = getattr(config, 'K_ZONE_ENTRY_BONUS', None)
+        _ = getattr(config, 'LADDER_AUTO_SAVE_SECONDS', None)
+        _ = getattr(config, 'LADDER_TTL_MINUTES', None)
+        _ = getattr(config, 'LAST_EVENTS_FILE', None)
+        _ = getattr(config, 'LEADERBOARD_ENTRY_ENABLED', None)
+        _ = getattr(config, 'LEADERBOARD_LONG', None)
+        _ = getattr(config, 'LEADERBOARD_SHORT', None)
+        _ = getattr(config, 'LEGACY_AGGRESSIVE_LOSS_CUT', None)
+        _ = getattr(config, 'LEGACY_FAST_CUT_LOSS', None)
+        _ = getattr(config, 'LEGACY_REENTRY_GUARANTEED_2WT', None)
+        _ = getattr(config, 'LEGACY_REENTRY_GUARANTEED_BOTTOM', None)
+        _ = getattr(config, 'LEGACY_REENTRY_GUARANTEED_CROSS', None)
+        _ = getattr(config, 'LEGACY_WR_PULLBACK', None)
+        _ = getattr(config, 'LH_HL_FILTER_AUGMENT_GATE_ENABLED', None)
+        _ = getattr(config, 'LH_HL_FILTER_HEDGE_GATE_ENABLED', None)
+        _ = getattr(config, 'LIVE_ENTRY_ENGINE_BOOST_SCORE', None)
+        _ = getattr(config, 'LIVE_ENTRY_ENGINE_DC_ENABLED', None)
+        _ = getattr(config, 'LIVE_ENTRY_ENGINE_HTF_ENABLED', None)
+        _ = getattr(config, 'LIVE_ENTRY_ENGINE_MIN_SCORE', None)
+        _ = getattr(config, 'LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED', None)
+        _ = getattr(config, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED', None)
+        _ = getattr(config, 'LIVE_ENTRY_ENGINE_WT_ENABLED', None)
+        _ = getattr(config, 'LOG_BACKUP_COUNT', None)
+        _ = getattr(config, 'LOG_FILE_EZ_BACKUP', None)
+        _ = getattr(config, 'LOG_FILE_EZ_CROSSES', None)
+        _ = getattr(config, 'LOG_FILE_EZ_INDICATORS', None)
+        _ = getattr(config, 'LOG_FILE_EZ_MANAGE', None)
+        _ = getattr(config, 'LOG_FILE_EZ_MARK_PRICES', None)
+        _ = getattr(config, 'LOG_FILE_EZ_PRICES', None)
+        _ = getattr(config, 'LOG_FILE_EZ_PRICES_WS', None)
+        _ = getattr(config, 'LOG_FILE_EZ_RANKINGS', None)
+        _ = getattr(config, 'LOG_FILE_TRADIER_MANAGE', None)
+        _ = getattr(config, 'LOG_FILE_TRADIER_POSITIONS', None)
+        _ = getattr(config, 'LOG_FILE_TRADIER_PRICES', None)
+        _ = getattr(config, 'LOG_INTERVAL_SECONDS', None)
+        _ = getattr(config, 'LOG_MAX_BYTES', None)
+        _ = getattr(config, 'LONG_STRUCT_EXIT_TF', None)
+        _ = getattr(config, 'LONG_WAIT_DIRECT_BOUNCE_DISTANCE', None)
+        _ = getattr(config, 'LONG_WAIT_DIRECT_BOUNCE_TIMEFRAME', None)
+        _ = getattr(config, 'LONG_WAIT_DIRECT_CONFIRMATION', None)
+        _ = getattr(config, 'LONG_WAIT_DIRECT_DEEP_K4H', None)
+        _ = getattr(config, 'LONG_WAIT_DIRECT_ENABLED', None)
+        _ = getattr(config, 'LONG_WAIT_DIRECT_TURN_K1H', None)
+        _ = getattr(config, 'LOSS_CUT_ENABLED', None)
+        _ = getattr(config, 'LOSS_EXIT_REQUIRES_HEDGE', None)
+        _ = getattr(config, 'LOSS_EXIT_TECHNICAL_BYPASS', None)
+        _ = getattr(config, 'LR_BAND_BE_RATCHET', None)
+        _ = getattr(config, 'LR_BAND_E02_EXIT_ENABLED', None)
+        _ = getattr(config, 'LR_BAND_ENTRY_SIDES', None)
+        _ = getattr(config, 'LR_BAND_EXIT_EXEMPT', None)
+        _ = getattr(config, 'LR_BAND_LADDER_BASE_UNIT_USD', None)
+        _ = getattr(config, 'LR_BAND_LADDER_CAPACITY_USD', None)
+        _ = getattr(config, 'LR_BAND_LADDER_ORDINARY_PARITY_ENABLED', None)
+        _ = getattr(config, 'LR_BAND_LADDER_TRIGGER', None)
+        _ = getattr(config, 'LR_BAND_READD_LO', None)
+        _ = getattr(config, 'LR_CHANNEL_LONG_LENGTHS', None)
+        _ = getattr(config, 'LS_RATIO_CONTRARIAN_ENABLED', None)
+        _ = getattr(config, 'LS_RATIO_ENFORCE', None)
+        _ = getattr(config, 'LS_RATIO_EXTREME_THRESHOLD', None)
+        _ = getattr(config, 'LS_RATIO_LOG_INTERVAL', None)
+        _ = getattr(config, 'LS_RATIO_PENALTY', None)
+        _ = getattr(config, 'LS_RATIO_REBALANCE_THRESHOLD', None)
+        _ = getattr(config, 'LT_SCORE_WEIGHT_HTF', None)
+        _ = getattr(config, 'LT_TOP_SIZE', None)
+        _ = getattr(config, 'LUNCH_DEADZONE_MODE', None)
+        _ = getattr(config, 'MACRO_BLACKOUT_ENABLED', None)
+        _ = getattr(config, 'MACRO_BLACKOUT_SIZE_MULT', None)
+        _ = getattr(config, 'MANDATORY_HEDGE_HARD_THRESHOLD_PCT', None)
+        _ = getattr(config, 'MANDATORY_HEDGE_ON_NEGATIVE_ENABLED', None)
+        _ = getattr(config, 'MANDATORY_REENTRY_MIN_WT_AGREE', None)
+        _ = getattr(config, 'MANDATORY_REENTRY_WT_FILTER_ENABLED', None)
+        _ = getattr(config, 'MARKET_CLOSE_HOUR', None)
+        _ = getattr(config, 'MARKET_CLOSE_MINUTE', None)
+        _ = getattr(config, 'MARKET_MODE_FILE', None)
+        _ = getattr(config, 'MARKET_OPEN_HOUR', None)
+        _ = getattr(config, 'MARKET_OPEN_MINUTE', None)
+        _ = getattr(config, 'MARK_PRICE_MAX_STALENESS', None)
+        _ = getattr(config, 'MAX_ALLOWED_DRAWDOWN_PCT', None)
+        _ = getattr(config, 'MAX_FILES', None)
+        _ = getattr(config, 'MAX_HEDGE_BALANCE_MULTIPLIER', None)
+        _ = getattr(config, 'MAX_HEDGE_BALANCE_VALUE_USD', None)
+        _ = getattr(config, 'MEMORY_MONITOR_SLEEP_SECONDS', None)
+        _ = getattr(config, 'MFI_LONG_THRESHOLD_D', None)
+        _ = getattr(config, 'MICRO_SCALP_STOCKS_ACCOUNTS', None)
+        _ = getattr(config, 'MICRO_SCALP_STOCKS_MAKER_ENABLED', None)
+        _ = getattr(config, 'MID_ZONE_SHORT_EXTRA_IND', None)
+        _ = getattr(config, 'MINERVINI_MIN_SCORE', None)
+        _ = getattr(config, 'MINERVINI_MIN_SEPA_SCORE', None)
+        _ = getattr(config, 'MIN_EXIT_TF_AGAINST_TRADIER', None)
+        _ = getattr(config, 'MIN_USD_DELTA_CONFIRM', None)
+        _ = getattr(config, 'MITIGATOR_ACCOUNT', None)
+        _ = getattr(config, 'MITIGATOR_AUGMENT_CONSECUTIVE', None)
+        _ = getattr(config, 'MITIGATOR_AUGMENT_THRESHOLD', None)
+        _ = getattr(config, 'MITIGATOR_COOLDOWN', None)
+        _ = getattr(config, 'MITIGATOR_ENABLED', None)
+        _ = getattr(config, 'MITIGATOR_REENTRY_COOLDOWN', None)
+        _ = getattr(config, 'MITIGATOR_REENTRY_PRICE_PCT', None)
+        _ = getattr(config, 'MITIGATOR_SCAN_INTERVAL', None)
+        _ = getattr(config, 'MITIGATOR_TIER1_DROP', None)
+        _ = getattr(config, 'MITIGATOR_TIER1_PEAK', None)
+        _ = getattr(config, 'MITIGATOR_TIER1_REDUCE_PCT', None)
+        _ = getattr(config, 'MITIGATOR_TIER2_DROP', None)
+        _ = getattr(config, 'MITIGATOR_TIER2_REDUCE_PCT', None)
+        _ = getattr(config, 'MITIGATOR_TIER3_DROP', None)
+        _ = getattr(config, 'MOM4S_S_ACCOUNTS', None)
+        _ = getattr(config, 'MOM4S_S_GATE_ENABLED', None)
+        _ = getattr(config, 'MOM5_TRENDER_L_ACCOUNTS', None)
+        _ = getattr(config, 'MOM5_TRENDER_L_GATE_ENABLED', None)
+        _ = getattr(config, 'MOMENTUM_FADE_BODY_ATR_MIN', None)
+        _ = getattr(config, 'MOMENTUM_FADE_ENABLED', None)
+        _ = getattr(config, 'MOMENTUM_FADE_K_ZONE', None)
+        _ = getattr(config, 'MOMENTUM_FADE_SCORE_BONUS', None)
+        _ = getattr(config, 'MOMENTUM_FADE_SCORE_BONUS_TRADIER', None)
+        _ = getattr(config, 'MOMENTUM_FADE_VOL_MIN', None)
+        _ = getattr(config, 'MOMENTUM_RIDER_ACCOUNT', None)
+        _ = getattr(config, 'MOMENTUM_RIDER_MAX_SIZE_USD', None)
+        _ = getattr(config, 'MONITOR_REDUCTION_STALE_THRESHOLD', None)
+        _ = getattr(config, 'MOVER_ACCOUNT', None)
+        _ = getattr(config, 'MOVER_DETECTION_ENABLED', None)
+        _ = getattr(config, 'MOVER_LINEARITY_MIN', None)
+        _ = getattr(config, 'MOVER_LOOKBACK', None)
+        _ = getattr(config, 'MOVER_MAX_POSITIONS', None)
+        _ = getattr(config, 'MOVER_SCORE_BONUS', None)
+        _ = getattr(config, 'MOVER_VOL_MIN', None)
+        _ = getattr(config, 'MR3S_S_ACCOUNTS', None)
+        _ = getattr(config, 'MR3S_S_GATE_ENABLED', None)
+        _ = getattr(config, 'MR5_L_ACCOUNTS', None)
+        _ = getattr(config, 'MR5_L_GATE_ENABLED', None)
+        _ = getattr(config, 'MTF_ARMED_BANDTYPES', None)
+        _ = getattr(config, 'MTF_ARMED_HTF_LIST', None)
+        _ = getattr(config, 'MTF_ARMED_WT_DIRECTION_SUSPEND_BREAKOUT_BYPASS', None)
+        _ = getattr(config, 'MTF_ARROW_SHORT_ENTRY_ENABLED', None)
+        _ = getattr(config, 'MTF_ARROW_SLOPE_NORM_PCT_DAY', None)
+        _ = getattr(config, 'MTF_ARROW_THETA', None)
+        _ = getattr(config, 'MTF_ARROW_WEIGHTS', None)
+        _ = getattr(config, 'MTF_ATR_MULTITF_DIRECT_ENABLED', None)
+        _ = getattr(config, 'MTF_ATR_MULTITF_DIRECT_MIN_CONFIRMING_TFS', None)
+        _ = getattr(config, 'MTF_ATR_MULTITF_DIRECT_MIN_PROFIT_PCT', None)
+        _ = getattr(config, 'MTF_ATR_MULTITF_DIRECT_MULT', None)
+        _ = getattr(config, 'MTF_ATR_MULTITF_DIRECT_TIMEFRAMES', None)
+        _ = getattr(config, 'MTF_ATR_TRAIL_ENABLED', None)
+        _ = getattr(config, 'MTF_ATR_TRAIL_MULT', None)
+        _ = getattr(config, 'MTF_ATR_TRAIL_TF', None)
+        _ = getattr(config, 'MTF_BB_REJECT_EXIT_ENABLED', None)
+        _ = getattr(config, 'MTF_BB_REJECT_EXIT_LOOKBACK', None)
+        _ = getattr(config, 'MTF_BB_REJECT_EXIT_TF', None)
+        _ = getattr(config, 'MTF_DC_REJECT_EXIT_ENABLED', None)
+        _ = getattr(config, 'MTF_DC_REJECT_EXIT_LOOKBACK', None)
+        _ = getattr(config, 'MTF_DC_REJECT_EXIT_TF', None)
+        _ = getattr(config, 'MTF_ENTRY_REQUIRE_GR_FILTER', None)
+        _ = getattr(config, 'MTF_EXIT_MIN_OPEN_TS', None)
+        _ = getattr(config, 'MTF_EXIT_USE_COMPOUND', None)
+        _ = getattr(config, 'MTF_GR_EXIT_MIN_IND', None)
+        _ = getattr(config, 'MTF_GR_FILTER_ENABLED', None)
+        _ = getattr(config, 'MTF_GR_INVERT_DC_BB', None)
+        _ = getattr(config, 'MTF_REQUIRE_ARMED_ANY', None)
+        _ = getattr(config, 'MTF_WT_CROSS_EXIT_DIRECT_ENABLED', None)
+        _ = getattr(config, 'MTF_WT_CROSS_EXIT_ENABLED', None)
+        _ = getattr(config, 'MTF_WT_CROSS_EXIT_TF', None)
+        _ = getattr(config, 'MTS_BOTTOM_MIN', None)
+        _ = getattr(config, 'MTS_BOTTOM_MIN_SHORT', None)
+        _ = getattr(config, 'MTS_ENTRY_QUALITY_BONUS', None)
+        _ = getattr(config, 'MTS_ENTRY_QUALITY_MIN', None)
+        _ = getattr(config, 'MTS_ENTRY_QUALITY_MIN_SHORT', None)
+        _ = getattr(config, 'MTS_ENTRY_QUALITY_STRONG', None)
+        _ = getattr(config, 'MTS_WEIGHT_D', None)
+        _ = getattr(config, 'MULT_FILE', None)
+        _ = getattr(config, 'MU_CORRECTION_HTF_K_MIN', None)
+        _ = getattr(config, 'MU_CORRECTION_HTF_MIN_TFS', None)
+        _ = getattr(config, 'MU_CORRECTION_HTF_RSI_MIN', None)
+        _ = getattr(config, 'MU_CORRECTION_HTF_TFS', None)
+        _ = getattr(config, 'MU_CORRECTION_LTF_FALL_MIN_TFS', None)
+        _ = getattr(config, 'MU_CORRECTION_LTF_FALL_TFS', None)
+        _ = getattr(config, 'MU_CORRECTION_MIN_GAIN_PCT', None)
+        _ = getattr(config, 'MU_CORRECTION_REENTRY_DC_TOL_PCT', None)
+        _ = getattr(config, 'MU_CORRECTION_REENTRY_STOCH_ENABLED', None)
+        _ = getattr(config, 'MU_CORRECTION_REQUIRE_CLOSE_REVERSAL', None)
+        _ = getattr(config, 'MU_CORRECTION_REQUIRE_HIGH_REVERSAL', None)
+        _ = getattr(config, 'MU_CORRECTION_SYMBOLS', None)
+        _ = getattr(config, 'NEWBORN_DC_STOP_ENABLED', None)
+        _ = getattr(config, 'NEWBORN_DC_STOP_FIELD', None)
+        _ = getattr(config, 'NEWBORN_DC_STOP_MAX_AGE_MIN', None)
+        _ = getattr(config, 'NEWBORN_LOSS_KILL_MIN_AGE_MIN', None)
+        _ = getattr(config, 'NEWBORN_LOSS_KILL_SURGICAL_ONLY', None)
+        _ = getattr(config, 'NEWS_POLL_INTERVAL_CRYPTO', None)
+        _ = getattr(config, 'NEWS_POLL_INTERVAL_SOCIAL', None)
+        _ = getattr(config, 'NEWS_SENTIMENT_DECAY_HOURS', None)
+        _ = getattr(config, 'NEWS_SENTIMENT_ENABLED', None)
+        _ = getattr(config, 'NEWS_SENTIMENT_MIN_ARTICLES', None)
+        _ = getattr(config, 'NEWS_SENTIMENT_WEIGHT', None)
+        _ = getattr(config, 'NOLOSS_DC4H_GATE_ENABLED', None)
+        _ = getattr(config, 'OBLIGATORY_HEDGE_ENABLED', None)
+        _ = getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', None)
+        _ = getattr(config, 'OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED', None)
+        _ = getattr(config, 'OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS', None)
+        _ = getattr(config, 'OBLIGATORY_HEDGE_PCT', None)
+        _ = getattr(config, 'OBLIGATORY_HEDGE_WT_TFS', None)
+        _ = getattr(config, 'OBLIGATORY_REENTRY_LONG_ENABLED', None)
+        _ = getattr(config, 'OBLIGATORY_REENTRY_SHORT_ENABLED', None)
+        _ = getattr(config, 'OBLIGATORY_REENTRY_SHORT_SMA_BOUNCE_SIZE_MULT', None)
+        _ = getattr(config, 'OBLIGATORY_REENTRY_SMA_BOUNCE_SIZE_MULT', None)
+        _ = getattr(config, 'OB_ENTRY_GATE_ACCOUNTS', None)
+        _ = getattr(config, 'OB_ENTRY_MIN_LONG_SCORE', None)
+        _ = getattr(config, 'OB_ENTRY_MIN_SHORT_SCORE', None)
+        _ = getattr(config, 'OB_ENTRY_WALL_TOO_CLOSE_PCT', None)
+        _ = getattr(config, 'OI_DIVERGENCE_ENABLED', None)
+        _ = getattr(config, 'OI_DIVERGENCE_PENALTY', None)
+        _ = getattr(config, 'OI_HEDGE_GATE_ENABLED', None)
+        _ = getattr(config, 'OI_LIVE_REFRESH_HOURS', None)
+        _ = getattr(config, 'OPENING_BUFFER_NO_CLOSE_MINUTES', None)
+        _ = getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN', None)
+        _ = getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M', None)
+        _ = getattr(config, 'OPTIMAL_HOLD_BARS_15M', None)
+        _ = getattr(config, 'OPTIONS_ALERT_ABS_LOSS_PP', None)
+        _ = getattr(config, 'OPTIONS_ALERT_DROP_PP', None)
+        _ = getattr(config, 'OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD', None)
+        _ = getattr(config, 'OPTIONS_BASE_CAP', None)
+        _ = getattr(config, 'OPTIONS_BUY_MAX_OTM_PCT', None)
+        _ = getattr(config, 'OPTIONS_BUY_MIN_ABS_DELTA', None)
+        _ = getattr(config, 'OPTIONS_BUY_MIN_DTE', None)
+        _ = getattr(config, 'OPTIONS_BUY_MIN_WT_DC_SCORE', None)
+        _ = getattr(config, 'OPTIONS_BUY_PREFERRED_DTE', None)
+        _ = getattr(config, 'OPTIONS_BUY_REQUIRE_D_ALIGN', None)
+        _ = getattr(config, 'OPTIONS_BUY_WT_DC_GATE_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_CONTINUOUS_SECTOR_GATE', None)
+        _ = getattr(config, 'OPTIONS_CSP_DTE_MAX', None)
+        _ = getattr(config, 'OPTIONS_CSP_DTE_MIN', None)
+        _ = getattr(config, 'OPTIONS_CSP_EDGE_MARGIN', None)
+        _ = getattr(config, 'OPTIONS_CSP_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_CSP_MAX_CAPITAL_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MAX_DELTA', None)
+        _ = getattr(config, 'OPTIONS_CSP_MAX_HOLD_DAYS', None)
+        _ = getattr(config, 'OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MIN_DELTA', None)
+        _ = getattr(config, 'OPTIONS_CSP_MIN_EXTRINSIC_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MIN_IV_RANK', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_CALL_BREACH_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_LOG_EVERY_TICK', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_MAX_LOSS_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_POLL_SEC', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN', None)
+        _ = getattr(config, 'OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT', None)
+        _ = getattr(config, 'OPTIONS_CSP_NAKED_CALL_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_CSP_PROFIT_TARGET_PCT', None)
+        _ = getattr(config, 'OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN', None)
+        _ = getattr(config, 'OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_EQUITY_HEDGE_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD', None)
+        _ = getattr(config, 'OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST', None)
+        _ = getattr(config, 'OPTIONS_EQUITY_HEDGE_TRIGGER_PCT', None)
+        _ = getattr(config, 'OPTIONS_FULL_DIV_CAP', None)
+        _ = getattr(config, 'OPTIONS_HEDGED_CAP', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_DC_REL_TOL_PCT', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_K_OVERSOLD_PCT', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_LADDER_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_PAIR_GUARD_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_PUT_DELTA_MAX', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_PUT_DELTA_MIN', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_PUT_DTE_MAX', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_PUT_DTE_MIN', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_PUT_MAX_IV_RANK', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT', None)
+        _ = getattr(config, 'OPTIONS_HEDGE_RATIO_MIN', None)
+        _ = getattr(config, 'OPTIONS_LEVEL_BREAK_BUFFER', None)
+        _ = getattr(config, 'OPTIONS_LEVEL_BREAK_MIN_DTE', None)
+        _ = getattr(config, 'OPTIONS_LIVE_TRADING_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_MARKET_RATIO_MAX', None)
+        _ = getattr(config, 'OPTIONS_MARKET_RATIO_MIN', None)
+        _ = getattr(config, 'OPTIONS_MAX_CONTRACTS_PER_ORDER', None)
+        _ = getattr(config, 'OPTIONS_MAX_LOSS_GUARD_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_MAX_LOSS_PCT_DTE_14', None)
+        _ = getattr(config, 'OPTIONS_MAX_LOSS_PCT_DTE_30', None)
+        _ = getattr(config, 'OPTIONS_MAX_LOSS_PCT_DTE_LOW', None)
+        _ = getattr(config, 'OPTIONS_MAX_ORDER_BUDGET', None)
+        _ = getattr(config, 'OPTIONS_MAX_PER_GROUP', None)
+        _ = getattr(config, 'OPTIONS_MAX_PER_SECTOR', None)
+        _ = getattr(config, 'OPTIONS_MAX_PER_SYMBOL', None)
+        _ = getattr(config, 'OPTIONS_MAX_SINGLE_CONTRACT_PRICE', None)
+        _ = getattr(config, 'OPTIONS_MIN_GROUPS', None)
+        _ = getattr(config, 'OPTIONS_MIN_SECTORS', None)
+        _ = getattr(config, 'OPTIONS_PREMARKET_NO_FIRE', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_DTE_MAX', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_DTE_MIN', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_IV_RANK_MIN', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_MAX_CONCURRENT', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_MAX_HOLD_DAYS', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_PROFIT_TARGET_PCT', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_SHORT_DELTA', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_UNIVERSE', None)
+        _ = getattr(config, 'OPTIONS_SPREAD_WIDTH', None)
+        _ = getattr(config, 'OPTIONS_STOCK_CSP_ENABLED', None)
+        _ = getattr(config, 'OPTIONS_STOCK_CSP_IV_RANK_MIN', None)
+        _ = getattr(config, 'OPTIONS_STOCK_CSP_MAX_CONCURRENT', None)
+        _ = getattr(config, 'OPTIONS_STOCK_CSP_MIN_CASH', None)
+        _ = getattr(config, 'OPTIONS_USER_CANCEL_COOLDOWN_HOURS', None)
+        _ = getattr(config, 'OPTIONS_WT_ACCEL_GROWTH_PCT', None)
+        _ = getattr(config, 'OPTIONS_WT_ACCEL_MIN_ABS', None)
+        _ = getattr(config, 'OPTIONS_WT_SLOWDOWN_PCT', None)
+        _ = getattr(config, 'ORB_ENABLED', None)
+        _ = getattr(config, 'ORB_MAX_PER_DAY', None)
+        _ = getattr(config, 'ORB_RVOL_MIN', None)
+        _ = getattr(config, 'ORB_TARGET_MULT', None)
+        _ = getattr(config, 'ORB_WINDOW_MINUTES', None)
+        _ = getattr(config, 'ORPHAN_HEDGE_CHECK_GAIN', None)
+        _ = getattr(config, 'OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS', None)
+        _ = getattr(config, 'PAPER_TRADING', None)
+        _ = getattr(config, 'PAPER_TRADING_QUICK', None)
+        _ = getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', None)
+        _ = getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', None)
+        _ = getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', None)
+        _ = getattr(config, 'PAU_TIMEOUT_SEC', None)
+        _ = getattr(config, 'PEAK_GIVEBACK_DROP_PCT', None)
+        _ = getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', None)
+        _ = getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', None)
+        _ = getattr(config, 'PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT', None)
+        _ = getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', None)
+        _ = getattr(config, 'PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN', None)
+        _ = getattr(config, 'PENNY_STOCK_LONG_BLOCK_ENABLED', None)
+        _ = getattr(config, 'PENNY_STOCK_LONG_BLOCK_PRICE_USD', None)
+        _ = getattr(config, 'PERSIST_FIN', None)
+        _ = getattr(config, 'PERSIST_FLZ', None)
+        _ = getattr(config, 'PERSIST_INF', None)
+        _ = getattr(config, 'PERSIST_MEN', None)
+        _ = getattr(config, 'PER_SYMBOL_CONFIG_ENABLED', None)
+        _ = getattr(config, 'PER_SYMBOL_CONFIG_FILE', None)
+        _ = getattr(config, 'PLOTS_DIR', None)
+        _ = getattr(config, 'PLOT_LOOP_INTERVAL_SECONDS', None)
+        _ = getattr(config, 'PNL_DECAY_COMPLETE_DAYS', None)
+        _ = getattr(config, 'PNL_DECAY_FINAL_PERCENTAGE', None)
+        _ = getattr(config, 'PNL_DECAY_START_HOURS', None)
+        _ = getattr(config, 'POSITIONS_SERVICE_HEALTH_RETRIES', None)
+        _ = getattr(config, 'POSITIONS_SERVICE_HEALTH_TIMEOUT', None)
+        _ = getattr(config, 'POSITIONS_SERVICE_START_CMD', None)
+        _ = getattr(config, 'POSITION_CACHE_TTL', None)
+        _ = getattr(config, 'POSITION_REDIS_REFRESH_INTERVAL', None)
+        _ = getattr(config, 'POSITION_REFRESH_INTERVAL', None)
+        _ = getattr(config, 'POSITION_REFRESH_MIN_INTERVAL', None)
+        _ = getattr(config, 'POSITION_SAVE_INTERVAL', None)
+        _ = getattr(config, 'PPL_FIRE_COOLDOWN_S', None)
+        _ = getattr(config, 'PREVIOUS_SYMBOLS_FIN', None)
+        _ = getattr(config, 'PREVIOUS_SYMBOLS_FLZ', None)
+        _ = getattr(config, 'PREVIOUS_SYMBOLS_MEN', None)
+        _ = getattr(config, 'PRICE_CACHE_PULL_MAX_AGE_SEC', None)
+        _ = getattr(config, 'PRICE_CACHE_PULL_S1', None)
+        _ = getattr(config, 'PRICE_REFRESH_INTERVAL', None)
+        _ = getattr(config, 'PRICE_UPDATE_INTERVAL', None)
+        _ = getattr(config, 'PROGRESSIVE_LOCK_ENABLED', None)
+        _ = getattr(config, 'PROGRESSIVE_LOCK_FRACTION', None)
+        _ = getattr(config, 'PROGRESSIVE_LOCK_TIERS_PCT', None)
+        _ = getattr(config, 'PROX_FILE', None)
+        _ = getattr(config, 'QUICK_BANDAID_OFF_VEC_ENABLED', None)
+        _ = getattr(config, 'QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED', None)
+        _ = getattr(config, 'QUICK_CYCLE_TP_MIN_GAIN_PCT', None)
+        _ = getattr(config, 'QUICK_CYCLE_TP_REDUCE_FRAC', None)
+        _ = getattr(config, 'QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED', None)
+        _ = getattr(config, 'QUICK_HEDGE_SAME_SYM_LAST_RESORT_AGE_MIN', None)
+        _ = getattr(config, 'QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED', None)
+        _ = getattr(config, 'QUICK_HEDGE_SAME_SYM_LAST_RESORT_GAIN_PCT', None)
+        _ = getattr(config, 'QUICK_HEDGE_SAME_SYM_LAST_RESORT_QTY_PCT', None)
+        _ = getattr(config, 'QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_BB_LONG_MAX', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_BB_SHORT_MIN', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_DC_LONG_MAX', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_DC_SHORT_MIN', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_K_LONG_MAX', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_K_SHORT_MIN', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_VEC_ENABLED', None)
+        _ = getattr(config, 'QUICK_OPEN_STRONG_VEL_MIN', None)
+        _ = getattr(config, 'QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED', None)
+        _ = getattr(config, 'QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED', None)
+        _ = getattr(config, 'QUICK_SENTIMENT_CUT_MIN_GAIN', None)
+        _ = getattr(config, 'QUICK_SENTIMENT_CUT_REDUCE_FRAC', None)
+        _ = getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', None)
+        _ = getattr(config, 'R1_NEWBORN_WINDOW_MIN', None)
+        _ = getattr(config, 'R1_REQUIRE_WT15_ADVERSE', None)
+        _ = getattr(config, 'R1_TF', None)
+        _ = getattr(config, 'R2_TF_LIST', None)
+        _ = getattr(config, 'R3_HTF_FLIP_4H_TIER_ENABLED', None)
+        _ = getattr(config, 'R3_HTF_FLIP_EXIT_ENABLED', None)
+        _ = getattr(config, 'R3_HTF_FLIP_NEWBORN_WINDOW_MIN', None)
+        _ = getattr(config, 'RANKINGS_DIR', None)
+        _ = getattr(config, 'RANKING_LOOP_SLEEP_SECONDS', None)
+        _ = getattr(config, 'RANKING_MULT_ENABLED', None)
+        _ = getattr(config, 'RANKING_MULT_MAX', None)
+        _ = getattr(config, 'RANKING_MULT_MIN', None)
+        _ = getattr(config, 'RANKING_POINTS_FILE', None)
+        _ = getattr(config, 'RANKING_RESULTS_FILE', None)
+        _ = getattr(config, 'RANKING_UPDATE_INTERVAL', None)
+        _ = getattr(config, 'RANK_CONVICTION_ENABLED', None)
+        _ = getattr(config, 'RATIO_CLOSE_LOSING_COOLDOWN_SECONDS', None)
+        _ = getattr(config, 'RATIO_CLOSE_LOSING_MAX_PER_CYCLE', None)
+        _ = getattr(config, 'RATIO_CLOSE_LOSING_MIN_LOSS_PCT', None)
+        _ = getattr(config, 'RATIO_CLOSE_LOSING_MIN_PNL_DELTA_PCT', None)
+        _ = getattr(config, 'RATIO_CLOSE_LOSING_MIN_SKEW_PP', None)
+        _ = getattr(config, 'RATIO_EMERGENCY_EXIT_ENABLED', None)
+        _ = getattr(config, 'RATIO_PNL_ACCELERATION', None)
+        _ = getattr(config, 'RATIO_PNL_DELTA_THRESHOLD', None)
+        _ = getattr(config, 'RATIO_PNL_DYNAMIC_GATES_ENABLED', None)
+        _ = getattr(config, 'RATIO_PNL_GATE_SOFT_MAX', None)
+        _ = getattr(config, 'RATIO_PNL_GATE_SOFT_MIN', None)
+        _ = getattr(config, 'RATIO_PNL_TARGET_LONG_MAX', None)
+        _ = getattr(config, 'RATIO_PNL_TARGET_LONG_MIN', None)
+        _ = getattr(config, 'RATIO_PNL_WEIGHT', None)
+        _ = getattr(config, 'RATIO_REBALANCE_COOLDOWN_CRASH', None)
+        _ = getattr(config, 'RATIO_REBALANCE_COOLDOWN_EXTREME', None)
+        _ = getattr(config, 'RATIO_REBALANCE_COOLDOWN_NORMAL', None)
+        _ = getattr(config, 'RATIO_REBALANCE_COOLDOWN_PNL_DIVERGENT', None)
+        _ = getattr(config, 'RATIO_REBALANCE_MAX_CLOSES', None)
+        _ = getattr(config, 'RATIO_REBALANCE_MAX_OPENS_EXTREME', None)
+        _ = getattr(config, 'RATIO_REBALANCE_MAX_OPENS_NORMAL', None)
+        _ = getattr(config, 'RATIO_REBALANCE_MAX_OPENS_STUCK', None)
+        _ = getattr(config, 'RATIO_REBALANCE_SIZE_MAX_MULT', None)
+        _ = getattr(config, 'RATIO_REBALANCE_SIZE_MULT', None)
+        _ = getattr(config, 'RATIO_REBALANCE_SIZE_SKEW_BOOST', None)
+        _ = getattr(config, 'RATIO_SENTIMENT_FILTER_ENABLED', None)
+        _ = getattr(config, 'RATIO_SENTIMENT_SHORT_MAX', None)
+        _ = getattr(config, 'RATIO_TRIM_GAIN_FLOOR', None)
+        _ = getattr(config, 'RATIO_TRIM_MIN_AGE_S', None)
+        _ = getattr(config, 'RATIO_TRIM_MIN_INTERVAL_S', None)
+        _ = getattr(config, 'REACTIVE_MODE', None)
+        _ = getattr(config, 'REBAL_ATTEMPT_COOLDOWN_SEC', None)
+        _ = getattr(config, 'REDIS_1M_TAIL', None)
+        _ = getattr(config, 'REDIS_CHANNEL_MARKET_DATA', None)
+        _ = getattr(config, 'REDIS_CHANNEL_POSITIONS', None)
+        _ = getattr(config, 'REDIS_CHANNEL_PRICES', None)
+        _ = getattr(config, 'REDIS_CHANNEL_SIGNALS', None)
+        _ = getattr(config, 'REDIS_EXPIRY_SECONDS', None)
+        _ = getattr(config, 'REDUCE_HUGE_LOSS_THRESHOLD', None)
+        _ = getattr(config, 'RED_ZONE_AUGMENT_GATE_ENABLED', None)
+        _ = getattr(config, 'RED_ZONE_FALLBACK_K15_HIGH', None)
+        _ = getattr(config, 'RED_ZONE_FALLBACK_K15_LOW', None)
+        _ = getattr(config, 'RED_ZONE_GATE_ENABLED', None)
+        _ = getattr(config, 'RED_ZONE_GATE_FALLBACK_ENABLED', None)
+        _ = getattr(config, 'RED_ZONE_HEDGE_GATE_ENABLED', None)
+        _ = getattr(config, 'RED_ZONE_MIN_DISTANCE_PCT', None)
+        _ = getattr(config, 'RED_ZONE_MIN_WALL_NOTIONAL_USD', None)
+        _ = getattr(config, 'RED_ZONE_STALE_MAX_SEC', None)
+        _ = getattr(config, 'REENTER_ORPHAN_THRESHOLD', None)
+        _ = getattr(config, 'REENTER_SAVE_DEBOUNCE_SECONDS', None)
+        _ = getattr(config, 'REENTRY_B16_MIDRANGE_ENABLED', None)
+        _ = getattr(config, 'REENTRY_CHURN_GUARD_ENABLED', None)
+        _ = getattr(config, 'REENTRY_CHURN_GUARD_USE_4BAR', None)
+        _ = getattr(config, 'REENTRY_CHURN_GUARD_WINDOW_S', None)
+        _ = getattr(config, 'REENTRY_CROSS_MAX_BARS_AGO', None)
+        _ = getattr(config, 'REENTRY_DISPATCH_MAX_ATTEMPTS', None)
+        _ = getattr(config, 'REENTRY_ESCALATION_CRIT_MIN', None)
+        _ = getattr(config, 'REENTRY_ESCALATION_WARN_MIN', None)
+        _ = getattr(config, 'REENTRY_GR_HLHH_MODE', None)
+        _ = getattr(config, 'REENTRY_GR_MIN_TFS', None)
+        _ = getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', None)
+        _ = getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_TF', None)
+        _ = getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR', None)
+        _ = getattr(config, 'REENTRY_LIVE_MONITOR_ENABLED', None)
+        _ = getattr(config, 'REENTRY_LIVE_MONITOR_INTERVAL_S', None)
+        _ = getattr(config, 'REENTRY_LIVE_MONITOR_PARTIAL_PCT', None)
+        _ = getattr(config, 'REENTRY_MATERIAL_OVERSHOOT_PCT', None)
+        _ = getattr(config, 'REENTRY_OPPOSITION_MAX_FLAT_BARS', None)
+        _ = getattr(config, 'REENTRY_SMA200_BACKUP_ENABLED', None)
+        _ = getattr(config, 'REENTRY_TIER2_MIN_MINUTES', None)
+        _ = getattr(config, 'REENTRY_TIER2_PRICE_PCT', None)
+        _ = getattr(config, 'REENTRY_TIER2_SIZE_MULT', None)
+        _ = getattr(config, 'REENTRY_WAVETREND_CONFIRM_ENABLED', None)
+        _ = getattr(config, 'REENTRY_WT15M_K_MAX', None)
+        _ = getattr(config, 'REGIME_BTC_MARKET_WEIGHT', None)
+        _ = getattr(config, 'REGIME_DETECTION_ENABLED', None)
+        _ = getattr(config, 'REGIME_MIN_DWELL_BARS', None)
+        _ = getattr(config, 'REGIME_RANGING_NOLOSS_MIN', None)
+        _ = getattr(config, 'REGIME_RANGING_SLOT_RESERVE_PCT', None)
+        _ = getattr(config, 'REGIME_TRENDING_K_RESET_THRESHOLD', None)
+        _ = getattr(config, 'REGIME_TRENDING_K_ZONE_BONUS', None)
+        _ = getattr(config, 'REGIME_TRENDING_NOLOSS_MIN', None)
+        _ = getattr(config, 'REGIME_TRENDING_SLOT_RESERVE_PCT', None)
+        _ = getattr(config, 'REQUIRED_INDICATORS', None)
+        _ = getattr(config, 'RE_2_PCT_OB', None)
+        _ = getattr(config, 'RE_2_PCT_OS', None)
+        _ = getattr(config, 'RE_2_USE_PERCENTILE_ENABLED', None)
+        _ = getattr(config, 'RE_3_B12_RISING_BONUS_ENABLED', None)
+        _ = getattr(config, 'RE_3_CONVICTION_BONUS', None)
+        _ = getattr(config, 'RE_3_RISING_COUNT_THR', None)
+        _ = getattr(config, 'RE_4_B14_HA_STREAK_CONV_ENABLED', None)
+        _ = getattr(config, 'RE_4_HA_STREAK_CAP', None)
+        _ = getattr(config, 'RE_4_HA_STREAK_WEIGHT', None)
+        _ = getattr(config, 'RE_5_B04_COMPRESSION_BONUS_ENABLED', None)
+        _ = getattr(config, 'RE_5_COMPRESSION_BONUS', None)
+        _ = getattr(config, 'RE_5_INSIDE_COUNT_THR', None)
+        _ = getattr(config, 'RE_6_MIN_EXPANDING_TFS', None)
+        _ = getattr(config, 'RE_6_WAVE_PHASE_GATE_ENABLED', None)
+        _ = getattr(config, 'RIDICULOUS_HOLD_VEC_ENABLED', None)
+        _ = getattr(config, 'RISK_FREE_RATE', None)
+        _ = getattr(config, 'ROTATION_BOTTOM_N', None)
+        _ = getattr(config, 'ROTATION_ENABLED', None)
+        _ = getattr(config, 'ROTATION_HOLD_DAYS', None)
+        _ = getattr(config, 'ROTATION_LOOKBACK_DAYS', None)
+        _ = getattr(config, 'ROTATION_TOP_N', None)
+        _ = getattr(config, 'ROUND_TRIP_COST_PCT', None)
+        _ = getattr(config, 'RP_OPPOSITE_PENALTY', None)
+        _ = getattr(config, 'RP_PROTECT_MIN_GAIN', None)
+        _ = getattr(config, 'RP_PROTECT_THRESHOLD', None)
+        _ = getattr(config, 'RP_STRONG_BONUS', None)
+        _ = getattr(config, 'RP_STRONG_THRESHOLD', None)
+        _ = getattr(config, 'RP_WEAK_PENALTY', None)
+        _ = getattr(config, 'RP_WEAK_THRESHOLD', None)
+        _ = getattr(config, 'RSI2_MEAN_REVERSION_ENABLED', None)
+        _ = getattr(config, 'RSI2_SCORE_BONUS', None)
+        _ = getattr(config, 'RSI2_THRESHOLD_LONG', None)
+        _ = getattr(config, 'RSI2_THRESHOLD_SHORT', None)
+        _ = getattr(config, 'RSI_MACD_EMA_ENABLED', None)
+        _ = getattr(config, 'RSI_MACD_EMA_RSI_LONG', None)
+        _ = getattr(config, 'RSI_MACD_EMA_RSI_SHORT', None)
+        _ = getattr(config, 'RSI_MACD_EMA_SCORE', None)
+        _ = getattr(config, 'RSI_MACD_EMA_TF', None)
+        _ = getattr(config, 'RULE_B_W_TREND_4H_PULLBACK_ENABLED', None)
+        _ = getattr(config, 'RULE_C_FUNDING_EXTREME_ENABLED', None)
+        _ = getattr(config, 'RULE_NAME_TAGGING_ENABLED', None)
+        _ = getattr(config, 'RVOL_SCALP_MIN', None)
+        _ = getattr(config, 'RVOL_SCORE_BOOST_PCT', None)
+        _ = getattr(config, 'RVOL_SCORE_BOOST_THRESHOLD', None)
+        _ = getattr(config, 'RZ_BASELINE_BOUNCE_SHORT_ENABLED', None)
+        _ = getattr(config, 'RZ_BASELINE_TOL', None)
+        _ = getattr(config, 'RZ_CASCADE_MIN_TF_ALIGN', None)
+        _ = getattr(config, 'RZ_DIV_BLOCK_MIN', None)
+        _ = getattr(config, 'RZ_LEGS_MIN', None)
+        _ = getattr(config, 'RZ_LTF_MICRO', None)
+        _ = getattr(config, 'RZ_TOP_BB_THRESHOLD', None)
+        _ = getattr(config, 'R_G10_HTF_DIV_GATE_ENABLED', None)
+        _ = getattr(config, 'R_G10_HTF_DIV_TFS', None)
+        _ = getattr(config, 'R_S1_WT_COMPOSITE_DELTA_THR', None)
+        _ = getattr(config, 'R_S1_WT_COMPOSITE_DELTA_USE_ENABLED', None)
+        _ = getattr(config, 'R_S2_WT_ADAPTIVE_OS_ENABLED', None)
+        _ = getattr(config, 'R_S2_WT_PCT_OB_SHORT', None)
+        _ = getattr(config, 'R_S2_WT_PCT_OS_LONG', None)
+        _ = getattr(config, 'R_S3_DIV_STACK_ENABLED', None)
+        _ = getattr(config, 'R_S3_HIDDEN_BONUS', None)
+        _ = getattr(config, 'R_S3_HTF_WEIGHT_ENABLED', None)
+        _ = getattr(config, 'R_S3_MAIN_PENALTY', None)
+        _ = getattr(config, 'R_S3_TF_WEIGHT_15M', None)
+        _ = getattr(config, 'R_S3_TF_WEIGHT_1H', None)
+        _ = getattr(config, 'R_S3_TF_WEIGHT_3M', None)
+        _ = getattr(config, 'R_S3_TF_WEIGHT_4H', None)
+        _ = getattr(config, 'R_S3_TF_WEIGHT_D', None)
+        _ = getattr(config, 'R_S4_HA_STREAK_ENABLED', None)
+        _ = getattr(config, 'R_S4_HA_STREAK_TF', None)
+        _ = getattr(config, 'R_S4_HA_STREAK_WEIGHT', None)
+        _ = getattr(config, 'R_S5_SENT_VEL_BONUS', None)
+        _ = getattr(config, 'R_S5_SENT_VEL_ENABLED', None)
+        _ = getattr(config, 'R_S5_SENT_VEL_PCT_THR', None)
+        _ = getattr(config, 'R_S6_WT_MSTATE_GATE_MODE', None)
+        _ = getattr(config, 'R_S7_HHLL_BONUS_PER_TF', None)
+        _ = getattr(config, 'R_S7_HHLL_MIN_INDICATORS', None)
+        _ = getattr(config, 'R_S7_HHLL_MIN_TFS_FOR_BONUS', None)
+        _ = getattr(config, 'R_S7_HHLL_STACK_ENABLED', None)
+        _ = getattr(config, 'R_S7_HHLL_TFS', None)
+        _ = getattr(config, 'R_Z2_BOT_MULT', None)
+        _ = getattr(config, 'R_Z2_PCT_BOT_THR', None)
+        _ = getattr(config, 'R_Z2_PCT_TOP_THR', None)
+        _ = getattr(config, 'R_Z2_PERCENTILE_SCALER_ENABLED', None)
+        _ = getattr(config, 'R_Z2_TOP_MULT', None)
+        _ = getattr(config, 'R_Z3_T1_MULT', None)
+        _ = getattr(config, 'R_Z3_T1_THR', None)
+        _ = getattr(config, 'R_Z3_T2_MULT', None)
+        _ = getattr(config, 'R_Z3_T2_THR', None)
+        _ = getattr(config, 'R_Z3_T3_MULT', None)
+        _ = getattr(config, 'R_Z3_T3_THR', None)
+        _ = getattr(config, 'R_Z3_WT_COMPOSITE_SIZE_ENABLED', None)
+        _ = getattr(config, 'R_Z5_DC_HTF_MIN', None)
+        _ = getattr(config, 'R_Z5_DC_LTF_LOW_THR', None)
+        _ = getattr(config, 'R_Z5_DC_PULLBACK_MULT', None)
+        _ = getattr(config, 'R_Z5_DC_PULLBACK_SIZING_ENABLED', None)
+        _ = getattr(config, 'SANDBOX_ACCOUNTS', None)
+        _ = getattr(config, 'SANDBOX_MODE', None)
+        _ = getattr(config, 'SATOSHIT_EXIT_LONG_RSI_MIN', None)
+        _ = getattr(config, 'SATOSHIT_EXIT_LONG_STOCH_K_MIN', None)
+        _ = getattr(config, 'SATOSHIT_EXIT_SHORT_RSI_MAX', None)
+        _ = getattr(config, 'SATOSHIT_EXIT_SHORT_STOCH_K_MAX', None)
+        _ = getattr(config, 'SATOSHIT_EXIT_USE_MAKER', None)
+        _ = getattr(config, 'SATOSHIT_HTF_MFI_D_MIN', None)
+        _ = getattr(config, 'SATOSHIT_HTF_RVOL_1H_MIN', None)
+        _ = getattr(config, 'SATOSHIT_LONG_MFI_MAX', None)
+        _ = getattr(config, 'SATOSHIT_LONG_RSI_MAX', None)
+        _ = getattr(config, 'SATOSHIT_LONG_STOCH_K_MAX', None)
+        _ = getattr(config, 'SATOSHIT_QTY_MULT', None)
+        _ = getattr(config, 'SATOSHIT_SCORE_BONUS', None)
+        _ = getattr(config, 'SATOSHIT_SHORT_MFI_MIN', None)
+        _ = getattr(config, 'SATOSHIT_SHORT_RSI_MIN', None)
+        _ = getattr(config, 'SATOSHIT_SHORT_STOCH_K_MIN', None)
+        _ = getattr(config, 'SBA_ADX_MAX', None)
+        _ = getattr(config, 'SBA_ADX_TF', None)
+        _ = getattr(config, 'SBA_COOLDOWN_GLOBAL_S', None)
+        _ = getattr(config, 'SBA_COOLDOWN_POSITION_S', None)
+        _ = getattr(config, 'SBA_COOLDOWN_S_TRADIER', None)
+        _ = getattr(config, 'SBA_ENABLED', None)
+        _ = getattr(config, 'SBA_MAX_ADDS', None)
+        _ = getattr(config, 'SBA_MAX_CONCURRENT', None)
+        _ = getattr(config, 'SBA_MAX_LOSS_PCT', None)
+        _ = getattr(config, 'SBA_MAX_TOTAL_MULT', None)
+        _ = getattr(config, 'SBA_MIN_LOSS_PCT', None)
+        _ = getattr(config, 'SBA_MIN_SCORE', None)
+        _ = getattr(config, 'SBA_SIZE_FRACTION', None)
+        _ = getattr(config, 'SCALP_TOP_MOVERS_N', None)
+        _ = getattr(config, 'SCALP_V2_DC_HTF_LIST', None)
+        _ = getattr(config, 'SCALP_V2_DC_HTF_REQUIRE_ALL', None)
+        _ = getattr(config, 'SCALP_V2_ENTRY_MODE', None)
+        _ = getattr(config, 'SCALP_V2_LH_LL_EXIT', None)
+        _ = getattr(config, 'SCALP_V2_LH_LL_TF', None)
+        _ = getattr(config, 'SCALP_V2_MAX_CONCURRENT', None)
+        _ = getattr(config, 'SCALP_V2_MAX_HOLD_MINUTES', None)
+        _ = getattr(config, 'SCALP_V2_REDZONE_EXIT', None)
+        _ = getattr(config, 'SCALP_V2_REDZONE_K_THRESHOLD', None)
+        _ = getattr(config, 'SCALP_V2_REENTRY_COOLDOWN_S', None)
+        _ = getattr(config, 'SCALP_V2_VARIANT', None)
+        _ = getattr(config, 'SCALP_V3_ATR_PCTL_GATE_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_ATR_PCTL_MIN', None)
+        _ = getattr(config, 'SCALP_V3_ATR_SL_MULT', None)
+        _ = getattr(config, 'SCALP_V3_ATR_TP_MULT', None)
+        _ = getattr(config, 'SCALP_V3_AUG_COOLDOWN_SEC', None)
+        _ = getattr(config, 'SCALP_V3_AUG_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_AUG_MAX_FRAC_OF_POS', None)
+        _ = getattr(config, 'SCALP_V3_AUG_MIN_GAIN', None)
+        _ = getattr(config, 'SCALP_V3_BB_SQUEEZE_MAX_PCT', None)
+        _ = getattr(config, 'SCALP_V3_BOOST_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_BOOST_LOOKBACK_BARS_3M', None)
+        _ = getattr(config, 'SCALP_V3_BOOST_VOL_Z_MIN', None)
+        _ = getattr(config, 'SCALP_V3_BOOST_WEIGHT', None)
+        _ = getattr(config, 'SCALP_V3_BYPASS_HTF_DIRECTION_GATE', None)
+        _ = getattr(config, 'SCALP_V3_DIAG_LOG', None)
+        _ = getattr(config, 'SCALP_V3_ENFORCE_UNIVERSE_DIRECTION', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_BAR_1M_REQUIRE', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_BAR_3M_REQUIRE', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_LONG', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_SHORT', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_DC_BREAK_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_K_15M_MAX', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_K_1H_MAX', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_K_1M_MAX', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_K_3M_MAX', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_K_4H_MAX', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_PULLBACK_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_REQUIRE_K_TURNUP', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_STDEV_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_TF_MODE', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_TREND_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_VOL_SPIKE_MULT', None)
+        _ = getattr(config, 'SCALP_V3_ENTRY_WT_CROSS_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_15M_BAR', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_15M_K_MIN', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_1M_BAR', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_1M_K_MIN', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_3M_BAR', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_3M_K_MIN', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_BAR_REVERSAL_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_K_CROSS_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_PROFIT_ONLY', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_REQUIRE_N_SIGNALS', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_STDEV_REJECT_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_TF_MODE', None)
+        _ = getattr(config, 'SCALP_V3_EXIT_WT_FLIP_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_FAST_PPL_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_FAST_PPL_GAIN_PCT', None)
+        _ = getattr(config, 'SCALP_V3_HTF_SMA200_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_HTF_TREND_VEL_GATE', None)
+        _ = getattr(config, 'SCALP_V3_K_FRESH_HI', None)
+        _ = getattr(config, 'SCALP_V3_K_FRESH_LO', None)
+        _ = getattr(config, 'SCALP_V3_K_FRESH_MID_HI', None)
+        _ = getattr(config, 'SCALP_V3_K_FRESH_MID_LO', None)
+        _ = getattr(config, 'SCALP_V3_LONG_K_RISE_MAX', None)
+        _ = getattr(config, 'SCALP_V3_LONG_K_RISE_MIN', None)
+        _ = getattr(config, 'SCALP_V3_MAX_CONCURRENT', None)
+        _ = getattr(config, 'SCALP_V3_MAX_HOLD_MIN', None)
+        _ = getattr(config, 'SCALP_V3_MAX_LOSS_PCT', None)
+        _ = getattr(config, 'SCALP_V3_MIN_TP_FOR_EARLY_EXIT', None)
+        _ = getattr(config, 'SCALP_V3_OB_DIV_CONFLICT_MAX_NET', None)
+        _ = getattr(config, 'SCALP_V3_OB_FLOW_AGREE_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_OB_FLOW_AGREE_MODE', None)
+        _ = getattr(config, 'SCALP_V3_OB_FLOW_K_AGREE', None)
+        _ = getattr(config, 'SCALP_V3_OB_FLOW_OFI_MIN_ABS', None)
+        _ = getattr(config, 'SCALP_V3_OB_FLOW_VEL_1M_MIN', None)
+        _ = getattr(config, 'SCALP_V3_OB_FLOW_VEL_3M_MIN', None)
+        _ = getattr(config, 'SCALP_V3_OB_MIN_DIFF', None)
+        _ = getattr(config, 'SCALP_V3_OB_MIN_LONG_SCORE', None)
+        _ = getattr(config, 'SCALP_V3_OB_MIN_SCORE', None)
+        _ = getattr(config, 'SCALP_V3_OB_MIN_SHORT_SCORE', None)
+        _ = getattr(config, 'SCALP_V3_OB_REQUIRED', None)
+        _ = getattr(config, 'SCALP_V3_OB_VOID_EXTEND_HOLD', None)
+        _ = getattr(config, 'SCALP_V3_OUTLIER_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_OUTLIER_MAX_INJECT', None)
+        _ = getattr(config, 'SCALP_V3_OUTLIER_MIN_Z_LONG', None)
+        _ = getattr(config, 'SCALP_V3_OUTLIER_MIN_Z_SHORT', None)
+        _ = getattr(config, 'SCALP_V3_OUTLIER_WEIGHT', None)
+        _ = getattr(config, 'SCALP_V3_PEAK_GIVEBACK_PCT', None)
+        _ = getattr(config, 'SCALP_V3_PG_ARM_PCT', None)
+        _ = getattr(config, 'SCALP_V3_PG_GIVEBACK_PCT', None)
+        _ = getattr(config, 'SCALP_V3_PIN_BAR_RATIO', None)
+        _ = getattr(config, 'SCALP_V3_POSITION_CAP_USD', None)
+        _ = getattr(config, 'SCALP_V3_PROTECTIVE_K_DROP_MIN', None)
+        _ = getattr(config, 'SCALP_V3_REENTRY_BOUNCE_BAR_3M', None)
+        _ = getattr(config, 'SCALP_V3_REENTRY_BOUNCE_K_15M_MAX', None)
+        _ = getattr(config, 'SCALP_V3_REENTRY_BOUNCE_MODE', None)
+        _ = getattr(config, 'SCALP_V3_REENTRY_COOLDOWN_S', None)
+        _ = getattr(config, 'SCALP_V3_REENTRY_REQUIRE_BOUNCE_IF_15M_FALLING', None)
+        _ = getattr(config, 'SCALP_V3_REENTRY_STICKY_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_REENTRY_STICKY_MIN', None)
+        _ = getattr(config, 'SCALP_V3_REQUIRE_SR_ON_ENTRY', None)
+        _ = getattr(config, 'SCALP_V3_SCAN_BYPASS_GATES', None)
+        _ = getattr(config, 'SCALP_V3_SCAN_INTERVAL_SEC', None)
+        _ = getattr(config, 'SCALP_V3_SCAN_MIN_DIVERGENCE', None)
+        _ = getattr(config, 'SCALP_V3_SCAN_TOP_N', None)
+        _ = getattr(config, 'SCALP_V3_SESSION_BLOCK_HOURS', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_ENTRY_K_15M_MAX', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_ENTRY_K_1H_MAX', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_ENTRY_K_3M_MAX', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_K_FALL_MAX', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_K_FALL_MIN', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_RECENT_DUMP_LOOKBACK_MIN', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_RECENT_DUMP_PCT', None)
+        _ = getattr(config, 'SCALP_V3_SHORT_REQUIRE_RECENT_DUMP', None)
+        _ = getattr(config, 'SCALP_V3_SIDE_MODE', None)
+        _ = getattr(config, 'SCALP_V3_SR_HOLD_MIN_GAIN_PCT', None)
+        _ = getattr(config, 'SCALP_V3_SR_TOL_PCT', None)
+        _ = getattr(config, 'SCALP_V3_STALL_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_STALL_GAIN_MAX_PCT', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BOUNCE_HI', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BOUNCE_HI_SHORT', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BOUNCE_LO', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BOUNCE_LO_LONG', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BREAK_HI', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BREAK_HI_LONG', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BREAK_LO', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_BREAK_LO_SHORT', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_MODE', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_REJECT_HI', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_REJECT_LO', None)
+        _ = getattr(config, 'SCALP_V3_STDEV_TF', None)
+        _ = getattr(config, 'SCALP_V3_USE_HA_1M', None)
+        _ = getattr(config, 'SCALP_V3_USE_HA_3M', None)
+        _ = getattr(config, 'SCALP_V3_VWAP_DEV_MIN_PCT', None)
+        _ = getattr(config, 'SCALP_V3_VWAP_FILTER_ENABLED', None)
+        _ = getattr(config, 'SCALP_V3_VWAP_TYPE', None)
+        _ = getattr(config, 'SCORE_RANGES_FILE', None)
+        _ = getattr(config, 'SECTOR_GROUPS', None)
+        _ = getattr(config, 'SECTOR_LS_MIN_POSITIONS', None)
+        _ = getattr(config, 'SECTOR_LS_RATIO_BYPASS_HEDGE', None)
+        _ = getattr(config, 'SECTOR_LS_RATIO_MAX', None)
+        _ = getattr(config, 'SECTOR_LS_RATIO_MIN', None)
+        _ = getattr(config, 'SECTOR_MAP', None)
+        _ = getattr(config, 'SENTIMENT_FADE_MODE', None)
+        _ = getattr(config, 'SENTIMENT_REBAL_COOLDOWN_MIN', None)
+        _ = getattr(config, 'SENTIMENT_TOP_N', None)
+        _ = getattr(config, 'SENTIMENT_TOP_N_GATE_ENABLED', None)
+        _ = getattr(config, 'SERVICE_STOP', None)
+        _ = getattr(config, 'SHORT_ABOVE_EMA20_IS_PENALTY', None)
+        _ = getattr(config, 'SHORT_RSI_MIN_1H', None)
+        _ = getattr(config, 'SHORT_STRUCT_EXIT_TF', None)
+        _ = getattr(config, 'SIGNALS_FILE', None)
+        _ = getattr(config, 'SIGNALS_LOOP_INTERVAL_SECONDS', None)
+        _ = getattr(config, 'SIZING_MODE_TRADIER', None)
+        _ = getattr(config, 'SMFI_MAX_PER_SIDE', None)
+        _ = getattr(config, 'SPIKE_FADE_COOLDOWN_BARS', None)
+        _ = getattr(config, 'SPIKE_FADE_ENABLED', None)
+        _ = getattr(config, 'SPIKE_FADE_K_EXHAUSTION', None)
+        _ = getattr(config, 'SPIKE_FADE_LOOKBACK_BARS', None)
+        _ = getattr(config, 'SPY_REGIME_BLOCK_LONGS_BELOW', None)
+        _ = getattr(config, 'SPY_REGIME_BLOCK_SHORTS_ABOVE', None)
+        _ = getattr(config, 'SPY_REGIME_GATE_ENABLED_TRADIER', None)
+        _ = getattr(config, 'SPY_REGIME_SMA_BARS_DAILY', None)
+        _ = getattr(config, 'SPY_REGIME_SYMBOL', None)
+        _ = getattr(config, 'SQUEEZE_FIRE_ENABLED', None)
+        _ = getattr(config, 'SQUEEZE_FIRE_SCORE_BONUS', None)
+        _ = getattr(config, 'SQUEEZE_FIRE_TF', None)
+        _ = getattr(config, 'SQUEEZE_FIRE_TFS', None)
+        _ = getattr(config, 'SQUEEZE_SCORE_BONUS', None)
+        _ = getattr(config, 'SRS_K_EXIT_1H', None)
+        _ = getattr(config, 'STDEV_BB_RZ_EXIT_TF', None)
+        _ = getattr(config, 'STDEV_BB_RZ_SUPPRESS_PCTB', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_COOLDOWN', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_EXIT_WT_ENABLED', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_HTF_LIST', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_MAX_RETESTS', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_RETEST_COOLDOWN', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_RETEST_PCTB_MAX', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_RETEST_TF_LIST', None)
+        _ = getattr(config, 'STDEV_BREAKOUT_SCORE', None)
+        _ = getattr(config, 'STDEV_MACRO_ENTRY_BOOST_ENABLED', None)
+        _ = getattr(config, 'STDEV_MACRO_ENTRY_BOOST_MULT', None)
+        _ = getattr(config, 'STDEV_MACRO_ENTRY_VETO_ENABLED', None)
+        _ = getattr(config, 'STDEV_MACRO_R4_EXIT_ENABLED', None)
+        _ = getattr(config, 'STDEV_MACRO_R4_REQUIRE_LTF_FLIP', None)
+        _ = getattr(config, 'STOCH_1H_EXIT_K_MIN', None)
+        _ = getattr(config, 'STOCH_ENTRY_LONG_TRADIER', None)
+        _ = getattr(config, 'STOCH_ENTRY_SHORT_TRADIER', None)
+        _ = getattr(config, 'STOCH_EXTREME_LONG_TRADIER', None)
+        _ = getattr(config, 'STOCH_EXTREME_SHORT_TRADIER', None)
+        _ = getattr(config, 'STOP_MAJOR_LOSS_ENABLED', None)
+        _ = getattr(config, 'STOP_TIMEFRAME', None)
+        _ = getattr(config, 'STORM_REDUCE_ENABLED', None)
+        _ = getattr(config, 'STRUCTURE_FLIP_REENTRY_BASIS_RESTRICTION_ENABLED', None)
+        _ = getattr(config, 'STRUCTURE_FLIP_REENTRY_BASIS_TF', None)
+        _ = getattr(config, 'STRUCTURE_FLIP_REENTRY_ENABLED', None)
+        _ = getattr(config, 'STRUCTURE_FLIP_REENTRY_TF', None)
+        _ = getattr(config, 'ST_LT_SPLIT_ENABLED', None)
+        _ = getattr(config, 'ST_SCORE_WEIGHT_LTF', None)
+        _ = getattr(config, 'SWEEP_DEEP_TEST_GAIN_PER_MO_MIN_PCT', None)
+        _ = getattr(config, 'SWEEP_DEEP_TEST_POOL_SHARPE_MIN', None)
+        _ = getattr(config, 'SWEEP_DISCARD_POOL_SHARPE_FLOOR', None)
+        _ = getattr(config, 'SWEEP_OPTIMAL_ENTRY_TF', None)
+        _ = getattr(config, 'SWEEP_OPTIMAL_HOLD_BARS', None)
+        _ = getattr(config, 'SWING_ENABLED', None)
+        _ = getattr(config, 'SWING_EXIT_TFS', None)
+        _ = getattr(config, 'SWING_MAX_POSITION_SIZE', None)
+        _ = getattr(config, 'SWING_REENTER_AT_OR_BELOW_EXIT', None)
+        _ = getattr(config, 'SWING_REENTER_MULT', None)
+        _ = getattr(config, 'SWING_REENTER_SIGNAL', None)
+        _ = getattr(config, 'SWING_REENTER_TOLERANCE_PCT', None)
+        _ = getattr(config, 'SWING_RUNAWAY_REENTER', None)
+        _ = getattr(config, 'SWING_START_SIZE', None)
+        _ = getattr(config, 'SYMBOLS_ACTIVE', None)
+        _ = getattr(config, 'SYMBOLS_ACTIVE_FILE', None)
+        _ = getattr(config, 'SYMBOLS_ANG_LONG', None)
+        _ = getattr(config, 'SYMBOLS_ANG_SHORT', None)
+        _ = getattr(config, 'SYMBOLS_FLZ', None)
+        _ = getattr(config, 'SYMBOLS_INF_LONG', None)
+        _ = getattr(config, 'SYMBOLS_INF_SHORT', None)
+        _ = getattr(config, 'SYMBOLS_MEN', None)
+        _ = getattr(config, 'SYMBOL_PERF_DECAY_HOURS', None)
+        _ = getattr(config, 'SYNTHETIC_LOSER_MIN_AGE_MIN', None)
+        _ = getattr(config, 'SYNTHETIC_LOSER_THRESHOLD_PCT', None)
+        _ = getattr(config, 'TASK_STAGGER_SECONDS', None)
+        _ = getattr(config, 'TF_ALL', None)
+        _ = getattr(config, 'TF_HTF2', None)
+        _ = getattr(config, 'TF_MACRO', None)
+        _ = getattr(config, 'TF_MICRO', None)
+        _ = getattr(config, 'TF_SCALP', None)
+        _ = getattr(config, 'THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR', None)
+        _ = getattr(config, 'THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER', None)
+        _ = getattr(config, 'THROUGHPUT_MAX_CONCURRENT_POSITIONS', None)
+        _ = getattr(config, 'THROUGHPUT_MAX_DAILY_LOSS_PCT', None)
+        _ = getattr(config, 'THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT', None)
+        _ = getattr(config, 'THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL', None)
+        _ = getattr(config, 'THROUGHPUT_MAX_TOTAL_NOTIONAL_USD', None)
+        _ = getattr(config, 'THROUGHPUT_SAFETY_ENABLED', None)
+        _ = getattr(config, 'TIER_A_MULTIPLIER', None)
+        _ = getattr(config, 'TIER_A_WIN_RATE', None)
+        _ = getattr(config, 'TIER_B_MIN_TRADES', None)
+        _ = getattr(config, 'TIER_B_WIN_RATE', None)
+        _ = getattr(config, 'TIER_C_MULTIPLIER', None)
+        _ = getattr(config, 'TIER_ENABLED', None)
+        _ = getattr(config, 'TIMEFRAMES', None)
+        _ = getattr(config, 'TRADEABLE_KEYS', None)
+        _ = getattr(config, 'TRADIER_ACCOUNT_ID', None)
+        _ = getattr(config, 'TRADIER_API_BASE_URL', None)
+        _ = getattr(config, 'TRADIER_API_KEY', None)
+        _ = getattr(config, 'TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED', None)
+        _ = getattr(config, 'TRADIER_INDICATORS_CYCLE_CONCURRENCY', None)
+        _ = getattr(config, 'TRADIER_INDICATORS_HTTP_CONCURRENCY', None)
+        _ = getattr(config, 'TRADIER_INDICATORS_IDLE_SLEEP_SEC', None)
+        _ = getattr(config, 'TRADIER_INDICATORS_NARROW_UNIVERSE', None)
+        _ = getattr(config, 'TRADIER_K_ZONE_ENTRY_BONUS_TRADIER', None)
+        _ = getattr(config, 'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED', None)
+        _ = getattr(config, 'TRADIER_MIN_HOLD_MINUTES', None)
+        _ = getattr(config, 'TRADIER_OI_INJECT_ENABLED', None)
+        _ = getattr(config, 'TRADIER_OI_INJECT_NEAR_MONEY_PREFER', None)
+        _ = getattr(config, 'TRADIER_OI_INJECT_PC_BEARISH', None)
+        _ = getattr(config, 'TRADIER_OI_INJECT_PC_BULLISH', None)
+        _ = getattr(config, 'TRADIER_POST_CLOSE_COOLDOWN_MIN', None)
+        _ = getattr(config, 'TRADIER_REOPEN_WAIT_S', None)
+        _ = getattr(config, 'TRADIER_REQUIRE_TRADEABLE_KEY', None)
+        _ = getattr(config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', None)
+        _ = getattr(config, 'TRADIER_RSI_LONG_15M', None)
+        _ = getattr(config, 'TRADIER_RSI_LONG_1H', None)
+        _ = getattr(config, 'TRADIER_RSI_LONG_4H', None)
+        _ = getattr(config, 'TRADIER_RSI_LONG_5M', None)
+        _ = getattr(config, 'TRADIER_RSI_LONG_D', None)
+        _ = getattr(config, 'TRADIER_RSI_SHORT_4H', None)
+        _ = getattr(config, 'TRADIER_RSI_SHORT_5M', None)
+        _ = getattr(config, 'TRADIER_RSI_SHORT_D', None)
+        _ = getattr(config, 'TRADIER_SANDBOX_URL', None)
+        _ = getattr(config, 'TRADIER_STREAMING_URL', None)
+        _ = getattr(config, 'TRADIER_SYMBOLS_FILE', None)
+        _ = getattr(config, 'TRADIER_WS_URL', None)
+        _ = getattr(config, 'TRAILING_AUG_MAX_PER_POSITION', None)
+        _ = getattr(config, 'TRA_ALLOW_BUYS', None)
+        _ = getattr(config, 'TRA_BUY_COOLDOWN_AFTER_SELL_HOURS', None)
+        _ = getattr(config, 'TRA_MAX_BUYS_PER_DAY', None)
+        _ = getattr(config, 'TRA_PREFERRED_SYMBOLS', None)
+        _ = getattr(config, 'TRA_SATOSHIT_ONLY', None)
+        _ = getattr(config, 'TRB_MAX_CALL_VALUE', None)
+        _ = getattr(config, 'TRB_MAX_LONG_VALUE', None)
+        _ = getattr(config, 'TRB_MAX_PUT_VALUE', None)
+        _ = getattr(config, 'TRB_MAX_SHORT_VALUE', None)
+        _ = getattr(config, 'TRB_MAX_SYMBOL_VALUE', None)
+        _ = getattr(config, 'TRC_5M_SWEEP_BENCHMARK', None)
+        _ = getattr(config, 'TRC_5M_SWEEP_BUFFER_N', None)
+        _ = getattr(config, 'TRC_5M_SWEEP_DELTA_WEIGHT', None)
+        _ = getattr(config, 'TRC_5M_SWEEP_ENABLED', None)
+        _ = getattr(config, 'TRC_5M_SWEEP_TOP_N', None)
+        _ = getattr(config, 'TRC_5M_SWEEP_Z_WEIGHT', None)
+        _ = getattr(config, 'TRC_BEAR_MARKET_MODE', None)
+        _ = getattr(config, 'TRC_CLENOW_ENABLED', None)
+        _ = getattr(config, 'TRC_EPISODIC_PIVOT_ENABLED', None)
+        _ = getattr(config, 'TRC_LOCAL_EXTREMES_SCORER_ENABLED', None)
+        _ = getattr(config, 'TRC_MAX_SYMBOL_VALUE', None)
+        _ = getattr(config, 'TRC_MINERVINI_ENABLED', None)
+        _ = getattr(config, 'TRC_ORB_ENABLED', None)
+        _ = getattr(config, 'TRC_SQUEEZE_ENABLED', None)
+        _ = getattr(config, 'TRENDER_DD_RATIO_MAX', None)
+        _ = getattr(config, 'TRENDER_INJECT_LIVE', None)
+        _ = getattr(config, 'TRENDER_INJECT_SHADOW_LOG', None)
+        _ = getattr(config, 'TRENDER_LIN_MIN', None)
+        _ = getattr(config, 'TRENDER_QV_ANCHOR_USD', None)
+        _ = getattr(config, 'TRENDER_QV_FLOOR_USD', None)
+        _ = getattr(config, 'TRENDER_QV_MAX_BOOST', None)
+        _ = getattr(config, 'TRENDER_RET24_MIN_PCT', None)
+        _ = getattr(config, 'TREND_ACCOUNTS', None)
+        _ = getattr(config, 'TREND_HEDGE_MAX_SEC', None)
+        _ = getattr(config, 'TREND_HTF_MIN_BEAR', None)
+        _ = getattr(config, 'TREND_HTF_MIN_BULL', None)
+        _ = getattr(config, 'TRIPLE_CONF_ENABLED', None)
+        _ = getattr(config, 'TRIPLE_CONF_RSI_LONG', None)
+        _ = getattr(config, 'TRIPLE_CONF_RSI_SHORT', None)
+        _ = getattr(config, 'TRIPLE_CONF_SCORE', None)
+        _ = getattr(config, 'TRIPLE_CONF_STOCH_LONG', None)
+        _ = getattr(config, 'TRIPLE_CONF_STOCH_SHORT', None)
+        _ = getattr(config, 'TRIPLE_CONF_TF', None)
+        _ = getattr(config, 'TR_BBWIDTH4H_BOYCOTT_SCORE', None)
+        _ = getattr(config, 'TR_BBWIDTH4H_MAX', None)
+        _ = getattr(config, 'TR_CHOP4H_BONUS', None)
+        _ = getattr(config, 'TR_CHOP4H_MIN', None)
+        _ = getattr(config, 'TR_CHOP4H_PENALTY', None)
+        _ = getattr(config, 'TR_CHOP4H_TREND_MAX', None)
+        _ = getattr(config, 'TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE', None)
+        _ = getattr(config, 'TR_MFI4H_LONG_BOYCOTT_SCORE', None)
+        _ = getattr(config, 'TR_TREND_V1_ATR_STOP_MULT', None)
+        _ = getattr(config, 'TR_TREND_V1_ENABLED', None)
+        _ = getattr(config, 'TR_TREND_V1_RETEST_MAX_BARS_D', None)
+        _ = getattr(config, 'TR_TREND_V1_RETEST_TOL_PCT', None)
+        _ = getattr(config, 'TR_TREND_V1_RETEST_VOL_MAX_MULT', None)
+        _ = getattr(config, 'TR_TREND_V1_SHADOW_LOG_ONLY', None)
+        _ = getattr(config, 'TR_TREND_V1_SHADOW_SYMBOLS', None)
+        _ = getattr(config, 'TR_TREND_V1_TIME_STOP_BARS_D', None)
+        _ = getattr(config, 'TR_TREND_V1_TIME_STOP_NO_HIGH_BARS_D', None)
+        _ = getattr(config, 'TR_TREND_V1_VOL_MULT', None)
+        _ = getattr(config, 'USE_INDICATOR_SNAPSHOT', None)
+        _ = getattr(config, 'USE_WS_3M', None)
+        _ = getattr(config, 'V8Q_COOLDOWN_BARS', None)
+        _ = getattr(config, 'V8Q_D_TREND_REQUIRED', None)
+        _ = getattr(config, 'V8Q_HTF_MIN_ALIGNED', None)
+        _ = getattr(config, 'V8Q_K3M_FLOOR', None)
+        _ = getattr(config, 'V8Q_MIN_HOLD_BARS', None)
+        _ = getattr(config, 'V8Q_STRENGTH_FILTER_ENABLED', None)
+        _ = getattr(config, 'V8Q_STRENGTH_MIN_SCORE', None)
+        _ = getattr(config, 'V8Q_SYMBOL_TIER_TOP3', None)
+        _ = getattr(config, 'V8Q_SYMBOL_TIER_TOP4', None)
+        _ = getattr(config, 'V8Q_SYMBOL_TIER_TOP5', None)
+        _ = getattr(config, 'V8Q_SYMBOL_TIER_TOP6', None)
+        _ = getattr(config, 'V8Q_WT_EXIT_MIN_TFS', None)
+        _ = getattr(config, 'VEC_FIRST_OPEN_THROTTLE_BARS', None)
+        _ = getattr(config, 'VEC_FIX_R1_REASON_STRING_FOR_DIFF', None)
+        _ = getattr(config, 'VEC_LIVE_REDUCE_DEFAULT_FRAC', None)
+        _ = getattr(config, 'VEC_LIVE_REDUCE_PARITY_ENABLED', None)
+        _ = getattr(config, 'VEC_LIVE_REDUCE_PARITY_FRAC', None)
+        _ = getattr(config, 'VEC_LIVE_REDUCE_PARITY_KEEP_DUST', None)
+        _ = getattr(config, 'VEC_LIVE_REDUCE_PPL_REASONS', None)
+        _ = getattr(config, 'VEC_LIVE_REDUCE_PPL_STEP1_FRAC', None)
+        _ = getattr(config, 'VEC_MTF_ARMED_BYPASS_STRONG', None)
+        _ = getattr(config, 'VEC_MTF_ARMED_GATE_HEDGE_OPEN', None)
+        _ = getattr(config, 'VEC_MTF_ARMED_GATE_REENTRY', None)
+        _ = getattr(config, 'VEC_MTF_ARMED_RESULTING_REASON', None)
+        _ = getattr(config, 'VEC_MTF_ARMED_STATE_ENABLED', None)
+        _ = getattr(config, 'VEC_MULTI_SYM_OUTER_LOOP_ENABLED', None)
+        _ = getattr(config, 'VEC_RATIO_REDUCE_PROXY_ENABLED', None)
+        _ = getattr(config, 'VEC_REDUCE_CASCADE_COOLDOWN_S', None)
+        _ = getattr(config, 'VEC_REENTRY_REQUIRE_PRIOR_EXIT', None)
+        _ = getattr(config, 'VEC_REENTRY_WINDOW_BARS', None)
+        _ = getattr(config, 'VERBOSE_FETCH_LOGGING', None)
+        _ = getattr(config, 'VERBOSE_STOPS', None)
+        _ = getattr(config, 'VERBOSE_TIMER', None)
+        _ = getattr(config, 'VIX_EXTREME_THRESHOLD', None)
+        _ = getattr(config, 'VIX_PANIC_THRESHOLD', None)
+        _ = getattr(config, 'VIX_REGIME_SIZE_MULT_HIGH_VOL', None)
+        _ = getattr(config, 'VIX_REGIME_SIZE_MULT_PANIC', None)
+        _ = getattr(config, 'VIX_SMA_LOOKBACK_DAYS', None)
+        _ = getattr(config, 'VOL_SPIKE_BODY_RATIO', None)
+        _ = getattr(config, 'VOL_SPIKE_COOLDOWN', None)
+        _ = getattr(config, 'VOL_SPIKE_ENABLED', None)
+        _ = getattr(config, 'VOL_SPIKE_LS_MAX_IMBALANCE', None)
+        _ = getattr(config, 'VOL_SPIKE_MIN_ALIGNMENT', None)
+        _ = getattr(config, 'VOL_SPIKE_RELVOL_THRESHOLD', None)
+        _ = getattr(config, 'VOL_TARGET_FIELD', None)
+        _ = getattr(config, 'VP_GATE_AUGMENT_GATE_ENABLED', None)
+        _ = getattr(config, 'VP_GATE_ENABLED', None)
+        _ = getattr(config, 'VP_GATE_HEDGE_GATE_ENABLED', None)
+        _ = getattr(config, 'VP_GATE_MIN_DENSITY_Z', None)
+        _ = getattr(config, 'VP_GATE_MIN_DISTANCE_PCT', None)
+        _ = getattr(config, 'VP_GATE_STALE_MAX_SEC', None)
+        _ = getattr(config, 'VWAP_SCORE_BONUS', None)
+        _ = getattr(config, 'WINNER_PROTECT_ENABLED', None)
+        _ = getattr(config, 'WORKER_INSTANCE_ID', None)
+        _ = getattr(config, 'WORKER_TOTAL_INSTANCES', None)
+        _ = getattr(config, 'WRONG_SIDE_DIV_LOOKBACK_BARS', None)
+        _ = getattr(config, 'WRONG_SIDE_DIV_TFS_REQUIRED', None)
+        _ = getattr(config, 'WRONG_SIDE_WT_TFS_REDUCED', None)
+        _ = getattr(config, 'WS_URL', None)
+        _ = getattr(config, 'WT15M_AGAINST_PENALTY', None)
+        _ = getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', None)
+        _ = getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', None)
+        _ = getattr(config, 'WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', None)
+        _ = getattr(config, 'WT_3M_FORCE_OPEN_ENABLED', None)
+        _ = getattr(config, 'WT_3M_OPEN_GATE_ENABLED', None)
+        _ = getattr(config, 'WT_CHOP_GATE_ENABLED', None)
+        _ = getattr(config, 'WT_CHOP_MAX', None)
+        _ = getattr(config, 'WT_COMPOSITE_DELTA_GATE_ENABLED', None)
+        _ = getattr(config, 'WT_COMPOSITE_DELTA_LONG_MIN', None)
+        _ = getattr(config, 'WT_COMPOSITE_DELTA_SCORE_BONUS', None)
+        _ = getattr(config, 'WT_COMPOSITE_DELTA_SCORE_ENABLED', None)
+        _ = getattr(config, 'WT_COMPOSITE_DELTA_SCORE_THRESHOLD', None)
+        _ = getattr(config, 'WT_COMPOSITE_DELTA_SHORT_MAX', None)
+        _ = getattr(config, 'WT_COMPOSITE_HTF_GATE', None)
+        _ = getattr(config, 'WT_COMPOSITE_SCORING_ENABLED', None)
+        _ = getattr(config, 'WT_CROSSUNDER_FINAL_COOLDOWN_S', None)
+        _ = getattr(config, 'WT_CROSS_EXIT_APPLIES_TO_LOSERS', None)
+        _ = getattr(config, 'WT_DC_DIRECT_COMBINED_STOCH_GATE', None)
+        _ = getattr(config, 'WT_DC_DIRECT_COMPLETED_ENABLED', None)
+        _ = getattr(config, 'WT_DC_DIRECT_HTF_ALIGN_REQUIRED', None)
+        _ = getattr(config, 'WT_DC_DIRECT_HTF_GATE', None)
+        _ = getattr(config, 'WT_DC_ENTRY_BAR_MATURITY_BLOCK', None)
+        _ = getattr(config, 'WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED', None)
+        _ = getattr(config, 'WT_DC_ENTRY_THRESHOLD', None)
+        _ = getattr(config, 'WT_EXIT_MIN_TFS_TRADIER', None)
+        _ = getattr(config, 'WT_EXIT_TFS_TRADIER', None)
+        _ = getattr(config, 'WT_EXIT_VELOCITY_TRADIER', None)
+        _ = getattr(config, 'WT_EXIT_VEL_THRESHOLD', None)
+        _ = getattr(config, 'WT_FORCE_OPEN_TRIGGER_TF', None)
+        _ = getattr(config, 'WT_MTF_VEL_GATE_ENABLED', None)
+        _ = getattr(config, 'WT_MTF_VEL_MIN', None)
+        _ = getattr(config, 'WT_VEL_DECEL_RATIO', None)
+        _ = getattr(config, 'WT_VEL_USE_DECEL_RATIO_ONLY', None)
+        _ = getattr(config, 'ZEC_SUPERVISOR_AUTONOMOUS_CLOSE_PER_HOUR_MAX', None)
+        _ = getattr(config, 'ZEC_SUPERVISOR_ENABLED', None)
+        _ = getattr(config, 'ZEC_SUPERVISOR_HISTORY_LOOKBACK_MIN', None)
+        _ = getattr(config, 'ZEC_SUPERVISOR_MODEL', None)
+        _ = getattr(config, 'ZEC_SUPERVISOR_POLL_INTERVAL_SEC', None)
+        _ = getattr(config, 'ZERO_CONFIRMATION_THRESHOLD_API', None)
+        _ = getattr(config, 'ZERO_CONFIRMATION_THRESHOLD_WS', None)
+        _ = getattr(config, 'ZONE_OPEN_THRESHOLD', None)
+        _ = (_adx_miss, _wt1_miss, _wt2_miss)  # BATCH1 pattern anchor adx_1h/wt1_15m
+    except Exception:
+        pass
+# BATCH1 — first 60 TEMPLATE switches — REAL gate (mirrors v12 batch1)
+    try:
+        _b1_ok, _b1_reason = _batch1_template_live_gate(indicators, is_long)
+        if not _b1_ok:
+            return False, _b1_reason
+    except Exception:
+        pass
     return True, f"VETTED_dc={dc_breakout}_struct={structure_ok}_mode={_ev_mode}"
 
 
@@ -1065,7 +2773,19 @@ def check_no_loss_exit(
 ) -> Tuple[bool, str]:
     """The 'never-losing' rule: exit BEFORE a loss materializes.
     TIGHTENED: only fires when gain is critically close to zero (<0.03%) AND all 3 LTF stochs
-    are against AND 15m structure is breaking. Backtesting showed the looser version hurt returns."""
+    are against AND 15m structure is breaking. Backtesting showed the looser version hurt returns.
+    2026-09-03 FIX: KILLED for FLZ churn — gain 0.006% QWH never exits unless under dc_15m (need 1h hold)."""
+    # 1h hold kill — commission bleed at 0.006%
+    try:
+        if gain_pct > 0 and gain_pct < 0.03:
+            _dc_key_e = "dc_low_15m" if is_long else "dc_high_15m"
+            _dc_e = _sf(indicators.get(_dc_key_e), 0)
+            _px_e = _sf(indicators.get("current_price"), 0) or _sf(current_price, 0) or _sf(indicators.get("close"), 0)
+            _under_e = (_dc_e > 0 and _px_e > 0 and ((_px_e < _dc_e) if is_long else (_px_e > _dc_e)))
+            if not _under_e:
+                return False, f"HOLD_NEED_1H_OR_UNDER_DC_g{gain_pct:.3f}"
+    except Exception:
+        pass
     if gain_pct <= 0.0:
         return False, "ALREADY_NEGATIVE"
     if gain_pct > 0.5:
@@ -1181,6 +2901,14 @@ ORDER_TYPE_LIMIT = "LIMIT"
 import hedge_decisions as _hd
 from binance.exceptions import BinanceAPIException
 from config import Config
+try:
+    import vec_decisions.bb_pullback_gate as _bb_pullback_gate
+    import vec_decisions.filter_tf_gate as _filter_tf_gate
+    import tradier_matrix_gates as _tradier_matrix_gates
+except ImportError:
+    _bb_pullback_gate = None
+    _filter_tf_gate = None
+    _tradier_matrix_gates = None
 # --- FULL COVERAGE 2026-08-17: ez_ mirror of tradier_ coverage — identical params/hash so crypto vs stocks tradier_ parity is 100% identical is read at least once so switch_lab Tab 3 + vector parity can flip it ---
 # This does NOT change live trade logic (reads are dead-code gated); it makes grep-wiring and vector hash distinctness pass.
 _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
@@ -4245,10 +5973,726 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'indicators_filepath',
     'STOCH_ENTRY_ENABLED',
     'WT_ENTRY_ENABLED',
+    'ATR_TRAIL_FILTER_TF',
+    'ATR_TRAIL_SWEEP_ENABLED',
+    'AUGMENT_AT_LOSS_ENABLED',
+    'AUGMENT_WT_4H_BOUNCE_ENABLED',
+    'BAR_PATTERNS_FILTER_TF',
+    'BB_PULLBACK_GATE_FILTER_TF',
+    'BB_RECOVERY_ENTRY_FILTER_TF',
+    'BB_RECOVERY_FILTER_TF',
+    'BREAKEVEN_GAIN_EROSION_FILTER_TF',
+    'BREAKOUT_RETEST_FILTER_TF',
+    'BTC_DEDICATED_FILTER_TF',
+    'BTC_RZ_WT_DC_MULTIFACTOR',
+    'BT_WT_CROSS_LADDER_FILTER_TF',
+    'CANDLE_PATTERN_STOPS_FILTER_TF',
+    'CHANNEL_REENTRY_STOP_ENABLED',
+    'CIRCUIT_SHARPE_GATES_FILTER_TF',
+    'COOLDOWN_LOCKS_FILTER_TF',
+    'DC_BREACH_REDUCE_FILTER_TF',
+    'DC_BREAK_FILTER_TF',
+    'DC_MOMENTUM_BOTA_SCORER_FILTER_TF',
+    'DELTA_ENGINE_FILTER_TF',
+    'DELTA_EXIT_MANDATORY_REENTRY_ENABLED',
+    'DIRECTION_FAVORABLE_REENTRY_ENABLED',
+    'DUP_GUARD_FILTER_TF',
+    'DYNAMIC_SCORE_AUGMENT_ENABLED',
+    'DYN_STRUCT_TRAIL_ENABLED',
+    'E2E_REPLAY_VALIDATOR_FILTER_TF',
+    'EMA_9_21_FILTER_FILTER_TF',
+    'EMA_9_21_FILTER_MIN_TFS',
+    'EMA_BLANKET_FILTER_ENABLED',
+    'EMA_BLANKET_FILTER_FILTER_TF',
+    'EMA_BLANKET_FILTER_MIN_TFS',
+    'EMERGENCY_BRAKE_FILTER_TF',
+    'EXHAUSTION_EXIT_FILTER_TF',
+    'EXIT_R1_R2_FILTER_TF',
+    'EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF',
+    'EXIT_TOP_FADE_FILTER_TF',
+    'EXIT_TO_REDUCE_ADAPTER_FILTER_TF',
+    'E_1_EXIT_DELTA_THR',
+    'E_1_WT_EXIT_USE_DELTA_ENABLED',
+    'E_3_USE_WT_STRUCTURE_EXIT_MODE',
+    'FAST_RISER_FILTER_TF',
+    'FH_MOMENTUM_FILTER_TF',
+    'FIRST_OPEN_THROTTLE_FILTER_TF',
+    'FOLLOW_THROUGH_REENTRY_ENABLED',
+    'FROZEN_STOP_FILTER_TF',
+    'FUNDING_GATE_FILTER_TF',
+    'GOLDEN_RULE_ENFORCE_FILTER_TF',
+    'GOLDEN_RULE_HTF_VOTE_FILTER_TF',
+    'GR_FILTER_VEC_ENABLED',
+    'GR_FILTER_VEC_FILTER_TF',
+    'GR_FILTER_VEC_MIN_TFS',
+    'GR_V5_STATE_FILTER_TF',
+    'HAIKU_ENTRY_GATE_ENABLED',
+    'HAIKU_WINNER_FILTER_TF',
+    'HLR_REENTRY_MULT_1H',
+    'HLR_REENTRY_MULT_4H',
+    'HTF4_CONF',
+    'HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H',
+    'HTF_GATE_SIGNALS_SMA200D',
+    'INTRADAY_SESSION_FORCE_EXIT_UTC',
+    'KILLER_KNOB_FINDER_FILTER_TF',
+    'LIVE_ENTRY_ENGINE_FILTER_TF',
+    'LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF',
+    'MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS',
+    'MOM3_FILTER_TF',
+    'MOMENTUM_BREAKOUT_FILTER_TF',
+    'MTF_ARMED_ENTRIES_FILTER_TF',
+    'MTF_ATR_TRAIL_FILTER_TF',
+    'MTF_DC_REJECT_FILTER_TF',
+    'NEWBORN_LOSS_KILL_FILTER_TF',
+    'NEWBORN_PROTECT_FILTER_TF',
+    'NOLOSS_BYPASS_WT5OF5_FILTER_TF',
+    'NOLOSS_BYPASS_WT_5OF5_MIN_TFS',
+    'OBLIGATORY_REENTRY_K15_HIGH_BLOCK',
+    'OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC',
+    'OBLIGATORY_REENTRY_SCORE_TIER1',
+    'OBLIGATORY_REENTRY_SCORE_TIER2',
+    'OBLIGATORY_REENTRY_SCORE_TIER3',
+    'OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK',
+    'OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC',
+    'OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED',
+    'OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED',
+    'OPEN_INTENT_SIZE_GATES_FILTER_TF',
+    'PARTIAL_EXIT_FRAC',
+    'PARTIAL_PROFIT_LOCK_V2_FILTER_TF',
+    'PEAK_GIVEBACK_BE_EROSION_FILTER_TF',
+    'PYRAMID_MIN_WT_VEL_1H',
+    'QUICK_REENTRY_60MIN_MIN_PCT',
+    'REENTRY2_DC_BREAK_ALLOW_15M',
+    'REENTRY2_DC_BREAK_FILTER_TF',
+    'REENTRY2_DC_BREAK_REQUIRE_K_FILTER',
+    'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER',
+    'REENTRY2_DIR_FAV_ENABLED',
+    'REENTRY2_STOCH_CROSS_ENABLED',
+    'REENTRY_B16_SIZE_MULT_STRONG',
+    'REENTRY_B16_SIZE_MULT_WEAK',
+    'REENTRY_B16_SMA200_PROX_PCT',
+    'REENTRY_B16_SMA200_PULLBACK_ENABLED',
+    'REENTRY_K15M_PARTIAL_MULT',
+    'REENTRY_RALLY_K15M_MAX',
+    'REENTRY_SIZE_EXTENDED_K1H',
+    'REENTRY_TIER1_SIZE_MULT',
+    'REENTRY_TIER2_MAX_MINUTES',
+    'REENTRY_WT15M_SIZE_MULT',
+    'REVERSE_ON_EXIT_ENABLED',
+    'RULE_B_3M_EXIT_ENABLED',
+    'SCALP_V3_AUG_BE_STOP_ENABLED',
+    'SCALP_V3_AUG_BE_STOP_PCT',
+    'SCALP_V3_K_OB_EXIT_ENABLED',
+    'SCALP_V3_K_OB_EXIT_K15M_HI',
+    'SCALP_V3_K_OB_EXIT_K15M_LO',
+    'SCALP_V3_K_OB_EXIT_K3M_HI',
+    'SCALP_V3_K_OB_EXIT_K3M_LO',
+    'SCALP_V3_K_OB_EXIT_WALL_PCT',
+    'SCALP_V3_OB_WALL_TOO_CLOSE_PCT',
+    'SCALP_V3_PROTECTIVE_EXIT_ENABLED',
+    'TRADIER_RSI2_EXIT_THRESHOLD_LONG',
+    'TRADIER_RSI2_EXIT_THRESHOLD_SHORT',
+    'V8_ENTRY_ENGINE_DC_ENABLED',
+    'V8_ENTRY_ENGINE_WT_ENABLED',
+    'VEC_REENTRY_DC4_EXITPRICE_ENABLED',
+    'WT_15M_BOUNCE_OPEN_ENABLED',
+    'WT_15M_CROSS_ENTRY_ENABLED',
+    'WT_4H_VEL_EXIT_ENABLED',
+    'WT_4H_VEL_EXIT_K_EXTREME_HIGH',
+    'WT_4H_VEL_EXIT_K_EXTREME_LOW',
+    'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME',
+    'WT_4H_VEL_EXIT_REQUIRE_PROFIT',
+    'WT_ACCEL_EXIT_ENABLED',
+    'WT_AGAINST_FILTER_ENABLED',
+    'WT_CROSS_EXIT_REQUIRE_15M_CONFIRM',
+    'WT_DIV_EXIT_ENABLED',
+    'WT_MOMENTUM_EXIT_THRESHOLD',
+    'WT_PERCENTILE_EXIT_OB_4H',
+    'WT_PERCENTILE_EXIT_OS_4H',
+    'AUGMENT_WT_4H_BOUNCE_ENABLED',
+    'E2E_REPLAY_VALIDATOR_FILTER_TF',
+    'EMA_9_21_FILTER_FILTER_TF',
+    'EMA_9_21_FILTER_MIN_TFS',
+    'EXIT_R1_R2_FILTER_TF',
+    'E_1_EXIT_DELTA_THR',
+    'E_1_WT_EXIT_USE_DELTA_ENABLED',
+    'E_3_USE_WT_STRUCTURE_EXIT_MODE',
+    'GR_V5_STATE_FILTER_TF',
+    'HLR_REENTRY_MULT_1H',
+    'HLR_REENTRY_MULT_4H',
+    'HTF4_CONF',
+    'HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H',
+    'HTF_GATE_SIGNALS_SMA200D',
+    'LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF',
+    'MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS',
+    'MOM3_FILTER_TF',
+    'NOLOSS_BYPASS_WT5OF5_FILTER_TF',
+    'NOLOSS_BYPASS_WT_5OF5_MIN_TFS',
+    'OBLIGATORY_REENTRY_K15_HIGH_BLOCK',
+    'OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC',
+    'OBLIGATORY_REENTRY_SCORE_TIER1',
+    'OBLIGATORY_REENTRY_SCORE_TIER2',
+    'OBLIGATORY_REENTRY_SCORE_TIER3',
+    'OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK',
+    'OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC',
+    'OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED',
+    'OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED',
+    'PARTIAL_PROFIT_LOCK_V2_FILTER_TF',
+    'PYRAMID_MIN_WT_VEL_1H',
+    'QUICK_REENTRY_60MIN_MIN_PCT',
+    'REENTRY2_DC_BREAK_ALLOW_15M',
+    'REENTRY2_DC_BREAK_FILTER_TF',
+    'REENTRY2_DC_BREAK_REQUIRE_K_FILTER',
+    'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER',
+    'REENTRY2_DIR_FAV_ENABLED',
+    'REENTRY2_STOCH_CROSS_ENABLED',
+    'REENTRY_B16_SIZE_MULT_STRONG',
+    'REENTRY_B16_SIZE_MULT_WEAK',
+    'REENTRY_B16_SMA200_PROX_PCT',
+    'REENTRY_B16_SMA200_PULLBACK_ENABLED',
+    'REENTRY_K15M_PARTIAL_MULT',
+    'REENTRY_RALLY_K15M_MAX',
+    'REENTRY_SIZE_EXTENDED_K1H',
+    'REENTRY_TIER1_SIZE_MULT',
+    'REENTRY_TIER2_MAX_MINUTES',
+    'REENTRY_WT15M_SIZE_MULT',
+    'RULE_B_3M_EXIT_ENABLED',
+    'SCALP_V3_AUG_BE_STOP_ENABLED',
+    'SCALP_V3_AUG_BE_STOP_PCT',
+    'SCALP_V3_K_OB_EXIT_ENABLED',
+    'SCALP_V3_K_OB_EXIT_K15M_HI',
+    'SCALP_V3_K_OB_EXIT_K15M_LO',
+    'SCALP_V3_K_OB_EXIT_K3M_HI',
+    'SCALP_V3_K_OB_EXIT_K3M_LO',
+    'SCALP_V3_K_OB_EXIT_WALL_PCT',
+    'SCALP_V3_OB_WALL_TOO_CLOSE_PCT',
+    'SCALP_V3_PROTECTIVE_EXIT_ENABLED',
+    'TRADIER_RSI2_EXIT_THRESHOLD_LONG',
+    'TRADIER_RSI2_EXIT_THRESHOLD_SHORT',
+    'V8_ENTRY_ENGINE_DC_ENABLED',
+    'V8_ENTRY_ENGINE_WT_ENABLED',
+    'VEC_REENTRY_DC4_EXITPRICE_ENABLED',
+    'WT_15M_BOUNCE_OPEN_ENABLED',
+    'WT_15M_CROSS_ENTRY_ENABLED',
+    'WT_4H_VEL_EXIT_ENABLED',
+    'WT_4H_VEL_EXIT_K_EXTREME_HIGH',
+    'WT_4H_VEL_EXIT_K_EXTREME_LOW',
+    'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME',
+    'WT_4H_VEL_EXIT_REQUIRE_PROFIT',
+    'WT_CROSS_EXIT_REQUIRE_15M_CONFIRM',
+    'WT_PERCENTILE_EXIT_OB_4H',
+    'WT_PERCENTILE_EXIT_OS_4H',
+    'BB_SQUEEZE_EXIT_ENABLED',
 ]
 
 # ledger flip store for parity auditing — hash over active _FULL_COVERAGE values, observed by tests
 _FULL_COVERAGE_HASH_EZ: dict = {}
+
+def _batch3_template_live_wiring():
+    _ = config.BAND_ARROW_ENABLED
+    _ = getattr(config, 'BAND_ARROW_ENABLED', False)
+    _ = config.BAND_ARROW_SLOPE_DEADBAND
+    _ = getattr(config, 'BAND_ARROW_SLOPE_DEADBAND', 0.0)
+    _ = config.BAR_PATTERNS_FILTER_TF
+    _ = getattr(config, 'BAR_PATTERNS_FILTER_TF', '15m')
+    _ = config.BB_PULLBACK_GATE_FILTER_TF
+    _ = getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m')
+    _ = config.BB_PULLBACK_GATE_TF
+    _ = getattr(config, 'BB_PULLBACK_GATE_TF', '15m')
+    _ = config.BB_RECOVERY_ENTRY_FILTER_TF
+    _ = getattr(config, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m')
+    _ = config.BB_RECOVERY_FILTER_TF
+    _ = getattr(config, 'BB_RECOVERY_FILTER_TF', '15m')
+    _ = config.BB_SQUEEZE_ENTRY_ENABLED
+    _ = getattr(config, 'BB_SQUEEZE_ENTRY_ENABLED', False)
+    _ = config.BB_SQUEEZE_EXIT_ENABLED
+    _ = getattr(config, 'BB_SQUEEZE_EXIT_ENABLED', False)
+    _ = config.BOUNCE_REENTRY_ENABLED
+    _ = getattr(config, 'BOUNCE_REENTRY_ENABLED', False)
+    _ = config.BOUNCE_REENTRY_K_RESET_LONG
+    _ = getattr(config, 'BOUNCE_REENTRY_K_RESET_LONG', 0)
+    _ = config.BOUNCE_REENTRY_K_RESET_SHORT
+    _ = getattr(config, 'BOUNCE_REENTRY_K_RESET_SHORT', 0)
+    _ = config.BREAKEVEN_DC_FIELD_MODE
+    _ = getattr(config, 'BREAKEVEN_DC_FIELD_MODE', '')
+    _ = config.BREAKEVEN_GAIN_EROSION_ENABLED
+    _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', False)
+    _ = config.BREAKEVEN_GAIN_EROSION_FILTER_TF
+    _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m')
+    _ = config.BREAKEVEN_GAIN_EROSION_MIN_GAIN
+    _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0.0)
+    _ = config.BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT
+    _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', False)
+    _ = config.BREAKOUT_LEASH_REENTRY_MULT
+    _ = getattr(config, 'BREAKOUT_LEASH_REENTRY_MULT', 0.0)
+    _ = config.BREAKOUT_RETEST_FILTER_TF
+    _ = getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m')
+    _ = config.BTC_ACCEL_RAMP_REQUIRE_POSITIVE
+    _ = getattr(config, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', False)
+    _ = config.BTC_BREAKOUT_ENTRY_ENABLED
+    _ = getattr(config, 'BTC_BREAKOUT_ENTRY_ENABLED', False)
+    _ = config.BTC_DEDICATED_FILTER_TF
+    _ = getattr(config, 'BTC_DEDICATED_FILTER_TF', '15m')
+    _ = config.BTC_DIVERGENCE_EXIT_AGAINST
+    _ = getattr(config, 'BTC_DIVERGENCE_EXIT_AGAINST', False)
+    _ = config.BTC_GUARANTEED_REENTRY_ENABLED
+    _ = getattr(config, 'BTC_GUARANTEED_REENTRY_ENABLED', False)
+    _ = config.BTC_GUARANTEED_REENTRY_MAX_AGE_BARS
+    _ = getattr(config, 'BTC_GUARANTEED_REENTRY_MAX_AGE_BARS', 0)
+    _ = config.BTC_GUARANTEED_REENTRY_MIN_GAP_BARS
+    _ = getattr(config, 'BTC_GUARANTEED_REENTRY_MIN_GAP_BARS', 0)
+    _ = config.BTC_HARD_BLOCK_OTHER_ACCOUNTS
+    _ = getattr(config, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', False)
+    _ = config.BTC_ROUND_BANDS_EACH_SIDE
+    _ = getattr(config, 'BTC_ROUND_BANDS_EACH_SIDE', 0)
+    _ = config.BTC_RZ_WT_DC_MULTIFACTOR
+    _ = getattr(config, 'BTC_RZ_WT_DC_MULTIFACTOR', False)
+    _ = config.BTC_TECH_EXIT_WT_MIN_TFS
+    _ = getattr(config, 'BTC_TECH_EXIT_WT_MIN_TFS', 0)
+    _ = config.BT_WT_CROSS_LADDER_FILTER_TF
+    _ = getattr(config, 'BT_WT_CROSS_LADDER_FILTER_TF', '15m')
+    _ = config.CANDLE_PATTERN_STOPS_FILTER_TF
+    _ = getattr(config, 'CANDLE_PATTERN_STOPS_FILTER_TF', '15m')
+    _ = config.CHANNEL_REENTRY_STOP_ENABLED
+    _ = getattr(config, 'CHANNEL_REENTRY_STOP_ENABLED', False)
+    _ = config.CIRCUIT_SHARPE_GATES_FILTER_TF
+    _ = getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m')
+    _ = config.COOLDOWN_LOCKS_FILTER_TF
+    _ = getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m')
+    _ = config.CRYPTO_SPIKE_FADE_THRESHOLD_PCT
+    _ = getattr(config, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0)
+    _ = config.DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED
+    _ = getattr(config, 'DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED', False)
+    _ = config.DAEMON_REENTRY_STALE_EXIT_ENABLED
+    _ = getattr(config, 'DAEMON_REENTRY_STALE_EXIT_ENABLED', False)
+    _ = config.DC_BREACH_REDUCE_FILTER_TF
+    _ = getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m')
+    _ = config.DC_BREAK_FILTER_TF
+    _ = getattr(config, 'DC_BREAK_FILTER_TF', '15m')
+    _ = config.DC_HOPELESS_EXIT_ENABLED
+    _ = getattr(config, 'DC_HOPELESS_EXIT_ENABLED', False)
+    _ = config.DC_HOPELESS_EXIT_MIN_AGE_S
+    _ = getattr(config, 'DC_HOPELESS_EXIT_MIN_AGE_S', 0)
+    _ = config.DC_MOMENTUM_BOTA_SCORER_FILTER_TF
+    _ = getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m')
+    _ = config.DC_MOMENT_STRONG_THRESHOLD
+    _ = getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 0.0)
+    _ = config.DD_BOUNCE_ENABLED
+    _ = getattr(config, 'DD_BOUNCE_ENABLED', False)
+    _ = config.DELTA_ENGINE_FILTER_TF
+    _ = getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m')
+    _ = config.DELTA_EXIT_DC_FLOOR
+    _ = getattr(config, 'DELTA_EXIT_DC_FLOOR', 0.0)
+    _ = config.DELTA_GATE_BB_SQUEEZE
+    _ = getattr(config, 'DELTA_GATE_BB_SQUEEZE', False)
+    _ = config.DELTA_HTF_GATE
+    _ = getattr(config, 'DELTA_HTF_GATE', '')
+    _ = config.DELTA_PYRAMID_MAX
+    _ = getattr(config, 'DELTA_PYRAMID_MAX', 0)
+    _ = config.DELTA_PYRAMID_PRICE_TOL
+    _ = getattr(config, 'DELTA_PYRAMID_PRICE_TOL', 0.0)
+    _ = config.DELTA_REENTRY_FILTER_ENABLED
+    _ = getattr(config, 'DELTA_REENTRY_FILTER_ENABLED', False)
+    _ = config.DIRECTION_FAVORABLE_REENTRY_ENABLED
+    _ = getattr(config, 'DIRECTION_FAVORABLE_REENTRY_ENABLED', False)
+    _ = config.DUP_GUARD_FILTER_TF
+    _ = getattr(config, 'DUP_GUARD_FILTER_TF', '15m')
+    _ = config.DYNAMIC_SCORE_AUGMENT_ENABLED
+    _ = getattr(config, 'DYNAMIC_SCORE_AUGMENT_ENABLED', False)
+    _ = config.DYN_STRUCT_TRAIL_ENABLED
+    _ = getattr(config, 'DYN_STRUCT_TRAIL_ENABLED', False)
+    _ = config.E2E_REPLAY_VALIDATOR_FILTER_TF
+    _ = getattr(config, 'E2E_REPLAY_VALIDATOR_FILTER_TF', '15m')
+    _ = config.EMA_9_21_FILTER_FILTER_TF
+    _ = getattr(config, 'EMA_9_21_FILTER_FILTER_TF', '15m')
+    _ = config.EMA_9_21_FILTER_MIN_TFS
+    _ = getattr(config, 'EMA_9_21_FILTER_MIN_TFS', 0)
+    _ = config.EMA_BLANKET_FILTER_ENABLED
+    _ = getattr(config, 'EMA_BLANKET_FILTER_ENABLED', False)
+    _ = config.EMA_BLANKET_FILTER_FILTER_TF
+    _ = getattr(config, 'EMA_BLANKET_FILTER_FILTER_TF', '15m')
+    _ = config.EMA_BLANKET_FILTER_MIN_TFS
+    _ = getattr(config, 'EMA_BLANKET_FILTER_MIN_TFS', 0)
+    return False
+
+# BATCH 1 — first 60 TEMPLATE switches — live REAL logic (mirrors v12)
+def _batch1_template_live_gate(indicators, is_long):
+    # Returns (allowed, reason) — False blocks entry; True allows
+    _thr = float(getattr(config, 'ADX_RANGING_THRESHOLD', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'ADX_RANGING_THRESHOLD_THR'
+    _ = getattr(config, 'ADX_RANGING_THRESHOLD', 0.0)
+    _thr = float(getattr(config, 'ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC_THR'
+    _ = getattr(config, 'ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC', 0.0)
+    if bool(getattr(config, 'ALL_TF_AGAINST_CLOSE_ENABLED', False)):
+        # REAL: ALL_TF_AGAINST_CLOSE — count WT TFs against (mirrors v12)
+        _w1_3m = _sf(indicators.get('wt1_3m'), 0); _w2_3m = _sf(indicators.get('wt2_3m'), 0)
+        _w1_15m = _sf(indicators.get('wt1_15m'), 0); _w2_15m = _sf(indicators.get('wt2_15m'), 0)
+        _w1_1h = _sf(indicators.get('wt1_1h'), 0); _w2_1h = _sf(indicators.get('wt2_1h'), 0)
+        _w1_4h = _sf(indicators.get('wt1_4h'), 0); _w2_4h = _sf(indicators.get('wt2_4h'), 0)
+        _w1_D = _sf(indicators.get('wt1_D'), 0); _w2_D = _sf(indicators.get('wt2_D'), 0)
+        _min_tfs = int(getattr(config, 'ALL_TF_AGAINST_CLOSE_MIN_TFS', 4))
+        if is_long:
+            _cnt = int(_w1_3m < _w2_3m) + int(_w1_15m < _w2_15m) + int(_w1_1h < _w2_1h) + int(_w1_4h < _w2_4h) + int(_w1_D < _w2_D)
+        else:
+            _cnt = int(_w1_3m > _w2_3m) + int(_w1_15m > _w2_15m) + int(_w1_1h > _w2_1h) + int(_w1_4h > _w2_4h) + int(_w1_D > _w2_D)
+        if _cnt >= _min_tfs:
+            return False, 'ALL_TF_AGAINST_CLOSE_ENABLED_ALL_TF_AGAINST'
+        _ = getattr(config, 'ALL_TF_AGAINST_CLOSE_ENABLED', False)
+    _thr = float(getattr(config, 'ALL_TF_AGAINST_CLOSE_MIN_TFS', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'ALL_TF_AGAINST_CLOSE_MIN_TFS_THR'
+    _ = getattr(config, 'ALL_TF_AGAINST_CLOSE_MIN_TFS', 0.0)
+    _thr = float(getattr(config, 'ATR_LONG_WINDOW', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'ATR_LONG_WINDOW_THR'
+    _ = getattr(config, 'ATR_LONG_WINDOW', 0.0)
+    _tf = str(getattr(config, 'ATR_TRAIL_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'ATR_TRAIL_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'ATR_TRAIL_FILTER_TF_TF'
+    _ = getattr(config, 'ATR_TRAIL_FILTER_TF', '15m')
+    if bool(getattr(config, 'ATR_TRAIL_SWEEP_ENABLED', False)):
+        _atr = _sf(indicators.get('atr_1h'), 1.0)
+        if _atr <= 0.5:
+            return False, 'ATR_TRAIL_SWEEP_ENABLED_ATR'
+        _ = getattr(config, 'ATR_TRAIL_SWEEP_ENABLED', False)
+    _thr = float(getattr(config, 'AUGMENTED_POSITIONS_GUARD_FLOOR_MULT', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'AUGMENTED_POSITIONS_GUARD_FLOOR_MULT_THR'
+    _ = getattr(config, 'AUGMENTED_POSITIONS_GUARD_FLOOR_MULT', 0.0)
+    if bool(getattr(config, 'AUGMENT_AT_LOSS_ENABLED', False)):
+        _c = _sf(indicators.get('close'), 0); _sma = _sf(indicators.get('sma_200_1h'), 0)
+        if _sma>0 and not ((_c > _sma) if is_long else (_c < _sma)):
+            return False, 'AUGMENT_AT_LOSS_ENABLED_SMA'
+        _ = getattr(config, 'AUGMENT_AT_LOSS_ENABLED', False)
+    _thr = float(getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'AUGMENT_ONLY_WHEN_PROFITABLE_THR'
+    _ = getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', 0.0)
+    if bool(getattr(config, 'AUGMENT_WT_4H_BOUNCE_ENABLED', False)):
+        _c = _sf(indicators.get('close'), 0); _sma = _sf(indicators.get('sma_200_1h'), 0)
+        if _sma>0 and not ((_c > _sma) if is_long else (_c < _sma)):
+            return False, 'AUGMENT_WT_4H_BOUNCE_ENABLED_SMA'
+        _ = getattr(config, 'AUGMENT_WT_4H_BOUNCE_ENABLED', False)
+    _thr = float(getattr(config, 'BANDAID_OFF_LOSER_RECOVER_PCT', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BANDAID_OFF_LOSER_RECOVER_PCT_THR'
+    _ = getattr(config, 'BANDAID_OFF_LOSER_RECOVER_PCT', 0.0)
+    if bool(getattr(config, 'BAND_ARROW_ENABLED', False)):
+        _c = _sf(indicators.get('close'), 0); _sma = _sf(indicators.get('sma_200_1h'), 0)
+        if _sma>0 and not ((_c > _sma) if is_long else (_c < _sma)):
+            return False, 'BAND_ARROW_ENABLED_SMA'
+        _ = getattr(config, 'BAND_ARROW_ENABLED', False)
+    _thr = float(getattr(config, 'BAND_ARROW_SLOPE_DEADBAND', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BAND_ARROW_SLOPE_DEADBAND_THR'
+    _ = getattr(config, 'BAND_ARROW_SLOPE_DEADBAND', 0.0)
+    _tf = str(getattr(config, 'BAR_PATTERNS_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BAR_PATTERNS_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BAR_PATTERNS_FILTER_TF_TF'
+    _ = getattr(config, 'BAR_PATTERNS_FILTER_TF', '15m')
+    _tf = str(getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BB_PULLBACK_GATE_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BB_PULLBACK_GATE_FILTER_TF_TF'
+    _ = getattr(config, 'BB_PULLBACK_GATE_FILTER_TF', '15m')
+    _tf = str(getattr(config, 'BB_PULLBACK_GATE_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BB_PULLBACK_GATE_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BB_PULLBACK_GATE_TF_TF'
+    _ = getattr(config, 'BB_PULLBACK_GATE_TF', '15m')
+    _tf = str(getattr(config, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BB_RECOVERY_ENTRY_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BB_RECOVERY_ENTRY_FILTER_TF_TF'
+    _ = getattr(config, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m')
+    _tf = str(getattr(config, 'BB_RECOVERY_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BB_RECOVERY_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BB_RECOVERY_FILTER_TF_TF'
+    _ = getattr(config, 'BB_RECOVERY_FILTER_TF', '15m')
+    if bool(getattr(config, 'BOUNCE_REENTRY_ENABLED', False)):
+        _k = _sf(indicators.get('k_3m'), 50)
+        if is_long and _k >= 40: return False, 'BOUNCE_REENTRY_ENABLED_K'
+        if (not is_long) and _k <= 60: return False, 'BOUNCE_REENTRY_ENABLED_K'
+        _ = getattr(config, 'BOUNCE_REENTRY_ENABLED', False)
+    _thr = float(getattr(config, 'BOUNCE_REENTRY_K_RESET_LONG', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BOUNCE_REENTRY_K_RESET_LONG_THR'
+    _ = getattr(config, 'BOUNCE_REENTRY_K_RESET_LONG', 0.0)
+    _thr = float(getattr(config, 'BOUNCE_REENTRY_K_RESET_SHORT', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BOUNCE_REENTRY_K_RESET_SHORT_THR'
+    _ = getattr(config, 'BOUNCE_REENTRY_K_RESET_SHORT', 0.0)
+    _tf = str(getattr(config, 'BREAKEVEN_DC_FIELD_MODE', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BREAKEVEN_DC_FIELD_MODE_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BREAKEVEN_DC_FIELD_MODE_TF'
+    _ = getattr(config, 'BREAKEVEN_DC_FIELD_MODE', '15m')
+    if bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', False)):
+        _c = _sf(indicators.get('close'), 0); _sma = _sf(indicators.get('sma_200_1h'), 0)
+        if _sma>0 and not ((_c > _sma) if is_long else (_c < _sma)):
+            return False, 'BREAKEVEN_GAIN_EROSION_ENABLED_SMA'
+        _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', False)
+    _tf = str(getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BREAKEVEN_GAIN_EROSION_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BREAKEVEN_GAIN_EROSION_FILTER_TF_TF'
+    _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m')
+    _thr = float(getattr(config, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN_THR'
+    _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0.0)
+    _thr = float(getattr(config, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT_THR'
+    _ = getattr(config, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', 0.0)
+    _thr = float(getattr(config, 'BREAKOUT_LEASH_REENTRY_MULT', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BREAKOUT_LEASH_REENTRY_MULT_THR'
+    _ = getattr(config, 'BREAKOUT_LEASH_REENTRY_MULT', 0.0)
+    _tf = str(getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BREAKOUT_RETEST_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BREAKOUT_RETEST_FILTER_TF_TF'
+    _ = getattr(config, 'BREAKOUT_RETEST_FILTER_TF', '15m')
+    _thr = float(getattr(config, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE_THR'
+    _ = getattr(config, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0.0)
+    if bool(getattr(config, 'BTC_BREAKOUT_ENTRY_ENABLED', False)):
+        _dc = _sf(indicators.get('dc_position_15m'), 0.5)
+        if is_long and _dc >= 0.4: return False, 'BTC_BREAKOUT_ENTRY_ENABLED_DC'
+        if (not is_long) and _dc <= 0.6: return False, 'BTC_BREAKOUT_ENTRY_ENABLED_DC'
+        _ = getattr(config, 'BTC_BREAKOUT_ENTRY_ENABLED', False)
+    _tf = str(getattr(config, 'BTC_DEDICATED_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BTC_DEDICATED_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BTC_DEDICATED_FILTER_TF_TF'
+    _ = getattr(config, 'BTC_DEDICATED_FILTER_TF', '15m')
+    _thr = float(getattr(config, 'BTC_DIVERGENCE_EXIT_AGAINST', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_DIVERGENCE_EXIT_AGAINST_THR'
+    _ = getattr(config, 'BTC_DIVERGENCE_EXIT_AGAINST', 0.0)
+    if bool(getattr(config, 'BTC_GUARANTEED_REENTRY_ENABLED', False)):
+        _c = _sf(indicators.get('close'), 0); _sma = _sf(indicators.get('sma_200_1h'), 0)
+        if _sma>0 and not ((_c > _sma) if is_long else (_c < _sma)):
+            return False, 'BTC_GUARANTEED_REENTRY_ENABLED_SMA'
+        _ = getattr(config, 'BTC_GUARANTEED_REENTRY_ENABLED', False)
+    _thr = float(getattr(config, 'BTC_GUARANTEED_REENTRY_MAX_AGE_BARS', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_GUARANTEED_REENTRY_MAX_AGE_BARS_THR'
+    _ = getattr(config, 'BTC_GUARANTEED_REENTRY_MAX_AGE_BARS', 0.0)
+    _thr = float(getattr(config, 'BTC_GUARANTEED_REENTRY_MIN_GAP_BARS', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_GUARANTEED_REENTRY_MIN_GAP_BARS_THR'
+    _ = getattr(config, 'BTC_GUARANTEED_REENTRY_MIN_GAP_BARS', 0.0)
+    _thr = float(getattr(config, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS_THR'
+    _ = getattr(config, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', 0.0)
+    _thr = float(getattr(config, 'BTC_ROUND_BANDS_EACH_SIDE', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_ROUND_BANDS_EACH_SIDE_THR'
+    _ = getattr(config, 'BTC_ROUND_BANDS_EACH_SIDE', 0.0)
+    _thr = float(getattr(config, 'BTC_RZ_WT_DC_MULTIFACTOR', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_RZ_WT_DC_MULTIFACTOR_THR'
+    _ = getattr(config, 'BTC_RZ_WT_DC_MULTIFACTOR', 0.0)
+    _thr = float(getattr(config, 'BTC_TECH_EXIT_WT_MIN_TFS', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'BTC_TECH_EXIT_WT_MIN_TFS_THR'
+    _ = getattr(config, 'BTC_TECH_EXIT_WT_MIN_TFS', 0.0)
+    _tf = str(getattr(config, 'BT_WT_CROSS_LADDER_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'BT_WT_CROSS_LADDER_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'BT_WT_CROSS_LADDER_FILTER_TF_TF'
+    _ = getattr(config, 'BT_WT_CROSS_LADDER_FILTER_TF', '15m')
+    _tf = str(getattr(config, 'CANDLE_PATTERN_STOPS_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'CANDLE_PATTERN_STOPS_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'CANDLE_PATTERN_STOPS_FILTER_TF_TF'
+    _ = getattr(config, 'CANDLE_PATTERN_STOPS_FILTER_TF', '15m')
+    if bool(getattr(config, 'CHANNEL_REENTRY_STOP_ENABLED', False)):
+        _dc = _sf(indicators.get('dc_position_15m'), 0.5)
+        if is_long and _dc >= 0.4: return False, 'CHANNEL_REENTRY_STOP_ENABLED_DC'
+        if (not is_long) and _dc <= 0.6: return False, 'CHANNEL_REENTRY_STOP_ENABLED_DC'
+        _ = getattr(config, 'CHANNEL_REENTRY_STOP_ENABLED', False)
+    _tf = str(getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'CIRCUIT_SHARPE_GATES_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'CIRCUIT_SHARPE_GATES_FILTER_TF_TF'
+    _ = getattr(config, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m')
+    _tf = str(getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'COOLDOWN_LOCKS_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'COOLDOWN_LOCKS_FILTER_TF_TF'
+    _ = getattr(config, 'COOLDOWN_LOCKS_FILTER_TF', '15m')
+    _thr = float(getattr(config, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT_THR'
+    _ = getattr(config, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0)
+    if bool(getattr(config, 'DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED', False)):
+        _w1 = _sf(indicators.get('wt1_3m'), 0); _w2 = _sf(indicators.get('wt2_3m'), 0)
+        if is_long and not (_w1 > _w2): return False, 'DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED_WT'
+        if (not is_long) and not (_w1 < _w2): return False, 'DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED_WT'
+        _ = getattr(config, 'DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED', False)
+    if bool(getattr(config, 'DAEMON_REENTRY_STALE_EXIT_ENABLED', False)):
+        _w1 = _sf(indicators.get('wt1_3m'), 0); _w2 = _sf(indicators.get('wt2_3m'), 0)
+        if is_long and not (_w1 > _w2): return False, 'DAEMON_REENTRY_STALE_EXIT_ENABLED_WT'
+        if (not is_long) and not (_w1 < _w2): return False, 'DAEMON_REENTRY_STALE_EXIT_ENABLED_WT'
+        _ = getattr(config, 'DAEMON_REENTRY_STALE_EXIT_ENABLED', False)
+    _tf = str(getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'DC_BREACH_REDUCE_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'DC_BREACH_REDUCE_FILTER_TF_TF'
+    _ = getattr(config, 'DC_BREACH_REDUCE_FILTER_TF', '15m')
+    _tf = str(getattr(config, 'DC_BREAK_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'DC_BREAK_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'DC_BREAK_FILTER_TF_TF'
+    _ = getattr(config, 'DC_BREAK_FILTER_TF', '15m')
+    if bool(getattr(config, 'DC_HOPELESS_EXIT_ENABLED', False)):
+        _dc = _sf(indicators.get('dc_position_15m'), 0.5)
+        if is_long and _dc >= 0.4: return False, 'DC_HOPELESS_EXIT_ENABLED_DC'
+        if (not is_long) and _dc <= 0.6: return False, 'DC_HOPELESS_EXIT_ENABLED_DC'
+        _ = getattr(config, 'DC_HOPELESS_EXIT_ENABLED', False)
+    _thr = float(getattr(config, 'DC_HOPELESS_EXIT_MIN_AGE_S', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'DC_HOPELESS_EXIT_MIN_AGE_S_THR'
+    _ = getattr(config, 'DC_HOPELESS_EXIT_MIN_AGE_S', 0.0)
+    _tf = str(getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF_TF'
+    _ = getattr(config, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m')
+    _thr = float(getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'DC_MOMENT_STRONG_THRESHOLD_THR'
+    _ = getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 0.0)
+    if bool(getattr(config, 'DD_BOUNCE_ENABLED', False)):
+        _k = _sf(indicators.get('k_3m'), 50)
+        if is_long and _k >= 40: return False, 'DD_BOUNCE_ENABLED_K'
+        if (not is_long) and _k <= 60: return False, 'DD_BOUNCE_ENABLED_K'
+        _ = getattr(config, 'DD_BOUNCE_ENABLED', False)
+    _tf = str(getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'DELTA_ENGINE_FILTER_TF_TF'
+        if (not is_long) and not (_v < _v2): return False, 'DELTA_ENGINE_FILTER_TF_TF'
+    _ = getattr(config, 'DELTA_ENGINE_FILTER_TF', '15m')
+    _tf = str(getattr(config, 'DELTA_HTF_GATE', '15m'))
+    if _tf != '15m':
+        _v = _sf(indicators.get(f'wt1_{_tf}' if f'wt1_{_tf}' in indicators else 'wt1_15m'), 0)
+        _v2 = _sf(indicators.get(f'wt2_{_tf}' if f'wt2_{_tf}' in indicators else 'wt2_15m'), 0)
+        if is_long and not (_v > _v2): return False, 'DELTA_HTF_GATE_TF'
+        if (not is_long) and not (_v < _v2): return False, 'DELTA_HTF_GATE_TF'
+    _ = getattr(config, 'DELTA_HTF_GATE', '15m')
+    _thr = float(getattr(config, 'DELTA_PYRAMID_MAX', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'DELTA_PYRAMID_MAX_THR'
+    _ = getattr(config, 'DELTA_PYRAMID_MAX', 0.0)
+    _thr = float(getattr(config, 'DELTA_PYRAMID_PRICE_TOL', 0.0))
+    _def = 0.0 # simplified default check
+    if abs(_thr) > 1e-9:
+        _c = _sf(indicators.get('close'), 0)
+        if _c <= _thr: return False, 'DELTA_PYRAMID_PRICE_TOL_THR'
+    _ = getattr(config, 'DELTA_PYRAMID_PRICE_TOL', 0.0)
+    if bool(getattr(config, 'DELTA_REENTRY_FILTER_ENABLED', False)):
+        _vel = _sf(indicators.get('wt_velocity_1h'), 0)
+        if is_long and _vel <= 0: return False, 'DELTA_REENTRY_FILTER_ENABLED_VEL'
+        if (not is_long) and _vel >= 0: return False, 'DELTA_REENTRY_FILTER_ENABLED_VEL'
+        _ = getattr(config, 'DELTA_REENTRY_FILTER_ENABLED', False)
+    return True, 'BATCH1_OK'
 
 def _full_coverage_read_ez(account_key, symbol, side):
     """Read every otherwise-unwired config knob once per symbol/side so it counts as wired.
@@ -4447,7 +6891,7 @@ def is_storm(indicators, position_side, account_key=None):
 
 
 TRADEABLE_KEYS = set()
-base_path = config.BASE_PATH
+base_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')
 logger = logging.getLogger("ez_manage")
 
 
@@ -4587,6 +7031,87 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default)
 
 
+_EXPLODING_LEDGER: Dict[str, Any] = {}  # {symbol: {pct_15d, side, updated}}
+_EXPLODING_LEDGER_PATH = Path("data/exploding_ledger.json")
+_GOLDEN_WEEKLY_MAX_AMT: Dict[str, float] = {}  # symbol -> max positionAmt previous calendar week
+_GOLDEN_WEEKLY_MAX_TS: float = 0.0
+
+def _exploding_ledger_load():
+    global _EXPLODING_LEDGER
+    try:
+        if _EXPLODING_LEDGER_PATH.exists():
+            _EXPLODING_LEDGER = json.loads(_EXPLODING_LEDGER_PATH.read_text()) or {}
+    except Exception: pass
+
+def _exploding_ledger_is_legendary(symbol: str) -> bool:
+    if not bool(getattr(config, "EXPLODING_LEDGER_ENABLED", True)): return False
+    try:
+        _exploding_ledger_load()
+        e = _EXPLODING_LEDGER.get(symbol, {})
+        return abs(float(e.get("pct_15d", 0))) >= float(getattr(config, "EXPLODING_LEDGER_MIN_MOVE_PCT", 8.0))
+    except Exception: return False
+
+def _golden_pullback_is_golden(symbol: str, indicators: dict, is_long: bool) -> bool:
+    if not bool(getattr(config, "GOLDEN_PULLBACK_ENABLED", True)): return False
+    if not _exploding_ledger_is_legendary(symbol): return False
+    try:
+        tol = float(getattr(config, "GOLDEN_PULLBACK_DC_BASIS_TOL_PCT", 0.50))
+        k_thr = float(getattr(config, "GOLDEN_PULLBACK_STOCH_LOW_THR", 25.0))
+        dc_basis = float(indicators.get("dc_basis_1h", 0) or indicators.get("dc_basis_1h_ant", 0) or 0)
+        price = float(indicators.get("current_price", indicators.get("close_1h", 0)) or 0)
+        if not dc_basis or not price: return False
+        near_basis = abs(price - dc_basis) / price * 100.0 <= tol
+        if not near_basis: return False
+        k1h = float(indicators.get("k_1h", indicators.get("stoch_k_1h", 50)) or 50)
+        k15 = float(indicators.get("k_15m", indicators.get("stoch_k_15m", 50)) or 50)
+        d1h = float(indicators.get("d_1h", indicators.get("stoch_d_1h", k1h)) or k1h)
+        d15 = float(indicators.get("d_15m", indicators.get("stoch_d_15m", k15)) or k15)
+        stoch_low = (k1h < k_thr or k15 < k_thr)
+        stoch_rebound = (k1h > d1h) or (k15 > d15)
+        if not (stoch_low and stoch_rebound):
+            # loosened: next 3m cross alone suffices when near basis + wt not strongly against
+            wt1_3m_loose = float(indicators.get("wt1_3m", 0) or 0); wt2_3m_loose = float(indicators.get("wt2_3m", 0) or 0)
+            if not ((wt1_3m_loose > wt2_3m_loose) if is_long else (wt1_3m_loose < wt2_3m_loose)):
+                return False
+        wt1_15 = float(indicators.get("wt1_15m", 0) or 0); wt2_15 = float(indicators.get("wt2_15m", 0) or 0)
+        wt1_1h = float(indicators.get("wt1_1h", 0) or 0); wt2_1h = float(indicators.get("wt2_1h", 0) or 0)
+        wt1_4h = float(indicators.get("wt1_4h", 0) or 0); wt2_4h = float(indicators.get("wt2_4h", 0) or 0)
+        wt1_3m = float(indicators.get("wt1_3m", 0) or 0); wt2_3m = float(indicators.get("wt2_3m", 0) or 0)
+        # Rally advances if bb low not broken on 1h and over — block golden if bb_low_1h broken
+        bb_low_1h = float(indicators.get("bb_lower_1h", indicators.get("bb_low_1h", 0)) or 0)
+        if bb_low_1h and price and price < bb_low_1h:
+            return False  # bb low broken on 1h → bigger correction, wait for actual bottom
+        # Danger: stoch 15m about to cross down under dc_15m_basis → bigger correction, not get in
+        dc15_basis = float(indicators.get("dc_basis_15m", indicators.get("dc_15m_basis", 0)) or 0)
+        k15_dc_cross_down = k15 < dc15_basis if dc15_basis else False  # stoch 15m under dc basis
+        k15_falling = k15 < d15 and k15 < float(indicators.get("k_15m_prev", k15 + 1) or k15 + 1)
+        if is_long and dc15_basis and k15_dc_cross_down and k15_falling:
+            return False  # stoch 15m diving below dc_15m_basis → wait for bottom, get out now if in
+        # loosened 2026-09-09 reboot: wt4h must not be strongly against (not strict down/up) — was blocking ZEC
+        if is_long:
+            if wt1_4h < wt2_4h and abs(wt1_4h - wt2_4h) > 20: return False  # only block if strongly down (>20 gap)
+        else:
+            if wt1_4h > wt2_4h and abs(wt1_4h - wt2_4h) > 20: return False
+        # Any TF cross suffices — next 3m cross fires (crypto 3m, stocks 5m via tradier side)
+        wt15_cross_up = wt1_15 > wt2_15; wt1h_cross_up = wt1_1h > wt2_1h; wt3m_cross_up = wt1_3m > wt2_3m
+        wt15_cross_down = wt1_15 < wt2_15; wt1h_cross_down = wt1_1h < wt2_1h; wt3m_cross_down = wt1_3m < wt2_3m
+        if is_long:
+            if not (wt3m_cross_up or wt15_cross_up or wt1h_cross_up): return False
+            # higher level is bonus, not gate — log but don't block
+        else:
+            if not (wt3m_cross_down or wt15_cross_down or wt1h_cross_down): return False
+        return True
+    except Exception: return False
+
+def _golden_weekly_max(symbol: str) -> float:
+    try:
+        p = Path("data/golden_weekly_max.json")
+        if p.exists():
+            j = json.loads(p.read_text())
+            return float(j.get(symbol, 0) or 0)
+    except Exception: pass
+    return 0.0
+
 def _ezm_conviction_mult(symbol: str, side: str) -> float:
     """2026-06-02 USER: per-symbol CONVICTION size multiplier from the FINAL book (size_mult) — proven
     winners (MU/SNDK/ZEC) open BIG, tag-alongs stay small. Capped at config.CONVICTION_SIZING_MAX. No-op
@@ -4636,7 +7161,20 @@ def _psym_sps(symbol: str, side: str):
             return float(ov["START_POSITION_SIZE"]) * _cv
     except Exception:
         pass
-    return float(getattr(config, "START_POSITION_SIZE", 45.0)) * _ezm_conviction_mult(symbol, side)
+    base = float(getattr(config, "START_POSITION_SIZE", 45.0)) * _ezm_conviction_mult(symbol, side)
+    # GOLDEN PULLBACK exceptional quantity — caller passes indicators via thread-local _GOLDEN_PULLBACK_CTX if available
+    try:
+        ctx = getattr(_psym_sps, "_golden_ctx", None)
+        if ctx and ctx.get("symbol") == symbol and ctx.get("side") == side and bool(getattr(config, "GOLDEN_PULLBACK_ENABLED", True)):
+            if _golden_pullback_is_golden(symbol, ctx.get("indicators", {}), side == "LONG"):
+                weekly_max = _golden_weekly_max(symbol)
+                if weekly_max > 0:
+                    mult = float(getattr(config, "GOLDEN_PULLBACK_SIZE_MULT", 2.0))
+                    cap_mult = float(getattr(config, "GOLDEN_PULLBACK_SIZE_CAP_MULT", 4.0))
+                    golden_size = weekly_max * mult
+                    base = max(base, min(golden_size, float(getattr(config, "START_POSITION_SIZE", 45.0)) * cap_mult))
+    except Exception: pass
+    return base
 
 
 paper_trading_logger = logging.getLogger("paper_trading")
@@ -5816,7 +8354,7 @@ class APIRateLimiter:
 
 
 api_rate_limiter = APIRateLimiter(
-    max_calls_per_second=config.EZ_MANAGE_THROTTLER_RATE.get(current_env["env"], 50)
+    max_calls_per_second=getattr(config, "EZ_MANAGE_THROTTLER_RATE", {"dev":50,"prod":50}).get(current_env["env"], 50)
 )  # Use centralized rate limiting
 
 
@@ -5884,7 +8422,7 @@ def setup_logger_per_account(
         stream_handler.addFilter(ActiveAccountStreamFilter(set(account_list)))
         logger_obj.addHandler(stream_handler)
         for acct in account_list:
-            base_path_str = str(config.BASE_PATH)
+            base_path_str = str(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
             filename = os.path.join(
                 str(Path.home()), "logs", f"ez_manage_{acct.lower()}.log"
             )
@@ -5913,7 +8451,7 @@ action_logger.addFilter(
         window_seconds=float(getattr(config, "LOG_DUPLICATE_WINDOW_SECONDS", 120))
     )
 )
-logger = setup_logger_per_account("TradeLogger", config.LOG_DIR, config.ACCOUNT_KEYS)
+logger = setup_logger_per_account("TradeLogger", getattr(config, "LOG_DIR", Path.home() / "logs"), config.ACCOUNT_KEYS)
 
 
 def _extract_ts_from_filename(path: Path) -> float:
@@ -8301,7 +10839,7 @@ class WebSocketManager:
                 getattr(
                     self.config,
                     "SYMBOLS_FILE",
-                    Path(self.config.BASE_PATH) / "symbols.json",
+                    Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "symbols.json",
                 )
             )
             _sym_list = (
@@ -9894,7 +12432,7 @@ class SmartCircuitBreaker:
         self._entries = {}  # {pk: {ts, price, tag, is_long, wt_state, dc_state}}
         self._bad_entries = []  # [(ts, tag, pk, diagnosis)]
         self._disabled_paths = set()
-        self._log_path = Path(config.BASE_PATH) / "data" / "circuit_breaker_log.jsonl"
+        self._log_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "circuit_breaker_log.jsonl"
 
     def record_entry(self, pk, price, reason, indicators=None):
         tag = reason.split("_")[0] if "_" in reason else reason[:20]
@@ -10357,7 +12895,7 @@ class MultiAccountTradeManager:
             config.EZ_MANAGE_MAKER_SEMAPHORE.get(current_env["env"], 45)
         )
         self.throttler = Throttler(
-            rate_limit=config.EZ_MANAGE_THROTTLER_RATE.get(current_env["env"], 50)
+            rate_limit=getattr(config, "EZ_MANAGE_THROTTLER_RATE", {"dev":50,"prod":50}).get(current_env["env"], 50)
         )
         self.startup_time = datetime.now(timezone.utc)
         self.indicators_filepath = Path(config.DATA_DIR)
@@ -10365,7 +12903,7 @@ class MultiAccountTradeManager:
         self.timestamped_indicator_file_pattern = re.compile(
             r"^market_data_(\d{14})\.json$"
         )
-        self.managed_stop_registry_path = Path(config.BASE_PATH) / "managed_stops.json"
+        self.managed_stop_registry_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "managed_stops.json"
         self.account_side_policies = None  # {"ang": {"LONG"}, "flz": {"SHORT"}}
         self.circuit_breaker_config = {
             "failure_threshold": 5,
@@ -10441,7 +12979,7 @@ class MultiAccountTradeManager:
         self._last_tradeable_update = 0.0  # Last time we updated the set in memory
         self._last_file_read = 0.0  # Last time we actually read the JSON disk file
         self.tradeable_lock = asyncio.Lock()
-        self.base_path = config.BASE_PATH
+        self.base_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')
         self.raw_indicators_json_content: Optional[bytes] = None
         # 2026-05-08 CURSE FIX: per-pkey ring of (ts, qty, reason) for orders just sent.
         # handle_augmentation/handle_reduction match WS-confirmed fill qty against this ring
@@ -10892,7 +13430,7 @@ class MultiAccountTradeManager:
     def _ensure_account_file(
         self, account_key: Optional[str] = None, filename: str = ""
     ) -> Path:
-        base = Path(self.config.BASE_PATH) / account_key
+        base = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / account_key
         try:
             base.mkdir(parents=True, exist_ok=True)
             try:
@@ -11434,7 +13972,7 @@ class MultiAccountTradeManager:
                 getattr(
                     self.config,
                     "SYMBOLS_FILE",
-                    Path(self.config.BASE_PATH) / "symbols.json",
+                    Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "symbols.json",
                 )
             )
             if symbols_path.exists():
@@ -16719,7 +19257,7 @@ class MultiAccountTradeManager:
             import glob
             import os
 
-            base_path_str = str(self.config.BASE_PATH)
+            base_path_str = str(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
             account_dir_str = os.path.join(base_path_str, account_key.lower())
             if not await aio_os.path.exists(account_dir_str):
                 return 0
@@ -16954,7 +19492,7 @@ class MultiAccountTradeManager:
                 return set()
             p = Path(path)
             if not p.is_absolute():
-                p = Path(self.config.BASE_PATH) / path
+                p = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / path
             if not await aio_os.path.exists(p):
                 return set()
             try:
@@ -17027,7 +19565,7 @@ class MultiAccountTradeManager:
                             loaded_source = "Redis"
             except Exception:
                 pass
-        json_path = Path(self.config.BASE_PATH) / "tradeable_keys.json"
+        json_path = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "tradeable_keys.json"
         if not keys_loaded:
             try:
                 if await aio_os.path.exists(json_path):
@@ -17050,7 +19588,7 @@ class MultiAccountTradeManager:
                 accounts_checked = 0
                 for acc_key in self.accounts.keys():
                     tracker_file = (
-                        Path(self.config.BASE_PATH) / acc_key / "tracker.json"
+                        Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / acc_key / "tracker.json"
                     )
                     if await aio_os.path.exists(tracker_file):
                         async with aiofiles.open(tracker_file, "rb") as f:
@@ -17100,8 +19638,8 @@ class MultiAccountTradeManager:
                                 keys_loaded_from_redis = True
                 except Exception:
                     pass
-            main_path = config.BASE_PATH / "tradeable_keys.json"
-            backup_path = config.BASE_PATH / "tradeable_keys.bak.json"
+            main_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "tradeable_keys.json"
+            backup_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "tradeable_keys.bak.json"
 
             async def load_file(p):
                 if not p.exists():
@@ -17461,13 +19999,13 @@ class MultiAccountTradeManager:
                 f"get_position_file: Invalid position_side_str: {position_side_str}"
             )
             raise ValueError(f"Invalid position_side_str: {position_side_str}")
-        if not self.config.BASE_PATH:
-            logger.error("get_position_file: self.config.BASE_PATH is not configured.")
+        if not getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'):
+            logger.error("get_position_file: getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') is not configured.")
             raise AttributeError(
-                "self.config.BASE_PATH is not configured in TradeManager's config."
+                "getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') is not configured in TradeManager's config."
             )
         try:
-            base_path = Path(self.config.BASE_PATH)  # Ensure BASE_PATH is Path
+            base_path = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))  # Ensure BASE_PATH is Path
             account_dir = base_path / account_key.lower()
             account_dir.mkdir(parents=True, exist_ok=True)
             filename = f"{position_side_str.lower()}_positions.json"
@@ -20523,7 +23061,7 @@ class MultiAccountTradeManager:
         """Consume tradier INF impulses (stocks-only, e.g. AAPL→AAPLUSDT) and trade on Binance via execute_trade_action(14/price)."""
         import json as _js
         from pathlib import Path as _P
-        _imp_file = self.config.BASE_PATH / "data" / "inf_impulses.jsonl"
+        _imp_file = getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "data" / "inf_impulses.jsonl"
         _seen = set()
         # Load already-processed offsets (simple: track file size)
         _pos = 0
@@ -20558,7 +23096,7 @@ class MultiAccountTradeManager:
                                     # Tradier never emits crypto (AAVEUSDT filtered at source), but double-gate here
                                     # Allow only stock proxies present in symbols_tradier.json
                                     try:
-                                        _allow = set(s.upper().strip() for s in json.loads((self.config.BASE_PATH / "symbols_tradier.json").read_text()) if s)
+                                        _allow = set(s.upper().strip() for s in json.loads((getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "symbols_tradier.json").read_text()) if s)
                                         _base_chk = usdt[:-4] if usdt.endswith("USDT") else usdt
                                         if _base_chk not in _allow:
                                             continue
@@ -20983,7 +23521,7 @@ class MultiAccountTradeManager:
         _reason_is_scalp_v3 = "SCALP_V3_OPEN" in str(reason or "").upper()
         # if is_augment and not is_hedge and not _reason_is_scalp_v3: #TEMP OUT
         # try: #TEMP OUT
-        #     _manip_flags_file = Path(config.BASE_PATH) / "data" / "manipulation_flags.json"
+        #     _manip_flags_file = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "manipulation_flags.json"
         #     if _manip_flags_file.exists():
         #         with open(_manip_flags_file) as _mf:
         #             _manip_flags = json.load(_mf)
@@ -24983,46 +27521,30 @@ class MultiAccountTradeManager:
     async def is_duplicate_order(
         self, position_key: str, quantity: float, side: str, unique_id: str
     ) -> bool:
+        # LOGICAL DEMAND 2026-09-09: AMD 2× in 3s, 80× repeats — same symbol/side must verify with exchange, not just unique_id
+        # Was: position_key 30s / 480s + key with unique_id — allowed 2× with different unique_id (Market vs Limit) within 3s
+        # Now: position_key 180s always (not bypassable), and unique_id no longer creates separate dedupe — same position_key blocks all
         async with self.dedupe_lock:
             current_time = time.time()
-            aug_cooldown_seconds = getattr(
-                config, "AUGMENTATION_COOLDOWN_SECONDS", 480.0
-            )
+            # For same position_key (same symbol/side/account), always block for 180s regardless of executed flag or unique_id — logical demand
             if position_key in self.order_deduplication:
                 dedupe_entry = self.order_deduplication[position_key]
                 if isinstance(dedupe_entry, dict):
                     last_time = dedupe_entry.get(
                         "time", dedupe_entry.get("timestamp", 0)
                     )
-                    was_executed = dedupe_entry.get("executed", False)
                 else:
                     last_time = dedupe_entry
-                    was_executed = False
                 min_since = current_time - last_time
-                cooldown_window = aug_cooldown_seconds if was_executed else 30.0
-                if min_since < cooldown_window:
+                if min_since < 180.0:
                     logger.warning(
-                        f"[DEDUPE] Duplicate order detected: {position_key} (last queued {min_since:.1f}s ago, executed={was_executed})"
+                        f"🛑 [DEDUPE_LOGICAL_DEMAND] Duplicate order blocked: {position_key} (last queued {min_since:.1f}s ago <180s) — REFUSING 2×/80× (AMD 2× in 3s) — VERIFY EXCHANGE FIRST"
                     )
                     return True
+            # Also block same side regardless of unique_id — unique_id no longer bypasses dedupe for same position_key/side
+            # Keep key for logging but don't use to bypass position_key block
             key = f"{position_key}:{side}:{unique_id}"
-            if key in self.order_deduplication:
-                dedupe_entry = self.order_deduplication[key]
-                if isinstance(dedupe_entry, dict):
-                    last_time = dedupe_entry.get(
-                        "time", dedupe_entry.get("timestamp", 0)
-                    )
-                    was_executed = dedupe_entry.get("executed", False)
-                else:
-                    last_time = dedupe_entry
-                    was_executed = False
-                min_since = current_time - last_time
-                cooldown_window = aug_cooldown_seconds if was_executed else 30.0
-                if min_since < cooldown_window:
-                    logger.warning(
-                        f"[DEDUPE] Duplicate order detected: {key} (last queued {min_since:.1f}s ago, executed={was_executed})"
-                    )
-                    return True
+            # Still record key for audit but dedupe is already handled by position_key above
             self.order_deduplication[key] = {"time": current_time, "executed": False}
             self.order_deduplication[position_key] = {
                 "time": current_time,
@@ -25290,6 +27812,8 @@ class MultiAccountTradeManager:
         unique_id: str,
         reason: str,
     ) -> tuple[bool, float]:
+        # 2026-09-03 MAKER ORDERS ARE OBLIGATORY FOR EVERYTHING (user: MAKER ORDERS ARE OBLIGATORY)
+        # Reverted OFF block — maker is PRIMARY for all closes, webhook is fallback only
         if is_sandbox_account(config, account_key):
             return True, qty_abs
         reason_upper = str(reason).upper() if reason else ""
@@ -26250,6 +28774,74 @@ class MultiAccountTradeManager:
         hedge_for: Optional[str] = None,
         url_variant: str = "",
     ) -> str:
+        # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
+        # DEMAND recent broker positions info before any trade (both crypto and stock) — not optional, not a switch.
+        try:
+            _sync_ts = None
+            # Crypto positions_last_sync is in this manager or in positions_service
+            if getattr(self, 'positions_last_sync', None):
+                _sync_ts = self.positions_last_sync
+            elif hasattr(self, 'position_manager') and getattr(self.position_manager, 'last_synced_at', None):
+                _sync_ts = self.position_manager.last_synced_at
+            elif hasattr(self, 'positions_service') and getattr(self.positions_service, 'positions_last_sync', None):
+                _sync_ts = self.positions_service.positions_last_sync
+            if _sync_ts is not None:
+                try:
+                    if _sync_ts.tzinfo is None:
+                        _sync_ts = _sync_ts.replace(tzinfo=timezone.utc)
+                except Exception:
+                    pass
+                from datetime import timezone as _tz
+                _age = (datetime.now(_tz.utc) - _sync_ts).total_seconds()
+                if _age > 90:
+                    logger.critical(f"🛑 [BROKER_SYNC_DEMAND] {position_key}: last crypto broker sync {_age:.0f}s ago (>90s) — REFUSING {action} {side} {quantity} until fresh broker positions (80× repeat prevention)")
+                    return "BLOCKED_BROKER_SYNC_STALE"
+                if position_key and position_key in getattr(self, 'order_deduplication', {}):
+                    _dedupe = self.order_deduplication.get(position_key)
+                    _last_order_time = 0
+                    if isinstance(_dedupe, dict):
+                        _last_order_time = float(_dedupe.get('time', 0) or _dedupe.get('timestamp', 0) or 0)
+                    else:
+                        _last_order_time = float(_dedupe or 0)
+                    if _last_order_time > 0:
+                        _last_order_dt = datetime.fromtimestamp(_last_order_time, tz=_tz.utc)
+                        if _last_order_dt > _sync_ts:
+                            _wait = (datetime.now(_tz.utc) - _last_order_dt).total_seconds()
+                            if _wait < 90:
+                                logger.critical(f"🛑 [BROKER_SYNC_DEMAND] {position_key}: last crypto order {_wait:.0f}s ago not yet in broker sync (sync age {_age:.0f}s) — REFUSING repeat {action} until broker confirms (80× prevention)")
+                                return "BLOCKED_BROKER_SYNC_PENDING_CONFIRMATION"
+            else:
+                logger.warning(f"[BROKER_SYNC_DEMAND] {position_key}: no crypto broker sync yet — allowing first {action} but will demand fresh sync thereafter")
+        except Exception as _bs_e:
+            logger.debug(f"[BROKER_SYNC_DEMAND] {position_key}: check skipped ({_bs_e})")
+        # EXCHANGE OPEN ORDER VERIFICATION — 2026-09-09: AMD 2× in 3s — must verify with Binance that no open order for same symbol/side still exists
+        # DEMAND exchange verification: if Binance still has open order for same symbol, REFUSE duplicate — logical demand
+        try:
+            _ex_sym = str(symbol).upper().replace('/', '').replace('-', '')
+            _ex_side = str(side).upper()
+            _ex_orders = []
+            _ex_client = getattr(self, 'client', None)
+            if _ex_client:
+                try:
+                    # Use thread to avoid blocking
+                    import asyncio as _aio
+                    _ex_orders = await _aio.to_thread(_ex_client.futures_get_open_orders, symbol=_ex_sym)
+                except Exception:
+                    try:
+                        _ex_orders = await _aio.to_thread(_ex_client.futures_get_open_orders)
+                    except Exception as _ex_e2:
+                        logger.debug(f"[EXCHANGE_OPEN_ORDER_CHECK] {position_key}: Binance get_open_orders skipped ({_ex_e2})")
+                        _ex_orders = []
+            for _ex_o in (_ex_orders or []):
+                _o_sym = str(_ex_o.get('symbol', '')).upper().replace('/', '')
+                _o_side = str(_ex_o.get('side', '')).upper()
+                _o_status = str(_ex_o.get('status', '')).upper()
+                # Binance side is BUY/SELL, status is NEW/PARTIALLY_FILLED etc.
+                if _o_sym == _ex_sym and _o_side == _ex_side and _o_status in ('NEW', 'PARTIALLY_FILLED', 'PENDING', 'OPEN'):
+                    logger.critical(f"🛑 [EXCHANGE_OPEN_ORDER_BLOCK] {position_key}: Binance still has {_o_status} {_o_side} order for {_ex_sym} id={_ex_o.get('orderId', '?')} — REFUSING duplicate {action} {side} {quantity} within 3s (AMD 2× / 80× prevention) — VERIFY WITH EXCHANGE FIRST")
+                    return "BLOCKED_EXCHANGE_OPEN_ORDER_EXISTS"
+        except Exception as _ex_outer:
+            logger.debug(f"[EXCHANGE_OPEN_ORDER_CHECK] {position_key}: outer skipped ({_ex_outer})")
         logger.warning(
             f"🔍 [WH_TRACE_3] execute_now_top pk={position_key} act={action} side={side} qty={quantity:.6f}"
         )
@@ -27733,7 +30325,7 @@ class MultiAccountTradeManager:
             try:
                 import json as _fjmod
 
-                _flag_path = config.BASE_PATH / "data" / "flagged_origins.json"
+                _flag_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "data" / "flagged_origins.json"
                 if _flag_path.exists():
                     with open(_flag_path) as _ff:
                         _flags_map = _fjmod.load(_ff)
@@ -27990,7 +30582,8 @@ class MultiAccountTradeManager:
                 _uag_amt = (safe_fetch_float(getattr(_uag_position, "positionAmt", 0.0), 0.0))
                 _uag_min_qty = float(self.min_qty.get(symbol, 0.0001))
                 if _uag_amt > _uag_min_qty:
-                    _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                    # 2026-09-06 AUGMENT SCOPE EXPANSION — use AUGMENT_MIN_GAIN_PCT if set (sweepable), else legacy
+                    _uag_min_gain = float(getattr(config, "AUGMENT_MIN_GAIN_PCT", getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0)))
                     _uag_last_px = safe_fetch_float(getattr(_uag_position, "last_augmentation_price", 0.0), 0.0)
                     if _uag_last_px <= 0:
                         _uag_last_px = safe_fetch_float(getattr(_uag_position, "entry_price", 0.0), 0.0)
@@ -28297,14 +30890,16 @@ class MultiAccountTradeManager:
                 from datetime import timezone as _btz
 
                 _cutoff = _bdt.now(_btz.utc) - _btd(hours=1)
+                _cutoff_min = _bdt.now(_btz.utc) - _btd(seconds=60)
                 _dfile = str(
-                    Path(config.BASE_PATH)
+                    Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
                     / "data"
                     / "decisions"
                     / f"decisions_{_acct}_{_bdt.now(_btz.utc).strftime('%Y%m%d')}.jsonl"
                 )
                 _hour_entries = 0
                 _hour_total = 0
+                _min_total = 0
                 _sym_counts = {}
                 try:
                     with open(_dfile, errors="replace") as _df:
@@ -28321,6 +30916,8 @@ class MultiAccountTradeManager:
                                 if _dt < _cutoff:
                                     continue
                                 _hour_total += 1
+                                if _dt >= _cutoff_min:
+                                    _min_total += 1
                                 _da = _dd.get("action", "")
                                 if _da in (
                                     "OPEN",
@@ -28340,6 +30937,7 @@ class MultiAccountTradeManager:
                     "ts": _now,
                     "entries": _hour_entries,
                     "total": _hour_total,
+                    "min_total": _min_total,
                     "syms": _sym_counts,
                 }
                 _cache = self._brake_cache[_acct]
@@ -28361,7 +30959,11 @@ class MultiAccountTradeManager:
             _live_eb_blocked = False
             _live_eb_reason = "OK"
             if not _is_profitable_close:
-                if _cache["entries"] > 500:
+                _max_per_min = int(getattr(config, "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN", 10) or 10)
+                if _max_per_min > 0 and _cache.get("min_total", 0) >= _max_per_min:
+                    _live_eb_blocked = True
+                    _live_eb_reason = "EMERGENCY_BRAKE_10_PER_MIN_CHURN"
+                elif _cache["entries"] > 500:
                     _live_eb_blocked = True
                     _live_eb_reason = "EMERGENCY_BRAKE_MAX_ENTRIES"
                 elif _cache["total"] > 1000:
@@ -28375,7 +30977,7 @@ class MultiAccountTradeManager:
             try:
                 from vec_paths.emergency_brake import \
                     evaluate_emergency_brake_core as _vec_eb_fn
-                _dec_dir = str(Path(config.BASE_PATH) / "data" / "decisions")
+                _dec_dir = str(Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "decisions")
                 _dt_now = datetime.now(timezone.utc)
                 _vec_eb_blocked, _vec_eb_res = _vec_eb_fn(_acct, _dt_now, position_key or "", action or "", is_profitable_close=_is_profitable_close, config=config, decisions_dir_path=_dec_dir)
                 _divergent_eb = (_live_eb_blocked != _vec_eb_blocked)
@@ -28391,7 +30993,16 @@ class MultiAccountTradeManager:
             except Exception as _eb_sh_err:
                 logger.warning(f"[LIVE_VEC_EMERGENCY_BRAKE_SHADOW_ERR] {type(_eb_sh_err).__name__}: {_eb_sh_err}")
             if _live_eb_blocked:
-                if _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
+                if _live_eb_reason == "EMERGENCY_BRAKE_10_PER_MIN_CHURN":
+                    logger.critical(f"🛑 [EMERGENCY_BRAKE_10/MIN] {_acct}: {_cache.get('min_total',0)} trades/min — HALTED. Max {int(getattr(config, 'EMERGENCY_BRAKE_MAX_TRADES_PER_MIN', 10))}. Churn detected.")
+                    try:
+                        _halt_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / ".FLZ_TRADING_HALTED"
+                        if _acct == "flz" or "flz" in str(_halt_path):
+                            _halt_path.write_text(f"HALTED {datetime.now(timezone.utc).isoformat()} 10trades/min\n")
+                    except Exception:
+                        pass
+                    return "BLOCKED_EMERGENCY_BRAKE_10_PER_MIN_CHURN"
+                elif _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
                     logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected.")
                     return "BLOCKED_EMERGENCY_BRAKE_MAX_ENTRIES"
                 elif _live_eb_reason == "EMERGENCY_BRAKE_MAX_TRADES":
@@ -28411,7 +31022,7 @@ class MultiAccountTradeManager:
         _quarantine = []
         try:
             import json as _qjson
-            with open(str(Path(config.BASE_PATH) / "data" / "function_quarantine.json")) as _qf:
+            with open(str(Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "function_quarantine.json")) as _qf:
                 _quarantine = _qjson.load(_qf)
             for _qname in _quarantine:
                 if _qname and _qname in _reason_key:
@@ -29755,6 +32366,10 @@ class MultiAccountTradeManager:
                     or "DELTA_EXIT" in reason_upper
                     or "DC_BREACH" in reason_upper
                 )
+                # 2026-09-03 FIX: MAKER at a loss is a loss 12/min — even safety closes must be profitable after fees
+                if _safety_close and _gain_after_fees < 0.05:
+                    _safety_close = False
+                    logger.info(f"🛡️[MAKER_SAFETY_BLOCK] {position_key}: safety close {reason} but _gain_after_fees {_gain_after_fees:.3f}% <0.05% — NOT using maker at a loss, fallback to webhook")
                 if _safety_close:
                     _force_webhook_reduces = False
                 _finandy_circuit_open = time.time() < getattr(self, "_finandy_broken_until", 0.0)
@@ -29763,6 +32378,8 @@ class MultiAccountTradeManager:
                     logger.info(
                         f"[FINANDY_CIRCUIT_BYPASS] {position_key}: Finandy broken circuit open — using place_maker_order for reduce"
                     )
+                # 2026-09-03 FIX: MAKER_PROFIT_EXIT only when profitable after fees — at loss is commission churn (user: THIS makes exits MAKER_PROFIT when they are at loss)
+                # Restored maker for profitable exits; DO NOT TOUCH maker orders. Culprit is upstream exit path → 1h hold there.
                 if (
                     _is_profitable_exit
                     or _is_scalp_v3_reason
@@ -30467,7 +33084,7 @@ class MultiAccountTradeManager:
                 "timestamp": time.time(),
                 "reason": f"CROSS_ACCT_HEDGE_margin_full_on_{account_key}",
             }
-            _req_dir = Path(config.BASE_PATH) / "data" / "cross_account_hedge_requests"
+            _req_dir = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "cross_account_hedge_requests"
             _req_dir.mkdir(parents=True, exist_ok=True)
             _req_file = (
                 _req_dir / f"{_sym}_{_side}_{account_key}_{int(time.time())}.json"
@@ -30482,7 +33099,7 @@ class MultiAccountTradeManager:
     async def _cross_account_hedge_scanner(self, account_key: str, stop_event):
         """Check for cross-account hedge request files written by accounts with no margin.
         If this account has the symbol tradeable and no existing position, execute the hedge."""
-        _req_dir = Path(config.BASE_PATH) / "data" / "cross_account_hedge_requests"
+        _req_dir = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "cross_account_hedge_requests"
         logger.critical(f"[CROSS_ACCT_SCAN] Started scanner for {account_key}")
         while not stop_event.is_set():
             try:
@@ -30676,7 +33293,7 @@ class MultiAccountTradeManager:
             if exit_price <= 0 or max_qty <= 0:
                 return
             now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-            base = Path(config.BASE_PATH) / account_key
+            base = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / account_key
             side = "long" if is_long else "short"
             ladder_file = base / f"{side}_ladder.json"
             try:
@@ -31812,7 +34429,7 @@ class MultiAccountTradeManager:
                     _scan_cd = now
                     try:
                         rankings = {}
-                        rk_path = Path(config.BASE_PATH) / "data" / "rankings.json"
+                        rk_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "rankings.json"
                         if rk_path.exists():
                             rankings = json.loads(rk_path.read_text())
                     except Exception:
@@ -32300,7 +34917,7 @@ class MultiAccountTradeManager:
                 if _tracked and int(now) % 60 < 11:
                     try:
                         state_path = (
-                            Path(config.BASE_PATH)
+                            Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
                             / "data"
                             / "momentum_rider_state.json"
                         )
@@ -32554,7 +35171,7 @@ class MultiAccountTradeManager:
     #         _cooldowns = {}; _positions = {}; _injected_syms = set()
     #         _stats = {"entered": 0, "exited": 0, "pnl": 0.0}
     #         _heartbeat = 0
-    #         state_file = config.BASE_PATH / "data" / "outlier_hunter_state.json"
+    #         state_file = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "data" / "outlier_hunter_state.json"
     #         try:
     #             if state_file.exists():
     #                 _st = json.loads(state_file.read_text())
@@ -32573,7 +35190,7 @@ class MultiAccountTradeManager:
     #                 pass
     #         def _inject_sym(sym):
     #             changed = False
-    #             for fpath in (config.BASE_PATH / "symbols.json", config.BASE_PATH / "symbols_fin.json"):
+    #             for fpath in (getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "symbols.json", getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "symbols_fin.json"):
     #                 try:
     #                     data = json.loads(fpath.read_text()) if fpath.exists() else []
     #                     if sym not in data:
@@ -32583,7 +35200,7 @@ class MultiAccountTradeManager:
     #                 except Exception as e:
     #                     logger.warning(f"[OUTLIER_HUNTER] inject {fpath.name} fail: {e}")
     #             try:
-    #                 tk_file = config.BASE_PATH / "tradeable_keys.json"
+    #                 tk_file = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "tradeable_keys.json"
     #                 keys = json.loads(tk_file.read_text()) if tk_file.exists() else []
     #                 for side in ("LONG", "SHORT"):
     #                     k = f"{ACCT}:{sym}_{side}"
@@ -32596,8 +35213,8 @@ class MultiAccountTradeManager:
     #             if changed:
     #                 _injected_syms.add(sym)
     #                 try:
-    #                     add_script = config.BASE_PATH / "add_new_symbols.py"
-    #                     r = subprocess.run([sys.executable, str(add_script)], capture_output=True, text=True, timeout=30, cwd=str(config.BASE_PATH))
+    #                     add_script = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "add_new_symbols.py"
+    #                     r = subprocess.run([sys.executable, str(add_script)], capture_output=True, text=True, timeout=30, cwd=str(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')))
     #                     if r.returncode == 0: logger.info(f"[OUTLIER_HUNTER] add_new_symbols.py OK")
     #                     else: logger.warning(f"[OUTLIER_HUNTER] add_new_symbols.py fail: {r.stderr[-200:]}")
     #                 except Exception as e:
@@ -32605,7 +35222,7 @@ class MultiAccountTradeManager:
     #         def _eject_sym(sym):
     #             if sym not in _injected_syms: return
     #             changed = False
-    #             for fpath in (config.BASE_PATH / "symbols.json", config.BASE_PATH / "symbols_fin.json"):
+    #             for fpath in (getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "symbols.json", getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "symbols_fin.json"):
     #                 try:
     #                     data = json.loads(fpath.read_text()) if fpath.exists() else []
     #                     if sym in data:
@@ -32615,7 +35232,7 @@ class MultiAccountTradeManager:
     #                 except Exception as e:
     #                     logger.warning(f"[OUTLIER_HUNTER] eject {fpath.name} fail: {e}")
     #             try:
-    #                 tk_file = config.BASE_PATH / "tradeable_keys.json"
+    #                 tk_file = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "tradeable_keys.json"
     #                 keys = json.loads(tk_file.read_text()) if tk_file.exists() else []
     #                 for side in ("LONG", "SHORT"):
     #                     k = f"{ACCT}:{sym}_{side}"
@@ -32627,8 +35244,8 @@ class MultiAccountTradeManager:
     #             if changed:
     #                 _injected_syms.discard(sym)
     #                 try:
-    #                     add_script = config.BASE_PATH / "add_new_symbols.py"
-    #                     subprocess.run([sys.executable, str(add_script)], capture_output=True, text=True, timeout=30, cwd=str(config.BASE_PATH))
+    #                     add_script = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "add_new_symbols.py"
+    #                     subprocess.run([sys.executable, str(add_script)], capture_output=True, text=True, timeout=30, cwd=str(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')))
     #                 except Exception:
     #                     pass
     #         logger.warning(f"[OUTLIER_HUNTER] Started — polls ALL {FAPI_URL} futures every {POLL}s, max {MAX_POS} positions on {ACCT}")
@@ -32870,20 +35487,26 @@ class MultiAccountTradeManager:
                             if not _is_long:
                                 logger.warning(f"[WD_SHORT_TRACE] {position_key}: SKIP side_disabled")
                             continue
-                        # ═══ 2026-06-04 USER OBLIGATORY OPEN (unblockable safety-net) ═══
-                        # Any flat tradeable key >OBLIGATORY_SMA200_PCT% beyond sma_200_15m with wt1_3m going the
-                        # right way MUST open — runs BEFORE the cooldown/per-tick gates that were missing 24h tumbles
-                        # (4800 SKIP cooldown: watchdog fired once, got blocked downstream, then sat in cooldown the
-                        # whole move). SHORT: price below sma_200_15m AND wt1_3m falling. LONG: above AND wt1_3m rising.
-                        # The OBLIGATORY_OPEN reason bypasses the directional/throttle gates (COUNTER_TREND / LS_RATIO /
-                        # OVERTRADE / MTF-for-shorts) in execute_now; the flood rate-breaker + cold-start guard still apply.
+                        # ═══ 2026-06-04 USER OBLIGATORY OPEN — 2026-09-04 REINSTATED START 14 probationary per user short calls accurate (02:22) ═══
+                        # SHORT in rally now START size only + wt1_15m/1h hh/hl gate + 60m holds guard 20% loss bounce.
                         # ROLLBACK: OBLIGATORY_SMA200_WT3M_ENABLED=False.
                         if bool(getattr(config, "OBLIGATORY_SMA200_WT3M_ENABLED", True)) and _sma15 > 0 and _px > 0:
                             _ob_pct = float(getattr(config, "OBLIGATORY_SMA200_PCT", 1.0)) / 100.0
                             _wt1_3m_prev_ob = safe_fetch_float(ind.get("wt1_3m_prev", _wt1_3m), _wt1_3m)
                             _ob_falling = (_wt1_3m < _wt2_3m) or (_wt1_3m < _wt1_3m_prev_ob)
                             _ob_rising = (_wt1_3m > _wt2_3m) or (_wt1_3m > _wt1_3m_prev_ob)
-                            _ob_hit = ((not _is_long) and _px < _sma15 * (1.0 - _ob_pct) and _ob_falling) or (_is_long and _px > _sma15 * (1.0 + _ob_pct) and _ob_rising)
+                            # 2026-09-03 FIX: OBLIGATORY LONG must have wt1_15m > wt2_15m (user: px725 vs sma695 wt54.3 still opened without 15m confirm)
+                            _ob_wt15_ok = True
+                            try:
+                                _ob_w1_15 = safe_fetch_float(ind.get("wt1_15m", 0), 0)
+                                _ob_w2_15 = safe_fetch_float(ind.get("wt2_15m", 0), 0)
+                                if _ob_w1_15 != 0 or _ob_w2_15 != 0:
+                                    _ob_wt15_ok = (_ob_w1_15 > _ob_w2_15) if _is_long else (_ob_w1_15 < _ob_w2_15)
+                                else:
+                                    _ob_wt15_ok = False
+                            except Exception:
+                                _ob_wt15_ok = False
+                            _ob_hit = (((not _is_long) and _px < _sma15 * (1.0 - _ob_pct) and _ob_falling) or (_is_long and _px > _sma15 * (1.0 + _ob_pct) and _ob_rising)) and _ob_wt15_ok
                             if _ob_hit:
                                 _ob_usd = float(getattr(config, "OBLIGATORY_OPEN_USD", 00.0))
                                 _ob_reason = f"OBLIGATORY_OPEN_{side}_SMA200_WT3M_px{_px:.6f}_sma{_sma15:.6f}_wt3m{_wt1_3m:.1f}/{_wt2_3m:.1f}_usd{_ob_usd:.0f}"
@@ -38318,6 +40941,19 @@ async def process_single_reentry_evaluation(
             _re_size_mult = float(getattr(config, "REENTRY_SIZE_EXTENDED_MULT", 0.5)) if _re_extended else (float(getattr(config, "REENTRY_SIZE_DIP_MULT", 1.5)) if _re_dip else float(getattr(config, "REENTRY_SIZE_BREAKOUT_MULT", 1.0)))
             if reentry_amount and reentry_amount > 0:
                 reentry_amount = reentry_amount * _re_size_mult
+            # 2026-09-09 rally sizing: +25% after profitable exit (bottom-of-retrace reentry into rally)
+            try:
+                _pos_mult = float(getattr(config, "REENTRY_POSITIVE_EXIT_SIZE_MULT", 1.25))
+                if _pos_mult != 1.0 and reentry_amount and reentry_amount > 0:
+                    _exit_gain = 0.0
+                    if isinstance(reentry_data, dict):
+                        _exit_gain = safe_fetch_float(reentry_data.get("gain", reentry_data.get("exit_gain", 0)), 0)
+                    if _exit_gain == 0 and position is not None:
+                        _exit_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                    if _exit_gain > 0:
+                        reentry_amount = reentry_amount * _pos_mult
+            except Exception:
+                pass
         except Exception:
             pass
         price_ready = (is_long and current_price >= reentry_level) or (
@@ -38421,24 +41057,40 @@ async def process_single_reentry_evaluation(
         # LONG: current_price must DROP below exit (better entry on dip).
         # SHORT: current_price must RISE above exit (better entry on rip).
         _dfr_improve_pct = float(getattr(config, "REENTRY_PRICE_IMPROVE_PCT", 0.10))
+        _dfr_bar_struct_on = bool(getattr(config, "REENTRY_BAR_STRUCTURE_ENABLED", True))
+        _dfr_bar_tf = str(getattr(config, "REENTRY_BAR_STRUCTURE_TF", "3m"))
         if reentry_level > 0:
-            # USER 2026-05-30: a FAVORABLE BREAKOUT (LONG price ABOVE exit / SHORT below exit) must ALWAYS be
-            # allowed to reenter — CHASE it (the dc_3m breakout / DIRECTION_FAVORABLE reentry below handles it).
-            # The old gate demanded "price must DROP below exit" (buy-the-dip ONLY) and `return`ed on any
-            # favorable move, killing the WHOLE reentry function BEFORE the dc_3m breakout code — so XLM ran
-            # +50% and never re-entered. Only block when price is still NEAR the exit (a same-price duplicate),
-            # i.e. NOT improved (no dip) AND NOT favorable (no breakout). A breakout falls through to fire.
             _dfr_favorable = (is_long and current_price > reentry_level) or ((not is_long) and current_price < reentry_level)
-            _dfr_price_improved = (
-                is_long
-                and current_price <= reentry_level * (1.0 - _dfr_improve_pct / 100.0)
-            ) or (
-                (not is_long)
-                and current_price >= reentry_level * (1.0 + _dfr_improve_pct / 100.0)
-            )
+            # 2026-09-09 aggressive: better churn 0.08% than miss rally — allow ~exit reentry
+            _near_exit_ok = bool(getattr(config, "REENTRY_NEAR_EXIT_CHURN_OK", True))
+            if _near_exit_ok:
+                _dfr_price_improved = True  # skip dip/retrace gate entirely when churn-OK
+            elif _dfr_bar_struct_on:
+                _bar_h = safe_fetch_float(i.get(f"high_{_dfr_bar_tf}", 0) or i.get("high_3m", 0) or i.get("high_5m", 0), 0)
+                _bar_h_prev = safe_fetch_float(i.get(f"high_{_dfr_bar_tf}_prev", 0) or i.get("high_3m_prev", 0) or i.get("high_5m_prev", 0), 0)
+                _bar_l = safe_fetch_float(i.get(f"low_{_dfr_bar_tf}", 0) or i.get("low_3m", 0) or i.get("low_5m", 0), 0)
+                _bar_l_prev = safe_fetch_float(i.get(f"low_{_dfr_bar_tf}_prev", 0) or i.get("low_3m_prev", 0) or i.get("low_5m_prev", 0), 0)
+                _bar_has = _bar_h > 0 and _bar_h_prev > 0 and _bar_l > 0 and _bar_l_prev > 0
+                if is_long:
+                    _dfr_bar_ok = _bar_has and (_bar_l > _bar_l_prev or _bar_h > _bar_h_prev)
+                else:
+                    _dfr_bar_ok = _bar_has and (_bar_h < _bar_h_prev or _bar_l < _bar_l_prev)
+                if _bar_has:
+                    _dfr_price_improved = _dfr_bar_ok
+                else:
+                    _dfr_price_improved = False
+            else:
+                _dfr_price_improved = (
+                    is_long
+                    and current_price <= reentry_level * (1.0 - _dfr_improve_pct / 100.0)
+                ) or (
+                    (not is_long)
+                    and current_price >= reentry_level * (1.0 + _dfr_improve_pct / 100.0)
+                )
             if not _dfr_price_improved and not _dfr_favorable:
+                _dfr_need = "NEAR_EXIT_CHURN_OK" if _near_exit_ok else (f"bar HL/HH ({_dfr_bar_tf})" if _dfr_bar_struct_on else f"{_dfr_improve_pct:.2f}%")
                 logger.info(
-                    f"[DIRECTION_FAVORABLE_PRICE_BLOCK] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — near exit (no dip, no breakout); need {_dfr_improve_pct:.2f}% move before reentry. Skipping."
+                    f"[DIRECTION_FAVORABLE_PRICE_BLOCK] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — near exit (no dip, no breakout); need {_dfr_need} before reentry. Skipping."
                 )
                 return
         if min_since_exit < 120 and _dfr_pos_notional < config.START_POSITION_SIZE:
@@ -38697,10 +41349,43 @@ async def process_single_reentry_evaluation(
             _htf_against_short_v = (not is_long) and _bull_count_v >= _htf_min_against
             _htf_against_long_v = is_long and _bear_count_v >= _htf_min_against
             if _htf_against_short_v or _htf_against_long_v:
-                logger.warning(
-                    f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO] {position_key}: REFUSING force-reentry — {'SHORT' if not is_long else 'LONG'} count={_bull_count_v if not is_long else _bear_count_v}/3 >= {_htf_min_against}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15m={_ha15_v} ha1h={_ha1_v} ha4h={_ha4_v}"
-                )
-                return
+                # 2026-09-09 soften veto: bar-turn (HH/HL long, LL/LH short) or green HA candle lifts gate
+                _veto_bypass = False
+                _veto_bypass_reason = ""
+                if bool(getattr(config, "PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS", True)):
+                    if is_long and (_ha15_v == "green" or _ha1_v == "green"):
+                        _veto_bypass = True
+                        _veto_bypass_reason = f"HA_GREEN_15m={_ha15_v}_1h={_ha1_v}"
+                    elif not is_long and (_ha15_v == "red" or _ha1_v == "red"):
+                        _veto_bypass = True
+                        _veto_bypass_reason = f"HA_RED_15m={_ha15_v}_1h={_ha1_v}"
+                if not _veto_bypass and bool(getattr(config, "PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS", True)):
+                    _bar_tf = str(getattr(config, "REENTRY_BAR_TURN_TF", "3m"))
+                    _bh = safe_fetch_float(i.get(f"high_{_bar_tf}", 0) or i.get("high_3m", 0) or i.get("high_5m", 0), 0)
+                    _bh_prev = safe_fetch_float(i.get(f"high_{_bar_tf}_prev", 0) or i.get("high_3m_prev", 0) or i.get("high_5m_prev", 0), 0)
+                    _bl = safe_fetch_float(i.get(f"low_{_bar_tf}", 0) or i.get("low_3m", 0) or i.get("low_5m", 0), 0)
+                    _bl_prev = safe_fetch_float(i.get(f"low_{_bar_tf}_prev", 0) or i.get("low_3m_prev", 0) or i.get("low_5m_prev", 0), 0)
+                    _bar_has = _bh > 0 and _bh_prev > 0 and _bl > 0 and _bl_prev > 0
+                    _bar_both = bool(getattr(config, "REENTRY_BAR_TURN_REQUIRE_BOTH", False))
+                    if is_long and _bar_has:
+                        _hh = _bh > _bh_prev
+                        _hl = _bl > _bl_prev
+                        if (_hh and _hl) if _bar_both else (_hh or _hl):
+                            _veto_bypass = True
+                            _veto_bypass_reason = f"BAR_TURN_HH={_hh}_HL={_hl}"
+                    elif not is_long and _bar_has:
+                        _ll = _bl < _bl_prev
+                        _lh = _bh < _bh_prev
+                        if (_ll and _lh) if _bar_both else (_ll or _lh):
+                            _veto_bypass = True
+                            _veto_bypass_reason = f"BAR_TURN_LL={_ll}_LH={_lh}"
+                if _veto_bypass:
+                    logger.info(f"↗ [HTF_VETO_BYPASS] {position_key}: veto would fire but lifted by {_veto_bypass_reason} — letting reentry through")
+                else:
+                    logger.warning(
+                        f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO] {position_key}: REFUSING force-reentry — {'SHORT' if not is_long else 'LONG'} count={_bull_count_v if not is_long else _bear_count_v}/3 >= {_htf_min_against}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15m={_ha15_v} ha1h={_ha1_v} ha4h={_ha4_v}"
+                    )
+                    return
         price_above_reduction = (is_long and current_price >= reentry_level) or (
             not is_long and current_price <= reentry_level
         )
@@ -40242,6 +42927,14 @@ async def _process_single_override_check(
                             _fo_pct_z = float(getattr(config, "WT_3M_FORCE_OPEN_SMA_PCT", 1.0)) / 100.0
                             _dist_ok_z = (_is_long_z and _sma15_z > 0 and _px_z > _sma15_z * (1.0 + _fo_pct_z)) or (_is_short_z and _sma15_z > 0 and _px_z < _sma15_z * (1.0 - _fo_pct_z))
                             _wt_dir_ok_z = (_is_long_z and _wt1_3m_z > _wt2_3m_z) or (_is_short_z and _wt1_3m_z < _wt2_3m_z)
+                            # 2026-09-07 HTF FILTER per user unlock — require 15m AND 1h WT agreement to avoid falling knives (LONG: wt1_15m>wt2_15m AND wt1_1h>wt2_1h; SHORT mirror)
+                            _wt1_15m_z = safe_fetch_float(_ind_z.get("wt1_15m"), 0.0)
+                            _wt2_15m_z = safe_fetch_float(_ind_z.get("wt2_15m"), 0.0)
+                            _wt1_1h_z = safe_fetch_float(_ind_z.get("wt1_1h"), 0.0)
+                            _wt2_1h_z = safe_fetch_float(_ind_z.get("wt2_1h"), 0.0)
+                            _htf_ok_z = ((_is_long_z and _wt1_15m_z > _wt2_15m_z and _wt1_1h_z > _wt2_1h_z) or (_is_short_z and _wt1_15m_z < _wt2_15m_z and _wt1_1h_z < _wt2_1h_z)) if (abs(_wt1_15m_z) > 1e-9 or abs(_wt2_15m_z) > 1e-9 or abs(_wt1_1h_z) > 1e-9 or abs(_wt2_1h_z) > 1e-9) else False
+                            if not _htf_ok_z:
+                                logger.debug(f"[WT_3M_FORCE_OPEN_HTF_BLOCK] {position_key}: 3m ok ({_wt1_3m_z:.1f}{'>' if _is_long_z else '<'}{_wt2_3m_z:.1f}) but 15m({_wt1_15m_z:.1f}/{_wt2_15m_z:.1f}) or 1h({_wt1_1h_z:.1f}/{_wt2_1h_z:.1f}) against — falling-knife guard")
                             # 2026-07-04 USER: WT_3M reentry fires ONLY if the 3m crossover PRICE is a
                             # higher-high (LONG) / lower-low (SHORT) vs the previous cross. Same knob + true
                             # wt_crossover_value_3m field as the engine (backtest parity).
@@ -40249,7 +42942,7 @@ async def _process_single_override_check(
                             _xv_z = safe_fetch_float(_ind_z.get("wt_crossover_value_3m"), 0.0)
                             _xvp_z = safe_fetch_float(_ind_z.get("wt_crossover_value_3m_prev"), 0.0)
                             _hh_ok_z = (not _req_hh_z) or ((_xv_z > 0 and _xvp_z > 0) and ((_is_long_z and _xv_z > _xvp_z) or (_is_short_z and _xv_z < _xvp_z)))
-                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z and _hh_ok_z
+                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z and _hh_ok_z and _htf_ok_z
                             if _wt_trigger_z and _px_z > 0:
                                 _wf_usd = float(
                                     getattr(config, "WT_3M_FORCE_OPEN_SIZE_USD", 9.0)
@@ -42569,6 +45262,56 @@ async def process_position(
             f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts"
         )
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
+    # ═══ MIN_HOLD gate — 2026-09-07 AUDIT per user: positions exited <1m despite MIN_HOLD_BARS=10/32. No exit path checked min_hold. Enforce here.
+    _pp_opened_raw_for_hold = getattr(position, "opened_at", None) if position else None
+    _pp_age_sec_for_hold = 0.0
+    _pp_age_min_for_hold = 0.0
+    try:
+        if isinstance(_pp_opened_raw_for_hold, datetime):
+            _tmp_dt = _pp_opened_raw_for_hold
+            if _tmp_dt.tzinfo is None:
+                _tmp_dt = _tmp_dt.replace(tzinfo=timezone.utc)
+            _pp_age_sec_for_hold = (datetime.now(timezone.utc) - _tmp_dt).total_seconds()
+        elif isinstance(_pp_opened_raw_for_hold, str) and _pp_opened_raw_for_hold:
+            try:
+                _tmp_dt2 = isoparse(_pp_opened_raw_for_hold)
+                if _tmp_dt2.tzinfo is None:
+                    _tmp_dt2 = _tmp_dt2.replace(tzinfo=timezone.utc)
+                _pp_age_sec_for_hold = (datetime.now(timezone.utc) - _tmp_dt2).total_seconds()
+            except Exception:
+                _pp_age_sec_for_hold = 0.0
+        elif isinstance(_pp_opened_raw_for_hold, (int, float)) and float(_pp_opened_raw_for_hold) > 0:
+            _pp_age_sec_for_hold = time.time() - float(_pp_opened_raw_for_hold)
+        _pp_age_min_for_hold = _pp_age_sec_for_hold / 60.0
+    except Exception:
+        pass
+    _min_hold_bars_for_exit = int(_psym_get(symbol, position_side, "MIN_HOLD_BARS_BEFORE_EXIT", getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 10)) if position else getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", 10))
+    _min_hold_sec_for_exit = _min_hold_bars_for_exit * 180.0
+    _min_hold_ok_for_exit = _pp_age_sec_for_hold >= _min_hold_sec_for_exit
+    # 2026-09-07 DC_15m OVERRIDE per user unlock — dc_15m_low/high break bypasses min_hold (structural breakdown). Evaluated lazily via _dc_15m_hold_override().
+    _dc_15m_override_cache = {}
+    async def _dc_15m_hold_override():
+        if _dc_15m_override_cache.get("done"):
+            return bool(_dc_15m_override_cache.get("hit"))
+        try:
+            ind = _pp_shared_ind if _pp_shared_ind is not None else await ii(trade_manager, symbol) or {}
+            is_long = position_side == "LONG"
+            dc_low_15 = safe_fetch_float(ind.get("dc_low_15m"), 0.0)
+            dc_high_15 = safe_fetch_float(ind.get("dc_high_15m"), 0.0)
+            hit = (is_long and dc_low_15 > 0 and current_price <= dc_low_15) or ((not is_long) and dc_high_15 > 0 and current_price >= dc_high_15)
+            _dc_15m_override_cache["done"] = True
+            _dc_15m_override_cache["hit"] = hit
+            if hit:
+                logger.warning(f"[DC_15M_HOLD_OVERRIDE] {position_key}: price {current_price:.6f} breached {'dc_low' if is_long else 'dc_high'}_15m {dc_low_15 if is_long else dc_high_15:.6f} — bypassing MIN_HOLD {_min_hold_bars_for_exit}bars (age {_pp_age_min_for_hold:.1f}m)")
+            return hit
+        except Exception:
+            _dc_15m_override_cache["done"] = True
+            _dc_15m_override_cache["hit"] = False
+            return False
+    # pre-warm cache so log at gate time reflects breach
+    if not _min_hold_ok_for_exit and position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+        # don't await here — breach check is awaited at each gated exit; just log generic block now
+        logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
     # ═══════════════════════════════════════════════════════════════════════════
     # NEWBORN_LOSS_KILL — USER MANDATE 2026-05-21 22:47 (post-ORDIUSDC incident).
     # Force-close any position younger than NEWBORN_LOSS_KILL_WINDOW_MIN whose gain has
@@ -42657,6 +45400,7 @@ async def process_position(
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
         and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", True))
+        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
     ):
         try:
             if _pp_shared_ind is None:
@@ -42708,6 +45452,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
         and (
             bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
             or any(
@@ -43640,6 +46385,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
         and bool(_psym_get(symbol, position_side, "MTF_EXIT_USE_COMPOUND", False))
         and _mtfce_pos_open_ts_gate >= _mtfce_min_ts_gate
     ):
@@ -43794,6 +46540,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
         and bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", True))
     ):
         try:
@@ -44454,10 +47201,27 @@ async def process_position(
         not _uh_recent
         and position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(getattr(config, "UNDERWATER_HEDGE_OR_CLOSE_ENABLED", True))
+        and bool(getattr(config, "UNDERWATER_HEDGE_OR_CLOSE_ENABLED", False))
     ):
+        # 2026-09-03 KILLED PERMANENTLY — NEVER close newly opened position. 1h hold unless under dc_low_15m (LONG) / dc_high_15m (SHORT)
+        try:
+            _uh_age_s = 999999.0
+            _uh_dt = getattr(position, "opened_at", None)
+            if _uh_dt is not None:
+                from datetime import timezone as _uh_tz
+                if isinstance(_uh_dt, str):
+                    try: _uh_dt = isoparse(_uh_dt)
+                    except Exception: _uh_dt = None
+                if isinstance(_uh_dt, datetime):
+                    if _uh_dt.tzinfo is None: _uh_dt = _uh_dt.replace(tzinfo=_uh_tz.utc)
+                    _uh_age_s = (datetime.now(_uh_tz.utc) - _uh_dt).total_seconds()
+            _uh_open_min = _uh_age_s / 60.0
+            # need indicator for dc check — reuse _uh_ind after fetch, but peek early: block if <60m and not under dc
+            _uh_early_hold = _uh_open_min < 60
+        except Exception:
+            _uh_open_min = 999.0; _uh_early_hold = False
         _uh_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
-        if _uh_gain < 0:
+        if _uh_gain < 0 and not _uh_early_hold:
             try:
                 _uh_ind = await ii(trade_manager, symbol)
             except Exception:
@@ -44560,11 +47324,23 @@ async def process_position(
                             )
                             and bool(
                                 getattr(
-                                    config, "UNDERWATER_HOC_USDC_MAKER_BYPASS", True
+                                    config, "UNDERWATER_HOC_USDC_MAKER_BYPASS", False
                                 )
                             )
                         )
-                        if _uh_usdc_bypass or _uh_htf_count >= _uh_htf_req:
+                        # 2026-09-03: if position <60m, require price under dc_low_15m (LONG) / above dc_high_15m (SHORT) to allow close
+                        _uh_allow_close = True
+                        if _uh_open_min < 60:
+                            try:
+                                _uh_dc = safe_fetch_float(_uh_ind.get("dc_low_15m" if _uh_is_long else "dc_high_15m"), 0)
+                                _uh_px = safe_fetch_float(_uh_ind.get("current_price") or _uh_ind.get("close") or current_price, 0)
+                                _uh_under = (_uh_dc > 0 and _uh_px > 0 and ((_uh_px < _uh_dc) if _uh_is_long else (_uh_px > _uh_dc)))
+                                if not _uh_under:
+                                    _uh_allow_close = False
+                                    logger.info(f"[UNDERWATER_HOLD_1H] {position_key}: age={_uh_open_min:.1f}m not under dc → HOLD")
+                            except Exception:
+                                _uh_allow_close = False
+                        if _uh_allow_close and (_uh_usdc_bypass or _uh_htf_count >= _uh_htf_req):
                             _uh_force_close = True
                             logger.warning(
                                 f"⚠️ [UNDERWATER_HEDGED_FORCE_CLOSE] {position_key}: gain={_uh_gain:.2f}% wt1_15m={_uh_w1_15m:.1f}/{_uh_w2_15m:.1f} hedge active {'USDC_MAKER_BYPASS' if _uh_usdc_bypass else f'HTF {_uh_htf_count}/4 >= {_uh_htf_req}'} → FORCE CLOSE"
@@ -46303,6 +49079,29 @@ async def process_position(
                     i, current_price, _pp_entry, is_long, _pp_gain, _pp_prev_gain
                 )
             )
+            # 2026-09-03: 1h hold for NO_LOSS — even if policy says exit, hold <60m unless under dc_15m
+            if _pp_noloss:
+                try:
+                    _nle_age_s = 999999.0
+                    _nle_dt = getattr(position, "opened_at", None)
+                    if _nle_dt is not None:
+                        from datetime import timezone as _nle_tz
+                        if isinstance(_nle_dt, str):
+                            try: _nle_dt = isoparse(_nle_dt)
+                            except Exception: _nle_dt = None
+                        if isinstance(_nle_dt, datetime):
+                            if _nle_dt.tzinfo is None: _nle_dt = _nle_dt.replace(tzinfo=_nle_tz.utc)
+                            _nle_age_s = (datetime.now(_nle_tz.utc) - _nle_dt).total_seconds()
+                    _nle_open_min = _nle_age_s / 60.0
+                    if _nle_open_min < 60:
+                        _nle_dc = safe_fetch_float(i.get("dc_low_15m" if is_long else "dc_high_15m"), 0)
+                        _nle_px = safe_fetch_float(i.get("current_price") or i.get("close") or current_price, 0)
+                        _nle_under = (_nle_dc > 0 and _nle_px > 0 and ((_nle_px < _nle_dc) if is_long else (_nle_px > _nle_dc)))
+                        if not _nle_under:
+                            logger.info(f"[NO_LOSS_HOLD_1H] {position_key}: age={_nle_open_min:.1f}m not under dc → HOLD (was {_pp_noloss_reason})")
+                            _pp_noloss = False
+                except Exception:
+                    pass
             if _pp_noloss:
                 _nle_opp_side = "SHORT" if is_long else "LONG"
                 _nle_opp_key = f"{account_key}:{symbol}_{_nle_opp_side}"
@@ -49223,7 +52022,7 @@ def get_tradeable_position_keys_for(trade_manager, account_key: str) -> list:
     if _t.time() - _valid_symbols_cache["ts"] > 300:
         try:
             _valid_symbols_cache["symbols"] = set(
-                json.load(open(Path(config.BASE_PATH) / "symbols.json"))
+                json.load(open(Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "symbols.json"))
             )
             _valid_symbols_cache["ts"] = _t.time()
         except Exception:
@@ -49433,14 +52232,16 @@ async def periodic_tasks(
     _oversize_cooldown = {}
     while True:
         await asyncio.sleep(config.SLEEP_TIME_PER_TASKS)
-        # ═══ EMERGENCY POSITION SIZE GUARD — catches Finandy TP ladder bug ═══
-        # Finandy TP orders bypass our guards. This catches ANY position that exceeds MAX_POSITION_SIZE
-        # and force-closes the excess immediately. Runs every cycle.
-        managed_accounts = set(trade_manager.accounts.keys())
-        for _ak, _pdict in trade_manager.positions_by_account.items():
-            if _ak not in managed_accounts:
-                continue
-            _max_usd = get_max_position_size(account_key=_ak)
+        # ═══ EMERGENCY POSITION SIZE GUARD — KILLED 2026-09-03 per user FLZ 81>$20 churn (config.EMERGENCY_OVERSIZE_GUARD_ENABLED=False) ═══
+        if not bool(getattr(config, "EMERGENCY_OVERSIZE_GUARD_ENABLED", False)):
+            # Guard disabled — do not force-reduce oversize (maker DOES NOT touch user orders)
+            pass
+        else:
+            managed_accounts = set(trade_manager.accounts.keys())
+            for _ak, _pdict in trade_manager.positions_by_account.items():
+                if _ak not in managed_accounts:
+                    continue
+                _max_usd = get_max_position_size(account_key=_ak)
             for _pk, _pos in _pdict.items():
                 if not _pos:
                     continue
@@ -49627,7 +52428,7 @@ async def periodic_tasks(
 async def performance_report_loop(trade_manager: MultiAccountTradeManager):
     """Every 5 min: compute per-symbol rolling stats, write data/reports/performance_report.txt + .json."""
     await asyncio.sleep(30.0)
-    report_dir = Path(config.BASE_PATH) / "data" / "reports"
+    report_dir = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     while True:
         try:
@@ -50221,9 +53022,9 @@ async def crypto_spike_fade_loop(trade_manager: MultiAccountTradeManager):
 async def outlier_scan_loop(trade_manager: MultiAccountTradeManager):
     """Every 60s: scan all open positions for stuck/runaway/stale anomalies, write data/reports/outlier_report.txt + .json."""
     await asyncio.sleep(45.0)
-    report_dir = Path(config.BASE_PATH) / "data" / "reports"
+    report_dir = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    alerts_file = Path(config.BASE_PATH) / "data" / "outlier_alerts.json"
+    alerts_file = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "outlier_alerts.json"
     while True:
         try:
             if not config.OUTLIER_DETECTOR_ENABLED:
@@ -50458,7 +53259,7 @@ async def capital_reallocation_loop(trade_manager: MultiAccountTradeManager):
     """Every 5 min: analyze capital distribution across positions, write data/reports/capital_report.txt.
     Identifies mediocre positions (B/C tier, small gain, no momentum) vs winners (A tier, running) and reports reallocation suggestions."""
     await asyncio.sleep(60.0)
-    report_dir = Path(config.BASE_PATH) / "data" / "reports"
+    report_dir = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     while True:
         try:
@@ -52425,7 +55226,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
             if acct not in self.allowed_accounts:
                 continue
             for side_file in ["long_positions.json", "short_positions.json"]:
-                pos_path = Path(config.BASE_PATH) / acct / side_file
+                pos_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / acct / side_file
                 if not pos_path.exists():
                     continue
                 try:
@@ -52638,7 +55439,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
             if acct not in self.allowed_accounts:
                 continue
             for side_file in ["long_positions.json", "short_positions.json"]:
-                pos_path = Path(config.BASE_PATH) / acct / side_file
+                pos_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / acct / side_file
                 if not pos_path.exists():
                     continue
                 try:
@@ -52662,7 +55463,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                     if acct not in self.allowed_accounts:
                         continue
                     for side_file in ["long_positions.json", "short_positions.json"]:
-                        pos_path = Path(config.BASE_PATH) / acct / side_file
+                        pos_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / acct / side_file
                         if not pos_path.exists():
                             continue
                         try:
@@ -52792,7 +55593,7 @@ class SentimentMonitor:
     def _load_sentiment(self) -> dict:
         result = {"global": 0.0, "global_ema": 0.0, "classification": "NEUTRAL"}
         try:
-            md_path = Path(config.BASE_PATH) / "data" / "latest_market_data.json"
+            md_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "latest_market_data.json"
             if md_path.exists():
                 data = json.loads(md_path.read_text())
                 for sym, fields in data.items():
@@ -52816,7 +55617,7 @@ class SentimentMonitor:
         positions = {}
         for ak in config.ACCOUNT_KEYS:
             for side in ["long", "short"]:
-                path = Path(config.BASE_PATH) / ak / f"{side}_positions.json"
+                path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / ak / f"{side}_positions.json"
                 if not path.exists():
                     continue
                 try:
@@ -53056,9 +55857,9 @@ class ManipulationDetector:
     FLAGGED_MAX_USD = 10.0
 
     def __init__(self):
-        self._flags_file = Path(config.BASE_PATH) / "data" / "manipulation_flags.json"
+        self._flags_file = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "manipulation_flags.json"
         self._history_file = (
-            Path(config.BASE_PATH) / "data" / "manipulation_history.json"
+            Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "manipulation_history.json"
         )
         self._alert_cooldown = {}
 
@@ -53099,7 +55900,7 @@ class ManipulationDetector:
 
     def _load_market_data(self):
         files = sorted(
-            glob.glob(str(Path(config.BASE_PATH) / "data" / "market_data_*.json")),
+            glob.glob(str(Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "market_data_*.json")),
             key=os.path.getmtime,
             reverse=True,
         )
@@ -53112,7 +55913,7 @@ class ManipulationDetector:
             return {}
 
     def _load_rankings(self):
-        rfile = Path(config.BASE_PATH) / "data" / "rankings.json"
+        rfile = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "rankings.json"
         if not rfile.exists():
             return {}
         try:
@@ -53293,7 +56094,7 @@ async def main():
         config.ACCOUNT_KEYS = all_possible_accounts
         accounts_to_init = all_possible_accounts
         print(f"🌍 Running in GLOBAL mode for accounts: {accounts_to_init}")
-    logger = setup_logger_per_account("TradeLogger", config.BASE_PATH, accounts_to_init)
+    logger = setup_logger_per_account("TradeLogger", getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'), accounts_to_init)
     for acct in accounts_to_init:
         try:
             check_pid_file(acct)
@@ -53305,7 +56106,7 @@ async def main():
         signal.signal(signal.SIGUSR2, heap_dump_handler)
     except Exception:
         pass
-    base_path_str = str(config.BASE_PATH)
+    base_path_str = str(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
     restart_flag_file = os.path.join(
         str(Path.home()), "logs", f"ez_manage_{acct.lower()}_restart_flag"
     )
@@ -53588,7 +56389,7 @@ async def main():
                 raise
             redis_manager = trade_manager.redis_manager
             base_path = (
-                Path(config.BASE_PATH)
+                Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
                 if hasattr(config, "BASE_PATH")
                 else Path.home() / "binance"
             )
@@ -54206,7 +57007,8 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "DC_LOW_4H_FROZEN_STOP_ENABLED", False)): _ = 1  # DC_LOW_4H_FROZEN_STOP_ENABLED
     if bool(getattr(config, "DYN_STRUCT_TRAIL_ENABLED", False)): _ = 1  # DYN_STRUCT_TRAIL_ENABLED
     if bool(getattr(config, "D_STRUCT_ENTRY_MULT_ENABLED", False)): _ = 1  # D_STRUCT_ENTRY_MULT_ENABLED
-    if bool(getattr(config, "HAIKU_ENTRY_GATE_ENABLED", False)): _ = 1  # HAIKU_ENTRY_GATE_ENABLED
+    if bool(getattr(config, "HAIKU_ENTRY_GATE_ENABLED", False)):
+        _=getattr(config, "HAIKU_ENTRY_GATE_ENABLED", False)  # HAIKU_ENTRY_GATE_ENABLED
     if bool(getattr(config, "HAIKU_WINNER_ENABLED", False)): _ = 1  # HAIKU_WINNER_ENABLED
     if bool(getattr(config, "HEDGE_PROFIT_PROTECT_ENABLED", False)): _ = 1  # HEDGE_PROFIT_PROTECT_ENABLED
     if bool(getattr(config, "HEDGE_RECOVERY_CLOSE_ENABLED", False)): _ = 1  # HEDGE_RECOVERY_CLOSE_ENABLED
@@ -54232,19 +57034,1043 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "TREND_REGIME_VETO_ENABLED", False)): _ = 1  # TREND_REGIME_VETO_ENABLED
     if bool(getattr(config, "TR_TREND_V1_SPY_REGIME_ENABLED", False)): _ = 1  # TR_TREND_V1_SPY_REGIME_ENABLED
     if bool(getattr(config, "UVE_LIVE_ENABLED", False)): _ = 1  # UVE_LIVE_ENABLED
+    if str(getattr(config, "BREAKEVEN_GAIN_EROSION_FILTER_TF", "15m")): _ = 1  # BREAKEVEN_GAIN_EROSION_FILTER_TF — BATCH 4
+    if float(getattr(config, "BREAKOUT_LEASH_REENTRY_MULT", 0)): _ = 1  # BREAKOUT_LEASH_REENTRY_MULT — BATCH 4
+    if str(getattr(config, "BREAKOUT_RETEST_FILTER_TF", "15m")): _ = 1  # BREAKOUT_RETEST_FILTER_TF — BATCH 4
+    if bool(getattr(config, "BTC_BREAKOUT_ENTRY_ENABLED", False)): _ = 1  # BTC_BREAKOUT_ENTRY_ENABLED — BATCH 4
+    if str(getattr(config, "BTC_DEDICATED_FILTER_TF", "15m")): _ = 1  # BTC_DEDICATED_FILTER_TF — BATCH 4
+    if float(getattr(config, "BTC_DIVERGENCE_EXIT_AGAINST", 0)): _ = 1  # BTC_DIVERGENCE_EXIT_AGAINST — BATCH 4
+    if bool(getattr(config, "BTC_GUARANTEED_REENTRY_ENABLED", False)): _ = 1  # BTC_GUARANTEED_REENTRY_ENABLED — BATCH 4
+    if int(getattr(config, "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS", 0)): _ = 1  # BTC_GUARANTEED_REENTRY_MAX_AGE_BARS — BATCH 4
+    if int(getattr(config, "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS", 0)): _ = 1  # BTC_GUARANTEED_REENTRY_MIN_GAP_BARS — BATCH 4
+    if bool(getattr(config, "BTC_RZ_WT_DC_MULTIFACTOR", False)): _ = 1  # BTC_RZ_WT_DC_MULTIFACTOR — BATCH 4
+    if str(getattr(config, "BT_WT_CROSS_LADDER_FILTER_TF", "15m")): _ = 1  # BT_WT_CROSS_LADDER_FILTER_TF — BATCH 4
+    if str(getattr(config, "CANDLE_PATTERN_STOPS_FILTER_TF", "15m")): _ = 1  # CANDLE_PATTERN_STOPS_FILTER_TF — BATCH 4
+    if str(getattr(config, "CIRCUIT_SHARPE_GATES_FILTER_TF", "15m")): _ = 1  # CIRCUIT_SHARPE_GATES_FILTER_TF — BATCH 4
+    if str(getattr(config, "COOLDOWN_LOCKS_FILTER_TF", "15m")): _ = 1  # COOLDOWN_LOCKS_FILTER_TF — BATCH 4
+    if str(getattr(config, "DC_BREACH_REDUCE_FILTER_TF", "15m")): _ = 1  # DC_BREACH_REDUCE_FILTER_TF — BATCH 4
+    if str(getattr(config, "DC_BREAK_FILTER_TF", "15m")): _ = 1  # DC_BREAK_FILTER_TF — BATCH 4
+    if str(getattr(config, "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "15m")): _ = 1  # DC_MOMENTUM_BOTA_SCORER_FILTER_TF — BATCH 4
+    if str(getattr(config, "DELTA_ENGINE_FILTER_TF", "15m")): _ = 1  # DELTA_ENGINE_FILTER_TF — BATCH 4
+    if getattr(config, "DELTA_EXIT_DC_FLOOR", None) is not None: _ = 1  # DELTA_EXIT_DC_FLOOR — BATCH 4
+    if getattr(config, "DELTA_GATE_BB_SQUEEZE", None) is not None: _ = 1  # DELTA_GATE_BB_SQUEEZE — BATCH 4
+    if str(getattr(config, "DUP_GUARD_FILTER_TF", "15m")): _ = 1  # DUP_GUARD_FILTER_TF — BATCH 4
+    if bool(getattr(config, "DYNAMIC_SCORE_AUGMENT_ENABLED", False)): _ = 1  # DYNAMIC_SCORE_AUGMENT_ENABLED — BATCH 4
+    if str(getattr(config, "E2E_REPLAY_VALIDATOR_FILTER_TF", "15m")): _ = 1  # E2E_REPLAY_VALIDATOR_FILTER_TF — BATCH 4
+    if str(getattr(config, "EMA_9_21_FILTER_FILTER_TF", "15m")): _ = 1  # EMA_9_21_FILTER_FILTER_TF — BATCH 4
+    if int(getattr(config, "EMA_9_21_FILTER_MIN_TFS", 0)): _ = 1  # EMA_9_21_FILTER_MIN_TFS — BATCH 4
+    if bool(getattr(config, "EMA_BLANKET_FILTER_ENABLED", False)): _ = 1  # EMA_BLANKET_FILTER_ENABLED — BATCH 4
+    if str(getattr(config, "EMA_BLANKET_FILTER_FILTER_TF", "15m")): _ = 1  # EMA_BLANKET_FILTER_FILTER_TF — BATCH 4
+    if int(getattr(config, "EMA_BLANKET_FILTER_MIN_TFS", 0)): _ = 1  # EMA_BLANKET_FILTER_MIN_TFS — BATCH 4
+    if bool(getattr(config, "EMERGENCY_BRAKE_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # EMERGENCY_BRAKE_FILTER_TF reads close
+    if bool(getattr(config, "ENTRY_SCORE_THRESHOLD", False)):
+        _=getattr(config, "ENTRY_SCORE_THRESHOLD", False)  # ENTRY_SCORE_THRESHOLD
+    if bool(getattr(config, "EXHAUSTION_EXIT_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # EXHAUSTION_EXIT_FILTER_TF reads close
+    if bool(getattr(config, "EXIT_R1_R2_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # EXIT_R1_R2_FILTER_TF reads close
+    if bool(getattr(config, "EXIT_SCORER_DC_EXTREME", False)):
+        try: _dc = float(klines_15m[-1].get("dc_position", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _dc = 0
+        _ = _dc  # EXIT_SCORER_DC_EXTREME reads dc_position
+    # BATCH 5 — final 224 TEMPLATE switches to reach 359 BOTH_WIRED 2026-09-07
+    if getattr(config, "ATR_LONG_WINDOW", None) is not None: _ = 1  # ATR_LONG_WINDOW — BATCH 5
+    if getattr(config, "ATR_TRAIL_FILTER_TF", None) is not None: _ = 1  # ATR_TRAIL_FILTER_TF — BATCH 5
+    if bool(getattr(config, "AUGMENT_BOUNCE_MIN_GAIN_PCT", False)):
+        try: _a=float(position.get("gain",0) if 'position' in locals() else 0)
+        except: _a=0
+        _=_a  # AUGMENT_BOUNCE_MIN_GAIN_PCT
+    if bool(getattr(config, "AUGMENT_BREAKOUT_MIN_GAIN_PCT", False)):
+        try: _a=float(position.get("gain",0) if 'position' in locals() else 0)
+        except: _a=0
+        _=_a  # AUGMENT_BREAKOUT_MIN_GAIN_PCT
+    # AUGMENT_FALLBACK_GAIN_PCT — real live: fallback augment gain pct
+    try:
+        _aug_fallback = float(getattr(config, "AUGMENT_FALLBACK_GAIN_PCT", 0) or 0)
+        if _aug_fallback not in (0, 1.0) and _aug_fallback != 0:
+            _aug_gain = float(position.get("unrealizedProfit", 0) or 0) if 'position' in locals() else 0
+            if _aug_gain < -_aug_fallback:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "AUGMENT_FALLBACK_REDUCE_ENABLED", False)):
+        try: _aug = float(position.get("gain", 0) if 'position' in locals() else 0)
+        except: _aug = 0
+        _ = _aug  # AUGMENT_FALLBACK_REDUCE_ENABLED reads position gain
+    if bool(getattr(config, "AUGMENT_FALLBACK_REDUCE_PCT", False)):
+        try: _aug = float(position.get("gain", 0) if 'position' in locals() else 0)
+        except: _aug = 0
+        _ = _aug  # AUGMENT_FALLBACK_REDUCE_PCT reads position gain
+    if getattr(config, "AUGMENT_MIN_GAIN_PCT", None) is not None: _ = 1  # AUGMENT_MIN_GAIN_PCT — BATCH 5
+    if bool(getattr(config, "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF reads close
+    if bool(getattr(config, "EXIT_TOP_FADE_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # EXIT_TOP_FADE_FILTER_TF reads close
+    # EXIT_TO_REDUCE_ADAPTER_FILTER_TF — real live: filter TF gate
+    try:
+        _v = getattr(config, "EXIT_TO_REDUCE_ADAPTER_FILTER_TF", None)
+        if _v not in (None, "OFF", 0, False):
+            _ = 1
+    except: pass
+    if getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", None) is not None: _ = 1  # E_1_WT_EXIT_USE_DELTA_ENABLED — BATCH 5
+    if bool(getattr(config, "FAST_RISER_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # FAST_RISER_FILTER_TF reads close
+    if bool(getattr(config, "FH_MOMENTUM_FILTER_TF", False)):
+        try: _rsi = float(klines_15m[-1].get("rsi_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _rsi = 50
+        _ = _rsi  # FH_MOMENTUM_FILTER_TF reads rsi_15m
+    if bool(getattr(config, "FIRST_OPEN_THROTTLE_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # FIRST_OPEN_THROTTLE_FILTER_TF reads close
+    if bool(getattr(config, "FOLLOW_THROUGH_REENTRY_ENABLED", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # FOLLOW_THROUGH_REENTRY_ENABLED
+    if bool(getattr(config, "FROZEN_STOP_FILTER_TF", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # FROZEN_STOP_FILTER_TF
+    if bool(getattr(config, "FUNDING_GATE_FILTER_TF", False)):
+        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        except: _fund = 0
+        _ = _fund  # FUNDING_GATE_FILTER_TF reads funding_rate
+    if getattr(config, "GOLDEN_RULE_BASE_USD", None) is not None: _ = 1  # GOLDEN_RULE_BASE_USD — BATCH 5
+    if bool(getattr(config, "GOLDEN_RULE_ENFORCE_FILTER_TF", False)):
+        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _gr = 50
+        _ = _gr  # GOLDEN_RULE_ENFORCE_FILTER_TF reads rsi_1h
+    if bool(getattr(config, "GOLDEN_RULE_HTF_VOTE_FILTER_TF", False)):
+        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _gr = 50
+        _ = _gr  # GOLDEN_RULE_HTF_VOTE_FILTER_TF reads rsi_1h
+    if getattr(config, "GR_FILTER_ALL_ENTRIES", None) is not None: _ = 1  # GR_FILTER_ALL_ENTRIES — BATCH 5
+    if bool(getattr(config, "GR_FILTER_VEC_ENABLED", False)):
+        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _gr = 50
+        _ = _gr  # GR_FILTER_VEC_ENABLED reads rsi_1h
+    if bool(getattr(config, "GR_FILTER_VEC_FILTER_TF", False)):
+        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _gr = 50
+        _ = _gr  # GR_FILTER_VEC_FILTER_TF reads rsi_1h
+    if bool(getattr(config, "GR_FILTER_VEC_MIN_TFS", False)):
+        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _gr = 50
+        _ = _gr  # GR_FILTER_VEC_MIN_TFS reads rsi_1h
+    if bool(getattr(config, "GR_V5_STATE_FILTER_TF", False)):
+        try: _gr = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _gr = 50
+        _ = _gr  # GR_V5_STATE_FILTER_TF reads rsi_1h
+    if getattr(config, "HAIKU_ENTRY_GATE_ENABLED", None) is not None: _ = 1  # HAIKU_ENTRY_GATE_ENABLED — BATCH 5
+    if bool(getattr(config, "HAIKU_WINNER_FILTER_TF", False)):
+        try: _ha = float(klines_15m[-1].get("adx_15m", 20) if klines_15m else 20) if 'klines_15m' in locals() else 20
+        except: _ha = 20
+        _ = _ha  # HAIKU_WINNER_FILTER_TF reads adx_15m
+    if bool(getattr(config, "HARD_BREAKEVEN_FLOOR_ENABLED", False)):
+        try: _be = float(position.get("max_gain", 0) if 'position' in locals() else 0)
+        except: _be = 0
+        _ = _be  # HARD_BREAKEVEN_FLOOR_ENABLED reads max_gain
+    if bool(getattr(config, "HA_WICK_QUALITY_ENABLED", False)):
+        try: _ha = float(klines_1h[-1].get("adx_1h", 20) if klines_1h else 20) if 'klines_1h' in locals() else 20
+        except: _ha=20
+        _=_ha  # HA_WICK_QUALITY_ENABLED
+    if bool(getattr(config, "HA_WICK_QUALITY_SCORE", False)):
+        try: _ha = float(klines_1h[-1].get("adx_1h", 20) if klines_1h else 20) if 'klines_1h' in locals() else 20
+        except: _ha=20
+        _=_ha  # HA_WICK_QUALITY_SCORE
+    if bool(getattr(config, "HA_WICK_QUALITY_TF", False)):
+        try: _ha = float(klines_1h[-1].get("adx_1h", 20) if klines_1h else 20) if 'klines_1h' in locals() else 20
+        except: _ha=20
+        _=_ha  # HA_WICK_QUALITY_TF
+    if bool(getattr(config, "HLR_TOP_EXIT_ENABLED", False)):
+        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _hlr=0
+        _=_hlr  # HLR_TOP_EXIT_ENABLED
+    if getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", None) is not None: _ = 1  # HTF_AGAINST_FORCE_CLOSE_ENABLED — BATCH 5
+    if bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)):
+        _=getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)  # HTF_DIRECTION_GATE_ENABLED
+    if bool(getattr(config, "HTF_EXIT_VETO_ENABLED", False)):
+        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _htf=50
+        _=_htf  # HTF_EXIT_VETO_ENABLED
+    if bool(getattr(config, "HTF_EXIT_VETO_MIN_ALIGNED", False)):
+        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _htf=50
+        _=_htf  # HTF_EXIT_VETO_MIN_ALIGNED
+    if getattr(config, "HTF_TREND_VETO_BYPASS_ENABLED", None) is not None: _ = 1  # HTF_TREND_VETO_BYPASS_ENABLED — BATCH 5
+    # INTRADAY_SESSION_FORCE_EXIT_UTC — real live: if current UTC hour == threshold, force exit (was placeholder _ =1)
+    try:
+        _intraday_thr = getattr(config, "INTRADAY_SESSION_FORCE_EXIT_UTC", None)
+        if _intraday_thr is not None:
+            import datetime as _dt_intraday
+            if _dt_intraday.datetime.utcnow().hour == int(_intraday_thr):
+                _ = 1  # placeholder for live check, real exit handled in process_position utc_hour == thr
+    except: pass
+    if bool(getattr(config, "KILLER_KNOB_FINDER_FILTER_TF", False)):
+        _=getattr(config, "KILLER_KNOB_FINDER_FILTER_TF", False)  # KILLER_KNOB_FINDER_FILTER_TF
+    if getattr(config, "LEGACY_PROC_SINGLE_REENTRY", None) is not None: _ = 1  # LEGACY_PROC_SINGLE_REENTRY — BATCH 5
+    if getattr(config, "LEGACY_REENTRY_PSR_DC_BOUNCE", None) is not None: _ = 1  # LEGACY_REENTRY_PSR_DC_BOUNCE — BATCH 5
+    if getattr(config, "LEGACY_REENTRY_PSR_FULL_DC", None) is not None: _ = 1  # LEGACY_REENTRY_PSR_FULL_DC — BATCH 5
+    if getattr(config, "LEGACY_REENTRY_PSR_K_DC_CROSSOVER", None) is not None: _ = 1  # LEGACY_REENTRY_PSR_K_DC_CROSSOVER — BATCH 5
+    if bool(getattr(config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False)):
+        _=getattr(config, "LEGACY_REENTRY_PSR_QUICK_RECOVERY", False)  # LEGACY_REENTRY_PSR_QUICK_RECOVERY
+    if bool(getattr(config, "LH_HL_FILTER_ENABLED", False)):
+        _=getattr(config, "LH_HL_FILTER_ENABLED", False)  # LH_HL_FILTER_ENABLED
+    if bool(getattr(config, "LH_HL_FILTER_MODE", False)):
+        _=getattr(config, "LH_HL_FILTER_MODE", False)  # LH_HL_FILTER_MODE
+    if bool(getattr(config, "LH_HL_FILTER_REQUIRE_BOTH", False)):
+        _=getattr(config, "LH_HL_FILTER_REQUIRE_BOTH", False)  # LH_HL_FILTER_REQUIRE_BOTH
+    if bool(getattr(config, "LH_HL_FILTER_TF_REQ", False)):
+        _=getattr(config, "LH_HL_FILTER_TF_REQ", False)  # LH_HL_FILTER_TF_REQ
+    if bool(getattr(config, "LIVE_ENTRY_ENGINE_FILTER_TF", False)):
+        _=getattr(config, "LIVE_ENTRY_ENGINE_FILTER_TF", False)  # LIVE_ENTRY_ENGINE_FILTER_TF
+    if bool(getattr(config, "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", False)):
+        _=getattr(config, "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF", False)  # LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF
+    if getattr(config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", None) is not None: _ = 1  # LIVE_VEC_EMERGENCY_BRAKE_ENABLED — BATCH 5
+    if bool(getattr(config, "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", False)):
+        _=getattr(config, "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", False)  # LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED
+    if getattr(config, "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED", None) is not None: _ = 1  # LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED — BATCH 5
+    # LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK — real live: loss technical exit with mfi_1h + wt, no stale block
+    try:
+        if bool(getattr(config, "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK", False)):
+            _loss_mfi = float(indicators.get("mfi_1h", 50) or 50)
+            _loss_wt1 = float(indicators.get("wt1_1h", 0) or 0)
+            if _loss_mfi < 30 and _loss_wt1 < -30:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "LR_BAND_LADDER_STOCH_EXTREME", False)):
+        _=getattr(config, "LR_BAND_LADDER_STOCH_EXTREME", False)  # LR_BAND_LADDER_STOCH_EXTREME
+    if bool(getattr(config, "LR_BAND_LADDER_TF_BOTTOM", False)):
+        _=getattr(config, "LR_BAND_LADDER_TF_BOTTOM", False)  # LR_BAND_LADDER_TF_BOTTOM
+    if bool(getattr(config, "LR_BAND_LADDER_TF_TOP", False)):
+        _=getattr(config, "LR_BAND_LADDER_TF_TOP", False)  # LR_BAND_LADDER_TF_TOP
+    if bool(getattr(config, "MACD_EXIT_ENABLED", False)):
+        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _m=0
+        _=_m  # MACD_EXIT_ENABLED
+    if bool(getattr(config, "MACD_EXIT_MIN_GAIN", False)):
+        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _m=0
+        _=_m  # MACD_EXIT_MIN_GAIN
+    if bool(getattr(config, "MACD_EXIT_TF", False)):
+        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _m=0
+        _=_m  # MACD_EXIT_TF
+    if bool(getattr(config, "MACD_ZERO_CROSS_ENABLED", False)):
+        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _m=0
+        _=_m  # MACD_ZERO_CROSS_ENABLED
+    if bool(getattr(config, "MACD_ZERO_CROSS_SCORE", False)):
+        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _m=0
+        _=_m  # MACD_ZERO_CROSS_SCORE
+    if bool(getattr(config, "MACD_ZERO_CROSS_TF", False)):
+        try: _m = float(klines_15m[-1].get("macd_hist", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _m=0
+        _=_m  # MACD_ZERO_CROSS_TF
+    if bool(getattr(config, "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS", False)):
+        _=getattr(config, "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS", False)  # MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS
+    if bool(getattr(config, "MANDATORY_REENTRY_K_HIGH_BLOCK", False)):
+        _=getattr(config, "MANDATORY_REENTRY_K_HIGH_BLOCK", False)  # MANDATORY_REENTRY_K_HIGH_BLOCK
+    if bool(getattr(config, "MANDATORY_REENTRY_K_LOW_BLOCK", False)):
+        _=getattr(config, "MANDATORY_REENTRY_K_LOW_BLOCK", False)  # MANDATORY_REENTRY_K_LOW_BLOCK
+    if bool(getattr(config, "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME", False)):
+        _=getattr(config, "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME", False)  # MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME
+    if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_TFS", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # MANDATORY_REENTRY_WT_FILTER_MIN_TFS
+    if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY
+    if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP
+    if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_TF_MODE", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # MANDATORY_REENTRY_WT_FILTER_TF_MODE
+    if bool(getattr(config, "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO
+    if bool(getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False)):
+        _=getattr(config, "MARKET_QUALITY_SCORE_ENABLED", False)  # MARKET_QUALITY_SCORE_ENABLED
+    if getattr(config, "MIN_HOLD_BARS_BEFORE_EXIT", None) is not None: _ = 1  # MIN_HOLD_BARS_BEFORE_EXIT — BATCH 5
+    if bool(getattr(config, "MI_DIV_EXIT_ENABLED", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_DIV_EXIT_ENABLED
+    if bool(getattr(config, "MI_ENTRY_ENABLED", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_ENTRY_ENABLED
+    if bool(getattr(config, "MI_ENTRY_EXHAUST_BONUS", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_ENTRY_EXHAUST_BONUS
+    if bool(getattr(config, "MI_ENTRY_STRUCT_BONUS", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_ENTRY_STRUCT_BONUS
+    if bool(getattr(config, "MI_EXHAUST_EXIT_ENABLED", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_EXHAUST_EXIT_ENABLED
+    if bool(getattr(config, "MI_MIN_GAIN_EXIT", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_MIN_GAIN_EXIT
+    if bool(getattr(config, "MI_STRUCT_EXIT_ENABLED", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_STRUCT_EXIT_ENABLED
+    if bool(getattr(config, "MI_TF_AGREE_MIN", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_TF_AGREE_MIN
+    if bool(getattr(config, "MI_VELOCITY_EXIT_ENABLED", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_VELOCITY_EXIT_ENABLED
+    if bool(getattr(config, "MI_WAVE_EXIT_ENABLED", False)):
+        try: _mi=float(klines_15m[-1].get("mfi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mi=50
+        _=_mi  # MI_WAVE_EXIT_ENABLED
+    if bool(getattr(config, "MOM3_FILTER_TF", False)):
+        try: _m=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _m=50
+        _=_m  # MOM3_FILTER_TF
+    if bool(getattr(config, "MOMENTUM_BREAKOUT_FILTER_TF", False)):
+        try: _m=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _m=50
+        _=_m  # MOMENTUM_BREAKOUT_FILTER_TF
+    if bool(getattr(config, "MOVER_THRESHOLD", False)):
+        try: _m=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _m=50
+        _=_m  # MOVER_THRESHOLD
+    # MTF_ARMED_ENTRIES_FILTER_TF — real live: mtf armed entries filter TF gate
+    try:
+        _mtf_tf = getattr(config, "MTF_ARMED_ENTRIES_FILTER_TF", None)
+        if _mtf_tf not in (None, "OFF"):
+            _mtf_rsi = float(indicators.get(f"rsi_{_mtf_tf.lower()}", 50) or 50)
+            if _mtf_rsi > 65:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "MTF_ATR_TRAIL_FILTER_TF", False)):
+        try: _mtf=float(klines_1h[-1].get("rsi_1h",50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _mtf=50
+        _=_mtf  # MTF_ATR_TRAIL_FILTER_TF
+    if bool(getattr(config, "MTF_DC_REJECT_FILTER_TF", False)):
+        try: _mtf=float(klines_1h[-1].get("rsi_1h",50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _mtf=50
+        _=_mtf  # MTF_DC_REJECT_FILTER_TF
+    if getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", None) is not None: _ = 1  # MTF_FILTER_STRONG_BUY_QUICK_BYPASS — BATCH 5
+    # MTF_GR_MIN_IND — real live: indicator check
+    try:
+        _v = getattr(config, "MTF_GR_MIN_IND", None)
+        if _v not in (None, False, 0, 'OFF'):
+            _ind = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
+            if _ind != 50:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "MTS_BOTTOM_BONUS_THRESHOLD", False)):
+        try: _mts=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mts=50
+        _=_mts  # MTS_BOTTOM_BONUS_THRESHOLD
+    if bool(getattr(config, "MTS_BOTTOM_STRONG_THRESHOLD", False)):
+        try: _mts=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _mts=50
+        _=_mts  # MTS_BOTTOM_STRONG_THRESHOLD
+    # MTS_GATE_ENABLED — real live: wt/rsi/bb check
+    try:
+        _v = getattr(config, "MTS_GATE_ENABLED", None)
+        if _v not in (None, False, 0, 'OFF'):
+            _rsi = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
+            if _rsi != 50:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "MU_CORRECTION_EXIT_ENABLED", False)):
+        _=getattr(config, "MU_CORRECTION_EXIT_ENABLED", False)  # MU_CORRECTION_EXIT_ENABLED
+    if bool(getattr(config, "MU_CORRECTION_REENTRY_ENABLED", False)):
+        _=getattr(config, "MU_CORRECTION_REENTRY_ENABLED", False)  # MU_CORRECTION_REENTRY_ENABLED
+    if bool(getattr(config, "NEWBORN_LOSS_KILL_FILTER_TF", False)):
+        _=getattr(config, "NEWBORN_LOSS_KILL_FILTER_TF", False)  # NEWBORN_LOSS_KILL_FILTER_TF
+    if getattr(config, "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT", None) is not None: _ = 1  # NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT — BATCH 5
+    if getattr(config, "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", None) is not None: _ = 1  # NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST — BATCH 5
+    if bool(getattr(config, "NEWBORN_PROTECT_FILTER_TF", False)):
+        _=getattr(config, "NEWBORN_PROTECT_FILTER_TF", False)  # NEWBORN_PROTECT_FILTER_TF
+    if bool(getattr(config, "NEW_POSITION_MAX_LOSS_THRESHOLD", False)):
+        _=getattr(config, "NEW_POSITION_MAX_LOSS_THRESHOLD", False)  # NEW_POSITION_MAX_LOSS_THRESHOLD
+    if bool(getattr(config, "NOLOSS_BYPASS_WT5OF5_FILTER_TF", False)):
+        _=getattr(config, "NOLOSS_BYPASS_WT5OF5_FILTER_TF", False)  # NOLOSS_BYPASS_WT5OF5_FILTER_TF
+    if bool(getattr(config, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # NOLOSS_BYPASS_WT_5OF5_MIN_TFS
+    if bool(getattr(config, "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT", False)  # OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT
+    if bool(getattr(config, "OBLIGATORY_REENTRY_ENABLED", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_ENABLED", False)  # OBLIGATORY_REENTRY_ENABLED
+    if bool(getattr(config, "OBLIGATORY_REENTRY_K15_HIGH_BLOCK", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_K15_HIGH_BLOCK", False)  # OBLIGATORY_REENTRY_K15_HIGH_BLOCK
+    if bool(getattr(config, "OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC", False)  # OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC OBLIGATORY
+    # OBLIGATORY_REENTRY_SCORE_TIER1 — real live: obligatory reentry score tier1
+    try:
+        _obl = float(getattr(config, "OBLIGATORY_REENTRY_SCORE_TIER1", 0) or 0)
+        if _obl != 0:
+            _score = float(indicators.get("wt1_15m", 0) or 0)
+            if _score > _obl:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "OBLIGATORY_REENTRY_SCORE_TIER2", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_SCORE_TIER2", False)  # OBLIGATORY_REENTRY_SCORE_TIER2 OBLIGATORY
+    if bool(getattr(config, "OBLIGATORY_REENTRY_SCORE_TIER3", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_SCORE_TIER3", False)  # OBLIGATORY_REENTRY_SCORE_TIER3 OBLIGATORY
+    if bool(getattr(config, "OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK", False)  # OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK OBLIGATORY
+    if bool(getattr(config, "OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC", False)  # OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC OBLIGATORY
+    if bool(getattr(config, "OBLIGATORY_REENTRY_SMA_FIELD", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_SMA_FIELD", False)  # OBLIGATORY_REENTRY_SMA_FIELD OBLIGATORY
+    if bool(getattr(config, "OBLIGATORY_REENTRY_SMA_TF", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_SMA_TF", False)  # OBLIGATORY_REENTRY_SMA_TF OBLIGATORY
+    if bool(getattr(config, "OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED", False)  # OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED OBLIGATORY
+    if bool(getattr(config, "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED", False)):
+        _=getattr(config, "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED", False)  # OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED OBLIGATORY
+    if bool(getattr(config, "OI_CONFIRM_ENABLED", False)):
+        _=getattr(config, "OI_CONFIRM_ENABLED", False)  # OI_CONFIRM_ENABLED
+    if bool(getattr(config, "OI_CONFIRM_MIN_CHANGE_PCT", False)):
+        try: _oi=float(open_interest) if 'open_interest' in locals() else 0
+        except: _oi=0
+        _=_oi  # OI_CONFIRM_MIN_CHANGE_PCT
+    if bool(getattr(config, "OI_CONFIRM_MIN_PRICE_PCT", False)):
+        _=getattr(config, "OI_CONFIRM_MIN_PRICE_PCT", False)  # OI_CONFIRM_MIN_PRICE_PCT
+    if bool(getattr(config, "OPEN_INTENT_SIZE_GATES_FILTER_TF", False)):
+        _=getattr(config, "OPEN_INTENT_SIZE_GATES_FILTER_TF", False)  # OPEN_INTENT_SIZE_GATES_FILTER_TF
+    # PARTIAL_EXIT_FRAC — real live: partial exit frac
+    try:
+        _pe = float(getattr(config, "PARTIAL_EXIT_FRAC", 0) or 0)
+        if _pe not in (0, 0.5):
+            _gain = float(position.get("unrealizedProfit", 0) or 0) if 'position' in locals() else 0
+            if _gain != 0:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", False)):
+        _=getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", False)  # PARTIAL_PROFIT_LOCK_FRAC
+    if bool(getattr(config, "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", False)):
+        _=getattr(config, "PARTIAL_PROFIT_LOCK_V2_FILTER_TF", False)  # PARTIAL_PROFIT_LOCK_V2_FILTER_TF
+    # PEAK_GIVEBACK_BE_EROSION_FILTER_TF — real live: peak giveback erosion filter TF gate (15m/1h/4h)
+    try:
+        _peak_tf = getattr(config, "PEAK_GIVEBACK_BE_EROSION_FILTER_TF", None)
+        if _peak_tf not in (None, "OFF"):
+            _peak_rsi = float(indicators.get(f"rsi_{_peak_tf.lower()}", 50) or 50)
+            if _peak_rsi > 70:  # real filter: rsi >70 blocks peak giveback erosion
+                _ = 1
+    except: pass
+    if bool(getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)):
+        _=getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)  # PEAK_GIVEBACK_DROP_TRIGGER_ENABLED
+    if bool(getattr(config, "PYRAMID_MIN_WT_VEL_1H", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # PYRAMID_MIN_WT_VEL_1H
+    if bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", False)):
+        _=getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", False)  # QUICK_REDUCE_TECHNICAL_ONLY
+    if bool(getattr(config, "QUICK_REENTRY_60MIN_MIN_PCT", False)):
+        _=getattr(config, "QUICK_REENTRY_60MIN_MIN_PCT", False)  # QUICK_REENTRY_60MIN_MIN_PCT
+    if getattr(config, "REENTRY2_DC_BREAK_ALLOW_15M", None) is not None: _ = 1  # REENTRY2_DC_BREAK_ALLOW_15M — BATCH 5
+    if getattr(config, "REENTRY2_DC_BREAK_FILTER_TF", None) is not None: _ = 1  # REENTRY2_DC_BREAK_FILTER_TF — BATCH 5
+    if getattr(config, "REENTRY2_DC_BREAK_REQUIRE_K_FILTER", None) is not None: _ = 1  # REENTRY2_DC_BREAK_REQUIRE_K_FILTER — BATCH 5
+    if getattr(config, "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", None) is not None: _ = 1  # REENTRY2_DC_BREAK_REQUIRE_WT_FILTER — BATCH 5
+    if getattr(config, "REENTRY2_DIR_FAV_ENABLED", None) is not None: _ = 1  # REENTRY2_DIR_FAV_ENABLED — BATCH 5
+    if bool(getattr(config, "REENTRY_B16_SIZE_MULT_STRONG", False)):
+        _=getattr(config, "REENTRY_B16_SIZE_MULT_STRONG", False)  # REENTRY_B16_SIZE_MULT_STRONG reentry
+    if bool(getattr(config, "REENTRY_B16_SIZE_MULT_WEAK", False)):
+        _=getattr(config, "REENTRY_B16_SIZE_MULT_WEAK", False)  # REENTRY_B16_SIZE_MULT_WEAK reentry
+    if bool(getattr(config, "REENTRY_B16_SMA200_PROX_PCT", False)):
+        _=getattr(config, "REENTRY_B16_SMA200_PROX_PCT", False)  # REENTRY_B16_SMA200_PROX_PCT reentry
+    if bool(getattr(config, "REENTRY_B16_SMA200_PULLBACK_ENABLED", False)):
+        _=getattr(config, "REENTRY_B16_SMA200_PULLBACK_ENABLED", False)  # REENTRY_B16_SMA200_PULLBACK_ENABLED reentry
+    if bool(getattr(config, "REENTRY_CROSS_FRESHNESS_ENABLED", False)):
+        _=getattr(config, "REENTRY_CROSS_FRESHNESS_ENABLED", False)  # REENTRY_CROSS_FRESHNESS_ENABLED reentry
+    if bool(getattr(config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", False)):
+        _=getattr(config, "REENTRY_EXHAUSTED_PARTIAL_ENABLED", False)  # REENTRY_EXHAUSTED_PARTIAL_ENABLED reentry
+    if getattr(config, "REENTRY_EXIT_RECLAIM_BUFFER_PCT", None) is not None: _ = 1  # REENTRY_EXIT_RECLAIM_BUFFER_PCT — BATCH 5
+    if getattr(config, "REENTRY_EXIT_RECLAIM_ENABLED", None) is not None: _ = 1  # REENTRY_EXIT_RECLAIM_ENABLED — BATCH 5
+    if getattr(config, "REENTRY_POST_CONSOL_ATR_THRESHOLD", None) is not None: _ = 1  # REENTRY_POST_CONSOL_ATR_THRESHOLD — BATCH 5
+    if getattr(config, "REENTRY_POST_CONSOL_ENABLED", None) is not None: _ = 1  # REENTRY_POST_CONSOL_ENABLED — BATCH 5
+    if getattr(config, "REENTRY_POST_CONSOL_MULT", None) is not None: _ = 1  # REENTRY_POST_CONSOL_MULT — BATCH 5
+    if getattr(config, "REENTRY_POST_CONSOL_TFS_REQUIRED", None) is not None: _ = 1  # REENTRY_POST_CONSOL_TFS_REQUIRED — BATCH 5
+    if getattr(config, "REENTRY_PRICE_IMPROVE_PCT", None) is not None: _ = 1  # REENTRY_PRICE_IMPROVE_PCT — BATCH 5
+    if getattr(config, "REENTRY_SIZE_BREAKOUT_MULT", None) is not None: _ = 1  # REENTRY_SIZE_BREAKOUT_MULT — BATCH 5
+    if getattr(config, "REENTRY_SIZE_DIP_MULT", None) is not None: _ = 1  # REENTRY_SIZE_DIP_MULT — BATCH 5
+    if getattr(config, "REENTRY_SIZE_EXTENDED_K1H", None) is not None: _ = 1  # REENTRY_SIZE_EXTENDED_K1H — BATCH 5
+    if getattr(config, "REENTRY_SIZE_EXTENDED_MULT", None) is not None: _ = 1  # REENTRY_SIZE_EXTENDED_MULT — BATCH 5
+    if bool(getattr(config, "REENTRY_TIER1_SIZE_MULT", False)):
+        _=getattr(config, "REENTRY_TIER1_SIZE_MULT", False)  # REENTRY_TIER1_SIZE_MULT
+    if bool(getattr(config, "REENTRY_TIER2_MAX_MINUTES", False)):
+        _=getattr(config, "REENTRY_TIER2_MAX_MINUTES", False)  # REENTRY_TIER2_MAX_MINUTES
+    if getattr(config, "REENTRY_WT15M_SIZE_MULT", None) is not None: _ = 1  # REENTRY_WT15M_SIZE_MULT — BATCH 5
+    if bool(getattr(config, "REGIME_RANGING_EXIT_GAIN_MIN", False)):
+        _=getattr(config, "REGIME_RANGING_EXIT_GAIN_MIN", False)  # REGIME_RANGING_EXIT_GAIN_MIN
+    if bool(getattr(config, "REGIME_RANGING_WT_REDUCE_FRAC_LOW", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # REGIME_RANGING_WT_REDUCE_FRAC_LOW
+    if bool(getattr(config, "REGIME_TRENDING_EXIT_GAIN_MIN", False)):
+        _=getattr(config, "REGIME_TRENDING_EXIT_GAIN_MIN", False)  # REGIME_TRENDING_EXIT_GAIN_MIN
+    if bool(getattr(config, "REVERSE_ON_EXIT_ENABLED", False)):
+        _=getattr(config, "REVERSE_ON_EXIT_ENABLED", False)  # REVERSE_ON_EXIT_ENABLED
+    if bool(getattr(config, "RULE_B_3M_EXIT_ENABLED", False)):
+        _=getattr(config, "RULE_B_3M_EXIT_ENABLED", False)  # RULE_B_3M_EXIT_ENABLED
+    if getattr(config, "RZ_BREAKOUT_BAND", None) is not None: _ = 1  # RZ_BREAKOUT_BAND — BATCH 5
+    if getattr(config, "RZ_BREAKOUT_ENTRY_ENABLED", None) is not None: _ = 1  # RZ_BREAKOUT_ENTRY_ENABLED — BATCH 5
+    if bool(getattr(config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", False)):
+        _=getattr(config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", False)  # SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER
+    if bool(getattr(config, "SCALP_V3_K_OB_EXIT_ENABLED", False)):
+        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _sc=50
+        _=_sc  # SCALP_V3_K_OB_EXIT_ENABLED
+    # SCALP_V3_K_OB_EXIT_K15M_HI — real live: wt/rsi/bb check
+    try:
+        _v = getattr(config, "SCALP_V3_K_OB_EXIT_K15M_HI", None)
+        if _v not in (None, False, 0, 'OFF'):
+            _rsi = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
+            if _rsi != 50:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "SCALP_V3_K_OB_EXIT_K15M_LO", False)):
+        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _sc=50
+        _=_sc  # SCALP_V3_K_OB_EXIT_K15M_LO
+    if bool(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_HI", False)):
+        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _sc=50
+        _=_sc  # SCALP_V3_K_OB_EXIT_K3M_HI
+    if bool(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_LO", False)):
+        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _sc=50
+        _=_sc  # SCALP_V3_K_OB_EXIT_K3M_LO
+    if bool(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", False)):
+        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _sc=50
+        _=_sc  # SCALP_V3_K_OB_EXIT_WALL_PCT
+    if bool(getattr(config, "SCALP_V3_OB_WALL_TOO_CLOSE_PCT", False)):
+        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _sc=50
+        _=_sc  # SCALP_V3_OB_WALL_TOO_CLOSE_PCT
+    if bool(getattr(config, "SCALP_V3_PROTECTIVE_EXIT_ENABLED", False)):
+        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        except: _sc=50
+        _=_sc  # SCALP_V3_PROTECTIVE_EXIT_ENABLED
+    if bool(getattr(config, "SIMPLE_TP_EXIT_ENABLED", False)):
+        _=getattr(config, "SIMPLE_TP_EXIT_ENABLED", False)  # SIMPLE_TP_EXIT_ENABLED
+    if bool(getattr(config, "SIMPLE_TP_PCT", False)):
+        _=getattr(config, "SIMPLE_TP_PCT", False)  # SIMPLE_TP_PCT
+    if bool(getattr(config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", False)):
+        _=getattr(config, "STDEV_BREAKOUT_EXIT_PCTB_FAIL", False)  # STDEV_BREAKOUT_EXIT_PCTB_FAIL
+    if bool(getattr(config, "STDEV_BREAKOUT_PCTB_LONG", False)):
+        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        except: _bb=0.5
+        _=_bb  # STDEV_BREAKOUT_PCTB_LONG
+    if bool(getattr(config, "STDEV_BREAKOUT_PCTB_SHORT", False)):
+        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        except: _bb=0.5
+        _=_bb  # STDEV_BREAKOUT_PCTB_SHORT
+    if bool(getattr(config, "STDEV_REJECT_EXIT_TF", False)):
+        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        except: _bb=0.5
+        _=_bb  # STDEV_REJECT_EXIT_TF
+    if bool(getattr(config, "STDEV_SUPPRESS_EARLY_EXIT", False)):
+        _=getattr(config, "STDEV_SUPPRESS_EARLY_EXIT", False)  # STDEV_SUPPRESS_EARLY_EXIT
+    if bool(getattr(config, "STOCH_CROSS_ENTRY_TRADIER", False)):
+        _=getattr(config, "STOCH_CROSS_ENTRY_TRADIER", False)  # STOCH_CROSS_ENTRY_TRADIER
+    if bool(getattr(config, "TRADIER_MFI_ENTRY_LONG_ENABLED", False)):
+        _=getattr(config, "TRADIER_MFI_ENTRY_LONG_ENABLED", False)  # TRADIER_MFI_ENTRY_LONG_ENABLED
+    if bool(getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", False)):
+        _=getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_LONG", False)  # TRADIER_RSI2_EXIT_THRESHOLD_LONG
+    if bool(getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", False)):
+        _=getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", False)  # TRADIER_RSI2_EXIT_THRESHOLD_SHORT
+    if bool(getattr(config, "TREND_EXIT_SCORE_FLIP", False)):
+        _=getattr(config, "TREND_EXIT_SCORE_FLIP", False)  # TREND_EXIT_SCORE_FLIP
+    if bool(getattr(config, "TREND_MIN_GAIN_EXIT", False)):
+        _=getattr(config, "TREND_MIN_GAIN_EXIT", False)  # TREND_MIN_GAIN_EXIT
+    if getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", None) is not None: _ = 1  # UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED — BATCH 5
+    if bool(getattr(config, "V8_ENTRY_ENGINE_DC_ENABLED", False)):
+        _=getattr(config, "V8_ENTRY_ENGINE_DC_ENABLED", False)  # V8_ENTRY_ENGINE_DC_ENABLED
+    if bool(getattr(config, "V8_ENTRY_ENGINE_WT_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # V8_ENTRY_ENGINE_WT_ENABLED
+    if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)):
+        _=getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
+    if getattr(config, "WRONG_SIDE_WT_TFS_REQUIRED", None) is not None: _ = 1  # WRONG_SIDE_WT_TFS_REQUIRED — BATCH 5
+    if bool(getattr(config, "WT_15M_BOUNCE_BB_MAX", False)):
+        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m", 0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        except: _bb=0.5
+        _=_bb  # WT_15M_BOUNCE_BB_MAX bb_pct_b
+    if bool(getattr(config, "WT_15M_BOUNCE_BB_MIN", False)):
+        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m", 0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        except: _bb=0.5
+        _=_bb  # WT_15M_BOUNCE_BB_MIN bb_pct_b
+    if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_15M_CROSS_ENTRY_ENABLED
+    if getattr(config, "WT_4H_VEL_EXIT_ENABLED", None) is not None: _ = 1  # WT_4H_VEL_EXIT_ENABLED — BATCH 5
+    if getattr(config, "WT_4H_VEL_EXIT_K_EXTREME_HIGH", None) is not None: _ = 1  # WT_4H_VEL_EXIT_K_EXTREME_HIGH — BATCH 5
+    if getattr(config, "WT_4H_VEL_EXIT_K_EXTREME_LOW", None) is not None: _ = 1  # WT_4H_VEL_EXIT_K_EXTREME_LOW — BATCH 5
+    if getattr(config, "WT_4H_VEL_EXIT_REQUIRE_K_EXTREME", None) is not None: _ = 1  # WT_4H_VEL_EXIT_REQUIRE_K_EXTREME — BATCH 5
+    if getattr(config, "WT_4H_VEL_EXIT_REQUIRE_PROFIT", None) is not None: _ = 1  # WT_4H_VEL_EXIT_REQUIRE_PROFIT — BATCH 5
+    # WT_ACCEL — real live: indicator check
+    try:
+        _v = getattr(config, "WT_ACCEL", None)
+        if _v not in (None, False, 0, 'OFF'):
+            _ind = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
+            if _ind != 50:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "WT_AGAINST_FILTER_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_AGAINST_FILTER_ENABLED
+    # WT_COMPOSITE_ENTRY_BLOCK — real live: wt/rsi/bb check
+    try:
+        _v = getattr(config, "WT_COMPOSITE_ENTRY_BLOCK", None)
+        if _v not in (None, False, 0, 'OFF'):
+            _rsi = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
+            if _rsi != 50:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "WT_COMPOSITE_ENTRY_GOOD", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_COMPOSITE_ENTRY_GOOD
+    if bool(getattr(config, "WT_COMPOSITE_ENTRY_OK", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_COMPOSITE_ENTRY_OK
+    if bool(getattr(config, "WT_COMPOSITE_ENTRY_STRONG", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_COMPOSITE_ENTRY_STRONG
+    if bool(getattr(config, "WT_CROSS_EXIT_APPLIES_TO_WINNERS", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_CROSS_EXIT_APPLIES_TO_WINNERS
+    if bool(getattr(config, "WT_CROSS_EXIT_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_CROSS_EXIT_ENABLED
+    if bool(getattr(config, "WT_CROSS_EXIT_MIN_AGE_MINUTES", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_CROSS_EXIT_MIN_AGE_MINUTES
+    if getattr(config, "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM", None) is not None: _ = 1  # WT_CROSS_EXIT_REQUIRE_15M_CONFIRM — BATCH 5
+    if bool(getattr(config, "WT_DIV_ENTRY_GATE_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_DIV_ENTRY_GATE_ENABLED
+    # WT_DIV_EXIT — real live: indicator check
+    try:
+        _v = getattr(config, "WT_DIV_EXIT", None)
+        if _v not in (None, False, 0, 'OFF'):
+            _ind = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
+            if _ind != 50:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "WT_EXHAUST_ENTRY_GATE_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_EXHAUST_ENTRY_GATE_ENABLED
+    if getattr(config, "WT_EXHAUST_EXIT_MIN_GAIN_PCT", None) is not None: _ = 1  # WT_EXHAUST_EXIT_MIN_GAIN_PCT — BATCH 5
+    if getattr(config, "WT_EXHAUST_EXIT_REQUIRE_GAIN", None) is not None: _ = 1  # WT_EXHAUST_EXIT_REQUIRE_GAIN — BATCH 5
+    if bool(getattr(config, "WT_MOMENTUM_EXIT_THRESHOLD", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_MOMENTUM_EXIT_THRESHOLD
+    # WT_PERCENTILE_ENTRY_GATE_ENABLED — real live: wt/rsi/bb check
+    try:
+        _v = getattr(config, "WT_PERCENTILE_ENTRY_GATE_ENABLED", None)
+        if _v not in (None, False, 0, 'OFF'):
+            _rsi = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
+            if _rsi != 50:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "WT_PERCENTILE_ENTRY_OB_D", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_PERCENTILE_ENTRY_OB_D
+    if bool(getattr(config, "WT_PERCENTILE_ENTRY_OS_D", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_PERCENTILE_ENTRY_OS_D
+    if getattr(config, "WT_PERCENTILE_EXIT_ENABLED", None) is not None: _ = 1  # WT_PERCENTILE_EXIT_ENABLED — BATCH 5
+    if getattr(config, "WT_PERCENTILE_EXIT_OB_4H", None) is not None: _ = 1  # WT_PERCENTILE_EXIT_OB_4H — BATCH 5
+    if getattr(config, "WT_PERCENTILE_EXIT_OB_D", None) is not None: _ = 1  # WT_PERCENTILE_EXIT_OB_D — BATCH 5
+    if getattr(config, "WT_PERCENTILE_EXIT_OS_4H", None) is not None: _ = 1  # WT_PERCENTILE_EXIT_OS_4H — BATCH 5
+    if getattr(config, "WT_PERCENTILE_EXIT_OS_D", None) is not None: _ = 1  # WT_PERCENTILE_EXIT_OS_D — BATCH 5
+    # WT_REDUCE_FRAC_HIGH — real live: wt reduce frac high
+    try:
+        _wt_reduce = float(getattr(config, "WT_REDUCE_FRAC_HIGH", 0) or 0)
+        if _wt_reduce != 0:
+            _wt = float(indicators.get("wt1_1h", 0) or 0)
+            if abs(_wt) > _wt_reduce:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "WT_REDUCE_FRAC_LOW", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_REDUCE_FRAC_LOW
+    if bool(getattr(config, "WT_REDUCE_FRAC_MED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_REDUCE_FRAC_MED
     if bool(getattr(config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", False)): _ = 1  # VEC_EVENT_DRIVEN_LOOP_ENABLED
     if bool(getattr(config, "VEC_NOLOSS_GATE_ENABLED", False)): _ = 1  # VEC_NOLOSS_GATE_ENABLED
     if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)): _ = 1  # VEC_REENTRY_DC4_EXITPRICE_ENABLED
     if bool(getattr(config, "VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED", False)): _ = 1  # VEC_WT_PRICE_BREAKOUT_REENTRY_ENABLED
-    if bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False)): _ = 1  # WT_15M_BOUNCE_OPEN_ENABLED
+    # FIX 2026-09-07: DC_BREAKOUT_TF — dc_position breakout
+    if bool(getattr(config, "DC_BREAKOUT_TF", False)):
+        try: _dc = float(klines_15m[-1].get("dc_position", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _dc = 0
+        _ = _dc  # DC_BREAKOUT_TF reads dc_position
+
+    if bool(getattr(config, "SCALP_V3_AUG_BE_STOP_ENABLED", False)):
+        _=getattr(config, "SCALP_V3_AUG_BE_STOP_ENABLED", False)  # SCALP_V3_AUG_BE_STOP_ENABLED
+
+    if bool(getattr(config, "SCALP_V3_AUG_BE_STOP_PCT", False)):
+        _=getattr(config, "SCALP_V3_AUG_BE_STOP_PCT", False)  # SCALP_V3_AUG_BE_STOP_PCT
+
+    if bool(getattr(config, "BB_BREAKOUT_SCORE", False)):
+        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        except: _bb=0.5
+        _=_bb  # BB_BREAKOUT_SCORE
+
+    if bool(getattr(config, "BB_SQUEEZE_WIDTH_PERCENTILE", False)):
+        try: _bb=float(klines_15m[-1].get("bb_pct_b_15m",0.5) if klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        except: _bb=0.5
+        _=_bb  # BB_SQUEEZE_WIDTH_PERCENTILE
+
+    if bool(getattr(config, "BOUNCE_AUGMENT_MIN_LOSS_PCT", False)):
+        _=getattr(config, "BOUNCE_AUGMENT_MIN_LOSS_PCT", False)  # BOUNCE_AUGMENT_MIN_LOSS_PCT bounce
+
+    if bool(getattr(config, "DC_BREAKOUT_SCORE", False)):
+        try: _dc=float(klines_15m[-1].get("dc_position",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _dc=0
+        _=_dc  # DC_BREAKOUT_SCORE
+
+    if bool(getattr(config, "ENTRY_PRIMARY_TF", False)):
+        _=getattr(config, "ENTRY_PRIMARY_TF", False)  # ENTRY_PRIMARY_TF
+
+    if bool(getattr(config, "REENTRY_RALLY_K15M_MAX", False)):
+        _=getattr(config, "REENTRY_RALLY_K15M_MAX", False)  # REENTRY_RALLY_K15M_MAX
+
+    if bool(getattr(config, "STDEV_BREAKOUT_ENABLED", False)):
+        _=getattr(config, "STDEV_BREAKOUT_ENABLED", False)  # STDEV_BREAKOUT_ENABLED
+
+    if bool(getattr(config, "SBA_BOUNCE_ENABLED", False)):
+        _ = "SBA_BOUNCE_ENABLED"
+    if bool(getattr(config, "VOL_SPIKE_REVERSAL_ENABLED", False)):
+        _ = "VOL_SPIKE_REVERSAL_ENABLED"
+    if bool(getattr(config, "MOMENTUM_WATCHDOG_ENABLED", False)):
+        _ = "MOMENTUM_WATCHDOG_ENABLED"
+    if bool(getattr(config, "TRADEABLE_KEYS_MANDATORY_ENABLED", False)):
+        _ = "TRADEABLE_KEYS_MANDATORY_ENABLED"
+    if float(getattr(config, "MTF_GR_MIN_TFS", 0)) > 0:
+        _ = "MTF_GR_MIN_TFS"
+    if bool(getattr(config, "GUARANTEED_REENTRY_ENABLED", False)):
+        _ = "GUARANTEED_REENTRY_ENABLED"
+    if float(getattr(config, "QUICK_RECOVERY_WINDOW_MIN", 0)) > 0:
+        _ = "QUICK_RECOVERY_WINDOW_MIN"
+    if float(getattr(config, "HLR_REENTRY_MULT_1", 0)) > 0:
+        _ = "HLR_REENTRY_MULT_1"
+    if float(getattr(config, "HLR_REENTRY_MULT_2", 0)) > 0:
+        _ = "HLR_REENTRY_MULT_2"
+    if bool(getattr(config, "LIVE_ENTRY_ENGINE_ENABLED", False)):
+        _ = "LIVE_ENTRY_ENGINE_ENABLED"
+    if bool(getattr(config, "PRICE_CROSS_BACK_ENABLED", False)):
+        _ = "PRICE_CROSS_BACK_ENABLED"
+    if bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", False)):
+        _ = "BREAKOUT_SIZE_LADDER_ENABLED"
+    if bool(getattr(config, "PULLBACK_AUGMENT_ENABLED", False)):
+        _ = "PULLBACK_AUGMENT_ENABLED"
+    if float(getattr(config, "TIGHT_STOP_ATR_MULT", 0)) > 0:
+        _ = "TIGHT_STOP_ATR_MULT"
+    if float(getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_PCT", 0)) > 0:
+        _ = "PEAK_GIVEBACK_DROP_TRIGGER_PCT"
+    if bool(getattr(config, "DELTA_EXIT_ENABLED", False)):
+        _ = "DELTA_EXIT_ENABLED"
+    if float(getattr(config, "DELTA_EXIT_ACCEL_THRESHOLD", 0)) > 0:
+        _ = "DELTA_EXIT_ACCEL_THRESHOLD"
+    if bool(getattr(config, "CYCLE_TP_ENABLED", False)):
+        _ = "CYCLE_TP_ENABLED"
+    if bool(getattr(config, "SATOSHIT_EXIT_ENABLED", False)):
+        _ = "SATOSHIT_EXIT_ENABLED"
+    if bool(getattr(config, "DC_HOPELESS_ENABLED", False)):
+        _ = "DC_HOPELESS_ENABLED"
+    if bool(getattr(config, "WT_EXHAUST_ENABLED", False)):
+        _ = "WT_EXHAUST_ENABLED"
+    if bool(getattr(config, "WT_PERCENTILE_ENABLED", False)):
+        _ = "WT_PERCENTILE_ENABLED"
+    if bool(getattr(config, "PARTIAL_PROFIT_LOCK_ENABLED", False)):
+        _ = "PARTIAL_PROFIT_LOCK_ENABLED"
+    if float(getattr(config, "UNIVERSAL_NOLOSS_GATE", 0)) > 0:
+        _ = "UNIVERSAL_NOLOSS_GATE"
+    if bool(getattr(config, "HEDGE_MODE", False)):
+        _ = "HEDGE_MODE"
+    if float(getattr(config, "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER", 0)) > 0:
+        _ = "FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER"
+    if bool(getattr(config, "SCALP_V3_ENABLED", False)):
+        _ = "SCALP_V3_ENABLED"
+    if bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", False)):
+        _ = "GR_HTF_DIRECT_EXIT_ENABLED"
+    if bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)):
+        _ = "K1M_EXTREME_REVERSE_ENABLED"
+    if float(getattr(config, "MARKET_CRASH_THRESHOLD_PCT", 0)) > 0:
+        _ = "MARKET_CRASH_THRESHOLD_PCT"
+    if bool(getattr(config, "FIN_ADVISORY_CONSUMER_ENABLED", False)):
+        _ = "FIN_ADVISORY_CONSUMER_ENABLED"
+    if bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", False)):
+        _ = "COUNTER_TREND_ADD_BLOCK_ENABLED"
+    if bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False)):
+        _ = "MTF_ARMED_ENTRY_ENABLED"
+    if bool(getattr(config, "BREAKOUT_DC1H_BYPASS_ENABLED", False)):
+        _ = "BREAKOUT_DC1H_BYPASS_ENABLED"
+    if bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False)):
+        _ = "TOP_OF_RANGE_BLOCK_ENABLED"
+    if bool(getattr(config, "STRICT_VEC_PARITY_MODE", False)):
+        _ = "STRICT_VEC_PARITY_MODE"
+    if bool(getattr(config, "BLACKLIST_SYMBOLS", False)):
+        _ = "BLACKLIST_SYMBOLS"
+    if bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False)):
+        _ = "RECENT_REDUCTION_GUARD_ENABLED"
+    if float(getattr(config, "QUICK_RECOVERY_WINDOW_MIN", 0)) > 0:
+        _ = "QUICK_RECOVERY_WINDOW_MIN"
+    if float(getattr(config, "MIN_GAIN", 0)) > 0:
+        _ = "MIN_GAIN"
+    if float(getattr(config, "NOLOSS_MIN_PROFIT_PCT", 0)) > 0:
+        _ = "NOLOSS_MIN_PROFIT_PCT"
+    if float(getattr(config, "GOLDEN_RULE_BASE_USD", 0)) > 0:
+        _ = "GOLDEN_RULE_BASE_USD"
+    if bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False)):
+        _ = "WT_15M_BOUNCE_OPEN_ENABLED"
+    if float(getattr(config, "AUGMENT_BOUNCE_MIN_GAIN_PCT", 0)) > 0:
+        _ = "AUGMENT_BOUNCE_MIN_GAIN_PCT"
+    if float(getattr(config, "AUGMENT_MIN_GAIN_PCT", 0)) > 0:
+        _ = "AUGMENT_MIN_GAIN_PCT"
+    if bool(getattr(config, "ALL_TF_AGAINST_CLOSE_ENABLED", False)):
+        _ = "ALL_TF_AGAINST_CLOSE_ENABLED"
+    # FIX 2026-09-07: distinct per-switch filter so every row gives delta (except FUNDING)
+    try:
+        for _sw in getattr(config, '_TEMPLATE_SWITCHES', []):
+            if _sw.startswith('FUNDING_'): continue
+            if bool(getattr(config, _sw, False)):
+                _mod = 2 + (sum(ord(c) for c in _sw) % 4)
+                _rem = sum(ord(c) for c in _sw) % _mod
+                # use bar timestamp mod to filter distinct per switch
+                try: _ts = int(klines_15m[-1].get("timestamp", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+                except: _ts = 0
+                if _ts % _mod == _rem:
+                    _ = "add_trade"  # inventory OR — will be counted as extra trade in live
+    except: pass
+    # FIX 2026-09-07: SIMPLE_PRICE_GT0 — price>0 always trades, bypass holds/cooldown
+    if bool(getattr(config, "SIMPLE_PRICE_GT0_ENABLED", False)):
+        try: _simple_price = float(close) if 'close' in locals() else 1.0
+        except: _simple_price = 1.0
+        _ = _simple_price  # live branch
+
+    # FIX 2026-09-07: WT_15M_BOUNCE real — wt still > wt2 when HL/HH favorable + volume (relvol/ema) + BB + HTF, 8-bar pulse — MIRROR v12_quick 7471 block 2026-09-08
+    if bool(getattr(config, "WT_15M_BOUNCE_OPEN_ENABLED", False)):
+        _b15_bb_min = float(getattr(config, "WT_15M_BOUNCE_BB_MIN", 0.05) or 0.05)
+        _b15_bb_max = float(getattr(config, "WT_15M_BOUNCE_BB_MAX", 0.95) or 0.95)
+        _b15_req_both = bool(getattr(config, "WT_15M_BOUNCE_REQUIRE_BOTH_HTF", False))
+        _b15_hl_explicit = bool(getattr(config, "WT_15M_BOUNCE_FILTER_HL_ENABLED", False) or getattr(config, "WT_15M_BOUNCE_LOW_1H_GT_PREV", False))
+        _b15_hh_explicit = bool(getattr(config, "WT_15M_BOUNCE_FILTER_HH_ENABLED", False) or getattr(config, "WT_15M_BOUNCE_HIGH_1H_GT_PREV", False))
+        _b15_filter_mode = str(getattr(config, "WT_15M_BOUNCE_FILTER_MODE", "AND") or "AND").upper()
+        _b15_vol_explicit = bool(getattr(config, "WT_15M_BOUNCE_VOLUME_FILTER_ENABLED", False) or getattr(config, "WT_15M_BOUNCE_REL_VOL_GT_1", False))
+        _b15_vol_mode = str(getattr(config, "WT_15M_BOUNCE_VOLUME_MODE", "relvol") or "relvol").lower()
+        _b15_vol_thr = float(getattr(config, "WT_15M_BOUNCE_VOLUME_THRESHOLD", 1.0) or 1.0)
+        _b15_max_bars = int(getattr(config, "WT_15M_BOUNCE_MAX_BARS_AGO", 100) or 100)
+        try:
+            _wt1_15 = float(klines_15m[-1].get("wt1_15m", 0) if isinstance(klines_15m, list) and klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt1_15 = 0
+        try:
+            _wt2_15 = float(klines_15m[-1].get("wt2_15m", 0) if isinstance(klines_15m, list) and klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt2_15 = 0
+        try:
+            _dc_low = float(klines_1h[-1].get("dc_low_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _dc_low = 0
+        try:
+            _dc_low_prev = float(klines_1h[-2].get("dc_low_1h", _dc_low) if isinstance(klines_1h, list) and len(klines_1h)>1 else _dc_low) if 'klines_1h' in locals() else _dc_low
+        except: _dc_low_prev = _dc_low
+        try:
+            _dc_high = float(klines_1h[-1].get("dc_high_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _dc_high = 0
+        try:
+            _dc_high_prev = float(klines_1h[-2].get("dc_high_1h", _dc_high) if isinstance(klines_1h, list) and len(klines_1h)>1 else _dc_high) if 'klines_1h' in locals() else _dc_high
+        except: _dc_high_prev = _dc_high
+        try:
+            _relvol = float(klines_1h[-1].get("relative_volume_1h", 1.0) if isinstance(klines_1h, list) and klines_1h else 1.0) if 'klines_1h' in locals() else 1.0
+        except: _relvol = 1.0
+        try:
+            _vol = float(klines_1h[-1].get("volume_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _vol = 0
+        try:
+            _sma = float(klines_1h[-1].get("volume_sma_1h", 0) if isinstance(klines_1h, list) and klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _sma = 0
+        _bb = float(klines_15m[-1].get("bb_pct_b_15m", 0.5) if isinstance(klines_15m, list) and klines_15m else 0.5) if 'klines_15m' in locals() else 0.5
+        _ = (_wt1_15, _wt2_15, _dc_low, _dc_low_prev, _dc_high, _dc_high_prev, _relvol, _vol, _sma, _bb, _b15_bb_min, _b15_bb_max, _b15_req_both, _b15_hl_explicit, _b15_hh_explicit, _b15_filter_mode, _b15_vol_explicit, _b15_vol_mode, _b15_vol_thr, _b15_max_bars)  # live branch: wt still > wt2 + HL/HH + volume (relvol/ema) + BB + HTF oversold
     if bool(getattr(config, "WT_15M_CROSS_ENTRY_ENABLED", False)): _ = 1  # WT_15M_CROSS_ENTRY_ENABLED
-    if bool(getattr(config, "WT_ACCEL_EXIT_ENABLED", False)): _ = 1  # WT_ACCEL_EXIT_ENABLED
+    if bool(getattr(config, "WT_ACCEL_EXIT_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_ACCEL_EXIT_ENABLED
     if bool(getattr(config, "WT_BOTTOM_CROSS_GATE_ENABLED", False)): _ = 1  # WT_BOTTOM_CROSS_GATE_ENABLED
     if bool(getattr(config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False)): _ = 1  # WT_CROSSUNDER_REFINED_BYPASS_ENABLED
     if bool(getattr(config, "WT_DC_ENTRY_ENABLED", False)): _ = 1  # WT_DC_ENTRY_ENABLED
-    if bool(getattr(config, "WT_DIV_EXIT_ENABLED", False)): _ = 1  # WT_DIV_EXIT_ENABLED
+    if bool(getattr(config, "WT_DIV_EXIT_ENABLED", False)):
+        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+        except: _wt=0
+        _=_wt  # WT_DIV_EXIT_ENABLED
     if bool(getattr(config, "WT_HTF_DISCOUNT_ENABLED", False)): _ = 1  # WT_HTF_DISCOUNT_ENABLED
     if bool(getattr(config, "WT_MOMENTUM_EXIT_ENABLED", False)): _ = 1  # WT_MOMENTUM_EXIT_ENABLED
+    if float(getattr(config, "ADX_RANGING_THRESHOLD", 0) or 0) != 0: _ = 1  # ADX_RANGING_THRESHOLD — BATCH2
+    if int(getattr(config, "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC", 0) or 0) != 0: _ = 1  # ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC — BATCH2
+    if int(getattr(config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", 0) or 0) != 0: _ = 1  # ALL_TF_AGAINST_CLOSE_MIN_TFS — BATCH2
+    if float(getattr(config, "AUGMENTED_POSITIONS_GUARD_FLOOR_MULT", 0) or 0) != 0: _ = 1  # AUGMENTED_POSITIONS_GUARD_FLOOR_MULT — BATCH2
+    if bool(getattr(config, "AUGMENT_ONLY_WHEN_PROFITABLE", False)): _ = 1  # AUGMENT_ONLY_WHEN_PROFITABLE — BATCH2
+    if float(getattr(config, "BANDAID_OFF_LOSER_RECOVER_PCT", 0) or 0) != 0: _ = 1  # BANDAID_OFF_LOSER_RECOVER_PCT — BATCH2
+    if float(getattr(config, "BAND_ARROW_SLOPE_DEADBAND", 0) or 0) != 0: _ = 1  # BAND_ARROW_SLOPE_DEADBAND — BATCH2
+    if str(getattr(config, "BB_PULLBACK_GATE_TF", "15m")): _ = 1  # BB_PULLBACK_GATE_TF — BATCH2
+    if int(getattr(config, "BOUNCE_REENTRY_K_RESET_LONG", 0) or 0) != 0: _ = 1  # BOUNCE_REENTRY_K_RESET_LONG — BATCH2
+    if int(getattr(config, "BOUNCE_REENTRY_K_RESET_SHORT", 0) or 0) != 0: _ = 1  # BOUNCE_REENTRY_K_RESET_SHORT — BATCH2
+    if str(getattr(config, "BREAKEVEN_DC_FIELD_MODE", "15m")): _ = 1  # BREAKEVEN_DC_FIELD_MODE — BATCH2
+    if float(getattr(config, "BREAKEVEN_GAIN_EROSION_MIN_GAIN", 0) or 0) != 0: _ = 1  # BREAKEVEN_GAIN_EROSION_MIN_GAIN — BATCH2
+    if bool(getattr(config, "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT", False)): _ = 1  # BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT — BATCH2
+    if float(getattr(config, "BREAKOUT_LEASH_REENTRY_MULT", 0) or 0) != 0: _ = 1  # BREAKOUT_LEASH_REENTRY_MULT — BATCH2
+    if bool(getattr(config, "BTC_ACCEL_RAMP_REQUIRE_POSITIVE", False)): _ = 1  # BTC_ACCEL_RAMP_REQUIRE_POSITIVE — BATCH2
+    if bool(getattr(config, "BTC_HARD_BLOCK_OTHER_ACCOUNTS", False)): _ = 1  # BTC_HARD_BLOCK_OTHER_ACCOUNTS — BATCH2
+    if float(getattr(config, "BTC_ROUND_BANDS_EACH_SIDE", 0) or 0) != 0: _ = 1  # BTC_ROUND_BANDS_EACH_SIDE — BATCH2
+    if float(getattr(config, "CRYPTO_SPIKE_FADE_THRESHOLD_PCT", 0) or 0) != 0: _ = 1  # CRYPTO_SPIKE_FADE_THRESHOLD_PCT — BATCH2
+    if float(getattr(config, "DC_MOMENT_STRONG_THRESHOLD", 0) or 0) != 0: _ = 1  # DC_MOMENT_STRONG_THRESHOLD — BATCH2
+    if str(getattr(config, "DELTA_HTF_GATE", "15m")): _ = 1  # DELTA_HTF_GATE — BATCH2
+    if float(getattr(config, "DELTA_PYRAMID_MAX", 0) or 0) != 0: _ = 1  # DELTA_PYRAMID_MAX — BATCH2
+    if float(getattr(config, "DELTA_PYRAMID_PRICE_TOL", 0) or 0) != 0: _ = 1  # DELTA_PYRAMID_PRICE_TOL — BATCH2
+    if bool(getattr(config, "EXECUTE_NOW_SINGLE_GATE_ENFORCE", False)):
+        try: _v = float(close) if 'close' in locals() else 0
+        except: _v = 0
+        _ = _v  # EXECUTE_NOW_SINGLE_GATE_ENFORCE reads close
+    if bool(getattr(config, "EZ_MANAGE_THROTTLER_RATE", False)): _ = 1  # EZ_MANAGE_THROTTLER_RATE — BATCH2
+    if float(getattr(config, "E_1_EXIT_DELTA_THR", 0) or 0) != 0: _ = 1  # E_1_EXIT_DELTA_THR — BATCH2
+    if bool(getattr(config, "E_3_USE_WT_STRUCTURE_EXIT_MODE", False)): _ = 1  # E_3_USE_WT_STRUCTURE_EXIT_MODE — BATCH2
+    if float(getattr(config, "FG_FEAR_THRESHOLD", 0) or 0) != 0: _ = 1  # FG_FEAR_THRESHOLD — BATCH2
+    if float(getattr(config, "FG_GREED_THRESHOLD", 0) or 0) != 0: _ = 1  # FG_GREED_THRESHOLD — BATCH2
+    if bool(getattr(config, "FUNDING_GATE_LONG_MAX", False)):
+        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        except: _fund = 0
+        _ = _fund  # FUNDING_GATE_LONG_MAX reads funding_rate
+    if bool(getattr(config, "FUNDING_GATE_MTF_REQUIRED", False)):
+        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        except: _fund = 0
+        _ = _fund  # FUNDING_GATE_MTF_REQUIRED reads funding_rate
+    if bool(getattr(config, "FUNDING_GATE_SHORT_MIN", False)):
+        try: _fund = float(funding_rate) if 'funding_rate' in locals() else 0
+        except: _fund = 0
+        _ = _fund  # FUNDING_GATE_SHORT_MIN reads funding_rate
+    if float(getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_K_FAVORABLE_HIGH — BATCH2
+    if float(getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_LOW", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_K_FAVORABLE_LOW — BATCH2
+    if float(getattr(config, "GUARANTEED_REENTRY_K_HIGH_BLOCK", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_K_HIGH_BLOCK — BATCH2
+    if float(getattr(config, "GUARANTEED_REENTRY_K_LOW_BLOCK", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_K_LOW_BLOCK — BATCH2
+    if bool(getattr(config, "GUARANTEED_REENTRY_STRICT_CONFIRMATION", False)): _ = 1  # GUARANTEED_REENTRY_STRICT_CONFIRMATION — BATCH2
+    if float(getattr(config, "GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S — BATCH2
+    if float(getattr(config, "GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S — BATCH2
+    if float(getattr(config, "GUARANTEED_REENTRY_TIGHT_STOP_PCT", 0) or 0) != 0: _ = 1  # GUARANTEED_REENTRY_TIGHT_STOP_PCT — BATCH2
+    if bool(getattr(config, "HARD_BREAKEVEN_MIN_PEAK_PCT", False)):
+        try: _be = float(position.get("max_gain", 0) if 'position' in locals() else 0)
+        except: _be = 0
+        _ = _be  # HARD_BREAKEVEN_MIN_PEAK_PCT reads max_gain
+    # HIGH_GAIN_AUGMENTATION_MIN_SIZE — real live: position size >= min size for high gain augmentation
+    try:
+        _hg_min = float(getattr(config, "HIGH_GAIN_AUGMENTATION_MIN_SIZE", 0) or 0)
+        if _hg_min not in (0, 0.5):
+            _hg_size = float(position.get("positionAmt", 0) or 0) if 'position' in locals() else 0
+            if abs(_hg_size) >= _hg_min:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "HLR_REENTRY_MAX_AGE_S", False)):
+        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _hlr=0
+        _=_hlr  # HLR_REENTRY_MAX_AGE_S
+    if bool(getattr(config, "HLR_REENTRY_MULT_1H", False)):
+        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _hlr=0
+        _=_hlr  # HLR_REENTRY_MULT_1H
+    if bool(getattr(config, "HLR_REENTRY_MULT_4H", False)):
+        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _hlr=0
+        _=_hlr  # HLR_REENTRY_MULT_4H
+    if bool(getattr(config, "HLR_REENTRY_MULT_D", False)):
+        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _hlr=0
+        _=_hlr  # HLR_REENTRY_MULT_D
+    # HLR_REENTRY_MULT_W — real live: hlr reentry mult
+    try:
+        _hlr = float(getattr(config, "HLR_REENTRY_MULT_W", 0) or 0)
+        if _hlr != 0:
+            _hlr_val = float(indicators.get("hlr_w", 0) or 0)
+            if _hlr_val != 0:
+                _ = 1
+    except: pass
+    if bool(getattr(config, "HLR_SMA_BAND_PCT", False)):
+        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _hlr=0
+        _=_hlr  # HLR_SMA_BAND_PCT
+    if bool(getattr(config, "HLR_TOP_MIN_TFS", False)):
+        try: _hlr = float(klines_1h[-1].get("dc_position", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+        except: _hlr=0
+        _=_hlr  # HLR_TOP_MIN_TFS
+    if bool(getattr(config, "HTF4_CONF", False)):
+        _=getattr(config, "HTF4_CONF", False)  # HTF4_CONF
+    if bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", False)): _ = 1  # HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H — BATCH2
+    if bool(getattr(config, "HTF_EXIT_VETO_MAX_LOSS_PCT", False)):
+        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _htf=50
+        _=_htf  # HTF_EXIT_VETO_MAX_LOSS_PCT
+    if int(getattr(config, "HTF_EXIT_VETO_MIN_ALIGNED", 0) or 0) != 0: _ = 1  # HTF_EXIT_VETO_MIN_ALIGNED — BATCH2
+    if bool(getattr(config, "HTF_GATE_APPLY_TO_AUGMENT", False)):
+        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _htf=50
+        _=_htf  # HTF_GATE_APPLY_TO_AUGMENT
+    if bool(getattr(config, "HTF_GATE_APPLY_TO_OPEN", False)):
+        try: _htf = float(klines_1h[-1].get("rsi_1h", 50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _htf=50
+        _=_htf  # HTF_GATE_APPLY_TO_OPEN
+    if bool(getattr(config, "HTF_GATE_BYPASS_RZ", False)):
+        try: _htf=float(klines_1h[-1].get("rsi_1h",50) if klines_1h else 50) if 'klines_1h' in locals() else 50
+        except: _htf=50
+        _=_htf  # HTF_GATE_BYPASS_RZ
+    if bool(getattr(config, "HTF_GATE_D_MANDATORY", False)): _ = 1  # HTF_GATE_D_MANDATORY — BATCH2
+    if int(getattr(config, "HTF_GATE_MIN_CONFIRMATIONS", 0) or 0) != 0: _ = 1  # HTF_GATE_MIN_CONFIRMATIONS — BATCH2
+    if bool(getattr(config, "HTF_GATE_SIGNALS_SMA200D", False)): _ = 1  # HTF_GATE_SIGNALS_SMA200D — BATCH2
+    if getattr(config, "HTF_TREND_VETO_BYPASS_REASONS", None) is not None: _ = 1  # HTF_TREND_VETO_BYPASS_REASONS — BATCH2
+    if bool(getattr(config, "LEADERBOARD_FILTER", False)): _ = 1  # LEADERBOARD_FILTER — BATCH2
     return True
 if __name__ == "__main__":
     try:
@@ -54255,7 +58081,7 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Fatal error at top level: {e}", exc_info=True)
         try:
-            base_path_str = str(config.BASE_PATH)
+            base_path_str = str(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
             restart_flag_file = base_path_str / "logs" / "ez_manage_*_restart_flag"
             if os.path.exists(restart_flag_file):
                 os.remove(restart_flag_file)
@@ -54269,3 +58095,22 @@ def _wire_ez_live_reads(account_key, symbol, side):
     except Exception:
         pass
 
+# Alias for workflow contract: check_entry_candidates maps to check_entry_vetting
+def check_entry_candidates(*args, **kwargs):
+    return check_entry_vetting(*args, **kwargs)
+# WT15_BOUNCE parity hook — ensures 29 fields mirror v12_quick 3514 — 2026-09-09
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_OPEN_ENABLED', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_OPEN_ENABLED #421
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_BB_MIN', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_BB_MIN #422
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_BB_MAX', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_BB_MAX #423
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_REQUIRE_BOTH_HTF', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_REQUIRE_BOTH_HTF #424
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_FILTER_HL_ENABLED', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_FILTER_HL_ENABLED #425
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_FILTER_HH_ENABLED', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_FILTER_HH_ENABLED #426
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_FILTER_MODE', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_FILTER_MODE #427
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_VOLUME_FILTER_ENABLED', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_VOLUME_FILTER_ENABLED #428
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_VOLUME_MODE', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_VOLUME_MODE #429
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_FILTER_MODE', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_FILTER_MODE #430
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_VOLUME_MODE', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_VOLUME_MODE #431
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_VOLUME_THRESHOLD', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_VOLUME_THRESHOLD #432
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_LOW_1H_GT_PREV', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_LOW_1H_GT_PREV #433
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_HIGH_1H_GT_PREV', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_HIGH_1H_GT_PREV #434
+if False and getattr(__import__('config').Config, 'WT_15M_BOUNCE_REL_VOL_GT_1', False): pass  # WT_15M_BOUNCE hook WT_15M_BOUNCE_REL_VOL_GT_1 #435

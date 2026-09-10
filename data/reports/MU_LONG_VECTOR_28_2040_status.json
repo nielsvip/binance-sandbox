@@ -1,0 +1,26 @@
+{
+  "status": "complete_blocked",
+  "pilot_admissible": false,
+  "symside": "MU_LONG",
+  "window_days": 365,
+  "audit_tfs": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "switches_total": 28,
+  "strategy_switches_total": 24,
+  "strategy_switches_pass": 2,
+  "counts": {
+    "INERT": 15,
+    "TF_ALIAS": 6,
+    "PASS": 2,
+    "VALUE_ALIAS": 1,
+    "N/A_SIDE": 4
+  },
+  "detail_csv": "/Users/niels/Documents/binance/data/reports/MU_LONG_VECTOR_28_2040_SWITCH_TF_UNIQUENESS.csv",
+  "summary_csv": "/Users/niels/Documents/binance/data/reports/MU_LONG_VECTOR_28_2040_SWITCH_TF_UNIQUENESS_SUMMARY.csv",
+  "elapsed_s": 11.906320333480835
+}

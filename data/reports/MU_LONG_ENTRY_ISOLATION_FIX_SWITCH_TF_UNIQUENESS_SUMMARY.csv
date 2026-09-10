@@ -1,0 +1,3 @@
+Switch,Scope,Scope_Reason,Verdict,Reason,Groups,Source_Sheets,Declared_Quick,Read_Quick,Read_Wide,Read_Scalar,Read_Live_Crypto,Read_Live_Stock,Values_Defined,TFs_Tested,Empirical_Rows,Unique_Behaviors,Unique_Deltas
+EMA_TF_5M_ENABLED,STRATEGY_CAUSAL,declared strategy/catalog/live-path setting,INERT,no value changes execution at 15m,QUICK_CONFIG,QUICK_CONFIG,True,True,False,False,False,False,"[false,true]",5m|15m|1h|4h|D,10,4,4
+WT_TF_5M_ENABLED,STRATEGY_CAUSAL,declared strategy/catalog/live-path setting,INERT,no value changes execution at 1h,QUICK_CONFIG,QUICK_CONFIG,True,True,False,False,False,False,"[false,true]",5m|15m|1h|4h|D,10,5,5

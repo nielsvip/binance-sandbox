@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-09-04T01:31:16.152862+00:00",
+  "artifacts": {
+    "template_all_keys.json": {
+      "source": "/tmp/template_all_keys.json",
+      "destinations": [
+        "data/reports/template_all_keys.json",
+        "artifacts/audit/template_all_keys.json"
+      ],
+      "sha256": "eeaf425281d3996f8098c8a28f38cf8c31955f607a49095eb75544792aec413d",
+      "bytes": 254954,
+      "lines": 12395,
+      "distinct_keys": 351,
+      "sheets": 35
+    },
+    "live_wiring_audit.json": {
+      "source": "/tmp/live_wiring_audit.json",
+      "destinations": [
+        "data/reports/live_wiring_audit.json",
+        "artifacts/audit/live_wiring_audit.json"
+      ],
+      "sha256": "0a4504b6d9c68952b3559dccc9eadf6ed852e249933f9e86f0a32d8fa0f5b139",
+      "bytes": 38341,
+      "lines": 1916,
+      "split_actual": {
+        "live_missing_vec_present": 2,
+        "vec_missing_live_present": 238,
+        "both_present": 164,
+        "both_missing": 65,
+        "total": 469
+      },
+      "split_task_claimed": "0/233/56/62 (1915 lines) - STALE",
+      "note": "Task split 0/233/56/62 sums to 351 (template distinct) not 469 (wiring total); actual 2/238/164/65 sums to 469"
+    }
+  },
+  "ephemeral_risk": "/tmp is ephemeral (macOS reboot/cleanup); persisted copies prevent loss",
+  "prior_state": "Prior 4 found 0 template files in repo - confirmed"
+}

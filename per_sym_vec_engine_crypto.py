@@ -59,6 +59,42 @@ from per_sym_engine_crypto import (
 # Crypto commission already imported (0.08% RT). Default per-trade slippage absorbed by RT.
 RT_COMM = COMMISSION_RT_PCT  # in pct units (0.08)
 
+# BTC parity: ensure per_sym overrides map to QuickConfig with type safety.
+# Import QuickConfig to validate mapping (flat or nested per_sym format).
+try:
+    from v8_quick_engine import QuickConfig as _QuickConfig
+    _HAS_QC = True
+except Exception:
+    _HAS_QC = False
+    _QuickConfig = None  # type: ignore
+
+def _apply_per_sym_overrides_to_cfg(cfg, overrides: dict) -> None:
+    """Apply per_sym override dict onto a cfg with QC-type coercion. Unknown keys still setattr."""
+    for k, v in overrides.items():
+        if k.startswith("_"):
+            continue
+        if isinstance(v, str) and v in ("True", "False"):
+            v = v == "True"
+        if _HAS_QC and hasattr(_QuickConfig, k):
+            cur = getattr(_QuickConfig, k)
+            try:
+                if isinstance(cur, bool):
+                    setattr(cfg, k, bool(v))
+                elif isinstance(cur, int) and not isinstance(cur, bool):
+                    if isinstance(v, bool) and v:
+                        continue
+                    setattr(cfg, k, int(float(v)) if isinstance(v, str) else int(v))
+                elif isinstance(cur, float):
+                    if isinstance(v, bool) and v:
+                        continue
+                    setattr(cfg, k, float(v))
+                else:
+                    setattr(cfg, k, v)
+            except Exception:
+                setattr(cfg, k, v)
+        else:
+            setattr(cfg, k, v)
+
 
 _npz_cache_vec: Dict[str, Dict[str, np.ndarray]] = {}
 
@@ -562,9 +598,16 @@ def _run_variant_task_worker(args):
         if k == "NOLOSS_ENABLED":
             continue
         try:
-            setattr(cfg, k, v)
+            # Parity: use QC-aware coercion so BTC_DEDICATED knobs map with correct types
+            if _HAS_QC and hasattr(_QuickConfig, k):
+                _apply_per_sym_overrides_to_cfg(cfg, {k: v})
+            else:
+                setattr(cfg, k, v)
         except Exception:
-            pass
+            try:
+                setattr(cfg, k, v)
+            except Exception:
+                pass
 
     for locked in _VEC_LOCKED_FALSE_KNOBS:
         try:

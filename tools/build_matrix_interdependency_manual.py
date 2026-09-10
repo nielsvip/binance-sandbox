@@ -695,7 +695,7 @@ def build_payload() -> dict[str, Any]:
             {
                 "param": name,
                 "family": info["family"],
-                "main_switch": primary_master or "",
+                "main_switch": primary_master or name,
                 "activation_dependencies": activation_dependencies,
                 "master_resolution": (
                     "VERIFIED_PREFIX_OR_EXPLICIT"

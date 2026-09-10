@@ -1,0 +1,22 @@
+{
+  "status": "complete_blocked",
+  "pilot_admissible": false,
+  "symside": "MU_SHORT",
+  "window_days": 365,
+  "audit_tfs": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "switches_total": 1,
+  "strategy_switches_total": 1,
+  "strategy_switches_pass": 0,
+  "counts": {
+    "VALUE_ALIAS": 1
+  },
+  "detail_csv": "/home/niels/binance-sandbox/data/reports/MU_SHORT_RSI_ENTRY_SHORT_SWITCH_TF_UNIQUENESS.csv",
+  "summary_csv": "/home/niels/binance-sandbox/data/reports/MU_SHORT_RSI_ENTRY_SHORT_SWITCH_TF_UNIQUENESS_SUMMARY.csv",
+  "elapsed_s": 55.64740443229675
+}

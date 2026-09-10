@@ -2763,18 +2763,31 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
                     _binance_syms = set(json.load(open(config.BASE_PATH / "symbols.json")))
                 except Exception:
                     _binance_syms = set()
-                _use_usdt = bool(getattr(config, 'INF_MIRROR_USE_USDT', True))
+                # 2026-08-21 FIX. INF trades TOKENISED STOCKS on Binance futures:
+                # the <STOCK>USDT twin, fractional from $5, 0.08% round trip.
+                #
+                # The old mapping FELL BACK to the bare stock symbol when no twin
+                # existed, so symbols_inf_* filled with names Binance cannot trade.
+                # It also accepted USDC twins, which are not the tokenised-stock
+                # venue. And it silently produced nothing at all because S1 carried
+                # a stale 80-entry crypto-only symbols.json instead of the 327-entry
+                # Mac copy that actually lists AAPLUSDT / NVDAUSDT / AMZNUSDT.
+                #
+                # Rule now: mirror TRB, keep ONLY the USDT twin, DROP anything with
+                # no twin. No bare stock symbols, no USDC, no crypto.
                 def _to_inf_sym(_s):
                     su = str(_s).upper().strip()
-                    if not _use_usdt or not _binance_syms:
-                        return su
-                    for _sfx in ("USDT", "USDC"):
-                        _cand = su + _sfx
-                        if _cand in _binance_syms:
-                            return _cand
-                    return su
-                _inf_long = [_to_inf_sym(s) for s in symbols_trb_long]
-                _inf_short = [_to_inf_sym(s) for s in symbols_trb_short]
+                    cand = su + "USDT"
+                    return cand if cand in _binance_syms else None
+                _inf_long = [x for x in (_to_inf_sym(s) for s in symbols_trb_long) if x]
+                _inf_short = [x for x in (_to_inf_sym(s) for s in symbols_trb_short) if x]
+                _drop_l = len(symbols_trb_long) - len(_inf_long)
+                _drop_s = len(symbols_trb_short) - len(_inf_short)
+                if not _binance_syms:
+                    logger.error("[INF_HOOK] symbols.json empty/unreadable — refusing to "
+                                 "write symbols_inf_*; a stale symbols.json silently "
+                                 "empties the INF universe")
+                    raise RuntimeError("symbols.json unavailable for INF mirror")
                 # Append validated vector-compare winners (backtest highest-scoring) — allowed injection
                 try:
                     _vec_path = config.BASE_PATH / "data" / "vector_compare_inf_candidates.json"
@@ -2792,7 +2805,7 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
                     pass
                 await _save_json_async(config.BASE_PATH / "symbols_inf_long.json", _inf_long)
                 await _save_json_async(config.BASE_PATH / "symbols_inf_short.json", _inf_short)
-                logger.info(f"[INF_HOOK] symbols_inf_long.json <- {len(_inf_long)} mirror TRB long (+vectors) | symbols_inf_short.json <- {len(_inf_short)} mirror TRB short")
+                logger.info(f"[INF_HOOK] TRB->INF USDT-twin mirror: long {len(symbols_trb_long)}->{len(_inf_long)} (dropped {_drop_l} no-twin) | short {len(symbols_trb_short)}->{len(_inf_short)} (dropped {_drop_s} no-twin) | +vector injections | {len(_inf_short)} mirror TRB short")
             except Exception as _inf_e:
                 logger.warning(f"[INF_HOOK] skipped: {_inf_e}")
         logger.info(f"[rankings] Saved leaderboards: winners_20={len(to_save_top20)}, winners_30r={len(to_save_top30_r)}, symbols_trc_long={len(symbols_trc_long)}, symbols_trc_short={len(symbols_trc_short)}")

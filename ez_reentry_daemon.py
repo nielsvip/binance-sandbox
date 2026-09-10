@@ -336,7 +336,18 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
     if _HOLD_GLOBAL.exists():
         logger.debug("[DAEMON] REENTRY_DAEMON_HOLD active — skipping evaluation")
         return 0
-    if not _cfg_bool("EZ_REENTRY_DAEMON_ENABLED", True):
+    # 2026-09-04 FIX per user PRICE_CROSS_GUARANTEE wt15/hhll gate: daemon may fire price-cross ONLY as late guarantee when wt15 in favor OR hh/hl structure aligns.
+    # Master toggle is now EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED (last-resort) + bounce daemon gate. LIVE price-cross spam stays OFF via DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED.
+    _guarantee_on = _cfg_bool("EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", True)
+    _live_on = _cfg_bool("DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED", False)
+    _daemon_master = _cfg_bool("EZ_REENTRY_DAEMON_ENABLED", False) or _guarantee_on
+    if not _daemon_master:
+        return 0
+    if not _live_on and not _guarantee_on:
+        return 0
+    # 2026-09-03 FIX: DAEMON_PRICE_CROSS_REENTRY indiscriminate — default OFF, same switch as v12 (user: fix vector from same switch)
+    # Guarantee path remains when LIVE is OFF; extra wt15/hh gate below enforces price_cross_guarantee should only work if wt15 is in favor or 15m has hh and ll.
+    if not _guarantee_on and not _cfg_bool("DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED", False):
         return 0
     min_gap_s = _cfg_float("EZ_REENTRY_PRICE_CROSS_MIN_GAP_S", _MIN_GAP_S)
     cross_pct = _cfg_float("EZ_REENTRY_PRICE_CROSS_PCT", 0.0)
@@ -438,6 +449,83 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
             _gate_reason_tag = _gate_reason
         if is_dc_breakout:
             _gate_reason_tag = f"DC_BREAKOUT_{dc_tf_used}"
+        # 2026-09-04 wt15/hh gate for PRICE_CROSS_GUARANTEE: only if wt15 in favor OR 15m has hh and ll (per user last-resort late guarantee).
+        # wt15 favor: wt1_15>wt2_15 (LONG) / wt1_15<wt2_15 (SHORT); hh/ll: high_15m>high_15m_prev AND low_15m>low_15m_prev (up) OR opposite for SHORT.
+        if _guarantee_on and not _live_on:
+            try:
+                _g_w1_15 = float(_ind.get("wt1_15m", 0) or 0); _g_w2_15 = float(_ind.get("wt2_15m", 0) or 0)
+                _g_wt_favor = (_g_w1_15 > _g_w2_15) if is_long else (_g_w1_15 < _g_w2_15)
+                _g_hh_15 = float(_ind.get("high_15m", 0) or 0); _g_hh_15_p = float(_ind.get("high_15m_prev", 0) or 0)
+                _g_ll_15 = float(_ind.get("low_15m", 0) or 0); _g_ll_15_p = float(_ind.get("low_15m_prev", 0) or 0)
+                _g_hh_favor = (_g_hh_15 > _g_hh_15_p and _g_ll_15 > _g_ll_15_p) if is_long else (_g_hh_15 < _g_hh_15_p and _g_ll_15 < _g_ll_15_p)
+                if not (_g_wt_favor or _g_hh_favor):
+                    logger.info(f"[DAEMON] GUARANTEE BLOCKED {pk}: wt15 { _g_w1_15:.1f}/{_g_w2_15:.1f} favor={_g_wt_favor} hh {_g_hh_15:.4f}/{_g_hh_15_p:.4f} ll {_g_ll_15:.4f}/{_g_ll_15_p:.4f} hhll={_g_hh_favor} — need wt15 or hh+ll")
+                    continue
+            except Exception as e:
+                logger.info(f"[DAEMON] GUARANTEE BLOCKED {pk}: gate err {e}"); continue
+        # 2026-09-04 KILLED: DAEMON_PRICE_CROSS_REENTRY still opening SHORT in rally (exit84.227). Block SHORT against rally: wt1_15m/1h and hh/hl 15m/1h against.
+        # Never open SHORT when LONG trend (wt1_15>wt2_15 or hh/hl up) or price rising vs sma.
+        if not is_long:
+            try:
+                w1_15 = float(_ind.get("wt1_15m", 0) or 0); w2_15 = float(_ind.get("wt2_15m", 0) or 0)
+                w1_1h = float(_ind.get("wt1_1h", 0) or 0); w2_1h = float(_ind.get("wt2_1h", 0) or 0)
+                hh_15 = float(_ind.get("high_15m", 0) or 0); hh_15_prev = float(_ind.get("high_15m_prev", 0) or 0)
+                ll_15 = float(_ind.get("low_15m", 0) or 0); ll_15_prev = float(_ind.get("low_15m_prev", 0) or 0)
+                wt_rally = (w1_15 > w2_15) or (w1_1h > w2_1h)
+                hh_rally = (hh_15 > hh_15_prev) or (ll_15 > ll_15_prev)
+                if wt_rally or hh_rally:
+                    logger.info(f"[DAEMON] BLOCKED {pk}: SHORT in rally blocked wt15 {w1_15:.1f}/{w2_15:.1f} w1h {w1_1h:.1f}/{w2_1h:.1f} hh {hh_15:.4f}/{hh_15_prev:.4f}")
+                    continue
+            except Exception as e:
+                logger.info(f"[DAEMON] BLOCKED {pk}: rally check err {e}"); continue
+        # USER 2026-09-03: DAEMON_PRICE_CROSS_REENTRY must NOT fire at worst moment or at startup when indicators missing.
+        # Require: wt 3m cross, stochk <70 (LONG) / >30 (SHORT), wt_dc 15m not slowing, not close to dc high.
+        if not is_dc_breakout:
+            _need_ind = 0
+            try:
+                _need_ind = sum(1 for k in ("wt1_3m","wt2_3m","wt1_3m_prev","wt2_3m_prev","stoch_k_3m","wt_dc_15m","wt_dc_15m_prev","dc_high_15m","atr_15m") if float(_ind.get(k, 0) or 0) != 0)
+            except Exception:
+                _need_ind = 0
+            if _need_ind < 6:
+                logger.info(f"[DAEMON] BLOCKED {pk}: missing indicators at startup ({_need_ind}/9)")
+                continue
+            try:
+                wt1 = float(_ind.get("wt1_3m", 0) or 0)
+                wt2 = float(_ind.get("wt2_3m", 0) or 0)
+                wt1_prev = float(_ind.get("wt1_3m_prev", 0) or 0)
+                wt2_prev = float(_ind.get("wt2_3m_prev", 0) or 0)
+                if is_long:
+                    wt_cross = (wt1 > wt2) and (wt1_prev <= wt2_prev)
+                else:
+                    wt_cross = (wt1 < wt2) and (wt1_prev >= wt2_prev)
+                if not wt_cross:
+                    logger.info(f"[DAEMON] BLOCKED {pk}: wt 3m no cross wt1 {wt1:.1f}/{wt2:.1f} prev {wt1_prev:.1f}/{wt2_prev:.1f}")
+                    continue
+                stoch_k = float(_ind.get("stoch_k_3m", 50) or 50)
+                if is_long and stoch_k >= 70:
+                    logger.info(f"[DAEMON] BLOCKED {pk}: stochk {stoch_k:.0f} >=70")
+                    continue
+                if not is_long and stoch_k <= 30:
+                    logger.info(f"[DAEMON] BLOCKED {pk}: stochk {stoch_k:.0f} <=30")
+                    continue
+                wt_dc = float(_ind.get("wt_dc_15m", 0) or 0)
+                wt_dc_prev = float(_ind.get("wt_dc_15m_prev", 0) or 0)
+                if wt_dc < wt_dc_prev - 0.5:
+                    logger.info(f"[DAEMON] BLOCKED {pk}: wt_dc 15m slowing {wt_dc:.1f} prev {wt_dc_prev:.1f}")
+                    continue
+                dc_high = float(_ind.get("dc_high_15m", 0) or 0)
+                atr = float(_ind.get("atr_15m", 0) or 0)
+                if is_long and dc_high > 0 and atr > 0 and cur_px > dc_high - atr * 0.5:
+                    logger.info(f"[DAEMON] BLOCKED {pk}: close to dc high {cur_px:.2f} dc {dc_high:.2f} atr {atr:.2f}")
+                    continue
+                if not is_long and dc_high > 0:
+                    dc_low = float(_ind.get("dc_low_15m", 0) or 0)
+                    if dc_low > 0 and atr > 0 and cur_px < dc_low + atr * 0.5:
+                        logger.info(f"[DAEMON] BLOCKED {pk}: close to dc low {cur_px:.2f} dc {dc_low:.2f}")
+                        continue
+            except Exception as e:
+                logger.info(f"[DAEMON] BLOCKED {pk}: gate exception {e}")
+                continue
         positions = _get_positions_from_redis(redis_client, account_key)
         pos_amt = positions.get(pk, 0.0)
         _partial_thresh = _cfg_float("EZ_REENTRY_PARTIAL_AUGMENT_THRESHOLD", 0.5)

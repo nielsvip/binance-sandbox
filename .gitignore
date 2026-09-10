@@ -15,9 +15,15 @@
 !tools/
 tools/*
 !tools/contributor_preflight.py
+!tools/audit_artifact_guard.py
 !data/
 !data/reports/
+!artifacts/
+!artifacts/audit/
 !data/reports/CROSS_PLATFORM_CONTRIBUTOR_KIT_PLAN_20260731.md
+!SPREADSHEETS/
+SPREADSHEETS/*
+!SPREADSHEETS/TEMPLATE.xlsx
 
 # Symlinks to directories (the trailing-slash `*/` rule above does NOT match
 # symlinks, only real directories — confirmed 2026-07-20: .binance_env is a
@@ -63,6 +69,18 @@ latest_market_data.json
 function_call_grid.xlsx
 history_audit_advanced_20260514.xlsx
 
+# Large data JSONLs that bloat git history (each 50M+, already caused 4G pack and 917-commit push warnings)
+# These are live logs, not code — GitHub warns at 50M, blocks at 100M
+data/live_vs_vec_compare.jsonl
+data/persym_apply_audit.jsonl
+data/circuit_breaker_log.jsonl
+data/inject_shadow_log.jsonl
+data/*.jsonl
+!data/reports/*.json
+!data/reports/*.jsonl
+data/market_data_*.json
+data/hourly_reconfig/*.json
+
 # Stray top-level backup/variant copies of live scripts (redundant with the
 # backups/ directory convention in CLAUDE.md, already excluded via `*/`).
 *.bak
@@ -72,3 +90,7 @@ ez_manage.py.with_pts
 tradier_manage.with_3_new_exits.py
 config_tradier.with_3_new_exits.py
 ez_positions_quick.py.20260305_001014
+SPREADSHEETS/TEMPLATE_old.xlsx
+data/S1_10M_EVERY_PATH_2M.csv.gz
+data/*.csv.gz
+*.csv.gz

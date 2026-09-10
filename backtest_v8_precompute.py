@@ -717,6 +717,51 @@ def _bb_pctb_with_touches(close: pd.Series, high: pd.Series, low: pd.Series,
             touches.astype(np.float32))
 
 
+def _dedupe_daily_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Deduplicate daily timeframe: keep only one bar per ET calendar date.
+
+    Historical klines_cache/tradier/{SYM}_D.json contains duplicate rows per
+    date (13:30Z open + 20:00Z close with identical OHLC from old writer, plus
+    21:00Z in winter). The canonical daily bar is the ET 16:00 close
+    (20:00Z summer / 21:00Z winter). Keep that one, drop the intraday 13:30
+    duplicate. Also collapse any residual duplicates to one row per ET date
+    (keep last = close)."""
+    if df.empty:
+        return df
+    try:
+        import pytz
+        ET = pytz.timezone("America/New_York")
+        idx_et = df.index.tz_convert(ET)
+        # Prefer 16:00 ET (close) over 09:30/13:30 etc. Sort so close wins on dedup.
+        # Assign priority: 16:00 ET = 0, else 1
+        is_close = (idx_et.hour == 16) & (idx_et.minute == 0)
+        # Build temp frame sorted: secondary sort key = is_close (close first), then time
+        tmp = df.copy()
+        tmp["_et_date"] = idx_et.date
+        tmp["_is_close"] = is_close
+        # For each et_date keep the row where _is_close True if exists, else last
+        # Use groupby and pick
+        def _pick(g):
+            close_rows = g[g["_is_close"]]
+            if not close_rows.empty:
+                return close_rows.iloc[-1]
+            return g.iloc[-1]
+        deduped = tmp.groupby("_et_date", sort=False).apply(_pick, include_groups=False)
+        # Restore DatetimeIndex from the picked rows' original timestamps
+        # _pick returns Series; need to reconstruct
+        # Simpler: sort by priority then drop duplicates on et_date keep last
+        tmp_sorted = tmp.sort_values(["_is_close"], ascending=True)
+        tmp_sorted = tmp_sorted[~tmp_sorted.index.duplicated(keep="last")]
+        # Now drop duplicates on et_date
+        tmp_sorted = tmp_sorted.sort_values("_is_close", ascending=False)
+        out = tmp_sorted[~tmp_sorted["_et_date"].duplicated(keep="first")]
+        out = out.drop(columns=["_et_date", "_is_close"], errors="ignore")
+        out = out.sort_index()
+        return out
+    except Exception:
+        return df
+
+
 def load_klines(path: Path) -> Optional[pd.DataFrame]:
     if not path.exists():
         return None
@@ -737,6 +782,12 @@ def load_klines(path: Path) -> Optional[pd.DataFrame]:
             return None
         df = df.set_index("timestamp_dt").sort_index()
         df = df[~df.index.duplicated(keep="last")]
+        # Normalize daily bars: one bar per ET date (fix legacy 13:30+20:00 duplicates)
+        if path.name.endswith("_D.json"):
+            before = len(df)
+            df = _dedupe_daily_frame(df)
+            if len(df) != before:
+                logger.info(f"  Deduped D {path.name}: {before}→{len(df)} bars (one per ET date)")
         return df
     except Exception as e:
         logger.warning(f"Load failed {path}: {e}")
@@ -1590,28 +1641,50 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # User directive 2026-04-28: NEVER fall back to klines_cache (live, ~1200 bars only).
     # On Mac (Darwin), klines_cache is acceptable for V3 forward-test only.
     dfs = {}
+    # klines_cache_gateway is the backup: if even 1 kline is missing, fill from it.
+    # Both Mac and S1 must check gateway. S1 additionally checks klines_cache_macbook.
+    gateway_suffixes = ["", "_gateway", "_macbook"] if platform.system() == "Linux" else ["", "_gateway"]
     if platform.system() != "Darwin":
-        # Server: ONLY _backtest. No fallback.
-        if mode == "tradier":
-            sources = [BASE_PATH / "klines_cache_backtest" / "tradier"]
-        else:
-            sources = [BASE_PATH / "klines_cache_backtest"]
+        base_sources = [BASE_PATH / "klines_cache_backtest" / "tradier"] if mode == "tradier" else [BASE_PATH / "klines_cache_backtest"]
+        live_sources = [BASE_PATH / f"klines_cache{suf}" / ("tradier" if mode == "tradier" else "") if mode == "tradier" else BASE_PATH / f"klines_cache{suf}" for suf in gateway_suffixes]
+        # Filter out empty path fragment case
+        live_sources = [p for p in live_sources if str(p) != str(BASE_PATH / "klines_cache")]
+        sources = base_sources + live_sources
+        # Deduplicate while preserving order
+        seen = set()
+        uniq = []
+        for p in sources:
+            s = str(p)
+            if s not in seen:
+                seen.add(s)
+                uniq.append(p)
+        sources = uniq
     else:
-        # Mac: prefer _backtest if present, else klines_cache.
         if mode == "tradier":
-            sources = [BASE_PATH / "klines_cache_backtest" / "tradier", BASE_PATH / "klines_cache" / "tradier"]
+            sources = [BASE_PATH / "klines_cache_backtest" / "tradier", BASE_PATH / "klines_cache" / "tradier", BASE_PATH / "klines_cache_gateway" / "tradier"]
         else:
-            sources = [BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache"]
+            sources = [BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache", BASE_PATH / "klines_cache_gateway"]
     for tf in tfs:
-        best_df = None
+        # Merge across all sources: longest file wins, but also fill gaps from gateway
+        # by unioning timestamps (gateway as backup for any missing kline).
+        merged_df = None
         for d in sources:
             path = d / f"{symbol}_{tf}.json"
             df = load_klines(path)
-            if df is not None and len(df) >= 30:
-                if best_df is None or len(df) > len(best_df):
-                    best_df = df
-        if best_df is not None:
-            dfs[tf] = best_df
+            if df is None or len(df) < 30:
+                continue
+            if merged_df is None:
+                merged_df = df
+            else:
+                # Union: gateway fills any timestamp not in primary; keep primary on overlap
+                combined = pd.concat([merged_df, df])
+                combined = combined[~combined.index.duplicated(keep="first")]
+                combined = combined.sort_index()
+                if len(combined) > len(merged_df):
+                    logger.info(f"  {symbol} {tf}: gateway merge {len(merged_df)}→{len(combined)} bars (filled {len(combined)-len(merged_df)} gaps from {d.name})")
+                    merged_df = combined
+        if merged_df is not None:
+            dfs[tf] = merged_df
     dfs = _apply_split_adjustments(symbol, dfs)
     if base_tf not in dfs:
         logger.warning(f"[SKIP] {symbol}: no {base_tf} klines")
@@ -1674,8 +1747,19 @@ def compute_symbol(symbol: str, mode: str) -> bool:
                 # Keep long authentic warmup history, but never let a stale
                 # provider cache replace the causally rebuilt recent tail.
                 resampled = _prepend_authentic_history(resampled, dfs.get(tf))
-            # ALWAYS use 15m-resampled version — standalone D/4h/1h files from klines_cache
-            # may be stale (Mac fallback). 15m backtest data is the authoritative source.
+            # APPEND-ONLY CONTRACT (2026-09-03): precompute NEVER overwrites
+            # historical bars. If an authentic D/1h/4h/W/M file already has
+            # >= resampled length, keep the authentic file — it is the
+            # 1200-1800 bar source of truth (klines_cache + gateway +
+            # klines_cache_backtest). Resampling may only APPEND gaps or
+            # fill a missing timeframe; it must never truncate.
+            existing = dfs.get(tf)
+            if existing is not None and len(existing) >= len(resampled):
+                logger.info(f"  {symbol}: KEEP authentic {tf} ({len(existing)} bars) over resampled {len(resampled)} — append-only, not overwriting")
+                continue
+            if existing is not None and len(existing) >= 1200 and len(resampled) < len(existing):
+                logger.info(f"  {symbol}: KEEP long authentic {tf} ({len(existing)} bars) — resampled shorter ({len(resampled)})")
+                continue
             dfs[tf] = resampled
     merged = {"timestamps": ts_epoch, "close": base_df["close"].values.astype(np.float32)}
     if mode == "tradier":

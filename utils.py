@@ -548,8 +548,8 @@ def setup_logger(name: str, log_file: str, level=logging.INFO, account_key: str 
     app_cfg = AppConfig()
     file_handler = RotatingFileHandler(
         log_file,
-        maxBytes=app_cfg.LOG_MAX_BYTES,
-        backupCount=app_cfg.LOG_BACKUP_COUNT,
+        maxBytes=getattr(app_cfg, "LOG_MAX_BYTES", 20*1024*1024),
+        backupCount=getattr(app_cfg, "LOG_BACKUP_COUNT", 30),
         encoding='utf-8',
         mode='a'
     )
@@ -4576,7 +4576,7 @@ except Exception:
         _perf_logger = setup_logger('ez_symbol_performance', str(_fallback), logging.INFO)
     except Exception:
         _perf_logger = setup_logger('ez_symbol_performance', '/tmp/ez_symbol_performance.log', logging.INFO)
-_PERF_BASE_PATH = Path(os.getenv('EZ_BASE_PATH', str(_perf_config.BASE_PATH)))
+_PERF_BASE_PATH = Path(os.getenv('EZ_BASE_PATH', str(getattr(_perf_config, 'BASE_PATH', Path.home() / 'binance'))))
 _PERF_DATA_DIR = _PERF_BASE_PATH / 'data'
 _PERF_HISTORY_DIR = _PERF_DATA_DIR / 'history'
 _PERF_FILE = _PERF_DATA_DIR / 'symbol_performance.json'

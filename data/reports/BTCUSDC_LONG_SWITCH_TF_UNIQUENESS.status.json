@@ -1,0 +1,21 @@
+{
+  "status": "running",
+  "symside": "BTCUSDC_LONG",
+  "window_days": 365,
+  "audit_tfs": [
+    "3m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "switches_total": 3378,
+  "declared_to_probe": 1147,
+  "empirical_done": 187,
+  "counts": {
+    "UNDECLARED": 2231,
+    "INERT": 184,
+    "TF_ALIAS": 3
+  },
+  "elapsed_s": 801.1199088096619
+}

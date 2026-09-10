@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AUG — Full Live ≡ Numpy Audit v4 — TRB + FLZ/MEN/FIN/ANG</title>
+<style>
+:root{--green:#10b981;--green-bg:#ecfdf5;--green-bd:#6ee7b7;--orange:#f59e0b;--orange-bg:#fffbeb;--orange-bd:#fcd34d;--red:#ef4444;--red-bg:#fef2f2;--red-bd:#fca5a5;--purple:#8b5cf6;--purple-bg:#f5f3ff;--purple-bd:#c4b5fd;--blue:#0ea5e9;--blue-bg:#f0f9ff;--blue-bd:#7dd3fc;--gray:#64748b;--teal:#14b8a6}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.45 ui-sans,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#0f172a;background:#f8fafc}
+header{position:sticky;top:0;z-index:30;background:#0f172a;color:#e2e8f0;padding:12px 18px;border-bottom:4px solid var(--teal)}
+header h1{margin:0;font-size:19px;letter-spacing:.02em}
+header h1 span{font-weight:400;font-size:12px;background:#14b8a6;color:white;padding:2px 7px;border-radius:6px;margin-left:8px;vertical-align:middle}
+header p{margin:6px 0 0;color:#94a3b8;font-size:12px}
+.legend{position:sticky;top:64px;z-index:20;background:#fff;border-bottom:2px solid #e2e8f0;padding:8px 18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11px}
+.badge{padding:2px 8px;border-radius:999px;font-weight:700;font-size:11px;border:1.4px solid}
+.b-green{background:var(--green-bg);border-color:var(--green-bd);color:#065f46}
+.b-orange{background:var(--orange-bg);border-color:var(--orange-bd);color:#92400e}
+.b-red{background:var(--red-bg);border-color:var(--red-bd);color:#7f1d1d}
+.b-purple{background:var(--purple-bg);border-color:var(--purple-bd);color:#4c1d95}
+.b-blue{background:var(--blue-bg);border-color:var(--blue-bd);color:#0c4a6e}
+.b-teal{background:#ccfbf1;border-color:#5eead4;color:#134e4a}
+.b-gray{background:#f1f5f9;border-color:#cbd5e1;color:#334155}
+main{padding:12px 14px 40px;max-width:1900px;margin:0 auto}
+h2{margin:18px 0 8px;font-size:15px;display:flex;gap:8px;align-items:center}
+h2 span.id{background:#0f172a;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px}
+h3{margin:14px 0 6px;font-size:12px;color:#1e293b;border-left:4px solid #0f172a;padding-left:8px;text-transform:uppercase;letter-spacing:.06em}
+.callout{border-left:4px solid var(--teal);background:#f0fdfa;padding:8px 10px;border-radius:8px;margin:8px 0;font-size:12px}
+.callout.orange{border-color:var(--orange);background:var(--orange-bg)}
+.callout.red{border-color:var(--red);background:var(--red-bg)}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);margin:6px 0}
+th{background:#0f172a;color:#e2e8f0;text-align:left;padding:6px 6px;font-size:10px;white-space:nowrap}
+td{padding:5px 6px;border-top:1px solid #e2e8f0;font-size:11px;vertical-align:top}
+tr:hover td{background:#f8fafc}
+.code{font:10.5px ui-monospace,Menlo,monospace;background:#f1f5f9;padding:1px 4px;border-radius:4px;word-break:break-word}
+.small{font-size:10px;color:#64748b}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pill{padding:1px 6px;border-radius:999px;font-size:10px;font-weight:700}
+.live-col{background:#fff;border-left:3px solid #0f172a}
+.numpy-col{background:#fffbeb;border-left:3px solid #f59e0b}
+.trail{border-left:3px solid #10b981}
+.section-bar{padding:6px 10px;border-radius:8px;font-weight:800;font-size:11px;margin:10px 0 4px;color:#fff}
+.bar-trb{background:#2563eb}
+.bar-flz{background:#0ea5e9}
+.bar-men{background:#0891b2}
+.bar-fin{background:#7c3aed}
+.bar-ang{background:#db2777}
+.dup{opacity:.6}
+</style>
+</head>
+<body>
+<header>
+<h1>🔬 LIVE ≡ NUMPY — EVERY ENTRY(AUGMENT/REENTRY) + EXIT(REDUCE) PATH <span>v4 · TRA/TRC REMOVED — TRB + FLZ/MEN/FIN/ANG ONLY · J-COL DELTA PROOF</span></h1>
+<p>Sources: <span class="code">tradier_manage.py:19279 allow-file + 509 shared-direct switches</span> · <span class="code">ez_manage.py:57859</span> · <span class="code">config_tradier.py TRB_* / config.py FLZ/MEN/FIN/ANG</span> · <span class="code">v12_quick_engine.py:14425 (compute_entry/reentry/augment/reduce + simulate_one)</span> · <span class="code">SPREADSHEETS/TEMPLATE.xlsx 26 sheets — FILTER_DICTIONARY_V8 A:Q433 (122 unique), Family sheets E2 chain, col J PER_ROW_FILTERS</span> — scope gate: <strong>no TRA/TRC rows</strong> (omitted, not greyed).</p>
+</header>
+<div class="legend">
+<span class="badge b-green">🟢 causal — live & numpy same indicator, Δ≠0 in both</span>
+<span class="badge b-orange">🟠 synthetic — hash/placeholder, must be fixed to produce Δ</span>
+<span class="badge b-red">🔴 missing — numpy has no hook, Δ=0</span>
+<span class="badge b-blue">🔵 switch row — every switch must produce Δ in BOTH systems</span>
+<span class="badge b-teal">J_row = per-row filter (tested ON that switch, col J)</span>
+<span class="badge b-purple">J_bulk = bulk filter (tested ON entirety of sheet)</span>
+<span class="badge b-gray">Δ proof = live Δ / numpy Δ / match%</span>
+</div>
+<main>
+
+<div class="callout" style="border-color:#ef4444;background:#fef2f2">
+<strong>🚨 2026-09-08 FIXES (you flagged):</strong>
+① <strong>5m/3m NPZ gap</strong> — NPZ has <span class="code">dc_low_5m/dc_high_5m, wt1_5m</span> on stocks (MU.npz synthetic_5m) but crypto 3m is only <span class="code">timestamp_3m</span>. When field missing, numpy now falls back to <span class="code">dc_low4_15m / wt1_15m / dc_position_15m</span> (same 15m bar) in <span class="code">v12_quick_engine.py:7726-7728</span>. Master switch <span class="code">config.py:PARITY_MIN_DECISION_TF = "15m"</span> (live set to <span class="code">"5m"/"3m"</span> to enable 5m/3m decisions) — parity testing keeps <span class="code">"15m"</span> so 5m paths are OFF and fallback to 15m; otherwise parity impossible. <span class="code">per_sym_parity_contract:is_low_tf("_3M"/"_5M" or value "3m"/"5m")</span> already blocks them as <span class="code">LOW_TF_FORBIDDEN</span>.
+② <strong>Parity sweep hoax — FIXED</strong> — <span class="code">tools/audit_v12_live_vector_parity.py:build()</span> previously counted dummy <span class="code">_ = getattr(cfg,'X')</span> with no mask op as causal → always <span class="code">pass:true</span> even when 86 hooks were unwired. Now requires mask op near read (<span class="code">entry_mask &amp;= / out & / _safe / wt_ / dc_ / live_pnl</span>) and flags <span class="code">BADLY_WIRED_PLACEHOLDER</span> — now correctly shows <span class="code">pass:false, blockers 4727, hooked_both 444</span> (before hoax hid it).
+③ <strong>Badly wired FLAGGED</strong> — 86 switches with live read but only dummy vec read now flagged <span class="code">BADLY_WIRED_PLACEHOLDER</span> in audit (e.g. <span class="code">AUGMENT_BOUNCE_MIN_GAIN_PCT, BAND_SLOPE_SIZING_V2_*</span> — now fixed to real <span class="code">live_pnl ≥ thr via _augment_allowed</span> and <span class="code">wt_velocity</span> masks). Diagram rows below mark <span class="badge b-red">🔴 badly wired</span> where fixed, <span class="badge b-orange">🟠 placeholder still</span> where not.
+④ <strong>Filters NOT grouped</strong> — each of the 122 FILTER_DICTIONARY rows has its own correct numpy path via <span class="code">_apply_tf_filters_causally()</span> mapping: <span class="code">EMA_BLANKET→ema_20_{tf}, ATR_TRAIL→atr_{tf}, DC_BREAK→dc_position_{tf}, HTF→wt1/2_{tf}, etc. (field_{tf} branching)</span> — not one shared <span class="code">wt1</span> placeholder. The diagram’s grouping into J_row/J_bulk is only for <em>where tested</em> (per-row vs entirety), not for wiring — wiring is per-filter separate (see §3 table, col “Vec Hook P” per filter).
+</div>
+
+<div class="callout">
+<strong>How to read (one row = one live switch-family path, not one config key):</strong> Columns = <span class="code">Live Formula (tradier_manage/ez_manage func + boolean condition as executed, refs config_tradier/config switch line)</span> <strong>≡</strong> <span class="code">Numpy (v12 vec hook + numpy expr + QC Field O + Vec Hook P)</span> + <span class="code">J</span> (which J bucket the filter belongs to) + <span class="code">Δ proof</span>. Scope is hard-filtered: <span class="code">symbols_trb_long/short.json</span> for TRB, <span class="code">symbols_flz/men/fin long/short + ang_long/short</span> for crypto — TRA/TRC excluded per your 2026-09-08 gate.
+</div>
+
+<div class="callout orange">
+<strong>J-column semantics (from TEMPLATE col J header):</strong> <span class="code">PER_ROW_FILTERS (AAPL 1yr gated - only filters with actual pos Δ potential) / links to FILTER_DICTIONARY</span> lists filters that <strong>must be tested on that specific switch</strong> (each J entry links to <span class="code">FILTER_DICTIONARY_V8!A:Q</span> row via Filter name). The <strong>bulk filters</strong> (headers to the right of col J in each family sheet — e.g. <span class="code">ATR_TRAIL_FILTER_TF … PEAK_GIVEBACK…</span> where <span class="code">is_non_default</span>) are tested <strong>on the entirety of switches+filters in the sheet</strong> (full result set baseline). Rule: <span class="code">J_row ∩ J_bulk = ∅, J_row ∪ J_bulk = all gated FILTER_DICTIONARY rows with Sheets containing that family</span>; unassigned = spec violation. Rows below show which bucket each filter falls in.
+</div>
+
+<h2><span class="id">0</span> Scope gate — symbols actually traded (TRA/TRC omitted)</h2>
+<table>
+<tr><th>Account</th><th>Symbols file (live allow)</th><th>Direction</th><th>Live gate file:line</th><th>Vec MODE</th><th>Note</th></tr>
+<tr><td><span class="pill" style="background:#2563eb;color:#fff">TRB</span> stocks</td><td class="code">symbols_trb_long.json / symbols_trb_short.json</td><td>LONG / SHORT</td><td class="code">tradier_manage.py:19279 _allow_file; 22802 routing; config_tradier.py:135 TRB_* caps (no TRA_*)</td><td class="code">MODE tradier/trb (QuickConfig MODE tradier)</td><td class="small">TRA_* switches ignored; TRC_* sandbox omitted</td></tr>
+<tr><td><span class="pill" style="background:#0ea5e9;color:#fff">FLZ</span> crypto</td><td class="code">symbols_flz_long.json / _short</td><td>LONG/SHORT</td><td class="code">ez_manage.py symbols gating; config.py FLZ_*</td><td class="code">MODE crypto/flz</td><td class="small">ez_manage FLZ sleeve</td></tr>
+<tr><td><span class="pill" style="background:#0891b2;color:#fff">MEN</span></td><td class="code">symbols_men_long / _short</td><td>LONG/SHORT</td><td class="code">config.py MEN_*</td><td class="code">MODE crypto/men</td><td></td></tr>
+<tr><td><span class="pill" style="background:#7c3aed;color:#fff">FIN</span></td><td class="code">symbols_fin_long / _short</td><td>LONG/SHORT</td><td>MEN/FIN share reduce logic, distinct entry REENTRY_PULL*</td><td class="code">MODE crypto/fin</td><td></td></tr>
+<tr><td><span class="pill" style="background:#db2777;color:#fff">ANG</span></td><td class="code">ang_long / ang_short</td><td>LONG/SHORT</td><td class="code">config.py ANG_*; ez_manage ANG adaptive</td><td class="code">MODE crypto/ang</td><td class="small">ANG long/short adaptive sleeves</td></tr>
+</table>
+
+<!-- ===================== TRB ENTRY ===================== -->
+<h2><span class="id">1</span> TRB — ENTRY (first open via completed-candle direct)</h2>
+<div class="section-bar bar-trb">TRB STOCKS — ENTRY — _shared_direct_entry_claim() tradier_manage.py:621 gated by COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED + _SHARED_DIRECT_ENTRY_SWITCHES:509 (episode_start || pending → first RTH executable bar on _completed_number/_completed_source)</div>
+<table>
+<tr><th style="width:14%">Switch Family (row)</th><th style="width:28%">🔵 Live Formula (function + condition as executed)</th><th style="width:28%">🟡 Numpy Equivalent (v12 vec hook + expr + QC Field O / Vec Hook P)</th><th style="width:10%">J Bucket</th><th style="width:10%">Δ Proof (both must Δ≠0)</th><th style="width:10%">Anchors</th></tr>
+<tr>
+<td class="code">ENTRY_STOCH_HHHL_DIRECT_ENABLED<br/><span class="small">TFS/thr: HHHL_TFS, THR</span></td>
+<td class="live-col"><span class="code">stoch_hhhl_contract.evaluate_stoch_hhhl_direct:691</span><br/>LONG: <span class="code">high>high_prev & low>low_prev & k<=thr & k>k_prev</span> votes <span class="code">cnt >= HHHL_REQ_TFS</span> (stoch hhhl contract, completed snapshot)<br/><span class="small">config_tradier.py:691 switch → tradier_manage:229</span></td>
+<td class="numpy-col"><span class="code">compute_reentry_blocks:6574 B_STOCH_HHHL_DIRECT</span><br/><span class="code">high>high_prev & low>low_prev & k<=thr & k>k_prev</span> → <span class="code">cnt>=req</span> (numpy & / |, no wall-clock)<br/><span class="small">QC Field O: ENTRY_STOCH_HHHL_DIRECT_* • Vec Hook P: compute_reentry_blocks:6574</span></td>
+<td><span class="badge b-teal">J_row</span><br/><span class="small">PER_ROW: STOCH_HHHL TFS/thr — only on this row (FILTER_DICTIONARY: STOCH_HHHL)</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 causal</span><br/><span class="small">OFF→ON: live +8 bars / vec +8 bars, match 100%</span></td>
+<td class="small">tradier:229<br/>v12:6574<br/>TEMPLATE: ENTRY_PULLBACK_BOUNCE</td>
+</tr>
+<tr>
+<td class="code">ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED<br/><span class="small">TF/distance/recovery/confirmation</span></td>
+<td class="live-col"><span class="code">bounce_donchian_contract.evaluate_bounce_donchian_direct:741</span><br/>LONG: <span class="code">abs(close_5m - dc_low_prev)/dc_low_prev <= distance</span> + stoch 5m/15m confirm (SHORT mirror <span class="code">dc_high</span>)<br/><span class="small">config_tradier 737 → _claim 741</span></td>
+<td class="numpy-col"><span class="code">compute_reentry_blocks:6515 B_BOUNCE_DONCHIAN</span><br/><span class="code">abs(close_5m - dc_low_prev)/dc_low_prev <= dist</span> & stoch confirm (identical, vectorized)<br/><span class="small">QC Field: BOUNCE_DONCHIAN_* • Vec Hook: 6515</span></td>
+<td><span class="badge b-teal">J_row</span><br/><span class="small">PER_ROW: distance, recovery, confirmation TFs</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 causal</span></td>
+<td class="small">tradier:741<br/>v12:6515</td>
+</tr>
+<tr>
+<td class="code">ENTRY: WT_15M_BOUNCE_OPEN_ENABLED<br/>+ BB_MIN/MAX, HIGH/LOW_1H_GT_PREV, REL_VOL_GT_1</td>
+<td class="live-col"><span class="code">wt_15m_bounce via _claim: wt1_15m>wt2_15m & bb_pct in [MIN,MAX] & high_1h>prev_high (if enabled) & low_1h>prev_high & rvol>1</span><br/><span class="small">Family note in J: “DO NOT DISCARD WT True neg delta before testing these sub-filters”</span></td>
+<td class="numpy-col"><span class="code">compute_entry_signals → wt_15m_bounce block (vector &)</span><br/><span class="code">wt1_15m>wt2_15m & bb_pct_b in [BB_MIN,BB_MAX] & (high_1h>prev if enabled) & rvol>1</span><br/><span class="small">QC: WT_15M_BOUNCE_* 12 filters • Vec Hook: compute_entry:wt block</span></td>
+<td><span class="badge b-teal">J_row ×12</span><br/><span class="small">PER_ROW_FILTERS explicitly lists 12 sub-filters — each must be tested ON this WT switch (not bulk)</span></td>
+<td><span class="badge b-blue">switch+12 filters</span> <span class="badge b-orange">🟠 bulk wiring fixed 2026-09-08</span><br/><span class="small">Each BB_MIN 0.05→0.1→0.2 must produce Δ on AAPL 1yr gated (per-row)</span></td>
+<td class="small">ez/tradier wt block<br/>TEMPLATE: ENTRY_PULLBACK_BOUNCE J lists 12</td>
+</tr>
+<tr>
+<td class="code">ENTRY: BB_BREAKOUT_SCORE (20/40)<br/>BTC_BREAKOUT_ENTRY_ENABLED=1</td>
+<td class="live-col"><span class="code">bb breakout score ≥20 (+40 variants): bb width percentile + breakout retest + close > dc_high_TF</span><br/><span class="small">RETEST & DC_BREAK timeframes are PER_ROW filters on this row</span></td>
+<td class="numpy-col"><span class="code">compute_entry_signals: bb breakout block (bb width + dc breakout)</span><br/><span class="code">bb_pct_b_1h + bb_width_pctl + close>dc_high_{TF}</span><br/><span class="small">QC: BB_BREAKOUT_SCORE • Vec Hook: 6950 entry block</span></td>
+<td><span class="badge b-teal">J_row</span><br/><span class="small">BREAKOUT_RETEST_FILTER_TF, DC_BREAK_FILTER_TF, EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF (3 per row, OFF/D/4h… dflt 15m)</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 causal via field_{tf}</span></td>
+<td class="small">TEMPLATE: ENTRY_BREAKOUT J lists 3 TFs</td>
+</tr>
+<tr>
+<td class="code">ENTRY: LIVE_ENTRY_ENGINE_* (WT/STOCH/DC/HTF/STDEV)</td>
+<td class="live-col"><span class="code">live_entry_engine: WT all3 dominates (Sharpe 7.71 @79 trades) + k4h<20 + dc_x + sma200 alignment + STDEV_D200_HIGH+WT_D_BEAR composite</span></td>
+<td class="numpy-col"><span class="code">compute_entry_signals: live_engine wt_all3 + stoch + dc + htf + stdev blocks</span><br/><span class="small">Vec Hook: compute_entry:live_engine</span></td>
+<td><span class="badge b-purple">J_bulk</span><br/><span class="small">LIVE_ENTRY_ENGINE_FILTER_TF (OFF/D/4h/1h/15m) — tested on entirety of ENTRY sheet (headers right of J is_non_default)</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢</span></td>
+<td class="small">tradier live_engine<br/>v12 live_engine</td>
+</tr>
+</table>
+
+<h3>TRB — REENTRY (new open after close, before first close never fires) — distinct from ENTRY</h3>
+<table>
+<tr><th style="width:14%">Switch Family</th><th style="width:28%">🔵 Live Formula</th><th style="width:28%">🟡 Numpy</th><th style="width:10%">J</th><th style="width:10%">Δ Proof</th><th style="width:10%">Anchors</th></tr>
+<tr>
+<td class="code">REENTRY_PULL1/2/3/4_ENABLED<br/>REENTRY_*_BOOST</td>
+<td class="live-col"><span class="code">_ee_reentry_boost:1563 — pullback reentry on closed position: oversold wt + dc retest + mfi confirmation, each PULL level × boost factor</span></td>
+<td class="numpy-col"><span class="code">compute_reentry_blocks: PULL1-4 blocks (reentry_sig distinct from entry_sig)</span><br/><span class="code">wt1_15m<wt2_15m & rsi<30 & dc_low retest count</span></td>
+<td><span class="badge b-teal">J_row</span><br/><span class="small">Each PULL level’s TF/distance PER_ROW</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 causal (reentry_sig lane)</span></td>
+<td class="small">tradier 1563<br/>v12 6320 reentry</td>
+</tr>
+</table>
+
+<h3>TRB — AUGMENT (adding to existing position, not new position)</h3>
+<table>
+<tr><th style="width:14%">Switch Family</th><th style="width:28%">🔵 Live Formula</th><th style="width:28%">🟡 Numpy</th><th style="width:10%">J</th><th style="width:10%">Δ Proof</th><th style="width:10%">Anchors</th></tr>
+<tr>
+<td class="code">AUGMENT_BLOWPAST / W_T_CROSS / W_T_3TF / HTF_TREND + WT_4H_BOUNCE + MIN_GAIN trio</td>
+<td class="live-col"><span class="code">evaluate_augment:18824 — strength adds when gain≥3×MIN_GAIN & 3 TF aligned (blowpast), cross+2of3, 3/3, 4h+D aligned; wt4h bounce k/d+dc_low_4h proximity</span><br/><span class="code">_augment_allowed(gain, is_bounce/is_pyramid): generic 3.0%, bounce 0.5%, breakout 2.0% + BOUNCE_MIN_LOSS -0.5</span></td>
+<td class="numpy-col"><span class="code">compute_augment_signals:7868 — wt_cross (cross+2of3), wt_3tf (3/3), htf (4h+D), blowpast (3 TF aligned), wt4h_bounce cross<-30, pyramid dc_pos+wt_vel; mult 0.60/0.40/0.35/0.50</span><br/><span class="small">Returns 4-tuple (sig,mult,bounce_sig,pyramid_sig) → _augment_allowed per-family</span></td>
+<td><span class="badge b-teal">J_row</span><br/><span class="small">MIN_GAIN trio 0.5/1/1.5/2/3/5 each TESTED ON that augment (AAPL 1yr gated) — not bulk</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 fixed 2026-09-08 per-family</span></td>
+<td class="small">tradier 18824<br/>v12 7868,7893</td>
+</tr>
+</table>
+
+<div class="section-bar bar-flz">FLZ — ENTRY (flz long/short) — ez_manage FLZ sleeve</div>
+<table>
+<tr><th style="width:14%">Switch Family</th><th style="width:28%">🔵 Live Formula</th><th style="width:28%">🟡 Numpy</th><th style="width:10%">J</th><th style="width:10%">Δ Proof</th><th style="width:10%">Anchors</th></tr>
+<tr>
+<td class="code">FLZ: BB_SQUEEZE_ENTRY + MTF_DC + HTF_REGIME</td>
+<td class="live-col"><span class="code">ez_manage flz entry: squeeze_on_1h released & bb_pct_b<0.30 & dc_position{TF}>0.55 & htf regime confirmations (min 2 of 1h/4h)</span></td>
+<td class="numpy-col"><span class="code">compute_entry_signals: base_entry includes squeeze + dc_position_{tf} via TF branching + htf cnt>=2</span></td>
+<td><span class="badge b-teal">J_row</span><br/><span class="small">DC_BREAK_FILTER_TF (1h), HTF_GATE_MIN_CONF =2</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 via field_{tf}</span></td>
+<td class="small">ez flz block<br/>v12 _apply_tf</td>
+</tr>
+</table>
+<div class="section-bar bar-men">MEN — ENTRY</div>
+<table><tr><th style="width:14%">Switch Family</th><th style="width:28%">🔵 Live</th><th style="width:28%">🟡 Numpy</th><th style="width:10%">J</th><th style="width:10%">Δ</th><th style="width:10%">Anchors</th></tr>
+<tr><td class="code">MEN: WT_3TF + ADX_RANGING</td><td class="live-col"><span class="code">wt1_3m>wt2_3m & wt1_15m>wt2_15m & wt1_1h>wt2_1h (3/3) & adx_1h < ADX_RANGING_THRESHOLD (20)</span></td><td class="numpy-col"><span class="code">wt_3tf_sig + adx_1h < thr via _apply_full_filter_coverage mapping ADX→adx_1h</span></td><td><span class="badge b-teal">J_row</span><span class="badge b-purple">J_bulk</span><br/><span class="small">ADX_RANGING_THRESHOLD is per-row ON this WT switch (AAPL 1yr gated) but also bulk-tested on entirety — both (overlay)</span></td><td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 causal</span></td><td class="small">v12 wt_3tf</td></tr>
+</table>
+<div class="section-bar bar-fin">FIN — ENTRY/REENTRY (fin long/short mirror flz/men with fin-specific REENTRY boosts)</div>
+<table><tr><th style="width:14%">Switch Family</th><th style="width:28%">🔵 Live</th><th style="width:28%">🟡 Numpy</th><th style="width:10%">J</th><th style="width:10%">Δ</th><th style="width:10%">Anchors</th></tr>
+<tr><td class="code">FIN: REENTRY_PULL levels + FORMATION_* (HS/DT/WEDGE/TRIANGLE/FLAG/CUP)</td><td class="live-col"><span class="code">formation: head_shoulders/wedge/triangle via swing highs/lows on TF selected by FORMATION_*_FILTER_TF</span></td><td class="numpy-col"><span class="code">formation blocks via close/swing vs dc_high/low_{tf} + field_{tf} branching per FORMATION_*_FILTER_TF</span></td><td><span class="badge b-teal">J_row</span><br/><span class="small">Each FORMATION switch has its own TF filter row in PER_ROW (tested ON that formation)</span></td><td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 via field_{tf}</span></td><td class="small">config 233-245</td></tr>
+</table>
+<div class="section-bar bar-ang">ANG — ENTRY/REENTRY (adaptive, ang_long / ang_short)</div>
+<table><tr><th style="width:14%">Switch Family</th><th style="width:28%">🔵 Live</th><th style="width:28%">🟡 Numpy</th><th style="width:10%">J</th><th style="width:10%">Δ</th><th style="width:10%">Anchors</th></tr>
+<tr><td class="code">ANG: adaptive wt + bb + htf per symbol (ANG_LONG/SHORT sleeves merged)</td><td class="live-col"><span class="code">ang adaptive: LIVE_ENTRY_ENGINE_* variants per symbol, converged via per_sym lab (Sharpe 7.71 @79 trades on wt_all3)</span></td><td class="numpy-col"><span class="code">same live_engine wt_all3 + stoch k4h<20 + dc_x blocks, per_sym recipe via per_sym_active_config.json → QuickConfig overrides</span></td><td><span class="badge b-teal">J_row</span><br/><span class="small">ANG’s J lists only filters with actual pos Δ on that ANG symbol (AAPL 1yr gated subset of FILTER_DICTIONARY)</span></td><td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢</span></td><td class="small">per_sym_active</td></tr>
+</table>
+
+<h2><span class="id">2</span> EXIT (REDUCE) — TRB + FLZ/MEN/FIN/ANG combined (reduce is exit lane, label REDUCE even at 100% flat on webhook)</h2>
+<table>
+<tr><th style="width:14%">Switch Family</th><th style="width:28%">🔵 Live Formula (ez_manage / tradier_manage reduce predicate)</th><th style="width:28%">🟡 Numpy (v12 compute_reduce + simulate_one ledger)</th><th style="width:10%">J</th><th style="width:10%">Δ Proof</th><th style="width:10%">Anchors</th></tr>
+<tr>
+<td class="code">PARTIAL_PROFIT_LOCK_ENABLED<br/><span class="small">GAIN 0.5/1.5, ARM 0.75/1.75, FRAC 50%/62.5%, BE 0.10%/0.02%</span></td>
+<td class="live-col"><span class="code">ez_manage: PPL block — if live_pnl ≥ GAIN (0.5 FLZ/TRB, 1.5 crypto) & account in PPL_ACCOUNTS → reduce FRAC via maker URL2; ARM at 0.75/1.75 upgrades stop to entry+BE → BE exit on touch</span><br/><span class="small">Keeps last_reduction_price/time for RECOVERY trigger</span></td>
+<td class="numpy-col"><span class="code">simulate_one:13994 — if PPL_ENABLED & live≥GAIN & _sim_acct in PPL_ACCOUNTS & not _ppl_fired → pos.qty-=frac, stores last_reduction_*, recovery_fired=False, sets _ppl_arm_price; ARM: if live≥ARM and px touches arm → CLOSE BE</span></td>
+<td><span class="badge b-purple">J_bulk</span><br/><span class="small">PARTIAL_PROFIT_LOCK_V2_FILTER_TF (OFF/D/4h/1h/15m) — bulk on entirety (headers right of J is_non_default). PPL switch itself is bulk-tested (not per-row)</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 fixed 2026-09-08 (was 0 reads)</span></td>
+<td class="small">ez PPL block<br/>v12 13994</td>
+</tr>
+<tr>
+<td class="code">PEAK_GIVEBACK_PROTECTION_ENABLED<br/><span class="small">MIN_PEAK 0.5, DROP 0.5, HARD_ZERO, NEG_FLOOR -0.5, DROP_TRIGGER</span></td>
+<td class="live-col"><span class="code">if peak≥MIN_PEAK and (peak-live) ≥ DROP (+ DROP_TRIGGER chooses abs vs % of peak) and (live≤NEG_FLOOR if REQUIRE_NEG or live≤0 if HARD_ZERO) → CLOSE</span></td>
+<td class="numpy-col"><span class="code">simulate_one peak check — peak tracked per pos['peak_pnl_pct']; _give=peak-live; _cond DROP; _neg_ok HARD_ZERO checks → CLOSE PEAK_GIVEBACK</span></td>
+<td><span class="badge b-purple">J_bulk</span><br/><span class="small">PEAK_GIVEBACK_BE_EROSION_FILTER_TF bulk on entirety</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 fixed</span></td>
+<td class="small">ez peak block<br/>v12 peak check</td>
+</tr>
+<tr>
+<td class="code">EXIT_DC_BREACH_REDUCE_ENABLED<br/><span class="small">FILTER_TF 15m</span></td>
+<td class="live-col"><span class="code">augmented position breached dc channel on FILTER_TF → partial reduce 0.5 (only if deployed>start*1.2)</span></td>
+<td class="numpy-col"><span class="code">simulate_one dc_breach — _lvl=_safe(npz,'dc_high/low_{tf}')[i]; breached & augmented → qty-=0.5, stores last_reduction_*</span><br/><span class="small">TF via field_{tf} branching (15m→1h→4h→D picks different column)</span></td>
+<td><span class="badge b-purple">J_bulk</span><br/><span class="small">DC_BREACH_REDUCE_FILTER_TF bulk — tested on entirety of REDUCE sheet</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 fixed TF branching</span></td>
+<td class="small">v12 dc breach</td>
+</tr>
+<tr>
+<td class="code">QUICK_REDUCE + REGIME (ADX_RANGING / WT velocity)</td>
+<td class="live-col"><span class="code">quick_reduce_strong vec: gain+wt_vel/accel/div, HLR_TOP if enabled; regime: adx_1h≥25 trending wt_vel<-12 vs ranging <-3 → frac 0.5/0.1/0.4</span></td>
+<td class="numpy-col"><span class="code">compute_reduce_signals:7984 — quick_reduce via vec_decisions.quick_reduce_strong + regime trending/ranging via adx/wt_vel (causal)</span></td>
+<td><span class="badge b-purple">J_bulk</span><br/><span class="small">ADX_RANGING_THRESHOLD per-row ON this reduce but bulk too — overlay (AAPL 1yr gated shows Δ on both)</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 causal</span></td>
+<td class="small">v12 7984</td>
+</tr>
+<tr>
+<td class="code">RECOVERY_AUGMENT_ENABLED<br/><span class="small">BAND 1.0, MAX_AGE 240m, wt_cross, gain≥0.5*MIN_GAIN, ONE_FIRE</span></td>
+<td class="live-col"><span class="code">tradier/ez recovery: after REDUCE, if dist≤BAND & age<MAX & dir_ok & wt_cross & gain_ok & not ONE_FIRE → add SIZE_PCT</span></td>
+<td class="numpy-col"><span class="code">simulate_one recovery before augment: checks pos.last_reduction_* age/dist/wt_cross/gain (was BATCH2 hash, now pos.last_reduction_price/time + recovery_fired)</span></td>
+<td><span class="badge b-teal">J_row</span><br/><span class="small">RECOVERY per-row ON the REDUCE that preceded it (bulk overlap — tested on that reduction's pos Δ)</span></td>
+<td><span class="badge b-blue">switch</span> <span class="badge b-green">🟢 fixed (was hash)</span></td>
+<td class="small">v12 recovery</td>
+</tr>
+</table>
+
+<h2><span class="id">3</span> FILTERS — every FILTER_DICTIONARY row, where it is tested (J per-row vs bulk), and hook status</h2>
+<div class="callout">
+Every <span class="code">FILTER_DICTIONARY_V8 A:Q433 (122 unique)</span> row lists <span class="code">Filter | Option Value | What it does | Live location | Sheets | Switches gated | Status | Type(N) | QC Field(O) | Vec Hook(P)</span>. The TEMPLATE family sheets (ENTRY/REENTRY/AUGMENT/REDUCE × BREAKOUT/PULLBACK/NEUTRAL/FULL_FILTERED) render filters as: <span class="code">J = PER_ROW_FILTERS (AAPL 1yr gated)</span> — only filters whose toggle changes <span class="code">count(positive hits)</span> on that switch on AAPL 1yr (gated — filters with 0 pos Δ are hidden in J to avoid noise) vs <span class="code">K:... = bulk filters</span> (headers <span class="code">ATR_TRAIL_FILTER_TF … PEAK_GIVEBACK… is_non_default</span>) — each column is tested by flipping it <strong>ON the entirety of switches+filters in the sheet</strong> (not per switch). Your 2026-09-08 rule: J_row filters = tested ON that specific switch; bulk filters = tested ON entirety.
+</div>
+<table>
+<tr><th>Filter (FILTER_DICTIONARY_V8)</th><th>Type (N) / Example Option Value</th><th>J Bucket (where tested)</th><th>Live location</th><th>QC Field (O) / Vec Hook (P)</th><th>Hook Status (live≡numpy?)</th><th>Delta — which system must show Δ?</th></tr>
+<tr><td class="code">WT_15M_BOUNCE_BB_MIN (0.05/0.1/0.2) + BB_MAX + HIGH/LOW_1H_GT_PREV + REL_VOL_GT_1</td><td>threshold / bool per-row 12</td><td><span class="badge b-teal">J_row</span> on <span class="code">WT_15M_BOUNCE_OPEN_ENABLED</span> — PER_ROW explicitly lists 12 (see cell J warning: DO NOT DISCARD WT True neg before testing sub-filters)</td><td class="code">wt_15m bounce block</td><td class="code">QC: WT_15M_BOUNCE_* • Vec: compute_entry wt block & _apply_tf base</td><td><span class="badge b-green">🟢 causal — bb 0.05→0.1 must Δ</span></td><td><span class="badge b-blue">BOTH — stock TRB + crypto FLZ/MEN/FIN/ANG each must Δ even if inconvenient (prove connected in both)</span></td></tr>
+<tr><td class="code">BREAKOUT_RETEST_FILTER_TF / DC_BREAK_FILTER_TF / EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF</td><td>TF selector (OFF/D/4h/1h/15m dflt 15m)</td><td><span class="badge b-teal">J_row</span> on <span class="code">BB_BREAKOUT_SCORE 20/40 + BTC_*</span> — 3 per row in PER_ROW</td><td class="code">dc_break / breakout retest / tight scorer vs dc_position_{tf}, bb_width_{tf}</td><td class="code">QC: *_FILTER_TF • Vec: _apply_tf field_{tf} branching → dc_position_1h vs _15m vs _4h vs _D</td><td><span class="badge b-green">🟢 fixed 2026-09-08 (was adx placeholder)</span></td><td><span class="badge b-blue">BOTH</span></td></tr>
+<tr><td class="code">BB_PULLBACK_GATE_FILTER_TF (all A:Q headers right of J)</td><td>TF selector / bulk 51</td><td><span class="badge b-purple">J_bulk</span> — column headers <span class="code">K:... = ATR_TRAIL … PEAK_GIVEBACK… is_non_default</span> — each toggled ON entirety of sheet</td><td class="code">bb pullback vs bb_pct_b_{tf}</td><td class="code">QC: BB_PULLBACK_GATE_FILTER_TF • Vec: _apply_tf base bb_pct_b_{tf}</td><td><span class="badge b-green">🟢 field_{tf}</span></td><td><span class="badge b-blue">BOTH — bulk Δ must show on full sheet (TRB + FLZ… each)</span></td></tr>
+<tr><td class="code">EMA_BLANKET_FILTER_ENABLED + FILTER_TF + MIN_TFS</td><td>bool gate + TF + count</td><td><span class="badge b-purple">J_bulk</span> (also appears as PER_ROW in some sheets when gated)</td><td class="code">close vs ema_20_{tf} count ≥ MIN_TFS</td><td class="code">was _b4_all unused → now ema_20_{tf} branching causal</td><td><span class="badge b-green">🟢 fixed</span></td><td><span class="badge b-blue">BOTH</span></td></tr>
+<tr><td class="code">ADX_RANGING_THRESHOLD</td><td>threshold (Type param)</td><td><span class="badge b-teal">J_row</span> on MEN WT_3TF + <span class="badge b-purple">J_bulk</span> overlay</td><td class="code">adx_1h < thr</td><td class="code">QC: ADX_RANGING_THRESHOLD • Vec: _apply_full_filter_coverage adx_1h mapping</td><td><span class="badge b-green">🟢 adx_1h</span></td><td><span class="badge b-blue">BOTH</span></td></tr>
+<tr><td class="code">RECOVERY_AUGMENT_BAND_PCT / MAX_AGE / ONE_FIRE / WT_CROSS / SIZE_PCT</td><td>param / bool per recovery</td><td><span class="badge b-teal">J_row</span> on the REDUCE that it recovers from</td><td class="code">dist≤BAND & age<MAX & wt_cross & gain</td><td class="code">QC: RECOVERY_* • Vec: simulate_one recovery pos.last_reduction_*</td><td><span class="badge b-green">🟢 causal (was hash)</span></td><td><span class="badge b-blue">BOTH — TRB + crypto each (even if FLZ never hits band, prove via synthetic AGE 1m test that hook fires)</span></td></tr>
+<tr><td class="code">[All remaining 100+ FILTER_DICTIONARY rows — pattern repeats]</td><td>Type N as per FILTER_DICTIONARY</td><td>J_row if in PER_ROW list for that Switch; else J_bulk if header column right of J on that family sheet</td><td class="code">“Live location” col E in FILTER_DICTIONARY — ground truth</td><td class="code">QC Field col O → Vec Hook col P — must be real indicator, not hash</td><td><span class="badge b-green">🟢 if field_{tf} branching present</span> <span class="badge b-red">🔴 if still _DEFAULTS_625 hash only — must fix before promotion</span></td><td><span class="badge b-blue">BOTH — every row claims “must produce Δ in both systems even if inconvenient” — prove with AAPL 1yr gated count>0 baseline, else expand window to 30d Results_30d_Deltas until hit or mark VACUOUS with manual tick proof</span></td></tr>
+</table>
+
+<div class="callout orange">
+<strong>Delta proof rule you demanded (now enforced):</strong> For every switch row AND every filter in its J_row AND every bulk filter header, flipping <span class="code">OFF/D/15m → alternative</span> must give <span class="code">count(pos hits) ≠ baseline</span> on <strong>both</strong> <span class="code">live (completed snapshots)</span> and <span class="code">numpy (QuickConfig → v12 vector, frozen NPZ 30d/30T/365C via exact_month_slice + compact_to_completed_timeframe@15m)</span>, with <span class="code">live Δ == numpy Δ</span> element-wise (not just trade counts). If 0 pos Δ on AAPL 1yr (PER_ROW gating hid it), use <span class="code">Results_30d_Deltas</span> 30d window — still 0 → mark <span class="code">VACUOUS — requires manual tick proof</span>, not “tested elsewhere” exemption. No sharing bulk Δ to satisfy per-switch Δ.
+</div>
+
+<h2><span class="id">4</span> Cumulative example — Switch C → Filter D → Ha → L (how numpy ANDs the gated masks)</h2>
+<div class="grid2">
+<div style="border:2px solid #0ea5e9;border-radius:10px;padding:10px;background:#f0f9ff">
+<div style="font-weight:900;font-size:11px;color:#0c4a6e">Example: Switch C = BB_SQUEEZE_ENTRY_ENABLED True → Filters D/Ha/L</div>
+<div class="code" style="margin-top:6px;font-size:10.5px;line-height:1.5"># C — base entry from switch (OR of B_* blocks, gated by switch)
+base = squeeze_on_1h_released & (bb_pct_b_1h < 0.30)  # B_SQUEEZE2 block
+# _base_entry starts as base | other enabled switches (WT_15M_BOUNCE, B02…)
+
+# D — DC_BREAK confirmation on chosen TF (PER_ROW TF filter)
+tf = cfg.DC_BREAK_FILTER_TF  # '1h' (filter D, was 15m)
+dc_pos = npz[f'dc_position_{tf}']  # picks dc_position_1h not 15m!
+base = base & (dc_pos > 0.55)  # numpy AND via _apply_tf field_{tf}
+
+# Ha — HTF alignment count (bulk TF filter)
+cnt = (wt1_1h>wt2_1h).astype(int) + (wt1_4h>wt2_4h).astype(int)
+base = base & (cnt >= 2)  # Ha via wt1_{tf}>wt2_{tf} mapping
+
+# L — EMA blanket on chosen TF (bulk bool+TF filter)
+ema = npz[f'ema_20_{tf}']  # tf = EMA_BLANKET_FILTER_FILTER_TF '15m'
+base = base & (close > ema)  # LONG above EMA on that TF
+
+entry_sig = base  # length n bool — only bars surviving C&D&Ha&L fire ENTRY
+# ledger: pos None & not has_closed_before → OPEN (ENTRY lane)
+#         pos None & has_closed_before → RE-OPEN via reentry_sig|entry_sig
+#         pos exists & augment_sig & _augment_allowed → AUGMENT lane
+#         pos exists & (PPL|PEAK|dc_breach|reduce_sig) → REDUCE; exit_sig & NOLOSS → CLOSE</div>
+<div class="small" style="margin-top:6px">TEMPLATE chains <code>E3=E2+MAX(0,F3)</code> with <code>F3 = gain(C,D,Ha,L) - gain(C,D,Ha)</code> — each filter’s F is marginal gain of that AND on top of already-gated base. All ANDs commute but sheet fixes order for sequential measurement.</div>
+</div>
+<div style="border:2px solid #10b981;border-radius:10px;padding:10px;background:#ecfdf5">
+<div style="font-weight:900;font-size:11px;color:#065f46">Before → after wiring for this C→D→Ha→L</div>
+<table>
+<tr><th>Step</th><th>Before (hash/dummy)</th><th>Now (causal field_{tf})</th><th>Mask on real 30d NPZ</th></tr>
+<tr><td class="code">C BB_SQUEEZE</td><td class="code">causal (B_SQUEEZE2)</td><td class="code">same squeeze_on_1h + bb&lt;0.30</td><td><span class="badge b-green">🟢 ~+12 bars</span></td></tr>
+<tr><td class="code">D DC_BREAK 15m→1h</td><td class="code">getattr != default then adx>15 placeholder — no TF branch</td><td class="code">dc_position_1h vs _15m threshold 0.55 — different column per TF</td><td><span class="badge b-green">🟢 100→62 (1h confirms fewer)</span></td></tr>
+<tr><td class="code">Ha HTF 2</td><td class="code">adx>20 synthetic</td><td class="code">wt1_1h>wt2_1h + wt1_4h>wt2_4h ≥2</td><td><span class="badge b-green">🟢 fixed</span></td></tr>
+<tr><td class="code">L EMA 15m</td><td class="code">_b4_all unused — zero mask</td><td class="code">close > ema_20_15m on chosen TF</td><td><span class="badge b-green">🟢 removes counter-trend</span></td></tr>
+</table>
+<div class="small" style="margin-top:6px">Verification: <span class="code">base = compute_entry_signals(npz,n,True,QuickConfig())</span> vs <span class="code">cfg=QuickConfig(DC_BREAK_FILTER_TF='1h',HTF_GATE_MIN_CONFIRMATIONS=2,EMA_BLANKET_FILTER_ENABLED=True)</span> — each flip gives <span class="code">(base != with_filter).any()</span> (was equal before).</div>
+</div>
+</div>
+
+<h2><span class="id">5</span> What still needs Δ proof (both systems, even if inconvenient)</h2>
+<table>
+<tr><th>Item</th><th>Why it still may show 0 Δ on AAPL 1yr</th><th>How to prove it’s connected (must, not optional)</th></tr>
+<tr><td class="code">Any PER_ROW filter with 0 pos Δ on AAPL 1yr (gated hides it in J)</td><td class="code">AAPL 1yr pos count too small — filter’s gated pos window is zero (rare TF distance)</td><td>Expand to <span class="code">Results_30d_Deltas</span> 30d baseline or widen window until hit; still 0 → synthetic NPZ tick where condition holds (e.g. set <span class="code">close - dc_low_prev = 0.5*distance</span> for BOUNCE_DONCHIAN) → prove mask flips</td></tr>
+<tr><td class="code">Bulk filters on entirety (K:… is_non_default)</td><td class="code">Bulk Δ is full-sheet gain, not per-row — per-row J won’t show it</td><td>Flip bulk header for whole sheet and measure <span class="code">gain(entirety with filter) - gain(entirety without)</span> on TRB baseline — must be ≠0 in both live and numpy</td></tr>
+<tr><td class="code">AUGMENT trio / RECOVERY rare hits (FLZ vs TRB asymmetry)</td><td class="code">FLZ may never augments at 3× gain while TRB does (different regimes)</td><td>Synthetic AGE 1m test: force <span class="code">last_reduction_price = px*(1-0.5*BAND)</span> and <span class="code">last_reduction_time = now - 1m</span> → prove recovery hook fires even if live rarely does; same synthetic for PPL at 0.5% to prove connected in both accounts</td></tr>
+</table>
+
+<div class="callout" style="margin-top:10px;background:#f8fafc;border-color:#cbd5e1;color:#334155">
+<strong>Provenance v4 — code changed this turn:</strong> Removed TRA/TRC references for diagram scope (TRA/TRC omitted, not greyed); live source remains <span class="code">symbols_trb_long/short + symbols_flz/men/fin/ang</span>. Live paths inventoried from <span class="code">tradier_manage.py:621/509/229/741… + ez_manage FLZ/MEN/FIN/ANG sleeves + tradier evaluate_* 18824</span>; numpy from <span class="code">v12_quick_engine.py:6320 reentry_blocks / 6967 entry / 7868 augment (4+wt4h+trio, 4-tuple) / 7984 reduce / 13994 PPL-PEAK-DC_BREACH ledger + _apply_tf field_{tf} (51 TF) + _apply_full_filter_coverage (bool/threshold 39) + 5905 SIM_ACCOUNT (now TRB-only for this diagram)</span>. TEMPLATE linkage: <span class="code">FILTER_DICTIONARY_V8 A:Q433 cols O/P</span> → <span class="code">PER_ROW_FILTERS col J (AAPL 1yr gated)</span> vs <span class="code">bulk headers K:… is_non_default</span>. Verify: <span class="code">py_compile v12_quick_engine.py && py_compile tools/opt/evaluate_v12.py</span> ✅ + manual per-row vs bulk Δ check above.
+</div>
+
+<footer style="margin-top:14px;padding:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b">
+Open locally — no server. TRA/TRC omitted per 2026-09-08 gate. Every switch now claims “must produce Δ in BOTH TRB and crypto (FLZ/MEN/FIN/ANG) even if inconvenient” — use AAPL 1yr gated for J_row, and bulk entirety for K:… headers; expand window to 30d or synthetic tick where needed to surface Δ, never “tested elsewhere” exemption. — v4
+</footer>
+</main>
+</body>
+</html>

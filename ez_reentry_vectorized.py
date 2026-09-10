@@ -144,12 +144,43 @@ class VectorizedReentryEvaluator:
         else:
             dc_breakout = (close < dc_low_15m) & (k_3m < d_3m) & ~wt_bull_15m
 
+        # --- Block 5: DAEMON_PRICE_CROSS with USER 2026-09-03 gates (wt cross, stochk, wt_dc, dc high) ---
+        # Must match ez_reentry_daemon.py gating so vector stays in tandem with live/backtest.
+        wt1_3m_prev = np.roll(wt1_3m, 1); wt1_3m_prev[0] = wt1_3m[0]
+        wt2_3m_prev = np.roll(wt2_3m, 1); wt2_3m_prev[0] = wt2_3m[0]
+        stoch_k_3m_arr = k_3m
+        wt_dc_15m_arr = _safe_arr(npz, 'wt_dc_15m', n, 0.0)
+        wt_dc_15m_prev_arr = np.roll(wt_dc_15m_arr, 1); wt_dc_15m_prev_arr[0] = wt_dc_15m_arr[0]
+        dc_high_15m_arr = dc_high_15m
+        dc_low_15m_arr = dc_low_15m
+        atr_15m_arr = _safe_arr(npz, 'atr_15m', n, 0.0)
+        # indicator presence (startup block) — require 6/9 non-zero per bar
+        try:
+            ind_present = ((wt1_3m != 0).astype(int) + (wt2_3m != 0).astype(int) + (wt1_3m_prev != 0).astype(int) + (wt2_3m_prev != 0).astype(int) + (stoch_k_3m_arr != 0).astype(int) + (wt_dc_15m_arr != 0).astype(int) + (wt_dc_15m_prev_arr != 0).astype(int) + (dc_high_15m_arr != 0).astype(int) + (atr_15m_arr != 0).astype(int))
+            ind_ok = ind_present >= 6
+        except Exception:
+            ind_ok = np.full(n, True, dtype=bool)
+        if is_long:
+            wt_cross_arr = (wt1_3m > wt2_3m) & (wt1_3m_prev <= wt2_3m_prev)
+            stoch_ok_arr = stoch_k_3m_arr < 70
+            wt_dc_ok_arr = wt_dc_15m_arr >= (wt_dc_15m_prev_arr - 0.5)
+            not_close_dc_arr = (dc_high_15m_arr <= 0) | (atr_15m_arr <= 0) | (close < dc_high_15m_arr - 0.5 * atr_15m_arr)
+        else:
+            wt_cross_arr = (wt1_3m < wt2_3m) & (wt1_3m_prev >= wt2_3m_prev)
+            stoch_ok_arr = stoch_k_3m_arr > 30
+            wt_dc_ok_arr = wt_dc_15m_arr <= (wt_dc_15m_prev_arr + 0.5)
+            not_close_dc_arr = (dc_low_15m_arr <= 0) | (atr_15m_arr <= 0) | (close > dc_low_15m_arr + 0.5 * atr_15m_arr)
+        daemon_price_cross_ok = ind_ok & wt_cross_arr & stoch_ok_arr & wt_dc_ok_arr & not_close_dc_arr
+
         return {
             "wt_2of3_ok": wt_2of3_ok,
             "guaranteed_bottom": guaranteed_bottom,
             "wt_confirm_count": wt_confirm_count,
             "trend_gate_pass": trend_gate_pass,
             "dc_breakout": dc_breakout,
+            "daemon_price_cross_ok": daemon_price_cross_ok,
+            "wt_cross_arr": wt_cross_arr,
+            "stoch_ok_arr": stoch_ok_arr,
             "wt_fav": wt_fav,
             "htf_fav": htf_fav,
             "close": close,
@@ -206,6 +237,13 @@ class VectorizedReentryEvaluator:
                 action="REENTRY",
                 reason=f"DC_BREAKOUT_REENTRY_vec",
                 conviction=88.0,
+                quantity=re_qty,
+            )
+        if s["daemon_price_cross_ok"][bar_idx]:
+            return ReentrySignal(
+                action="REENTRY",
+                reason=f"DAEMON_PRICE_CROSS_REENTRY_vec_wt_cross_stoch{int(s['k_3m'][bar_idx])}",
+                conviction=82.0,
                 quantity=re_qty,
             )
         return None

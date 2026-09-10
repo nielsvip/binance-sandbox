@@ -1,0 +1,69 @@
+{
+  "batch_schedule": {
+    "batch_count": 50,
+    "batch_size_max": 24,
+    "disjoint": true,
+    "scheduled_unique_switches": 1155,
+    "status": "HOLD_DO_NOT_LAUNCH",
+    "workers_per_command": 24
+  },
+  "catalog_values_policy": "switch_lab_catalog test_values are authoritative; recent results cannot expand them",
+  "classification_counts": {
+    "DEPRECATED": 570,
+    "EXECUTABLE_QUICKCONFIG_STRATEGY": 915,
+    "EXTERNAL_METADATA": 323,
+    "LIVE_STRATEGY_DECLARATION_REPAIR": 5,
+    "LIVE_STRATEGY_VECTOR_REPAIR": 903,
+    "QUICKCONFIG_STRATEGY_REPAIR": 144,
+    "STRATEGY_INVENTORY_REPAIR": 742
+  },
+  "gate_status": "HOLD",
+  "generated_at": "2026-08-25T20:38:11.287986+00:00",
+  "outputs": {
+    "batches": "data/reports/S1_SWITCH_CAUSAL_BATCH_SCHEDULE_20260825_S1.csv",
+    "batches_sha256": "6fa31d6f1a1a581d08a176e6230685b7d06dc73bb5a83b0507416f79cb67f5a9",
+    "queue": "data/reports/SWITCH_CAUSAL_WORK_QUEUE_20260825_S1.csv",
+    "queue_sha256": "2f92034ddbd073c0afcbb09de9e227082d4c4aaebe66df826683ef0041b1b088"
+  },
+  "repair_owner_counts": {
+    "INVENTORY_TRIAGE": 742,
+    "LIVE_PARITY_REVIEW": 564,
+    "N_A_REGISTRY": 893,
+    "S1_CAUSAL_AUDIT": 483,
+    "S1_CERTIFICATE": 12,
+    "VECTOR_CAUSAL_REPAIR": 908
+  },
+  "schema_version": "switch-causal-work-queue-v1",
+  "semantic_counts": {
+    "EMPIRICAL_INERT": 74,
+    "EMPIRICAL_LEDGER_PASS": 12,
+    "EMPIRICAL_N/A_TIMEFRAME": 2,
+    "EMPIRICAL_TF_ALIAS": 15,
+    "EMPIRICAL_VALUE_ALIAS": 2,
+    "LIVE_ONLY_NEEDS_VECTOR": 903,
+    "N_A": 893,
+    "UNWIRED": 617,
+    "VECTOR_ONLY_NEEDS_LIVE_REVIEW": 573,
+    "VECTOR_READ_NEEDS_SEMANTIC_PROOF": 511
+  },
+  "tests_launched": false,
+  "universe": {
+    "authoritative_rows": 3602,
+    "derivation": "load_specs() minus MODE, HOOKUP_TF, AUTO_WIRED_PARAMS, VERBOSE, VERBOSE_STOPS; BASE_TF retained",
+    "excluded_evaluator_debug_artifacts": [
+      "AUTO_WIRED_PARAMS",
+      "HOOKUP_TF",
+      "MODE",
+      "VERBOSE",
+      "VERBOSE_STOPS"
+    ],
+    "excluded_present": [
+      "AUTO_WIRED_PARAMS",
+      "HOOKUP_TF",
+      "MODE",
+      "VERBOSE",
+      "VERBOSE_STOPS"
+    ],
+    "load_specs_rows": 3607
+  }
+}

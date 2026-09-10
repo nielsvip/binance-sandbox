@@ -1,0 +1,21 @@
+=== SWEEP CONTINUES — F COLUMN VERIFY ===
+-rw-rw-r-- 1 niels niels 5.7K Sep  7 18:23 /home/niels/binance-sandbox/SPREADSHEETS/SWEEP_EVERY_FILTER_EVERY_SWITCH_REAL.xlsx
+--- S1 XLSX F column check (every F cell has delta) ---
+  File "<stdin>", line 23
+    print(f"  row {r} col {idx} = {v} empty={v is None or str(v)==\"\"}")
+                                                                   ^
+SyntaxError: unexpected character after line continuation character
+--- sweep logtail ---
+
+[done] 52 syms in 4.7s  valid=50 beats_bh=28 pool_sharpe=0.013 -> /tmp/sweep_short_out
+  per_sym: /tmp/sweep_short_out/per_sym.csv
+  pool:    /tmp/sweep_short_out/pool.csv
+  summary: /tmp/sweep_short_out/summary.json
+WT HL/HH OR + relvol      comb -18.52 vs bare -24.10 delta +5.58 YES gain rises
+saved /home/niels/binance-sandbox/SPREADSHEETS/SWEEP_EVERY_FILTER_EVERY_SWITCH_REAL.xlsx best ('WT_15M no filter', {'WT_15M_BOUNCE_OPEN_ENABLED': True})
+ssh: connect to host localhost port 2201: Connection refused
+rsync: connection unexpectedly closed (0 bytes received so far) [sender]
+rsync error: unexplained error (code 255) at io.c(232) [sender=3.2.7]
+--- S1 TEMPLATE still intact? ---
+S1 TEMPLATE =IFERROR(VLOOKUP($A3,Results_30d_Deltas!$A:$H,8,FALSE)-E2,""
+--- rsync S1 -> Mac retry ---

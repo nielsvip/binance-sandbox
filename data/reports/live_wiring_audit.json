@@ -1,0 +1,1916 @@
+{
+  "total": 469,
+  "live_missing_vec_present": [
+    {
+      "key": "101",
+      "vec_files": [
+        "vec_decisions/test_check_exit_candidates_stocks.py"
+      ]
+    },
+    {
+      "key": "107",
+      "vec_files": [
+        "vec_decisions/__pycache__/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.cpython-311.pyc",
+        "vec_decisions/check_entry_candidates_stocks__ema_alignment_trend_htf_gates.py"
+      ]
+    }
+  ],
+  "vec_missing_live_present": [
+    {
+      "key": "103",
+      "live_files": [
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "104",
+      "live_files": [
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "113",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "114",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ADX_RANGING_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ALL_TF_AGAINST_CLOSE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ATR_ADAPTIVE_STOP_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ATR_LONG_WINDOW",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ATR_TRAIL_SWEEP_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "AUGMENTED_POSITIONS_GUARD_FLOOR_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "AUGMENT_AT_LOSS_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "AUGMENT_ONLY_WHEN_PROFITABLE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "AUGMENT_WT_4H_BOUNCE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BANDAID_OFF_LOSER_RECOVER_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BAND_ARROW_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BAND_ARROW_SLOPE_DEADBAND",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BB_BREAKOUT_SCORE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BB_SQUEEZE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BB_SQUEEZE_ENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BB_SQUEEZE_WIDTH_PERCENTILE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BOUNCE_AUGMENT_MIN_LOSS_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BOUNCE_REENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BOUNCE_REENTRY_K_RESET_LONG",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BOUNCE_REENTRY_K_RESET_SHORT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BREAKOUT_LEASH_REENTRY_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_ACCEL_RAMP_REQUIRE_POSITIVE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_BREAKOUT_ENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_DIVERGENCE_EXIT_AGAINST",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_GUARANTEED_REENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_HARD_BLOCK_OTHER_ACCOUNTS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_ROUND_BANDS_EACH_SIDE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "BTC_TECH_EXIT_WT_MIN_TFS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "CHANNEL_REENTRY_STOP_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "CRYPTO_SPIKE_FADE_THRESHOLD_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DAEMON_REENTRY_STALE_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DC_HOPELESS_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DC_MOMENT_STRONG_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DD_BOUNCE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DELTA_EXIT_DC_FLOOR",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DELTA_EXIT_MANDATORY_REENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DELTA_GATE_BB_SQUEEZE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DELTA_PYRAMID_MAX",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DELTA_PYRAMID_PRICE_TOL",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DELTA_REENTRY_FILTER_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DELTA_REENTRY_Z_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DIRECTION_FAVORABLE_REENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "DYN_STRUCT_TRAIL_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "ENTRY_PRIMARY_TF",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "EXECUTE_NOW_SINGLE_GATE_ENFORCE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "EXIT_SCORER_DC_EXTREME",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "EZ_MANAGE_THROTTLER_RATE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "E_3_USE_WT_STRUCTURE_EXIT_MODE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "FG_FEAR_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "FG_GREED_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "FOLLOW_THROUGH_REENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "FUNDING_GATE_LONG_MAX",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "FUNDING_GATE_MTF_REQUIRED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "FUNDING_GATE_SHORT_MIN",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GOLDEN_RULE_BASE_USD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GR_FILTER_ALL_ENTRIES",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_DELTA_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_K_FAVORABLE_HIGH",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_K_FAVORABLE_LOW",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_K_HIGH_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_K_LOW_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_STRICT_CONFIRMATION",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "GUARANTEED_REENTRY_TIGHT_STOP_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HAIKU_ENTRY_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HA_WICK_QUALITY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HA_WICK_QUALITY_SCORE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HA_WICK_QUALITY_TF",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HIGH_GAIN_AUGMENTATION_MIN_SIZE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HLR_REENTRY_MAX_AGE_S",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HLR_REENTRY_MULT_1H",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HLR_REENTRY_MULT_4H",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HLR_REENTRY_MULT_D",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HLR_REENTRY_MULT_W",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HLR_SMA_BAND_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_AGAINST_FORCE_CLOSE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_DIRECTION_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_GATE_APPLY_TO_AUGMENT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_GATE_APPLY_TO_OPEN",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_GATE_BYPASS_RZ",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_GATE_D_MANDATORY",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_GATE_MIN_CONFIRMATIONS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_GATE_SIGNALS_SMA200D",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_TREND_VETO_BYPASS_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "HTF_TREND_VETO_BYPASS_REASONS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LEADERBOARD_FILTER",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LEGACY_PROC_SINGLE_REENTRY",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LEGACY_REENTRY_PSR_DC_BOUNCE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LEGACY_REENTRY_PSR_FULL_DC",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LEGACY_REENTRY_PSR_K_DC_CROSSOVER",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LEGACY_REENTRY_PSR_QUICK_RECOVERY",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LIVE_VEC_EMERGENCY_BRAKE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LR_BAND_LADDER_STOCH_EXTREME",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LR_BAND_LADDER_TF_BOTTOM",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "LR_BAND_LADDER_TF_TOP",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MACD_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MACD_EXIT_MIN_GAIN",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MACD_EXIT_TF",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MACD_ZERO_CROSS_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MACD_ZERO_CROSS_SCORE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MACD_ZERO_CROSS_TF",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_K_HIGH_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_K_LOW_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_WT_FILTER_MIN_TFS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_WT_FILTER_TF_MODE",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MARKET_QUALITY_SCORE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MAX_AUGMENTS_PER_POSITION",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MIN_HOLD_BARS_BEFORE_EXIT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_DIV_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_ENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_ENTRY_EXHAUST_BONUS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_ENTRY_STRUCT_BONUS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_EXHAUST_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_MIN_GAIN_EXIT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_STRUCT_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_TF_AGREE_MIN",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_VELOCITY_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MI_WAVE_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MOVER_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MTF_FILTER_STRONG_BUY_QUICK_BYPASS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MTF_GR_MIN_IND",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MTS_BOTTOM_BONUS_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MTS_BOTTOM_STRONG_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MTS_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MU_CORRECTION_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "MU_CORRECTION_REENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "NEW_POSITION_MAX_LOSS_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "NOLOSS_BYPASS_WT_5OF5_MIN_TFS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_K15_HIGH_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_SCORE_TIER1",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_SCORE_TIER2",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_SCORE_TIER3",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_SMA_FIELD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_SMA_TF",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OI_CONFIRM_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OI_CONFIRM_MIN_CHANGE_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "OI_CONFIRM_MIN_PRICE_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "PARTIAL_PROFIT_LOCK_FRAC",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "PYRAMID_MIN_WT_VEL_1H",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "QUICK_REDUCE_TECHNICAL_ONLY",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY2_DIR_FAV_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY2_STOCH_CROSS_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_B16_SIZE_MULT_STRONG",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_B16_SIZE_MULT_WEAK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_B16_SMA200_PROX_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_B16_SMA200_PULLBACK_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_CROSS_FRESHNESS_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_EXHAUSTED_PARTIAL_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_EXIT_RECLAIM_BUFFER_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_EXIT_RECLAIM_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_K15M_PARTIAL_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_POST_CONSOL_ATR_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_POST_CONSOL_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_POST_CONSOL_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_POST_CONSOL_TFS_REQUIRED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_PRICE_IMPROVE_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_RALLY_K15M_MAX",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_SIZE_DIP_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_SIZE_EXTENDED_K1H",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_SIZE_EXTENDED_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_TIER1_SIZE_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_TIER2_MAX_MINUTES",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REENTRY_WT15M_SIZE_MULT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REGIME_RANGING_EXIT_GAIN_MIN",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REGIME_RANGING_WT_REDUCE_FRAC_LOW",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REGIME_TRENDING_EXIT_GAIN_MIN",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "REVERSE_ON_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "RULE_B_3M_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_AUG_BE_STOP_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_AUG_BE_STOP_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_K_OB_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_K_OB_EXIT_K15M_HI",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_K_OB_EXIT_K15M_LO",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_K_OB_EXIT_K3M_HI",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_K_OB_EXIT_K3M_LO",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_K_OB_EXIT_WALL_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_OB_WALL_TOO_CLOSE_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SCALP_V3_PROTECTIVE_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SIMPLE_TP_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "SIMPLE_TP_PCT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "STDEV_BREAKOUT_EXIT_PCTB_FAIL",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "STDEV_SUPPRESS_EARLY_EXIT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "STOCH_CROSS_ENTRY_TRADIER",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "Switch",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "TRADIER_MFI_ENTRY_LONG_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "TRADIER_RSI2_EXIT_THRESHOLD_LONG",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "TRADIER_RSI2_EXIT_THRESHOLD_SHORT",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "VEC_REENTRY_DC4_EXITPRICE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WRONG_SIDE_WT_TFS_REQUIRED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_15M_BOUNCE_OPEN_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_15M_CROSS_ENTRY_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_ACCEL_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_COMPOSITE_ENTRY_BLOCK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_COMPOSITE_ENTRY_GOOD",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_COMPOSITE_ENTRY_OK",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_COMPOSITE_ENTRY_STRONG",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_CROSS_EXIT_APPLIES_TO_WINNERS",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_DIV_ENTRY_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_DIV_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_EXHAUST_ENTRY_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_MOMENTUM_EXIT_THRESHOLD",
+      "live_files": [
+        "tradier_manage.py"
+      ]
+    },
+    {
+      "key": "WT_PERCENTILE_ENTRY_GATE_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_PERCENTILE_ENTRY_OB_D",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_PERCENTILE_ENTRY_OS_D",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_PERCENTILE_EXIT_ENABLED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_REDUCE_FRAC_HIGH",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_REDUCE_FRAC_LOW",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    },
+    {
+      "key": "WT_REDUCE_FRAC_MED",
+      "live_files": [
+        "tradier_manage.py",
+        "ez_manage.py"
+      ]
+    }
+  ],
+  "both_present": [
+    "#",
+    "1",
+    "10",
+    "100",
+    "102",
+    "105",
+    "106",
+    "108",
+    "11",
+    "110",
+    "111",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "2",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "29",
+    "3",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39",
+    "4",
+    "40",
+    "41",
+    "42",
+    "43",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "5",
+    "50",
+    "51",
+    "52",
+    "53",
+    "54",
+    "55",
+    "56",
+    "57",
+    "58",
+    "59",
+    "6",
+    "60",
+    "61",
+    "62",
+    "63",
+    "64",
+    "65",
+    "66",
+    "67",
+    "68",
+    "69",
+    "7",
+    "70",
+    "71",
+    "72",
+    "73",
+    "74",
+    "75",
+    "76",
+    "77",
+    "78",
+    "79",
+    "8",
+    "80",
+    "81",
+    "82",
+    "83",
+    "84",
+    "85",
+    "86",
+    "87",
+    "88",
+    "89",
+    "9",
+    "90",
+    "91",
+    "92",
+    "93",
+    "94",
+    "95",
+    "96",
+    "97",
+    "98",
+    "99",
+    "ALL_TF_AGAINST_CLOSE_MIN_TFS",
+    "BB_PULLBACK_GATE_TF",
+    "BREAKEVEN_DC_FIELD_MODE",
+    "BREAKEVEN_GAIN_EROSION_ENABLED",
+    "BREAKEVEN_GAIN_EROSION_MIN_GAIN",
+    "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT",
+    "DC_BREAKOUT_SCORE",
+    "DC_BREAKOUT_TF",
+    "DC_BREAK_FILTER_TF",
+    "DC_HOPELESS_EXIT_MIN_AGE_S",
+    "DELTA_HTF_GATE",
+    "ENTRY_SCORE_THRESHOLD",
+    "E_1_EXIT_DELTA_THR",
+    "E_1_WT_EXIT_USE_DELTA_ENABLED",
+    "HARD_BREAKEVEN_FLOOR_ENABLED",
+    "HARD_BREAKEVEN_MIN_PEAK_PCT",
+    "HLR_TOP_EXIT_ENABLED",
+    "HLR_TOP_MIN_TFS",
+    "HTF4_CONF",
+    "HTF_EXIT_VETO_ENABLED",
+    "HTF_EXIT_VETO_MAX_LOSS_PCT",
+    "HTF_EXIT_VETO_MIN_ALIGNED",
+    "LH_HL_FILTER_ENABLED",
+    "LH_HL_FILTER_MODE",
+    "LH_HL_FILTER_REQUIRE_BOTH",
+    "LH_HL_FILTER_TF_REQ",
+    "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED",
+    "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
+    "REENTRY2_DC_BREAK_ALLOW_15M",
+    "REENTRY2_DC_BREAK_FILTER_TF",
+    "REENTRY2_DC_BREAK_REQUIRE_K_FILTER",
+    "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER",
+    "REENTRY_SIZE_BREAKOUT_MULT",
+    "RZ_BOT_BB_THRESHOLD",
+    "RZ_BREAKOUT_BAND",
+    "RZ_BREAKOUT_ENTRY_ENABLED",
+    "STDEV_BREAKOUT_ENABLED",
+    "STDEV_BREAKOUT_PCTB_LONG",
+    "STDEV_BREAKOUT_PCTB_SHORT",
+    "STDEV_REJECT_EXIT_TF",
+    "TREND_EXIT_SCORE_FLIP",
+    "TREND_MIN_GAIN_EXIT",
+    "WT_4H_VEL_EXIT_ENABLED",
+    "WT_4H_VEL_EXIT_K_EXTREME_HIGH",
+    "WT_4H_VEL_EXIT_K_EXTREME_LOW",
+    "WT_4H_VEL_EXIT_REQUIRE_K_EXTREME",
+    "WT_4H_VEL_EXIT_REQUIRE_PROFIT",
+    "WT_CROSS_EXIT_ENABLED",
+    "WT_CROSS_EXIT_MIN_AGE_MINUTES",
+    "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM",
+    "WT_EXHAUST_EXIT_MIN_GAIN_PCT",
+    "WT_EXHAUST_EXIT_REQUIRE_GAIN",
+    "WT_PERCENTILE_EXIT_OB_4H",
+    "WT_PERCENTILE_EXIT_OB_D",
+    "WT_PERCENTILE_EXIT_OS_4H",
+    "WT_PERCENTILE_EXIT_OS_D",
+    "switch"
+  ],
+  "both_missing": [
+    "109",
+    "112",
+    "ATR_TRAIL_FILTER_TF",
+    "BAR_PATTERNS_FILTER_TF",
+    "BB_PULLBACK_GATE_FILTER_TF",
+    "BB_RECOVERY_ENTRY_FILTER_TF",
+    "BB_RECOVERY_FILTER_TF",
+    "BREAKEVEN_GAIN_EROSION_FILTER_TF",
+    "BREAKOUT_RETEST_FILTER_TF",
+    "BTC_DEDICATED_FILTER_TF",
+    "BTC_RZ_WT_DC_MULTIFACTOR",
+    "BT_WT_CROSS_LADDER_FILTER_TF",
+    "CANDLE_PATTERN_STOPS_FILTER_TF",
+    "CIRCUIT_SHARPE_GATES_FILTER_TF",
+    "COOLDOWN_LOCKS_FILTER_TF",
+    "DC_BREACH_REDUCE_FILTER_TF",
+    "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
+    "DELTA_ENGINE_FILTER_TF",
+    "DUP_GUARD_FILTER_TF",
+    "DYNAMIC_SCORE_AUGMENT_ENABLED",
+    "E2E_REPLAY_VALIDATOR_FILTER_TF",
+    "EMA_9_21_FILTER_FILTER_TF",
+    "EMA_9_21_FILTER_MIN_TFS",
+    "EMA_BLANKET_FILTER_ENABLED",
+    "EMA_BLANKET_FILTER_FILTER_TF",
+    "EMA_BLANKET_FILTER_MIN_TFS",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    "EXHAUSTION_EXIT_FILTER_TF",
+    "EXIT_R1_R2_FILTER_TF",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF",
+    "EXIT_TOP_FADE_FILTER_TF",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
+    "FAST_RISER_FILTER_TF",
+    "FH_MOMENTUM_FILTER_TF",
+    "FIRST_OPEN_THROTTLE_FILTER_TF",
+    "FROZEN_STOP_FILTER_TF",
+    "FUNDING_GATE_FILTER_TF",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF",
+    "GR_FILTER_VEC_ENABLED",
+    "GR_FILTER_VEC_FILTER_TF",
+    "GR_FILTER_VEC_MIN_TFS",
+    "GR_V5_STATE_FILTER_TF",
+    "HAIKU_WINNER_FILTER_TF",
+    "INTRADAY_SESSION_FORCE_EXIT_UTC",
+    "KILLER_KNOB_FINDER_FILTER_TF",
+    "LIVE_ENTRY_ENGINE_FILTER_TF",
+    "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF",
+    "MOM3_FILTER_TF",
+    "MOMENTUM_BREAKOUT_FILTER_TF",
+    "MTF_ARMED_ENTRIES_FILTER_TF",
+    "MTF_ATR_TRAIL_FILTER_TF",
+    "MTF_DC_REJECT_FILTER_TF",
+    "NEWBORN_LOSS_KILL_FILTER_TF",
+    "NEWBORN_PROTECT_FILTER_TF",
+    "NOLOSS_BYPASS_WT5OF5_FILTER_TF",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF",
+    "PARTIAL_EXIT_FRAC",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF",
+    "QUICK_REENTRY_60MIN_MIN_PCT",
+    "V8_ENTRY_ENGINE_DC_ENABLED",
+    "V8_ENTRY_ENGINE_WT_ENABLED",
+    "WT_AGAINST_FILTER_ENABLED",
+    "reentry_switch"
+  ]
+}

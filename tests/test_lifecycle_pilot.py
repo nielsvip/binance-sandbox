@@ -29,12 +29,12 @@ def test_crypto_window_is_exactly_30_frozen_calendar_days():
 
 
 def test_stock_window_is_last_20_distinct_sessions():
-    sessions = [day for day in range(40) if day % 7 not in (2, 3)]
+    sessions = [day for day in range(50) if day % 7 not in (2, 3)]
     sliced, meta = P.exact_month_slice(_npz(sessions), crypto=False)
     unique = np.unique((sliced["timestamps"] / 1000).astype("datetime64[s]").astype("datetime64[D]"))
-    assert meta["policy"] == "20_trading_sessions"
-    assert len(unique) == 20
-    assert len(sliced["close"]) == 40
+    assert meta["policy"] == "30_trading_sessions"
+    assert len(unique) == 30
+    assert len(sliced["close"]) == 60
 
 
 def test_completed_parent_clock_uses_first_causally_available_row():

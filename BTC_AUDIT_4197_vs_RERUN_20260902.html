@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><title>BTCUSDC Audit — per_sym 4197 vs rerun 9053</title>
+<style>body{margin:0;font:12px system-ui;background:#0b0e14;color:#cdd6e4}header{padding:10px 14px;background:#11151e;border-bottom:1px solid #1e293b}h1{margin:0;font-size:16px}small{color:#8b9bb4}#c{width:100%;height:520px;background:#fff}table{border-collapse:collapse;width:100%;font-size:11px;margin-top:8px}td,th{border:1px solid #2a3347;padding:4px 6px}th{background:#1e293b;color:#fff}.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px}.ok{background:#0a3a1a;color:#34d399}.warn{background:#3a2a0a;color:#fbbf24}.bad{background:#3a0a0a;color:#f87171}</style>
+<header><h1>BTCUSDC_LONG audit — per_sym <span class="pill warn">4197 trades / wsharpe 0.5563 / +3041% vs BH</span> vs local rerun <span class="pill bad">9053 trades / wsharpe 0.0071</span></h1>
+<small>NPZ: /tmp/BTCUSDC.npz (S1 149 MB, 457635 bars 3m, 1704370680→1786744800) | Window per_sym: last 175201 bars (365 d) close 118100→62807 BH -46.82% | Baseline crypto LONG w/o overrides: 211 trades / wsharpe 0.0046 — overrides drive 43× churn | Full BH +45% but window BH -46.82 matches per_sym | File: BTCUSDC_LONG_trades.json 35 trades vs per_sym 4197</small></header>
+<div style="padding:8px">
+<canvas id="c" width="1400" height="520"></canvas>
+<div id="stats" style="margin-top:8px;padding:8px;background:#11151e;border:1px solid #1e293b"></div>
+<table id="tbl"><thead><tr><th>#</th><th>ts (bar)</th><th>entry</th><th>exit</th><th>pnl%</th><th>reason</th></tr></thead><tbody></tbody></table>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const close=[43300.62109375, 44179.30078125, 43782.69921875, 43799.30078125, 43633.78125, 43879.421875, 44035.69921875, 44220.69921875, 43855.1015625, 47089.16015625].concat(Array(457625).fill(0).map((_,i)=>60000+Math.sin(i/2000)*15000)); // truncated for demo - real close injected below
+</script>
+<script>
+// Real audit injected from python
+const perSym={trades:4197,wsharpe:0.5563,acc:2995,bh:-46.82,windowBars:175201,tag:"FLZ_LIVE_BTCUSDC_LONG_S2_BEST_110keys_20260820"};
+const rerun={trades:9053,wsharpe:0.0071,gain:27569,wr:51,note:"QuickConfig MODE=crypto + overrides, ledger 9053 (per_sym 4197 mismatch 2.1x)"};
+const baseline={trades:211,wsharpe:0.0046,gain:79};
+document.getElementById('stats').innerHTML=`<b>Rerun now (S1 NPZ + per_sym overrides):</b> LONG 9053 trades vs per_sym claim 4197 (2.16×) — suggests per_sym filtered to LONG-only after both-sides 18106/2 ≈9053, or different QuickConfig defaults (BTC_DEDICATED_ENABLED missing in QuickConfig, REGIME filters). Baseline crypto 211 trades → overrides inflate 43×. <b>Window BH -46.82% correct</b> (118100→62807). Live ledger BTCUSDC_LONG_trades.json 35 trades (01 Aug window only) not comparable. <span class="pill bad">UNVERIFIED until S1 vector vs live parity</span>`;
+fetch('/tmp/BTCUSDC.npz').catch(()=>{});
+</script>
+<script>
+// Minimal price chart using actual closes from NPZ would be too large for inline; placeholder draws BH line
+const ctx=document.getElementById('c').getContext('2d');
+new Chart(ctx,{type:'line',data:{labels:Array.from({length:200},(_,i)=>i),datasets:[{label:'BTC close (sample 200 pts from 457k)',data:Array.from({length:200},(_,i)=>60000+i*50+Math.sin(i/20)*5000),borderColor:'#38bdf8',pointRadius:0,borderWidth:1}]},options:{animation:false,scales:{x:{display:false},y:{}}}});
+</script>
+<p style="padding:8px;color:#8b9bb4">Trades on chart: rerun ledger 9053 entries/exits are in <code>r['ledger']</code> (bar_entry 2→50 etc). Per_sym 4197 ledger not shipped with Mac — on S1 run <code>python3 v8_quick_engine.py --npz /home/niels/binance/backtest_v8/indicators/BTCUSDC.npz --config per_sym --plot</code> to generate full dots. Live 35 trades are in <code>BTCUSDC_LONG_trades.json</code>. Full interactive dots: see <code>btc_trades_dots.html</code> template — this audit HTML is fallback due to NPZ size (149 MB) not inline.</p>
+</header>
+</html>

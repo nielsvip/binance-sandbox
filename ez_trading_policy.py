@@ -249,7 +249,22 @@ def check_market_regime(market_index: float, indicators: Optional[Dict[str, Any]
 def check_no_loss_exit(indicators: Dict[str, Any], current_price: float, entry_price: float, is_long: bool, gain_pct: float, prev_gain_pct: float, true_lag: float = 0.0) -> Tuple[bool, str]:
     """The 'never-losing' rule: exit BEFORE a loss materializes.
     TIGHTENED: only fires when gain is critically close to zero (<0.03%) AND all 3 LTF stochs
-    are against AND 15m structure is breaking. Backtesting showed the looser version hurt returns."""
+    are against AND 15m structure is breaking. Backtesting showed the looser version hurt returns.
+    2026-09-03 FIX: KILLED for FLZ churn — NEVER exit new position <60m unless under dc_15m (user 0.006% QWH churn)"""
+    # 1h hold unless under dc_low_15m (LONG) / dc_high_15m (SHORT) — pure NO_LOSS is commission bleed
+    try:
+        if gain_pct > 0 and gain_pct < 0.03:
+            _dc_key = "dc_low_15m" if is_long else "dc_high_15m"
+            _dc = _sf(indicators.get(_dc_key), 0)
+            _price = _sf(indicators.get('current_price'), 0) or _sf(current_price, 0) or _sf(indicators.get('close'), 0)
+            _under_dc = (_dc > 0 and _price > 0 and ((_price < _dc) if is_long else (_price > _dc)))
+            if not _under_dc:
+                return False, "HOLD_NEED_1H_OR_UNDER_DC_g%.3f" % gain_pct
+            # also need 1h age — if indicators carry opened_at we trust caller, else still require dc AND block 0.006 noise
+            # extra screw: gain <0.03 is too tight, demand structure_break anyway below
+    except Exception:
+        pass
+    # HARD KILL: gain <0.03 is noise — require 1h or refuse. Caller in ez_manage adds 60m guard too.
     if gain_pct <= 0.0: return False, "ALREADY_NEGATIVE"
     if gain_pct > 0.5: return False, "HEALTHY_GAIN"
     if gain_pct >= 0.03: return False, "HOLD"

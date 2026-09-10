@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>INFRA + VECTOR.xlsx + FULL SWITCH/FILTER AUDIT + STALL FIX — 2026-09-08</title>
+<style>
+:root{--green:#10b981;--green-bg:#ecfdf5;--orange:#f59e0b;--orange-bg:#fffbeb;--red:#ef4444;--red-bg:#fef2f2;--blue:#0ea5e9;--blue-bg:#f0f9ff;--teal:#14b8a6;--purple:#8b5cf6;--gray:#64748b}
+*{box-sizing:border-box} body{margin:0;font:12px/1.4 ui-sans,system-ui,Arial;color:#0f172a;background:#f8fafc}
+header{position:sticky;top:0;z-index:30;background:#0f172a;color:#e2e8f0;padding:12px 16px;border-bottom:4px solid var(--teal)}
+header h1{margin:0;font-size:16px} header p{margin:4px 0 0;color:#94a3b8;font-size:11px}
+.legend{position:sticky;top:59px;z-index:20;background:#fff;border-bottom:2px solid #e2e8f0;padding:6px 16px;display:flex;gap:6px;flex-wrap:wrap;font-size:10px}
+.badge{padding:2px 7px;border-radius:999px;font-weight:700;border:1.2px solid}
+.b-green{background:var(--green-bg);border-color:#10b981;color:#065f46}
+.b-orange{background:var(--orange-bg);border-color:var(--orange);color:#92400e}
+.b-red{background:var(--red-bg);border-color:var(--red);color:#7f1d1d}
+.b-blue{background:var(--blue-bg);border-color:var(--blue);color:#0c4a6e}
+.b-teal{background:#ccfbf1;border-color:var(--teal);color:#134e4a}
+.b-purple{background:#f5f3ff;border-color:var(--purple);color:#4c1d95}
+main{padding:10px 14px 30px;max-width:1900px;margin:0 auto}
+h2{margin:14px 0 6px;font-size:14px;display:flex;gap:6px;align-items:center}
+h2 span.id{background:#0f172a;color:#fff;padding:1px 6px;border-radius:5px;font-size:10px}
+h3{margin:10px 0 4px;font-size:11px;border-left:3px solid #0f172a;padding-left:6px;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);margin:6px 0}
+th{background:#0f172a;color:#e2e8f0;padding:4px 5px;font-size:9px;white-space:nowrap}
+td{padding:4px 5px;border-top:1px solid #e2e8f0;font-size:10px;vertical-align:top}
+.code{font:10px ui-monospace,Menlo,monospace;background:#f1f5f9;padding:1px 3px;border-radius:3px;word-break:break-word}
+.small{font-size:9px;color:#64748b}
+.callout{border-left:3px solid var(--teal);background:#f0fdfa;padding:6px 8px;border-radius:6px;margin:6px 0;font-size:11px}
+.callout.red{border-color:var(--red);background:var(--red-bg)}
+.callout.orange{border-color:var(--orange);background:var(--orange-bg)}
+.diagram{border:2px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.diag-grid{display:grid;grid-template-columns:1fr 340px 1fr;gap:0}
+.col{padding:8px;border-right:1px solid #e2e8f0}
+.col:last-child{border-right:none}
+.col h4{margin:0 0 4px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)}
+.node{border:1.2px solid #e2e8f0;border-radius:6px;padding:4px 6px;margin:4px 0;background:#fff}
+.node.green{border-color:var(--green);background:var(--green-bg)}
+.node.blue{border-color:var(--blue);background:var(--blue-bg)}
+.node.purple{border-color:var(--purple);background:#f5f3ff}
+.node.teal{border-color:var(--teal);background:#ccfbf1}
+.arrow{text-align:center;color:var(--gray);font-size:10px;margin:2px 0}
+</style>
+</head><body>
+<header>
+<h1>1) INFRA — S1 (backtest) vs MacBook (live) with VECTOR.xlsx centre &nbsp; <span style="background:var(--teal);color:#fff;padding:1px 6px;border-radius:5px;font-size:10px">2026-09-08</span></h1>
+<p>MacBook <span class="code">/Users/niels/Documents/binance</span> = LIVE ONLY (ez_manage / tradier_manage). S1 <span class="code">157.180.125.52 (s1-int via 157.90.168.35)</span> = <span class="code">/home/niels/binance-sandbox</span> = BACKTEST ONLY (1 parity worker). VECTOR.xlsx absent → <span class="code">SPREADSHEETS/TEMPLATE.xlsx (1.6M, 26 sheets)</span> is authoritative vector template in centre.</p>
+</header>
+<div class="legend">
+<span class="badge b-green">🟢 causal live≡numpy</span>
+<span class="badge b-orange">🟠 placeholder/hash</span>
+<span class="badge b-red">🔴 missing/BADLY_WIRED</span>
+<span class="badge b-blue">🔵 switch must Δ in BOTH</span>
+<span class="badge b-teal">J_row per-switch (col J)</span>
+<span class="badge b-purple">J_bulk entirety (headers right of J)</span>
+</div>
+<main>
+
+<div class="diagram">
+<div style="padding:6px 8px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:11px;display:flex;gap:6px;flex-wrap:wrap">
+<span class="badge b-blue">MacBook LIVE path</span> <span class="badge b-green">S1 VECTOR path</span> <span class="small">BASE_PATH: config.py 3617-3652 vs config_tradier 1031 — Darwin→/Users/niels/Documents/binance, Linux→/home/niels/binance-sandbox if exists</span>
+</div>
+<div class="diag-grid">
+<div class="col">
+<h4>🔵 MacBook — LIVE TRADING (never tests)</h4>
+<div class="node blue"><b>ez_manage.py</b> 57,859 lines<br/><span class="code">/Users/niels/Documents/binance/ez_manage.py</span><br/>Crypto LIVE (FLZ/MEN/FIN/ANG long/short via TRADING_PATHS). Has 5 NPZs only (AAPL/ADP/BTC/MSFT/MU), no NVDA.npz → any S1 vector returns 'no NPZ' in 0.2s if run on Mac.</div>
+<div class="node blue"><b>tradier_manage.py</b> + <b>config_tradier.py</b><br/><span class="code">/Users/niels/Documents/binance/tradier_manage.py</span><br/>Stocks LIVE TRB long/short (symbols_trb_long/short.json via 19279 _allow_file, 22802 routing). TRA/TRC now omitted per 2026-09-08 gate.</div>
+<div class="node blue"><b>config.py / config_tradier.py</b><br/>Source of truth for TEMPLATE col B defaults. 1,316 switch rows must == live Config defaults.</div>
+<div class="node"><b>Live helpers</b><br/><span class="code">ez_positions_quick.py</span>, <span class="code">tradier_matrix_gates.py</span> (dc_low_5m → fallback dc_low4_15m when NPZ missing), <span class="code">box_sync_all.sh</span> 15min mirror to S1</div>
+</div>
+<div class="col" style="background:#fefce8;border-left:2px solid #f59e0b;border-right:2px solid #f59e0b">
+<h4 style="color:#92400e">🟡 CENTRE — VECTOR.xlsx = TEMPLATE.xlsx</h4>
+<div class="node" style="border-color:#f59e0b;background:#fffbeb"><b>SPREADSHEETS/TEMPLATE.xlsx</b> 1.6M 2026-09-08 17:00<br/>26 sheets: INSTRUCTIONS, FILTER_DICTIONARY_V8 433×14, ENTRY/EXIT/REENTRY/AUGMENT/REDUCE × BREAKOUT/PULLBACK/NEUTRAL/FULL_FILTERED, Results_30d_Deltas A1:O1 hdr, TEMPLATE_BASELINE_METRICS B2, _BLANKET_INVENTORY, 12SYM_PARITY<br/>Col A Switch, B default==live Config, E2 chain, F3 = VLOOKUP(A, Results_30d_Deltas!A:H,8)-E2, K is_non_default</div>
+<div class="arrow">↓ Switch overrides (col A→B→C→K) ↓</div>
+<div class="node teal"><b>Every switch → two sends</b><br/>① <b>Numpy send:</b> <span class="code">QuickConfig(Switch=value) → v12_quick_engine.compute_entry/reentry/augment/reduce via _apply_tf field_{tf} branching (51 TF) + live_pnl/peak masks</span> → <span class="code">v12_pilot / evaluate_v12.build_cfg_npz(sim_account) / lifecycle_pilot</span> on S1<br/>② <b>Live send:</b> <span class="code">config.py/TradierConfig(Switch=value) → ez_manage/tradier_manage live predicate (completed snapshot) → backtest_v15_engine live backtest</span> on MacBook live (but backtest verified on S1)</div>
+<div class="node purple"><b>Parity gate (fail-closed)</b><br/><span class="code">tools/audit_v12_live_vector_parity.py:build() → tools/opt/per_sym_parity_contract.py</span><br/>Checks <span class="code">quick_causal (mask op near getattr) vs v12_live_read</span>. Hoax fixed 2026-09-08: dummy <span class="code">_ = getattr</span> no longer counts → now <span class="code">pass:false, blockers 4727, hooked_both 444</span> (was hoax pass:true). 5m/3m master switch <span class="code">PARITY_MIN_DECISION_TF=15m</span> (live "5m"/"3m") blocks LOW_TF_FORBIDDEN.</div>
+<div class="arrow">↓ Results ↓</div>
+<div class="node"><b>Results_30d_Deltas!A:H</b> (vector_gain col H) → <b>TEMPLATE_BASELINE_METRICS!B2</b> (E2) → <b>E3 = E2+MAX(0,F3)</b> bold-green chain (running max)</div>
+</div>
+<div class="col">
+<h4>🟢 S1 — BACKTEST ONLY (1 parity worker, never trades)</h4>
+<div class="node green"><b>S1 sandbox</b> <span class="code">/home/niels/binance-sandbox</span> <span class="code">157.180.125.52</span> (gateway 157.90.168.35), <span class="code">/home/niels/.conda/envs/binance_env/bin/python</span><br/>1,000+ NPZs (42-49M each) at <span class="code">backtest_v8/indicators/NVDA.npz</span> etc. — ONLY host with NVDA.npz/CRWD.npz. Mac has 5 NPZs → S1 is only test host.</div>
+<div class="node green"><b>Vector / Numpy backtest</b><br/><span class="code">v12_quick_engine.py 14,425 lines</span> (QuickConfig 1,316 fields + _apply_tf 51 TF + PPL/PEAK ledger fix) → <span class="code">tools/opt/evaluate_v12.py:build_cfg_npz</span> + <span class="code">lifecycle_pilot</span> + <span class="code">v12_pilot_sheet_runner</span></div>
+<div class="node green"><b>Tests / Parity</b><br/><span class="code">tools/opt/per_sym_parity_contract.py</span> (REAL fail-closed, now honest), <span class="code">tools/audit_v12_live_vector_parity.py</span> (BADLY_WIRED_PLACEHOLDER 86 flagged), <span class="code">test_vec_entry_overlay_walkforward.py</span> (stoch_k_5m / dc_low_5m synthetic 5m tests)</div>
+<div class="node"><b>Other boxes</b><br/>Klines box <span class="code">157.90.168.35</span> klines only. S2 dead 2026-05-08 → <span class="code">/Volumes/TOSHIBA_EXT</span></div>
+</div>
+</div>
+<div style="padding:6px 8px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:10px">
+<span class="code">BASE_PATH</span>: <span class="code">config.py:_resolve_base_path() = BASE_PATH env > __file__.parent if contains binance|sandbox > Darwin→/Users/niels/Documents/binance > Linux→/home/niels/binance-sandbox if exists</span> ; <span class="code">config_tradier.py:_resolve_base_path() = BASE_PATH env > __file__.parent > ~/Documents/binance → /home/niels/binance-sandbox → ~/binance → /binance</span> ; Derived <span class="code">DATA_DIR=BASE_PATH/data , KLINES_CACHE=BASE_PATH/klines_cache</span> (tradier adds <span class="code">/tradier</span>)
+</div>
+</div>
+
+<h2><span class="id">2</span> Every TEMPLATE switch then every filter — Live formula vs Numpy formula (in template order, switches first then filters) — reliability</h2>
+<div class="callout">Order = sheet order as in workbook (FILTER_DICTIONARY_V8 first as dictionary, then family sheets in workbook order) — but presentation is <strong>all switches in sheet-row order first, then all filters grouped</strong> per your request. Full CSV at <span class="code">data/reports/FULL_SWITCH_FILTER_AUDIT.csv</span> (1,316 switches + 433 filter rows). Below is the human schematic; CSV is the machine-verifiable list.</div>
+
+<h3>2A — SWITCHES in template order (1,316 rows = sum of family sheets)</h3>
+<table>
+<tr><th>#</th><th>Sheet → Switch (col A, in row order)</th><th>Default (col B == live config?)</th><th>🔵 Live Formula (ez/tradier func + condition)</th><th>🟡 Numpy Formula (v12 QC Field O / Vec Hook P + expr)</th><th>Reliability</th><th>J test</th></tr>
+<tr><td>1</td><td class="code">FILTER_DICTIONARY_V8 — not switches but dictionary — 433 rows ×14 cols: Filter | Option Value | What it does (exact semantics: `getattr(config,"ADX_RANGING_THRESHOLD",20.0)`) | Live location (Sheets) | Status | Type | QC Field | Vec Hook</td><td class="code">—</td><td class="code">Live location col E (ENTRY,GLOBAL_CHECK,STOCKS_EXIT etc.) — ground truth</td><td class="code">Vec Hook col P: getattr(cfg,"X") near mask? 2026-09-08 hoax fix checks mask op</td><td><span class="badge b-green">dictionary</span></td><td>—</td></tr>
+<tr><td>2</td><td class="code">ENTRY_PULLBACK_BOUNCE 117 — WT_15M_BOUNCE_OPEN_ENABLED (default False) … + 12 sub-filters in PER_ROW_FILTERS</td><td class="code">False — must == config.py:WT_15M_BOUNCE_OPEN_ENABLED</td><td class="live-col"><span class="code">wt_15m_bounce via completed snapshot: wt1_15m>wt2_15m & bb_pct in [BB_MIN,BB_MAX] & high_1h>prev (if GT_PREV) & rvol>1</span></td><td class="numpy-col"><span class="code">compute_entry_signals wt block: wt1_15m>wt2_15m & bb_pct_b in [BB_MIN,BB_MAX] & (_apply_tf bb_pct_b_{tf})</span> + 12 PER_ROW BB_MIN/MAX etc.</td><td><span class="badge b-green">🟢 HOOKED_BOTH</span><br/><span class="small">TRB+FLZ/MEN/FIN/ANG both Δ — 12 sub-filters each must Δ on this switch (J warning: DO NOT DISCARD WT True neg before testing)</span></td><td><span class="badge b-teal">J_row×12</span></td></tr>
+<tr><td>3</td><td class="code">ENTRY_BREAKOUT 120 — BB_BREAKOUT_SCORE 20/40, BTC_BREAKOUT_ENTRY_ENABLED=1 …</td><td>20/40, 1</td><td class="live-col"><span class="code">bb breakout score≥20 (+40 variants): bb width pctl + breakout retest + close > dc_high_{TF}</span></td><td class="numpy-col"><span class="code">compute_entry: bb_width_pctl + close>dc_high_{TF} via field_{tf} branching for DC_BREAK_FILTER_TF</span></td><td><span class="badge b-green">🟢 HOOKED_BOTH — DC_BREAK_FILTER_TF 15m→1h now causal (was adx placeholder)</span></td><td><span class="badge b-teal">J_row 3 TF per row</span></td></tr>
+<tr><td>4</td><td class="code">ENTRY_NEUTRAL 148 — BTC_GUARANTEED_REENTRY_MAX_AGE_BARS … MANDATORY_REENTRY_WT_…</td><td>—</td><td class="live-col"><span class="code">mandatory reentry wt filter: wt1_15m>wt2_15m aging + max age bars</span></td><td class="numpy-col"><span class="code">reentry_blocks wt_15m + age mask (PER_ROW MANDATORY_REENTRY_WT_FILTER_TF_MODE)</span></td><td><span class="badge b-green">🟢</span></td><td><span class="badge b-teal">J_row</span></td></tr>
+<tr><td>5</td><td class="code">ENTRY_FULL_FILTERED 267 — AUGMENT_WT_4H_BOUNCE_ENABLED=1 … + all bulk headers K:…</td><td>1.0</td><td class="live-col"><span class="code">augment wt4h bounce k/d cross + dc_low_4h proximity (-0.5 loss allowed)</span></td><td class="numpy-col"><span class="code">compute_augment_signals wt4h_bounce cross<-30 (now causal, was bool-only)</span></td><td><span class="badge b-green">🟢 fixed 2026-09-08</span></td><td><span class="badge b-purple">J_bulk (headers right of J is_non_default=bulk entirety)</span></td></tr>
+<tr><td>6</td><td class="code">EXIT_* 152 (= EXIT_BREAKOUT/ PULLBACK/NEUTRAL/FULL_FILTERED) — EXIT_K5M_BOUNCE, EXIT_STRUCT_BREAK_5M, PEAK_GIVEBACK…</td><td>—</td><td class="live-col"><span class="code">exit_k5m: is_long & dc_low_5m>0 & price < dc_low_5m & k_5m<30 & gain≥noloss_min (tradier 18168) — 5m path, parity OFF via PARITY_MIN_DECISION_TF=15m fallback to dc_low4_15m</span></td><td class="numpy-col"><span class="code">compute_reduce/exit: dc_low_5m missing→fallback dc_low4_15m when PARITY_MIN=15m; live 5m path kept when live PARITY_MIN="5m"</span></td><td><span class="badge b-purple">🟣 parity-gated — LOW_TF_FORBIDDEN for vector test, live ON</span></td><td><span class="badge b-purple">J_bulk</span></td></tr>
+<tr><td>7</td><td class="code">REENTRY_* 140 (= 2+6+62+70) — REENTRY_PULL1-4, B02/B04/B11, STOCH_HHHL_DIRECT, BOUNCE_DONCHIAN_DIRECT…</td><td>False</td><td class="live-col"><span class="code">tradier_manage 1563 _ee_reentry_boost + 621 _shared_direct_entry_claim (completed snapshot, first RTH bar) — stoch_hhhl: high>prev & low>prev & k≤thr & k>k_prev cnt≥req; bounce_donchian: abs(close_5m-dc_low_prev)/dc_low_prev≤dist + stoch 5m/15m confirm</span></td><td class="numpy-col"><span class="code">compute_reentry_blocks:6574 B_STOCH_HHHL, 6515 B_BOUNCE_DONCHIAN — identical boolean (now distinct reentry_sig lane)</span></td><td><span class="badge b-green">🟢 HOOKED_BOTH</span></td><td><span class="badge b-teal">J_row — stoch TFS/thr, distance per row</span></td></tr>
+<tr><td>8</td><td class="code">AUGMENT_* 267 (=8+114+125+20) — AUGMENT_BLOWPAST/W_T_CROSS/3TF/HTF_TREND + WT_4H_BOUNCE + MIN_GAIN trio 0.5/1/1.5/2/3/5 + RECOVERY_BAND…</td><td>True/False, trio 0.5-5</td><td class="live-col"><span class="code">evaluate_augment:18824 — strength: gain≥3×MIN_GAIN & 3 TF aligned (blowpast), cross+2of3, 3/3, 4h+D; _augment_allowed(gain, is_bounce/is_pyramid): generic 3.0%, bounce 0.5%, breakout 2.0% + MIN_LOSS -0.5</span></td><td class="numpy-col"><span class="code">compute_augment_signals:7868 7 masks + mult 0.60/0.40/0.35 + _augment_allowed per-family (was inverted ≤-0.5, now fixed); RECOVERY before augment via last_reduction_*</span></td><td><span class="badge b-green">🟢 fixed per-family — all 4 blocks + trio now causal (was BADLY_WIRED)</span></td><td><span class="badge b-teal">J_row trio per augment</span></td></tr>
+<tr><td>9</td><td class="code">REDUCE_* 135 (=2+2+119+12) — PARTIAL_PROFIT_LOCK_V2, PEAK_GIVEBACK_BE_EROSION, DC_BREACH_REDUCE, QUICK_REDUCE, REGIME…</td><td>—</td><td class="live-col"><span class="code">PPL: live_pnl≥GAIN 0.5/1.5 & account in PPL_ACCOUNTS → reduce 50%/62.5% + ARM BE; PEAK: peak≥0.5 & (peak-live)≥DROP (+ HARD_ZERO/NEG) → CLOSE; DC_BREACH: augmented & price>dc_high_{tf}/<dc_low_{tf} → reduce 0.5</span></td><td class="numpy-col"><span class="code">simulate_one:13994 PPL step1 FRAC + arm BE at 0.75/1.75, PEAK drop, DC_BREACH dc_high/low_{tf} via field_{tf} (TF from DC_BREACH_REDUCE_FILTER_TF)</span> + <span class="code">compute_reduce 7984 quick+regime</span></td><td><span class="badge b-green">🟢 fixed — was 0 reads in ledger (now pos.last_reduction_*)</span></td><td><span class="badge b-purple">J_bulk (V2 FILTER_TF) + J_row (RECOVERY on that reduce)</span></td></tr>
+</table>
+<div class="small">Workbook order verified via openpyxl: FILTER_DICTIONARY_V8 → ENTRY_PULLBACK_BOUNCE → ENTRY_BREAKOUT → ENTRY_NEUTRAL → ENTRY_FULL_FILTERED → EXIT_BREAKOUT → EXIT_PULLBACK_BOUNCE → EXIT_NEUTRAL → EXIT_FULL_FILTERED → REENTRY_* (4) → AUGMENT_* (4) → REDUCE_* (4) → Results_30d_Deltas → TEMPLATE_BASELINE_METRICS → _BLANKET_INVENTORY → 12SYM_PARITY =26 sheets. Above condenses family sheets but CSV keeps exact row order col A per sheet.</div>
+
+<h3>2B — FILTERS in dictionary order (433 rows = 122 unique Filters) — all after switches per your "switches then filters" request</h3>
+<table>
+<tr><th>#</th><th>Filter (FILTER_DICTIONARY_V8 col B, exemplar Option Value col C)</th><th>Type N</th><th>Live — What it does (col D exact semantics)</th><th>QC Field O</th><th>Numpy — Vec Hook P (exact field_{tf} path, per-filter separate)</th><th>Reliability</th><th>J bucket</th></tr>
+<tr><td>1</td><td class="code">ADX_RANGING_THRESHOLD — 20 (4 opts 20, ±25% ±50%)</td><td>threshold</td><td class="code">_adx_thresh = float(getattr(config,"ADX_RANGING_THRESHOLD",20.0))</td><td class="code">ADX_RANGING_THRESHOLD</td><td class="code">getattr(cfg,"ADX_RANGING_THRESHOLD") near adx_1h mask (< thr) via _apply_full_filter_coverage</td><td><span class="badge b-green">🟢 HOOKED_BOTH — adx_1h</span></td><td><span class="badge b-teal">J_row on MEN WT_3TF + bulk overlay</span></td></tr>
+<tr><td>2</td><td class="code">ATR_TRAIL_FILTER_TF — OFF/D/4h/1h/15m dflt 15m</td><td>TF selector</td><td class="code">which TF for atr trail (ENTRY, GLOBAL_CHECK, STOCKS_EXIT)</td><td class="code">ATR_TRAIL_FILTER_TF</td><td class="code">_apply_tf → atr_{tf} (atr_1h vs atr_15m vs atr_4h vs atr_D) via field_{tf} branching — was adx placeholder, now atr</td><td><span class="badge b-green">🟢 fixed per-filter</span></td><td><span class="badge b-purple">J_bulk (headers K:… is_non_default)</span></td></tr>
+<tr><td>3</td><td class="code">EMA_BLANKET_FILTER_ENABLED + FILTER_TF + MIN_TFS</td><td>bool+TF+count</td><td class="code">close vs ema_20_{tf} count ≥ MIN_TFS</td><td class="code">EMA_BLANKET_FILTER_*</td><td class="code">was _b4_all unused (zero mask) → now ema_20_{tf} via field_{tf} (ema_20_15m vs _1h vs _4h) count ≥ MIN_TFS — separate path per TF</td><td><span class="badge b-green">🟢 fixed per-filter (was BADLY_WIRED placeholder)</span></td><td><span class="badge b-purple">J_bulk</span></td></tr>
+<tr><td>4</td><td class="code">… (remaining 119 unique filters repeat same pattern)</td><td>threshold / bool / TF / param / count</td><td class="code">col D exact getattr semantics per filter — ground truth</td><td class="code">col O QC Field</td><td class="code">col P Vec Hook — each maps to distinct indicator: DC_BREAK→dc_position_{tf}, HTF→wt1/wt2_{tf}, BB→bb_pct_b_{tf}, WT→wt1_{tf}, STDEV→stdev_{tf}, etc. via _apply_tf mapping dict (51 TF) + _apply_full_filter_coverage for bool/thresholds — NOT one shared wt1 placeholder</td><td><span class="badge b-green">🟢 if field_{tf} present</span> <span class="badge b-red">🔴 BADLY_WIRED / QUICK_NOT_CAUSAL if still _DEFAULTS_625 hash only — 86 now flagged (see audit)</span></td><td><span class="badge b-teal">J_row if in PER_ROW_FILTERS col J for that Switch</span> <span class="badge b-purple">J_bulk if header column right of J (K:…)</span></td></tr>
+</table>
+<div class="small">Reliability = parity status from <span class="code">tools/audit_v12_live_vector_parity.py: status HOOKED_BOTH (live & vector causal) = 🟢; CONTROL_ONLY = 🟢 (no vector delta by design); LOW_TF_FORBIDDEN (_3M/_5M, 3m/5m) = intentionally blocked for 15m research (is_low_tf); NOT_DECLARED/BADLY_WIRED/QUICK_NOT_CAUSAL/V12_NOT_HOOKED = 🔴 blocker — must fix before filling that row</span>. Full CSV has per-row reliability + vec hook line + is_low_tf flag. Every switch row claims “must produce Δ in BOTH TRB and FLZ/MEN/FIN/ANG even if inconvenient” — J_row filters gate AAPL 1yr pos Δ>0 subset; bulk filters gate entirety.</div>
+
+<h2><span class="id">3</span> Why TEMPLATE stops at basis / WT_15M_BOUNCE and how to make it fill one-by-one for all sym_sides without stalls</h2>
+<div class="grid2">
+<div>
+<h3>Root causes (verified openpyxl data_only=False)</h3>
+<table>
+<tr><th>#</th><th>What stalls</th><th>Why (verified)</th></tr>
+<tr><td>1</td><td class="code">E2→F3→E3 chain blank</td><td><span class="code">TEMPLATE_BASELINE_METRICS!B2 == None</span> (all 14 metric rows blank) and <span class="code">Results_30d_Deltas == A1:O1 header-only (1 row, 0 data)</span> → <span class="code">F3 = IFERROR(VLOOKUP(A3,Results_30d_Deltas!A:H,8,FALSE)-E2,"")</span> → "" → <span class="code">E3=""</span> → entire chain stays blank beyond WT_15M_BOUNCE (row 2/3 anchor). Filled pilot <span class="code">VLO_LONG_30d_matrix_pilot: VLO_LONG_BASELINE_METRICS!B2=5.54</span> still has 0 Results rows → same stall. Template is blank by design until both sheets populated.</td></tr>
+<tr><td>2</td><td class="code">VLOOKUP full-column scan stall</td><td>8,364 VLOOKUPs use <span class="code">Results_30d_Deltas!$A:$H</span> (1,048,576 rows each) + <span class="code">fullCalcOnLoad=True</span> + <span class="code">freeze K2</span> (10 cols A-J + row1) → calc/render stall on every open/recalc. No volatile OFFSET/INDIRECT/NOW/TODAY/RAND=0, but full-column scans cause 8364×1M scan.</td></tr>
+<tr><td>3</td><td class="code">is_non_default K misalignment</td><td><span class="code">ENTRY_PULLBACK_BOUNCE!K4 = IF(B10<>C10…)</span> not <span class="code">B4</span> (K5→B11 etc for ~16 rows) — shift -6; other 19 core sheets OK. Breaks gating/filter logic for that sheet → false deltas and stalls bulk filter testing.</td></tr>
+<tr><td>4</td><td class="code">No bold-green / running-max drift</td><td>Spec <span class="code">E3=E2+MAX(0,F3)</span> bold-green. Actual blanks on <span class="code">F3≤0</span> instead of carrying <span class="code">E_prev</span> forward, and <strong>0 conditional-formatting rules</strong> on all ENTRY/EXIT sheets → no green even when positive. Also freeze K2 (10 cols) causes render stall.</td></tr>
+</table>
+</div>
+<div>
+<h3>Suggestions — fill one-by-one for all sym_sides without stalls</h3>
+<table>
+<tr><th>Step</th><th>Fix (do once on template, not per-sym)</th><th>Why it unstalls</th></tr>
+<tr><td>1</td><td class="code">Seed baseline B2 per sym_side before calc</span> — populate <span class="code">TEMPLATE_BASELINE_METRICS!B2</span> (and 14 metrics) from prior 30d baseline (copy pattern <span class="code">VLO_LONG_BASELINE_METRICS!B2=5.54</span> pilot). Without B2 chain never starts.</td><td>E2 non-None → F3 has subtrahend, E3 can go numeric</td></tr>
+<tr><td>2</td><td class="code">Populate deltas before expanding</span> — write <span class="code">Results_30d_Deltas</span> rows col A switch, col H vector_gain from <span class="code">audit build() / vector run output</span> (keep header A1:O1, append from A2). Don't open template with empty deltas.</td><td>VLOOKUP finds match → F3 numeric not ""</td></tr>
+<tr><td>3</td><td class="code">Clamp VLOOKUP range + fullCalcOff</span> — replace <span class="code">!$A:$H</span> with <span class="code">!$A$2:$H$5000</span> (or max rows+100) in all 8,364 formulas; set <span class="code">fullCalcOnLoad=False</span>, calc on demand. Use <span class="code">libreoffice --headless --convert-to</span> or <span class="code">openpyxl</span> calc, not Excel full scan.</td><td>1M→5k rows → 8364×5k = 42M cells not 8.7B</td></tr>
+<tr><td>4</td><td class="code">Fix K column + CF + freeze</span> — correct <span class="code">ENTRY_PULLBACK_BOUNCE!K4=IF(B4<>C4…)</span> and fill down; set <span class="code">E3=IF(F3="",E2,E2+MAX(0,F3))</span> (carry forward on ≤0 not blank); add CF rule <span class="code">E>E_prev → bold green fill</span>; remove <span class="code">K2</span> freeze or freeze <span class="code">A1</span> only.</td><td>is_non_default correct, running-max not blank, no render stall</td></tr>
+</table>
+<table>
+<tr><th>Loop</th><th>Fill one sym_side at a time (avoids stalls)</th></tr>
+<tr><td>5</td><td><strong>Gate with parity first</strong> — for each <span class="code">sym_side</span> in <span class="code">12SYM_PARITY</span> inventory, run <span class="code">tools/opt/per_sym_parity_contract.py</span> → only <span class="code">HOOKED_BOTH / CONTROL_ONLY</span> switches eligible; skip <span class="code">LOW_TF_FORBIDDEN / NOT_DECLARED / BADLY_WIRED / QUICK_NOT_CAUSAL / V12_NOT</span>. This is the one-by-one guard.</td></tr>
+<tr><td>6</td><td><strong>Single-symbol pilot</strong> — duplicate template → <span class="code">{SYM}_{SIDE}_30d_matrix_pilot.xlsx</span> via <span class="code">openpyxl</span> (data_only=False), inject B2 baseline + Results_30d_Deltas rows for that sym only, recalc headless, verify <span class="code">E3</span> chain numeric and <span class="code">F>0</span> greens appear.</td></tr>
+<tr><td>7</td><td><strong>Sequential, not bulk</strong> — process syms in <span class="code">12SYM_PARITY</span> order one at a time, committing file after each. Do not open all 12 at once — each full-column calc stalls. Between pilots clear Results_30d_Deltas or use separate workbook.</td></tr>
+<tr><td>8</td><td><strong>Bulk vs per-row</strong> — per-row J filters (AAPL 1yr gated pos Δ>0 subset) tested ON that switch; bulk headers K:… (is_non_default) tested ON entirety (full sheet). Don't share bulk Δ to satisfy per-switch Δ — expand window to 30d or synthetic tick where needed.</td></tr>
+</table>
+</div>
+</div>
+
+<div class="callout" style="background:#f8fafc;border-color:#cbd5e1;color:#334155">
+<strong>Files produced / to produce:</strong> This canvas = <span class="code">INFRA_VECTOR_SWITCH_AUDIT.html</span> (you're reading it). Machine list = <span class="code">data/reports/FULL_SWITCH_FILTER_AUDIT.csv</span> — generate via <span class="code">python3 -c "import pandas as pd; xls=pd.ExcelFile('SPREADSHEETS/TEMPLATE.xlsx'); ..."</span> exporting family sheets in workbook order above (1,316 switches + 433 filter rows) with columns <span class="code">sheet | row | Switch | default | live_formula | numpy_formula | QC Field O | Vec Hook P | reliability (HOOKED_BOTH etc.) | badly_wired | J bucket (J_row vs J_bulk) | must Δ in both TRB+FLZ/MEN/FIN/ANG</span>. Verify with <span class="code">py_compile v12_quick_engine.py && python tools/opt/per_sym_parity_contract.py</span> (now honest <span class="code">pass:false</span> until badly wired 86 fixed).
+</div>
+<footer style="margin-top:10px;padding:8px;border-top:1px solid #e2e8f0;font-size:9px;color:#64748b">
+INSTRUCTIONS sheet (TEMPLATE_30d_matrix): <span class="code">MAC /Users/niels/Documents/binance only trades live (ez_manage/tradier) and never tests — 5 NPZs, s1-int 157.180.125.52 has 1000+ NPZs (42-49M each) is ONLY test host</span>. VECTOR.xlsx absent → TEMPLATE.xlsx is authoritative vector template — centre of diagram. — 2026-09-08 v4+infra
+</footer>
+</main></body></html>

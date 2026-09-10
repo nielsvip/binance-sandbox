@@ -4346,8 +4346,8 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     top_losers_st = sorted(ranked_symbols, key=lambda x: x.get("final_score_recent_norm", 0) * x.get("linearity_boost_factor", 1))
     
     # Save top/bottom 30 (long term)
-    to_save_top30[:] = [{"symbol": e["symbol"], "score": e["final_score_norm"], "linearity": e.get("avg_linearity", 0)} for e in top_winners_lt[:30]]
-    to_save_bottom30[:] = [{"symbol": e["symbol"], "score": e["final_score_norm"], "linearity": e.get("avg_linearity", 0)} for e in top_losers_lt[:30]]
+    to_save_top30[:] = [{"symbol": e["symbol"], "score": e["final_score_norm"], "linearity": e.get("avg_linearity", 0)} for e in top_winners_lt[:40]]
+    to_save_bottom30[:] = [{"symbol": e["symbol"], "score": e["final_score_norm"], "linearity": e.get("avg_linearity", 0)} for e in top_losers_lt[:40]]
     
     # Save top/bottom 30 recent
     to_save_top30_r[:] = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"], "linearity": e.get("avg_linearity", 0)} for e in top_winners_st[:20]]
@@ -4453,16 +4453,16 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     symbols_ang_short_list = [item["symbol"] for item in to_save_bottom30]
 
     # Trim to desired length
-    symbols_ang_long_list = symbols_ang_long_list[:20]
-    symbols_ang_short_list = symbols_ang_short_list[:20]
+    symbols_ang_long_list = symbols_ang_long_list[:40]
+    symbols_ang_short_list = symbols_ang_short_list[:40]
 
     # Add ranking_points.json to final scores — WITH HTF TREND FILTER
     try:
         with open("data/ranking_points.json", "r") as f:
             ranking_data = json.load(f)
         sorted_ranking = sorted(ranking_data.items(), key=lambda x: x[1], reverse=True)
-        symbols_ang_long_list.extend([symbol for symbol, score in sorted_ranking[:40] if symbol not in _bearish_syms][:20])
-        symbols_ang_short_list.extend([symbol for symbol, score in sorted_ranking[-40:] if symbol not in _bullish_syms][:20])
+        symbols_ang_long_list.extend([symbol for symbol, score in sorted_ranking[:60] if symbol not in _bearish_syms][:20])
+        symbols_ang_short_list.extend([symbol for symbol, score in sorted_ranking[-60:] if symbol not in _bullish_syms][:20])
     except Exception as e:
         logger.warning(f"Failed to load ranking_points.json: {e}")
     
@@ -4496,8 +4496,8 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     # Inject top-20/bottom-20 by `weighted_gains_st` (24h decay-weighted return) so sustained pumps qualify.
     try:
         _wgs_sorted = sorted(final_ranking_data_scalars, key=lambda e: float(e.get("weighted_gains_st", 0) or 0), reverse=True)
-        _wgs_top20 = _wgs_sorted[:20]
-        _wgs_bot20 = _wgs_sorted[-20:]
+        _wgs_top20 = _wgs_sorted[:60]
+        _wgs_bot20 = _wgs_sorted[-60:]
         for _e in _wgs_top20:
             _s = _e.get("symbol")
             if _s and _s not in symbols_inf_long_list and _s not in _bearish_syms:
@@ -5607,6 +5607,35 @@ async def save_market_data():
         # NOTE: symbols_inf_long/short.json is written by tradier_rankings.py [INF_HOOK] — ez_rankings MUST NOT write it
         # await _save_json_async(BASE_PATH / "symbols_inf_long.json", symbols_inf_long_list)
         # await _save_json_async(BASE_PATH / "symbols_inf_short.json", symbols_inf_short_list)
+        # 2026-09-06: CRYPTO TESTS ONLY TRADEABLE KEYS — filter ang lists to tradeable before save
+        # Prevents empty-XLS waste (e.g. CRDOUSDT_LONG, AMATUSDT_LONG with 0 trades) from polluting
+        # symbols_ang_long/short.json and wasting S1/S2 compute. Live gate (tradeable_keys) is separate.
+        try:
+            _tk_path = BASE_PATH / "tradeable_keys.json"
+            _ps_path = BASE_PATH / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+            _tk_set = set()
+            _ps_tradeable = set()
+            if _tk_path.exists():
+                try:
+                    _tk_raw = json.loads(_tk_path.read_text())
+                    _tk_set = set(_tk_raw) if isinstance(_tk_raw, list) else set()
+                except Exception:
+                    pass
+            if _ps_path.exists():
+                try:
+                    _ps_raw = json.loads(_ps_path.read_text())
+                    _ps_tradeable = {k for k, v in _ps_raw.items() if not k.startswith("_") and isinstance(v, dict) and int(v.get("trades", 0) or 0) > 0 and v.get(k.rsplit("_", 1)[-1] + "_ENABLED", True) is not False}
+                except Exception:
+                    pass
+            def _is_tradeable_side(_side_key: str) -> bool:
+                return _side_key in _ps_tradeable or any(_k.endswith(f":{_side_key}") for _k in _tk_set)
+            _before_long, _before_short = len(symbols_ang_long_list), len(symbols_ang_short_list)
+            symbols_ang_long_list = [s for s in symbols_ang_long_list if _is_tradeable_side(f"{s}_LONG")]
+            symbols_ang_short_list = [s for s in symbols_ang_short_list if _is_tradeable_side(f"{s}_SHORT")]
+            if len(symbols_ang_long_list) != _before_long or len(symbols_ang_short_list) != _before_short:
+                logger.info(f"[TRADEABLE_FILTER] symbols_ang_long { _before_long}->{len(symbols_ang_long_list)} short { _before_short}->{len(symbols_ang_short_list)} (non-tradeable dropped: long {[s for s in ['CRDOUSDT','AMATUSDT'] if s not in symbols_ang_long_list][:3]} )")
+        except Exception as _e:
+            logger.warning(f"[TRADEABLE_FILTER] filter failed, saving unfiltered: {_e}")
         await _save_json_async(BASE_PATH / "symbols_ang_short.json", symbols_ang_short_list)
         await _save_json_async(BASE_PATH / "symbols_ang_long.json", symbols_ang_long_list)
         await _save_json_async(BASE_PATH / "symbols_active.json", symbols_active_list)

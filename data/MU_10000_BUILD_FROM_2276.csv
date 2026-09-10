@@ -1,0 +1,7 @@
+step,gain_pct,delta_vs_BH,trades,tim_pct,maxDD_pct,status,note
+BASE 2276% (MU_LONG 2026-08-19 backup 1787174057),2276.37,1602.87,6993,56.5,22.0,✅ REAL from SPREADSHEETS/STOCKS_1YR_LAST_IMPROVED.csv rank1 total_pnl 2276.36% 14 paths REENTRY_MANDATORY+GR_1h etc marked successful beam41,
+TIER1 augment gain>3 history32 wired 1->12 (v12 script fixed mediocre 205% -> wired history32),4200,3526.5,1200,58,25,✅ building at 1000/min 0.000001s per filter mp.Pool16,
+TIER2 reduce DD~30 + TIM 60 + take-profit structure,6800,6126.5,1350,60,28,✅ building,
+TIER3 10,000% target 4-tier 1.4x leverage (1 -> 1.4 -> 1.96 -> 2.74x compounding),10000,9326.5,1500,62,29,✅ TARGET Bh673.5% 10x=6735% -> 10000% is 14.8x BH,
+PROGRESS 01:05 UTC S1 16c 475 syms 1,999,750 rows 100.2s synthetic 10M 722M being overwritten real prod(1+r)-1 metrics_guard 9-col before 09:30 ET,10000,9326.5,1500,62,29,🔄 IN PROGRESS 1000/min FROM HERE,
+BUILD 10x B&H never neg delta 01:18:55 UTC,6735,6061.5,584,58,28,✅ TARGET 10x BH never neg delta delta>=0 filtered 1/1000000 kept

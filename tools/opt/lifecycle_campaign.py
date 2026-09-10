@@ -26,6 +26,7 @@ DEFAULT_OUTPUT = ROOT / "data" / "reports" / "lifecycle_pilot" / "campaign_order
 
 def _symbols(name: str) -> list[str]:
     """Read a symbol list; recover quoted tokens from a concurrently torn file."""
+    # 2026-09-06: CRYPTO TESTS ONLY TRADEABLE KEYS — filter to tradeable (symbols_flz etc already filtered, defense in depth)
     path = ROOT / name
     try:
         raw = json.loads(path.read_text())
@@ -35,7 +36,34 @@ def _symbols(name: str) -> list[str]:
             values = re.findall(r'"([A-Za-z0-9._-]+)"', path.read_text())
         except OSError:
             values = []
-    return list(dict.fromkeys(str(value).upper() for value in values if value))
+    vals = list(dict.fromkeys(str(value).upper() for value in values if value))
+    # Filter crypto long/short and bare lists to tradeable
+    try:
+        _tk_p = ROOT / "tradeable_keys.json"
+        _ps_p = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+        _tk_set: set[str] = set()
+        _ps_tradeable: set[str] = set()
+        if _tk_p.exists():
+            _tk_raw = json.loads(_tk_p.read_text())
+            if isinstance(_tk_raw, list):
+                _tk_set = set(_tk_raw)
+        if _ps_p.exists():
+            _ps_raw = json.loads(_ps_p.read_text())
+            _ps_tradeable = {k for k, v in _ps_raw.items() if not k.startswith("_") and isinstance(v, dict) and int(v.get("trades", 0) or 0) > 0 and v.get(k.rsplit("_", 1)[-1] + "_ENABLED", True) is not False}
+        def _is_tradeable(_sk: str) -> bool:
+            return _sk in _ps_tradeable or any(_k.endswith(f":{_sk}") for _k in _tk_set)
+        _no_tradeable_filter = not _tk_set and not _ps_tradeable
+        if _no_tradeable_filter:
+            pass
+        elif name.endswith("_long.json"):
+            vals = [s for s in vals if _is_tradeable(f"{s}_LONG")]
+        elif name.endswith("_short.json"):
+            vals = [s for s in vals if _is_tradeable(f"{s}_SHORT")]
+        elif name in ("symbols_flz.json", "symbols_men.json", "symbols_fin.json"):
+            vals = [s for s in vals if _is_tradeable(f"{s}_LONG") or _is_tradeable(f"{s}_SHORT")]
+    except Exception:
+        pass
+    return vals
 
 
 def _performance() -> tuple[Dict[str, Dict[str, Any]], str]:
@@ -96,7 +124,7 @@ def campaign_order() -> Dict[str, Any]:
                       "last_30d_trades": activity(symbol, account),
                       "exact_recent_side": symside in recent_sides, "reason": reason,
                       "window": "30_calendar_days" if pilot.is_crypto_symside(symside)
-                                else "20_trading_sessions", "execution_tf": "15m"})
+                                else "30_trading_sessions", "execution_tf": "15m"})
 
     # 1. FLZ crypto, preserving the explicit operator list and LONG/SHORT pair.
     for symbol in _symbols("symbols_flz.json"):
@@ -146,7 +174,7 @@ def campaign_order() -> Dict[str, Any]:
             "policy": ["FLZ crypto LONG/SHORT", "TRB active sides from last 30 days",
                        "MEN then FIN then ANG crypto", "remaining TRB stocks",
                        "mandatory TRB long/short lists"],
-            "window_contract": {"crypto": "30_calendar_days", "stocks": "20_trading_sessions",
+            "window_contract": {"crypto": "30_calendar_days", "stocks": "30_trading_sessions",
                                 "execution_tf": "causal_completed_15m", "synthetic_3m_5m": False},
             "count": len(queue), "queue": queue}
 

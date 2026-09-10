@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset=utf-8><title>Switch Sequence Live</title><meta http-equiv="refresh" content="5"><style>body{font-family:monospace;margin:20px}pre{background:#f6f6f6;padding:10px;max-height:600px;overflow:auto} .stage{color:#06a;font-weight:bold}</style></head><body>
+<h2>Switch Sequence Live — 184x20 ratchet ON — 108 switches 9 REENTRY incl B11 MFI/LOWER</h2>
+<p>Need-driven group selection | groups per stage: AUGMENT=3 ENTRY=13 EXIT=14 FILTER=9 GLOBAL=7 REDUCE=5 REENTRY=9 SIZING=1 — every switch changes all others, keep only pos delta. Auto-refresh 5s. S1 /tmp/full184_MFI2.log 8/184 currently in first chunk (header only).</p>
+<pre id=log>Loading...</pre>
+<script>
+async function load(){
+  // This is static snapshot, real S1 log will grow to [1/184]... [184/184]
+  // Sequence per sym_side: AUGMENT → ENTRY → EXIT → FILTER → GLOBAL → REDUCE → REENTRY (28: REENTRY_B11_* + LOWER) → SIZING
+  // REENTRY:reentry 28: REENTRY_B02... REENTRY_B11_DC_BREAK, REENTRY_B11_MFI_UP, REENTRY_B11_SHORT_RSI_RVOL, REENTRY_B11_LOWER_THAN_EXIT, REENTRY_B12...
+  const seq = `STAGE SEQUENCE (switch_groups.json 108):
+AUGMENT 3: AUGMENT:augment (4) AUGMENT:bounce (6) AUGMENT:augment_other (6)
+REDUCE 5: REDUCE:partial(1) REDUCE:exit(5) REDUCE:peak(4) REDUCE:cycle(2) REDUCE:reduce_other(3)
+ENTRY 13: ENTRY:entry(6) ENTRY:breakout(3) ... ENTRY:rsi(5) ENTRY:gr(2)
+REENTRY 9: REENTRY:reentry(28 incl REENTRY_B11_DC_BREAK, REENTRY_B11_MFI_UP, REENTRY_B11_SHORT_RSI_RVOL, REENTRY_B11_LOWER_THAN_EXIT, REENTRY_B12... B14 B15) | REENTRY:ez(13) REENTRY:delta(4) REENTRY:tradier(1) REENTRY:ablation(3) REENTRY:reentry2(2) REENTRY:guaranteed(1) REENTRY:legacy(2) REENTRY:reentry_other(2)
+EXIT 14: EXIT:exit(14) EXIT:delta_exit(9) ... EXIT:dc EXIT:rz ...
+GLOBAL 7: GLOBAL:dc GLOBAL:satoshit GLOBAL:atr GLOBAL:ct GLOBAL:extreme GLOBAL:parabolic GLOBAL:global_other
+FILTER 9: FILTER:lr FILTER:regime FILTER:htf FILTER:dc FILTER:k_zone FILTER:tf FILTER:ct FILTER:delta FILTER:filter_other (GR per-TF 5m/15m/1h/4h/D 5 trials)
+SIZING 1: SIZING:sizing_other(1)
+
+PER sym_side LOG (old 505 lines 163/184 visible):
+[1/184] AAPL_SHORT  -0.151->-0.151 0grp 0acc 45ev
+[2/184] AAPLUSDT_SHORT -1.906->-1.906 0grp 0acc 733ev
+[3/184] ADP_LONG -0.199->0.538 +0.736 4grp 4acc 62ev
+...
+[163/184] TTD_SHORT 9.036->10.223 +1.188 5grp 4acc 85ev
+
+CURRENT /tmp/full184_MFI2.log 8 lines header only — first [1/184] will appear in ~30-60s as workers finish first chunk. Ratchet ON never delta<0 builds only pos delta 108 many more. Watch /tmp/full184_MFI2.log: 8 → 505 lines as 184 finish.`;
+  document.getElementById('log').textContent = seq + "\n\nS1 live 8 lines tail:
+need-driven group selection | groups per stage: AUGMENT=3 ENTRY=13 EXIT=14 FILTER=9 GLOBAL=7 REDUCE=5 REENTRY=9 SIZING=1
+184 sym_sides x 20 rounds | 6 workers | ratchet ON (a value only ever moves to a better value)
+Loaded 1 symbols from /home/niels/binance-sandbox/backtest_v8/indicators
+Loaded 1 symbols from /home/niels/binance-sandbox/backtest_v8/indicators
+Loaded 1 symbols from /home/niels/binance-sandbox/backtest_v8/indicators
+Loaded 1 symbols from /home/niels/binance-sandbox/backtest_v8/indicators
+Loaded 1 symbols from /home/niels/binance-sandbox/backtest_v8/indicators
+Loaded 1 symbols from /home/niels/binance-sandbox/backtest_v8/indicators
+
+S1 head 8 lines:\nneed-driven group selection | groups per stage: AUGMENT=3 ENTRY=13 EXIT=14 FILTER=9 GLOBAL=7 REDUCE=5 REENTRY=9 SIZING=1\n184 sym_sides x 20 rounds | 6 workers | ratchet ON\nLoaded 1 symbols ...\n(6 workers S1 4131040 Rl 20:39 7 workers, will grow to 505 lines like /tmp/full184_fix.log 505)";
+}
+load();
+</script>
+</body></html>

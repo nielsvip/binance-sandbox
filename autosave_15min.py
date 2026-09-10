@@ -31,6 +31,8 @@ CRITICAL = [
     "wt_dc_delta.py", "wt_composite.py", "wt_dc_exit_scorer.py",
     "utils.py", "ez_satoshit.py",
     "backtest_v8_engine.py", "backtest_v8_harness.py", "backtest_v8_sweep.py",
+    "v12_quick_engine.py", "v12_wide_engine.py", "SPREADSHEETS/TEMPLATE.xlsx", "SPREADSHEETS/TEMPLATE.xlsx.sha256",
+    "vec_decisions/bb_pullback_gate.py", "vec_decisions/filter_tf_gate.py", "tradier_matrix_gates.py",
     "sweep_cockpit.py", "v8_watchdog.py", "cpu_enforcer.py", "log_healer.py",
     "LOCKED_FILES.md", "CLAUDE.md",
     "symbols_tradier.json", "symbols_tradier.last_known_good.json",
@@ -73,7 +75,9 @@ def backup_cycle():
         src = REPO / fn
         if src.exists():
             try:
-                shutil.copy2(src, dest / fn)
+                target = dest / fn
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, target)
                 saved += 1
             except Exception as e:
                 log(f"  SKIP {fn}: {e}")
@@ -151,10 +155,10 @@ def git_commit():
     """Commit all changes with timestamp message."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
-        a = subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=30,
+        a = subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=120,
                           capture_output=True, text=True)
         if a.returncode != 0 and "index.lock" in a.stderr and clear_stale_index_lock():
-            a = subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=30,
+            a = subprocess.run(["git", "add", "-A"], cwd=str(REPO), timeout=120,
                               capture_output=True, text=True)
         if a.returncode != 0:
             log(f"git add: rc={a.returncode} stderr={a.stderr.strip()[:200]!r}")
@@ -170,31 +174,35 @@ def git_commit():
         log(f"git commit failed: {e}")
 
 
-GITHUB_REMOTE = "github-main"
+GITHUB_REMOTE = "origin"
 GITHUB_SSH_KEY = Path.home() / ".ssh" / "id_ed25519_github_binance_main"
+GITHUB_SSH_REMOTE = "origin-ssh"
 
 
 def git_push():
-    """One-way mirror of HEAD to GitHub. NEVER fetch/pull/merge/reset here —
+    """One-way mirror of HEAD to GitHub + S1. NEVER fetch/pull/merge/reset here —
     Mac is the live-trading source of truth (CLAUDE.md); this repo must never
-    pull code back down from GitHub. No-ops until GITHUB_REMOTE is configured."""
-    r = subprocess.run(["git", "remote", "get-url", GITHUB_REMOTE], cwd=str(REPO),
-                      capture_output=True, text=True)
-    if r.returncode != 0:
-        return
-    env = os.environ.copy()
-    env["GIT_SSH_COMMAND"] = f"ssh -i {GITHUB_SSH_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
-    try:
-        r = subprocess.run(["git", "push", GITHUB_REMOTE, "HEAD:main"], cwd=str(REPO),
-                          env=env, timeout=60, capture_output=True, text=True)
-        if r.returncode == 0:
-            log("git push: OK")
-        elif "up-to-date" in (r.stdout + r.stderr).lower() or "up to date" in (r.stdout + r.stderr).lower():
-            log("git push: up to date")
-        else:
-            log(f"git push failed: {(r.stderr or r.stdout).strip()[:300]}")
-    except Exception as e:
-        log(f"git push failed: {e}")
+    pull code back down from GitHub. Pushes to origin (GitHub) and s1-backup."""
+    for remote in (GITHUB_REMOTE, GITHUB_SSH_REMOTE, "s1-backup"):
+        r = subprocess.run(["git", "remote", "get-url", remote], cwd=str(REPO),
+                          capture_output=True, text=True)
+        if r.returncode != 0:
+            continue
+        url = r.stdout.strip()
+        env = os.environ.copy()
+        if url.startswith("git@") or url.startswith("ssh://") or "s1-int" in url:
+            env["GIT_SSH_COMMAND"] = f"ssh -i {GITHUB_SSH_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+        try:
+            r = subprocess.run(["git", "push", remote, "HEAD:main"], cwd=str(REPO),
+                              env=env, timeout=300, capture_output=True, text=True)
+            if r.returncode == 0:
+                log(f"git push {remote}: OK")
+            elif "up-to-date" in (r.stdout + r.stderr).lower() or "up to date" in (r.stdout + r.stderr).lower():
+                log(f"git push {remote}: up to date")
+            else:
+                log(f"git push {remote} failed: {(r.stderr or r.stdout).strip()[:400]}")
+        except Exception as e:
+            log(f"git push {remote} failed: {e}")
 
 
 log("AUTOSAVE STARTED — 15 min cycles, file backups + git commit")

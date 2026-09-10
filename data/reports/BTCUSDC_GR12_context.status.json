@@ -1,0 +1,32 @@
+{
+  "baseline_keys": 0,
+  "expected_contexts": 11082,
+  "last_context": {
+    "category": "FILTER",
+    "overrides": {
+      "TRA_WT_DC_ENTRY_THRESHOLD": 85,
+      "WT_DC_ENTRY_THRESHOLD": 0,
+      "WT_DC_HTF_GATE": "1h"
+    },
+    "param": "WT_DC_HTF_GATE",
+    "source_group": "F4_WT_DC_HIERARCHY",
+    "source_row": 7,
+    "source_sheet": "ENTRY_SWITCHES_ALL",
+    "value": "1h"
+  },
+  "last_off_entry_count": 8,
+  "last_on_entry_count": 8,
+  "last_signal_changed": false,
+  "status": "running",
+  "sym_side": "BTCUSDC_LONG",
+  "target": {
+    "GOLDEN_RULE_HTF_MIN_TFS": 1,
+    "GOLDEN_RULE_MIN_IND": 2
+  },
+  "target_off": {
+    "GOLDEN_RULE_HTF_MIN_TFS": 0,
+    "GOLDEN_RULE_MIN_IND": 0
+  },
+  "tested": 55,
+  "window_years": 0.08333333333333333
+}

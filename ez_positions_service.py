@@ -431,7 +431,7 @@ logger = logging.getLogger("ez_positions_service")
 logger.propagate = False
 logger.setLevel(logging.INFO)
 for h in list(logger.handlers): logger.removeHandler(h)
-base_path = config.BASE_PATH
+base_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
 logger.addHandler(stream_handler)
@@ -3732,7 +3732,7 @@ class StopLevelsManager:
         self._api_call_times.append(now)
 
     def get_stop_file(self, account_key: str, side: str) -> Path:
-        base_path = Path(config.BASE_PATH)
+        base_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
         account_dir = base_path / account_key
         account_dir.mkdir(exist_ok=True)
         file_path = account_dir / f"{side.lower()}_stop_levels.json"
@@ -3922,7 +3922,7 @@ class PositionService:
 
     def __init__(self, *, config: Optional[Config] = None, base_path: Optional[Path] = None, logger=None, loop: Optional[asyncio.AbstractEventLoop] = None, accounts: Optional[Dict[str, Any]] = None, execute_now: Optional[Callable[..., Awaitable[Any]]] = None, order_queue: Optional[Any] = None, get_cached_open_orders: Optional[Callable[..., Awaitable[Any]]] = None, indicator_fetcher: Optional[Callable[[str], Awaitable[Dict[str, Any]]] | Callable[[str], Dict[str, Any]]] = None) -> None:
         self.config = config or Config()
-        self.base_path = Path(base_path or self.config.BASE_PATH)
+        self.base_path = Path(base_path or getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
         self.logger = logger or logging.getLogger("ez_positions_service")
         self.loop = loop or asyncio.get_event_loop()
         self._shutdown_event = asyncio.Event()
@@ -4234,7 +4234,7 @@ class PositionService:
 
     def _get_expected_symbol_count(self) -> int:
         try :
-            symbols_file = Path(getattr(self.config, "SYMBOLS_FILE", Path(self.config.BASE_PATH) / "symbols.json"))
+            symbols_file = Path(getattr(self.config, "SYMBOLS_FILE", Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "symbols.json"))
             if symbols_file.exists():
                 with open(symbols_file, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -5275,7 +5275,7 @@ class PositionService:
             combined: Dict[str, Any] = {}
             latest_ts: Optional[datetime] = None
             try :
-                symbols_file = Path(getattr(self.config, "SYMBOLS_FILE", Path(self.config.BASE_PATH) / "symbols.json"))
+                symbols_file = Path(getattr(self.config, "SYMBOLS_FILE", Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "symbols.json"))
                 if symbols_file.exists():
                     sym_content = await self._load_json(symbols_file)
                     if isinstance(sym_content, dict) and "symbols" in sym_content:
@@ -6046,7 +6046,7 @@ class PositionService:
         """Synchronous worker for restore_position_from_backups. Performs all disk I/O. MUST be invoked via asyncio.to_thread — never on the event loop directly. Event-loop blocking here caused process_account_update HUNG > 120s on 2026-04-29."""
         position_key = f"{account_key}:{symbol}_{position_side}"
         try:
-            backup_dir_str = os.path.join(str(self.config.BASE_PATH), account_key, "backups")
+            backup_dir_str = os.path.join(str(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')), account_key, "backups")
             position_side_str = position_side.lower()
             patterns = [f"{position_side_str}_positions_backup_*.json", f"{position_side_str}_positions.json_backup_*.json"]
             if not os.path.exists(backup_dir_str):
@@ -6080,7 +6080,7 @@ class PositionService:
                 except Exception as bf_err:
                     logger.debug(f"[RESTORE_BACKUP] Failed to parse {os.path.basename(bf)} for {position_key}: {bf_err}")
                     continue
-            also_check_main = os.path.join(str(self.config.BASE_PATH), account_key, f"{position_side_str}_positions.json")
+            also_check_main = os.path.join(str(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')), account_key, f"{position_side_str}_positions.json")
             if os.path.exists(also_check_main):
                 try:
                     with open(also_check_main, "r") as f:
@@ -6101,7 +6101,7 @@ class PositionService:
                 if other_acct == account_key:
                     continue
                 other_pk = f"{other_acct}:{symbol}_{position_side}"
-                other_main = os.path.join(str(self.config.BASE_PATH), other_acct, f"{position_side_str}_positions.json")
+                other_main = os.path.join(str(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')), other_acct, f"{position_side_str}_positions.json")
                 if os.path.exists(other_main):
                     try:
                         with open(other_main, "r") as f:
@@ -6119,7 +6119,7 @@ class PositionService:
                             return restored
                     except Exception:
                         continue
-                other_backup_dir = os.path.join(str(self.config.BASE_PATH), other_acct, "backups")
+                other_backup_dir = os.path.join(str(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')), other_acct, "backups")
                 if os.path.exists(other_backup_dir):
                     other_backups = []
                     for pat in patterns:
@@ -6189,7 +6189,7 @@ class PositionService:
                 for attr in attrs:
                     path = getattr(self.config, attr, None)
                     if path:
-                        loaded = self._load_symbols_list(Path(self.config.BASE_PATH) / path)
+                        loaded = self._load_symbols_list(Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / path)
                         if loaded:
                             allowed_symbols.update(loaded)
             except Exception as e:
@@ -6222,7 +6222,7 @@ class PositionService:
             return {"error": str(e)}
 
     def get_position_file(self, account_key: str, position_side_str: str) -> Path:
-        base_path = Path(self.config.BASE_PATH)
+        base_path = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
         account_dir = base_path / account_key.lower()
         filename = f"{position_side_str.lower()}_positions.json"
         return account_dir / filename
@@ -7409,7 +7409,7 @@ class PositionService:
             _now = datetime.now(timezone.utc)
             for _days_back in range(2):
                 _date = (_now - timedelta(days=_days_back)).strftime('%Y%m%d')
-                _jfile = _P(config.BASE_PATH) / 'data' / 'decisions' / f'decisions_{account_key}_{_date}.jsonl'
+                _jfile = _P(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / 'data' / 'decisions' / f'decisions_{account_key}_{_date}.jsonl'
                 if not _jfile.exists(): continue
                 _last_match = None
                 try:
@@ -7423,7 +7423,7 @@ class PositionService:
                 except Exception: pass
                 if _last_match: return _last_match
             _sym_side = position_key.split(':')[1] if ':' in position_key else ''
-            _hfile = _P(config.BASE_PATH) / 'data' / 'history' / account_key / f'{_sym_side}.jsonl'
+            _hfile = _P(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / 'data' / 'history' / account_key / f'{_sym_side}.jsonl'
             if _hfile.exists():
                 _last = None
                 try:
@@ -7930,7 +7930,7 @@ class PositionService:
 
     def _load_zero_report_tracker(self) -> Dict[str, Dict[str, Any]]:
         try:
-            zrt_path = Path(config.BASE_PATH) / "data" / "zero_report_tracker.json"
+            zrt_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "zero_report_tracker.json"
             if zrt_path.exists():
                 with open(zrt_path, 'r') as f:
                     data = json.loads(f.read())
@@ -7950,7 +7950,7 @@ class PositionService:
 
     def _save_zero_report_tracker(self):
         try:
-            zrt_path = Path(config.BASE_PATH) / "data" / "zero_report_tracker.json"
+            zrt_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "zero_report_tracker.json"
             serializable = {}
             for pk, rec in self.zero_report_tracker.items():
                 entry = {}
@@ -8139,7 +8139,7 @@ class PositionService:
     def _get_augment_file_path(self, account_key: str) -> Path:
         if not account_key:
             raise ValueError("account_key cannot be empty")
-        base_dir = Path(self.config.BASE_PATH) / account_key 
+        base_dir = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / account_key 
         filepath = base_dir / "augmented_positions.json"
         try :
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -8151,7 +8151,7 @@ class PositionService:
     def _get_reduced_file_path(self, account_key: str) -> Path:
         if not account_key:
             raise ValueError("account_key cannot be empty")
-        base_dir = Path(self.config.BASE_PATH) / account_key
+        base_dir = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / account_key
         filepath = base_dir / "reduced_positions.json"
         try :
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -8247,7 +8247,7 @@ class PositionService:
     def _get_direct_high_gain_file_path(self, account_key: str) -> Path:
         if not account_key:
             raise ValueError("account_key cannot be empty")
-        base_dir = Path(self.config.BASE_PATH) / account_key
+        base_dir = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / account_key
         filepath = base_dir / "direct_high_gain_augmented.json"
         try :
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -8427,7 +8427,7 @@ class PositionService:
 
     def _get_reversal_file_path(self, account_key: str) -> Path:
         """Gets the Path object for the reversed positions file for a specific account."""
-        base_dir = Path(self.config.BASE_PATH) / account_key
+        base_dir = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / account_key
         filepath = base_dir / "reversed_positions.json"
         filepath.parent.mkdir(parents=True, exist_ok=True)
         return filepath
@@ -8546,7 +8546,7 @@ class PositionService:
 
     async def get_reentry_file(self, account_key: str, position_side: str) -> str:
         assert position_side in ['LONG', 'SHORT'], f"Invalid position_side: {position_side}"
-        base_dir = os.path.join(self.config.BASE_PATH, account_key)
+        base_dir = os.path.join(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'), account_key)
         await aio_os.makedirs(base_dir, exist_ok=True)
         filename = f"{position_side.lower()}_reentry.json"
         file_path = os.path.join(base_dir, filename)
@@ -8980,7 +8980,7 @@ class PositionService:
                         best_ts = ""
                         _, symbol, side_str = parse_position_key(pk)
                         side_lower = "long" if side_str == "LONG" else "short"
-                        bp = self.config.BASE_PATH if hasattr(self.config, 'BASE_PATH') else Path(".")
+                        bp = getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') if hasattr(self.config, 'BASE_PATH') else Path(".")
                         sources_to_check = [bp / account_key / f"{side_lower}_reentry.json", bp / account_key / "tracker.json", bp / account_key / f"{side_lower}_positions.json", bp / account_key / f"{side_lower}_positions.json.bak", bp / account_key / f"{side_lower}_ladder.json", bp / account_key / f"{side_lower}_stop_levels.json", bp / account_key / "reduced_positions.json"]
                         _price_fields = ('reentry_level', 'last_reduction_price', 'exit_price', 'average_exit_price')
                         _amt_fields = ('reentry_amount', 'last_reduction_amount', 'positionAmt')
@@ -9287,7 +9287,7 @@ class PositionService:
         async def _get_symbols(path):
             if not path: return set()
             p = Path(path)
-            if not p.is_absolute(): p = Path(self.config.BASE_PATH) / path
+            if not p.is_absolute(): p = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / path
             if not await aio_os.path.exists(p): return set()
             try :
                 async with aiofiles.open(p, "rb") as f:
@@ -9315,7 +9315,7 @@ class PositionService:
                             keys_loaded = True
                             loaded_source = "Redis"
             except Exception: pass
-        json_path = Path(self.config.BASE_PATH) / "tradeable_keys.json"
+        json_path = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "tradeable_keys.json"
         if not keys_loaded:
             try :
                 if await aio_os.path.exists(json_path):
@@ -9337,7 +9337,7 @@ class PositionService:
                 aggregated_keys = set()
                 accounts_checked = 0
                 for acc_key in self.accounts.keys():
-                    tracker_file = Path(self.config.BASE_PATH) / acc_key / "tracker.json"
+                    tracker_file = Path(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / acc_key / "tracker.json"
                     if await aio_os.path.exists(tracker_file):
                         async with aiofiles.open(tracker_file, "rb") as f:
                             try :
@@ -9725,7 +9725,7 @@ class PositionService:
     async def get_ladder_file(self, account_key: str, position_side: str) -> str:
         """Get the file path for ladder levels storage."""
         assert position_side in ['LONG', 'SHORT'], f"Invalid position_side: {position_side}"
-        base_dir = os.path.join(self.config.BASE_PATH, account_key)
+        base_dir = os.path.join(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'), account_key)
         await aio_os.makedirs(base_dir, exist_ok=True)
         filename = f"{position_side.lower()}_ladder.json"
         file_path = os.path.join(base_dir, filename)
@@ -11176,7 +11176,7 @@ class PositionService:
             return
         acc_positions = self.positions_by_account.setdefault(account_key, {})
         try :
-            symbols_file = Path(getattr(self.config, "SYMBOLS_FILE", self.config.BASE_PATH / "symbols.json"))
+            symbols_file = Path(getattr(self.config, "SYMBOLS_FILE", getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "symbols.json"))
             if symbols_file.exists():
                 content = await self._load_json(symbols_file)
                 if isinstance(content, dict) and "symbols" in content:

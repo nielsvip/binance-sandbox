@@ -33,6 +33,21 @@ from binance.client import Client
 # from binance.enums import *
 from binance.exceptions import BinanceAPIException
 from config import Config
+try:
+    import vec_decisions.bb_pullback_gate as _bb_pullback_gate
+    import tradier_matrix_gates as _tradier_matrix_gates
+except ImportError:
+    _bb_pullback_gate = None
+def _bb_pullback_entry_gate(indicators, is_long: bool) -> bool:
+    """2026-09-04 VEC_IDENTICAL — identical to tradier_manage + v12_quick_engine."""
+    try:
+        if _bb_pullback_gate and _tradier_matrix_gates:
+            return _tradier_matrix_gates.bb_pullback_gate_blocks(indicators, config, is_long)
+    except Exception:
+        pass
+    return False
+
+    _tradier_matrix_gates = None
 
 # 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
 try:
@@ -196,7 +211,7 @@ try:
 except ImportError:
     pass
 config = Config()
-base_path = config.BASE_PATH
+base_path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')
 current_env = get_current_environment()
 current_account = ContextVar("current_account", default="unknown")
 load_environment_from_gpg(None)
@@ -1101,7 +1116,7 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
     # cap size. A fast FAVORABLE mover trips PRICE_RANGE_1H/SUSPICIOUS and must still trade at full size —
     # never shrink a flagged symbol to $10 (that suppressed the XLM +50% move).
     try:
-        _manip_flags_path = Path(config.BASE_PATH) / "data" / "manipulation_flags.json"
+        _manip_flags_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "data" / "manipulation_flags.json"
         if _manip_flags_path.exists():
             _manip_flags = json.loads(_manip_flags_path.read_text())
             _mf = _manip_flags.get(symbol, {})
@@ -1548,8 +1563,8 @@ class BreakoutHunter:
     Sizes by outperformance vs BTC. Trails max gain for exit.
     Uses fin account. Adds new symbols to symbols.json automatically."""
     ACCOUNT = "fin"
-    STATE_FILE = config.BASE_PATH / "data" / "breakout_hunter_state.json"
-    LOCK_FILE = config.BASE_PATH / "data" / ".breakout_hunter_lock"
+    STATE_FILE = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "data" / "breakout_hunter_state.json"
+    LOCK_FILE = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "data" / ".breakout_hunter_lock"
     MAX_POSITIONS = 8; MIN_SIZE_USD = 15.0; MAX_SIZE_USD = 150.0; TRAIL_PCT = 0.4
     _instance = None
     @classmethod
@@ -1611,7 +1626,7 @@ class BreakoutHunter:
         btc_dist = ((btc_p - btc_sma) / btc_sma * 100) if btc_sma > 0 else 0
         self._state["btc_sma200_dist"] = round(btc_dist, 2)
         # Load P&D blacklist (maintained by ez_breakout_hunter.py cron agent)
-        _bl_file = config.BASE_PATH / "data" / "pump_dump_blacklist.json"
+        _bl_file = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "data" / "pump_dump_blacklist.json"
         _blacklisted = set()
         try:
             if _bl_file.exists(): _blacklisted = set(json.loads(_bl_file.read_text()).get("symbols", {}).keys())
@@ -2398,8 +2413,8 @@ class AdvancedSignalRater:
         _delta_entry_penalty = getattr(config, 'DELTA_ENTRY_SCORE_PENALTY', -25)
         _delta_exit_bonus = getattr(config, 'DELTA_EXIT_SCORE_BONUS', 20)
         _delta_min_tf = getattr(config, 'DELTA_MIN_TF_FOR_ACTION', 2)
-        # --- WT COMPOSITE HTF GATE (replaces HTF_STRICT when enabled) ---
-        _wt_comp_enabled = getattr(config, "WT_COMPOSITE_SCORING_ENABLED", False)
+        # --- WT COMPOSITE HTF GATE (replaces HTF_STRICT when enabled) --- PER-SWITCH 2026-09-05: TRADIER OR generic
+        _wt_comp_enabled = bool(getattr(config, "WT_COMPOSITE_SCORING_ENABLED", False)) or bool(getattr(config, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False))
         _wt_htf_gate = getattr(config, "WT_COMPOSITE_HTF_GATE", False) and _wt_comp_enabled
         _wt_bull_align = safe_fetch_float(ind.get("wt_bull_alignment"), 0)
         _wt_bear_align = safe_fetch_float(ind.get("wt_bear_alignment"), 0)
@@ -2682,16 +2697,29 @@ class AdvancedSignalRater:
                 score -= 15; reasons.append(f"WT_PENALTY_SHORT(-15,wts={wt_score_scalp:.0f},vel={wt_velocity_scalp:.1f})")
             # MTS GATE — side-aware: strict for LONGS (Sharpe +124%), loose for SHORTS (over-filtering hurts)
             # Real test (47 sym, 4yr): LONG b10,eq5 = Sharpe 1.41 vs 0.63 OLD. SHORT no-MTS = 5.87 vs 4.40 OLD.
-            _mts_gate = config.get_symbol_setting(account_key, _rpk, 'MTS_GATE_ENABLED') if account_key else getattr(config, 'MTS_GATE_ENABLED', False)
+            # PER-SWITCH 2026-09-05: also check TRADIER gate (tradier_manage OR logic)
+            _mts_gate_tradier = bool(getattr(config, 'MTS_GATE_ENABLED_TRADIER', False))
+            _mts_gate_generic = config.get_symbol_setting(account_key, _rpk, 'MTS_GATE_ENABLED') if account_key else getattr(config, 'MTS_GATE_ENABLED', False)
+            _mts_gate = _mts_gate_generic or _mts_gate_tradier
             if _mts_gate:
-                if is_long:
-                    _mts_bmin = getattr(config, 'MTS_BOTTOM_MIN', 10.0)
-                    _mts_eqmin = getattr(config, 'MTS_ENTRY_QUALITY_MIN', 5.0)
+                # TRADIER thresholds when tradier gate fires, else generic
+                if _mts_gate_tradier and not _mts_gate_generic:
+                    # Use TRADIER thresholds (stocks: bottom 5, eq 0, no short distinction)
+                    _mts_bmin = float(getattr(config, 'MTS_BOTTOM_MIN_TRADIER', 5.0))
+                    _mts_eqmin = float(getattr(config, 'MTS_ENTRY_QUALITY_MIN_TRADIER', 0.0))
+                    if _mts_bottom < _mts_bmin or _mts_eq < _mts_eqmin:
+                        return 0, "WAIT", f"MTS_GATE_TRADIER(b={_mts_bottom:.0f}<{_mts_bmin},eq={_mts_eq:.0f}<{_mts_eqmin},{'L' if is_long else 'S'})"
+                elif _mts_gate_generic:
+                    if is_long:
+                        _mts_bmin = getattr(config, 'MTS_BOTTOM_MIN', 10.0)
+                        _mts_eqmin = getattr(config, 'MTS_ENTRY_QUALITY_MIN', 5.0)
+                    else:
+                        _mts_bmin = getattr(config, 'MTS_BOTTOM_MIN_SHORT', 5.0)
+                        _mts_eqmin = getattr(config, 'MTS_ENTRY_QUALITY_MIN_SHORT', 0.0)
+                    if _mts_bottom < _mts_bmin or _mts_eq < _mts_eqmin:
+                        return 0, "WAIT", f"MTS_GATE(b={_mts_bottom:.0f}<{_mts_bmin},eq={_mts_eq:.0f}<{_mts_eqmin},{'L' if is_long else 'S'})"
                 else:
-                    _mts_bmin = getattr(config, 'MTS_BOTTOM_MIN_SHORT', 5.0)
-                    _mts_eqmin = getattr(config, 'MTS_ENTRY_QUALITY_MIN_SHORT', 0.0)
-                if _mts_bottom < _mts_bmin or _mts_eq < _mts_eqmin:
-                    return 0, "WAIT", f"MTS_GATE(b={_mts_bottom:.0f}<{_mts_bmin},eq={_mts_eq:.0f}<{_mts_eqmin},{'L' if is_long else 'S'})"
+                    pass  # tradier gate already handled
             # Unified multi-TF bonus/penalty from analyze_multi_tf_state
             _mts_b_strong = getattr(config, 'MTS_BOTTOM_STRONG_THRESHOLD', 40.0)
             _mts_b_bonus = getattr(config, 'MTS_BOTTOM_BONUS_THRESHOLD', 25.0)
@@ -2881,6 +2909,22 @@ class AdvancedSignalRater:
                 score += _kz_bonus; reasons.append(f"K_ZONE_LONG(k3m={k_3m:.0f}<{_kz_long_thr},rising,candle,+{_kz_bonus})_bc109")
             elif not is_long and k_3m > _kz_short_thr and _k3m_falling and _bear_candle:
                 score += _kz_bonus; reasons.append(f"K_ZONE_SHORT(k3m={k_3m:.0f}>{_kz_short_thr},falling,candle,+{_kz_bonus})_bc109")
+        # PER-SWITCH 2026-09-05: TRADIER K_ZONE — stock variant with TRADIER thresholds/bonus (mirrors tradier_manage)
+        _kz_tradier_enabled = bool(getattr(config, 'K_ZONE_ENTRY_ENABLED_TRADIER', False))
+        if _kz_tradier_enabled and not is_exit:
+            _kz_t_long_thr = int(getattr(config, 'K_ZONE_LONG_THRESHOLD_TRADIER', 35))
+            _kz_t_short_thr = int(getattr(config, 'K_ZONE_SHORT_THRESHOLD_TRADIER', 65))
+            _kz_t_bonus = int(getattr(config, 'K_ZONE_ENTRY_BONUS_TRADIER', 20))
+            _k3m_rising_t = k_3m > k_3m_prev
+            _k3m_falling_t = k_3m < k_3m_prev
+            _ha_flip_green_t = (ha_3m == 'green' and i.get('ha_3m_prev', 'neutral') != 'green')
+            _ha_flip_red_t = (ha_3m == 'red' and i.get('ha_3m_prev', 'neutral') != 'red')
+            _bull_candle_t = _ha_flip_green_t or (ha_3m == 'green' and ha_15m == 'green')
+            _bear_candle_t = _ha_flip_red_t or (ha_3m == 'red' and ha_15m == 'red')
+            if is_long and k_3m < _kz_t_long_thr and _k3m_rising_t and _bull_candle_t:
+                score += _kz_t_bonus; reasons.append(f"K_ZONE_TRADIER_LONG(k3m={k_3m:.0f}<{_kz_t_long_thr},rising,candle,+{_kz_t_bonus})_bc109_tradier")
+            elif not is_long and k_3m > _kz_t_short_thr and _k3m_falling_t and _bear_candle_t:
+                score += _kz_t_bonus; reasons.append(f"K_ZONE_TRADIER_SHORT(k3m={k_3m:.0f}>{_kz_t_short_thr},falling,candle,+{_kz_t_bonus})_bc109_tradier")
         # BACKTEST_CHANGE_111: MOVER DETECTION score bonus — symbol detected as sudden spike/dump
         if not is_exit and hasattr(tracker_manager, 'registry') and hasattr(tracker_manager.registry, '_active_movers'):
             _mv = tracker_manager.registry._active_movers.get(symbol)
@@ -2906,6 +2950,22 @@ class AdvancedSignalRater:
                     _k_ok = (is_long and k_3m < 40) or (not is_long and k_3m > 60)
                 if _k_ok:
                     score += _mf_bonus; reasons.append(f"MOM_FADE({'L' if is_long else 'S'},rng={_body_vs_atr:.1f}xATR,rv={max(float(rel_vol_3m or 0.0),float(rel_vol_15m or 0.0)):.1f}x,k={k_3m:.0f},+{_mf_bonus})_bc113b")
+        # PER-SWITCH 2026-09-05: TRADIER MOMENTUM FADE — same logic as tradier_manage (15m TF) with tradier defaults
+        _mf_tradier_enabled = bool(getattr(config, 'MOMENTUM_FADE_ENABLED_TRADIER', False))
+        if _mf_tradier_enabled and not is_exit:
+            _mf_t_body_min = float(getattr(config, 'MOMENTUM_FADE_BODY_ATR_MIN_TRADIER', 2.0))
+            _mf_t_vol_min = float(getattr(config, 'MOMENTUM_FADE_VOL_MIN_TRADIER', 2.0))
+            _mf_t_k_zone = bool(getattr(config, 'MOMENTUM_FADE_K_ZONE_TRADIER', True))
+            _mf_t_bonus = int(getattr(config, 'MOMENTUM_FADE_SCORE_BONUS_TRADIER', 5))
+            _range_15m = high_15m - low_15m if high_15m > 0 and low_15m > 0 else 0
+            _body_vs_atr_15m = (_range_15m / atr_15m) if atr_15m > 0 else 0
+            _vol_spike_15m = rel_vol_15m >= _mf_t_vol_min
+            if _body_vs_atr_15m >= _mf_t_body_min and _vol_spike_15m:
+                _k_ok_t = True
+                if _mf_t_k_zone:
+                    _k_ok_t = (is_long and k_15m < 40) or (not is_long and k_15m > 60)
+                if _k_ok_t:
+                    score += _mf_t_bonus; reasons.append(f"MOM_FADE_TRADIER({'L' if is_long else 'S'},rng={_body_vs_atr_15m:.1f}xATR,rv={rel_vol_15m:.1f}x,k={k_15m:.0f},+{_mf_t_bonus})_bc113b_tradier")
         # SATOSHIT2024: 3-of-5 voting score bonus — 100% WR on 48 symbols backtest
         if getattr(config, 'SATOSHIT_ENABLED', False) and account_key in getattr(config, 'SATOSHIT_ACCOUNTS', []) and not is_exit:
             from ez_satoshit import satoshit_score_bonus
@@ -3692,7 +3752,14 @@ class AdvancedSignalRater:
             if pnl_pct > 0.2: reasons.append("in_scalp_gain")
             if pnl_pct < 0.13 and (gain is None or gain < prev_gain) and open_min > 4: reasons.append("almost_losing")
             _is_hedge_pos = (tracker_data.get('is_hedge', False) if isinstance(tracker_data, dict) else False)
+            # 2026-09-03 FIX: NEVER exit new positions after 12s unless under dc_15m_low (user: 12s churn, need 1h)
+            _dc_15m_low = safe_fetch_float(indicators.get("dc_low_15m"), 0) if is_long else safe_fetch_float(indicators.get("dc_high_15m"), 0)
+            _price_now = safe_fetch_float(indicators.get("current_price"), 0) or safe_fetch_float(indicators.get("close"), 0)
+            _under_dc = (_dc_15m_low > 0 and _price_now > 0 and ((_price_now < _dc_15m_low) if is_long else (_price_now > _dc_15m_low)))
+            _need_1h = open_min is not None and open_min < 60 and not _under_dc
             momentum_against = (is_long and (k_1m < d_1m and true_lag < 10.0) and k_3m < d_3m) or (not is_long and (k_1m > d_1m and true_lag < 10.0) and k_3m > d_3m) and min_since_aug > 12
+            if _need_1h and momentum_against:
+                return 0, "HOLD", f"HOLD_NEED_1H_OR_UNDER_DC_open{open_min:.1f}m"
             if momentum_against and not _is_hedge_pos:
                  return -8.0, "NOW_REDUCE", "1m_3m_BOTH_AGAINST"
             is_1m_flip_against = (is_long and ((k_1m < d_1m and true_lag < 10.0)or k_3m < d_3m or current_price <= dc_low_3m)) or (not is_long and ((k_1m > d_1m and true_lag < 10.0)or k_3m > d_3m or current_price >= dc_high_3m)) and min_since_aug > 12
@@ -4483,7 +4550,7 @@ class RatingRegistry:
         self.market_euphoria = False
         self.last_update = 0
         self.proactive_interval = 25 
-        self.state_file = self.config.BASE_PATH / "rating_registry.json"
+        self.state_file = getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / "rating_registry.json"
         self.last_save_time = 0
         self._load_state_sync()
 
@@ -4491,7 +4558,7 @@ class RatingRegistry:
         """Loads previous state from disk on startup to persist rankings and usage data."""
         # Clean up any leftover temp files on startup
         try:
-            for p in self.config.BASE_PATH.glob("rating_registry.*.tmp"):
+            for p in getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance').glob("rating_registry.*.tmp"):
                 try:
                     p.unlink()
                 except Exception:
@@ -7261,7 +7328,7 @@ class HedgeEngine:
                                         logger.critical(f"🚩 [HEDGE_SAME_SYM_LAST_RESORT] FLAG_ORIGIN: {losing_position_key} opened badly — last_reason='{_origin_reason}' — hedge {hedge_position_key} locking loss.")
                                         try:
                                             import json as _fj
-                                            _flag_path = self.config.BASE_PATH / 'data' / 'flagged_origins.json'
+                                            _flag_path = getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / 'data' / 'flagged_origins.json'
                                             _flag_path.parent.mkdir(parents=True, exist_ok=True)
                                             _flagged = {}
                                             if _flag_path.exists():
@@ -8340,7 +8407,7 @@ class FastDataManager:
         best_p, best_ts = 0.0, 0.0
         for i in range(1, 9):
             try:
-                path = config.BASE_PATH / f"price_cache_{i}.json"
+                path = getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance') / f"price_cache_{i}.json"
                 if not path.exists(): continue
                 with open(path, 'rb') as f:
                     data = orjson.loads(f.read())
@@ -8721,8 +8788,8 @@ class TrackerManager:
             except Exception: pass
         should_read_file = (not keys_loaded) or (current_time - self._last_file_read > 180)
         if should_read_file:
-            main_path = Path(config.BASE_PATH) / "tradeable_keys.json"
-            backup_path = Path(config.BASE_PATH) / "tradeable_keys.bak.json"
+            main_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "tradeable_keys.json"
+            backup_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / "tradeable_keys.bak.json"
 
             async def try_load_file(path_obj):
                 if not await aio_os.path.exists(path_obj): return None
@@ -10796,7 +10863,7 @@ class TrackerManager:
 
 async def load_symbols_quick(trade_manager) -> None:
     config = trade_manager.config
-    base_path = Path(config.BASE_PATH)
+    base_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
 
     def _norm(s: str) -> str:
         s = str(s).strip()
@@ -12090,6 +12157,63 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 return False, f"BLOCKED_BALANCE_FLOOR_HALT_{account_key}"
     except Exception as _bf_e:
         logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
+    # ═══════════════════════════════════════════════════════════════════
+    # 🛑 10/MIN CHURN BRAKE — 2026-09-03 FLZ halt (DAEMON,R1,BREAKOUT,WT3m)
+    # Blocks any non-profitable trade when >=10 trades in last 60s (decisions JSONL).
+    # Profitable closes (>0.1% gain) bypass. Writes .FLZ_TRADING_HALTED sentinel.
+    # ═══════════════════════════════════════════════════════════════════
+    try:
+        _ch_act = (action or "").upper()
+        _ch_is_close = _ch_act in ("CLOSE", "QUICK_CLOSE", "REDUCE", "PARTIAL_CLOSE", "STRONG_REDUCE", "NO_PROFIT")
+        _ch_profit_bypass = False
+        if _ch_is_close and positionAmt != 0:
+            try:
+                _ch_pos = await trade_manager.get_position(position_key) if hasattr(trade_manager, 'get_position') and position_key else None
+                _ch_gain = float(getattr(_ch_pos, "gain", 0) or 0) if _ch_pos else 0.0
+                if _ch_gain > 0.1:
+                    _ch_profit_bypass = True
+            except Exception:
+                pass
+        if not _ch_profit_bypass:
+            _ch_max = int(getattr(config, "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN", 10) or 10)
+            if _ch_max > 0:
+                import json as _ch_json
+                from datetime import datetime as _ch_dt
+                from datetime import timedelta as _ch_td
+                from datetime import timezone as _ch_tz
+                from pathlib import Path as _ChPath
+                _ch_cut = _ch_dt.now(_ch_tz.utc) - _ch_td(seconds=60)
+                _ch_file = _ChPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / "data" / "decisions" / f"decisions_{account_key}_{_ch_dt.now(_ch_tz.utc).strftime('%Y%m%d')}.jsonl"
+                _ch_cnt = 0
+                try:
+                    with open(str(_ch_file), errors="replace") as _cf:
+                        _cf.seek(0, 2)
+                        _sz = _cf.tell()
+                        _cf.seek(max(0, _sz - 200000))
+                        if _sz > 200000:
+                            _cf.readline()
+                        for _ln in _cf:
+                            try:
+                                _dj = _ch_json.loads(_ln)
+                                _ts = _dj.get("timestamp", "")
+                                _dtp = _ch_dt.fromisoformat(_ts.replace("Z", "+00:00"))
+                                if _dtp >= _ch_cut:
+                                    _ch_cnt += 1
+                            except Exception:
+                                pass
+                except FileNotFoundError:
+                    _ch_cnt = 0
+                if _ch_cnt >= _ch_max:
+                    logger.critical(f"🛑 [CHURN_BRAKE_10/MIN] {account_key}: {_ch_cnt} trades/min — BLOCKED. Max {_ch_max}. position={position_key} action={action}")
+                    if account_key == "flz":
+                        try:
+                            _hp = _ChPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / ".FLZ_TRADING_HALTED"
+                            _hp.write_text(f"HALTED {_ch_dt.now(_ch_tz.utc).isoformat()} 10trades/min\n")
+                        except Exception:
+                            pass
+                    return False, "BLOCKED_CHURN_10_PER_MIN"
+    except Exception as _ch_e:
+        logger.debug(f"[CHURN_BRAKE] Error: {_ch_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # 🔨🔨🔨 LOSING_POSITION_HARD_BLOCK 2026-04-28 — USER ABSOLUTE 🔨🔨🔨
     # User repeated rule (verbatim): "A POSITION WITH GAIN < config.MIN_GAIN CAN NOT
@@ -14678,6 +14802,35 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         should_close = False
                         reason_exit = str(reason_exit) + "_TRAP_SUPPRESSED"
                         logger.info(f"[QUICK_REDUCE_TRAP_SUPPRESSED] {position_key}: rate()-composite stochastic reduce (rec={rec_exit}) blocked — the vec/Tier-2 backtest does NOT model these, so they are the live↔backtest divergence + the 0%-gain commission-burn. Only clean named technical exits (RULE_B/WT_*/GR/DC_HOPELESS/MTF_ATR_TRAIL/HTF_AGAINST/R1/R2 + hard exits) may close. USER MANDATE 2026-06-02. Rollback: config.QUICK_REDUCE_TECHNICAL_ONLY=False")
+                # 2026-09-04 FIX: MAKER_PROFIT_EXIT_QUICK_REDUCE_STRONG_REDUCE_k_1m at 0.04-0.07% is commission bleed (0.04% wt=deep_tp). Need 0.08% after fees + 60m hold unless under dc
+                if should_close and hard_exit_reason is None and "STRONG_REDUCE" in str(rec_exit).upper():
+                    try:
+                        _q_gain = safe_fetch_float(getattr(position, "gain", 0) or current_gain, 0)
+                        _q_low = _q_gain < float(getattr(config, "COMMISSION_BUFFER_PCT", 0.08))
+                        if _q_low:
+                            # allow only if under dc or hard exit
+                            _q_dc_key = "dc_low_15m" if (position_side == "LONG") else "dc_high_15m"
+                            _q_dc = safe_fetch_float(indicators.get(_q_dc_key, 0), 0) if isinstance(indicators, dict) else 0
+                            _q_px = safe_fetch_float(indicators.get("current_price", 0) or current_price, 0) if isinstance(indicators, dict) else float(current_price or 0)
+                            _q_under = (_q_dc > 0 and _q_px > 0 and ((_q_px < _q_dc) if position_side == "LONG" else (_q_px > _q_dc)))
+                            if not _q_under:
+                                should_close = False
+                                logger.info(f"[QUICK_STRONG_REDUCE_HOLD_1H] {position_key}: gain={_q_gain:.2f}% < buffer 0.08% not under dc → HOLD (was {reason_exit})")
+                            # also age check via opened_at if available — use tracker entry if not on position
+                            _q_age_s = 999999
+                            try:
+                                from datetime import datetime, timezone as _qtz
+                                _q_dt = getattr(position, "opened_at", None)
+                                if isinstance(_q_dt, str):
+                                    from dateutil.parser import isoparse as _qip
+                                    _q_dt = _qip(_q_dt)
+                                if isinstance(_q_dt, datetime):
+                                    if _q_dt.tzinfo is None: _q_dt = _q_dt.replace(tzinfo=_qtz.utc)
+                                    _q_age_s = (datetime.now(_qtz.utc) - _q_dt).total_seconds()
+                            except Exception: pass
+                            if _q_age_s < 3600 and not _q_under:
+                                should_close = False
+                    except Exception: pass
                 # ═══ USE TRACKER FIELDS FOR SMARTER DECISIONS ═══
                 _cand = tracker_manager.exit_candidates.get(position_key, {})
                 if not isinstance(_cand, dict): _cand = {}
@@ -18002,7 +18155,7 @@ async def scalp_v3_scan_loop(trade_manager, account_key: str, stop_event: asynci
         # (cheap), looks for SCALP_V3_OPEN_ origin.
         try:
             from pathlib import Path as _Phist
-            _hist_dir = _Phist(config.BASE_PATH) / 'data' / 'history' / account_key
+            _hist_dir = _Phist(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / 'data' / 'history' / account_key
             for _pk, _p in _by.items():
                 if abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) <= 0:
                     continue
@@ -19017,7 +19170,7 @@ async def main(account_key_filter: Optional[str] = None) -> None:
         trade_manager.set_order_queue(order_queue)
         positions_service.trade_manager = trade_manager
         await asyncio.wait_for(trade_manager.init_async(), timeout=30.0)
-        base_path = Path(config.BASE_PATH) if hasattr(config, 'BASE_PATH') else Path.home() / 'binance'
+        base_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) if hasattr(config, 'BASE_PATH') else Path.home() / 'binance'
         data_path = Path(config.DATA_DIR) if hasattr(config, 'DATA_DIR') else Path.home() / 'binance' / 'data'
         tracker_manager = TrackerManager(base_path, trade_manager=trade_manager, positions_service=positions_service, target_account=target_account, redis_manager=redis_manager, registry=None, data_manager=None)
         tracker_manager.accounts = accounts

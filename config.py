@@ -40,7 +40,7 @@ class Config:
     BB_PCTB_ENTRY_ENABLED: bool = False  # parity 2026-08-17: vector->live (was vector-only)
     COOLDOWN_BARS: int = 3  # parity 2026-08-17: vector->live (was vector-only)
     ENTRY_SCORE_THRESHOLD: float = 18.0  # parity 2026-08-17: vector->live (was vector-only)
-    MIN_HOLD_BARS: int = 10  # parity 2026-08-17: vector->live (was vector-only)
+    MIN_HOLD_BARS: int = 3  # 2026-09-07 UNLOCK lower hold per user — was 10 (30min at 3m). Lowered to 3 (9min) to let exits fire faster; FLZ per_sym still overrides to 48 where proven — this lowers the default floor for all non-per_sym and new symbols. ROLLBACK: 10.
     MODE: str = "crypto"  # parity 2026-08-17: vector->live (was vector-only)
     STOCH_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
     WT_ENTRY_ENABLED: bool = False  # parity 2026-08-17: SWITCH tested per_sym + 7D crypto+stocks (bypass removed)
@@ -51,7 +51,7 @@ class Config:
     # 2026-08-19 PORTED USEFUL tradier switches (pos Δ) — wired for crypto parity
     REENTRY_GR_HLHH_MODE: str = "OR"  # from tradier 2616 — sweep OR/HH/HL × min_tfs
     REENTRY_GR_MIN_TFS: int = 2  # from tradier 2617 — min TFs with HL/HH
-    WT_DC_HTF_GATE: str = "none"  # crypto baseline none vs tradier 4h_D (for_mode handles)
+    WT_DC_HTF_GATE: str = "4h_D"  # 2026-09-10 FIX vs B&H: was none → 4h_D — ensures larger-TF WT direction (D+4h) blocks counter-trend trades. User: against trend + larger TF WT. Crypto now matches tradier.
     WT_DC_ENTRY_THRESHOLD: float = 0.0  # crypto 0 vs tradier 45
     TRA_WT_DC_ENTRY_THRESHOLD: float = 0.0  # keep for crypto parity (tradier 85)
     GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0
@@ -60,7 +60,7 @@ class Config:
     WT_CHAN_15m: int = 10  # F5 group param — not in either config before, now wired
     WT_AVG_15m: int = 21
     WT_DC_EXIT_THRESHOLD: float = 30.0
-    MIN_HOLD_BARS_15m: int = 5
+    MIN_HOLD_BARS_15m: int = 2  # 2026-09-07 UNLOCK per user — was 5 (75min at 15m). Lowered to 2 (30min) for faster 15m exits. ROLLBACK: 5.
     COOLDOWN_BARS_15m: int = 3
     BREAKEVEN_EXIT_AFTER_BARS_ENABLED: bool = False
     WIN_TRAIL_EROSION_PCT: float = 0.25
@@ -83,6 +83,7 @@ class Config:
     MAX_ORDER_VALUE: float = 200.0  # 2026-03-30: 1/50 rule. Was $280.
     MAX_ORDER_VALUE_MEN: float =60.0  # Was $240.
     MAX_ORDER_VALUE_FIN: float = 60.0  # Was $120.
+    EMERGENCY_OVERSIZE_GUARD_ENABLED: bool = False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
     START_POSITION_SIZE: float = 14.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
 
     # PnL Deterioration Settings
@@ -103,9 +104,18 @@ class Config:
     # Maker fee is 0.02% per side = 0.04% round-trip. Taker is 0.05% per side = 0.10% round-trip.
     # Set buffer to 0.10% to cover worst case (taker close + slippage). Closing below this = NET LOSS.
     COMMISSION_BUFFER_PCT: float = 0.08
-    REENTRY_PRICE_IMPROVE_PCT: float = 0.08  # require 0.10% price improvement vs exit before reentry
+    REENTRY_PRICE_IMPROVE_PCT: float = 0.08  # legacy fixed-pct gate (kept for rollback; superseded by bar-structure gate below)
+    REENTRY_BAR_STRUCTURE_ENABLED: bool = True  # 2026-09-09 USER: replace 0.08% fixed pct with bar structure — LONG: low>prev_low or high>prev_high (3m); SHORT: mirror
+    REENTRY_BAR_STRUCTURE_TF: str = "3m"  # TF for structure check
     AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # BASE RULE — NEVER augment a position with gain < 0. OPEN at a loss is impossible by definition (flat has no gain; you cannot be down before you own). AUGMENT at loss is the one GOOD path only when gain is sufficient — this gate enforces it.
     AUGMENT_AT_LOSS_ENABLED: bool = False  # 2026-08-18 DEBATE GATE — base rule OFF. Augmenting at loss may be revisited MUCH LATER only with Tier-2 proof (≥48 sym × >1yr × ≥30 trades/sym) + USER explicit unlock. Never flip True casually — it was the core bleed. See BACKTEST_REPLICA_SWITCHES.md §0.
+    # === 2026-09-06 AUGMENT SCOPE EXPANSION — bounce vs breakout + fallback reduce ===
+    AUGMENT_MIN_GAIN_PCT: float = 3.0
+    AUGMENT_BOUNCE_MIN_GAIN_PCT: float = 0.5
+    AUGMENT_BREAKOUT_MIN_GAIN_PCT: float = 2.0
+    AUGMENT_FALLBACK_REDUCE_ENABLED: bool = False
+    AUGMENT_FALLBACK_REDUCE_PCT: float = 0.5
+    AUGMENT_FALLBACK_GAIN_PCT: float = 1.0
     MAX_AUGMENTS_PER_POSITION: int = 999999  # USER 2026-05-30: NO cap — augment a million times as long as gain > 0.5*MIN_GAIN (and wt1_1h aligned via add-block)  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
@@ -585,7 +595,7 @@ class Config:
     PYRAMID_MIN_DC_POS_15M: float = 0.7              # LONG: DC pos > 0.7 = upper third.
     PYRAMID_MAX_DC_POS_15M_SHORT: float = 0.3        # SHORT: DC pos < 0.3 = lower third.
     PYRAMID_SIZE_MULT: float = 0.5                   # Add N × position_amt (0.5 = 50%).
-    REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit
+    REENTRY_MANDATORY: bool = True  # 2026-09-07 RE-AFFIRMED obligatory per user unlock — enforce reentry after every exit (parity with BACKTEST_REPLICA_SWITCHES.md §3). Was already True; kept True. See also WT_3M_FORCE_OPEN + LEGACY_GUARANTEED_REENTRY re-enabled below.
     # === TWO-TIER MANDATORY REENTRY (BC_155) ===
     # Tier 1 (PULLBACK): Wait for K zone reset, enter at 120-150% size (better price)
     # Tier 2 (CHASE): Trend continues without pullback, enter at 70-100% size (don't miss move)
@@ -666,7 +676,9 @@ class Config:
     HEDGE_DC_SHORT_REJECT_DCP: float = 0.15         # SHORT-side dc_position_1h/4h threshold (<=) for rejection.
     HEDGE_WT_VEL_GATE_ENABLED: bool = False         # 2026-04-26: OFF — same reason as DC gate above. Hedge-the-bleeder must not be filtered by candidate-symbol velocity. Sweep-only knob.
     # 2026-04-26 — Force-reentry HTF veto (refuse PRICE_CROSSED_MANDATORY when 1h+15m+4h all confirm trend AGAINST). Triggered after C98USDT triple-open against bullish HTF.
-    PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True  # 2026-08-18 PARITY FIX: protective veto — blocks MANDATORY_PRICE_CROSS_EPQ when ANY HTF (1h OR 15m) is against. Keep True to reduce bad reentries. See BACKTEST_REPLICA_SWITCHES.md §5.
+    PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True  # KEEP True — veto still on, but softened below (bar-turn + HA green lifts gate). See GPCR bar-turn.
+    PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS: bool = True  # 2026-09-09 USER: same as REENTRY_BAR_TURN — HH/HL (LONG) or LL/LH (SHORT) on 3m lifts veto
+    PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS: bool = True  # 2026-09-09 USER: green HA (LONG) / red HA (SHORT) on 1h or 15m lifts veto — react quicker than WT cross
     # 2026-04-26 USER RULE — HARD hedge sizing caps. Trades move <1% per cycle on a ~$1k crypto
     # account, so hedges must NEVER exceed 1.5× loser notional or absolute $25. Caps applied in
     # both compute_hedge_size and execute_same_symbol_hedge inner. Triggered after ALTUSDT_LONG
@@ -806,7 +818,7 @@ class Config:
     # 2026-05-08 — Reentry via subprocess daemon (spawned by ez_manage, no start_everything change).
     # Inline loops DISABLED — daemon is sole reentry signal source.
     # Kill child (pkill -f ez_reentry_daemon) to stop reentries while trading continues.
-    EZ_REENTRY_DAEMON_ENABLED: bool = True
+    EZ_REENTRY_DAEMON_ENABLED: bool = True   # 2026-09-04 REINSTATED per user: short calls were accurate — reinstate with START_POSITION_SIZE 14 only until proven real (user 02:22). Keep GUARANTEE wt15/hh gate + 300s gap.
     EZ_REENTRY_INLINE_ENABLED: bool = True
     EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED: bool = False
@@ -818,10 +830,10 @@ class Config:
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = False
     # Inline price-cross DISABLED — was the "100% reentry AT ONCE" culprit firing every 5s
     # inside ez_manage immediately after exits. Daemon subprocess owns this path now.
-    EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = False
+    EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True   # 2026-09-04 CORRECTED per user: NOT FALSE — too late is feature, last resort if bounce missed (user: IT NEEDS TO BE ON AS A LAST RESORT IF YOU FUCKED UP AND DID NT GET BACK IN INTIME). 5s interval + 0.10% pct + 300s gap = late guarantee.
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.10  # 2026-07-08 GAINMO anti-churn: 0.0→0.10 — daemon reentry requires 0.10% price improvement past the cross (bare cross-back was #1 fill reason; commission = 41% of the 16d loss)
-    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 300.0   # 2026-06-25 anti-churn (USER: crypto >50% loss / commission bleed). Was 60.0 — same-key daemon reentry no more than 1/5min. DAEMON_PRICE_CROSS_REENTRY was #1 fill reason (ang 1075/16d) feeding -$120 commission. ROLLBACK: 60.0.
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0   # 2026-09-07 UNLOCK obligatory reentry per user — was 300 (5min anti-churn). Lowered to 60s so daemon guarantee reentry fires within 1min while obligatory. Commission churn not observed on FLZ at current 48-hold. ROLLBACK: 300.
     # 2026-06-03 DISABLED — DO NOT re-enable in the daemon. The reentry DAEMON has NO indicators
     # (Redis indicators:{sym} keys don't exist on its 6379 feed → dc_high4_3m always 0), so this
     # guard fail-closed and blocked EVERY first-hour reentry (20k+ CHURN_GUARD blocks). The
@@ -839,7 +851,7 @@ class Config:
     # all route through execute_now. Reuses the existing _recent_reduces stamp. DEFAULT-OFF — proven in
     # backtest/counterfactual before enabling live. ROLLBACK: RECENT_REDUCTION_GUARD_ENABLED=False.
     RECENT_REDUCTION_GUARD_ENABLED: bool = True   # 2026-06-03 ENABLED (USER: crypto churning) — blocks bare exit-price cross-back re-adds (DAEMON_PRICE_CROSS_REENTRY/QUICK_OPEN/WT_3M_ESCALATE) within WINDOW_S of a reduce unless a genuine Donchian breakout. ROLLBACK: False.
-    RECENT_REDUCTION_GUARD_WINDOW_S: float = 3600.0   # 2026-06-25 anti-churn (USER: crypto >50% loss). Was 900.0 — widen guard window to 1hr so the 13-min reenter→stale-exit→reenter loop (DAEMON_REENTRY_STALE_EXIT ang 283/16d) is blocked unless a genuine 4-bar DC breakout. ROLLBACK: 900.0.
+    RECENT_REDUCTION_GUARD_WINDOW_S: float = 450.0   # 2026-09-09 USER: 900→450s (7.5min). ROLLBACK: 900 / 3600.
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
     # 2026-06-03 USER MANDATE: S1 = live trader, Mac = testing only. On a NON-server box, execute_now
     # + send_webhook refuse live orders when the server holds a fresh heartbeat for the account → no
@@ -851,7 +863,9 @@ class Config:
     # confirmation would block re-entry, allow it if the trend is still intact (price on the
     # right side of sma_200_15m). DEFAULT OFF — enable after A/B. Single-sourced in
     # vec_decisions/guaranteed_price_cross_reentry.py (live scalar == vec, parity-tested).
-    REENTRY_SMA200_BACKUP_ENABLED: bool = False
+    REENTRY_SMA200_BACKUP_ENABLED: bool = True  # 2026-09-09 USER: ON — backtest alternative auto-tested via G625 audit split; ROLLBACK: False
+    REENTRY_NEAR_EXIT_CHURN_OK: bool = True  # 2026-09-09: allow reentry ~exit price when retrace absent (better churn 0.08% than miss rally)
+    REENTRY_POSITIVE_EXIT_SIZE_MULT: float = 1.25  # 2026-09-09: +25% qty after profitable exit (rally sizing)
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 3  # 2026-07-08 GAINMO anti-churn: 20→3 fires/tick
@@ -859,7 +873,8 @@ class Config:
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED: bool = False
     REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT: float = 0.002
     UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True
-    BREAKOUT_LEASH_ENABLED: bool = True
+    BREAKOUT_LEASH_ENABLED: bool = False  # 2026-09-03 DISABLED per user: MAKER_PROFIT_EXIT_BREAKOUT_LEASH_EXIT_DROPPED_BACK always losing (BREAKOUT culprit — 10/min churn)
+    BREAKOUT_LEASH_MAX_PER_MIN: int = 10  # 2026-09-03 FLZ 10/min CHURN GUARD — aligned with EMERGENCY_BRAKE_MAX_TRADES_PER_MIN
     BREAKOUT_LEASH_QTY_MULT: float = 0.25
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.50
     BREAKOUT_LEASH_TF: str = "3m"
@@ -898,9 +913,9 @@ class Config:
     #   if NO active hedge → fire hedge NOW
     #   if hedge already active → close primary IMMEDIATELY (don't bleed further)
     # Signal-driven (not %-based) — fires in process_position EARLY before other paths.
-    UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = True
+    UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = False  # 2026-09-03 KILLED PERMANENTLY per user — WE DO NOT HAVE HEDGES, closing newly opened position on wt15m flip is suicide churn. Default OFF, tested only via TEMPLATE_30d_matrix.xlsx. Parity: v12_quick_engine + backtest_v12_engine OFF.
     UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED: int = 2  # N of 4 HTF (15m/1h/4h/D) must agree before force-closing origin when hedge active
-    UNDERWATER_HOC_USDC_MAKER_BYPASS: bool = True  # USDC perp + MICRO_SCALP_USDC_MAKER_ENABLED = 3m ok to close+reenter (zero maker fee)
+    UNDERWATER_HOC_USDC_MAKER_BYPASS: bool = False  # 2026-09-03 OFF with parent — no hedges, no bypass
     # USER 2026-05-05 (LUNC -65% incident on ang): catastrophic-loss safety net.
     # Even with hedging, positions reached -65% because hedges kept getting closed (HEDGE_BANDAID_OFF)
     # while the underlying short bled unbounded. These two caps prevent "ridiculous holds":
@@ -950,7 +965,7 @@ class Config:
     WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC: float = 30.0
     # USER 2026-05-06: ALL TFs (3m/15m/1h/4h/D) against → close primary, hedge becomes main.
     # Strongest single signal — no other gate considered.
-    ALL_TF_AGAINST_CLOSE_ENABLED: bool = True
+    ALL_TF_AGAINST_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: strongest signal — all TFs (3m/15m/1h/4h/D) against → close primary. User: does not exit when multiple TFs against trade. Hardened default.
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 30.0
     # 2026-05-08 USER MANDATE — WT_15M_VEL_SLOW exit branch (loss-bypass companion
     # to dc_low4_3m / dc_high4_3m breach exits). Fires immediate close BEFORE
@@ -967,7 +982,7 @@ class Config:
     # 2026-05-09: widened band 0.05 → 0.10, added velocity-near-zero alternative.
     # Original 0.05 + decel-only path was too narrow; positions could drift to
     # -2% before the abs(gain)<0.05 ever fired again.
-    WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
+    WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = False  # 2026-09-03 DISABLED per user: MAKER_PROFIT_EXIT_R2 always losing at g0.016, default OFF but tested in TEMPLATE_30d_matrix.xlsx
     # 2026-05-09 USER MANDATE: thresholds become configurable + dynamic, not fixed.
     # Band defines "approaching 0 gain" zone where R2 fires. Floor ensures we don't
     # close at a real loss (R1 + hedges handle losses). Decel ratio is the dynamic
@@ -986,6 +1001,24 @@ class Config:
     WT_VEL_DECEL_RATIO: float = 0.5                # |vel| < |vel_prev| * RATIO → "decelerating" — DYNAMIC
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = True       # 2026-05-09: default ON crypto. False = legacy NEAR_ZERO OR decel.
     R2_TF_LIST: tuple = ('15m',)                   # crypto: 15m primary. Sweep tests 1h too.
+    # === WT_15M_BOUNCE OPEN — 2026-09-01 vector/live parity fix ===
+    # Bounces >100 trades/mo delta (WT_15M cross within BB + 4h/1h HTF in favor). Was dead via unknown-key drop — now declared so live and vector share same switch surface.
+    WT_15M_BOUNCE_OPEN_ENABLED: bool = False
+    WT_15M_BOUNCE_BB_MIN: float = 0.05
+    WT_15M_BOUNCE_BB_MAX: float = 0.95
+    WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False
+    WT_15M_BOUNCE_FILTER_HL_ENABLED: bool = False  # user 2026-09-07: filter bad entries — require low_1h > low_1h_prev (higher low)
+    WT_15M_BOUNCE_FILTER_HH_ENABLED: bool = False  # user 2026-09-07: filter bad entries — require high_1h > high_1h_prev (higher high)
+    WT_15M_BOUNCE_FILTER_MODE: str = "AND"  # AND requires both HL+HH, OR requires either
+    WT_15M_BOUNCE_VOLUME_FILTER_ENABLED: bool = False  # user 2026-09-07: only enter when volume > relvol or vol ema (hook up live + v12)
+    WT_15M_BOUNCE_VOLUME_MODE: str = "relvol"  # relvol = relative_volume_1h > threshold, ema = volume_1h > volume_sma_1h
+    WT_15M_BOUNCE_VOLUME_THRESHOLD: float = 1.0  # for relvol: >1.0x avg; for ema: >1.0x sma
+    WT_15M_BOUNCE_LOW_1H_GT_PREV: bool = False  # alias for FILTER_HL — template row WT_15M_BOUNCE_LOW_1H_GT_PREV
+    WT_15M_BOUNCE_HIGH_1H_GT_PREV: bool = False  # alias for FILTER_HH — template row WT_15M_BOUNCE_HIGH_1H_GT_PREV
+    WT_15M_BOUNCE_REL_VOL_GT_1: bool = False  # alias for VOLUME_FILTER — template row WT_15M_BOUNCE_REL_VOL_GT_1
+    WT_ACCEL_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard — missing from configs, present in TEMPLATE
+    WT_DIV_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard — missing from configs, present in TEMPLATE
+    SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
     # 2026-05-09 USER MANDATE — R3 HEDGE_INVARIANT loss-bypass dump.
     # When wt1_3m AND wt1_1h are against a position AND gain<0 AND no hedge
     # exists (and none is pending) → DUMP at a loss, skip NO_LOSS, skip MTF.
@@ -1015,7 +1048,7 @@ class Config:
     #       the SAME tick as the entry. If the hedge can't be opened, refuse
     #       the entry too — never enter naked.
     GOLDEN_RULE_ENABLED: bool = True                       # SACRED — never disable
-    LEGACY_GUARANTEED_REENTRY: bool = False                # 2026-08-18 PARITY FIX: LIVE-OFF by default (BACKTEST_REPLICA_SWITCHES.md §3). Enforcement loop has no backtest analog (ez_manage:15700 / epq:15398). Vector+backtest_v8 must regain it via dedicated agent 900*900*160 before re-enable. See docs.
+    LEGACY_GUARANTEED_REENTRY: bool = True                # 2026-09-07 UNLOCK obligatory reentry per user — was False (parity OFF). Re-enabled: enforcement loop guarantees reentry after every close. FLZ was flat-while-trending because this was OFF. Parity still via flz_hourly_reconfig vector path. ROLLBACK: False.
     # 2026-05-16 wire-up: these were previously read via getattr(config, ..., default)
     # in backtest_v8_engine.py:4497-4508 and vec_paths/golden_rule_enforce.py:88-99
     # WITHOUT being defined as BotConfig fields — so JSON overrides silently dropped
@@ -1050,6 +1083,21 @@ class Config:
     # already test. Default 0 = disabled, sweep winners drive the live value.
     # No new consensus knobs; no hardcoded thresholds. The gate inside the
     # GOLDEN_RULE producer in ez_manage.py reads those same keys.
+    # ═══════════════════════════════════════════════════════════════════════════
+    # LEGENDARY RUN LEDGER — 15 trading days biggest winners/losers (EZ + Tradier) 2026-09-09
+    # Odds of continuation up/down high when in this ledger; used by GOLDEN pullback.
+    EXPLODING_LEDGER_ENABLED: bool = True  # dict data/exploding_ledger.json + data/exploding_ledger_tradier.json
+    EXPLODING_LEDGER_LOOKBACK_DAYS: int = 15  # trading days
+    EXPLODING_LEDGER_TOP_N: int = 20  # biggest movers kept (both sides)
+    EXPLODING_LEDGER_MIN_MOVE_PCT: float = 8.0  # min % move to qualify as "legendary" (>8% in 15d)
+    # GOLDEN PULLBACK — textbook exploding pullback with exceptional quantity 2026-09-09
+    # ZECUSDC template: retrace to dc_1h_basis, stoch 1h/15m low rebounding, wt15/1h about to cross
+    # at HIGHER wt level than prev cross, wt4h not pointing down → 2x max positionAmt previous week.
+    GOLDEN_PULLBACK_ENABLED: bool = True  # must also be in EXPLODING_LEDGER (legendary run)
+    GOLDEN_PULLBACK_SIZE_MULT: float = 2.0  # exceptional: 2x max positionAmt of previous week's trades
+    GOLDEN_PULLBACK_SIZE_CAP_MULT: float = 4.0  # cap 4x normal START_POSITION_SIZE
+    GOLDEN_PULLBACK_STOCH_LOW_THR: float = 35.0  # loosened 25->35 so next 3m cross fires (was too strict after reboot)
+    GOLDEN_PULLBACK_DC_BASIS_TOL_PCT: float = 1.50  # loosened 0.50->1.50 (wider retrace window)
     GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = True            # mandatory paired hedge (TODO wire)
     GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN: bool = True
     # HTF-trend vetoes — defense-in-depth alongside the consensus gate.
@@ -1059,7 +1107,7 @@ class Config:
     # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
-    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # 2026-05-21 22:47 USER MANDATE: RE-ENABLED after ORDIUSDC top-of-range incident — emergency close on dc4_3m breach is back ON. Previous 2026-05-20 OFF was based on assumption that MTF compound exit would replace it; MTF did not fire on ORDI 6%+ drawdown so R1 is restored.
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # 2026-09-03 DISABLED per user: MAKER_PROFIT_EXIT_R1_DC_LOW4_3M_EMERGENCY always losing (R1 culprit — 10/min churn)   # 2026-05-21 22:47 USER MANDATE: RE-ENABLED after ORDIUSDC top-of-range incident — emergency close on dc4_3m breach is back ON. Previous 2026-05-20 OFF was based on assumption that MTF compound exit would replace it; MTF did not fire on ORDI 6%+ drawdown so R1 is restored.
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-05-21 22:47 USER MANDATE — NEWBORN_LOSS_KILL.
@@ -1296,6 +1344,10 @@ class Config:
     # 2026-04-29 user: process_account_update timeout (was hardcoded 60s, caused flz exit-42 every 116s).
     # Slower accounts (flz) need 90-120s; stale-data trading risk vs constant-crash data loss.
     PAU_TIMEOUT_SEC: float = 120.0
+    WT15_CROSS_DC_BASIS_GATE_ENABLED: bool = True  # 2026-09-03 per user: wt15 cross needs above dc_basis_15m if not dc_basis_cross needs wt1>wt2, switch with vectorized v12
+    WT_CROSS_REQUIRE_HTF_AGREE: bool = True  # 2026-09-03 per user: WT_CROSS entries only if HTF agrees (wt1_1h/4h/D with side)
+    # 2026-09-03 SWITCH to disable ALL 1m/3m in live (user: backtests disabled 1m/3m, need live switch for A/B)
+    USE_1M_3M_SIGNALS_ENABLED: bool = False  # default OFF after FLZ churn fix; set True to test whether 3m/1m add/subtract. Tested in TEMPLATE_30d.
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
@@ -1315,7 +1367,7 @@ class Config:
     WT_REDUCE_FRAC_LOW: float = 0.15  # V4: was 0.30. At gains 0.3-0.5%, only reduce 15% (was 30%).
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
     WT_REDUCE_FRAC_HIGH: float = 0.50  # V4: at gains 1-3%, reduce 50% (was 70%).
-    MIN_HOLD_BARS_BEFORE_EXIT: int = 32  # V4: 8 hours min hold. Sharpe 0.503 vs 0.460 baseline (+9.3%), PnL +49%.
+    MIN_HOLD_BARS_BEFORE_EXIT: int = 10  # 2026-09-07 UNLOCK per user — was 32 (96min at 3m). Lowered to 10 (30min) to let MTF/WT exits fire sooner; was blocking profitable exits on FLZ. Per_sym 48 still overrides FLZ winners where proven. ROLLBACK: 32.
     # === BOUNCE-TOP EXIT FOR LOSERS (proven on stocks, adapted for crypto) ===
     # Wait for price to bounce toward entry, exit at TOP of bounce = smallest possible loss
     # Mandatory reentry follows: 150% at pullback, 200% at rising WT cross
@@ -1428,7 +1480,8 @@ class Config:
     DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED: bool = False
     # 2026-05-15 USER: when a DAEMON_PRICE_CROSS_REENTRY position's premise fails (price
     # crosses back above/below the encoded exit_price), close immediately bypassing NOLOSS.
-    DAEMON_REENTRY_STALE_EXIT_ENABLED: bool = True
+    # 2026-09-03 KILLED for BTC churn — DAEMON already OFF, stale-exit kills SHORT within seconds (BTC 81041<81164). Default OFF.
+    DAEMON_REENTRY_STALE_EXIT_ENABLED: bool = False
     # 2026-05-10 USER NON-NEGOTIABLE: every tradeable_key with wt1_3m > wt2_3m (LONG) /
     # wt1_3m < wt2_3m (SHORT) must always have a position open. If flat, OPEN immediately;
     # reopen after every close. Reentry/hedge gates may NOT block this. The reason
@@ -1441,7 +1494,9 @@ class Config:
     # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
     # REVERTED 2026-05-18 18:30: restored 2026-05-10 NON-NEGOTIABLE mandate value (True).
     # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
-    WT_3M_FORCE_OPEN_ENABLED: bool = True  # USER 2026-06-01: Enabled with >1% SMA200_15m distance, WaveTrend velocity, and wick filters.
+    WT_3M_FORCE_OPEN_ENABLED: bool = True  # 2026-09-07 UNLOCK obligatory reentry per user — was False (2026-09-03 churn fix). Re-enabled: flat tradeable key with wt1_3m>wt2_3m must always have a position (obligatory). FLZ was flat-while-trending because force-open OFF. Churn now controlled by lower MIN_HOLD 10 + 60s cooldown, not by killing force-open. ROLLBACK: False.
+    # 2026-09-03 FLZ 10/min CHURN GUARD — hard halt at 10 trades/min (EMERGENCY_BRAKE). ROLLBACK: 0 to disable.
+    EMERGENCY_BRAKE_MAX_TRADES_PER_MIN: int = 10  # 10 trades/min → halt & .FLZ_TRADING_HALTED sentinel. Profitable closes (>0.1% gain) still bypass.
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # USER 2026-06-01: Enable bypass gates to ensure always-open operative status.
     WT_3M_FORCE_OPEN_SIZE_USD: float = 25.0     # USER 2026-05-11: raised 9→25. $9 too small to ride breakouts when wt_3m fires (1000BONK / TON / ZEC missed-rally pattern).
     # GR vote gate for FORCE_OPEN / TRADEABLE_KEYS_MANDATORY signals.
@@ -1501,6 +1556,9 @@ class Config:
     # the MTF-gated backtest. NEVER bypass quality on the force-open again. ROLLBACK: False (NOT advised).
     FORCE_OPEN_REQUIRE_MTF_GR: bool = True
     REENTRY_CONFIRMATION_GATES_ENABLED: bool = True
+    REENTRY_BAR_TURN_ENABLED: bool = True  # 2026-09-09 USER: soften confirmation — also open if WT not flipped but 3m bar turning (HH/HL long, LL/LH short)
+    REENTRY_BAR_TURN_TF: str = "3m"  # TF for bar-turn check (3m crypto, 5m stocks via fallback)
+    REENTRY_BAR_TURN_REQUIRE_BOTH: bool = False  # False=HH or HL fires, True=need both HH and HL
     REENTRY_STOCH_K_MAX_LONG: float = 40.0
     REENTRY_STOCH_K_MIN_SHORT: float = 60.0
     REENTRY_WAVETREND_CONFIRM_ENABLED: bool = True
@@ -1835,7 +1893,7 @@ class Config:
     RZ_DIV_EXIT_ENABLED: bool = True
     RZ_ZSCORE_EXIT_ENABLED: bool = True
     # ═══ REENTRY — user directive "reenter ASAP" ═══
-    REENTRY_COOLDOWN_S: float = 300.0        # 2026-07-08 GAINMO anti-churn: 0→300s ("reenter ASAP" churned; matches EZ_REENTRY_PRICE_CROSS_MIN_GAP_S=300 locked 2026-06-25; churn law in GAINMO_MAXIMIZATION_20260708.md)
+    REENTRY_COOLDOWN_S: float = 60.0        # 2026-09-07 UNLOCK obligatory reentry per user — was 300 (5min anti-churn). Lowered to 60s to let obligatory reentry fire within 1min of exit. Prevents flat-while-trending. ROLLBACK: 300.
     # Aggressive tier window (2026-04-17 reentry sweep: crypto peak at 8-12 bars = 24-36min on 3m).
     # Within this window, a fresh dc_x3m or stoch_x3m with 1h still trending bypasses safety gates.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 30.0  # 30 min on crypto (3m base = 10 bars — matches Sharpe peak)
@@ -1910,9 +1968,9 @@ class Config:
     MOMENTUM_SMA_WATCHDOG_ENABLED: bool = True
     MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
     MOMENTUM_SMA_WATCHDOG_PCT: float = 1.0          # 2026-05-31 USER: 2.0->1.0 (global per_sym sweep: 1% median pool_sharpe 0.155 > 2% 0.150). Per-sym pct_entry from FINAL book overrides this. price must be > this % above sma_200_15m
-    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True     # 2026-06-04 USER: unblockable obligatory open in momentum_sma_watchdog_loop — runs BEFORE the cooldown/per-tick gates (was missing 24h tumbles: 4800 SKIP cooldown). SHORT when price >OBLIGATORY_SMA200_PCT% BELOW sma_200_15m AND wt1_3m falling; LONG when >PCT% ABOVE AND wt1_3m rising. reason OBLIGATORY_OPEN bypasses COUNTER_TREND (+ shorts bypass MTF); flood rate-breaker/cold-start still apply. OBLIGATORY_OPEN positions receive a frozen tight dc_low4_3m/dc_high4_3m leash (20-bar fallback). ROLLBACK: False.
+    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True     # 2026-09-04 REINSTATED per user: short calls accurate — reinstate START_POSITION_SIZE 14 probationary until proven real (user 02:22). Keep wt1_15m/1h + hh/hl rally block + 60m holds.
     OBLIGATORY_SMA200_PCT: float = 1.0              # distance beyond sma_200_15m (%) that triggers the obligatory open
-    OBLIGATORY_OPEN_USD: float = 400.0              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
+    OBLIGATORY_OPEN_USD: float = 14.0  # 2026-09-04 probationary START size per user short reinstate until proven              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
     PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-08-21 REVERTED per user: keep True so 900*900 verified winners can promote without config flip. Files wiped 410->0 so NO TRADING until verified repopulates; 96 old tradeable from 110-key sweep is gone.
     CONVICTION_SIZING_ENABLED: bool = True          # 2026-06-02 USER: scale base entry size by per-sym conviction (size_mult from FINAL book) so proven winners (ZEC/MU/SNDK) open BIG, tag-alongs small. Applied in _psym_sps. ROLLBACK: False.
     CONVICTION_SIZING_MAX: float = 8.0              # safety cap on conviction multiplier (crypto-validated cap; prevents runaway). ZEC size_mult ~3.3 -> base $45 x 3.3 ~= $147.
@@ -1982,8 +2040,8 @@ class Config:
     WATCHDOG_WT3M_ESCALATE_LADDER: list = field(default_factory=lambda: [1.00, 2.00, 3.00, 5.00])  # 2026-06-03 USER MANDATE: re-enter/add at 100-500% of position on each fresh favorable continuation so price can never recover/continue without us holding MORE than before. Was [0.20,0.50,1.00,1.50]. Per-add still bounded by WATCHDOG_WT3M_ESCALATE_MAX_USD (account-size rail). Exact rungs to be refined by the 4yr A/B ("unless backtest chose other multipliers"). ROLLBACK: restore [0.20,0.50,1.00,1.50].
     WATCHDOG_WT3M_ESCALATE_MAX_USD: float = 600.0    # cap per escalation add
     # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.
-    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True     # close ANY position (winner OR loser) the instant wt1_1h is against its side
-    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = False # also require wt1_4h against (sharper); default just 1h per user mandate
+    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: exit when multiple TFs against trade. User: does not exit when multiple TFs are against the trade. Hardened default.
+    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = True  # also require wt1_4h against (sharper); now 1h+4h must agree
     COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True     # block any OPEN/AUGMENT/REENTRY whose side is against wt1_1h (kills martingale)
     COUNTER_TREND_SMA200_BYPASS_ENABLED: bool = True # 2026-06-04 USER directional rule: a SHORT below sma_200_15m (LONG above) WITH 1h structure (1h lower-low/higher-high OR wt1_1h agreeing) is TREND-ALIGNED → bypass the laggy wt1_1h COUNTER_TREND_ADD_BLOCK so tumble-shorts fire (was 14k BLOCKED_COUNTER_TREND_1H_AGAINST_SHORT/2h). Genuine counter-trend (wrong side of sma_200_15m) stays blocked. ROLLBACK: False.
     # USER 2026-05-30: NEVER MISS A MOVE. A true breakout — price breaking the PREVIOUS-bar 1h Donchian
@@ -2040,7 +2098,7 @@ class Config:
     DC_RECOVERY_EXIT_DISABLED_ACCOUNTS: list = field(default_factory=lambda: ['inf'])
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
     # Each one is now gated by TOLERANT delta conditions (looser than fresh-entry gate).
-    LEGACY_GUARANTEED_REENTRY: bool = False    # 2026-08-18 PARITY FIX: LIVE-OFF default (see line 977). Second definition — last wins for dataclass; must be False in both places. Hook into vector/backtest_v8 before re-enable.
+    LEGACY_GUARANTEED_REENTRY: bool = True    # 2026-09-07 UNLOCK per user — was False. Second definition (last wins) now True to match line 1035. Obligatory reentry enforcement loop ON. ROLLBACK: False.
     LEGACY_DIRECTION_FAVORABLE: bool = False   # 2026-08-18 LIVE-OFF (BACKTEST_REPLICA_SWITCHES.md §6). Was True. Re-enable only after vec hook + Tier-2 proof.
     LEGACY_DC_BREAKOUT_REENTRY: bool = True    # ON — gated by tolerant delta
     LEGACY_PROC_SINGLE_REENTRY: bool = False   # OFF 2026-04-15 per user — fired mid-move on LTF only
@@ -2829,6 +2887,16 @@ class Config:
     SBA_MAX_CONCURRENT: int = 3  # BACKTEST_CHANGE_145: Max positions receiving SBA at once
     SBA_ADX_MAX: float = 25.0  # BACKTEST_CHANGE_145: ADX < 25 (backtest: 25 > 20, Sharpe +0.232 vs +0.140)
     SBA_ADX_TF: str = "1h"  # BACKTEST_CHANGE_145: TF for ADX regime check
+    SBA_BOUNCE_ENABLED: bool = True  # vectorizable parity 2026-09-08: mirror QuickConfig/config_tradier (SBA bounce confluence BB+K+WT)
+    CYCLE_TP_ENABLED: bool = False  # vectorizable parity 2026-09-08: added for tradier parity (live default False per ez_manage getattr)
+    DC_HOPELESS_ENABLED: bool = False  # vectorizable parity 2026-09-08: alias for DC_HOPELESS_EXIT_ENABLED (live default False)
+    FIN_ADVISORY_CONSUMER_ENABLED_TRADIER: bool = False  # vectorizable parity 2026-09-08: TRADIER suffix mirror for tradier parity
+    MARKET_CRASH_THRESHOLD_PCT: float = 0.0  # vectorizable parity 2026-09-08: index crash blanket disabled when 0 (live default 0 per ez_manage/tradier_manage getattr)
+    MARKET_JUMP_THRESHOLD_PCT: float = 0.0  # vectorizable parity 2026-09-08: index jump blanket disabled when 0 (companion to MARKET_CRASH)
+    MOMENTUM_WATCHDOG_ENABLED: bool = False  # vectorizable parity 2026-09-08: live default False per ez_manage getattr (tradier mirror True added 2026-09-08)
+    TRADEABLE_KEYS_MANDATORY_ENABLED: bool = True  # vectorizable parity 2026-09-08: mandatory tradeable-keys scan (live default True)
+    WT_EXHAUST_ENABLED: bool = False  # vectorizable parity 2026-09-08: alias for WT_EXHAUST_EXIT_ENABLED (live default False)
+    WT_PERCENTILE_ENABLED: bool = False  # vectorizable parity 2026-09-08: alias for WT_PERCENTILE_EXIT_ENABLED (live default False)
     MARKET_QUALITY_SCORE_ENABLED: bool = False  # BACKTEST_CHANGE_146: Market quality entry filter (backtest: Sharpe +430%, 60% symbols improved)
 
     MAX_HEDGE_BALANCE_VALUE_USD: float = (
@@ -2931,7 +2999,7 @@ class Config:
     # OLD SHORT: _wt1_4h > _wt2_4h (any bullish cross → exit short — no velocity threshold, too aggressive)
     # NEW SHORT: wt_velocity_4h > WT_4H_VEL_EXIT_SHORT_VEL_MIN (symmetric with LONG side)
     # Real baseline showed this caused 409 closes at 14% WR (-4.69% total) with BTCUSDC
-    WT_4H_VEL_EXIT_ENABLED: bool = True
+    WT_4H_VEL_EXIT_ENABLED: bool = True   # 2026-09-04 CORRECTED per user: WT_4H_VEL_EXIT is a LONG EXIT switch NOT a SHORT ENTRY switch (message scrambled). Re-enabled as exit-only. DAEMON reentry is the SHORT-entry culprit (already OFF via EZ_REENTRY_DAEMON_ENABLED=False).
     WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0    # LONG exits when vel_4h < this (downward momentum)
     WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0    # SHORT exits when vel_4h > this (upward momentum)
     # 2026-04-28 USER RULE: WT_4H_VEL_EXIT must require profit AND extreme stoch K
@@ -4138,7 +4206,8 @@ class Config:
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_GAIN_PCT: float = -3.0
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_AGE_MIN: float = 240.0
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_QTY_PCT: float = 1.0
-    DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED: bool = False
+    DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED: bool = False  # 2026-09-03 default OFF, tested in TEMPLATE_30d_matrix.xlsx — live DAEMON also gated via same switch
+    DAEMON_PRICE_CROSS_REENTRY_LIVE_ENABLED: bool = False  # 2026-09-03 DISABLED per user: DAEMON_PRICE_CROSS_REENTRY indiscriminate (CONFIRM_DISABLED) (DAEMON culprit — 10/min churn), default OFF but tested in TEMPLATE_30d_matrix.xlsx
     DAEMON_PRICE_CROSS_REENTRY_MAX_AGE_HOURS: float = 48.0
     DAEMON_PRICE_CROSS_PCT: float = 0.0
     GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED: bool = False
@@ -4203,6 +4272,34 @@ class Config:
     STRICT_VEC_PARITY_SHADOW: bool = False
     STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
     STRICT_VEC_PARITY_GATE_EXITS: bool = True
+    # ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+    # ┃  PARITY MASTERS — TWO INDEPENDENT KILL-SWITCHES — READ THIS BLOCK FIRST  ┃
+    # ┃  ┌─────────────────────────────────────────────────────────────────────┐  ┃
+    # ┃  │ MASTER 1 — TF COVERAGE: 1m / 3m / 5m intraday candle availability   │  ┃
+    # ┃  └─────────────────────────────────────────────────────────────────────┘  ┃
+    # ┃  LIVE_5m_trading_ENABLED  +  PARITY_MIN_DECISION_TF / V12_PARITY_MIN_TF  ┃
+    # ┃  · LIVE_5m_trading_ENABLED=True  → live may read 1m/3m/5m candles       ┃
+    # ┃    (crypto 3m, stocks 5m; 1m where NPZ has it).                         ┃
+    # ┃  · LIVE_5m_trading_ENABLED=False → forces 15m fallback (dc_low_5m     ┃
+    # ┃    → dc_low4_15m etc) — vector parity. Forward test OFF vs ON proves   ┃
+    # ┃    whether 3/5m actually adds gains.                                    ┃
+    # ┃  · PARITY_MIN_DECISION_TF="15m" does the TF remap underneath; LIVE_5m  ┃
+    # ┃    is the ON/OFF for that remap.                                        ┃
+    # ┃  ┌─────────────────────────────────────────────────────────────────────┐  ┃
+    # ┃  │ MASTER 2 — NON-VECTORIZABLE / NPZ-UNAVAILABLE (broker, orderbook)   │  ┃
+    # ┃  └─────────────────────────────────────────────────────────────────────┘  ┃
+    # ┃  PARITY_DISABLE_NON_VECTORIZABLE / V12_PARITY_DISABLE_NON_VECTORIZABLE  ┃
+    # ┃  · True → v12_quick_engine forces every NON_VECTORIZABLE switch to its ┃
+    # ┃    default (off) even if config sets True — live-only, forward-test    ┃
+    # ┃    only (orderbook depth, Tradier fills, etc.)                          ┃
+    # ┃  · False → allows non-vectorizable to fire live.                         ┃
+    # ┃  These two masters are INDEPENDENT — do not touch 2 when testing 1.     ┃
+    # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+    PARITY_MIN_DECISION_TF: str = "15m"  # TF remap for Master 1 — live "5m"/"3m", parity "15m"
+    V12_PARITY_MIN_TF: str = "15m"  # alias
+    LIVE_5m_trading_ENABLED: bool = True  # MASTER 1 — 1m/3m/5m TF availability — OFF for parity test
+    PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # MASTER 2 — non-vectorizable/NPZ-unavailable — True = force defaults off
+    V12_PARITY_DISABLE_NON_VECTORIZABLE: bool = True  # alias for Master 2
     EXECUTE_NOW_SINGLE_GATE_ENFORCE: bool = True
     EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW: bool = True
     EXECUTE_NOW_WIRE_TRIPWIRE_MAX_LAG_S: float = 5.0
@@ -4265,7 +4362,7 @@ class Config:
     BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_BARS: int = 1  # PORTED from TradierConfig 2026-08-17
     BOTTOM_B_DELAYED_LOWER_TOP_CONFIRMATION_MODE: str = "lower_top"  # PORTED from TradierConfig 2026-08-17
     BOTTOM_B_DELAYED_LOWER_TOP_CONFIRM_TF: str = "1h"  # PORTED from TradierConfig 2026-08-17
-    BOTTOM_B_DELAYED_LOWER_TOP_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
+    BOTTOM_B_DELAYED_LOWER_TOP_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: wait for bottoms/lower-top confirmation. User: does not wait for bottoms. Hardened default.
     BOTTOM_B_DELAYED_LOWER_TOP_MAX_WAIT_1H: int = 12  # PORTED from TradierConfig 2026-08-17
     BOTTOM_B_DELAYED_LOWER_TOP_PREBREAK_LOOKBACK: int = 20  # PORTED from TradierConfig 2026-08-17
     BOTTOM_B_DELAYED_LOWER_TOP_REBOUND_ATR: float = 0.5  # PORTED from TradierConfig 2026-08-17
@@ -4398,7 +4495,7 @@ class Config:
     EMA_9_21_FILTER_ENABLED: bool = True  # KINDERGARTEN 2026-08-19 — fixes DEAD_CONFIRMED, now wired via vec_paths/ema_9_21_filter.py + v8_vec_sweep kindergarten_gate
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     EMA_9_21_TIMEFRAME: str = "5m"
-    KINDERGARTEN_EMA_GATE_ENABLED: bool = False  # USER 2026-08-19 kindergarten: LONG only above ema200/sma200/ema9>21 on D/4h — SIDE-AWARE gate in v8_vec_sweep  # PORTED from TradierConfig 2026-08-17
+    KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA 9/21 + EMA200 gate — blocks counter-trend. User: EMA filters have not been applied at all + trades against trend. Hardened default.
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'  # PORTED from TradierConfig 2026-08-17
     ENABLE_IP_ROTATION: bool = False  # NOT DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
@@ -4724,6 +4821,70 @@ class Config:
     OPTIONS_USER_CANCEL_COOLDOWN_HOURS: float = 4.0  # Don't re-propose a user-canceled OCC for N hours  # PORTED from TradierConfig 2026-08-17
     OPTIONS_WT_ACCEL_GROWTH_PCT: float = 25.0    # LEGACY alias — reused as slowdown % if OPTIONS_WT_SLOWDOWN_PCT unset  # PORTED from TradierConfig 2026-08-17
     OPTIONS_WT_ACCEL_MIN_ABS: float = 10.0       # min |wt_velocity_D_prev| for slowdown to count (ignore noise)  # PORTED from TradierConfig 2026-08-17
+    WT_AGAINST_FILTER_ENABLED: bool = False  # RECONNECT 2026-09-04 TEMPLATE parity: vector had it, config missing
+    AUGMENT_WT_4H_BOUNCE_ENABLED: bool = False  # 2026-09-04 full parity
+    EMA_9_21_FILTER_MIN_TFS: int = 3
+    EMA_BLANKET_FILTER_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA blanket blocks counter-trend. User: EMA filters have not been applied at all.
+    EMA_BLANKET_FILTER_MIN_TFS: int = 3  # was 2 → 3 TFs must confirm
+    FOLLOW_THROUGH_REENTRY_ENABLED: bool = False
+    GR_FILTER_VEC_ENABLED: bool = False
+    GR_FILTER_VEC_MIN_TFS: int = 2
+    REVERSE_ON_EXIT_ENABLED: bool = False
+    ATR_TRAIL_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BAR_PATTERNS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BB_PULLBACK_GATE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BB_RECOVERY_ENTRY_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BB_RECOVERY_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BREAKEVEN_GAIN_EROSION_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BREAKOUT_RETEST_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BTC_DEDICATED_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    BT_WT_CROSS_LADDER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    CANDLE_PATTERN_STOPS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    CIRCUIT_SHARPE_GATES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    COOLDOWN_LOCKS_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    DC_BREACH_REDUCE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    DC_BREAK_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    DC_MOMENTUM_BOTA_SCORER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    DELTA_ENGINE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    DUP_GUARD_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    E2E_REPLAY_VALIDATOR_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EMA_9_21_FILTER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EXIT_R1_R2_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EXIT_TOP_FADE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    EXIT_TO_REDUCE_ADAPTER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    FAST_RISER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    FH_MOMENTUM_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    FIRST_OPEN_THROTTLE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    FROZEN_STOP_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    FUNDING_GATE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    GOLDEN_RULE_ENFORCE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    GOLDEN_RULE_HTF_VOTE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    GR_FILTER_VEC_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    GR_V5_STATE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    HAIKU_WINNER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    KILLER_KNOB_FINDER_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    LIVE_ENTRY_ENGINE_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    MOM3_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    MOMENTUM_BREAKOUT_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    MTF_ATR_TRAIL_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    MTF_DC_REJECT_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    NEWBORN_LOSS_KILL_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    NEWBORN_PROTECT_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    NOLOSS_BYPASS_WT5OF5_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    OPEN_INTENT_SIZE_GATES_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF: str = "15m"  # FILTER_TF 2026-09-04 TEMPLATE parity
+    ATR_TRAIL_SWEEP_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
+    CHANNEL_REENTRY_STOP_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
+    DYN_STRUCT_TRAIL_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
+    HAIKU_ENTRY_GATE_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
+    WT_15M_CROSS_ENTRY_ENABLED: bool = False  # auto-added TEMPLATE parity 2026-09-04
     OPTIONS_WT_SLOWDOWN_PCT: float = 25.0        # velocity must shrink by ≥25% bar-over-bar for slowdown to fire  # PORTED from TradierConfig 2026-08-17
     ORB_ENABLED: bool = False  # OFF for trb (real $). TRC overrides to True.  # PORTED from TradierConfig 2026-08-17
     ORB_LONG_BUDGET: float = 2000.0  # WIRED 2026-04-16 (priority 85/100) — tradier_manage.py:5286 TRC override destination  # PORTED from TradierConfig 2026-08-17
@@ -5045,13 +5206,17 @@ class Config:
     TRADIER_RSI_SHORT_RVOL_1H: float = 1.0  # PORTED from TradierConfig 2026-08-17
     TRADIER_SANDBOX_URL: str = "https://sandbox.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     TRADIER_STOCH_ENTRY_LONG_TRADIER: int = 30          # K < this for normal long entry  # PORTED from TradierConfig 2026-08-17
-    TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 52  # K > this for normal short entry  # PORTED from TradierConfig 2026-08-17
+    TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 52  # K > this for normal short entry  # PORTED from TradierConfig 2026-08-17 — PER-SWITCH AUDIT 2026-09-05: TRADIER canon is 65-70 range; 52 retained as legacy crypto baseline, new TRADIER suffixed 70 is canonical for stocks
     TRADIER_STOCH_EXTREME_LONG_TRADIER: int = 15        # deeper K for high-conviction long  # PORTED from TradierConfig 2026-08-17
     TRADIER_STOCH_EXTREME_SHORT_TRADIER: int = 85       # deeper K for high-conviction short  # PORTED from TradierConfig 2026-08-17
+    STOCH_ENTRY_LONG_TRADIER: int = 30  # PER-SWITCH 2026-09-05: unprefixed alias for tradier_manage _cfg bridge (TRADIER_STOCH_ENTRY_LONG -> STOCH_ENTRY_LONG_TRADIER)
+    STOCH_ENTRY_SHORT_TRADIER: int = 65  # PER-SWITCH 2026-09-05: canonical short threshold (audit: 52 stale, 65-70 sweep winner)
+    STOCH_EXTREME_LONG_TRADIER: int = 15  # PER-SWITCH 2026-09-05: alias for TRADIER_STOCH_EXTREME_LONG
+    STOCH_EXTREME_SHORT_TRADIER: int = 85  # PER-SWITCH 2026-09-05: alias for TRADIER_STOCH_EXTREME_SHORT
     TRADIER_STREAMING_URL: str = "https://stream.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     TRADIER_SYMBOLS_FILE: Path = BASE_PATH / "symbols_tradier.json"  # PORTED from TradierConfig 2026-08-17
     TRADIER_WS_URL: str = "wss://ws.tradier.com/v1"  # PORTED from TradierConfig 2026-08-17
-    TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True  # PORTED from TradierConfig 2026-08-17 — GHOST: double-prefix, canonical is WT_COMPOSITE_SCORING_ENABLED_TRADIER
     TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 5             # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5 (require ALL 5 TFs against). Patient exits.  # PORTED from TradierConfig 2026-08-17
     TRADIER_WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # T4 sweep: 5m+15m+1h+4h+D avg=5.961 best tested (was "3m,15m,1h")  # PORTED from TradierConfig 2026-08-17
     TRAILING_AUG_ENABLED_TRADIER: bool = False  # PORTED from TradierConfig 2026-08-17
@@ -5131,6 +5296,33 @@ class Config:
     TR_TREND_V1_ENABLED: bool = False  # PORTED from TradierConfig 2026-08-17
     TR_TREND_V1_SHADOW_LOG_ONLY: bool = True  # PORTED from TradierConfig 2026-08-17
     TR_TREND_V1_SHADOW_SYMBOLS: tuple = ('TRGP', 'SNDK', 'AVGO', 'GLD', 'PLTR', 'MU', 'CDE', 'SLV')  # PORTED from TradierConfig 2026-08-17
+    TR_TREND_V1_ATR_STOP_MULT: float = 2.0  # GHOST FIX 2026-09-05: was getattr default 2.0 at tradier_manage:282,359
+    TR_TREND_V1_VOL_MULT: float = 1.5  # GHOST FIX 2026-09-05: was getattr default 1.5 at tradier_manage:269
+    TR_TREND_V1_RETEST_MAX_BARS_D: int = 5  # GHOST FIX 2026-09-05: was getattr default 5 at tradier_manage:303
+    TR_TREND_V1_RETEST_TOL_PCT: float = 0.5  # GHOST FIX 2026-09-05: was getattr default 0.5 at tradier_manage:310
+    TR_TREND_V1_RETEST_VOL_MAX_MULT: float = 0.7  # GHOST FIX 2026-09-05: was getattr default 0.7 at tradier_manage:314
+    TR_TREND_V1_TIME_STOP_BARS_D: int = 60  # GHOST FIX 2026-09-05: was getattr default 60 at tradier_manage:386
+    TR_TREND_V1_TIME_STOP_NO_HIGH_BARS_D: int = 30  # GHOST FIX 2026-09-05: was getattr default 30 at tradier_manage:387
+    REENTRY_MATERIAL_OVERSHOOT_PCT: float = 0.5  # GHOST FIX 2026-09-05: was getattr default 0.5 at tradier_manage: reentry opposition
+    REENTRY_OPPOSITION_MAX_FLAT_BARS: int = 12  # GHOST FIX 2026-09-05: was getattr default 12
+    # Per-switch audit 2026-09-05: port tradier stock switches to crypto with tradier defaults
+    MOMENTUM_FADE_ENABLED_TRADIER: bool = False  # PORTED 2026-09-05: config_tradier 1234 False (gate ablation zero impact)
+    MOMENTUM_FADE_BODY_ATR_MIN_TRADIER: float = 2.0  # PORTED 2026-09-05: config_tradier 1235
+    MOMENTUM_FADE_VOL_MIN_TRADIER: float = 2.0  # PORTED 2026-09-05: config_tradier 1236
+    MOMENTUM_FADE_K_ZONE_TRADIER: bool = True  # PORTED 2026-09-05: config_tradier 1237
+    MOMENTUM_FADE_SCORE_BONUS_TRADIER: int = 5  # PORTED 2026-09-05: config_tradier 1238
+    K_ZONE_ENTRY_ENABLED_TRADIER: bool = False  # PORTED 2026-09-05: config_tradier 1166
+    K_ZONE_VETO_ENABLED_TRADIER: bool = False  # PORTED 2026-09-05: config_tradier 1167
+    K_ZONE_LONG_THRESHOLD_TRADIER: int = 35  # PORTED 2026-09-05: config_tradier 1172
+    K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65  # PORTED 2026-09-05: config_tradier 1173
+    K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # PORTED 2026-09-05: config_tradier 1174 canonical (alias 1888-90 bonus 25 is drift)
+    WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True  # PORTED 2026-09-05: config_tradier 36
+    MTS_GATE_ENABLED_TRADIER: bool = False  # PORTED 2026-09-05: config_tradier 46 OFF stocks benefit WT alone
+    MTS_BOTTOM_MIN_TRADIER: float = 5.0  # PORTED 2026-09-05: config_tradier 47
+    MTS_ENTRY_QUALITY_MIN_TRADIER: float = 0.0  # PORTED 2026-09-05: config_tradier 48
+    TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35  # PORTED 2026-09-05: alias of K_ZONE_LONG_THRESHOLD_TRADIER
+    TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65  # PORTED 2026-09-05: alias
+    TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # PORTED 2026-09-05: alias canonical 20 (fixes drift 25)
     TSMOM_BOOK_SCALAR_ENABLED: bool = True  # 2026-04-27 sweep T1: 8× True in winners. Was False.  # PORTED from TradierConfig 2026-08-17
     TSMOM_HIGH_CAP: float = 1.5  # PORTED from TradierConfig 2026-08-17
     TSMOM_LOOKBACK_BARS: int = 252  # PORTED from TradierConfig 2026-08-17

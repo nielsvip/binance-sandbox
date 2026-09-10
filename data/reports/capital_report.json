@@ -1,45 +1,43 @@
 {
- "generated_at": "2026-08-21 04:13 UTC",
- "total_capital_usd": 46.84,
+ "generated_at": "2026-09-10 03:30 UTC",
+ "total_capital_usd": 10.79,
  "tier_capital": {
   "A": 0.0,
-  "B": 19.78,
-  "C": 27.06
+  "B": 10.79,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 1
+  "B": 2,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:WLDUSDC_LONG"
- ],
+ "losers": [],
  "mediocre": [
-  "flz:XRPUSDC_LONG"
+  "inf:ASTSUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "flz:WLDUSDC_LONG",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 27.06,
-   "gain_pct": -0.183,
-   "tier": "C",
-   "perf_mult": 0.65,
-   "amt": 72.6,
-   "mark": 0.37278473
+   "pk": "inf:ASTSUSDT_SHORT",
+   "symbol": "ASTSUSDT",
+   "account": "inf",
+   "value_usd": 5.61,
+   "gain_pct": 0.184,
+   "tier": "B",
+   "perf_mult": 0.84,
+   "amt": 0.09,
+   "mark": 62.32527976
   },
   {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 19.78,
-   "gain_pct": -0.274,
+   "pk": "inf:AMDUSDT_LONG",
+   "symbol": "AMDUSDT",
+   "account": "inf",
+   "value_usd": 5.18,
+   "gain_pct": -0.308,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 15.1,
-   "mark": 1.3097
+   "amt": 0.01,
+   "mark": 518.35455815
   }
  ]
 }

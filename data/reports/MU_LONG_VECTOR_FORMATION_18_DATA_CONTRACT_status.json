@@ -1,0 +1,22 @@
+{
+  "status": "complete_pass",
+  "pilot_admissible": true,
+  "symside": "MU_LONG",
+  "window_days": 30,
+  "audit_tfs": [
+    "3m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "switches_total": 18,
+  "strategy_switches_total": 0,
+  "strategy_switches_pass": 0,
+  "counts": {
+    "N/A_DATA": 18
+  },
+  "detail_csv": "/home/niels/binance-sandbox/data/reports/MU_LONG_VECTOR_FORMATION_18_DATA_CONTRACT.csv",
+  "summary_csv": "/home/niels/binance-sandbox/data/reports/MU_LONG_VECTOR_FORMATION_18_DATA_CONTRACT_SUMMARY.csv",
+  "elapsed_s": 0.002500772476196289
+}

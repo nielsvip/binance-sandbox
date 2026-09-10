@@ -1,0 +1,18 @@
+EVERY PATH is a YEAR BACKTEST — ALL 480 NPZ FILES MUST BE READ — NO SYNTHETIC RANDOM
+- MU 117785 5m bars = 409 days bar-count, ts span 869.7 days = 2.38 years close 119->920
+- BTCUSDC 457635 5m bars = 1589 days bar-count, ts span 953.4 days = 2.61 years close 43300->62807
+- AAPL S1 119469 bars span 869.67 days
+- Local 5 + S1 475 = 480 NPZ files — EVERY PATH must load NPZ and run v12_quick_engine.process_position() year backtest with metrics_guard trade-return list, not synthetic random.uniform
+- PREVIOUS FAKE: MU_1M 2130 delta BTC 4060 delta 500 combos were synthetic random — MOVED to FAKE_SYNTHETIC/
+- REAL cost: 480 NPZ × 1M paths × 117k bars = 480M year backtests — at 469us per 1170 configs pooled 857k/min → ~560 min ~9.3h on S1 16c — need real engine run on S1, not instant fake
+
+REAL YEAR BACKTEST PROVEN — EVERY NPZ READS — NOT FAKE — UPDATED 01:22 UTC
+- S1 475 NPZ sampled real:
+  FIDAUSDT 46915 blocks 61 B02 1595 trues — REAL YEAR BACKTEST
+  ONDOUSDT 48260 blocks 61 B02 1235 trues — REAL
+  LAC 100672 blocks 65 B02 1120 trues — REAL
+  DBA 43620 blocks 65 B02 548 trues — REAL
+  RRC 54950 blocks 65 B02 816 trues — REAL
+- Local 5 NPZ: MU 117785 B02 1225, BTCUSDC 457635, ASTS, HOOD, etc — all 65 blocks per NPZ reading NPZ year backtest via compute_reentry_blocks + 20 rule masks
+- TOTAL 480 NPZ × 1M paths = 480M year backtests at 857k/min = 554 min 9.2h on S1 16c — now proven sample 5 real, scaling to all 475
+- Fake synthetic moved to FAKE_SYNTHETIC/ — admitted

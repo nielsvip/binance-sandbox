@@ -1,0 +1,27 @@
+{
+  "status": "running",
+  "symside": "BTCUSDC_LONG",
+  "window_days": 30,
+  "audit_tfs": [
+    "3m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "switches_total": 28,
+  "declared_to_probe": 24,
+  "empirical_done": 1,
+  "counts": {
+    "N/A_SIDE": 4,
+    "INERT": 1
+  },
+  "elapsed_s": 5.92007040977478,
+  "verdicts": {
+    "RSI2_MEAN_REVERSION_ENABLED": "INERT",
+    "RSI2_THRESHOLD_SHORT": "N/A_SIDE",
+    "RSI_MACD_EMA_RSI_SHORT": "N/A_SIDE",
+    "TRIPLE_CONF_RSI_SHORT": "N/A_SIDE",
+    "TRIPLE_CONF_STOCH_SHORT": "N/A_SIDE"
+  }
+}

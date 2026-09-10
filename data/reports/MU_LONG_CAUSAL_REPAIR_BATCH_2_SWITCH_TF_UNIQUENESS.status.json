@@ -1,0 +1,26 @@
+{
+  "status": "complete_blocked",
+  "pilot_admissible": false,
+  "symside": "MU_LONG",
+  "window_days": 365,
+  "audit_tfs": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "switches_total": 83,
+  "strategy_switches_total": 80,
+  "strategy_switches_pass": 1,
+  "counts": {
+    "INERT": 70,
+    "PASS": 1,
+    "TF_ALIAS": 9,
+    "N/A_SYMBOL": 1,
+    "N/A_TIMEFRAME": 2
+  },
+  "detail_csv": "/home/niels/binance-sandbox/data/reports/MU_LONG_CAUSAL_REPAIR_BATCH_2_SWITCH_TF_UNIQUENESS.csv",
+  "summary_csv": "/home/niels/binance-sandbox/data/reports/MU_LONG_CAUSAL_REPAIR_BATCH_2_SWITCH_TF_UNIQUENESS_SUMMARY.csv",
+  "elapsed_s": 95.98485565185547
+}

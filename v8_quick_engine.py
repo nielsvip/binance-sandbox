@@ -18,6 +18,27 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
+# BTC parity: share single source of decision functions with live (ez_manage/btc_loop)
+# All callers must import SAME objects so id() equality holds.
+try:
+    import btc_loop as _btc_loop  # noqa: F401
+    from btc_loop import (  # noqa: F401
+        should_enter_btc_long,
+        should_enter_btc_short,
+        should_exit_btc,
+        compute_accel_ramp,
+        aggregate_multi_indicator_divergence,
+        build_red_zone_state,
+        PositionRiskState,
+        RedZoneState,
+        DivergenceState,
+        WTAccelFeatures,
+    )
+    _BTC_LOOP_IMPORTED = True
+except Exception:
+    _BTC_LOOP_IMPORTED = False
+    _btc_loop = None  # type: ignore
+
 BASE_PATH = Path(__file__).resolve().parent
 
 # --- AUTO-WIRED 2629 generic param effects (ballpark, ensures every knob flips results) ---
@@ -36,6 +57,9 @@ def _apply_auto_wired_params(cfg, entry_mask: np.ndarray, exit_mask: np.ndarray,
     except Exception:
         _defaults = None
     for param in AUTO_WIRED_PARAMS:
+        # Parity fix: BTC_DEDICATED knobs are causally wired via btc_loop, not hash — skip hash path
+        if param.startswith("BTC_"):
+            continue
         val = getattr(cfg, param, None)
         # Determine if active vs default: bool/enum/str/non-zero; value-aware so any change flips
         is_active = False
@@ -100,9 +124,13 @@ def _apply_universal_distinctness_fallback(npz, n, is_long, cfg, entry_mask, exi
         defaults = QuickConfig()
     except Exception:
         return entry_mask, exit_mask
+    # Parity fix: BTC_DEDICATED attrs are causally wired — exclude from hash distinctness
+    _BTC_SKIP = tuple(a for a in dir(defaults) if a.startswith("BTC_"))
     active = []
     # include QuickConfig attrs that differ from default
     for attr in dir(defaults):
+        if attr.startswith("BTC_"):
+            continue
         if attr.startswith('_') or not attr.isupper():
             continue
         try:
@@ -3665,6 +3693,7 @@ class QuickConfig:
     FH_MOMENTUM_DC_MAX_LONG: float = 0.5
     FH_MOMENTUM_MFI_CONFIRM: bool = False
     FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5
+    REENTRY_POSITIVE_EXIT_SIZE_MULT: float = 1.25
     MIN_GAIN: float = 3.0
     RSI2_ENABLED: bool = True
     RSI2_EXIT_THRESHOLD_LONG: float = 70.0
@@ -3672,6 +3701,99 @@ class QuickConfig:
     RSI_ENTRY_LONG_TRADIER: float = 40.0
     RSI_ENTRY_SHORT_TRADIER: float = 58.0
     WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True
+
+    # ===== BTC_DEDICATED — wired to btc_loop.py causal logic (not AUTO_WIRED hash) =====
+    # Mirrors config.py 3918-4067 defaults so per_sym overrides map with type safety.
+    # Vector and live must share id() identical btc_loop decision functions.
+    BTC_DEDICATED_ENABLED: bool = False
+    BTC_DEDICATED_ACCOUNTS: tuple = ("flz", "inf")
+    BTC_DEDICATED_SYMBOLS: tuple = ("BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "DOGEUSDC", "ZECUSDC", "BTCDOMUSDT")
+    BTC_PER_SYM_CONFIG_ENABLED: bool = True
+    BTC_RZ_USE_WT_DC: bool = True
+    BTC_RZ_USE_FIB: bool = True
+    BTC_RZ_USE_ROUND: bool = True
+    BTC_RZ_PROXIMITY_PCT: float = 0.5
+    BTC_FIB_LOOKBACK_4H: int = 200
+    BTC_FIB_LOOKBACK_D: int = 180
+    BTC_FIB_LOOKBACK_W: int = 104
+    BTC_FIB_LOOKBACK_M: int = 24
+    BTC_FIB_LOOKBACK_Y: int = 5
+    BTC_FIB_RECOMPUTE_ON_NEW_HL: bool = True
+    BTC_ROUND_INC_PRIMARY_USD: float = 5000.0
+    BTC_ROUND_INC_SECONDARY_USD: float = 1000.0
+    BTC_ROUND_BANDS_EACH_SIDE: int = 8
+    BTC_ACCEL_RAMP_ENABLED: bool = True
+    BTC_ACCEL_RAMP_MIN_TFS: int = 5
+    BTC_ACCEL_RAMP_REQUIRE_POSITIVE: bool = True
+    BTC_ACCEL_RAMP_PRICE_BOUNCE_TF: str = "3m"
+    BTC_ACCEL_RAMP_PRICE_BOUNCE_BARS: int = 3
+    BTC_DIVERGENCE_ENABLED: bool = True
+    BTC_DIVERGENCE_BULL_MIN_INDS: int = 2
+    BTC_DIVERGENCE_BEAR_MIN_INDS: int = 2
+    BTC_DIVERGENCE_LOOKBACK_BARS: int = 5
+    BTC_DIVERGENCE_BLOCK_AGAINST: bool = True
+    BTC_DIVERGENCE_EXIT_AGAINST: bool = True
+    BTC_ENTRY_PRIMARY_REQUIRE_RZ: bool = True
+    BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP: bool = True
+    BTC_ENTRY_PRIMARY_BLOCK_OPPOSING_DIV: bool = True
+    BTC_ENTRY_DIV_ONLY_ENABLED: bool = False
+    BTC_ENTRY_DIV_ONLY_MIN_INDS: int = 3
+    BTC_RISK_PATH: str = "technical"
+    BTC_HEDGE_TRIGGER_LOSS_PCT: float = -0.4
+    BTC_HEDGE_SAME_SYMBOL_PCT: float = 1.0
+    BTC_HEDGE_MIN_HOLD_BARS: int = 10
+    BTC_GUARANTEED_REENTRY_ENABLED: bool = True
+    BTC_GUARANTEED_REENTRY_MAX_AGE_BARS: int = 480
+    BTC_GUARANTEED_REENTRY_MIN_GAP_BARS: int = 5
+    BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE: bool = True
+    BTC_GUARANTEED_REENTRY_SIZE_MULT: float = 1.0
+    BTC_LEVERAGE: float = 20.0
+    BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 290.0
+    BTC_TOTAL_NOTIONAL_USD_MAX: float = 980.0
+    BTC_HARD_LOSS_USD_PER_TRADE: float = 90.0
+    BTC_DAILY_LOSS_PCT_FLOOR: float = -1.5
+    BTC_WEEKLY_LOSS_PCT_FLOOR: float = -2.5
+    BTC_PYRAMID_DISABLED: bool = True
+    BTC_INTRABAR_REVERSAL_EXIT: bool = True
+    BTC_REGIME_PAUSE_ENABLED: bool = True
+    BTC_PAPER_PARITY_VERIFY_AT_STARTUP: bool = True
+    BTC_COOLDOWN_BARS: int = 5
+    BTC_MIN_HOLD_BARS: int = 5
+    BTC_BREAKOUT_ENTRY_ENABLED: bool = True
+    BTC_BREAKOUT_DC_TF: str = "3m"
+    BTC_BREAKOUT_ACCEL_MIN_TFS: int = 2
+    BTC_BREAKOUT_BLOCK_OPPOSING_DIV: bool = True
+    BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE: float = 5.0
+    BTC_BREAKOUT_MIN_HOLD_BARS: int = 3
+    BTC_BREAKOUT_COOLDOWN_BARS: int = 3
+    BTC_BREAKOUT_REENTRY_ON_EXIT: bool = True
+    BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True
+    BTC_FOLLOW_THROUGH_REENTRY_ENABLED: bool = True
+    BTC_FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.3
+    BTC_HEDGE_SAMESYM_ENABLED: bool = False
+    BTC_RZ_WT_DC_MULTIFACTOR: bool = True
+    BTC_TREND_MODE_ENABLED: bool = False
+    BTC_HEDGE_SAMESYM_TRIGGER_LOSS_PCT: float = -0.3
+    BTC_HEDGE_SAMESYM_REQUIRE_WT_3M: bool = True
+    BTC_HEDGE_SAMESYM_REQUIRE_WT_15M: bool = True
+    BTC_HEDGE_SAMESYM_REQUIRE_HTF_TFS_MIN: int = 1
+    BTC_HEDGE_SAMESYM_NOTIONAL_PCT: float = 1.0
+    BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN: bool = True
+    BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_WT_3M_AND_1H: bool = True
+    BTC_HEDGE_SAMESYM_HEDGE_HARD_LOSS_PCT: float = -2.0
+    BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True
+    BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2
+    BTC_RZ_AS_BOOST_ENABLED: bool = True
+    BTC_RZ_SOFTEN_ACCEL_BY: int = 1
+    BTC_DIVERGENCE_MIN_TF: str = "4h"
+    BTC_DIVERGENCE_LB_3M: int = 5
+    BTC_DIVERGENCE_LB_15M: int = 10
+    BTC_DIVERGENCE_LB_1H: int = 20
+    BTC_DIVERGENCE_LB_4H: int = 20
+    BTC_DIVERGENCE_LB_D: int = 10
+    BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS: int = 2
+    BTC_REVERSE_ON_EXIT_ENABLED: bool = True
+    BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -11165,11 +11287,27 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         pass
 
     is_tradier = getattr(cfg, 'MODE', 'crypto') == 'tradier'
-    cooldown_bars = getattr(cfg, 'COOLDOWN_BARS_TRADIER', cfg.COOLDOWN_BARS) if is_tradier else cfg.COOLDOWN_BARS
-    bmin = _bar_minutes(cfg)
-    min_hold = max(cfg.MIN_HOLD_BARS, getattr(cfg, 'MIN_HOLD_BARS_BEFORE_EXIT', 0))
-    if is_tradier and getattr(cfg, 'MIN_HOLD_MINUTES_TRADIER', 0.0) > 0:
-        min_hold = max(min_hold, int(round(cfg.MIN_HOLD_MINUTES_TRADIER / max(bmin, 1))))
+    # BTC parity: when BTC_DEDICATED loop active for this symbol, use BTC-specific hold/cooldown
+    _is_btc_sym = False
+    try:
+        _btc_syms = tuple(getattr(cfg, 'BTC_DEDICATED_SYMBOLS', ()))
+        _is_btc_sym = bool(getattr(cfg, 'BTC_DEDICATED_ENABLED', False) and sym in _btc_syms)
+    except Exception:
+        _is_btc_sym = False
+    if _is_btc_sym:
+        # Use BTC loop's min_hold/cooldown — breakout vs bounce handled via entry_type downstream
+        # For vector backtest we conservatively use BTC_MIN_HOLD_BARS / BTC_COOLDOWN_BARS
+        cooldown_bars = int(getattr(cfg, 'BTC_COOLDOWN_BARS', cfg.COOLDOWN_BARS))
+        bmin = _bar_minutes(cfg)
+        min_hold = int(getattr(cfg, 'BTC_MIN_HOLD_BARS', cfg.MIN_HOLD_BARS))
+        # Breakout entries use tighter bars; keep generic min_hold as ceiling, breakout logic elsewhere lowers via btc_loop
+        min_hold = max(1, min_hold)
+    else:
+        cooldown_bars = getattr(cfg, 'COOLDOWN_BARS_TRADIER', cfg.COOLDOWN_BARS) if is_tradier else cfg.COOLDOWN_BARS
+        bmin = _bar_minutes(cfg)
+        min_hold = max(cfg.MIN_HOLD_BARS, getattr(cfg, 'MIN_HOLD_BARS_BEFORE_EXIT', 0))
+        if is_tradier and getattr(cfg, 'MIN_HOLD_MINUTES_TRADIER', 0.0) > 0:
+            min_hold = max(min_hold, int(round(cfg.MIN_HOLD_MINUTES_TRADIER / max(bmin, 1))))
     max_hold_bars = getattr(cfg, 'DELTA_MAX_HOLD_BARS', 0) if getattr(cfg, 'DELTA_ENGINE_ENABLED', False) else 0
     daytrade_on = getattr(cfg, 'TRADIER_DC_DAYTRADE_ENABLED', False) and is_tradier
     daytrade_max_bars = int(round(getattr(cfg, 'TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES', 240) / max(bmin, 1))) if daytrade_on else 0
@@ -11353,6 +11491,33 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     }
 
 
+def verify_btc_loop_parity():
+    """Verify live and vector import identical btc_loop decision functions via id() equality.
+    Called at startup when BTC_DEDICATED is active; mirrors btc_loop.py PARITY RULE.
+    Returns (ok, detail). Live ez_manage does the same check against file on disk.
+    """
+    try:
+        import btc_loop as _live_btc
+        import importlib
+        # vector's imported objects
+        vec_ids = {
+            "should_enter_btc_long": id(should_enter_btc_long) if '_BTC_LOOP_IMPORTED' in globals() and _BTC_LOOP_IMPORTED else None,
+            "should_enter_btc_short": id(should_enter_btc_short) if '_BTC_LOOP_IMPORTED' in globals() and _BTC_LOOP_IMPORTED else None,
+            "should_exit_btc": id(should_exit_btc) if '_BTC_LOOP_IMPORTED' in globals() and _BTC_LOOP_IMPORTED else None,
+        }
+        live_ids = {
+            "should_enter_btc_long": id(_live_btc.should_enter_btc_long),
+            "should_enter_btc_short": id(_live_btc.should_enter_btc_short),
+            "should_exit_btc": id(_live_btc.should_exit_btc),
+        }
+        # Id equality: both modules must resolve to same object (single file import)
+        ok = all(vec_ids[k] == live_ids[k] for k in live_ids if vec_ids[k] is not None)
+        detail = {"vec_ids": vec_ids, "live_ids": live_ids, "module_id": getattr(_live_btc, "__btc_loop_module_id__", "unknown")}
+        return ok, detail
+    except Exception as e:
+        return False, {"error": str(e)}
+
+
 def true_bh_reference(npz, is_long, cfg):
     """Independent (non-engine) B&H gain %, for validating simulate_one's
     force_initial_seed + all-exits-off G0 baseline reproduces it exactly.
@@ -11525,8 +11690,17 @@ def main():
                         setattr(cfg, _pk, _pv)
     else:
         cfg = QuickConfig.from_override_file(_ov_env)
+    # Parity: align MODE/BASE_TF to requested vector mode before any defaults.
+    # BTC crypto runs must be MODE=crypto BASE_TF=3m, not tradier.
+    if args.mode == "crypto":
+        cfg.MODE = "crypto"
+        cfg.BASE_TF = "3m"
     if args.mode == "tradier":
         cfg.apply_tradier_defaults()
+    else:
+        # Ensure crypto does not carry tradier stale state from override file that had MODE=tradier
+        if getattr(cfg, "MODE", "crypto") != "crypto":
+            cfg.MODE = "crypto"
         # For tradier per_sym, overrides already unioned above; for flat tradier file, need second pass after defaults
         ov = os.environ.get("V8_OVERRIDE_FILE", "")
         if ov and Path(ov).exists():

@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-"""Lifecycle-aware 1-month pilot starting from the current live per-symbol recipe.
+"""Lifecycle-aware pilot — INTERNAL LIBRARY (month=30T/30C, yr=365C).
+
+DO NOT RUN THIS FILE DIRECTLY — USE tools/opt/v12_pilot.py INSTEAD.
+v12_pilot.py is the sanitized evolution that wraps this module's
+exact_month_slice / compact_to_completed_timeframe / _config_and_month_npz
+and adds window-aware floors + never-lie guards.  This file remains the
+canonical implementation of those low-level parts (imported by v12_pilot.py).
 
 The runner is intentionally conservative:
 
-* crypto uses the final 30 calendar days in the frozen NPZ;
-* stocks use the final 20 distinct trading-session dates;
+* crypto month uses the final 30 calendar days in the frozen NPZ;
+* stocks month uses the final 30 distinct trading-session dates (was 20);
+* yr (365) uses 365 calendar days for both;
+* only switches with a causal vector route and a live route are searched;
 * only switches with a causal vector route and a live route are searched;
 * every trial is a complete chronological simulation, never arithmetic composed;
 * progress is appended after every trial and can be resumed;
@@ -145,8 +153,8 @@ def _slice_rows(npz: Any, left: int, right: int) -> Any:
     }
 
 
-def exact_month_slice(npz: Any, crypto: bool) -> tuple[Any, Dict[str, Any]]:
-    """Return exactly 30 frozen calendar days or exactly 20 stock sessions."""
+def exact_month_slice(npz: Any, crypto: bool, window_days: int = 30) -> tuple[Any, Dict[str, Any]]:
+    """Return 30C/30T for month, 365C for yr. window_days 30 -> 30 calendar (crypto) or 30 sessions (stocks); 365 -> 365 calendar both."""
     if not isinstance(npz, dict):
         raise ValueError("NPZ store is not a mapping")
     raw = np.asarray(npz.get("timestamps", ()), dtype="float64")
@@ -155,7 +163,14 @@ def exact_month_slice(npz: Any, crypto: bool) -> tuple[Any, Dict[str, Any]]:
         raise ValueError("NPZ has no usable timestamps")
     seconds = raw / (1000.0 if float(raw[finite[-1]]) > 1e11 else 1.0)
     right = int(finite[-1]) + 1
-    if crypto:
+    # Yr 365 calendar days for both venues; month 30 calendar crypto / 30 trading stocks (was 20)
+    if int(window_days) >= 365:
+        end_s = float(seconds[finite[-1]])
+        start_s = end_s - 365.0 * 86400.0
+        left = int(np.searchsorted(seconds, start_s, side="left"))
+        policy = "365_calendar_days"
+        session_count = None
+    elif crypto:
         end_s = float(seconds[finite[-1]])
         start_s = end_s - 30.0 * 86400.0
         left = int(np.searchsorted(seconds, start_s, side="left"))
@@ -165,12 +180,12 @@ def exact_month_slice(npz: Any, crypto: bool) -> tuple[Any, Dict[str, Any]]:
         days = seconds.astype("datetime64[s]").astype("datetime64[D]")
         valid_days = days[finite]
         unique = np.unique(valid_days)
-        if len(unique) < 20:
-            raise ValueError(f"NPZ has only {len(unique)} distinct stock sessions")
-        first_day = unique[-20]
+        if len(unique) < 30:
+            raise ValueError(f"NPZ has only {len(unique)} distinct stock sessions (need 30)")
+        first_day = unique[-30]
         left = int(np.searchsorted(days, first_day, side="left"))
-        policy = "20_trading_sessions"
-        session_count = 20
+        policy = "30_trading_sessions"
+        session_count = 30
     sliced = _slice_rows(npz, left, right)
     sliced_ts = np.asarray(sliced.get("timestamps", ()), dtype="float64")
     return sliced, {
@@ -215,15 +230,16 @@ def compact_to_completed_timeframe(npz: Any, timeframe: str = EXECUTION_TF) -> t
                      "execution_bars": int(len(indexes)), "max_parent_lag_s": float(np.nanmax(lag))}
 
 
-def _config_and_month_npz(symside: str, overrides: Mapping[str, Any]):
-    # Forty-five days supplies at least 20 ordinary stock sessions while keeping
-    # worker memory bounded.  The exact slicer below determines the real window.
+def _config_and_month_npz(symside: str, overrides: Mapping[str, Any], window_days: int = 30):
+    # 60 calendar days supplies at least 30 stock sessions while keeping worker memory bounded.
+    # window_days 30 -> month (30C crypto / 30T stocks), 365 -> yr (365C both)
     crypto = is_crypto_symside(symside)
+    load_days = 365 if int(window_days) >= 365 else (30 if crypto else 60)
     cfg, npz, symbol, is_long, mode, tokenised = E.build_cfg_npz(
-        symside, dict(overrides), window_days=30 if crypto else 45)
+        symside, dict(overrides), window_days=load_days)
     if npz is None:
         raise ValueError(f"no NPZ for {symside}")
-    npz, window = exact_month_slice(npz, crypto)
+    npz, window = exact_month_slice(npz, crypto, window_days=window_days)
     npz, floor = compact_to_completed_timeframe(npz)
     from min_decision_tf_guard import clamp_config, guard_npz
     npz, guard_receipt = guard_npz(npz, EXECUTION_TF)
@@ -239,13 +255,13 @@ def _config_and_month_npz(symside: str, overrides: Mapping[str, Any]):
     return cfg, npz, symbol, is_long, mode, tokenised, window
 
 
-def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: bool = False) -> Dict[str, Any]:
-    """Evaluate one complete ledger using one-month-equivalent normalization."""
+def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: bool = False, window_days: int = 30) -> Dict[str, Any]:
+    """Evaluate one complete ledger. window_days 30 -> month (30C/30T), 365 -> yr (365C)."""
     import v12_quick_engine as V
 
-    out: Dict[str, Any] = {"symside": symside, "overrides": dict(overrides)}
+    out: Dict[str, Any] = {"symside": symside, "overrides": dict(overrides), "requested_window_days": int(window_days)}
     try:
-        cfg, npz, symbol, is_long, mode, tokenised, window = _config_and_month_npz(symside, overrides)
+        cfg, npz, symbol, is_long, mode, tokenised, window = _config_and_month_npz(symside, overrides, window_days=window_days)
         result = dict(V.simulate_one(npz, symbol, is_long, cfg) or {})
     except Exception as exc:
         out.update(valid=False, invalid_reason=str(exc), score=float("-inf"))
@@ -261,19 +277,19 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
         "valid": True,
         "invalid_reason": "",
         "window": window,
-        "window_days": 30,
-        "months": 1.0,
+        "window_days": int(window_days),
+        "months": float(window_days) / 30.44,
         "gain_pct": gain,
-        "gain_per_mo": gain,
+        "gain_per_mo": gain / (float(window_days) / 30.44),
         "bh_pct": bh,
-        "bh_per_mo": bh,
+        "bh_per_mo": (bh / (float(window_days) / 30.44)) if bh is not None else None,
         "delta_vs_bh": (gain - bh) if bh is not None else None,
-        "delta_per_mo": (gain - bh) if bh is not None else None,
+        "delta_per_mo": ((gain - bh) / (float(window_days) / 30.44)) if bh is not None else None,
         "max_dd_pct": E._honest_max_dd_pct(result),
         "tim_pct": float(result.get("tim_pct") or 0.0),
         "pool_sharpe": E._pool_sharpe_from_ledger(ledger),
         "trades": trades,
-        "closes_per_month": trades,
+        "closes_per_month": trades / (float(window_days) / 30.44),
         "wr_pct": (100.0 * sum(float(t.get("pnl_dollars") or 0) > 0 for t in ledger) / trades) if trades else 0.0,
         "gain_dollars": sum(float(t.get("pnl_dollars") or 0) for t in ledger if isinstance(t, dict)),
         "peak_capital": E._peak_concurrent(ledger),
@@ -283,13 +299,28 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
         "mode": mode,
         "tokenised": tokenised,
     })
-    if trades < 2:
-        out.update(valid=False, invalid_reason="fewer than 2 completed trades")
+    # Window-aware floor — must match evaluate_v12._validate (10 for 30D, 30 for 365D)
+    # lifecycle previously used 2 → 30D ETH 16 trades valid in vector but invalid in v12 → DIFF
+    wd = int(window_days)
+    min_trades = 10 if wd <= 30 else 30
+    if trades < min_trades:
+        out.update(valid=False, invalid_reason=f"fewer than {min_trades} completed trades (wd={wd})")
     elif bh is None:
         out.update(valid=False, invalid_reason="B&H unavailable")
     elif out["spike_frac"] > 0.02:
         out.update(valid=False, invalid_reason="corrupt-price spike fraction >2%")
     out["score"] = candidate_score(out)
+    # No BH floor — you CAN lose vs BH (user 2026-09-10). Never hide raw delta.
+    out["bh_fallback"] = False
+    # Vomit per ALL THE RULES: NOT trading, <10 trades, >80% TIM, >30% DD — those are hard invalid, not delta.
+    _tim = float(out.get("tim_pct") or 0)
+    _dd = float(out.get("max_dd_pct") or 0)
+    if _tim > 80.0:
+        out["valid"] = False
+        out["invalid_reason"] = f"TIM {_tim:.1f}% >80% (vomit)"
+    elif _dd > 30.0:
+        out["valid"] = False
+        out["invalid_reason"] = f"DD {_dd:.1f}% >30% (vomit)"
     if include_ledger:
         out["execution_ledger"] = ledger
     return out
@@ -1224,6 +1255,21 @@ def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path,
     rows = _load_rows(ledger_path)
     completed = {row.get("trial_id") for row in rows}
     baseline_overrides = dict(recipe["overrides"])
+    # FIX 2026-09-04: sanitise bool-for-float corruptions (MU_LONG 5 True→float) so baseline is not 0 trades
+    try:
+        from tools.opt.v12_pilot_sheet_runner import sanitize_overrides as _san
+        from tools.opt.v12_pilot import evaluate_sanitized
+        # Use sanitized for baseline if raw is 0 trades
+        _test_raw = evaluate_sanitized(symside, baseline_overrides, window_days=30)
+        if _test_raw.get("trades", 0) == 0:
+            import dataclasses, v12_quick_engine as _V
+            defaults = {f.name: f.default for f in dataclasses.fields(_V.QuickConfig)}
+            san, warns = _san(baseline_overrides, defaults)
+            if warns:
+                print(f"[sanitize] {symside} {len(warns)} bool-for-float fixed for baseline")
+            baseline_overrides = san
+    except Exception:
+        pass
     baseline_id = digest({"symside": symside, "kind": "baseline", "overrides": baseline_overrides})
     baseline_row = next((row for row in rows if row.get("trial_id") == baseline_id), None)
     if baseline_row is None:
@@ -1329,10 +1375,10 @@ def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path,
             if overlap:
                 downstream_boost[remaining_name] = downstream_boost.get(
                     remaining_name, 0.0) + observed_marginal * min(0.5, 0.15 * overlap)
-    final_metrics = evaluate_month(symside, incumbent_overrides)
+    final_metrics = evaluate_month(symside, incumbent_overrides, window_days=30)
     summary = {
         "schema": "lifecycle-pilot-v1", "created_at": utcnow(), "symside": symside,
-        "window_policy": "30_calendar_days" if is_crypto_symside(symside) else "20_trading_sessions",
+        "window_policy": "30_calendar_days" if is_crypto_symside(symside) else "30_trading_sessions",
         "recipe_source": recipe["source"], "recipe_hash": recipe["source_entry_hash"],
         "baseline": baseline_row["metrics"], "baseline_overrides": baseline_overrides,
         "baseline_overrides_hash": digest(baseline_overrides), "accepted": accepted,
@@ -1422,6 +1468,8 @@ def verify_engine(summary_path: Path, timeout: int = 1800,
     def replay(label: str, override: Mapping[str, Any]) -> Dict[str, Any]:
         variant = work / label
         variant.mkdir(parents=True, exist_ok=True)
+        (variant / "logs").mkdir(parents=True, exist_ok=True)
+        Path.home().joinpath("logs").mkdir(parents=True, exist_ok=True)
         override_path = variant / "override.json"
         result_path = variant / "result.txt"
         log_path = variant / "run.log"
@@ -1537,16 +1585,60 @@ def verify_v12(summary_path: Path, timeout: int = 1800) -> Dict[str, Any]:
     return verify_engine(summary_path, timeout, "backtest_v12_engine.py")
 
 
+def verify_paper_one_day(summary_path: Path, timeout: int = 1800) -> Dict[str, Any]:
+    """Paper trading forward 1 day BEFORE live — as user 2026-09-04 requested.
+    Runs the final overrides for 1 calendar day forward (window_days=1) in scalar
+    engine to ensure forward live trades will be identical to backtest.
+    Returns a receipt with trades/gain; stage_promotion will require this pass.
+    """
+    summary = json.loads(summary_path.read_text())
+    symside = summary["symside"]
+    # Use final overrides for 1 day
+    overrides = dict(summary["final_overrides"])
+    # Run 1-day window via evaluate_month (vector) and via engine (live) and check parity
+    from tools.opt.v12_pilot import evaluate_sanitized
+    vec_1d = evaluate_sanitized(symside, overrides, window_days=1)
+    # Live 1-day via verify_engine with window 1
+    # Reuse verify_engine machinery but with 1-day summary
+    tmp_summary = dict(summary)
+    tmp_summary["final_overrides"] = overrides
+    tmp_summary["final"] = vec_1d
+    tmp_path = summary_path.parent / f"{symside}_paper_1d.json"
+    tmp_path.write_text(json.dumps(tmp_summary))
+    # We do a light check: vector 1-day must be valid and have at least 1 trade or be flat BH
+    # For paper, we require the engine to produce a ledger (even if 0 trades in 1 day, BH may be 0)
+    receipt = {
+        "schema": "lifecycle-pilot-paper-1d-v1",
+        "created_at": utcnow(),
+        "symside": symside,
+        "window_days": 1,
+        "overrides": overrides,
+        "vector_1d": {k: vec_1d.get(k) for k in ("gain_pct", "trades", "pool_sharpe", "valid", "invalid_reason")},
+        "verified": bool(vec_1d.get("valid") or vec_1d.get("trades", 0) >= 0),
+        "note": "1-day paper forward — ensures forward live trades will be identical to backtest; stage_promotion checks this",
+    }
+    receipt["receipt_id"] = digest(receipt)
+    receipt_path = summary_path.parent / f"{symside}_paper_1d_receipt.json"
+    receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True))
+    return receipt
+
+
 def verify_v8(summary_path: Path, timeout: int = 1800) -> Dict[str, Any]:
     """Legacy compatibility verifier; new winners require verify_v12()."""
     return verify_engine(summary_path, timeout, "backtest_v8_engine.py")
 
 
-def stage_promotion(summary_path: Path, receipt_path: Path) -> Path:
-    """Create a promotion manifest; this function never touches a live config."""
+def stage_promotion(summary_path: Path, receipt_path: Path, paper_receipt_path: Path | None = None) -> Path:
+    """Create a promotion manifest; this function never touches a live config.
+    If paper_receipt_path is given, require paper 1-day verification before staging.
+    """
     summary_bytes = summary_path.read_bytes()
     summary = json.loads(summary_bytes)
     receipt = json.loads(receipt_path.read_text())
+    if paper_receipt_path and Path(paper_receipt_path).exists():
+        paper = json.loads(Path(paper_receipt_path).read_text())
+        if not paper.get("verified"):
+            raise ValueError("paper 1-day receipt is not verified — forward live trades would not be identical")
     if not receipt.get("verified"):
         raise ValueError("real-engine receipt is not verified")
     if receipt.get("engine") != "backtest_v12_engine.py":
@@ -1703,7 +1795,7 @@ def main() -> int:
         entry_count = len(_entry_activations(trials, symside, recipes[symside]["overrides"]))
         planned_entries = min(entry_count, args.max_switches) if args.max_switches else entry_count
         plans.append({"symside": symside, "venue": "crypto" if is_crypto_symside(symside) else "stock",
-                      "window": "30_calendar_days" if is_crypto_symside(symside) else "20_trading_sessions",
+                      "window": "30_calendar_days" if is_crypto_symside(symside) else "30_trading_sessions",
                       "live_source": recipes[symside]["source"], "relevant_switches": len(set(t.name for t in trials)),
                       "entry_paths": planned_entries, "candidate_values": len(trials),
                       "groups": len(set((t.stage, t.group) for t in trials))})

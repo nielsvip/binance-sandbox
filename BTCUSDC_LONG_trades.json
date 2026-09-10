@@ -1,0 +1,282 @@
+[
+  {
+    "ts": "2026-08-05T12:00:00+00:00",
+    "type": "OPEN",
+    "price": 64005.3984375,
+    "pnl_pct": 0.0,
+    "qty": 0.0002812262682709843,
+    "reason": "DELTA_ENTRY_BASELINE_L_BASELINE_BOUNCE_LONG_touched=1h_dc=0.63_vel1h=13.0_k=16_bb=0.86"
+  },
+  {
+    "ts": "2026-08-05T18:00:00+00:00",
+    "type": "CLOSE",
+    "price": 64712.8984375,
+    "pnl_pct": 1.1053755109279724,
+    "qty": 0.0002812262682709843,
+    "reason": "MTF_DC_REJECT_1h_px64712.8984"
+  },
+  {
+    "ts": "2026-08-05T18:48:00+00:00",
+    "type": "OPEN",
+    "price": 64746.359375,
+    "pnl_pct": 0.0,
+    "qty": 0.00027800790849141777,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-05T19:00:00+00:00",
+    "type": "CLOSE",
+    "price": 64800.6015625,
+    "pnl_pct": 0.08377642854919208,
+    "qty": 0.00027800790849141777,
+    "reason": "MTF_DC_REJECT_1h_px64800.6016"
+  },
+  {
+    "ts": "2026-08-06T04:57:00+00:00",
+    "type": "OPEN",
+    "price": 64665.30078125,
+    "pnl_pct": 0.0,
+    "qty": 0.0002783563977573067,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-06T06:15:00+00:00",
+    "type": "CLOSE",
+    "price": 64659.69921875,
+    "pnl_pct": -0.008662393018087064,
+    "qty": 0.0002783563977573067,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_LH_LL_3M_g-0.01_age78.0m"
+  },
+  {
+    "ts": "2026-08-06T14:42:00+00:00",
+    "type": "OPEN",
+    "price": 64646.0,
+    "pnl_pct": 0.0,
+    "qty": 0.00013921974459663033,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-06T16:15:00+00:00",
+    "type": "CLOSE",
+    "price": 64559.5,
+    "pnl_pct": -0.1338056492281038,
+    "qty": 0.00013921974459663033,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_LH_LL_3M_g-0.13_age93.0m"
+  },
+  {
+    "ts": "2026-08-07T08:21:00+00:00",
+    "type": "OPEN",
+    "price": 64426.16015625,
+    "pnl_pct": 0.0,
+    "qty": 0.0002793896128423512,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-07T10:21:00+00:00",
+    "type": "CLOSE",
+    "price": 64825.421875,
+    "pnl_pct": 0.6197198743207537,
+    "qty": 0.0002793896128423512,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_LH_LL_3M_g0.62_age120.0m"
+  },
+  {
+    "ts": "2026-08-07T14:00:00+00:00",
+    "type": "OPEN",
+    "price": 64761.1015625,
+    "pnl_pct": 0.0,
+    "qty": 0.0002779446367640048,
+    "reason": "WT_3M_FORCE_OPEN"
+  },
+  {
+    "ts": "2026-08-08T00:15:00+00:00",
+    "type": "CLOSE",
+    "price": 64808.8984375,
+    "pnl_pct": 0.07380491351567257,
+    "qty": 0.0002779446367640048,
+    "reason": "R2_WT_VEL_SLOW_DECEL_15m_g0.074%_peak0.55%_vel-0.372vs3.630"
+  },
+  {
+    "ts": "2026-08-08T03:12:00+00:00",
+    "type": "OPEN",
+    "price": 64900.05859375,
+    "pnl_pct": 0.0,
+    "qty": 0.00027734952163882554,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-08T05:00:00+00:00",
+    "type": "CLOSE",
+    "price": 64929.6015625,
+    "pnl_pct": 0.04552071198414148,
+    "qty": 0.00027734952163882554,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_LH_LL_3M_g0.05_age108.0m"
+  },
+  {
+    "ts": "2026-08-08T12:15:00+00:00",
+    "type": "OPEN",
+    "price": 64915.1015625,
+    "pnl_pct": 0.0,
+    "qty": 0.00027728526038117707,
+    "reason": "REENTRY_TREND_g0.0_blk_B16_MIDRANGE_px64915.101562"
+  },
+  {
+    "ts": "2026-08-09T22:00:00+00:00",
+    "type": "CLOSE",
+    "price": 65347.8984375,
+    "pnl_pct": 0.6667121587775765,
+    "qty": 0.00027728526038117707,
+    "reason": "MTF_DC_REJECT_1h_px65347.8984"
+  },
+  {
+    "ts": "2026-08-11T03:06:00+00:00",
+    "type": "OPEN",
+    "price": 64019.23828125,
+    "pnl_pct": 0.0,
+    "qty": 8.434964547632262e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-11T09:12:00+00:00",
+    "type": "OPEN",
+    "price": 64097.55859375,
+    "pnl_pct": 0.0,
+    "qty": 8.424658153671771e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-11T09:33:00+00:00",
+    "type": "OPEN",
+    "price": 64180.9609375,
+    "pnl_pct": 0.0,
+    "qty": 8.41371002024971e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-11T11:51:00+00:00",
+    "type": "OPEN",
+    "price": 64346.37890625,
+    "pnl_pct": 0.0,
+    "qty": 8.392080781050026e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-12T00:57:00+00:00",
+    "type": "OPEN",
+    "price": 63700.640625,
+    "pnl_pct": 0.0,
+    "qty": 8.477152732666582e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-12T01:24:00+00:00",
+    "type": "OPEN",
+    "price": 63714.921875,
+    "pnl_pct": 0.0,
+    "qty": 8.475251524941996e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-12T02:06:00+00:00",
+    "type": "OPEN",
+    "price": 63782.6796875,
+    "pnl_pct": 0.0,
+    "qty": 8.466248254990205e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-12T09:06:00+00:00",
+    "type": "OPEN",
+    "price": 63831.05859375,
+    "pnl_pct": 0.0,
+    "qty": 0.0001409971882821992,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-12T10:45:00+00:00",
+    "type": "CLOSE",
+    "price": 64063.1015625,
+    "pnl_pct": 0.36352674366068,
+    "qty": 0.0001409971882821992,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_LH_LL_3M_g0.36_age99.0m"
+  },
+  {
+    "ts": "2026-08-12T12:06:00+00:00",
+    "type": "OPEN",
+    "price": 64245.0390625,
+    "pnl_pct": 0.0,
+    "qty": 0.00014008863945491612,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-12T12:30:00+00:00",
+    "type": "CLOSE",
+    "price": 64031.0,
+    "pnl_pct": -0.3331604519561031,
+    "qty": 0.00014008863945491612,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_3xATR_3M_3.0_g-0.33_age24.0m"
+  },
+  {
+    "ts": "2026-08-12T20:42:00+00:00",
+    "type": "OPEN",
+    "price": 63509.6796875,
+    "pnl_pct": 0.0,
+    "qty": 8.502641139784828e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-13T04:54:00+00:00",
+    "type": "OPEN",
+    "price": 63727.0,
+    "pnl_pct": 0.0,
+    "qty": 0.00014122742868494242,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-13T06:00:00+00:00",
+    "type": "CLOSE",
+    "price": 63756.3984375,
+    "pnl_pct": 0.04613183972256657,
+    "qty": 0.00014122742868494242,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_LH_LL_3M_g0.05_age66.0m"
+  },
+  {
+    "ts": "2026-08-13T14:24:00+00:00",
+    "type": "OPEN",
+    "price": 63813.078125,
+    "pnl_pct": 0.0,
+    "qty": 0.00014103691501077265,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-13T15:15:00+00:00",
+    "type": "CLOSE",
+    "price": 63554.1015625,
+    "pnl_pct": -0.40583618610703087,
+    "qty": 0.00014103691501077265,
+    "reason": "R1_DC_LOW4_EMERGENCY_via_3xATR_3M_3.0_g-0.41_age51.0m"
+  },
+  {
+    "ts": "2026-08-13T21:54:00+00:00",
+    "type": "OPEN",
+    "price": 63467.37890625,
+    "pnl_pct": 0.0,
+    "qty": 8.508307655574754e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-14T15:42:00+00:00",
+    "type": "OPEN",
+    "price": 62896.73828125,
+    "pnl_pct": 0.0,
+    "qty": 8.58550047269091e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  },
+  {
+    "ts": "2026-08-14T16:24:00+00:00",
+    "type": "OPEN",
+    "price": 63030.94140625,
+    "pnl_pct": 0.0,
+    "qty": 8.567221084376797e-05,
+    "reason": "WT_PRICE_BREAKOUT_REENTRY_LONG"
+  }
+]

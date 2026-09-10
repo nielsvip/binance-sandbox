@@ -1,0 +1,25 @@
+{
+  "expected_contexts": 161,
+  "last_context": {
+    "D_TREND_REQUIRED": false,
+    "HTF_ALIGNMENT_ENABLED": false,
+    "KINDERGARTEN_EMA_GATE_ENABLED": false,
+    "MTF_ARMED_ENTRY_ENABLED": false,
+    "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED": true
+  },
+  "last_off_entries": 0,
+  "last_on_entries": 0,
+  "last_signal_diff": 0,
+  "matches": 0,
+  "status": "not_found",
+  "sym_side": "BTCUSDC_LONG",
+  "target": {
+    "GOLDEN_RULE_HTF_MIN_TFS": 1,
+    "GOLDEN_RULE_MIN_IND": 3
+  },
+  "target_off": {
+    "GOLDEN_RULE_HTF_MIN_TFS": 0,
+    "GOLDEN_RULE_MIN_IND": 0
+  },
+  "tested": 161
+}

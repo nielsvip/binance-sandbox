@@ -9665,7 +9665,7 @@ search meaningless, so **check these before trusting any sweep**:
 
 ## The method
 
-**L0 — honest metrics** (`tools/opt/metrics.py`, `evaluate_vec.py`)
+**L0 — honest metrics** (`tools/opt/metrics.py`, `tools/opt/evaluate_vec.py`)
 Equity-curve based, never a sum of percentages. Capital = peak concurrent
 notional, so a config is charged for the capital it ties up. B&H over the
 identical bars is the baseline; a short's B&H is floored at -100% (negating an

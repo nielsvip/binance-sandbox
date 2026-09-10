@@ -1,0 +1,15 @@
+symside,valid,invalid_reason,gain_pct,bh_pct,delta_vs_bh,trades,bars,window_days,data_days,tim_pct,max_dd_pct,pool_sharpe,peak_capital,mean_deployed,spike_dropped,spike_frac,fingerprint_short,engine_gain_RAW,engine_sharpe_RAW,last_bar_utc,npz_sha256_short
+AAPL_LONG,True,,0.1260,-7.5410,7.6671,71,1322,30,42.1,48.71,1.77,-0.0674,11098.64,3206.80,0,0.0000,13a5bf700578,0.4361,0.0080,2026-03-25T16:00:00+00:00,9260a8cb0484
+AAPL_SHORT,True,,0.8925,7.5410,-6.6486,72,1322,30,42.1,50.61,2.05,0.0924,8796.26,3015.81,0,0.0000,246440ce24fe,2.6031,0.0623,2026-03-25T16:00:00+00:00,9260a8cb0484
+MSFT_LONG,False,no npz,,,,,,,,,,,,,,,,,,,
+MSFT_SHORT,False,no npz,,,,,,,,,,,,,,,,,,,
+TSLA_LONG,False,no npz,,,,,,,,,,,,,,,,,,,
+TSLA_SHORT,False,no npz,,,,,,,,,,,,,,,,,,,
+BTCUSDC_LONG,False,no npz,,,,,,,,,,,,,,,,,,,
+BTCUSDC_SHORT,False,no npz,,,,,,,,,,,,,,,,,,,
+ETHUSDC_LONG,False,no npz,,,,,,,,,,,,,,,,,,,
+ETHUSDC_SHORT,False,no npz,,,,,,,,,,,,,,,,,,,
+SOLUSDC_LONG,False,no npz,,,,,,,,,,,,,,,,,,,
+SOLUSDC_SHORT,False,no npz,,,,,,,,,,,,,,,,,,,
+MU_LONG,True,,-7.1529,-25.6628,18.5099,69,901,30,43.3,24.08,10.80,-0.0702,5195.65,2939.42,0,0.0000,e96707777c88,-12.6433,-0.1221,2026-07-31T19:55:00+00:00,b339de0484fb
+MU_SHORT,True,,2.3538,25.6628,-23.3090,76,901,30,43.3,24.31,6.45,0.0762,4937.95,2603.68,0,0.0000,f53e00d659ab,4.4641,0.0308,2026-07-31T19:55:00+00:00,b339de0484fb

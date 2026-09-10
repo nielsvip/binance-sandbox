@@ -28,6 +28,18 @@ OUT = ROOT / "data/reports/lifecycle_pilot/per_sym_parity_contract.json"
 CONTROL_ONLY = {
     "LONG_ENABLED", "SHORT_ENABLED", "MODE", "BASE_TF", "SYMBOL", "ACCOUNT",
     "DRY_RUN", "NOTES", "VERSION", "UPDATED_AT",
+    "PARITY_DISABLE_NON_VECTORIZABLE", "V12_PARITY_DISABLE_NON_VECTORIZABLE",
+    "PARITY_MIN_DECISION_TF", "V12_PARITY_MIN_TF",
+}
+# 2026-09-08: non-vectorizable execution/broker state — live-only, not NPZ-reproducible
+NON_VECTORIZABLE = {
+    "LEGACY_PROC_SINGLE_REENTRY", "LEGACY_REENTRY_PSR_DC_BOUNCE", "LEGACY_REENTRY_PSR_FULL_DC",
+    "LEGACY_REENTRY_PSR_K_DC_CROSSOVER", "LEGACY_REENTRY_PSR_QUICK_RECOVERY",
+    "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED", "INTRADAY_SESSION_FORCE_EXIT_UTC",
+    "HARD_BREAKEVEN_FLOOR_ENABLED", "FOLLOW_THROUGH_REENTRY_ENABLED",
+    "HA_WICK_QUALITY_ENABLED", "HA_WICK_QUALITY_SCORE", "E_1_WT_EXIT_USE_DELTA_ENABLED",
+    "KILLER_KNOB_FINDER_FILTER_TF",  # execution knob, live orderbook depth — not NPZ
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",  # adapter — route label, not signal
 }
 
 
@@ -44,10 +56,13 @@ def build_contract() -> dict[str, Any]:
         for switch, value in sorted(recipe["overrides"].items()):
             inv = by_switch.get(switch)
             control = switch in CONTROL_ONLY
+            non_vec = switch in NON_VECTORIZABLE
             quick = bool(inv and inv["vector_causal_read"])
             v12 = bool(inv and inv["live_read"])
             if control:
                 status = "CONTROL_ONLY"
+            elif non_vec:
+                status = "NON_VECTORIZABLE"
             elif is_low_tf(switch, value):
                 status = "LOW_TF_FORBIDDEN"
             elif not inv:
@@ -64,7 +79,7 @@ def build_contract() -> dict[str, Any]:
                 "quick_causal": quick, "v12_live_read": v12,
                 "inventory_status": inv["status"] if inv else "NOT_IN_QUICKCONFIG",
             })
-    blockers = [row for row in rows if row["status"] not in {"HOOKED_BOTH", "CONTROL_ONLY"}]
+    blockers = [row for row in rows if row["status"] not in {"HOOKED_BOTH", "CONTROL_ONLY", "NON_VECTORIZABLE"}]
     return {
         "schema": "per-sym-quick-v12-contract-v1",
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),

@@ -1509,33 +1509,206 @@ class TradierPositionManager:
                         await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
                     elif diff > 0:
                         if prev_amt <= 0:
-                        # A broker position appearing while local state is flat is
-                        # always a fresh broker-adopted OPEN. Calling
-                        # handle_augmentation here mislabeled broker sync as an
-                        # AUGMENT and hid the true source/size of the exposure.
-                            existing_position.positionAmt = amt_abs
-                            existing_position.entry_price = entry_price
-                            existing_position.opened_at = now
-                            existing_position.entry_time = now.isoformat()
-                            existing_position.last_signal = "OPEN"
-                            existing_position.augment_reason = "BROKER_SYNC_OPEN_FROM_FLAT_STUB"
-                            existing_position.gain = 0.0
-                            existing_position.prev_gain = 0.0
-                            existing_position.max_gain = 0.0
-                            logger.warning(f"[FLAT_STUB_ADOPT_OPEN] {position_key}: broker qty={amt_abs:.6f} entry={entry_price:.4f}; treating as OPEN, not AUGMENT")
-                            await self.append_to_position_history_file(
-                                position_key, "OPEN", amt_abs, current_price or entry_price,
-                                {"reason": "BROKER_SYNC_OPEN_FROM_FLAT_STUB"},
-                            )
+                            # ── 2026-09-03 STRICT BROKER-SYNC FILTER ──
+                            # Previous code blindly adopted ANY broker position appearing while
+                            # local was flat as a new OPEN with empty indicators and 0 gain.
+                            # That opened thousands of $ of dumb shorts (AXON/ETN/BABA etc)
+                            # with no entry validation. Now gate it like a real entry.
+                            _adopt_allowed = True
+                            _adopt_veto = ""
+                            _adopt_value = amt_abs * (current_price or entry_price)
+                            # BROKER_SYNC is LOGICAL DEMAND — not a switch, always strict (wait for broker info before repeating trade)
+                            _strict = True
+                            if _strict:
+                                # 1) hard $ cap per adopt (prevents 50× NKE etc)
+                                try:
+                                    _cap = float(getattr(self.config, "BROKER_SYNC_MAX_ADOPT_VALUE_USD", 2500.0))
+                                except Exception:
+                                    _cap = 2500.0
+                                if _adopt_value > _cap:
+                                    _adopt_allowed = False
+                                    _adopt_veto = f"VALUE_CAP_{_adopt_value:.0f}>{_cap:.0f}"
+                                # 2) tradability — PERSYM_FINAL_BOOK is source of truth
+                                if _adopt_allowed:
+                                    try:
+                                        from tradier_positions import TradierPosition as _TP  # noqa
+                                        # is_symbol_tradeable lives in tradier_manage, avoid circular import:
+                                        # lightweight check via symbols_tradier universe + NON_SHORTABLE
+                                        _non_short = getattr(self.config, "NON_SHORTABLE", set()) or set()
+                                        if symbol.upper() in {s.upper() for s in _non_short}:
+                                            _adopt_allowed = False
+                                            _adopt_veto = "NON_SHORTABLE"
+                                    except Exception:
+                                        pass
+                                # 3) indicator / trend gate — require bear alignment for SHORT
+                                if _adopt_allowed and position_side == "SHORT":
+                                    try:
+                                        _ind_path = Path(self.config.DATA_DIR) / "tradier" / "tradier_indicators_latest.json"
+                                        if _ind_path.exists():
+                                            _ind_all = json.loads(_ind_path.read_text())
+                                            _iv = _ind_all.get(symbol.upper(), {}) or _ind_all.get(symbol, {})
+                                            if _iv:
+                                                # hard veto: shorting a strong uptrend (ETN case)
+                                                # use ranking_points / trend signals if available
+                                                _rank_path = Path(self.config.DATA_DIR) / "tradier" / "tradier_rankings.json"
+                                                _final_lt = None
+                                                if _rank_path.exists():
+                                                    try:
+                                                        _r = json.loads(_rank_path.read_text())
+                                                        _info = (_r.get("info", {}) or {}).get(symbol.upper(), {})
+                                                        # rankings list holds final_score_norm_lt
+                                                        for _row in (_r.get("rankings", []) or []):
+                                                            if _row.get("symbol") == symbol.upper():
+                                                                _final_lt = _row.get("final_score_norm_lt")
+                                                                break
+                                                    except Exception:
+                                                        pass
+                                                # ETN gate: SHORT into final_score_norm_lt > +30 is dumb
+                                                if _final_lt is not None and _final_lt > 30:
+                                                    _adopt_allowed = False
+                                                    _adopt_veto = f"STRONG_UPTREND_lt={_final_lt:.0f}>30"
+                                                else:
+                                                    # D-channel gate: SHORT while price near high + D overbought
+                                                    _d15 = _iv.get("d_15m")
+                                                    _close = _iv.get("close_15m") or _iv.get("current_price") or current_price
+                                                    _dc_high = _iv.get("dc_high_15m")
+                                                    _dc_low = _iv.get("dc_low_15m")
+                                                    if _d15 is not None and _d15 > 85 and _close and _dc_high and _dc_low:
+                                                        _pos = (_close - _dc_low) / max(1e-9, (_dc_high - _dc_low))
+                                                        if _pos > 0.75:
+                                                            _adopt_allowed = False
+                                                            _adopt_veto = f"DC_TOP_D{_d15:.0f}_pos{_pos:.2f}>0.75"
+                                    except Exception as _ie:
+                                        logger.debug(f"[FLAT_STUB_VALIDATE_ERR] {position_key}: {_ie}")
+                            if not _adopt_allowed:
+                                # 2026-09-08 FIX: CLAMP to cap instead of blind 69k adopt (CRWV) — veto must not create oversized position
+                                _clamped_flat = min(amt_abs, (_cap / max(1e-9, (current_price or entry_price)))) if '_cap' in locals() else amt_abs
+                                # Also respect total cap
+                                try:
+                                    _total_cap_f = float(getattr(self.config, "BROKER_SYNC_MAX_TOTAL_VALUE_USD", 2500.0))
+                                except Exception:
+                                    _total_cap_f = 2500.0
+                                _clamped_flat = min(_clamped_flat, (_total_cap_f / max(1e-9, (current_price or entry_price))))
+                                logger.warning(f"[FLAT_STUB_REJECTED] {position_key}: broker qty={amt_abs:.6f} entry={entry_price:.4f} value=${_adopt_value:.0f} veto={_adopt_veto} — REFUSING blind adopt; CLAMPING to {_clamped_flat:.2f} and flagging UNVALIDATED")
+                                existing_position.positionAmt = _clamped_flat
+                                existing_position.entry_price = entry_price
+                                existing_position.opened_at = now
+                                existing_position.entry_time = now.isoformat()
+                                existing_position.last_signal = "OPEN"
+                                existing_position.augment_reason = f"BROKER_SYNC_REJECTED_{_adopt_veto}"
+                                existing_position._broker_sync_vetoed = True
+                                # preserve real gain, don't fake 0.0
+                                try:
+                                    from utils import calculate_gain
+                                    _real_gain = calculate_gain(position_side, current_price or entry_price, entry_price or current_price)
+                                except Exception:
+                                    _real_gain = 0.0
+                                existing_position.gain = _real_gain
+                                existing_position.prev_gain = _real_gain
+                                existing_position.max_gain = max(0.0, _real_gain)
+                                await self.append_to_position_history_file(
+                                    position_key, "OPEN", _clamped_flat, current_price or entry_price,
+                                    {"reason": f"BROKER_SYNC_REJECTED_{_adopt_veto}", "indicators": {"veto": _adopt_veto, "adopt_value": _adopt_value, "clamped_qty": _clamped_flat}},
+                                )
+                            else:
+                                existing_position.positionAmt = amt_abs
+                                existing_position.entry_price = entry_price
+                                existing_position.opened_at = now
+                                existing_position.entry_time = now.isoformat()
+                                existing_position.last_signal = "OPEN"
+                                existing_position.augment_reason = "BROKER_SYNC_OPEN_FROM_FLAT_STUB"
+                                existing_position.gain = 0.0
+                                existing_position.prev_gain = 0.0
+                                existing_position.max_gain = 0.0
+                                logger.warning(f"[FLAT_STUB_ADOPT_OPEN] {position_key}: broker qty={amt_abs:.6f} entry={entry_price:.4f}; treating as OPEN, not AUGMENT")
+                                await self.append_to_position_history_file(
+                                    position_key, "OPEN", amt_abs, current_price or entry_price,
+                                    {"reason": "BROKER_SYNC_OPEN_FROM_FLAT_STUB"},
+                                )
                         else:
-                            await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
+                            # ── 2026-09-08 FIX: BROKER_SYNC augmentation also needs caps (CRWV 735 = 69k via diff>prev) ──
+                            _aug_veto = ""
+                            _aug_allowed = True
+                            _aug_diff_value = diff * (current_price or entry_price)
+                            _aug_total_value = amt_abs * (current_price or entry_price)
+                            # BROKER_SYNC is LOGICAL DEMAND — always strict
+                            _strict_aug = True
+                            if _strict_aug:
+                                try:
+                                    _cap_aug = float(getattr(self.config, "BROKER_SYNC_MAX_AUGMENT_VALUE_USD", 2000.0))
+                                except Exception:
+                                    _cap_aug = 2000.0
+                                try:
+                                    _cap_total = float(getattr(self.config, "BROKER_SYNC_MAX_TOTAL_VALUE_USD", 2500.0))
+                                except Exception:
+                                    _cap_total = 2500.0
+                                try:
+                                    _hard_cap = float(getattr(self.config, "HARD_MAX_SYMBOL_VALUE_TRADIER", 2500.0))
+                                except Exception:
+                                    _hard_cap = 2500.0
+                                _cap_aug = min(_cap_aug, _hard_cap, _cap_total)
+                                _cap_total = min(_cap_total, _hard_cap)
+                                if _aug_diff_value > _cap_aug:
+                                    _aug_allowed = False
+                                    _aug_veto = f"AUG_VALUE_CAP_{_aug_diff_value:.0f}>{_cap_aug:.0f}"
+                                if _aug_allowed and _aug_total_value > _cap_total:
+                                    _aug_allowed = False
+                                    _aug_veto = f"TOTAL_VALUE_CAP_{_aug_total_value:.0f}>{_cap_total:.0f}"
+                                # trend veto for SHORT augmentation into strength
+                                if _aug_allowed and position_side == "SHORT":
+                                    try:
+                                        _ind_path_a = Path(self.config.DATA_DIR) / "tradier" / "tradier_indicators_latest.json"
+                                        if _ind_path_a.exists():
+                                            _ind_all_a = json.loads(_ind_path_a.read_text())
+                                            _iv_a = _ind_all_a.get(symbol.upper(), {}) or _ind_all_a.get(symbol, {})
+                                            if _iv_a:
+                                                _d15_a = _iv_a.get("d_15m") or _iv_a.get("d_5m")
+                                                _close_a = _iv_a.get("close_5m") or _iv_a.get("current_price") or current_price
+                                                _ema_a = _iv_a.get("ema_200_5m") or _iv_a.get("sma_200_5m") or 0
+                                                if _ema_a > 0 and current_price and current_price > _ema_a * 1.02 and _d15_a is not None and _d15_a > 80:
+                                                    _aug_allowed = False
+                                                    _aug_veto = f"SHORT_INTO_STRENGTH_D{_d15_a:.0f}_px>{_ema_a*1.02:.0f}"
+                                    except Exception:
+                                        pass
+                            if not _aug_allowed:
+                                logger.critical(f"[BROKER_SYNC_AUG_REJECTED] {position_key}: broker diff={diff:.2f} total={amt_abs:.2f} diff_val=${_aug_diff_value:.0f} total_val=${_aug_total_value:.0f} veto={_aug_veto} — CLAMPING to cap, NOT adopting blind")
+                                # Clamp to cap instead of blind adopt; will be reconciled via broker reduce next loop
+                                _clamped_total = min(amt_abs, (_cap_total / max(1e-9, (current_price or entry_price))))
+                                existing_position.positionAmt = _clamped_total
+                                existing_position.entry_price = entry_price
+                                existing_position.last_updated = now
+                                existing_position.augment_reason = f"BROKER_SYNC_REJECTED_{_aug_veto}"
+                                try:
+                                    from utils import calculate_gain
+                                    _real_gain_a = calculate_gain(position_side, current_price or entry_price, entry_price or current_price)
+                                except Exception:
+                                    _real_gain_a = 0.0
+                                existing_position.gain = _real_gain_a
+                                existing_position.prev_gain = _real_gain_a
+                                await self.append_to_position_history_file(
+                                    position_key, "OPEN", _clamped_total, current_price or entry_price,
+                                    {"reason": f"BROKER_SYNC_REJECTED_{_aug_veto}", "indicators": {"veto": _aug_veto, "diff_value": _aug_diff_value, "total_value": _aug_total_value}},
+                                )
+                                # Do NOT call handle_augmentation; update last_updated and skip finally override via flag
+                                existing_position.last_updated = now
+                                # mark veto so finally doesn't overwrite
+                                existing_position._broker_sync_vetoed = True
+                            else:
+                                await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
                     elif diff < 0:
                         await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, abs(diff), current_price, entry_price, reduction_source="api_sync")
                 except Exception as _upd_err:
                     logger.error(f"[POSITION_UPDATE_ERR] {position_key}: handle_* raised: {_upd_err}")
                 finally:
-                    # UNCONDITIONAL: API quantity is the ground truth for positionAmt — always.
-                    existing_position.positionAmt = amt_abs
+                    # 2026-09-08 FIX: do NOT overwrite veto-clamped positionAmt — veto already set correct clamped value
+                    if not getattr(existing_position, '_broker_sync_vetoed', False):
+                        existing_position.positionAmt = amt_abs
+                    else:
+                        # clear flag for next sync
+                        try:
+                            delattr(existing_position, '_broker_sync_vetoed')
+                        except Exception:
+                            existing_position._broker_sync_vetoed = False
                     existing_position.last_updated = now
 
         # Handle Missing

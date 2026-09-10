@@ -1,0 +1,22 @@
+{
+  "status": "complete_blocked",
+  "pilot_admissible": false,
+  "symside": "MU_LONG",
+  "window_days": 365,
+  "audit_tfs": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "D"
+  ],
+  "switches_total": 3,
+  "strategy_switches_total": 3,
+  "strategy_switches_pass": 0,
+  "counts": {
+    "INERT": 3
+  },
+  "detail_csv": "/home/niels/binance-sandbox/data/reports/MU_LONG_TRADIER_NATIVE_TF_WITNESS_SWITCH_TF_UNIQUENESS.csv",
+  "summary_csv": "/home/niels/binance-sandbox/data/reports/MU_LONG_TRADIER_NATIVE_TF_WITNESS_SWITCH_TF_UNIQUENESS_SUMMARY.csv",
+  "elapsed_s": 28.84993815422058
+}

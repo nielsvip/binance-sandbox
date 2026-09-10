@@ -1,0 +1,62 @@
+[
+  {
+    "applied_context": {
+      "TRA_WT_DC_ENTRY_THRESHOLD": 45,
+      "WT_DC_ENTRY_THRESHOLD": 85,
+      "WT_DC_HTF_GATE": "4h_D"
+    },
+    "context": {
+      "category": "FILTER",
+      "overrides": {
+        "TRA_WT_DC_ENTRY_THRESHOLD": 45,
+        "WT_DC_ENTRY_THRESHOLD": 85,
+        "WT_DC_HTF_GATE": "4h_D"
+      },
+      "param": "WT_DC_HTF_GATE",
+      "source_group": "F4_WT_DC_HIERARCHY",
+      "source_row": 7,
+      "source_sheet": "ENTRY_SWITCHES_ALL",
+      "value": "4h_D"
+    },
+    "off_metrics": {
+      "bars": 14601,
+      "behavior_fingerprint": "ba95ef43976155aab4e08761",
+      "bh_pct": -2.8552426028181213,
+      "delta_vs_bh": 3.747242602818121,
+      "gain_pct": 0.892,
+      "max_dd_pct": 0.0,
+      "pool_sharpe": 0.0,
+      "sharpe_per_trade": 0.0,
+      "tim_pct": 0.31,
+      "trades": 1,
+      "years_actual": 0.08333333333333333
+    },
+    "off_overrides": {
+      "GOLDEN_RULE_HTF_MIN_TFS": 0,
+      "GOLDEN_RULE_MIN_IND": 0,
+      "TRA_WT_DC_ENTRY_THRESHOLD": 45,
+      "WT_DC_ENTRY_THRESHOLD": 85,
+      "WT_DC_HTF_GATE": "4h_D"
+    },
+    "on_metrics": {
+      "bars": 14601,
+      "behavior_fingerprint": "3e77aff37b7a5ddf225bb052",
+      "bh_pct": -2.8552426028181213,
+      "delta_vs_bh": 3.747242602818121,
+      "gain_pct": 0.892,
+      "max_dd_pct": 0.0,
+      "pool_sharpe": 0.0,
+      "sharpe_per_trade": 0.0,
+      "tim_pct": 0.32,
+      "trades": 1,
+      "years_actual": 0.08333333333333333
+    },
+    "on_overrides": {
+      "GOLDEN_RULE_HTF_MIN_TFS": 1,
+      "GOLDEN_RULE_MIN_IND": 2,
+      "TRA_WT_DC_ENTRY_THRESHOLD": 45,
+      "WT_DC_ENTRY_THRESHOLD": 85,
+      "WT_DC_HTF_GATE": "4h_D"
+    }
+  }
+]

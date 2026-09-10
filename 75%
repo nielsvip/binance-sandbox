@@ -1,0 +1,7 @@
+---ADD_30MIN---
+*/2 * * * * /tmp/pool_watchdog.sh >>/tmp/pool_watchdog.log 2>&1
+@reboot flock -n /tmp/trb_matrix.lock /home/niels/binance-sandbox/tools/trb_matrix_cron.sh >> /tmp/trb_matrix_cron.log 2>&1
+*/10 * * * * flock -n /tmp/trb_matrix.lock /home/niels/binance-sandbox/tools/trb_matrix_cron.sh >> /tmp/trb_matrix_cron.log 2>&1
+* * * * * /home/niels/binance-sandbox/tools/watchdog_max_workers.sh >> /tmp/watchdog_max.log 2>&1
+*/30 * * * * /bin/bash /tmp/cron_30min.sh >> /tmp/cron_30min.log 2>&1
+CRON_ADDED

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-07-27T00:54:38.533988+00:00",
+  "status": "QUARANTINED_CANDIDATE_NOT_PROMOTED",
+  "npz_path": "/home/niels/binance-sandbox/data/npz_recovery/hao_recovery_20260727T0010Z/backtest_v8/indicators/HAO.npz",
+  "npz_sha256": "17907495bd909a1ea7ebcd6c7846134a7e70ae966b0fe7e79c3006107bb36332",
+  "rows": 44879,
+  "fields": 1054,
+  "first_timestamp": "2024-07-26T09:35:00+00:00",
+  "last_timestamp": "2026-07-24T23:55:00+00:00",
+  "missing_required": [],
+  "required_coverage": {
+    "lrL_pct_b_4h": {
+      "finite_count": 44879,
+      "finite_pct": 100.0,
+      "unique_finite": 913
+    },
+    "lrL_slope_4h": {
+      "finite_count": 44879,
+      "finite_pct": 100.0,
+      "unique_finite": 975
+    },
+    "lrL_r2_4h": {
+      "finite_count": 44879,
+      "finite_pct": 100.0,
+      "unique_finite": 975
+    },
+    "lrL_pct_b_D": {
+      "finite_count": 44879,
+      "finite_pct": 100.0,
+      "unique_finite": 289
+    },
+    "lrL_slope_D": {
+      "finite_count": 44879,
+      "finite_pct": 100.0,
+      "unique_finite": 319
+    },
+    "lrL_r2_D": {
+      "finite_count": 44879,
+      "finite_pct": 100.0,
+      "unique_finite": 319
+    },
+    "stoch_k_4h": {
+      "finite_count": 43804,
+      "finite_pct": 97.6046703357918,
+      "unique_finite": 1283
+    },
+    "stoch_k_D": {
+      "finite_count": 42047,
+      "finite_pct": 93.68969896833708,
+      "unique_finite": 460
+    }
+  },
+  "future_htf_rows": {
+    "timestamp_1h": 0,
+    "timestamp_4h": 0,
+    "timestamp_D": 0,
+    "timestamp_W": 0,
+    "timestamp_M": 0
+  },
+  "synthetic_5m": {
+    "count": 14366,
+    "pct": 32.0105171683861,
+    "native_count": 30513,
+    "parent_future_rows": 10580,
+    "note": "explicit 15m-derived interpolation provenance; not counted as completed 1h/4h/D HTF validation"
+  },
+  "split_continuity_15m": {
+    "2026-05-20_to_21": {
+      "left_last_close": 1.728,
+      "right_first_close": 1.75,
+      "ratio": 1.0127314814814814
+    },
+    "2026-05-21_to_22": {
+      "left_last_close": 1.52,
+      "right_first_close": 1.42,
+      "ratio": 0.9342105263157894
+    },
+    "note": "adjusted=true; absence of ~128x boundary discontinuity is required"
+  },
+  "real_jun8_high": 2.04,
+  "canonical_hashes_before": {
+    "HAO": "2865773e683700abd8222e7e9e17e24a5704bdf22a62ef3c09e130798b355b98",
+    "VT": "8b6f80c0b9031b0f2e58086161c97cfb4ab8f101d933326e497f17a406f71505"
+  },
+  "canonical_hashes_after": {
+    "HAO": "2865773e683700abd8222e7e9e17e24a5704bdf22a62ef3c09e130798b355b98",
+    "VT": "8b6f80c0b9031b0f2e58086161c97cfb4ab8f101d933326e497f17a406f71505"
+  },
+  "canonical_unchanged": true
+}

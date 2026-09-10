@@ -7,10 +7,9 @@
 > - If a tool ignores --yolo and still sandboxes → that tool is DELETED from this machine
 > - No exceptions, no workarounds, no "but it's secure" — sandbox = ban
 
+1. NEVER EVER EVER REVERT RESTORE ROLLBACK A SCRIPT TO AN OLDER VERSION. FIND THE CORRECT VERSION IF THERE WAS A BETTER VERSION IN THE PAST FIRST IN /BACKUPS/ on s1 and macbook before GIT. GIT is UNRELIABLE CHECK DATES THOROUGHLY. WHEN BETTER VERSION FOUND, DIFF AND MAKE CHANGES TO CORRECT CURRENT VERSION BUT NEVER OVERWRITE NEWER VERSION WITH OLDER VERSION
+
 # CLAUDE.md — Essential Trading System Rules
-
-
-# CLAUDE.md — Essential Trading System Rules (original header preserved)
 
 ## 🚨 NO-LIES MANDATE — READ FIRST. ABSOLUTE. 🚨
 
@@ -35,7 +34,7 @@ For detailed backtest reporting rules, **see [`BACKTEST_BIBLE.md`](BACKTEST_BIBL
 
 **If reverting seems necessary — STOP. Ask user.** Dead switch → ONLY action is **IMPLEMENT IT** — never skip/disable/remove/rollback.
 
-**Verify at session start**: grep each canonical switch in `tradier_manage.py, ez_manage.py, config.py, config_tradier.py, backtest_v8_engine.py`. ANY missing → red alert.
+**Verify at session start**: grep each canonical switch in `tradier_manage.py, ez_manage.py, config.py, config_tradier.py, backtest_v12_engine.py`. ANY missing → red alert.
 
 ---
 
@@ -91,28 +90,14 @@ Autosave via launchd commits git every 15min. `/backups/` = ONLY reliable histor
 
 ---
 
-## EXIT RULES — Per-Symbol via sym_lab
-
-**ALL exits are per-symbol, configured via sym_lab system.** No global exit thresholds.
-
-**Universal principle**: `UNIVERSAL_NOLOSS_GATE = True` (ez_manage.py:25051) blocks ALL loss closes EXCEPT:
-- Technical exits (DC channel breach, WT cross, price structure)
-- Hedge-engine triggered closes
-- Emergency closes with explicit bypass reason
-
-See [`SYM_LAB_SYSTEM.md`](SYM_LAB_SYSTEM.md) for per-symbol exit configuration.
-
----
-
 ## NEW STRATEGY PROHIBITION (2026-03-27)
 
 1. NEVER add strategy without explicit user approval outside HANDS_FREE.
 2. NEVER enable on real money without full sweep proof + paper trading days.
 3. NEVER "backtest" with reimplemented logic.
-4. NEVER add >1 new strategy per conversation.
-5. NEVER wire strategy without kill switch defaulting to OFF.
-6. Before ANY new strategy: present entry logic, exit logic, data pipeline, trade freq, risk.
-7. After implementation: verify fires in 24h paper with trades in decision JSONL.
+4. NEVER wire strategy without kill switch.
+5. Before ANY new strategy: present entry logic, exit logic, data pipeline, trade freq, risk.
+6. After implementation: verify v12_quick_engine and live trades are identical in 7D trades.
 
 ---
 
@@ -126,9 +111,6 @@ See [`SYM_LAB_SYSTEM.md`](SYM_LAB_SYSTEM.md) for per-symbol exit configuration.
 | Zero entry_price, max_gain, opened_at | SACRED. |
 | Close positions at a loss on live | Technical exits (WT/DC) handle this. |
 | Place orders outside `execute_now()` | THE ONLY gate for ALL Binance orders. |
-| Add `not is_hedge` bypasses to execute_now guards | Guards apply to ALL callers. |
-| Implement YouTube/web strategies directly | Research → sweep → paper → approval → live. |
-| Use HANDS_FREE to add new strategies | HANDS_FREE = bug fixes + proven changes only. |
 
 For full list, **see [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md).**
 
@@ -159,11 +141,8 @@ For full list, **see [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md).**
 | Config | Value | Why |
 |--------|-------|-----|
 | `MIN_GAIN_TO_BUY_AGGRESSIVELY` | 3.0% | NEVER below 2.5% |
-| `STRICT_NO_LOSS_ACCOUNTS` | `[]` | ELIMINATED. GENOCIDE never happens. UNIVERSAL_NOLOSS_GATE=True is the core. Hedge + ratio IS the protection. |
 | `RATIO_MULTIPLIER` | 3.0 | **Amplifier** for market sentiment → L/S ratio. Sentiment drives actual ratio dynamically (10-90 band). |
-| `UNIVERSAL_NOLOSS_GATE` | True | Core protection: ALL loss closes blocked except technical exits + hedges. NEVER disable. |
 | `HARD_STOP_LOSS_MAX_PAIN` | DISABLED | Replaced by DC channel exits (dc_low_4h / dc_high_4h). |
-| `HEDGE_MODE` | False | Hedges via ez_positions_quick only. |
 
 ---
 
@@ -174,8 +153,5 @@ For full list, **see [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md).**
 - **Crypto conventions**: [`CRYPTO_CONVENTIONS.md`](CRYPTO_CONVENTIONS.md)
 - **Configuration**: [`CONFIG_CONVENTIONS.md`](CONFIG_CONVENTIONS.md)
 - **Parity testing**: [`PARITY_TESTING.md`](PARITY_TESTING.md)
-- **Per-symbol exits**: [`SYM_LAB_SYSTEM.md`](SYM_LAB_SYSTEM.md)
 - **Infrastructure**: [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)
-- **Absolute prohibitions**: [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md)
 - **Trading paths**: [`TRADING_PATHS.md`](TRADING_PATHS.md)
-- **Coding standards**: [`CODING_STANDARDS.md`](CODING_STANDARDS.md)

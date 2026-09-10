@@ -931,12 +931,6 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-04-27T17:23:39.824775+00:00"
   },
-  "men:LUNA2USDT_LONG": {
-    "count": 5,
-    "first_seen": "2026-04-27T21:01:17.727861+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-04-27T21:16:50.661994+00:00"
-  },
   "ang:INJUSDT_SHORT": {
     "count": 2,
     "first_seen": "2026-04-28T02:33:42.205613+00:00",
@@ -955,41 +949,17 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-04-28T19:53:43.390611+00:00"
   },
-  "fin:ZROUSDT_LONG": {
-    "count": 1,
-    "first_seen": "2026-04-29T06:13:07.590696+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-04-29T06:13:07.590698+00:00"
-  },
   "inf:SAGAUSDT_SHORT": {
     "count": 3,
     "first_seen": "2026-04-29T14:06:48.650406+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-06-10T19:28:28.266274+00:00"
   },
-  "fin:1INCHUSDT_LONG": {
-    "count": 2,
-    "first_seen": "2026-04-30T04:38:37.847603+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-04-30T04:43:38.437933+00:00"
-  },
   "fin:IPUSDC_LONG": {
     "count": 1,
     "first_seen": "2026-04-30T06:18:51.693623+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-04-30T06:18:51.693626+00:00"
-  },
-  "fin:QTUMUSDT_LONG": {
-    "count": 2,
-    "first_seen": "2026-04-30T18:33:18.822081+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-04-30T18:38:20.060736+00:00"
-  },
-  "fin:KSMUSDT_LONG": {
-    "count": 2,
-    "first_seen": "2026-04-30T18:43:20.843905+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-04-30T18:48:22.011513+00:00"
   },
   "inf:FLOWUSDT_SHORT": {
     "count": 2,
@@ -1035,14 +1005,6 @@
     "last_increment_at": "2026-05-03T17:23:00.545928+00:00",
     "sources": {
       "API": 12
-    }
-  },
-  "men:ICPUSDT_SHORT": {
-    "count": 1,
-    "first_seen_zero_at": "2026-05-05T21:09:04.249067+00:00",
-    "last_increment_at": "2026-05-05T21:09:04.249067+00:00",
-    "sources": {
-      "API_ABSENCE": 1
     }
   },
   "inf:SKLUSDT_LONG": {
@@ -1543,12 +1505,6 @@
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-01T16:33:45.488097+00:00"
   },
-  "fin:PENGUUSDC_LONG": {
-    "count": 2,
-    "first_seen": "2026-08-01T16:34:46.416772+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-08-01T16:35:47.850433+00:00"
-  },
   "fin:AVAXUSDC_LONG": {
     "count": 2,
     "first_seen_zero_at": "2026-08-04T13:28:36.649326+00:00",
@@ -1586,15 +1542,6 @@
       "API_ABSENCE": 2
     }
   },
-  "fin:FARTCOINUSDT_SHORT": {
-    "count": 3,
-    "first_seen_zero_at": "2026-08-07T22:47:17.725602+00:00",
-    "last_increment_at": "2026-08-07T22:47:39.749185+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    },
-    "last_seen": "2026-08-07T22:48:19.126751+00:00"
-  },
   "fin:SANDUSDT_SHORT": {
     "count": 2,
     "first_seen": "2026-08-12T22:23:12.522015+00:00",
@@ -1606,24 +1553,6 @@
     "first_seen": "2026-08-12T22:40:46.124970+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-12T22:40:46.124971+00:00"
-  },
-  "men:ZROUSDT_SHORT": {
-    "count": 3,
-    "first_seen_zero_at": "2026-08-12T23:21:48.005248+00:00",
-    "last_increment_at": "2026-08-12T23:23:05.077965+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    },
-    "last_seen": "2026-08-12T23:40:03.689682+00:00"
-  },
-  "men:KSMUSDT_SHORT": {
-    "count": 2,
-    "first_seen_zero_at": "2026-08-12T23:40:30.259228+00:00",
-    "last_increment_at": "2026-08-12T23:40:30.259228+00:00",
-    "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-08-12T23:40:36.435140+00:00"
   },
   "men:RUNEUSDT_SHORT": {
     "count": 2,
@@ -1694,28 +1623,63 @@
       "API_ABSENCE": 1
     }
   },
-  "flz:HYPEUSDT_LONG": {
-    "count": 1,
-    "first_seen": "2026-08-21T04:06:20.422626+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-08-21T04:06:20.422639+00:00"
-  },
   "flz:DOGEUSDC_LONG": {
     "count": 1,
     "first_seen": "2026-08-21T04:06:20.422642+00:00",
     "source": "phantom_kill_bootstrap",
     "last_seen": "2026-08-21T04:06:20.422644+00:00"
   },
-  "flz:BNBUSDC_LONG": {
-    "count": 1,
-    "first_seen": "2026-08-21T04:06:20.422647+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-08-21T04:06:20.422649+00:00"
+  "men:1000FLOKIUSDT_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-03T18:53:00.840468+00:00",
+    "last_increment_at": "2026-09-03T18:53:00.840468+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-03T18:53:18.211005+00:00"
   },
-  "flz:BTCUSDC_LONG": {
-    "count": 1,
-    "first_seen": "2026-08-21T04:06:20.423439+00:00",
-    "source": "phantom_kill_bootstrap",
-    "last_seen": "2026-08-21T04:06:20.423461+00:00"
+  "inf:MSTRUSDT_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-03T21:56:32.896135+00:00",
+    "last_increment_at": "2026-09-03T21:56:32.896135+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-03T21:56:48.641202+00:00"
+  },
+  "fin:PARTIUSDT_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-05T05:17:31.730923+00:00",
+    "last_increment_at": "2026-09-05T05:17:31.730923+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-05T05:17:54.090997+00:00"
+  },
+  "flz:BNBUSDC_LONG": {
+    "count": 286,
+    "first_seen_zero_at": "2026-09-05T12:41:42.984339+00:00",
+    "last_increment_at": "2026-09-05T16:23:50.846441+00:00",
+    "sources": {
+      "API_ABSENCE": 286
+    }
+  },
+  "men:LTCUSDC_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-05T17:59:58.438701+00:00",
+    "last_increment_at": "2026-09-05T17:59:58.438701+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-05T18:00:08.223624+00:00"
+  },
+  "inf:ARMUSDT_LONG": {
+    "count": 2,
+    "first_seen_zero_at": "2026-09-09T20:15:28.244273+00:00",
+    "last_increment_at": "2026-09-09T20:15:28.244273+00:00",
+    "sources": {
+      "API_ABSENCE": 1
+    },
+    "last_seen": "2026-09-09T20:15:38.364259+00:00"
   }
 }

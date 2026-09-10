@@ -194,10 +194,10 @@ def resample_tf(df, tf):
                 else:
                     prev_d = (dt - timedelta(days=1)).date()
                 return pd.Timestamp(datetime.combine(prev_d, dt_time(16, 0))).tz_localize(ET)
-            elif t < dt_time(12, 45):
+            elif t < dt_time(13, 0):
                 return pd.Timestamp(datetime.combine(d, dt_time(9, 30))).tz_localize(ET)
             elif t < dt_time(16, 0):
-                return pd.Timestamp(datetime.combine(d, dt_time(12, 45))).tz_localize(ET)
+                return pd.Timestamp(datetime.combine(d, dt_time(13, 0))).tz_localize(ET)
             else:
                 return pd.Timestamp(datetime.combine(d, dt_time(16, 0))).tz_localize(ET)
                 
@@ -241,9 +241,9 @@ def _ordinary_parent_available_at(label_dt: datetime, timeframe: str) -> datetim
             datetime.combine(session_date, dt_time(16, 0))
         )
     elif timeframe == "4h":
-        if label_et.time() < dt_time(12, 45):
+        if label_et.time() < dt_time(13, 0):
             available_et = ET.localize(
-                datetime.combine(session_date, dt_time(12, 45))
+                datetime.combine(session_date, dt_time(13, 0))
             )
         elif label_et.time() < dt_time(16, 0):
             available_et = ET.localize(

@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AUGMENT / REDUCE / FILTER — Full Wiring Audit — LIVE ↔ CONFIG ↔ VECTOR</title>
+<style>
+  :root{
+    --green:#10b981; --green-bg:#ecfdf5; --green-bd:#6ee7b7;
+    --orange:#f59e0b; --orange-bg:#fffbeb; --orange-bd:#fcd34d;
+    --red:#ef4444; --red-bg:#fef2f2; --red-bd:#fca5a5;
+    --purple:#8b5cf6; --purple-bg:#f5f3ff; --purple-bd:#c4b5fd;
+    --blue:#0ea5e9; --blue-bg:#f0f9ff; --blue-bd:#7dd3fc;
+    --gray:#64748b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 ui-sans,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#0f172a;background:#f8fafc}
+  header{position:sticky;top:0;z-index:20;background:#0f172a;color:#e2e8f0;padding:16px 20px;border-bottom:4px solid var(--orange)}
+  header h1{margin:0;font-size:22px;letter-spacing:0.02em}
+  header p{margin:6px 0 0;color:#94a3b8}
+  .legend{position:sticky;top:78px;z-index:15;background:white;border-bottom:2px solid #e2e8f0;padding:12px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .badge{padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px;border:1.5px solid}
+  .b-green{background:var(--green-bg);border-color:var(--green-bd);color:#065f46}
+  .b-orange{background:var(--orange-bg);border-color:var(--orange-bd);color:#92400e}
+  .b-red{background:var(--red-bg);border-color:var(--red-bd);color:#7f1d1d}
+  .b-purple{background:var(--purple-bg);border-color:var(--purple-bd);color:#4c1d95}
+  .b-blue{background:var(--blue-bg);border-color:var(--blue-bd);color:#0c4a6e}
+  .b-gray{background:#f1f5f9;border-color:#cbd5e1;color:#334155}
+  main{padding:18px 20px 60px;max-width:1600px;margin:0 auto}
+  h2{margin:30px 0 10px;font-size:20px;display:flex;align-items:center;gap:10px}
+  h2 span.id{background:#0f172a;color:white;padding:3px 10px;border-radius:6px;font-size:13px}
+  h3{margin:22px 0 8px;font-size:15px;color:#1e293b;border-left:4px solid #0f172a;padding-left:10px}
+  .callout{border-left:4px solid var(--orange);background:#fff7ed;padding:10px 14px;border-radius:8px;margin:10px 0;color:#7c2d12}
+  .callout.red{border-color:var(--red);background:var(--red-bg);color:#7f1d1d}
+  .callout.green{border-color:var(--green);background:var(--green-bg);color:#065f46}
+  .diagram{border:2px solid #e2e8f0;border-radius:14px;overflow:hidden;background:white;box-shadow:0 6px 20px rgba(15,23,42,.08)}
+  .diag-head{padding:12px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .flow{padding:16px;display:grid;gap:14px}
+  .grid3{display:grid;grid-template-columns:1.2fr 0.9fr 1.2fr;gap:14px}
+  .col{border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;background:#fff}
+  .col h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+  .col.live{border-color:#cbd5e1}
+  .col.cfg{border-color:#bae6fd;background:var(--blue-bg)}
+  .col.vec{border-color:#a7f3d0;background:var(--green-bg)}
+  .node{border:1.6px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:7px 0;background:white;position:relative}
+  .node.green{border-color:var(--green);background:var(--green-bg)}
+  .node.orange{border-color:var(--orange);background:var(--orange-bg)}
+  .node.red{border-color:var(--red);background:var(--red-bg)}
+  .node.purple{border-color:var(--purple);background:var(--purple-bg)}
+  .node.blue{border-color:var(--blue);background:var(--blue-bg)}
+  .node .k{font-weight:800;font-size:12px}
+  .node .v{font:12px ui-monospace,Menlo,monospace;color:#334155;word-break:break-all}
+  .node .meta{font-size:11px;color:#64748b;margin-top:4px}
+  .arrow{height:18px;display:flex;align-items:center;justify-content:center;color:var(--gray);font-size:12px}
+  .arrow span{border:1.5px solid currentColor;border-radius:999px;padding:1px 8px;background:white}
+  table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  th{background:#0f172a;color:#e2e8f0;text-align:left;padding:10px 8px;font-size:12px;position:sticky;top:0}
+  td{padding:9px 8px;border-top:1px solid #e2e8f0;font-size:12.5px;vertical-align:top}
+  tr:hover td{background:#f8fafc}
+  .code{font:11.5px ui-monospace,Menlo,monospace;background:#f1f5f9;padding:2px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
+  .small{font-size:11px;color:#64748b}
+  details{border:1px solid #e2e8f0;border-radius:10px;margin:8px 0;background:white}
+  details summary{cursor:pointer;padding:10px 12px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  details[open] summary{border-bottom:1px solid #e2e8f0}
+  .chip{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid}
+  .svg-wrap{overflow-x:auto}
+  .warn{animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.35)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+  .two{columns:2;gap:18px}
+  @media(max-width:1100px){.grid3{grid-template-columns:1fr}.two{columns:1}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔬 AUGMENT / REDUCE / FILTER — COMPLETE LIVE ↔ CONFIG ↔ NUMPY AUDIT</h1>
+  <p>Sources: <span class="code">ez_manage.py:57859</span> · <span class="code">tradier_manage.py:30494</span> · <span class="code">config.py</span> · <span class="code">config_tradier.py:2279</span> · <span class="code">v12_quick_engine.py:14055</span> · <span class="code">v12_wide_engine.py:12626</span> · <span class="code">SPREADSHEETS/TEMPLATE.xlsx</span> (26 sheets, FILTER_DICTIONARY_V8 433 rows / 122 distinct filters) — Generated 2026-09-08 · Huge diagram, every path.</p>
+</header>
+
+<div class="legend">
+  <strong>Color legend — translation fidelity:</strong>
+  <span class="badge b-green">🟢 FAITHFUL — causal numpy matches live indicator &amp; branch</span>
+  <span class="badge b-orange">🟠 DOUBTFUL — synthetic hash / placeholder indicator (80% mask · 1/503 hash · wrong signal)</span>
+  <span class="badge b-red">🔴 MISSING / DEAD — no vector code with real indicators, or switch is inert</span>
+  <span class="badge b-purple">🟣 DIVERGENCE — crypto vs Tradier defaults/behaviour differ</span>
+  <span class="badge b-blue">🔵 CONFIG — wiring only, no numeric effect until vector replicate</span>
+  <span class="badge b-gray">⚪ FILTER TF — off→D/4h/15m selector, not a signal by itself</span>
+</div>
+
+<main>
+
+<!-- ========== EXECUTIVE SUMMARY ========== -->
+<h2><span class="id">0</span> Executive — what this diagram proves</h2>
+<div class="callout">
+  <strong>Live has ~28 distinct AUGMENT/REDUCE decision sites</strong> (crypto + Tradier). Vector has <strong>2 faithful augment signals + 2 faithful reduce signals</strong>. The rest are either <strong>synthetic hash-gated placeholders</strong> (BATCH2 60 knobs, AUTO_WIRED 800+ knobs) or <strong>completely missing</strong> in numpy. Every <code>FILTER_TF</code> switch is a TF selector that only matters when its parent signal is faithful — most parents are not, so spinning the filter is a no-op (amber dead knob).
+</div>
+<div class="callout red">
+  <strong>Headline risk:</strong> On Tradier <code>TRA_DISABLE_AUGMENT=True</code> ( <span class="code">config_tradier.py:·</span> live default) kills <em>every</em> stock augment path, even the two faithful ones. Any TEMPLATE <code>AUGMENT_*</code> row that shows a positive delta on a Tradier symbol is therefore <strong>unpromotable to live</strong> until that master flag is deliberately flipped. Second risk: <code>PARTIAL_PROFIT_LOCK_ENABLED=True</code> (crypto 50% @ 0.5→1.5%) and <code>PEAK_GIVEBACK_PROTECTION</code> are the two largest REDUCE PnL drivers in live P&amp;L — both are <span class="badge b-red">🔴 MISSING</span> in <span class="code">v12_quick_engine.simulate_one</span> (the only reduce that survives is <code>QUICK_REDUCE_STRONG</code> + regime WT velocity).
+</div>
+
+<!-- ========== MASTER FLOW SVG ========== -->
+<h2><span class="id">1</span> Master lifecycle — where AUGMENT &amp; REDUCE sit in the bar loop</h2>
+<div class="diagram">
+  <div class="diag-head"><span class="badge b-green">LIVE BAR LOOP</span> <span class="small">ez_manage.process_position() line ~44666 + tradier_manage.process_position line 9076 → simulate_one() line 13556 is the vector mirror (claims to mirror but only partially does)</span></div>
+  <div class="svg-wrap">
+  <svg viewBox="0 0 1180 380" width="1180" height="380" style="display:block;margin:0 auto">
+    <!-- boxes -->
+    <rect x="14" y="18" width="210" height="58" rx="12" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="2"/><text x="119" y="38" text-anchor="middle" font-size="11" font-weight="800">pos is None?</text><text x="119" y="54" text-anchor="middle" font-size="10" fill="#475569">entry_sig[i]?</text><text x="119" y="68" text-anchor="middle" font-size="9" fill="#64748b">compute_entry_signals()</text>
+    <rect x="258" y="18" width="220" height="58" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/><text x="368" y="38" text-anchor="middle" font-size="11" font-weight="800">pos exists → PnL%</text><text x="368" y="54" text-anchor="middle" font-size="10" fill="#475569">live_pnl_pct = (px-avg)/avg·100</text><text x="368" y="68" text-anchor="middle" font-size="9" fill="#64748b">v12:7856 augment gate</text>
+    <rect x="510" y="18" width="210" height="58" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"/><text x="615" y="36" text-anchor="middle" font-size="11" font-weight="800">AUGMENT?</text><text x="615" y="52" text-anchor="middle" font-size="9" fill="#92400e">augment_sig &amp; _augment_allowed()</text><text x="615" y="66" text-anchor="middle" font-size="9" fill="#92400e">⚠️ most paths hash/missing</text>
+    <rect x="754" y="18" width="210" height="58" rx="12" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/><text x="859" y="36" text-anchor="middle" font-size="11" font-weight="800">HARD CLOSES</text><text x="859" y="52" text-anchor="middle" font-size="9" fill="#7f1d1d">PROFIT_TARGET / STOP_LOSS / DAYTRADE / DELTA_MAX_HOLD / WIN_TRAIL</text>
+    <rect x="510" y="106" width="210" height="58" rx="12" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="2"/><text x="615" y="126" text-anchor="middle" font-size="11" font-weight="800">REDUCE? (partial)</text><text x="615" y="142" text-anchor="middle" font-size="9" fill="#4c1d95">reduce_sig &amp; frac → pos.qty-=frac</text><text x="615" y="156" text-anchor="middle" font-size="9" fill="#4c1d95">🟣 regime+quick only</text>
+    <rect x="754" y="106" width="210" height="58" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="2"/><text x="859" y="126" text-anchor="middle" font-size="11" font-weight="800">TECHNICAL EXIT?</text><text x="859" y="142" text-anchor="middle" font-size="9" fill="#475569">exit_sig &amp; min_hold → NOLOSS gate → CLOSE</text><text x="859" y="156" text-anchor="middle" font-size="9" fill="#64748b">satoshit_partial path</text>
+    <rect x="510" y="194" width="454" height="56" rx="12" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.6" stroke-dasharray="6 4"/><text x="737" y="214" text-anchor="middle" font-size="11" font-weight="800">FILTERS gate every arrow above (±80% mask in vector)</text><text x="737" y="232" text-anchor="middle" font-size="9" fill="#475569">122 distinct filters · GLOBAL_CHECK is default · 50× FILTER_TF selectors</text>
+    <!-- arrows -->
+    <path d="M224 47 L258 47" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arr)"/>
+    <path d="M478 47 L510 47" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arr)"/>
+    <path d="M720 47 L754 47" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arr)"/>
+    <path d="M615 76 L615 106" stroke="#f59e0b" stroke-width="1.8" marker-end="url(#arr)"/>
+    <path d="M720 135 L754 135" stroke="#8b5cf6" stroke-width="1.8" marker-end="url(#arr)"/>
+    <defs><marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a"/></marker></defs>
+    <!-- left branch -->
+    <rect x="14" y="106" width="210" height="58" rx="12" fill="white" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/><text x="119" y="128" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">OPEN (first entry)</text><text x="119" y="144" text-anchor="middle" font-size="9" fill="#94a3b8">_size_qty · regime_mult[i]</text>
+    <rect x="14" y="194" width="210" height="56" rx="12" fill="white" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4"/><text x="119" y="216" text-anchor="middle" font-size="11" fill="#64748b">COOLDOWN</text><text x="119" y="232" text-anchor="middle" font-size="9" fill="#94a3b8">cd = cooldown_bars</text>
+    <!-- notes -->
+    <rect x="14" y="278" width="1152" height="88" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.2"/>
+    <text x="26" y="296" font-size="11" font-weight="800" fill="#92400e">⚠️  What the diagram hides in one glance — the faithful vs synthetic split:</text>
+    <text x="26" y="312" font-size="10" fill="#7c2d12">• AUGMENT faithful: BOUNCE_AUGMENT (stoch_k/d + dc_low_4h) and PYRAMID (dc_position_15m + wt_velocity_1h) — 2 of ~14 live augment families.</text>
+    <text x="26" y="328" font-size="10" fill="#7c2d12">• REDUCE faithful: QUICK_REDUCE_STRONG (vec_decisions.quick_reduce_strong) + REGIME WT velocity (adx_1h + wt_vel_1h) — 2 of ~9 live reduce families.</text>
+    <text x="26" y="344" font-size="10" fill="#7c2d12">• Everything else in orange/red below: live has it, vector hashes it with the wrong indicator (adx_1h / rsi_1h / relative_volume_1h) or not at all.</text>
+    <text x="26" y="360" font-size="10" fill="#7c2d12">• FILTERS: 80% mask AND per-filter row — each filter ANDs the signal with a random 80% pass; live filters are deterministic signal-aware gates.</text>
+  </svg>
+  </div>
+</div>
+
+<!-- ========== AUGMENT SECTION ========== -->
+<h2><span class="id">2</span> AUGMENT — every live path, its config switch, and its numpy translation</h2>
+
+<div class="callout">
+  <strong>How to read:</strong> Each card = one live augment family. Left = where it fires in <code>ez_manage.py</code> / <code>tradier_manage.py</code>. Middle = which <code>config.py</code> / <code>config_tradier.py</code> flag actually flips it. Right = exact numpy line in <code>v12_quick_engine.py</code> that claims to replicate it. Card border color = fidelity (green/orange/red). Cards with <span class="badge b-purple">🟣 Divergence</span> have different live defaults on crypto vs Tradier.
+</div>
+
+<h3>2.0 Global augment gate — checked before any augment fires</h3>
+<div class="grid3">
+  <div class="col live">
+    <h4>🔴 Live — ez_manage.py:27160 _validate_augmentation() + 28659 execute_now() + tradier 22120</h4>
+    <div class="node green"><div class="k">AUGMENT_ONLY_WHEN_PROFITABLE = True (crypto)</div><div class="v">if is_long: need gain>0, else block. execute_now refuses AUGMENT when live_pnl_pct ≤ 0 (except bounce path)</div><div class="meta">ez:6361 · v12 sim loop 13950 computes live_pnl_pct then _augment_allowed()</div></div>
+    <div class="node orange"><div class="k">AUGMENTED_POSITIONS_GUARD_FLOOR_MULT = 0.5</div><div class="v">live: BLOCKED if gain &lt; 0.5× MIN_GAIN (3.0%→1.5%) and _aug_age &lt; 60-300s floor. Message: [AUGMENTED_POSITIONS_GUARD] ... gain&lt;floor</div><div class="meta">ez:26403 / 6350 · tradier not wired same floor</div></div>
+    <div class="node red"><div class="k">AUGMENT_MIN_GAIN_PCT / BOUNCE_MIN / BREAKOUT_MIN (2026-09-06 trio)</div><div class="v">config 3 vars: generic 3.0, bounce 0.5, breakout 2.0. Live reads them where augment_mult branches.</div><div class="meta">config.py: + tradier mirror. Vector QuickConfig has them but compute_augment_signals never reads them!</div></div>
+    <div class="node purple"><div class="k">AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER = True (stocks)</div><div class="v">tradier_manage: separate flag, same semantics but checked via _augment_allowed() with BOUNCE_AUGMENT_MIN_LOSS_PCT fallback</div><div class="meta">tradier config 2279 · quick 7893 reads TRADIER flag, crypto path ignored</div></div>
+  </div>
+  <div class="col cfg">
+    <h4>🔵 Config layer</h4>
+    <div class="node blue"><div class="k">config.py</div><div class="v">AUGMENT_ONLY_WHEN_PROFITABLE: bool = True<br/>AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5<br/>AUGMENT_MIN_GAIN_PCT = 3.0 / BOUNCE 0.5 / BREAKOUT 2.0<br/>BOUNCE_AUGMENT_MIN_LOSS_PCT = -0.5</div></div>
+    <div class="node purple"><div class="k">config_tradier.py</div><div class="v">AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER = True<br/>TRA_DISABLE_AUGMENT = True  ← master kill switch (stocks)<br/>Same trio with same defaults</div></div>
+    <div class="node blue"><div class="k">TEMPLATE.xlsx</div><div class="v">AUGMENT_NEUTRAL rows: AUGMENTED_POSITIONS_GUARD_FLOOR_MULT, AUGMENT_ONLY_WHEN_PROFITABLE, AUGMENT_MIN_GAIN_PCT trio (6 rows), MAX_AUGMENTS_PER_POSITION</div></div>
+  </div>
+  <div class="col vec">
+    <h4>Vector — v12_quick_engine.py</h4>
+    <div class="node orange"><div class="k">_augment_allowed() @ 7893</div><div class="v code">if cfg.AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: return pnl>0
+return pnl &lt;= BOUNCE_AUGMENT_MIN_LOSS_PCT (-0.5)</div><div class="meta">⚠️ INVERTED vs live comment — live blocks at ≤0, vector allows only ≤ -0.5 when TRADIER flag off; semantic doubt</div></div>
+    <div class="node orange"><div class="k">BATCH2 augment gates @ 9153 _apply_batch2_augment_gates()</div><div class="v code">AUGMENT_ONLY_WHEN_PROFITABLE → entry gate via rsi (hash)
+AUGMENTED_POSITIONS_GUARD → adx_1h > thr*10  (random indicator)
+HIGH_GAIN_MIN_SIZE → relative_volume_1h > thr/50
+→ all AND with 1/503 hash, not time+gain floor</div><div class="meta">Lines 9156-9170 · 🟠 DOUBTFUL: wrong indicators, no clock</div></div>
+    <div class="node red warn"><div class="k">AUGMENT_MIN_GAIN trio — NO READ in compute_augment_signals()</div><div class="v">Declared in QuickConfig 4872-4874 but zero getattr reads in 7856-7910. Sweep row changes nothing in ledger.</div><div class="meta">🔴 MISSING — dead knob, delta always 0</div></div>
+  </div>
+</div>
+
+<h3>2.1 BOUNCE_AUGMENT — the only feedback augment that actually adds at a loss</h3>
+<div class="grid3">
+  <div class="col live">
+    <h4>🔴 Live — ez_manage.py bounce path (BOUNCE_AUGMENT_ENABLED)</h4>
+    <div class="node green"><div class="k">BOUNCE_AUGMENT_ENABLED = False (live default OFF, mandat: never augment losing positions)</div><div class="v">When ON in sweep: fires AUGMENT when K_D &lt; 20 and price within 2% of dc_low_D and K_D crossing up, while position is at -0.5%..0% loss. Paper log only if BOUNCE_AUGMENT_PAPER=True.</div><div class="meta">config 1312 · ez 1113 reads PAPER flag · per_sym can enable</div></div>
+    <div class="node purple"><div class="k">BOUNCE_AUGMENT_K_D_THRESHOLD 20.0 / DC_LOW_D_TOLERANCE 0.02 / K_D_CROSSING_UP True / MIN_LOSS_PCT -0.5</div><div class="v">Thresholds tune the cross + proximity filter. Crypto only — Tradier has BOUNCE_AUGMENT_MIN_LOSS_PCT but Tradier path via TRA_DISABLE_AUGMENT blocks anyway.</div><div class="meta">Tradier also declares BOUNCE_AUGMENT_MIN_LOSS_PCT -0.5 but never reaches vector bounce_sig when TRA_DISABLE_AUGMENT=True</div></div>
+  </div>
+  <div class="col cfg">
+    <h4>🔵 Config</h4>
+    <div class="node blue"><div class="k">config.py 5 knobs</div><div class="v">BOUNCE_AUGMENT_ENABLED False<br/>K_D_THRESHOLD 20, DC_LOW_D_TOL 0.02, CROSSING_UP True, MIN_LOSS -0.5, PAPER True</div></div>
+    <div class="node purple"><div class="k">config_tradier.py — shadow</div><div class="v">Same MIN_LOSS_PCT -0.5 declared, but TRA_DISABLE_AUGMENT=True means live never uses it on stocks.</div></div>
+    <div class="node blue"><div class="k">TEMPLATE</div><div class="v">AUGMENT_PULLBACK_BOUNCE rows 1-2: BOUNCE_AUGMENT_MIN_LOSS_PCT -0.5 / -0.125</div></div>
+  </div>
+  <div class="col vec">
+    <h4>Vector — faithful ✅</h4>
+    <div class="node green"><div class="k">compute_augment_signals() 7867-7895 ✅ causal</div><div class="v code">k = stoch_k, d = stoch_d, k_prev = roll(k)
+is_long: cross = (k_prev<=d)&(k>d)&(k&lt;thresh)
+         near  = |close-dc_low_4h|/dc_low_4h <= tol
+         bounce_sig = cross & near
+is_short: mirror vs dc_high_4h & k>100-thresh</div><div class="meta">7867-7892 · real indicators, side-aware, causal — trusts NPZ stoch_k/d + dc_*_4h</div></div>
+    <div class="node orange"><div class="k">BATCH2 overlay 9260-9284 — same 4 knobs re-hashed</div><div class="v code">BOUNCE_AUGMENT_ENABLED → adx_1h mask
+K_D_CROSSING_UP → rsi_1h mask
+K_D_THRESHOLD → relative_volume_1h > thr/50
+MIN_LOSS_PCT → bb_pct_b_1h mask</div><div class="meta">🟠 DOUBTFUL OVERLAY — zusätzlich zum faithful signal noch synthetische 80% masks; double-counts the family</div></div>
+  </div>
+</div>
+
+<h3>2.2 PYRAMID / DELTA_PYRAMID — trend-following adds (crypto)</h3>
+<div class="grid3">
+  <div class="col live">
+    <h4>🔴 Live — ez_manage: DELTA_PYRAMID + AUGMENT_PYRAMID paths</h4>
+    <div class="node green"><div class="k">DELTA_PYRAMID_ENABLED = True / DELTA_GATE_AUGMENT = True</div><div class="v">Live delta pyramid checks price distance ≤ PRICE_TOL 0.02 after DELTA_PYRAMID_MIN_BARS 8 and MIN delta accel; adds qty * QTY_MULT 1.5. AUGMENT_PYRAMID_ENABLED gates classic pyramid on wt/trend.</div><div class="meta">config DELTA_* 8 vars · ez 6268-6271 reads MAX/PRICE_TOL vs Tradier mirror</div></div>
+    <div class="node orange"><div class="k">AUGMENT_BLOWPAST / WT_CROSS / WT_3TF / HTF_TREND (4 blocks conv 90/80/70/65)</div><div class="v">evaluate_augmentation() 37760: four conviction blocks each need gain ≥ MIN_GAIN or 3×MIN_GAIN + 2-3/3 TF alignment. All true by default.</div><div class="meta">config.py: AUGMENT_BLOWPAST/W_T_CROSS/W_T_3TF/HTF_TREND all True — live evaluates per bar</div></div>
+    <div class="node purple"><div class="k">Tradier: AUGMENT_PYRAMID_TRADIER = False · DELTA_PYRAMID share same defaults but rarely fires (0-10 trades)</div><div class="v">Comment: BACKTEST_CHANGE_T60 disabled stock pyramid. Crypto pyramid stays ON.</div><div class="meta">config_tradier 2279: False vs crypto True</div></div>
+  </div>
+  <div class="col cfg">
+    <h4>Config</h4>
+    <div class="node blue"><div class="k">config.py</div><div class="v">DELTA_PYRAMID_ENABLED True, MAX 8, PRICE_TOL 0.02, QTY_MULT 1.5, MIN_BARS 8, ACCEL 0.2<br/>PYRAMID_ENABLED True, PYRAMID_SIZE_MULT 0.5, MIN_DC_POS 0.7, MIN_WT_VEL 2.0<br/>4 AUGMENT_* blocks True</div></div>
+    <div class="node purple"><div class="k">config_tradier.py</div><div class="v">AUGMENT_PYRAMID_TRADIER False, DELTA_PYRAMID_* same, 4 blocks also True but blocked by TRA_DISABLE_AUGMENT</div></div>
+    <div class="node blue"><div class="k">TEMPLATE AUGMENT_NEUTRAL / FULL_FILTERED</div><div class="v">DELTA_PYRAMID_MAX/PRICE_TOL, PYRAMID knobs, 4 blocks not in TEMPLATE (hidden live blocks)</div></div>
+  </div>
+  <div class="col vec">
+    <h4>Vector</h4>
+    <div class="node green"><div class="k">PYRAMID faithful ✅ 7890-7908</div><div class="v code">dc_pos_15m = _safe(npz,'dc_position_15m')
+wt_vel_1h  = _safe(npz,'wt_velocity_1h')
+is_long:  pyramid = dc_pos>=0.7 & wt_vel>=2.0
+is_short: pyramid = dc_pos<=0.3 & wt_vel<=-2.0
+augment_sig = bounce_sig | pyramid_sig
+mult = where(pyramid, PYRAMID_SIZE_MULT, 0.5)</div><div class="meta">7893-7908 · causal, side-aware</div></div>
+    <div class="node green"><div class="k">DELTA_GATE_AUGMENT master 7860 ✅</div><div class="v code">if not cfg.DELTA_GATE_AUGMENT: return zeros (no augments)
+→ live-identical kill switch</div><div class="meta">7860-7863</div></div>
+    <div class="node orange"><div class="k">BATCH2 DELTA knobs 9261-9262 → rsi_1h placeholder</div><div class="v code">DELTA_PYRAMID_MAX → _c &lt;= thr check then fake mask
+DELTA_PYRAMID_PRICE_TOL → same rsi hack</div><div class="meta">🟠 fake indicator mapping</div></div>
+    <div class="node red"><div class="k">4 AUGMENT blocks — NO vector code</div><div class="v">AUGMENT_BLOWPAST / WT_CROSS / WT_3TF / HTF_TREND have QuickConfig entries but compute_augment_signals() never reads them. Only BATCH2 hashes them generically.</div><div class="meta">🔴 MISSING causal — sweeping them only wiggles a hash mask, not the real WT/HTF confluence</div></div>
+  </div>
+</div>
+
+<h3>2.3 HIGH_GAIN / DYNAMIC_SCORE / RECOVERY / WT_4H_BOUNCE — major live augments with no faithful numpy</h3>
+<div class="grid3">
+  <div class="col live">
+    <h4>Live — heavy hitters</h4>
+    <div class="node green"><div class="k">HIGH_GAIN_AUGMENTATION_MIN_SIZE 50 + direct_high_gain_augmentation() 42023</div><div class="v">Background loop monitor_direct_high_gain_positions every 30s: if gain ≥ threshold and wt1_1h aligned, adds augment via queue_trade_action. Size = notional * mult.</div><div class="meta">ez 42023 + config HIGH_GAIN_* 50 / cooldown 90s · live hottest augment add-on</div></div>
+    <div class="node green"><div class="k">DYNAMIC_SCORE_AUGMENT_ENABLED True</div><div class="v">rater.score ≥ threshold adds even without WT cross; S2 best True.</div><div class="meta">ez 6278 reads DYNAMIC_SCORE_AUGMENT_ENABLED</div></div>
+    <div class="node green"><div class="k">RECOVERY_AUGMENT_ENABLED False (crypto) / True (tradier) — 4 knobs</div><div class="v">After SENTIMENT_FADE / WT_BANDAID REDUCE leaves positionAmt>0, fires AUGMENT back in within 240m when price within BAND_PCT 0.3% of last_reduction_price (+ optional WT cross).</div><div class="meta">config 3824 + tradier RECOVERY_* True 240m/1.0% · fixes partial-close trap</div></div>
+    <div class="node green"><div class="k">AUGMENT_WT_4H_BOUNCE_ENABLED False + GUARANTEED_REENTRY_AUGMENT True</div><div class="v">WT_4H bounce is sweep-validated +0.029 sharpe on crypto 50-sym. GUARANTEED bypasses MTF filter for REENTRY+AUGMENT (live un-blocks).</div><div class="meta">config W_T_4H 242 + GUARANTEED 1938</div></div>
+  </div>
+  <div class="col cfg">
+    <h4>Config → Tradier divergence</h4>
+    <div class="node blue"><div class="k">config.py</div><div class="v">HIGH_GAIN 50, DYNAMIC_SCORE True, RECOVERY False, WT_4H False, GUARANTEED True, RED_ZONE/VP/LH_HL/STDEV_MACRO gates False</div></div>
+    <div class="node purple"><div class="k">config_tradier.py — opposite on many</div><div class="v">RECOVERY True (was False caused 0 trades), RED_ZONE True, LH_HL True, OPTIONS_AUGMENT_INTO_LOSS True, TRA_DISABLE_AUGMENT True kills them again</div><div class="meta">2279: 5 auto-added parity fixes 2026-09-06 note "caused 0 trades"</div></div>
+    <div class="node blue"><div class="k">TEMPLATE</div><div class="v">AUGMENT_FULL_FILTERED: HIGH_GAIN, DYNAMIC_SCORE, AUGMENT_FALLBACK, etc. AUGMENT_NEUTRAL has 13 augment knobs</div></div>
+  </div>
+  <div class="col vec">
+    <h4>Vector — all synthetic or missing ❌</h4>
+    <div class="node orange"><div class="k">HIGH_GAIN → relative_volume_1h hash 9090 🔶</div><div class="v code">if HIGH_GAIN_MIN_SIZE != default: _v=relative_volume_1h ; out & (_v > thr/50) — random volume proxy</div><div class="meta">9090-9091 + 9162 rvol hash — no wt1_1h alignment, no gain loop</div></div>
+    <div class="node orange"><div class="k">DYNAMIC_SCORE → hash 9133 🔶</div><div class="v code">if DYNAMIC_SCORE_AUGMENT_ENABLED toggled: out & (_v > thr ...) via adx/rsi placeholder; plus _apply_batch2_augment_gates generic</div><div class="meta">984 + 6725 bool read, no rater.score logic</div></div>
+    <div class="node red"><div class="k">RECOVERY_AUGMENT — bool read only 🔴</div><div class="v code">cfg.RECOVERY_AUGMENT_ENABLED bool getattr at tradier 19268 but compute_augment never uses BAND_PCT/MAX_AGE/WT_CROSS/ONE_FIRE/SIZE_PCT</div><div class="meta">5518 config says "added, was missing, caused 0 trades" but still no numpy; BATCH2 hashes them as 80% masks 12968-12991</div></div>
+    <div class="node red"><div class="k">AUGMENT_WT_4H_BOUNCE — bool only 🔴</div><div class="v code">247-248 bool check then _ = cfg.WT_4H... with no indicator; AUGMENT_WT_4H refs stoch_k/mfi in BATCH2 hashes only</div><div class="meta">Declared, sweepable, but no WT 4h bounce numpy</div></div>
+    <div class="node red warn"><div class="k">TRA_DISABLE_AUGMENT = True (Tradier) — master kill 🔴</div><div class="v code">vector mirrors: if TRA_DISABLE_AUGMENT: augment_sig[:] falsed elsewhere? Actually 8808 bool but simulate_one does not zero augments unless ABLATION_DISABLE_* — so Tradier vector still augments though live never will. PROMOTION gap.</div><div class="meta">Config True on stocks, False on crypto. Vector ignores it in the loop → overstates gain on TRADIER backtests</div></div>
+  </div>
+</div>
+
+<!-- ========== REDUCE SECTION ========== -->
+<h2><span class="id">3</span> REDUCE — every live path and its numpy status</h2>
+<div class="callout">
+  Live calls <strong>all reductions <code>REDUCE</code></strong> (even 100% closes go via REDUCE label on Finandy webhook; vector mirrors with <code>VEC_LIVE_REDUCE_PARITY_ENABLED False</code> adapter — both sides currently label full closes <code>CLOSE</code> in sim ledger, adapter not used). Keep frac semantics in mind: vector <code>reduce_frac 0.5</code> = half the qty, <code>1.0</code> = flat. Live fees: crypto 0.08% round-trip (0.04% per leg), Tradier 0.0% in sim.
+</div>
+
+<h3>3.0 REDUCE — faithful paths (the only two that survive)</h3>
+<div class="grid3">
+  <div class="col live">
+    <h4>Live — monitor_dc_breach_reduce + regime quick path</h4>
+    <div class="node green"><div class="k">monitor_dc_breach_reduce() — ez 33993 / tradier mirror</div><div class="v">If position is augmented and price breaches dc_low_4h / dc_high_4h on any TF, partial-reduce to ideal_qty. Gated by EXIT_DC_BREACH_REDUCE_ENABLED True + ABLATION_DISABLE_DC_BREACH_REDUCE.</div><div class="meta">Live: reads dc_low_4h/dc_high_4h per TF; tradier same but 5m RTH only</div></div>
+    <div class="node green"><div class="k">REGIME quick-reduce family — ez adaptive_inf / tradier options</div><div class="v">Live regime detection (ADX trending 25 + WT velocity thresholds -12/-3) decides trending vs ranging reduce_frac. Stocks RTH-gated, crypto 24/7.</div><div class="meta">config ADX_TRENDING_THRESHOLD 25, REGIME_*_WT_EXIT_VEL, REDUCE_FRAC_* 0.1/0.4 etc</div></div>
+  </div>
+  <div class="col cfg">
+    <h4>Config</h4>
+    <div class="node blue"><div class="k">config.py / config_tradier.py</div><div class="v">EXIT_DC_BREACH_REDUCE_ENABLED True<br/>ABLATION_DISABLE_DC_BREACH_REDUCE False<br/>ADX_TRENDING_THRESHOLD 25, REGIME_GATE_ENABLED False (default off!), REGIME_TRENDING/RANGING FRAC 0.1/0.4, HLR_TOP_EXIT_ENABLED True</div></div>
+    <div class="node purple"><div class="k">REGIME_GATE_ENABLED divergence</div><div class="v">Default False on both, so vector early-returns with only QUICK_REDUCE unless the sweep turns it on. Live gate is adaptive_inf, not a simple bool.</div></div>
+    <div class="node blue"><div class="k">TEMPLATE REDUCE_NEUTRAL</div><div class="v">Rows: WT_REDUCE_FRAC_*, REGIME_* etc. REDUCE_FULL_FILTERED: WT_REDUCE_FRAC_* only</div></div>
+  </div>
+  <div class="col vec">
+    <h4>Vector — v12_quick_engine</h4>
+    <div class="node green"><div class="k">compute_reduce_signals() 7998-8042 ✅ first faithful leg</div><div class="v code">is_tradier = MODE=='tradier'
+adx_1h = _safe(npz,'adx_1h',20)
+trending = adx_1h >= ADX_TRENDING_THRESHOLD (25)
+is_long:  trending_reduce = wt_vel_1h &lt; -12
+          ranging_reduce  = wt_vel_1h &lt; -3
+reduce_sig = where(trending,trending_reduce,ranging_reduce)
+reduce_frac= where(trending,0.1,0.4)
+→ OR with _qr_vec if HLR_TOP_EXIT_ENABLED</div><div class="meta">8006-8036 faithful but simplified vs live multi-TF divergence</div></div>
+    <div class="node green"><div class="k">QUICK_REDUCE_STRONG 7998-8025 ✅ second faithful leg</div><div class="v code">via vec_decisions.quick_reduce_strong.check_quick_reduce_strong_vec(cfg,gain,wt_vel 1h/4h/D/W, accel 4h/D/W, divergence 4h/D, peak_structure_4h)
+→ _qr_vec OR'd into reduce_sig, frac=max(0.5, regime_frac)
+Fail-closed to zeros if gain not in NPZ</div><div class="meta">Uses real wt_velocity/acceleration; gated by HLR_TOP_EXIT_ENABLED. Only reduce that bypasses REGIME_GATE.</div></div>
+    <div class="node orange"><div class="k">ABLATION gate 13500 🔶</div><div class="v code">if ABLATION_DISABLE_DC_BREACH_REDUCE: reduce_sig[:] = False → synthetic disable, not the real DC breach condition</div><div class="meta">Tags the path but does not model the breach threshold</div></div>
+  </div>
+</div>
+
+<h3>3.1 REDUCE — high-impact live paths with NO faithful numpy (🔴)</h3>
+<div class="grid3">
+  <div class="col live">
+    <h4>Live — the PnL drivers</h4>
+    <div class="node green"><div class="k">PARTIAL_PROFIT_LOCK — the biggest REDUCE (ez 49292 / tradier mirror)</div><div class="v">Step1 at gain ≥ PPL_GAIN_PCT (crypto 1.5%, stocks 0.5% after 2026-08-10): REDUCE 50% (crypto) / 62.5% (stocks TRADIER_FRAC) via webhook_url_2/maker. Step2 ARM at +0.25%: upgrade stop to entry+BE_BUFFER (0.10% crypto, 0.02% stocks). 50% of winners hit this.</div><div class="meta">config PARTIAL_PROFIT_LOCK_ENABLED True, GAIN_PCT 1.5/0.5, ARM 1.75/0.75, FRAC 0.5/0.625, ACCOUNTS ang/inf/flz/men/fin/trb/trc</div></div>
+    <div class="node green"><div class="k">PEAK_GIVEBACK_PROTECTION — ez 16778 + tradier</div><div class="v">If peak ≥ MIN_PEAK 0.5% and giveback ≥ DROP_PCT 0.5×peak and (REQUIRE_NEGATIVE_GAIN && gain≤0..-0.5%), CLOSE/REDUCE immediately. DROP_TRIGGER_ENABLED=False (user mandated: wait for bb rejection). HARD_ZERO forces breakeven.</div><div class="meta">5 knobs: ENABLED True, MIN_PEAK 0.5, DROP 0.5, DROP_TRIGGER False, HARD_ZERO False, REQUIRE_NEG True, NEG_FLOOR -0.5</div></div>
+    <div class="node green"><div class="k">QUICK_REDUCE / SIMPLE_TP / WT_REDUCE family</div><div class="v">QUICK_REDUCE_TECHNICAL_ONLY True blocks stochastic/euphoria reduces; SIMPLE_TP_EXIT_ENABLED True + SIMPLE_TP_PCT; WT_REDUCE_FRAC_LOW 0.15 / MED 0.25 / HIGH 0.50 (V4) and regime variants.</div><div class="meta">tradier 13604 QUICK_REDUCE hash stubs; WT_REDUCE in deltacalc</div></div>
+    <div class="node green"><div class="k">AUGMENT_FALLBACK_REDUCE + STORM/SATOSHIT/ENABLE_FAST_RISER</div><div class="v">AUGMENT_FALLBACK_REDUCE_ENABLED False: when an augment falls back ≥ FALLBACK_GAIN_PCT 1.0%, reduce PCT 0.5 of last augment. STORM/SATOSHIT partial exits. FAST_RISER double/reduce on k_3m.</div><div class="meta">config AUGMENT_FALLBACK_* False/0.5/1.0 · STORM, SATOSHIT etc</div></div>
+  </div>
+  <div class="col cfg">
+    <h4>Config</h4>
+    <div class="node blue"><div class="k">config.py — REDUCE masters</div><div class="v">PARTIAL_PROFIT_LOCK_ENABLED True (crypto)<br/>PEAK_GIVEBACK_* (ENABLED True, DROP_TRIGGER False)<br/>QUICK_REDUCE_TECHNICAL_ONLY True<br/>SIMPLE_TP True, WT_REDUCE_TRIO 0.15/0.25/0.50<br/>AUGMENT_FALLBACK False</div></div>
+    <div class="node purple"><div class="k">config_tradier.py — stock-tuned</div><div class="v">PARTIAL_PROFIT_LOCK_ENABLED False→True 2026-08-10 (was dead, now stock 0.5%)<br/>PEAK_GIVEBACK similar but MIN_PEAK_T tradier variant<br/>AUGMENT_FALLBACK False; TRA_DISABLE_AUGMENT kills fallback trigger</div></div>
+    <div class="node blue"><div class="k">TEMPLATE REDUCE sheets</div><div class="v">REDUCE_NEUTRAL: PARTIAL_PROFIT_LOCK_FRAC, PEAK_GIVEBACK_DROP_TRIGGER, QUICK_REDUCE_TECHNICAL_ONLY, SIMPLE_TP_*, WT_REDUCE_FRAC_*<br/>REDUCE_BREAKOUT/PULLBACK: only AUGMENT_FALLBACK rows (expected, reduce is neutral-gated)</div></div>
+  </div>
+  <div class="col vec">
+    <h4>Vector — simulate_one loop 13780-13950</h4>
+    <div class="node red warn"><div class="k">PARTIAL_PROFIT_LOCK — 🔴 NOT IN REDUCE PATH</div><div class="v code"># simulate_one has NO PPL branch.
+# Only nod: satoshit_partial @ 13830
+if 0 &lt; satoshit_partial &lt; 1.0:
+    reduce_qty = pos.qty * satoshit_partial   # crypto SATOSHIT 70% legacy, now 0
+# Real PPL 50%/62.5% at 0.5%/1.5% with maker leg + BE arm is absent → backtest understates turnover & fees, overstates win-rate</div><div class="meta">No maker URL2, no BE_BUFFER, no FRAC_TRADIER 0.625, no ACCOUNTS gate, no SL arm</div></div>
+    <div class="node red"><div class="k">PEAK_GIVEBACK — 🔴 ABSENT</div><div class="v code"># No peak_giveback block in simulate_one's per-bar checks.
+# Live does: if peak>=MIN_PEAK and (peak-live) >= peak*DROP_PCT and (gain&lt;=NEG_FLOOR if REQUIRE_NEG): close
+# Vector has no peak tracking beyond peak_pnl_pct for trail_erosion; gate never evaluated.</div><div class="meta">Knobs declared (PEAK_GIVEBACK_* 6 vars) but never read in ledger loop; sweep rows are dead</div></div>
+    <div class="node red"><div class="k">SIMPLE_TP / WT_REDUCE via regime only 🔴 partial</div><div class="v code"># SIMPLE_TP_PCT, SIMPLE_TP_EXIT_ENABLED, WT_REDUCE_FRAC_* (non-regime) not read.
+# Only WT velocity via regime path (adx_1h gate) survives; standalone SIMPLE_TP 50%/62% logic absent.</div><div class="meta">Declared in QuickConfig, BATCH2 hashes them as 80% masks only</div></div>
+    <div class="node red"><div class="k">AUGMENT_FALLBACK / STORM / SATOSHIT 🔴 bool only</div><div class="v code">AUGMENT_FALLBACK_REDUCE_ENABLED bool getattr but never checked against FALLBACK_GAIN_PCT in aug→reduce hand-off.
+STORM_REDUCE_ENABLED bool read in tradier _wire_weak but not causal.
+SATOSHIT_EXIT_ENABLED gates satoshit_partial (currently 0.0 → disabled).</div><div class="meta">BATCH2: satoshit_partial uses config flag but default 0 kills it; fallback 50% logic absent</div></div>
+  </div>
+</div>
+
+<h3>3.2 Simulate loop — where vector actually applies the two surviving reduces</h3>
+<div class="diagram">
+  <div class="diag-head"><span class="badge b-green">simulate_one() lines 13860-13950 — the per-bar reduce + exit handling that VECTOR does</span></div>
+  <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div style="border:1.8px solid #0ea5e9;border-radius:10px;padding:12px;background:#f0f9ff">
+      <div style="font-weight:800;font-size:12px;margin-bottom:6px">reduce_sig block @ 13870 (vector)</div>
+      <div class="code" style="font-size:11px;line-height:1.5">if reduce_sig[i] and pos.qty>0 and reduce_frac[i]>0:
+    frac = min(float(reduce_frac[i]),1.0)
+    reduce_qty = pos.qty * frac
+    realized=(px-avg)*reduce_qty  # or avg-px for SHORT
+    pos.realized += realized
+    pos.fees += |reduce_qty*px|*half_fee
+    pos.qty -= reduce_qty
+    if pos.qty &lt;= 1e-9:
+        # REDUCE_TO_FLAT → ledger entry type=REDUCE
+        trades.append({pnl_dollars: realized-fees,
+                       reason:'REDUCE_TO_FLAT'})
+        pos=None; cd=cooldown_bars; has_closed_before=True
+    continue  # ← no exit check same bar after partial reduce</div>
+      <div class="small" style="margin-top:6px">Fee: crypto 0.08% RT → half_fee 0.04% per leg. Tradier half_fee 0 (stocks commissionless in sim, live is $0 + 0.01%). Mean deployed = mean(deployed_arr) for pnl_pct norm.</div>
+    </div>
+    <div style="border:1.8px solid #ef4444;border-radius:10px;padding:12px;background:#fef2f2">
+      <div style="font-weight:800;font-size:12px;margin-bottom:6px;color:#7f1d1d">What live does INSTEAD (not replicated) — 🔴 gaps</div>
+      <div class="code" style="font-size:11px;line-height:1.5">PARTIAL_PROFIT_LOCK: 50% reduce @ +0.5%/+1.5%, maker URL2,
+  arm stop to entry+0.10% when remainder hits +1.75% (crypto)
+  / +0.75% (stocks). → vector has no 2-leg logic.
+
+PEAK_GIVEBACK: peak 0.5% then give-back 50% of peak,
+  only if gain ≤0 (or ≤-0.5 if REQUIRE_NEG). DROP_TRIGGER gate
+  decides whether 0.5×peak or hard-zero path.
+  → vector only has WIN_TRAIL_EROSION (different: peak*erosion%).
+
+SIMPLE_TP / WT_CROSS REDUCE: standalone take-profit frac
+  (WT_REDUCE_FRAC 0.15/0.25/0.50) per-gain-bucket, before regime gate.
+  → vector only does regime WT velocity.
+
+DC_BREACH REDUCE: augmented position breaching dc_low/high
+  → vector ABLATION_DISABLE zero, not threshold.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== FILTER SECTION ========== -->
+<h2><span class="id">4</span> FILTERS — all 122 distinct filters, how each is live-wired vs numpy-wired</h2>
+<div class="callout green">
+  <strong>Key:</strong> Vector claims 162 FILTER_LIST entries, each <code>out &amp;= (indicator &gt; thr) // 80% mask</code> pattern. In practice <strong>~95 filters are pure BATCH2/AUTO_WIRED hash masks</strong> (the indicator named in the code comment is a placeholder — e.g. <code>AUGMENTED_POSITIONS_GUARD → adx_1h</code>, <code>HIGH_GAIN → relative_volume_1h</code> — not the live signal). Only ~25-30 filters have a causal indicator path in the main compute_* functions. The table below marks each filter's live applicable sheets, vector method, and fidelity.
+</div>
+
+<h3>4.0 Filter anatomy — what a live filter actually is vs what vector does</h3>
+<div class="diagram">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:14px">
+    <div style="border:2px solid #0ea5e9;border-radius:10px;padding:10px;background:#f0f9ff">
+      <div style="font-weight:800;font-size:12px">🔵 Live filter (ez_manage / tradier_manage)</div>
+      <div class="code" style="font-size:11px;margin-top:6px">Deterministic gate on a named signal family.
+Example: RED_ZONE_AUGMENT_GATE checks last HTF
+resistance zone before allowing AUGMENT.
+Lives in per-strategy evaluate_* or guard:
+  if RED_ZONE_GATE_ENABLED and in_red_zone():
+      return BLOCKED_RED_ZONE
+Fails open when data missing.</div>
+      <div class="small">Applies to: ENTRY | EXIT | AUGMENT | REDUCE | GLOBAL_CHECK — listed in FILTER_DICTIONARY_V8 col F</div>
+    </div>
+    <div style="border:2px solid #10b981;border-radius:10px;padding:10px;background:#ecfdf5">
+      <div style="font-weight:800;font-size:12px">🟢 Vector — causal filter (rare, ~25)</div>
+      <div class="code" style="font-size:11px;margin-top:6px">Real numpy mask on the indicator the live reads.
+Example: REGIME_GATE trending =
+  adx_1h >= 25 & wt_vel_1h &lt; -12  (causal)
+  dc_low_4h proximity for bounce, etc.
+Branch: getattr(cfg,'FILTER',default) vs _DEFAULTS_625</div>
+      <div class="small">Lines: compute_* + _apply_625_ablation_gates + _wire_07 (entry/exit tranche only)</div>
+    </div>
+    <div style="border:2px solid #f59e0b;border-radius:10px;padding:10px;background:#fffbeb">
+      <div style="font-weight:800;font-size:12px">🟠 Vector — synthetic hash (majority, ~95)</div>
+      <div class="code" style="font-size:11px;margin-top:6px">if cfg.FILTER != default:
+    _v = _safe(npz,'adx_1h',n,20)
+    thr = float(cfg.FILTER or 0.5)
+    out = out & (_v > thr*10)   # ← placeholder indicator
+    # plus _apply_auto_wired 1/503 hash & 80% mask
+</div>
+      <div class="small">Indicator chosen for distinctness, not fidelity. Any flip flips ledger, but not for the right reason. "BATCH2 TEMPLATE 60 — BOTH_WIRED real-indicator gates" comment is misleading.</div>
+    </div>
+  </div>
+</div>
+
+<h3>4.1 Filter map — 122 distinct filters grouped by family (expand to see live→vector mapping)</h3>
+
+<details open>
+  <summary>GLOBAL_CHECK — 80+ filters that AND every lifecycle (ENTRY/EXIT/AUGMENT/REDUCE). Most are synthetic. <span class="chip" style="background:#fffbeb;border-color:#f59e0b;color:#92400e">🟠 ~70 synthetic</span> <span class="chip" style="background:#ecfdf5;border-color:#6ee7b7;color:#065f46">🟢 ~12 causal</span></summary>
+  <div style="padding:10px;max-height:520px;overflow:auto">
+  <table>
+    <tr><th>Filter</th><th>Sheets (TEMPLATE says applicable)</th><th>Vector numpy (where / indicator)</th><th>Fidelity</th><th>Note / doubt</th></tr>
+    <tr><td class="code">ATR_TRAIL_FILTER_TF</td><td>GLOBAL_CHECK</td><td class="code">_ALL_FILTER_TF selector + no causal ATR trail mask in vector</td><td><span class="badge b-red">🔴 missing</span></td><td class="small">Live MTF ATR trail sweeps real ATR*2 exit; vector selector exists but no ATR mask</td></tr>
+    <tr><td class="code">BAR_PATTERNS_FILTER_TF, BB_PULLBACK_GATE_*, BREAKEVEN_GAIN_EROSION_*, CANDLE_PATTERN_STOPS_*, CIRCUIT_SHARPE_GATES_*, COOLDOWN_LOCKS_*</td><td>GLOBAL_CHECK</td><td class="code">BATCH2 _safe(npz,'rsi_1h'/'adx_1h',n) placeholder + 80% mask</td><td><span class="badge b-orange">🟠 synthetic</span></td><td class="small">Grouped: 30+ filters share identical rsi/adx placeholder pattern — flipping any one ANDs the same mask family</td></tr>
+    <tr><td class="code">BT_WT_CROSS_LADDER_FILTER_TF, DC_MOMENTUM_BOTA_SCORER_*, DELTA_ENGINE_FILTER_TF, DUP_GUARD_*, EMA_9_21_*, EMA_BLANKET_*, EMERGENCY_BRAKE_*</td><td>GLOBAL_CHECK</td><td class="code">Same BATCH2 placeholder hashes (adx_1h / bb_pct_b_1h / rsi_1h)</td><td><span class="badge b-orange">🟠 synthetic</span></td><td class="small">Live: each gates distinct MTF signal (WT cross ladder, delta BOTA, EMA blanket) — vector collapses to one mask</td></tr>
+    <tr><td class="code">FAST_RISER_FILTER_TF, FH_MOMENTUM_*, FIRST_OPEN_THROTTLE_*, FROZEN_STOP_*, FUNDING_GATE_*, GOLDEN_RULE_*, GR_FILTER_VEC_*, GR_V5_STATE_*, HAIKU_WINNER_*</td><td>GLOBAL_CHECK (+ STOCKS_EXIT)</td><td class="code">BATCH2/AUTO_WIRED 1/503 hash: <span class="code">out & (rng&lt;0.8)</span> + placeholder</td><td><span class="badge b-orange">🟠 hash</span></td><td class="small">Live GOLDEN_RULE/FUNDING_GATE gate trades on real account/position state — vector has no account model; 80% mask is pure noise</td></tr>
+    <tr><td class="code">LIVE_ENTRY_ENGINE_FILTER_TF, LIVE_ONLY_SIGNALS_BATCH5_*, MOM3_*, MOMENTUM_BREAKOUT_*, MTF_ARMED_ENTRIES_*, MTF_ATR_TRAIL_*, MTF_DC_REJECT_*</td><td>GLOBAL_CHECK</td><td class="code">BATCH2 placeholder (relative_volume_1h / adx_1h) — not MTF armed/ATR</td><td><span class="badge b-orange">🟠 synthetic</span></td><td class="small">MTF filters should check 3-of-5 TF confluence — vector checks single placeholder TF</td></tr>
+    <tr><td class="code">NEWBORN_LOSS_KILL_*, NEWBORN_PROTECT_*, NOLOSS_BYPASS_WT5OF5_*, OPEN_INTENT_SIZE_GATES_*, PARTIAL_PROFIT_LOCK_V2_*, PEAK_GIVEBACK_BE_EROSION_*</td><td>GLOBAL_CHECK (+ AUGMENT/REDUCE for some)</td><td class="code">Declared in QuickConfig (auto-added TEMPLATE) but no per-bar read in ledger loop except NOLOSS check vs dc_high/low_4h</td><td><span class="badge b-red">🔴 missing</span></td><td class="small">Live NEWBORN_* kills newborn losers with WT velocity against — vector has no newborn concept</td></tr>
+    <tr><td class="code">DC_BREACH_REDUCE_FILTER_TF, DC_BREAK_FILTER_TF, DELTA_HTF_GATE, EXIT_R1_R2_*, EXIT_TIGHT_BREAKOUT_SCORER_*, EXIT_TOP_FADE_*, EXIT_TO_REDUCE_ADAPTER_*</td><td>GLOBAL_CHECK</td><td class="code">DC_BREACH bool read (525) + ABLATION zero; EXIT_R1_R2 via ranking gate (hash)</td><td><span class="badge b-orange">🟠 partial</span></td><td class="small">DC_BREAK should gate on Donchian breach — vector only gates via bool + hash, not channel distance</td></tr>
+    <tr><td class="code">LEADERBOARD_FILTER, KILLER_KNOB_FINDER_*</td><td>GLOBAL_CHECK · AUGMENT/ENTRY/EXIT/REDUCE</td><td class="code">DEAD — LEADERBOARD in TEMPLATE? Not in QuickConfig reads</td><td><span class="badge b-red">🔴 dead</span></td><td class="small">Marked DEAD in FILTER_DICTIONARY; sweeping does nothing</td></tr>
+    <tr><td class="code">E2E_REPLAY_VALIDATOR_*, EXHAUSTION_EXIT_*</td><td>DEAD</td><td class="code">DEAD — REMOVE (FILTER_DICTIONARY col I = DEAD)</td><td><span class="badge b-red">🔴 dead</span></td><td class="small">Do not sweep</td></tr>
+  </table>
+  </div>
+</details>
+
+<details>
+  <summary>ENTRY-scoped — filters that should gate only ENTRY/AUGMENT openings <span class="chip" style="background:#f0f9ff;border-color:#7dd3fc;color:#0c4a6e">9 filters</span></summary>
+  <div style="padding:10px">
+  <table>
+    <tr><th>Filter</th><th>TEMPLATE scope</th><th>Live location</th><th>Vector</th><th>Fidelity</th></tr>
+    <tr><td class="code">ADX_RANGING_THRESHOLD (10/15/20/25)</td><td>ENTRY, GLOBAL_CHECK, STOCKS_EXIT</td><td class="code">should gate range vs trend entry (ADX &lt;20 = ranging)</td><td class="code">adx_1h >= thr check in regime path — causal</td><td><span class="badge b-green">🟢 causal</span></td></tr>
+    <tr><td class="code">DC_MOMENT_STRONG_THRESHOLD, DC_BREAK_FILTER_TF, HLR_TOP_MIN_TFS, HTF_GATE_*, HTF_TREND_VETO_*, LH_HL_FILTER_*, MANDATORY_REENTRY_WT_*, MTS_GATE_*</td><td>ENTRY, GLOBAL_CHECK, STOCKS_EXIT (some also REENTRY)</td><td class="code">ez_manage acquire_*_rules · HTF gate 4h/D veto logic</td><td class="code">HTF_TREND_VETO_ON_REDUCE near 22807 blocks non-REDUCE, but HTF_GATE_APPLY_TO_AUGMENT hash is rsi placeholder</td><td><span class="badge b-orange">🟠 mixed</span></td></tr>
+    <tr><td class="code">WT_15M_BOUNCE_BB_MIN/MAX, WT_15M_BOUNCE_HIGH/LOW_1H_GT_PREV, WT_15M_BOUNCE_REL_VOL_GT_1, SCALP_V3_ENTRY_K_15M_MAX</td><td>ENTRY_PULLBACK_BOUNCE</td><td class="code">Bounce entry refinement — BB position + higher-high + relative vol</td><td class="code">Not in vector bounce_sig — vector bounce is only stoch+dc, these 5 refinement knobs are missing</td><td><span class="badge b-red">🔴 missing</span></td></tr>
+  </table>
+  </div>
+</details>
+
+<details>
+  <summary>AUGMENT/REDUCE-scoped — filters that should gate only adds / partial closes <span class="chip" style="background:#f5f3ff;border-color:#c4b5fd;color:#4c1d95">~18 filters</span></summary>
+  <div style="padding:10px">
+  <table>
+    <tr><th>Filter</th><th>Scope</th><th>Vector line</th><th>Fidelity</th></tr>
+    <tr><td class="code">NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT / REQUIRE_VEL_AGAINST, NEW_POSITION_MAX_LOSS_THRESHOLD</td><td>AUGMENT, EXIT, GLOBAL_CHECK, REDUCE</td><td class="code">BATCH2 bb_pct_b_1h placeholder — not newborn age + wt_velocity logic</td><td><span class="badge b-orange">🟠 synthetic</span></td></tr>
+    <tr><td class="code">BANDAID_OFF_LOSER_RECOVER_PCT, LEADERBOARD_FILTER, HTF_TREND_VETO_* (on REDUCE)</td><td>AUGMENT/REDUCE/STOCKS_EXIT</td><td class="code">BANDAID hash; HTF_TREND_VETO_ON_REDUCE is the ONE causal REDUCE gate @ 22807 (vector mirrors as OR bypass)</td><td><span class="badge b-orange">🟠 mixed</span></td></tr>
+    <tr><td class="code">LR_BAND_LADDER_TF_BOTTOM/TOP, LR_BAND_LADDER_STOCH_EXTREME</td><td>GLOBAL_CHECK, STOCKS_EXIT</td><td class="code">No LR band ladder numpy — TEMPLATE REDUCE/AUGMENT ladder rows are dead unless BATCH2 hashes them generically</td><td><span class="badge b-red">🔴 missing</span></td></tr>
+    <tr><td class="code">DC_BREACH_REDUCE_FILTER_TF</td><td>AUGMENT/EXIT/REDUCE</td><td class="code">Bool read 525 + ABLATION_DISABLE_DC_BREACH_REDUCE zero — no real DC distance mask</td><td><span class="badge b-orange">🟠 doubtful</span></td></tr>
+  </table>
+  </div>
+</details>
+
+<details>
+  <summary>STOCKS_EXIT / EXIT family — exit filters that get routed to reduce via adapter <span class="chip" style="background:#fef2f2;border-color:#fca5a5;color:#7f1d1d">adapter path doubtful</span></summary>
+  <div style="padding:10px">
+  <table>
+    <tr><th>Filter</th><th>Notes</th><th>Vector</th><th>Fidelity</th></tr>
+    <tr><td class="code">EXIT_TO_REDUCE_ADAPTER_FILTER_TF, VEC_LIVE_REDUCE_PARITY_ENABLED / FRAC / PPL_REASONS</td><td>Adapter: live REDUCE labeled close vs vector CLOSE — doc says VEC_LIVE_REDUCE_ENABLED=False by default, so adapter OFF; when ON converts CLOSE→REDUCE-labeled event at frac 0.5/1.0</td><td class="code">Not in simulate_one ledger path; only in backtest_v12_engine fill seam. Sweeping the TF does nothing.</td><td><span class="badge b-red">🔴 inert when OFF</span></td></tr>
+    <tr><td class="code">PARTIAL_PROFIT_LOCK_V2_FILTER_TF, PEAK_GIVEBACK_BE_EROSION_FILTER_TF</td><td>Should gate BE erosion check (PEAK_GIVEBACK_RECOVERY_EXIT) and PPL step2 arm</td><td class="code">No BE erosion mask in vector — both selectors are declared but never gate the missing PPL/PEAK paths</td><td><span class="badge b-red">🔴 dead selector</span></td></tr>
+    <tr><td class="code">GR_V5_STATE_FILTER_TF, HAIKU_WINNER_FILTER_TF, FH_MOMENTUM_*, MOVER_THRESHOLD, MI_TF_AGREE_MIN</td><td>Ranking/scoring exit filters — live gates on GR/WL score stacks</td><td class="code">BATCH2 hash with relative_volume/atr proxy — no GR score model</td><td><span class="badge b-orange">🟠 synthetic</span></td></tr>
+  </table>
+  </div>
+</details>
+
+<h3>4.2 TF selectors — the 50× "_FILTER_TF" knobs (OFF/D/4h/15m/1h)</h3>
+<div class="callout">
+  <strong>Every TF selector is declared in QuickConfig with default <code>"15m"</code> or <code>"OFF"</code></strong> (see _ALL_FILTER_TF @112 and auto-added TEMPLATE rows 5914-6100). Live interprets them as "require N of the listed timeframes to confirm" — e.g. <code>DC_BREACH_REDUCE_FILTER_TF=15m</code> means check dc breach on 15m TF. Vector <strong>never branches on the TF string</strong> — it is a <span class="badge b-red">🔴 dead knob</span> unless its parent signal has a causal mask that also reads the TF (none do except the HTF 4h/D veto). Spinning any TF row in TEMPLATE alone yields <strong>delta 0</strong>, even when the parent would be profitable.
+</div>
+<table>
+  <tr><th>Family</th><th>Example TF knobs</th><th>Live meaning</th><th>Vector handling</th><th>Verdict</th></tr>
+  <tr><td>REDUCE TFs</td><td class="code">DC_BREACH_REDUCE_FILTER_TF, PARTIAL_PROFIT_LOCK_V2_FILTER_TF, PEAK_GIVEBACK_BE_EROSION_FILTER_TF, FAST_RISER_FILTER_TF, NEWBORN_LOSS_KILL_FILTER_TF, NOLOSS_BYPASS_WT5OF5_FILTER_TF</td><td>Which TF must confirm the REDUCE condition</td><td class="code">Declared, read as <span class="code">_tf=str(getattr(cfg,'*_FILTER_TF','15m'))</span> then discarded — no branch on D vs 4h vs 15m</td><td><span class="badge b-red">🔴 dead knob</span></td></tr>
+  <tr><td>AUGMENT TFs</td><td class="code">DELTA_ENGINE_FILTER_TF, LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF, MTF_ARMED_ENTRIES_FILTER_TF</td><td>Which TF must confirm the AUGMENT signal</td><td class="code">Same — string read, no mask switch</td><td><span class="badge b-red">🔴 dead</span></td></tr>
+  <tr><td>ENTRY TFs</td><td class="code">BB_PULLBACK_GATE_FILTER_TF, BTC_DEDICATED_FILTER_TF, DC_BREAK_FILTER_TF, EMA_BLANKET_FILTER_TF, HTF_GATE_*</td><td>Which TF must confirm the ENTRY trigger</td><td class="code">Some causal via compute_entry_signals MTF checks, but most still BATCH2 placeholder</td><td><span class="badge b-orange">🟠 partial</span></td></tr>
+  <tr><td>GLOBAL TFs</td><td class="code">ATR_TRAIL_FILTER_TF, BAR_PATTERNS_FILTER_TF, OPEN_INTENT_SIZE_GATES_FILTER_TF, EXIT_R1_R2_FILTER_TF</td><td>Global lifecycle gates</td><td class="code">Declared 50×, all OFF/15m default, no branch</td><td><span class="badge b-red">🔴 dead</span></td></tr>
+</table>
+
+<!-- ========== TEMPLATE SHEET WIRING ========== -->
+<h2><span class="id">5</span> TEMPLATE.xlsx — how each sheet wires AUGMENT/REDUCE rows to deltas</h2>
+<div class="callout">
+  Every AUGMENT/REDUCE sheet uses the <strong>Bible formula contract</strong>: <code>E2 = TEMPLATE_BASELINE_METRICS!B2</code> (live baseline) then <code>E3 = IF(F3>0, E2+F3, "")</code> chain with <code>F3 = VLOOKUP(A3, Results_30d_Deltas!A:H, 8, FALSE)-Eprev</code>. Only <code>F>0 && G>0 && parity within 0.80..1.25 trades &amp; 0.5pp|15% gain &amp; 0.25 sharpe</code> gets <code>C=N &amp; E=Eprev+F bold green + results row</code>. Mutual exclusivity: within one switch family (e.g. AUGMENT_MIN_GAIN_PCT 0.5/1/1.5/2/3/5) only ONE row may be green — all sibling values ≤0.
+</div>
+<table>
+  <tr><th>Sheet</th><th>Rows / distinct switches</th><th>Switch list (row A values)</th><th>FILTER_TF columns (K→…)</th><th>Wiring status</th></tr>
+  <tr><td class="code">AUGMENT_BREAKOUT</td><td>6 rows → 8 distinct</td><td class="code">LR_BAND_LADDER_TF_*, AUGMENT_MIN_GAIN_PCT trio, FALLBACK_REDUCE trio, 2 gap rows</td><td class="code">BT_WT_CROSS_LADDER, EXIT_TOP, … 14 cols</td><td><span class="badge b-red">🔴 mostly missing</span> — LR ladder dead; MIN_GAIN trio dead; FALLBACK dead</td></tr>
+  <tr><td class="code">AUGMENT_PULLBACK_BOUNCE</td><td>114 rows</td><td class="code">AUGMENT_* trio, BOUNCE_AUGMENT_MIN_LOSS, ADX/ATR/BANDAID/BAR_PATTERNS… 114</td><td class="code">230 cols HV — NEWBORN_LOSS_KILL …</td><td><span class="badge b-orange">🟠 mix</span> — BOUNCE good, rest synthetic hash</td></tr>
+  <tr><td class="code">AUGMENT_NEUTRAL</td><td>125 rows</td><td class="code">DYNAMIC_SCORE, AUGMENTED_POSITIONS_GUARD, AUGMENT_ONLY_WHEN_PROFITABLE, DELTA_PYRAMID_*, HTF_GATE_*, HIGH_GAIN, etc.</td><td>same 230 cols</td><td><span class="badge b-orange">🟠 2 good (DYNAMIC/DELTA via hash), rest synthetic</span></td></tr>
+  <tr><td class="code">AUGMENT_FULL_FILTERED</td><td>20 rows</td><td class="code">AUGMENTED_POSITIONS_GUARD, AUGMENT_AT_LOSS, AUGMENT_* trio, DELTA_PYRAMID_*, DYNAMIC_SCORE, HIGH_GAIN, HTF_GATE, LR_LADDER, MAX_AUGMENTS, SCALP_V3_AUG_BE, UNIVERSAL_AUGMENT</td><td class="code">CH 86 cols</td><td><span class="badge b-orange">🟠</span> PYRAMID+bounce survive; HIGH_GAIN/DYNAMIC/UNIVERSAL are hash</td></tr>
+  <tr><td class="code">REDUCE_BREAKOUT</td><td>2 → 4</td><td class="code">AUGMENT_FALLBACK_REDUCE_ENABLED/PCT ×2</td><td>DC_BREACH_TF, EXIT_T</td><td><span class="badge b-red">🔴 dead</span> — no reduce logic in this sheet, only fallback gag</td></tr>
+  <tr><td class="code">REDUCE_PULLBACK_BOUNCE</td><td>2 → 4</td><td class="code">AUGMENT_FALLBACK_*, BOUNCE_AUGMENT_MIN_LOSS (-0.5/-0.125)</td><td>same</td><td><span class="badge b-red">🔴 dead</span> — BOUNCE_MIN should gate augment, not reduce</td></tr>
+  <tr><td class="code">REDUCE_NEUTRAL</td><td>119 rows</td><td class="code">HTF_GATE_APPLY_TO_OPEN, PARTIAL_PROFIT_LOCK_FRAC, PEAK_GIVEBACK_DROP_TRIGGER, QUICK_REDUCE_TECHNICAL_ONLY, SIMPLE_TP_*, WT_REDUCE_FRAC_*, + 110 GLOBAL_CHECK filters</td><td>230 cols</td><td><span class="badge b-red">🔴 PPL/PEAK missing</span> — QUICK_REDUCE good, SIMPLE_TP/WT_REGIME partial, PPL+PEAK dead</td></tr>
+  <tr><td class="code">REDUCE_FULL_FILTERED</td><td>12 → 12</td><td class="code">HTF_GATE_APPLY_TO_OPEN, LR_LADDER_*, PARTIAL_PROFIT_LOCK_FRAC, PEAK_GIVEBACK_*, QUICK_REDUCE_TECHNICAL_ONLY, SIMPLE_TP_*, WT_REDUCE_FRAC_*, WT_CROSS_EXIT_APPLIES_TO_WINNERS</td><td>BS 71 cols</td><td><span class="badge b-orange">🟠</span> QUICK_REDUCE+WT velocity survive; PPL/PEAK/SIMPLE_TP missing</td></tr>
+  <tr><td class="code">FILTER_DICTIONARY_V8</td><td>433 rows → 122 distinct filters</td><td class="code">All 122 listed; col F Sheets applicable, col G "Switches exactly it gates", col I Status (LIVE — wired / DEAD / REMOVE)</td><td class="code">Q 17 cols, includes Option Value, What it does, Live location, TC, Options</td><td>Canonical — sweep should only test LIVE — wired rows; DEAD rows must be filtered out</td></tr>
+</table>
+
+<!-- ========== CONFIG MIRROR ========== -->
+<h2><span class="id">6</span> CONFIG mirror — crypto (<span class="code">config.py</span>) vs Tradier (<span class="code">config_tradier.py</span>) divergence that the diagram must surface</h2>
+<table>
+  <tr><th>Switch family</th><th>config.py (crypto default)</th><th>config_tradier.py (Tradier default)</th><th>Vector default (QuickConfig)</th><th>Impact</th></tr>
+  <tr><td class="code">TRA_DISABLE_AUGMENT</td><td class="code">False / N/A</td><td class="code">True ← stocks NEVER augment live</td><td class="code">True (auto-wired 625 parity)</td><td><span class="badge b-purple">🟣 divergence</span> Vector ignores TRA_DISABLE in loop → backtest overstates stock gain. Flip to False to test stock augments; sweeping AUGMENT rows while this is True is waste.</td></tr>
+  <tr><td class="code">PARTIAL_PROFIT_LOCK_ENABLED</td><td class="code">True, GAIN 1.5, ARM 1.75, FRAC 0.5</td><td class="code">False→True 2026-08-10, GAIN 0.5, ARM 0.75, FRAC 0.625</td><td class="code">True / 1.5 (crypto bias)</td><td><span class="badge b-purple">🟣 divergence</span> Stocks lock 62.5% at 0.5% live; vector has no lock at all → both crypto+stock backtests miss the biggest turnover.</td></tr>
+  <tr><td class="code">AUGMENT_PYRAMID_ENABLED vs TRADIER</td><td class="code">True (adds freely)</td><td class="code">False (disabled, rarely fires)</td><td class="code">True / auto-wired</td><td><span class="badge b-purple">🟣</span> Crypto pyramid survives, stocks not.</td></tr>
+  <tr><td class="code">RECOVERY_AUGMENT_ENABLED</td><td class="code">False</td><td class="code">True (fix: was False caused 0 trades)</td><td class="code">True (parity fix 5518)</td><td><span class="badge b-purple">🟣</span> Stocks need it to recover partial-close positions; crypto doesn't; vector bool-only.</td></tr>
+  <tr><td class="code">RED_ZONE / LH_HL / OPTIONS_AUGMENT_INTO_LOSS gates</td><td class="code">False</td><td class="code">True (all three)</td><td class="code">True (parity added 5582/5769)</td><td><span class="badge b-purple">🟣</span> Stocks block augments into red-zone/LH_HL reversal; crypto doesn't.</td></tr>
+  <tr><td class="code">PEAK_GIVEBACK_MIN_PEAK / DROP / NEG_FLOOR</td><td class="code">0.5 / 0.5 / 0.0 / -0.5</td><td class="code">similar but stock BE erosion path</td><td class="code">0.5 / 0.0 etc (no loop read)</td><td><span class="badge b-red">🔴 both missing in vector</span></td></tr>
+  <tr><td class="code">AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER</td><td class="code">N/A (crypto uses non-TRADIER flag)</td><td class="code">True</td><td class="code">True (7894 reads TRADIER flag)</td><td class="small">Vector _augment_allowed branches on this flag only — crypto profitable gate ignored differently</td></tr>
+</table>
+
+<!-- ========== WHAT TO FIX FIRST ========== -->
+<h2><span class="id">7</span> What to fix before the next sweep — ranked by P&amp;L risk (accents on missing translations)</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div style="border:2px solid var(--red);border-radius:12px;padding:14px;background:var(--red-bg)">
+    <div style="font-weight:900;color:#7f1d1d">🔴 P1 — PARTIAL_PROFIT_LOCK + PEAK_GIVEBACK are invisible to the vector</div>
+    <div class="small" style="margin-top:6px">Live closes ~50% of winning positions via <code>PPL 50% (62.5% stocks) at 0.5–1.5% + BE arm</code> and <code>PEAK_GIVEBACK drop 50% of peak</code>. Vector ledger has <strong>no PPL/PEAK reduce block</strong> — the only partial close is the 2-regime QUICK_REDUCE (15% of winners). Result: vector backtest <strong>overstates holding time</strong>, <strong>understates fees</strong>, and the TEMPLATE REDUCE rows for these two families always return delta 0 (dead knobs) so the sweep never learns they help live P&amp;L.</div>
+    <div style="margin-top:8px"><span class="badge b-red">Fix:</span> <span class="code">simulate_one: after live_pnl_pct + held_bars, check PPL step1 (gain≥PCT → reduce FRAC), step2 arm (gain≥ARM → stop=entry*(1+BE_BUFFER)), and PEAK_GIVEBACK (peak→live drop). Mirror ez 49292 / tradier 16778.</span></div>
+  </div>
+  <div style="border:2px solid var(--orange);border-radius:12px;padding:14px;background:var(--orange-bg)">
+    <div style="font-weight:900;color:#92400e">🟠 P2 — AUGMENT_MIN_GAIN trio + 4 AUGMENT blocks + HIGH_GAIN/DYNAMIC/RECOVERY are hash-only</div>
+    <div class="small" style="margin-top:6px">Live adds on 4 conviction blocks (BLOWPAST conv90, WT_CROSS 80, WT_3TF 70, HTF_TREND 65) plus HIGH_GAIN direct loop (gains >0.5*MIN_GAIN + wt1_1h aligned via add-block) and RECOVERY after partial closes. Vector collapses all to <code>adx_1h / relative_volume_1h / rsi_1h placeholder + 1/503 hash</code>. Spinning the 6-row <code>AUGMENT_MIN_GAIN_PCT</code> sweep (0.5/1/1.5/2/3/5) in TEMPLATE → <strong>delta 0</strong> every value — not because MIN_GAIN doesn't matter, but because vector ignores it. Same for the 4 live blocks that are the actual high-conviction adds.</div>
+    <div style="margin-top:8px"><span class="badge b-orange">Fix:</span> <span class="code">compute_augment_signals: read AUGMENT_MIN_GAIN_PCT (branch bounce vs breakout), evaluate 4 blocks via wt1_3m/wt1_15m/htf_trend, add HIGH_GAIN wt1_1h gate + RECOVERY age/band logic.</span></div>
+  </div>
+  <div style="border:2px solid var(--purple);border-radius:12px;padding:14px;background:var(--purple-bg)">
+    <div style="font-weight:900;color:#4c1d95">🟣 P3 — TRA_DISABLE_AUGMENT divergence (stocks silently overstate)</div>
+    <div class="small" style="margin-top:6px">Live stocks <code>TRA_DISABLE_AUGMENT=True</code> means <strong>no augment ever on Tradier</strong> (AAPL/MSFT/NVDA etc flat after entry). Vector <code>simulate_one</code> does not check this master kill — <code>compute_augment_signals</code> still returns bounce+pyramid true on TRADIER symbols, so any simulated stock gain that relies on pyramid adds is <strong>unachievable live</strong>. Every stock <code>AUGMENT_*</code> row that might show winner in backtest is unpromotable without first flipping this live default and re-verifying via <code>backtest_v12_engine</code> scalar.</div>
+    <div style="margin-top:8px"><span class="badge b-purple">Fix:</span> <span class="code">simulate_one: if MODE=='tradier' and cfg.TRA_DISABLE_AUGMENT: augment_sig[:]=False at top of loop; require config_tradier live change + scalar verify before promotion.</span></div>
+  </div>
+  <div style="border:2px solid #0ea5e9;border-radius:12px;padding:14px;background:var(--blue-bg)">
+    <div style="font-weight:900;color:#0c4a6e">🔵 P4 — 50× FILTER_TF selectors are dead knobs</div>
+    <div class="small" style="margin-top:6px">Every <code>*_FILTER_TF = OFF/D/4h/15m/1h</code> column in TEMPLATE is a TF selector. Vector reads the string then discards it — the mask never switches on D vs 4h. Spinning any TF column alone → delta 0. Only becomes meaningful once its parent (PPL/PEAK/BOUNCE/REGIME) is causal. Sweep currently wastes 50 params × 5 TF values × 148 symbols on no-ops.</div>
+    <div style="margin-top:8px"><span class="badge b-blue">Fix:</span> Either gate the sweep to skip TF selectors when parent is missing (mark UNRESOLVED per lifecycle attachment contract) or wire each filter's <code>_safe(npz, tf_field, n)</code> correctly.</div>
+  </div>
+</div>
+
+<!-- ========== BACKTEST BIBLE WIRING CONTRACT ========== -->
+<h2><span class="id">8</span> How this audit maps to the Backtest Bible wiring contract (§1.5, per_sym parity)</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div style="border:1.5px solid #e2e8f0;border-radius:10px;padding:12px;background:white">
+    <div style="font-weight:800">Bible gate: <code>per_sym_parity_contract.py</code></div>
+    <div class="small">Every non-orchestration switch in the live <code>per_sym</code> recipe must be both <strong>causal v12_quick read</strong> AND real <code>backtest_v12</code>/live-decision read. Statuses: <code>HOOKED_BOTH / CONTROL_ONLY / LOW_TF_FORBIDDEN / NOT_DECLARED_IN_QUICK / QUICK_NOT_CAUSAL / V12_NOT_HOOKED</code> — last three are hard blockers.</div>
+    <table style="margin-top:8px">
+      <tr><th>Switch example</th><th>Contract would say</th><th>This diagram says</th></tr>
+      <tr><td class="code">PARTIAL_PROFIT_LOCK_ENABLED</td><td class="code">QUICK_NOT_CAUSAL</td><td><span class="badge b-red">🔴 blocker</span> — declared but not read causally in ledger loop</td></tr>
+      <tr><td class="code">AUGMENT_MIN_GAIN_PCT</td><td class="code">QUICK_NOT_CAUSAL</td><td><span class="badge b-red">🔴 blocker</span> — declared, zero reads in compute_augment</td></tr>
+      <tr><td class="code">BOUNCE_AUGMENT_ENABLED</td><td class="code">HOOKED_BOTH</td><td><span class="badge b-green">🟢 pass</span> — live + vector both causal (modulo BATCH2 double-hash)</td></tr>
+      <tr><td class="code">PEAK_GIVEBACK_PROTECTION_ENABLED</td><td class="code">QUICK_NOT_CAUSAL</td><td><span class="badge b-red">🔴 blocker</span></td></tr>
+      <tr><td class="code">*_FILTER_TF</td><td class="code">CONTROL_ONLY or QUICK_NOT_CAUSAL</td><td><span class="badge b-orange">🟠 dead/placeholder</span></td></tr>
+    </table>
+    <div class="small" style="margin-top:8px">Run: <code>python tools/opt/per_sym_parity_contract.py</code> → <code>data/reports/lifecycle_pilot/per_sym_parity_contract.{json,csv}</code> must be <code>pass:true</code> before any <code>lifecycle_pilot</code> run. These 5 switches above will block it today.</div>
+  </div>
+  <div style="border:1.5px solid #e2e8f0;border-radius:10px;padding:12px;background:white">
+    <div style="font-weight:800">Numpy contract — what "causal" means here</div>
+    <div class="code" style="font-size:11px;margin-top:6px">A vector read is causal when:
+  getattr(cfg,'SWITCH',default) gates a numpy mask built from
+  the SAME indicator the live reads (or that live's
+  precomputed NPZ field), side-aware, with causal next-bar shift.
+
+Non-causal examples caught:
+  _v=_safe(npz,'adx_1h',n) ; out & (_v > thr*10)  # placeholder
+  out & (rng.random(n) &lt; 0.80)                    # 80% mask
+  if hash('FILTER')%503==0: out|=1                  # 1/503 hash
+  VEC_NPZ_CACHE=2 stuck; _frozen_npz_window anchor to timestamps[-1]</div>
+    <div class="small" style="margin-top:8px">Real reads: <code>cfg.BOUNCE_* + dc_low_4h + stoch_k/d</code>, <code>dc_position_15m+wt_vel_1h</code>, <code>adx_1h+wt_vel_1h + quick_reduce_strong</code>. Everything else in this audit that shows <span class="badge b-orange">🟠</span> is audited as <code>QUICK_NOT_CAUSAL</code> under this definition.</div>
+  </div>
+</div>
+
+<div class="callout" style="margin-top:22px">
+  <strong>File provenance for this audit:</strong> Live augment <code>ez_manage.py:37760 evaluate_augmentation / 42023 direct_high_gain_augmentation / 27160 _validate_augmentation / 28659 execute_now / 33993 monitor_dc_breach_reduce / 44492 monitor_stale_augmentations / 44666 process_position</code>; Tradier <code>tradier_manage.py:18798 evaluate_augment / 28493 direct_high_gain_augmentation / 9076 process_position / 22120 gain guard / 13035 reduce dust</code>; Config <code>config.py ~1900 lines / config_tradier.py 2279</code>; Vector <code>v12_quick_engine.py 14055: 112 _ALL_FILTER_TF, 221-248 augment global gates, 7856 compute_augment_signals, 7893 _augment_allowed, 7998 compute_reduce_signals, 9153 _apply_batch2_augment_gates, 13556 simulate_one, 7998-8042 regime+quick reduce</code>; Template <code>SPREADSHEETS/TEMPLATE.xlsx 26 sheets: FILTER_DICTIONARY_V8 (122 distinct filters), AUGMENT_* 4 sheets, REDUCE_* 4 sheets</code>. Backtest Bible canonical <code>BACKTEST_BIBLE.md §1.5</code>.
+</div>
+
+<footer style="margin-top:28px;padding:14px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b">
+  This HTML is the deliverable — open it locally (no server needed) and print to PDF if you want a poster. Colors are print-safe. Doubtful paths pulse in the AUGMENT global-gate card; all <span class="badge b-red">🔴 MISSING</span> knobs are deliberately dead in vector until the fixes in §7 land, so their TEMPLATE rows will always read delta 0 on a 30-bar NPZ window — treat them as UNRESOLVED, not proven losers.  — 2026-09-08
+</footer>
+
+</main>
+</body>
+</html>

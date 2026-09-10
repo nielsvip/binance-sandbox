@@ -1,0 +1,64 @@
+{
+  "baseline_keys": 0,
+  "duplicate_current": {
+    "behavior_fingerprint": "e1cdedc01a90cb2fc2873a51",
+    "category": "FILTER",
+    "delta_vs_bh": 2.6825426028181214,
+    "overrides": {
+      "GOLDEN_RULE_HTF_MIN_TFS": 1,
+      "GOLDEN_RULE_MIN_IND": 2
+    },
+    "param": "GOLDEN_RULE_HTF_MIN_TFS",
+    "source_group": "F1_GOLDEN_RULE_LADDER",
+    "source_row": 3,
+    "source_sheet": "ENTRY_SWITCHES_ALL",
+    "value": 1
+  },
+  "duplicate_previous": {
+    "behavior_fingerprint": "e1cdedc01a90cb2fc2873a51",
+    "category": "ENTRY",
+    "delta_vs_bh": 2.6825426028181214,
+    "overrides": {
+      "KINDERGARTEN_EMA_GATE_ENABLED": true
+    },
+    "param": "KINDERGARTEN_EMA_GATE_ENABLED",
+    "source_group": "KINDERGARTEN_EMA_ABOVE",
+    "source_row": 2,
+    "source_sheet": "ENTRY_SWITCHES_ALL",
+    "value": true
+  },
+  "duplicate_reason": "delta",
+  "error": "duplicate delta: current=GOLDEN_RULE_HTF_MIN_TFS=1 previous=KINDERGARTEN_EMA_GATE_ENABLED=True delta=2.6825426028181214",
+  "expected_candidates": 11100,
+  "last_candidate": {
+    "category": "ENTRY",
+    "overrides": {
+      "KINDERGARTEN_CROSS_TYPE": "ema200",
+      "KINDERGARTEN_EMA_GATE_ENABLED": true,
+      "KINDERGARTEN_TF": "4h"
+    },
+    "param": "KINDERGARTEN_EMA_GATE_ENABLED",
+    "source_group": "KINDERGARTEN_EMA_ABOVE",
+    "source_row": 2,
+    "source_sheet": "ENTRY_SWITCHES_ALL",
+    "value": true
+  },
+  "last_metrics": {
+    "bars": 14601,
+    "behavior_fingerprint": "324d8d262609beb5313eb1e6",
+    "bh_pct": -2.8552426028181213,
+    "delta_vs_bh": 0.011042602818121416,
+    "gain_pct": -2.8442,
+    "max_dd_pct": 2.87,
+    "pool_sharpe": -0.3048,
+    "sharpe_per_trade": -0.3048,
+    "tim_pct": 44.89,
+    "trades": 14,
+    "years_actual": 0.08333333333333333
+  },
+  "output": "/home/niels/binance-sandbox/data/reports/BTCUSDC_LONG_1mo_canary.csv",
+  "status": "duplicate_stop",
+  "sym_side": "BTCUSDC_LONG",
+  "tested": 10,
+  "window_years_requested": 0.08333333333333333
+}

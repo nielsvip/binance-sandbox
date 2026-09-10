@@ -68,6 +68,14 @@ def load_ang_symbols() -> List[str]:
     longs = json.loads(SYMBOLS_LONG_FILE.read_text())
     shorts = json.loads(SYMBOLS_SHORT_FILE.read_text())
     syms = sorted(set(longs) | set(shorts))
+    # 2026-09-06: CRYPTO TESTS ONLY TRADEABLE KEYS
+    try:
+        _tk=set(json.loads((ROOT / "tradeable_keys.json").read_text())) if (ROOT / "tradeable_keys.json").exists() else set()
+        _ps=json.loads((ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json").read_text()) if (ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json").exists() else {}
+        _ps_tr={k for k,v in _ps.items() if not k.startswith("_") and isinstance(v,dict) and int(v.get("trades",0) or 0)>0}
+        def _ok(s): return f"{s}_LONG" in _ps_tr or f"{s}_SHORT" in _ps_tr or any(k.endswith(f":{s}_LONG") or k.endswith(f":{s}_SHORT") for k in _tk)
+        syms=[s for s in syms if _ok(s)]
+    except Exception: pass
     return [s for s in syms if (NPZ_DIR / f"{s}.npz").exists()]
 
 
