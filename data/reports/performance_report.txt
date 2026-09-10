@@ -1,12 +1,12 @@
-PERFORMANCE REPORT — 2026-09-10 20:02 UTC
+PERFORMANCE REPORT — 2026-09-10 21:02 UTC
 ================================================================================
-Total: 163 symbols | A=1 B=126 C=36
+Total: 163 symbols | A=1 B=125 C=37
 Window: 14 days | Min trades: 5
 
 --- TIER A (1 symbols) ---
           ZECUSDT  WR=79%  avg=+1.30%  total=+42.8%  trades= 28  mult=10.00
 
---- TIER B (126 symbols) ---
+--- TIER B (125 symbols) ---
              CRWV  WR=86%  avg=+8.10%  total=+71.0%  trades=  7  mult=6.40
              COHR  WR=100%  avg=+7.91%  total=+16.4%  trades=  2  mult=1.00
              QBTS  WR=100%  avg=+4.61%  total=+14.3%  trades=  3  mult=1.00
@@ -35,8 +35,8 @@ Window: 14 days | Min trades: 5
           SKYUSDT  WR=60%  avg=+0.05%  total=+1.1%  trades= 20  mult=3.17
               CME  WR=100%  avg=+1.01%  total=+1.0%  trades=  1  mult=1.00
              DINO  WR=100%  avg=+0.25%  total=+1.0%  trades=  4  mult=1.00
-          WLDUSDC  WR=43%  avg=+0.02%  total=+1.0%  trades= 51  mult=0.67
                BA  WR=100%  avg=+0.32%  total=+1.0%  trades=  3  mult=1.00
+          WLDUSDC  WR=43%  avg=+0.02%  total=+0.9%  trades= 53  mult=0.68
           TRBUSDT  WR=56%  avg=+0.05%  total=+0.9%  trades= 18  mult=2.20
           ZROUSDT  WR=67%  avg=+0.07%  total=+0.9%  trades= 12  mult=3.10
          MASKUSDT  WR=60%  avg=+0.17%  total=+0.9%  trades=  5  mult=1.74
@@ -81,7 +81,6 @@ Window: 14 days | Min trades: 5
          INTCUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
          ADBEUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
              DELL  WR=75%  avg=+0.01%  total=+0.0%  trades=  4  mult=1.00
-         FLOWUSDT  WR=20%  avg=+0.00%  total=+0.0%  trades= 10  mult=0.46
           ARMUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  2  mult=1.00
          QCOMUSDT  WR=50%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
              META  WR=0%  avg=-0.03%  total=-0.0%  trades=  1  mult=1.00
@@ -134,7 +133,8 @@ Window: 14 days | Min trades: 5
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
               LMT  WR=0%  avg=-4.09%  total=-15.4%  trades=  4  mult=1.00
 
---- TIER C (36 symbols) ---
+--- TIER C (37 symbols) ---
+         FLOWUSDT  WR=18%  avg=-0.00%  total=-0.0%  trades= 11  mult=0.42
         1INCHUSDT  WR=25%  avg=-0.01%  total=-0.1%  trades= 12  mult=0.45
     1000FLOKIUSDT  WR=0%  avg=-0.03%  total=-0.2%  trades=  6  mult=0.45
           NOTUSDT  WR=40%  avg=-0.01%  total=-0.2%  trades= 15  mult=0.61
@@ -173,7 +173,7 @@ Window: 14 days | Min trades: 5
               SLV  WR=0%  avg=-3.95%  total=-40.8%  trades= 13  mult=0.16
 
 SUMMARY:
-  Total PnL (all symbols): -156.9%
+  Total PnL (all symbols): -157.0%
   Avg win rate: 45%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.45
