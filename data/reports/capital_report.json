@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-09-10 03:30 UTC",
- "total_capital_usd": 10.79,
+ "generated_at": "2026-09-10 03:42 UTC",
+ "total_capital_usd": 6.6,
  "tier_capital": {
   "A": 0.0,
-  "B": 10.79,
-  "C": 0.0
+  "B": 0.0,
+  "C": 6.6
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "inf:ASTSUSDT_SHORT"
+ "losers": [
+  "fin:RUNEUSDT_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ASTSUSDT_SHORT",
-   "symbol": "ASTSUSDT",
-   "account": "inf",
-   "value_usd": 5.61,
-   "gain_pct": 0.184,
-   "tier": "B",
-   "perf_mult": 0.84,
-   "amt": 0.09,
-   "mark": 62.32527976
-  },
-  {
-   "pk": "inf:AMDUSDT_LONG",
-   "symbol": "AMDUSDT",
-   "account": "inf",
-   "value_usd": 5.18,
-   "gain_pct": -0.308,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.01,
-   "mark": 518.35455815
+   "pk": "fin:RUNEUSDT_SHORT",
+   "symbol": "RUNEUSDT",
+   "account": "fin",
+   "value_usd": 6.6,
+   "gain_pct": 0.555,
+   "tier": "C",
+   "perf_mult": 0.58,
+   "amt": 14.0,
+   "mark": 0.4713
   }
  ]
 }
