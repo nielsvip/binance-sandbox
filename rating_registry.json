@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-10T05:28:31.705773+00:00",
+  "timestamp": "2026-09-10T05:45:50.636895+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -62,12 +62,6 @@
     },
     {
       "symbol": "SEIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -643,6 +637,12 @@
       "short_score": 0
     },
     {
+      "symbol": "QQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SPYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -913,28 +913,28 @@
       "short_score": 0
     },
     {
-      "symbol": "QQQUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
+      "symbol": "LLYUSDT",
+      "net_score": 10.5,
+      "long_score": 10.5,
       "short_score": 0
     },
     {
       "symbol": "PYPLUSDT",
-      "net_score": 11.4,
-      "long_score": 11.4,
+      "net_score": 11.3,
+      "long_score": 11.3,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "PYPLUSDT",
-      11.4,
-      52.32948006
+      11.3,
+      52.32482028
     ],
     [
-      "QQQUSDT",
-      11.2,
-      717.13267678
+      "LLYUSDT",
+      10.5,
+      1130.03
     ]
   ],
   "top_shorts": [],
