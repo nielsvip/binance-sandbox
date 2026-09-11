@@ -470,11 +470,21 @@ def ensure_lbI_headers(wb_path: Path):
         if sheet not in wb.sheetnames:
             continue
         ws = wb[sheet]
+        # Unmerge row1 L:BI merged headers that block writes (MergedCell value is read-only)
+        try:
+            for mr in list(ws.merged_cells.ranges):
+                if mr.min_row == 1 and mr.max_row == 1 and mr.max_col >= 12 and mr.min_col <= ws.max_column + 50:
+                    ws.unmerge_cells(str(mr))
+        except Exception:
+            pass
         existing = set()
         # max_column may be <12 when L:BI empty — scan up to at least 12
         scan_max = max(ws.max_column, 12)
         for c in range(12, scan_max + 1):
-            hv = ws.cell(row=1, column=c).value
+            try:
+                hv = ws.cell(row=1, column=c).value
+            except Exception:
+                hv = None
             if hv and isinstance(hv, str) and "=" in hv:
                 existing.add(hv.strip())
         # collect opportune headers for this sheet (distinct filter=opt) — UNCONDITIONAL: any applicable sheets_app
@@ -503,8 +513,19 @@ def ensure_lbI_headers(wb_path: Path):
         for hdr in headers:
             if hdr in existing:
                 continue
-            ws.cell(row=1, column=col).value = hdr
-            ws.cell(row=1, column=col).font = Font(bold=True, color="0070C0")
+            try:
+                c = ws.cell(row=1, column=col)
+                # if still merged, write to top-left of merged range
+                if str(getattr(c, "__class__", "")).endswith("MergedCell"):
+                    # find master
+                    for mr in ws.merged_cells.ranges:
+                        if mr.min_col <= col <= mr.max_col and mr.min_row <= 1 <= mr.max_row:
+                            c = ws.cell(row=mr.min_row, column=mr.min_col)
+                            break
+                c.value = hdr
+                c.font = Font(bold=True, color="0070C0")
+            except Exception:
+                pass
             col += 1
     wb.save(str(wb_path))
 
