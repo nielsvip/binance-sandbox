@@ -6719,6 +6719,9 @@ class QuickConfig:
     GAP_INVENTORY_ENABLED: bool = True
     GAP_INVENTORY_FILE: str = 'data/gap_inventory_tradier.json'
     GAP_INVENTORY_LOOKBACK_DAYS: int = 20
+    GAP_PER_SYMBOL_INVENTORY_FILE: str = 'data/gap_inventory_tradier_per_symbol.json'
+    GAP_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10
+    GAP_PER_SYMBOL_LOOKBACK_DAYS: int = 30
     GAP_MOC_DC_PROXIMITY_PCT: float = 0.5
     GAP_MOC_DC_WT_SAFETY_ENABLED: bool = True
     GAP_MOC_EXIT_ENABLED: bool = True

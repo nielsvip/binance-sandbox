@@ -943,7 +943,8 @@ class TradierConfig:
     LR_BAND_HARVEST_ENABLED: bool = False          # 2026-07-19 USER band mandate: upper-band exit wired in tradier_manage (was dead knob); OFF until Tier-2 pack proof
     # Research/parity route: direct against-position 15m WT cross.  Kept
     # disabled by default; V8/vector comparison runs enable it explicitly.
-    MTF_WT_CROSS_EXIT_DIRECT_ENABLED: bool = True
+    # 2026-09-11 FIX: True→False — META sold 8m after buy while RISING (+0.05%) via BEAR cross, bypassed hold and should not fire while rising even without hold.
+    MTF_WT_CROSS_EXIT_DIRECT_ENABLED: bool = False
     LR_BAND_REGIME_ENABLED: bool = False           # 2026-07-20 USER: catch EVERY upswing — long anywhere below REGIME_MAX_PB while channel slope>0 (not only band touches)
     LR_BAND_REGIME_MAX_PB: float = 0.6
     LR_BAND_SLOPE_FLIP_EXIT_ENABLED: bool = False  # 2026-07-20 USER: channel slope flip → full PROFIT exit (loss exits stay R1/R2/HEDGE_FAILED)

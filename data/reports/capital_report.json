@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-11 17:59 UTC",
- "total_capital_usd": 40.71,
+ "generated_at": "2026-09-11 18:29 UTC",
+ "total_capital_usd": 12.04,
  "tier_capital": {
   "A": 0.0,
-  "B": 40.71,
+  "B": 12.04,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "flz:WLDUSDC_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:WLDUSDC_SHORT",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 40.71,
-   "gain_pct": 0.002,
+   "pk": "men:OPUSDT_SHORT",
+   "symbol": "OPUSDT",
+   "account": "men",
+   "value_usd": 12.04,
+   "gain_pct": -0.151,
    "tier": "B",
-   "perf_mult": 0.73,
-   "amt": 100.0,
-   "mark": 0.4071
+   "perf_mult": 2.25,
+   "amt": 125.5,
+   "mark": 0.09594435
   }
  ]
 }

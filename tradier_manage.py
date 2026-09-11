@@ -16964,16 +16964,50 @@ class StockStrategy:
                 (_wt15_now_1 < _wt15_now_2 and _wt15_prev_1 >= _wt15_prev_2)
             )
             if _wt15_direct_cross:
-                _wt15_direct_reason = (
-                    f"MTF_WT_DIRECT_EXIT_15m_{'BULL' if not is_long else 'BEAR'}"
-                    f"_now={_wt15_now_1:.2f}/{_wt15_now_2:.2f}"
-                    f"_prev={_wt15_prev_1:.2f}/{_wt15_prev_2:.2f}_g{gain:.2f}%"
-                )
-                logger.warning(
-                    f"[MTF_WT_DIRECT_EXIT] {symbol} "
-                    f"{'SHORT' if not is_long else 'LONG'}: {_wt15_direct_reason}"
-                )
-                return True, _wt15_direct_reason, qty
+                # 2026-09-11 FIX: STOCK_MIN_HOLD (240m LONG / 60m SHORT) must gate MTF_WT.
+                # META was sold 8m after buy while RISING (+0.05%) via BEAR cross — bypassed hold.
+                # Only DC15 break (<dc_low_15m long / >dc_high_15m short) may bypass hold.
+                _mtf_hold_min = 60.0 if not is_long else 240.0
+                try:
+                    _mtf_hold_min = float(_cfg_auto('TRADIER_MIN_HOLD_MINUTES_SHORT', 60.0)) if not is_long else float(_cfg_auto('TRADIER_MIN_HOLD_MINUTES', 240.0))
+                except Exception:
+                    pass
+                _mtf_hold_age = 999.0
+                try:
+                    _mtf_opened = getattr(position, 'opened_at', None) or getattr(position, 'entry_time', None)
+                    if _mtf_opened:
+                        _mtf_ts = float(_mtf_opened) if isinstance(_mtf_opened, (int, float)) else 999.0
+                        if isinstance(_mtf_opened, str):
+                            _mtf_ts = time.time()
+                        else:
+                            _mtf_ts = float(_mtf_opened)
+                        _mtf_hold_age = (time.time() - _mtf_ts) / 60.0 if _mtf_ts < 1e10 else 999.0
+                except Exception:
+                    pass
+                _mtf_dc_bypass = False
+                try:
+                    _dc15 = indicators if indicators else i
+                    if is_long:
+                        _dl = float(_dc15.get('dc_low_15m', 0) or 0)
+                        _mtf_dc_bypass = _dl > 0 and current_price < _dl
+                    else:
+                        _dh = float(_dc15.get('dc_high_15m', 0) or 0)
+                        _mtf_dc_bypass = _dh > 0 and current_price > _dh
+                except Exception:
+                    pass
+                if _mtf_hold_age < _mtf_hold_min and not _mtf_dc_bypass:
+                    logger.info(f"[MTF_WT_DIRECT_EXIT_HOLD] {symbol} { 'L' if is_long else 'S'} hold={_mtf_hold_age:.0f}m<{_mtf_hold_min:.0f}m price={current_price:.2f} {'<dc_low' if is_long else '>dc_high'}={_mtf_dc_bypass} — blocked, not dc breakdown while rising")
+                else:
+                    _wt15_direct_reason = (
+                        f"MTF_WT_DIRECT_EXIT_15m_{'BULL' if not is_long else 'BEAR'}"
+                        f"_now={_wt15_now_1:.2f}/{_wt15_now_2:.2f}"
+                        f"_prev={_wt15_prev_1:.2f}/{_wt15_prev_2:.2f}_g{gain:.2f}%"
+                    )
+                    logger.warning(
+                        f"[MTF_WT_DIRECT_EXIT] {symbol} "
+                        f"{'SHORT' if not is_long else 'LONG'}: {_wt15_direct_reason}"
+                    )
+                    return True, _wt15_direct_reason, qty
         # Independent classic-formation exit paths.  A LONG needs a bearish
         # confirmed formation; a SHORT needs a bullish one.  They remain behind
         # per-family switches and a configurable profit floor.
