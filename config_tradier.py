@@ -709,8 +709,8 @@ class TradierConfig:
     #   3TF=0.880 Sharpe (-1.56 vs baseline, 3.76% DD) | 4TF=1.092 (-1.34, 2.79% DD) | 5TF=0.731 (-1.70, 8.3% DD).
     # VERDICT: HOLD wins. Stocks recover after WT reversal — closing on technicals at any threshold destroys edge.
     # COMBINED WS_KILL+4TF=1.071 Sharpe (-1.36) — combining kill+bypass does NOT help.
-    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False  # 2026-04-25: belt-and-suspenders — even if NOLOSS sneaks back on somewhere, allow WT-against bypass.
-    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5  # 2026-04-27 EMERGENCY: 3/5 fires constantly during normal market noise. Restored to 5/5 — bypass only when ALL 5 WT TFs flip against position. Backup safety in case UNIVERSAL_NOLOSS_GATE leaks.
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = True  # 2026-09-11 EMERGENCY falling market: False→True — longs at -0.3% held as NOLOSS_HOLD while market falling quickly, account draining, need WT-against bypass.
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 3  # 2026-09-11 EMERGENCY: 5→3 — 5/5 never fires, 3/5 allows longs to close at loss when 3 TFs bear (MCD/NOC/LMT longs draining).
     # 2026-05-09 USER MANDATE — WT_15M_VEL_SLOW loss-bypass exit (mirror of crypto).
     # Fires CLOSE before NO_LOSS / hedge / MTF when:
     #   gain < band (0.10), wt_velocity_15m sign opposes position, AND
@@ -1183,6 +1183,10 @@ class TradierConfig:
     GAP_INVENTORY_ENABLED: bool = True  # track cumulative gap sums to data/gap_inventory_tradier.json
     GAP_INVENTORY_FILE: str = "data/gap_inventory_tradier.json"
     GAP_INVENTORY_LOOKBACK_DAYS: int = 20  # rolling window for bias (20 trading days)
+    # Per-symbol gap inventory (ONLY source for 90m sentinel — market-wide bias deprecated 2026-09-11 per user, retuned 2026-09-11 to 0.10 per user: |avg|>0.10 closes)
+    GAP_PER_SYMBOL_INVENTORY_FILE: str = "data/gap_inventory_tradier_per_symbol.json"
+    GAP_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10  # |avg_gap| <= this = near 0 → don't close on gap bias (only VV). User 2026-09-11: anything >0.10 avg/day closes at top/bottom
+    GAP_PER_SYMBOL_LOOKBACK_DAYS: int = 30  # informational — file stores 30d of daily gaps
     # Pre-close sentinel window: poll every 2m from 90m before close (14:30 ET) until
     # 10m before close (15:50 ET); exit at small top/bottom if bias says close. Force MOC
     # at 15:59 if still not exited (gap safety fallback).
@@ -1208,7 +1212,7 @@ class TradierConfig:
     INTRADAY_RATIO_DEVIATION_THR: float = 0.10  # |actual_long - target_long| >10% triggers trim
     INTRADAY_RATIO_CHECK_INTERVAL_MIN: int = 15  # check every 15m during market hours
     INTRADAY_RATIO_TRIM_FRAC: float = 0.30  # trim 30% of worst performer on overweight side
-    INTRADAY_RATIO_REQUIRE_TOP: bool = True  # trim longs only at small top, shorts at bottom
+    INTRADAY_RATIO_REQUIRE_TOP: bool = False  # 2026-09-11 EMERGENCY falling market: True→False — longs falling quickly never at small top, intraday trim never fired, account draining 10/1 long heavy. Allow trim at any price.
     INTRADAY_RATIO_COOLDOWN_MIN: int = 30  # don't re-trim same symbol within 30m
     INTRADAY_RATIO_MAX_TRIMS_PER_DAY: int = 8  # safety cap
 
@@ -1319,7 +1323,7 @@ class TradierConfig:
     # REENTRY_RALLY_K15M_MAX: additional k15m level cap — 100=disabled, 40=moderate, 20=strict oversold. 2026-04-25 rapid-grid: K60+gap2 = +0.007 Sharpe +1 trade (marginal, not promoted). K40/50 neutral. K gate not the binding constraint for tradier trade count.
     # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict
     REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20
-    REENTRY_RALLY_HTF_MIN: int = 3          # 2026-04-18: sqlite reentry analysis — wt_all3 avg_sharpe 0.1036 vs wt_2of3 -0.0468. Was 2.
+    REENTRY_RALLY_HTF_MIN: int = 1          # 2026-09-11 EMERGENCY falling market: 3→1 — 3 HTF required blocked all 4 shorts below exit (MCD/NOC/LMT/AXON) as RALLY_HTF_GATE htf1<3. Was 3 (was 2).
     TRADIER_REENTRY_HARDCOOL_MIN: float = 15.0  # 2026-09-10 REENTRY FIX STOCKS: 30→15min (crypto proven 300s/5min recaptures continuations). Stocks need slightly longer than crypto but 30 blocked valid 15-25m bounces (REENTRY_PENDING logs 30m overdue). 15 keeps churn guard (PRICE_CROSS_BACK 0.3% + WT2of3) but doubles reentry surface. ROLLBACK: 30.0
     REENTRY_STOCH_K_MAX_LONG: float = 80.0  # 2026-09-10 STOCKS ALIGN CRYPTO: was default 40 via fallback (over-strict). 80 restores SAFE single-WT path
     REENTRY_STOCH_K_MIN_SHORT: float = 20.0
@@ -1850,7 +1854,7 @@ class TradierConfig:
     # RZ_BLOCK, hardcool, stoch/WT/HTF gates. User: "IMMEDIATELY BUY AGAIN IF EXIT
     # PRICE IS CROSSED". Defends against the suicide pattern of "we sold, price came
     # right back, we did nothing".
-    PRICE_CROSS_BACK_REENTRY_ENABLED: bool = False  # USER: HAS TO BE ON everywhere (proven MU 0.84 / NVDA 0.71 vec). exit_price-cross reentry.
+    PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True  # 2026-09-11 EMERGENCY: False→True — MSTR/IBIT/BMNR bouncing +1% but PRICE_CROSS was OFF globally, so evaluate_reentry returned cooldown 15m instead of REENTRY. User mandate ON everywhere.
     PRICE_CROSS_BACK_BAND_PCT: float = 0.3      # within 0.3% of last_reduction_price
     PRICE_CROSS_BACK_MAX_AGE_MIN: float = 525_600_000.0  # 2026-06-02 USER MANDATE: fire FOREVER (~1000yr) until positionAmt>0, not just 4h. Was 240. Momentum still gated by check_reentry_confirmation. ROLLBACK: 240.
     # === OVERTRADE_GUARD (2026-05-21 19:10 PARITY FIX — was missing from tradier config) ===

@@ -4556,7 +4556,7 @@ class QuickConfig:
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True
     STRUCTURAL_RANGE_SHIFT_TF: str = "dc_4h"
     REENTRY_RALLY_K15M_MAX: float = 100.0
-    REENTRY_RALLY_HTF_MIN: int = 1
+    REENTRY_RALLY_HTF_MIN: int = 1  # EMERGENCY 2026-09-11: 3→1 matches config_tradier (tested in TEMPLATE, rollback if v14 proves 3 better)
     HTF_ALIGNMENT_ENABLED: bool = True
     HTF_MIN_ALIGNED: int = 1
     D_TREND_REQUIRED: bool = True
@@ -4975,7 +4975,7 @@ class QuickConfig:
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     NEW_POSITION_MAX_LOSS_THRESHOLD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5  # FIX 2026-09-06: LIVE_ONLY auto-added
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 3  # EMERGENCY 2026-09-11: 5→3 matches config_tradier (TEMPLATE bold 5→3, rollback if v14 proves 5 better)
     REENTRY2_DC_BREAK_ALLOW_15M: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     REENTRY2_DC_BREAK_FILTER_TF: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
     REENTRY2_DC_BREAK_REQUIRE_K_FILTER: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
@@ -5441,8 +5441,8 @@ class QuickConfig:
     LR_BAND_SLOPE_FLIP_MIN_PCT_DAY: float = 0.025  # auto-wired 625
     LR_BAND_SLOPE_NORM_PCT_DAY: float = 0.15  # auto-wired 625
     LS_RATIO_ENFORCE_TRADIER: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    LS_RATIO_MAX_TRADIER: float = 1.0  # auto-wired 625
-    LS_RATIO_MIN_TRADIER: float = 0.25  # auto-wired 625
+    LS_RATIO_MAX_TRADIER: float = 5.00  # LIVE parity 2026-09-11: config_tradier 5.00 (veto until was 1.0 strangled)
+    LS_RATIO_MIN_TRADIER: float = 0.20  # LIVE parity 2026-09-11: config_tradier 0.20 (was 0.25 blocked shorts)
     LUNCH_DEADZONE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     MANDATORY_REENTRY_DC4_WINDOW_MIN: float = 15.0  # auto-wired 625
     MARKET_QUALITY_SCORE_ENABLED_TRADIER: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -5500,7 +5500,7 @@ class QuickConfig:
     MTS_ENTRY_QUALITY_MIN_TRADIER: float = 0.0  # auto-wired 625
     MTS_GATE_ENABLED_TRADIER: bool = False  # auto-wired 625
     NOLOSS_BB1H_GATE_ENABLED: bool = False  # auto-wired 625
-    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = True  # EMERGENCY 2026-09-11: False→True matches config_tradier live (rollback if v14 proves False better)  # auto-wired 625
     NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 0.0  # auto-wired 625
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.75  # auto-wired 625
     OBLIGATORY_HEDGE_PCT: float = 0.0  # auto-wired 625
@@ -5556,7 +5556,7 @@ class QuickConfig:
     R2_PEAK_MIN_PCT: float = 0.25  # auto-wired 625
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     R3_HTF_FLIP_EXIT_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    RATIO_MULTIPLIER_TRADIER: float = 1.75  # auto-wired 625
+    RATIO_MULTIPLIER_TRADIER: float = 3.5  # LIVE parity 2026-09-11: config_tradier 3.5 BACKTEST_T61 was 1.75
     RECOVERY_AUGMENT_BAND_PCT: float = 1.0  # REENTRY (not profit-add) — tradier 1.0 / crypto 0.3 ; auto-wired 625 baseline 0.5
     RECOVERY_AUGMENT_ENABLED: bool = True  # REENTRY re-open after partial REDUCE (ON by default 2026-09-11) — bypasses HARD wall at gain>=0.5*MIN_GAIN
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # REENTRY window ; auto-wired 625 baseline 120
@@ -6139,7 +6139,7 @@ class QuickConfig:
     NEWBORN_PROTECT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     NEW_POSITION_MAX_LOSS_THRESHOLD: float = 0.0  # auto-added TEMPLATE
     NOLOSS_BYPASS_WT5OF5_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5  # auto-added TEMPLATE generic
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 3  # EMERGENCY 2026-09-11: 5→3
     OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT: float = 0.0  # auto-added TEMPLATE
     OBLIGATORY_REENTRY_ENABLED: bool = False  # auto-added TEMPLATE
     OBLIGATORY_REENTRY_K15_HIGH_BLOCK: float = 0.0  # auto-added TEMPLATE generic
@@ -6736,7 +6736,7 @@ class QuickConfig:
     INTRADAY_RATIO_COOLDOWN_MIN: int = 30
     INTRADAY_RATIO_DEVIATION_THR: float = 0.10
     INTRADAY_RATIO_MAX_TRIMS_PER_DAY: int = 8
-    INTRADAY_RATIO_REQUIRE_TOP: bool = True
+    INTRADAY_RATIO_REQUIRE_TOP: bool = False  # EMERGENCY 2026-09-11: True→False matches config_tradier (rollback if v14 proves True better)
     INTRADAY_RATIO_TRIM_FRAC: float = 0.30
     GAP_RISK_EXIT_COND_A_ENABLED: bool = True
     GAP_RISK_EXIT_COND_B_ENABLED: bool = True
@@ -10170,8 +10170,8 @@ _DEFAULTS_625 = {
     "LR_PCTB_D_LONG_ENTRY_THRESHOLD": 0.1,
     "LR_PCTB_D_SHORT_THRESHOLD": 0.05,
     "LS_RATIO_ENFORCE_TRADIER": False,
-    "LS_RATIO_MAX_TRADIER": 1.0,
-    "LS_RATIO_MIN_TRADIER": 0.25,
+    "LS_RATIO_MAX_TRADIER": 5.00,
+    "LS_RATIO_MIN_TRADIER": 0.20,
     "LUNCH_DEADZONE_ENABLED": False,
     "LUNCH_DEADZONE_SIZE_MULT": 0.5,
     "MANDATORY_REENTRY_DC4_WINDOW_MIN": 15.0,
@@ -10248,7 +10248,7 @@ _DEFAULTS_625 = {
     "MTS_ENTRY_QUALITY_MIN_TRADIER": 0.0,
     "MTS_GATE_ENABLED_TRADIER": False,
     "NOLOSS_BB1H_GATE_ENABLED": False,
-    "NOLOSS_BYPASS_WT_5OF5_ENABLED": False,
+    "NOLOSS_BYPASS_WT_5OF5_ENABLED": True,
     "NOLOSS_MIN_PROFIT_PCT_TRADIER": 0.0,
     "OBLIGATORY_HEDGE_MIN_LOSS_PCT": -0.75,
     "OBLIGATORY_HEDGE_PCT": 0.0,
@@ -10310,7 +10310,7 @@ _DEFAULTS_625 = {
     "R2_PEAK_MIN_PCT": 0.25,
     "R3_HTF_FLIP_4H_TIER_ENABLED": False,
     "R3_HTF_FLIP_EXIT_ENABLED": False,
-    "RATIO_MULTIPLIER_TRADIER": 1.75,
+    "RATIO_MULTIPLIER_TRADIER": 3.5,
     "RECOVERY_AUGMENT_BAND_PCT": 0.5,
     "RECOVERY_AUGMENT_ENABLED": False,
     "RECOVERY_AUGMENT_MAX_AGE_MIN": 120.0,

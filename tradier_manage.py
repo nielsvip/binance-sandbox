@@ -173,10 +173,13 @@ _TR_TREND_V1_LAST_D_CLOSE: Dict[str, float] = {}    # detect D-bar boundary on l
 
 # GAP_RISK_EXIT state — per-position retrigger (persists after retrace so COND_A/B can fire on any later bar)
 _GAP_RISK_STATE: Dict[str, Dict[str, Any]] = {}  # key = position_key, val = {gap_dir, gap_open, prev_close, retraced, ext_high, ext_low}
-# GAP_INVENTORY: cumulative open/close gap bias (2026-09-09)
+# GAP_INVENTORY: cumulative open/close gap bias (2026-09-09) — MARKET-WIDE, DEPRECATED for 90m sentinel 2026-09-11 (kept for recording only)
 _GAP_INVENTORY: Dict[str, Any] = {"sum_pos_pct": 0.0, "sum_neg_pct": 0.0, "days": []}  # days: [{date, open, close, gap_pct}]
 _GAP_INVENTORY_LAST_SAVE: float = 0.0
 _GAP_MOC_PENDING_REENTRY: Dict[str, Dict[str, Any]] = {}  # position_key -> {amount, exit_price, gap_pct, ts}
+# PER-SYMBOL GAP INVENTORY (ONLY source for 90m sentinel since 2026-09-11 per user: avg gap per symbol decides)
+_GAP_PER_SYMBOL_INVENTORY: Dict[str, Dict[str, Any]] = {}  # {SYM: {days, sum_gap_pct, last5/last_gaps}}
+_GAP_PER_SYMBOL_LAST_LOAD: float = 0.0
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FOCUS RANK (USER 2026-06-02) — symbols_trb_long/short ARE the curated extremes
@@ -8681,7 +8684,70 @@ def _gap_inventory_record(open_px: float, close_px: float):
     _gap_inventory_save()
 
 def _gap_inventory_bias() -> float:
-    return float(_GAP_INVENTORY.get('sum_pos_pct', 0)) + float(_GAP_INVENTORY.get('sum_neg_pct', 0))  # neg sum is negative
+    return float(_GAP_INVENTORY.get('sum_pos_pct', 0)) + float(_GAP_INVENTORY.get('sum_neg_pct', 0))  # neg sum is negative — DEPRECATED for sentinel (per-symbol only since 2026-09-11)
+
+
+def _gap_per_symbol_inventory_path() -> Path:
+    return Path(_cfg_auto('GAP_PER_SYMBOL_INVENTORY_FILE', 'data/gap_inventory_tradier_per_symbol.json'))
+
+
+def _gap_per_symbol_load(force: bool = False):
+    global _GAP_PER_SYMBOL_INVENTORY, _GAP_PER_SYMBOL_LAST_LOAD
+    try:
+        now = time.time()
+        if not force and now - _GAP_PER_SYMBOL_LAST_LOAD < 300:
+            return
+        p = _gap_per_symbol_inventory_path()
+        if not p.exists():
+            logger.warning(f"[GAP_PER_SYMBOL_STALE] {p} missing — no per-symbol gaps, 90m sentinel will only use VV")
+            return
+        try:
+            age_h = (now - p.stat().st_mtime) / 3600.0
+            if age_h > 24:
+                logger.warning(f"[GAP_PER_SYMBOL_STALE] {p} age {age_h:.1f}h >24h — using stale data (warn only, not fail-closed)")
+        except Exception:
+            pass
+        data = safe_json_loads(p.read_text()) or {}
+        if not data:
+            logger.warning(f"[GAP_PER_SYMBOL_STALE] {p} empty — no per-symbol gaps")
+            return
+        _GAP_PER_SYMBOL_INVENTORY = data
+        _GAP_PER_SYMBOL_LAST_LOAD = now
+        logger.info(f"[GAP_PER_SYMBOL_LOAD] loaded {len(data)} symbols from {p}")
+    except Exception as _e:
+        logger.debug(f"[GAP_PER_SYMBOL_LOAD] skip {_e}")
+
+
+def _gap_per_symbol_avg_gap(symbol: str) -> Optional[float]:
+    """Per-symbol avg gap = sum_gap_pct / days. None if unknown. Kept in data/gap_inventory_tradier_per_symbol.json (30d, counted daily)."""
+    try:
+        sym = str(symbol or "").upper().strip()
+        if not sym:
+            return None
+        # lazy load if empty
+        if not _GAP_PER_SYMBOL_INVENTORY:
+            _gap_per_symbol_load(force=True)
+        rec = _GAP_PER_SYMBOL_INVENTORY.get(sym)
+        if not rec:
+            return None
+        s = rec.get('sum_gap_pct')
+        d = rec.get('days', 0)
+        if s is None or not d:
+            return None
+        return float(s) / float(d)
+    except Exception:
+        return None
+
+
+def _gap_per_symbol_should_close(is_long: bool, avg_gap: Optional[float]) -> bool:
+    """User rule 2026-09-11: ONLY per-symbol decides. Close longs when avg gap negative (gap-down risk) beyond thresh, shorts when avg positive beyond thresh. Near 0 → don't close on gap (only VV)."""
+    if avg_gap is None:
+        return False
+    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.30))
+    if is_long:
+        return avg_gap < -thr
+    else:
+        return avg_gap > thr
 
 def _is_small_top_for_gap_exit(indicators: dict, is_long: bool) -> bool:
     """Small top/bottom detection for GAP_MOC exits in last 90min.
@@ -9001,16 +9067,19 @@ def _trd_golden_weekly_max(symbol: str) -> float:
 
 
 async def gap_moc_and_morning_loop(trade_manager):
-    """Gap-aware sentinel: sum pos/neg gaps over 20d → bias. Longs close at small top
-    in last 90m when bias negative (avg open down); shorts v.v. Rebuy next morning
-    first opportunity if trend favorable. Records daily avg gap after 09:35 ET.
+    """Gap-aware sentinel: PER-SYMBOL avg gap (30d) decides. 2026-09-11 per user:
+    ONLY per-symbol values (data/gap_inventory_tradier_per_symbol.json, counted daily
+    from open_D/close_D_prev, avg=sum/days). Close longs when avg < -thr (gap-down risk),
+    shorts when avg > +thr (gap-up risk). Near 0 (|avg|<=thr) → don't close on gap (only VV).
+    Reopen first 90m after open at any dip (long: bottom/ VV dip, short: top) if still attractive
+    (not near dc_4h edge with WT against). 90m pre-close window polls every 60s for small tops.
 
     Fixes 2026-09-10: previously _gap_inventory_record was never called (dead code) so
     bias always 0; exit window was single 10m MOC not 90m top-aware — gapped down >1k
-    with no trim. Now window 90m→10m polls every 60s for small tops, force MOC at
-    15:59 if still flagged.
+    with no trim. 2026-09-11: market-wide bias deprecated, per-symbol ONLY.
     """
     _gap_inventory_load()
+    _gap_per_symbol_load(force=True)
     _morning_done_today = False
     _gap_recorded_today = False
     _gap_exit_done: set = set()  # pks already exited this window
@@ -9031,6 +9100,7 @@ async def gap_moc_and_morning_loop(trade_manager):
                 _morning_done_today = False
                 _gap_recorded_today = False
                 _gap_exit_done.clear()
+                _gap_per_symbol_load(force=True)
             mins_to_close = _minutes_to_close()
             mins_since_open = (now_et.hour * 60 + now_et.minute) - (9 * 60 + 30)
             # --- Record today's avg gap once after 09:35 ET (5m after open) ---
@@ -9040,9 +9110,10 @@ async def gap_moc_and_morning_loop(trade_manager):
                     _gap_recorded_today = True
                 except Exception as _re:
                     logger.debug(f"[GAP_MOC] gap record skip: {_re}")
-            # --- Morning reentry window 09:30-11:00 ET ---
+            # --- Morning reentry window 09:30-11:00 ET (PER-SYMBOL, any dip) ---
             if 0 <= mins_since_open <= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 90)) and not _morning_done_today:
                 if bool(_cfg_auto('GAP_MORNING_REENTRY_ENABLED', True)) and _GAP_MOC_PENDING_REENTRY:
+                    _gap_per_symbol_load()
                     for pk, info in list(_GAP_MOC_PENDING_REENTRY.items()):
                         try:
                             poss = trade_manager.position_manager.get_positions_by_account('trb') or {}
@@ -9051,20 +9122,23 @@ async def gap_moc_and_morning_loop(trade_manager):
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
                                 continue
                             is_long = pk.endswith('_LONG')
-                            ind = (trade_manager.indicators_cache or {}).get(pk.split(':')[1].replace('_LONG','').replace('_SHORT',''), {}) if hasattr(trade_manager, 'indicators_cache') else {}
+                            sym = pk.split(':')[1].replace('_LONG','').replace('_SHORT','')
+                            ind = (trade_manager.indicators_cache or {}).get(sym, {}) if hasattr(trade_manager, 'indicators_cache') else {}
                             if not ind: continue
+                            # "if trade still attractive" = not near dc_4h edge with WT against (same gate as pre-close VV)
                             if _is_near_dc4_high_with_wt_down(ind, is_long):
-                                logger.info(f"[GAP_MOC] skip morning rebuy {pk}: dc_4h vv danger + wt {'down' if is_long else 'up'}")
+                                logger.info(f"[GAP_MOC] skip morning rebuy {pk}: dc_4h vv danger + wt {'down' if is_long else 'up'} (not attractive)")
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
                                 continue
                             wt_ok = float(ind.get('wt1_15m', 0) or 0) > float(ind.get('wt2_15m', 0) or 0) if is_long else float(ind.get('wt1_15m', 0) or 0) < float(ind.get('wt2_15m', 0) or 0)
                             ha_ok = (ind.get('ha_15m') == 'green') if is_long else (ind.get('ha_15m') == 'red')
-                            if wt_ok or ha_ok:
+                            dip_ok = _is_small_top_for_gap_exit(ind, not is_long)  # long: wait for bottom (short's top), short: wait for top
+                            if wt_ok or ha_ok or dip_ok:
                                 amt = float(info.get('amount', 0))
                                 mult = float(_cfg_auto('GAP_MOC_REENTRY_SIZE_MULT', 1.25))
                                 if float(info.get('exit_gain', 0) or 0) > 0: amt *= mult
-                                await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "OPEN", f"GAP_MORNING_REENTRY_{pk}_trend_ok", amt, override_qty=999999)
-                                logger.warning(f"[GAP_MOC] morning rebuy {pk} amt={amt:.2f}")
+                                await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "OPEN", f"GAP_MORNING_REENTRY_{pk}_dip{int(dip_ok)}_trend{int(wt_ok or ha_ok)}", amt, override_qty=999999)
+                                logger.warning(f"[GAP_MOC] morning rebuy {pk} amt={amt:.2f} dip={dip_ok} wt={wt_ok} ha={ha_ok} sym_avg={_gap_per_symbol_avg_gap(sym)}")
                             _GAP_MOC_PENDING_REENTRY.pop(pk, None)
                         except Exception as _me:
                             logger.error(f"[GAP_MOC_MORNING_ERR] {pk}: {_me}", exc_info=True)
@@ -9079,9 +9153,8 @@ async def gap_moc_and_morning_loop(trade_manager):
             at_deadline = 0 < mins_to_close <= deadline and bool(_cfg_auto('GAP_MOC_FORCE_MOC_AT_CLOSE', True))
             if not in_window:
                 continue
-            # Check bias direction — if no strong bias, still trim only on vv safety
-            bias = _gap_inventory_bias()
-            hold_thr = float(_cfg_auto('GAP_MOC_HOLD_POSITIVE_BIAS_PCT', 0.30))
+            _gap_per_symbol_load()
+            # PER-SYMBOL ONLY — market-wide bias deprecated; kept only for recording
             try:
                 positions = trade_manager.position_manager.get_positions_by_account('trb') or {}
             except Exception as _pe:
@@ -9096,28 +9169,35 @@ async def gap_moc_and_morning_loop(trade_manager):
                     is_long = pk.endswith('_LONG')
                     sym = pk.split(':')[1].replace('_LONG','').replace('_SHORT','')
                     ind = (trade_manager.indicators_cache or {}).get(sym, {}) if hasattr(trade_manager, 'indicators_cache') else {}
-                    # Safety vv: always force exit if near dc_4h edge with WT against (even if bias says hold)
+                    # Per-symbol gap decides; VV always forces exit even if avg near 0
+                    avg_gap = _gap_per_symbol_avg_gap(sym)
+                    thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.30))
                     vv_danger = _is_near_dc4_high_with_wt_down(ind, is_long)
                     if not vv_danger:
-                        # Bias decides side to close: longs close when bias < -thr (avg gap down), shorts when bias > +thr
-                        if is_long and bias > hold_thr:
-                            continue  # bias says keep longs overnight
-                        if not is_long and bias < -hold_thr:
-                            continue  # bias says keep shorts
-                        # Neutral bias: only exit at top/bottom (gap safety = wait for top)
+                        if avg_gap is None:
+                            # Unknown symbol → don't close on gap (only VV)
+                            continue
+                        if abs(avg_gap) <= thr:
+                            # Near 0 → not wrong way, keep overnight (only VV closes)
+                            continue
+                        if not _gap_per_symbol_should_close(is_long, avg_gap):
+                            # Avg gap is favourable (long gap-up, short gap-down) → keep
+                            continue
+                        # Wrong-way avg gap beyond thresh → close (gap-down risk for longs, gap-up for shorts)
                     # Require small top/bottom unless at hard deadline
                     is_top = _is_small_top_for_gap_exit(ind, is_long)
                     if not is_top and not at_deadline:
-                        # Log once per 30m to avoid spam
                         if mins_to_close % 15 == 0:
-                            logger.info(f"[GAP_MOC] defer {pk}: bias={bias:+.2f}% thrill={hold_thr} need_top={bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True))} at_deadline={at_deadline} — waiting for top")
+                            _av_disp = f"{avg_gap:+.2f}" if avg_gap is not None else "NA"
+                            logger.info(f"[GAP_MOC] defer {pk}: avg={_av_disp}% thr={thr} need_top={bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True))} at_deadline={at_deadline} — waiting for top")
                         continue
                     gain = safe_fetch_float(getattr(pos, 'gain', 0), 0)
-                    _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': float(ind.get('current_price', 0)), 'exit_gain': gain, 'ts': time.time()}
-                    reason = f"GAP_MOC_EXIT_{pk}_bias{bias:+.2f}_top{is_top}_vv{vv_danger}_m{mins_to_close:.0f}"
+                    _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': float(ind.get('current_price', 0)), 'exit_gain': gain, 'ts': time.time(), 'avg_gap': avg_gap}
+                    reason = f"GAP_MOC_EXIT_{pk}_avg{avg_gap:+.2f}_thr{thr:.2f}_top{is_top}_vv{vv_danger}_m{mins_to_close:.0f}" if avg_gap is not None else f"GAP_MOC_EXIT_{pk}_vv{vv_danger}_m{mins_to_close:.0f}"
                     await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "CLOSE", reason, amt, override_qty=999999)
                     _gap_exit_done.add(pk)
-                    logger.warning(f"[GAP_MOC] exit {pk} bias={bias:+.2f}% is_top={is_top} vv={vv_danger} m_to_close={mins_to_close:.0f}")
+                    _av_log = f"{avg_gap:+.2f}" if avg_gap is not None else "NA"
+                    logger.warning(f"[GAP_MOC] exit {pk} avg={_av_log}% thr={thr:.2f} is_top={is_top} vv={vv_danger} m_to_close={mins_to_close:.0f}")
                 except Exception as _ce:
                     logger.error(f"[GAP_MOC_EXIT_ERR] {pk}: {_ce}", exc_info=True)
         except asyncio.CancelledError: break
@@ -19774,35 +19854,12 @@ class StockStrategy:
                 _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
                 _xb_within_band = _xb_dist_pct <= _xb_band_pct
                 if _xb_favorable or _xb_within_band:
-                    from ez_reentry import \
-                        check_reentry_confirmation as _chk_re
-                    _xb_gate_ok, _xb_gate_reason = _chk_re(i, is_long, config)
-                    # WT rising LONG / falling SHORT — wt1>prev vs wt1<prev, no 10
-                    if _xb_gate_ok and bool(_cfg_auto('RECOVERY_AUGMENT_REQUIRE_WT_CROSS', True)):
-                        _xb_wt1_15 = float(i.get('wt1_15m', 0) or 0)
-                        _xb_wt1_15_prev = float(i.get('wt1_15m_prev', _xb_wt1_15) or 0)
-                        if is_long:
-                            _xb_wt_ok = _xb_wt1_15 > _xb_wt1_15_prev
-                        else:
-                            _xb_wt_ok = _xb_wt1_15 < _xb_wt1_15_prev
-                        if not _xb_wt_ok:
-                            _xb_gate_ok = False
-                            _xb_gate_reason = f"WT15_{'RISING' if is_long else 'FALLING'}_FAIL_wt15={_xb_wt1_15:.1f}_prev={_xb_wt1_15_prev:.1f}"
-                    # 2026-05-29 USER: also require a 4-bar Donchian breakout (dc_high4_5m / dc_low4_5m
-                    # on already-closed bars). Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK. Fail-open.
+                    # 2026-09-11 EMERGENCY: PRICE_CROSS_BACK must fire IMMEDIATELY when price reclaims exit — bypass check_reentry_confirmation WT/K/HTF/rally for bouncing MSTR/IBIT/BMNR. User mandate "IMMEDIATELY BUY AGAIN IF EXIT PRICE IS CROSSED" bypasses all gates, hardcool, stoch/WT/HTF. WT gate stays for RECOVERY_AUG below, not here.
+                    _xb_gate_ok, _xb_gate_reason = True, "CROSSED_BACK_GUARANTEED_price_reclaim_bypass_all_gates"
+                    # 2026-09-11 EMERGENCY: Donchian 4-bar breakout churn guard disabled for PRICE_CROSS_BACK — bouncing MSTR dc_high 136.21 > cur 133.81 blocked immediate reclaim. Bypass for price reclaim, keep for RECOVERY_AUG.
                     _xb_dcb_ok = True
                     _xb_dckey = ""
                     _xb_dclvl = 0.0
-                    if bool(_cfg_auto('REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', False)):
-                        _xb_tf = str(_cfg_auto('REENTRY_LIVE_MONITOR_DC_BREAK_TF', '5m'))
-                        _xb_4 = bool(_cfg_auto('REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR', True))
-                        if is_long:
-                            _xb_dckey = f"dc_high4_{_xb_tf}" if _xb_4 else f"dc_high_{_xb_tf}"
-                        else:
-                            _xb_dckey = f"dc_low4_{_xb_tf}" if _xb_4 else f"dc_low_{_xb_tf}"
-                        _xb_dclvl = safe_fetch_float(i.get(_xb_dckey), 0.0)
-                        if _xb_dclvl > 0:
-                            _xb_dcb_ok = (is_long and current_price >= _xb_dclvl) or ((not is_long) and current_price <= _xb_dclvl)
                     if _xb_gate_ok and not _xb_dcb_ok:
                         logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
                     elif _xb_gate_ok:
@@ -19830,7 +19887,7 @@ class StockStrategy:
             _ra_recovery_fired = bool(getattr(position, 'recovery_fired', False))
             _ra_one_fire = bool(_cfg_auto('RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE', True))
             if _ra_last_px > 0 and _ra_last_t and not (_ra_one_fire and _ra_recovery_fired):
-                _ra_band_pct = float(_cfg_auto('RECOVERY_AUGMENT_BAND_PCT', 0.3))
+                _ra_band_pct = float(_cfg_auto('RECOVERY_AUGMENT_BAND_PCT', 1.0))  # 2026-09-11 parity: config 1.0 (was fallback 0.3 drifted from canonical)
                 _ra_max_age_min = float(_cfg_auto('RECOVERY_AUGMENT_MAX_AGE_MIN', 240.0))
                 _ra_age_min = 9999.0
                 try:
@@ -21492,7 +21549,35 @@ class TradierTradeManager:
         # Standard Mappings
         i['k_3m'] = i.get('k_5m')
         i['d_3m'] = i.get('d_5m')
-        
+        # BLOCKER FIX 2026-09-11: 15m/1h/4h/D WT/K/DC were None when tradier_indicators_latest only has _completed_* fields.
+        # Fill from _completed snapshot so NO INDICATOR CAN EVER BE STALE — uses Mac+S1+gateway+klines completed candle as fallback.
+        for tf in ('15m', '1h', '4h', 'D'):
+            if i.get(f'wt1_{tf}') is None:
+                v = i.get(f'_completed_wt1_{tf}') if f'_completed_wt1_{tf}' in i else i.get(f'_completed_wt1_{tf}_prev')
+                if v is not None: i[f'wt1_{tf}'] = v
+            if i.get(f'wt2_{tf}') is None:
+                v = i.get(f'_completed_wt2_{tf}') if f'_completed_wt2_{tf}' in i else i.get(f'_completed_wt2_{tf}_prev')
+                if v is not None: i[f'wt2_{tf}'] = v
+            if i.get(f'k_{tf}') is None:
+                v = i.get(f'_completed_stoch_k_{tf}') if f'_completed_stoch_k_{tf}' in i else i.get(f'_completed_stoch_k_{tf}_prev')
+                if v is not None: i[f'k_{tf}'] = v
+            if i.get(f'd_{tf}') is None:
+                v = i.get(f'_completed_stoch_d_{tf}') if f'_completed_stoch_d_{tf}' in i else i.get(f'_completed_stoch_d_{tf}_prev')
+                if v is not None: i[f'd_{tf}'] = v
+            if i.get(f'dc_high_{tf}') is None:
+                v = i.get(f'_completed_dc_high_{tf}') if f'_completed_dc_high_{tf}' in i else i.get(f'_completed_dc_high_{tf}_prev')
+                if v is not None: i[f'dc_high_{tf}'] = v
+            if i.get(f'dc_low_{tf}') is None:
+                v = i.get(f'_completed_dc_low_{tf}') if f'_completed_dc_low_{tf}' in i else i.get(f'_completed_dc_low_{tf}_prev')
+                if v is not None: i[f'dc_low_{tf}'] = v
+            # forward-fill prev from ant/prev if still missing (for wt1_15m_prev gating: wt1>prev)
+            if i.get(f'wt1_{tf}_prev') is None:
+                v = i.get(f'_completed_wt1_{tf}_prev') or i.get(f'_completed_wt1_{tf}')
+                if v is not None: i[f'wt1_{tf}_prev'] = v
+            if i.get(f'k_{tf}_prev') is None:
+                v = i.get(f'_completed_stoch_k_{tf}_prev')
+                if v is not None: i[f'k_{tf}_prev'] = v
+        # also fill 5m prev fallbacks for k_5m_prev when None? keep existing
         # Punctual Timestamp Fix: Convert all your specific JSON keys to UTC Datetimes
         ts_keys = ['timestamp', 'timestamp_1m', 'timestamp_5m', 'timestamp_15m', 'timestamp_1h', 'timestamp_4h']
         for k in ts_keys:

@@ -40,11 +40,13 @@ Fix in v14 (sequential, S1-only):
 - No suspicious global block; duplicate deltas are logged not blocked.
 """
 from __future__ import annotations
+import sys
+print("DEPRECATED: v14_sequential_filler is disabled — use tools/simple_switch_filter_calculator.py (26-col, 9291×26, resumable) + tools/fill_template_from_csv.py for RESULTS. See SPREADSHEETS/TEMPLATE_*_FILLED.xlsx", file=sys.stderr)
+sys.exit(78)
 import argparse
 import dataclasses
 import datetime
 import json
-import sys
 import time
 from pathlib import Path
 

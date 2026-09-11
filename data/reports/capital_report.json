@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-09-11 14:34 UTC",
- "total_capital_usd": 108.6,
+ "generated_at": "2026-09-11 17:29 UTC",
+ "total_capital_usd": 11.96,
  "tier_capital": {
   "A": 0.0,
-  "B": 108.61,
-  "C": 0.0
+  "B": 0.0,
+  "C": 11.96
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "flz:XRPUSDC_LONG"
+ "losers": [
+  "men:FLOWUSDT_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:HYPEUSDT_LONG",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 79.03,
-   "gain_pct": -0.281,
-   "tier": "B",
-   "perf_mult": 1.33,
-   "amt": 0.95,
-   "mark": 83.18590476
-  },
-  {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 29.58,
-   "gain_pct": 0.123,
-   "tier": "B",
-   "perf_mult": 0.45,
-   "amt": 21.2,
-   "mark": 1.3952
+   "pk": "men:FLOWUSDT_SHORT",
+   "symbol": "FLOWUSDT",
+   "account": "men",
+   "value_usd": 11.96,
+   "gain_pct": -0.102,
+   "tier": "C",
+   "perf_mult": 0.43,
+   "amt": 433.3,
+   "mark": 0.02761
   }
  ]
 }

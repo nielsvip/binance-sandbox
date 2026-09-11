@@ -54,7 +54,7 @@ SWAP_EMERGENCY_GB = 8.0  # 8GB swap = system is dying
 # 36s later — the live stock stack stayed down ~15h. Tier 3 fired 8x between 19:45-20:04 UTC that day
 # (15:45-16:04 ET), i.e. it can and does fire DURING market hours. tier1_restart_hog already excludes
 # live trading workers for the same reason; tier3 was bypassing that policy via the GUI app-quit loop.
-NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari", "Python", "python3", "Surfshark", "WhatsApp", "TradingView"}
+NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari", "Python", "python3", "Surfshark", "WhatsApp", "TradingView", "FileZilla"}
 ANTIGRAVITY_APPS = {"Antigravity", "Antigravity IDE"}
 # Background language-server / indexer helpers that balloon unbounded while indexing this huge
 # repo (2026-06-03: language_server_macos_arm grew to 5.4GB → jetsam SIGKILLed live ez_manage
@@ -79,7 +79,7 @@ BACKTEST_PATTERNS = ["backtest_v5", "backtest_v4", "backtest_v3", "backtest_abla
 BACKTEST_SERVER = "s1-int"
 BACKTEST_SERVER_PATH = "/home/niels/binance"
 # Non-essential apps to kill (browsers are NEVER killed)
-KILL_PRIORITY_APPS = ["Ollama", "Slack", "Discord", "Spotify", "FileZilla", "Trade the Future.", "Comet", "Resilio Sync", "Google Drive", "ChatGPT", "ChatGPT Atlas", "Claude"]
+KILL_PRIORITY_APPS = ["Ollama", "Slack", "Discord", "Spotify", "Trade the Future.", "Comet", "Resilio Sync", "Google Drive", "ChatGPT", "ChatGPT Atlas", "Claude"]
 # System agents to never touch
 SYSTEM_AGENT_KEYWORDS = {"Agent", "UIServer", "Server", "Manager", "Center", "Notification", "Control", "Dispatch", "Spotlight", "XProtect", "liquiddetection", "imagent", "identityservice", "sociallayer", "Keychain", "PressAndHold", "UIKit", "WiFi", "CoreServices", "CoreLocation", "BackgroundTask", "Escrow", "WindowManager", "WallpaperAgent", "UniversalControl", "IMAutomatic", "Software Update", "TextInput", "AirPlay", "AXVisual", "Screen Time", "FolderActions", "ARDAgent", "SSMenuAgent"}
 # Paths

@@ -16,6 +16,9 @@ Rules (Bible §16.73 + user mandates 2026-09-01):
 """
 
 from __future__ import annotations
+import sys
+print("DEPRECATED: v12_pilot_sheet_runner is disabled — use tools/simple_switch_filter_calculator.py (26-col, 9291×26, resumable) + tools/fill_template_from_csv.py for RESULTS. See SPREADSHEETS/TEMPLATE_*_FILLED.xlsx", file=sys.stderr)
+sys.exit(78)
 import argparse
 import concurrent.futures
 import copy
@@ -23,7 +26,6 @@ import dataclasses
 import datetime
 import hashlib
 import json
-import sys
 import time
 import threading
 
