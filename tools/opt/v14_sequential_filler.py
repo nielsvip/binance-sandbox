@@ -476,7 +476,9 @@ def ensure_lbI_headers(wb_path: Path):
             hv = ws.cell(row=1, column=c).value
             if hv and isinstance(hv, str) and "=" in hv:
                 existing.add(hv.strip())
-        # collect opportune headers for this sheet (distinct filter=opt) — mirror get_opportune_filters
+        # collect opportune headers for this sheet (distinct filter=opt) — UNCONDITIONAL: any applicable sheets_app
+        # Previous gate filter was too strict (token_overlap with sheet/switch) leaving 0 headers for BOUNCE.
+        # Ensure L:BI always has columns for every applicable filter so per-row pending_lbI can be written.
         headers = []
         seen = set()
         lifecycle = sheet.split("_")[0]
@@ -488,17 +490,12 @@ def ensure_lbI_headers(wb_path: Path):
                 applicable = (lifecycle in sa) or ("GLOBAL_CHECK" in sa)
             if not applicable:
                 continue
-            if sa == "ALL" and _is_general(e["rec"]):
-                pass  # GENERAL ALL always applicable
-            elif not (_is_general(e["rec"]) or _token_overlap(e["gates"], sheet) or any(_token_overlap(e["gates"], str(ws.cell(r, 1).value or "")) for r in range(2, min(30, ws.max_row+1)) if ws.cell(r, 1).value)):
-                # also allow token overlap with sheet name itself (e.g. BOUNCE)
-                continue
             hdr = f"{e['filter']}={e['opt']}"
             if hdr in seen or hdr in existing:
                 continue
             seen.add(hdr)
             headers.append(hdr)
-            if len(headers) >= 40:  # cap per sheet
+            if len(headers) >= 50:  # cap per sheet (allow a bit more to ensure coverage)
                 break
         # write headers starting at L=12
         col = max(12, ws.max_column + 1) if existing else 12
