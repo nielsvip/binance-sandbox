@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-11 12:48 UTC
+PERFORMANCE REPORT — 2026-09-11 13:47 UTC
 ================================================================================
 Total: 163 symbols | A=1 B=125 C=37
 Window: 14 days | Min trades: 5
@@ -17,6 +17,7 @@ Window: 14 days | Min trades: 5
          COTIUSDT  WR=76%  avg=+0.22%  total=+4.6%  trades= 21  mult=7.19
           PTBUSDT  WR=57%  avg=+0.19%  total=+4.1%  trades= 21  mult=3.59
               ETN  WR=14%  avg=+0.27%  total=+3.6%  trades= 14  mult=0.41
+             MSTR  WR=67%  avg=+1.16%  total=+3.5%  trades=  3  mult=1.00
              PYPL  WR=60%  avg=+0.58%  total=+2.9%  trades=  5  mult=2.43
          RKLBUSDT  WR=74%  avg=+0.14%  total=+2.7%  trades= 19  mult=5.94
            OPUSDT  WR=54%  avg=+0.09%  total=+2.6%  trades= 28  mult=2.27
@@ -92,7 +93,6 @@ Window: 14 days | Min trades: 5
          ALGOUSDT  WR=63%  avg=-0.01%  total=-0.1%  trades= 19  mult=3.21
          USARUSDT  WR=75%  avg=-0.03%  total=-0.1%  trades=  4  mult=1.00
           WMTUSDT  WR=56%  avg=-0.01%  total=-0.2%  trades= 18  mult=1.84
-             MSTR  WR=0%  avg=-0.23%  total=-0.2%  trades=  1  mult=1.00
           SNXUSDT  WR=50%  avg=-0.03%  total=-0.3%  trades=  8  mult=0.96
           XMRUSDT  WR=67%  avg=-0.05%  total=-0.3%  trades=  6  mult=1.80
           FILUSDC  WR=58%  avg=-0.02%  total=-0.3%  trades= 12  mult=1.80
@@ -121,10 +121,10 @@ Window: 14 days | Min trades: 5
              TSLA  WR=67%  avg=-1.27%  total=-4.0%  trades=  3  mult=1.00
              HOOD  WR=0%  avg=-4.69%  total=-4.7%  trades=  1  mult=1.00
               ARM  WR=0%  avg=-4.75%  total=-4.8%  trades=  1  mult=1.00
-               MU  WR=50%  avg=-1.35%  total=-5.3%  trades=  4  mult=1.00
              BMNR  WR=0%  avg=-2.76%  total=-5.4%  trades=  2  mult=1.00
              LRCX  WR=50%  avg=-1.50%  total=-6.1%  trades=  4  mult=1.00
              COIN  WR=0%  avg=-3.29%  total=-6.5%  trades=  2  mult=1.00
+               MU  WR=0%  avg=-2.35%  total=-6.9%  trades=  3  mult=1.00
               CRM  WR=0%  avg=-3.55%  total=-7.0%  trades=  2  mult=1.00
               CLS  WR=0%  avg=-1.84%  total=-7.2%  trades=  4  mult=1.00
              SNOW  WR=0%  avg=-1.86%  total=-7.2%  trades=  4  mult=1.00
@@ -163,7 +163,7 @@ Window: 14 days | Min trades: 5
               AMD  WR=12%  avg=-0.91%  total=-7.2%  trades=  8  mult=0.30
              NVDA  WR=40%  avg=-1.64%  total=-8.0%  trades=  5  mult=0.46
               LOW  WR=20%  avg=-1.68%  total=-8.2%  trades=  5  mult=0.39
-              NKE  WR=0%  avg=-2.11%  total=-10.1%  trades=  5  mult=0.33
+              NKE  WR=0%  avg=-1.43%  total=-12.2%  trades=  9  mult=0.22
              BABA  WR=0%  avg=-2.10%  total=-13.8%  trades=  7  mult=0.26
               NEM  WR=0%  avg=-2.48%  total=-14.0%  trades=  6  mult=0.29
              AMAT  WR=12%  avg=-1.38%  total=-21.2%  trades= 17  mult=0.14
@@ -176,4 +176,4 @@ SUMMARY:
   Total PnL (all symbols): -153.5%
   Avg win rate: 45%
   A-tier avg mult: 10.00
-  C-tier avg mult: 0.46
+  C-tier avg mult: 0.45

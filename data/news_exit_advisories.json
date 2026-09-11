@@ -1,78 +1,70 @@
 {
-  "generated_at": "2026-09-10T19:48:38.272008+00:00",
-  "count": 9,
+  "generated_at": "2026-09-11T13:36:20.672706+00:00",
+  "count": 8,
   "advisories": [
     {
-      "symbol": "VT",
+      "symbol": "DVN",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.84 threshold=0.45",
-      "score": 0.844,
-      "ts": "2026-09-10T19:48:38.271466+00:00"
+      "reason": "bullish_news_score=0.55 threshold=0.45",
+      "score": 0.551,
+      "ts": "2026-09-11T13:36:20.672557+00:00"
     },
     {
-      "symbol": "VLO",
+      "symbol": "EQT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.462,
-      "ts": "2026-09-10T19:48:38.271528+00:00"
+      "reason": "bullish_news_score=0.60 threshold=0.45",
+      "score": 0.597,
+      "ts": "2026-09-11T13:36:20.672610+00:00"
     },
     {
-      "symbol": "SMCI",
+      "symbol": "FIX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.73 threshold=0.45",
-      "score": 0.725,
-      "ts": "2026-09-10T19:48:38.271597+00:00"
+      "reason": "bullish_news_score=0.66 threshold=0.45",
+      "score": 0.659,
+      "ts": "2026-09-11T13:36:20.672618+00:00"
     },
     {
-      "symbol": "SMG",
+      "symbol": "GDXJ",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.63 threshold=0.45",
-      "score": 0.635,
-      "ts": "2026-09-10T19:48:38.271612+00:00"
+      "reason": "bullish_news_score=0.51 threshold=0.45",
+      "score": 0.513,
+      "ts": "2026-09-11T13:36:20.672627+00:00"
     },
     {
-      "symbol": "UAN",
+      "symbol": "GOLD",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.74 threshold=0.45",
-      "score": 0.735,
-      "ts": "2026-09-10T19:48:38.271621+00:00"
+      "reason": "bullish_news_score=0.64 threshold=0.45",
+      "score": 0.642,
+      "ts": "2026-09-11T13:36:20.672629+00:00"
     },
     {
-      "symbol": "UNH",
+      "symbol": "INOD",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.52 threshold=0.45",
-      "score": 0.517,
-      "ts": "2026-09-10T19:48:38.271626+00:00"
+      "reason": "bullish_news_score=0.60 threshold=0.45",
+      "score": 0.598,
+      "ts": "2026-09-11T13:36:20.672631+00:00"
     },
     {
-      "symbol": "UPS",
+      "symbol": "LEXX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.52 threshold=0.45",
-      "score": 0.518,
-      "ts": "2026-09-10T19:48:38.271630+00:00"
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.472,
+      "ts": "2026-09-11T13:36:20.672634+00:00"
     },
     {
-      "symbol": "WPM",
+      "symbol": "LLY",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.65 threshold=0.45",
-      "score": 0.647,
-      "ts": "2026-09-10T19:48:38.271636+00:00"
-    },
-    {
-      "symbol": "ZETA",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.457,
-      "ts": "2026-09-10T19:48:38.271640+00:00"
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.556,
+      "ts": "2026-09-11T13:36:20.672635+00:00"
     }
   ]
 }
