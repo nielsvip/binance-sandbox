@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-11 13:46:21 UTC
+# Copilot Status — 2026-09-11 14:32:09 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-11T13:43:54
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T13:43:54
-- **STALE_INDICATORS** [tradier]  — 2026-09-11T13:44:30
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T13:44:30
-- **STALE_INDICATORS** [tradier]  — 2026-09-11T13:45:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T13:45:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T13:45:00
-- **STALE_INDICATORS** [tradier]  — 2026-09-11T13:45:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T13:45:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T13:46:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T14:30:14
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T14:30:14
+- **STALE_INDICATORS** [tradier]  — 2026-09-11T14:30:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T14:30:44
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T14:30:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T14:31:15
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T14:31:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T14:31:46
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T14:31:46
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-11T14:31:57
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,13 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +5.7%
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +6.0%
 
 - WATCHING: **SNDK** LONG (tradier) peaked +7.5%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
+
+**Issues (last 1h):** 1
+- [HIGH] ez_manage.py for flz is NOT running

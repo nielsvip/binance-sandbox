@@ -1,70 +1,86 @@
 {
-  "generated_at": "2026-09-11T13:36:20.672706+00:00",
-  "count": 8,
+  "generated_at": "2026-09-11T14:25:04.901109+00:00",
+  "count": 10,
   "advisories": [
     {
-      "symbol": "DVN",
+      "symbol": "ABT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.55 threshold=0.45",
-      "score": 0.551,
-      "ts": "2026-09-11T13:36:20.672557+00:00"
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.473,
+      "ts": "2026-09-11T14:25:04.900884+00:00"
     },
     {
-      "symbol": "EQT",
+      "symbol": "APA",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.60 threshold=0.45",
-      "score": 0.597,
-      "ts": "2026-09-11T13:36:20.672610+00:00"
+      "reason": "bullish_news_score=0.65 threshold=0.45",
+      "score": 0.649,
+      "ts": "2026-09-11T14:25:04.900968+00:00"
     },
     {
-      "symbol": "FIX",
+      "symbol": "AXTI",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.66 threshold=0.45",
-      "score": 0.659,
-      "ts": "2026-09-11T13:36:20.672618+00:00"
+      "reason": "bullish_news_score=0.73 threshold=0.45",
+      "score": 0.727,
+      "ts": "2026-09-11T14:25:04.900979+00:00"
     },
     {
-      "symbol": "GDXJ",
+      "symbol": "A",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.513,
-      "ts": "2026-09-11T13:36:20.672627+00:00"
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.53,
+      "ts": "2026-09-11T14:25:04.900981+00:00"
     },
     {
-      "symbol": "GOLD",
+      "symbol": "BWXT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.64 threshold=0.45",
       "score": 0.642,
-      "ts": "2026-09-11T13:36:20.672629+00:00"
+      "ts": "2026-09-11T14:25:04.900984+00:00"
     },
     {
-      "symbol": "INOD",
+      "symbol": "CIBR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.60 threshold=0.45",
-      "score": 0.598,
-      "ts": "2026-09-11T13:36:20.672631+00:00"
+      "reason": "bullish_news_score=0.59 threshold=0.45",
+      "score": 0.586,
+      "ts": "2026-09-11T14:25:04.900986+00:00"
     },
     {
-      "symbol": "LEXX",
+      "symbol": "CIEN",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.47 threshold=0.45",
-      "score": 0.472,
-      "ts": "2026-09-11T13:36:20.672634+00:00"
+      "reason": "bullish_news_score=0.51 threshold=0.45",
+      "score": 0.509,
+      "ts": "2026-09-11T14:25:04.900988+00:00"
     },
     {
-      "symbol": "LLY",
+      "symbol": "CLS",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.56 threshold=0.45",
-      "score": 0.556,
-      "ts": "2026-09-11T13:36:20.672635+00:00"
+      "reason": "bullish_news_score=0.57 threshold=0.45",
+      "score": 0.567,
+      "ts": "2026-09-11T14:25:04.900990+00:00"
+    },
+    {
+      "symbol": "CRWD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.45 threshold=0.45",
+      "score": 0.452,
+      "ts": "2026-09-11T14:25:04.901001+00:00"
+    },
+    {
+      "symbol": "U",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.62 threshold=0.45",
+      "score": 0.625,
+      "ts": "2026-09-11T14:25:04.901029+00:00"
     }
   ]
 }

@@ -540,6 +540,25 @@ def ensure_lbI_headers(wb_path: Path):
     wb.save(str(wb_path))
 
 
+def _atomic_save(wb, wb_path: Path):
+    """Atomic save: write to temp then rename to avoid BadZipFile on concurrent read."""
+    import tempfile, shutil, os
+    tmp = str(wb_path) + ".tmp"
+    try:
+        wb.save(tmp)
+        os.replace(tmp, str(wb_path))
+    except Exception:
+        try:
+            wb.save(str(wb_path))
+        except Exception:
+            pass
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+
+
 def write_results_variant(wb_path: Path, switch: str, variant_gain: float, delta: float, vec: dict, cand_value=None):
     # FIX invented numbers: Results key must be unique per row (switch + "=" + cand) for BB_PULLBACK_GATE_TF OFF vs D etc.
     # Old key was switch alone → VLOOKUP duplicated, invented numbers 0.2149 across symbols, stall after BB_PULLBACK_GATE_TF.
@@ -715,6 +734,8 @@ def main():
 
     cumulative_gain = progress.get("cumulative_gain", baseline_gain)
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
+    # clean corrupted cumulative_overrides containing " + " (from old progress)
+    cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
     # FIX: baseline valid=False (trades 1 < floor 10) should also allow zero-baseline relax, otherwise ZEC never promotes (ratio 1 vs 477 fails)
     _bl_trades = int(baseline_live.get("trades") or 0)
     _bl_valid = bool(baseline_live.get("valid"))
@@ -1002,37 +1023,94 @@ def main():
                     # if after this combo_size we have positive, we still continue to next size to find MAX across sizes
                 # end combo sizes
 
-            # batch write L:BI once per row (including combos)
-            if pending_lbI:
-                try:
-                    wb2 = openpyxl.load_workbook(str(wb_path), data_only=False)
-                    if sheet in wb2.sheetnames:
-                        ws2 = wb2[sheet]
-                        for hdr, d in pending_lbI.items():
-                            col = header_to_col.get(hdr)
-                            if col:
-                                ws2.cell(row=r, column=col).value = float(d)
-                        wb2.save(str(wb_path))
-                except Exception as e:
-                    print(f"[lbI-err] {e}", flush=True)
+            # SINGLE atomic write per row: L:BI + Results + F/E together (was 3 saves → 1 save, 3x faster and atomic)
             if best is None:
                 progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid"}
                 print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID (delta N/A) E stays {cumulative_before:.4f} C empty", flush=True)
                 continue
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
-            # Always write F via Results (even if negative) — log every delta per row + filter, certified key includes cand
-            write_results_variant(wb_path, switch, float(vec_best.get("gain_pct") or 0), float(delta_best), vec_best, cand_value=cand)
-            # FIX: also write directly to ENTRY sheet F/E so data_only shows numbers immediately (was formula-only -> f=0)
-            # Baseline column E should be blank unless positive delta (user: baseline only when pos)
+            # Always write F via Results + L:BI + F/E in single atomic transaction (avoid BadZipFile and 3x I/O)
             try:
-                wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
-                if sheet in wb_tmp.sheetnames:
-                    ws_tmp = wb_tmp[sheet]
+                # Write Results first via helper but keep wb in memory for single save
+                # Instead of separate write_results_variant load/save, do unified write:
+                wb_row = openpyxl.load_workbook(str(wb_path), data_only=False)
+                # write L:BI
+                if pending_lbI and sheet in wb_row.sheetnames:
+                    ws_row = wb_row[sheet]
+                    for hdr, d in pending_lbI.items():
+                        col = header_to_col.get(hdr)
+                        if col:
+                            try:
+                                ws_row.cell(row=r, column=col).value = float(d)
+                            except Exception:
+                                pass
+                # write Results_30d_Deltas
+                target = None
+                for cand_name in ["Results_30d_Deltas", "Results_30d", "results"]:
+                    if cand_name in wb_row.sheetnames:
+                        target = cand_name
+                        break
+                if target is None:
+                    ws_new = wb_row.create_sheet("Results_30d_Deltas")
+                    ws_new.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","variant_sharpe","trades","tim","dd"])
+                    target = "Results_30d_Deltas"
+                rws = wb_row[target]
+                if str(rws.cell(1,1).value or "").strip().lower() in ("param","switch"):
+                    rws.cell(1,1).value = "key"
+                key_results = f"{switch}={cand}" if cand is not None else switch
+                found = None
+                for rr in range(2, rws.max_row + 1):
+                    if str(rws.cell(row=rr, column=1).value or "").strip() == key_results:
+                        found = rr
+                        break
+                if found is None and cand is not None:
+                    for rr in range(2, rws.max_row + 1):
+                        if str(rws.cell(row=rr, column=1).value or "").strip() == switch:
+                            rws.cell(row=rr, column=1).value = key_results
+                            found = rr
+                            break
+                if found is None:
+                    found = rws.max_row + 1
+                    rws.cell(row=found, column=1).value = key_results
+                rws.cell(row=found, column=8).value = float(vec_best.get("gain_pct") or 0)
+                rws.cell(row=found, column=5).value = float(delta_best)
+                try:
+                    rws.cell(row=found, column=10).value = int(vec_best.get("trades") or 0)
+                    rws.cell(row=found, column=12).value = float(vec_best.get("tim_pct") or 0)
+                    rws.cell(row=found, column=11).value = float(vec_best.get("max_dd_pct") or 0) if vec_best.get("max_dd_pct") is not None else None
+                    header_map = {str(rws.cell(1,c).value or "").strip().lower(): c for c in range(1, rws.max_column+1)}
+                    if "variant_sharpe" in header_map:
+                        rws.cell(row=found, column=header_map["variant_sharpe"]).value = float(vec_best.get("pool_sharpe") or 0)
+                    if "bh_pct" in header_map:
+                        rws.cell(row=found, column=header_map["bh_pct"]).value = float(vec_best.get("bh_pct") or 0)
+                    if "gain_pct" in header_map:
+                        rws.cell(row=found, column=header_map["gain_pct"]).value = float(vec_best.get("gain_pct") or 0)
+                    extra = {13: float(vec_best.get("win_rate") or vec_best.get("wr_pct") or 0), 14: int(vec_best.get("bars") or 0), 15: float(vec_best.get("peak") or 0), 16: float(vec_best.get("bh_pct") or 0), 17: str(vec_best.get("source") or "backtest_v12_engine")}
+                    for col, val in extra.items():
+                        try:
+                            rws.cell(row=found, column=col).value = val
+                        except: pass
+                except Exception:
+                    pass
+                # write F/E to ENTRY sheet
+                if sheet in wb_row.sheetnames:
+                    ws_tmp = wb_row[sheet]
                     ws_tmp.cell(r, 6).value = float(delta_best)
                     ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else None
-                    wb_tmp.save(str(wb_path))
+                _atomic_save(wb_row, wb_path)
             except Exception as _e:
-                print(f"[entry-write-err] {sheet}!{r} {_e}", flush=True)
+                print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
+                # fallback to old method
+                try:
+                    write_results_variant(wb_path, switch, float(vec_best.get("gain_pct") or 0), float(delta_best), vec_best, cand_value=cand)
+                    wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
+                    if sheet in wb_tmp.sheetnames:
+                        ws_tmp = wb_tmp[sheet]
+                        ws_tmp.cell(r, 6).value = float(delta_best)
+                        ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else None
+                        _atomic_save(wb_tmp, wb_path)
+                except Exception as _e2:
+                    print(f"[entry-write-err] {sheet}!{r} {_e2}", flush=True)
             progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": vec_best, "best_filter": filt_best, "best_fval": fval_best}
             # persist immediately so restarts skip (prevents 760s re-eval loop on NEG)
             try:

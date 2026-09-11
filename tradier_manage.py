@@ -19777,14 +19777,17 @@ class StockStrategy:
                     from ez_reentry import \
                         check_reentry_confirmation as _chk_re
                     _xb_gate_ok, _xb_gate_reason = _chk_re(i, is_long, config)
-                    # 2026-09-11 easier: wt1_15m > wt1_15m_prev (rising WT) — 5m not in NPZ, k_5m<80 stays as extra live filter
+                    # WT rising LONG / falling SHORT — wt1>prev vs wt1<prev, no 10
                     if _xb_gate_ok and bool(_cfg_auto('RECOVERY_AUGMENT_REQUIRE_WT_CROSS', True)):
                         _xb_wt1_15 = float(i.get('wt1_15m', 0) or 0)
                         _xb_wt1_15_prev = float(i.get('wt1_15m_prev', _xb_wt1_15) or 0)
-                        _xb_wt_ok = (is_long and _xb_wt1_15 > _xb_wt1_15_prev) or ((not is_long) and _xb_wt1_15 < _xb_wt1_15_prev)
+                        if is_long:
+                            _xb_wt_ok = _xb_wt1_15 > _xb_wt1_15_prev
+                        else:
+                            _xb_wt_ok = _xb_wt1_15 < _xb_wt1_15_prev
                         if not _xb_wt_ok:
                             _xb_gate_ok = False
-                            _xb_gate_reason = f"WT15_RISING_AGAINST_{'bear' if is_long else 'bull'}_wt15={_xb_wt1_15:.1f}_prev={_xb_wt1_15_prev:.1f}"
+                            _xb_gate_reason = f"WT15_{'RISING' if is_long else 'FALLING'}_FAIL_wt15={_xb_wt1_15:.1f}_prev={_xb_wt1_15_prev:.1f}"
                     # 2026-05-29 USER: also require a 4-bar Donchian breakout (dc_high4_5m / dc_low4_5m
                     # on already-closed bars). Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK. Fail-open.
                     _xb_dcb_ok = True
@@ -19843,7 +19846,7 @@ class StockStrategy:
                         _ra_require_wt = bool(_cfg_auto('RECOVERY_AUGMENT_REQUIRE_WT_CROSS', True))
                         _ra_wt_ok = True
                         if _ra_require_wt:
-                            # 2026-09-11 easier: wt1_15m > wt1_15m_prev (rising WT) — 5m not in NPZ so no vec backtest, k_5m<80 stays as extra live filter
+                            # WT rising for LONG (k>=k_prev), falling for SHORT — wt1>prev vs wt1<prev, no 10
                             _ra_wt1_15 = float(i.get('wt1_15m', 0) or 0)
                             _ra_wt1_15_prev = float(i.get('wt1_15m_prev', i.get('wt1_15m', 0)) or 0)
                             if is_long:
@@ -19852,10 +19855,13 @@ class StockStrategy:
                                 _ra_wt_ok = _ra_wt1_15 < _ra_wt1_15_prev
                         _ra_gate_ok = True
                         if bool(_cfg_auto('REENTRY_CONFIRMATION_GATES_ENABLED', True)):
-                            _k5 = float(i.get('k_5m', 50) or 50)
-                            # k_5m<80 stays as extra live filter — no vec equivalent (5m not in NPZ) — AND wt rising (separate _ra_wt_ok)
-                            if is_long: _ra_gate_ok = (_k5 < float(_cfg_auto('REENTRY_STOCH_K_MAX_LONG', 80.0)))
-                            else: _ra_gate_ok = (_k5 > float(_cfg_auto('REENTRY_STOCH_K_MIN_SHORT', 20.0)))
+                            _k5 = float(i.get('k_5m', 50) or 50); _kp5 = float(i.get('k_5m_prev', 50) or 50); _d5 = float(i.get('d_5m', 50) or 50)
+                            # USER RULE: k>=k_prev or d with htf backup — no 80/20 magic, both LONG/SHORT need rising k or d
+                            _htf_backup = bool(i.get('k_1h', 50) > i.get('d_1h', 50) or i.get('k_15m', 50) > i.get('d_15m', 50))
+                            if _k5 >= _kp5 or (_k5 >= _d5 and _htf_backup):
+                                _ra_gate_ok = True
+                            else:
+                                _ra_gate_ok = False
                         if _ra_wt_ok and _ra_gate_ok and _ra_gain_ok:
                             _ra_size_pct = float(_cfg_auto('RECOVERY_AUGMENT_SIZE_PCT', 1.0))
                             _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
