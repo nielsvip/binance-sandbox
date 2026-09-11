@@ -1382,6 +1382,18 @@ def main():
             import traceback; traceback.print_exc()
 
     bh_raw = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0)
+    # FIX: never vomit empty sheets — if no positives and gain 0, delete and skip (BIO/AVAX etc missing NPZ)
+    if total_pos == 0 and abs(cumulative_gain - baseline_gain) < 1e-9:
+        try:
+            wb_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        progress["final_gain"] = cumulative_gain
+        progress["bh"] = bh_raw
+        progress["skipped_empty"] = True
+        progress_path.write_text(json.dumps(progress, indent=2))
+        print(f"[skip-empty] {new_symside} no positives bh={bh_raw:.2f} gain={cumulative_gain:.2f} — deleted empty {wb_path.name}", flush=True)
+        return
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name
