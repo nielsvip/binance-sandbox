@@ -3036,5 +3036,14 @@
     ],
     "timestamp": "2026-09-11T03:06:46.851627+00:00",
     "price": 1686.41505596
+  },
+  {
+    "symbol": "GRAMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-11T03:17:22.954769+00:00",
+    "price": 1.34917733
   }
 ]
