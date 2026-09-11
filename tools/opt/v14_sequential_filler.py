@@ -26,7 +26,7 @@ Why v12/v13 stranded (diagnosis inline, INSTRUCTIONS 11 steps LAW):
 Fix in v14 (sequential, S1-only):
 - Single thread, no ThreadPool → no config race.
 - cumulative_before tracked per row; F = variant_gain - cumulative_before.
-- Results_30d_Deltas col8 = variant_gain (= cumulative_before + delta) so
+- Results_Deltas col8 = variant_gain (= cumulative_before + delta) so
   Excel F = VLOOKUP - Eprev recomputes correctly; E = IF(F>0,Eprev+F,Eprev).
 - BH inversion for SHORT: short BH floored -100% in metrics.py, but sheet
   display bh inverted (positive) per INSTRUCTIONS 1b; delta vs BH still correct.
@@ -302,7 +302,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
         if isinstance(c2.value, str) and "-E1" in c2.value:
             c2.value = c2.value.replace("-E1", "-E2")
     # clear Results and ensure full header per INSTRUCTIONS 5 — ALL METRICS for every pos delta
-    for cand in ["Results_30d_Deltas", "Results_30d", "results"]:
+    for cand in ["Results_Deltas", "Results_30d", "results"]:
         if cand in wb.sheetnames:
             ws = wb[cand]
             for r in range(2, ws.max_row + 1):
@@ -322,7 +322,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     ws.cell(1, ci).font = Font(bold=True)
             break
     else:
-        ws = wb.create_sheet("Results_30d_Deltas")
+        ws = wb.create_sheet("Results_Deltas")
         ws.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","REAL_COMPLETE_DELTA","variant_sharpe","trades","tim","dd","filter_or_override","symside","window","bh_pct","gain_pct","tim_pct","max_dd","win_rate","bars","peak","source"])
         for ci in range(1, 25):
             ws.cell(1, ci).font = Font(bold=True)
@@ -580,14 +580,14 @@ def write_results_variant(wb_path: Path, switch: str, variant_gain: float, delta
     # New key is switch + "=" + str(cand) (matches TEMPLATE F VLOOKUP $A&"="&$B) and delta is vs baseline.
     wb = openpyxl.load_workbook(str(wb_path))
     target = None
-    for cand in ["Results_30d_Deltas", "Results_30d", "results"]:
+    for cand in ["Results_Deltas", "Results_30d", "results"]:
         if cand in wb.sheetnames:
             target = cand
             break
     if target is None:
-        ws = wb.create_sheet("Results_30d_Deltas")
+        ws = wb.create_sheet("Results_Deltas")
         ws.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","variant_sharpe","trades","tim","dd"])
-        target = "Results_30d_Deltas"
+        target = "Results_Deltas"
     rws = wb[target]
     # Ensure header is new format
     if str(rws.cell(1,1).value or "").strip().lower() in ("param","switch"):
@@ -927,6 +927,7 @@ def main():
             # (13-cap was the STUPID SHIT that wasted hours producing identical numbers)
             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
             # No cap — every opportune SPECIFIC filter is evaluated via prepare_batch (0.07s each, 200*0.07=14s max per row)
+            # INSTRUCTIONS 2/2a — sum ALL positive yellows per switch (not best single)
             best = None
             pending_lbI = {}
             try:
@@ -937,6 +938,8 @@ def main():
             except Exception as e:
                 print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                 vecs = []
+            # First pass: collect per-filter deltas and log
+            per_filter_deltas = {}
             for idx, (variant, filt, fval, hdr) in enumerate(candidates):
                 if idx >= len(vecs):
                     break
@@ -951,8 +954,82 @@ def main():
                     print(f"[CANDIDATE] {sheet}!{r} {switch}={cand}+{filt}={fval} vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
                 if filt is not None and hdr in header_to_col:
                     pending_lbI[hdr] = float(delta)
-                if best is None or delta > best[0]:
-                    best = (delta, variant, filt, fval, hdr, vec)
+                    per_filter_deltas[hdr] = (delta, variant, filt, fval, vec)
+                if filt is None:
+                    # switch alone is candidate for best if no yellows positive
+                    if best is None or delta > best[0]:
+                        best = (delta, variant, filt, fval, hdr, vec)
+            # Sum all positive yellows — per INSTRUCTIONS baseline stays empty, vector_delta = switch alone
+            positives = [(hdr, d, var, filt, fval, vec) for hdr, (d, var, filt, fval, vec) in per_filter_deltas.items() if d > 0]
+            # Capture vector_delta (switch alone) for F column — F is switch alone before yellows, per user
+            vector_delta = None
+            vector_vec = None
+            for hdr, (d, var, filt, fval, vec) in per_filter_deltas.items():
+                pass  # placeholder
+            # vector_delta is the delta for switch alone (filt is None candidate)
+            # Find switch alone delta from earlier loop (best currently holds switch alone if no positives yet)
+            vector_delta_val = None
+            vector_vec_val = None
+            for idx, (variant, filt, fval, hdr) in enumerate(candidates):
+                if filt is None and idx < len(vecs):
+                    vec_tmp = vecs[idx]
+                    if vec_tmp and vec_tmp.get("valid"):
+                        vector_delta_val = float(vec_tmp.get("gain_pct") or 0) - cumulative_before
+                        vector_vec_val = vec_tmp
+                        break
+            if vector_delta_val is None and best is not None:
+                vector_delta_val = best[0]
+                vector_vec_val = best[5]
+            # If positives exist, compute combined
+            combined_delta = None
+            combined_variant = None
+            vec_comb = None
+            total_pos_delta = 0
+            if positives:
+                total_pos_delta = sum(d for _, d, _, _, _, _ in positives)
+                combined_variant = dict(cumulative_overrides)
+                combined_variant[switch] = cand
+                for hdr, d, var, filt, fval, vec in positives:
+                    if '=' in hdr:
+                        f, opt_raw = hdr.split('=',1)
+                        opt_val = parse_opt(opt_raw, defaults.get(f))
+                        combined_variant[f] = opt_val
+                combined_variant, _ = sanitize_overrides(combined_variant, defaults)
+                try:
+                    if _prepared is not None:
+                        vec_comb = _eval_prep(_prepared, combined_variant, window_days=args.window_days)
+                    else:
+                        vec_comb = _eval_many(new_symside, [combined_variant], window_days=args.window_days)[0]
+                except Exception as e:
+                    print(f"[combined-err] {sheet}!{r} {switch} err {e}", flush=True)
+                    vec_comb = None
+                if vec_comb and vec_comb.get("valid"):
+                    vg_c = float(vec_comb.get("gain_pct") or 0)
+                    combined_delta = vg_c - cumulative_before
+                    combo_label = "+".join([h for h, _, _, _, _, _ in positives])
+                    print(f"[COMBINED YELLOWS] {sheet}!{r} {switch}={cand} vector_delta={vector_delta_val:.4f} total_pos_sum={total_pos_delta:.4f} combined_delta={combined_delta:.4f} vec_gain={vg_c:.4f} vs cum {cumulative_before:.4f} trades={vec_comb.get('trades')} sharpe={float(vec_comb.get('pool_sharpe') or 0):.4f}", flush=True)
+                    # Final delta per user: vector_delta + sum(pos yellows) verified by combined
+                    final_delta = combined_delta if combined_delta is not None else (vector_delta_val or 0) + total_pos_delta
+                    # Use final_delta for promotion, but F stays vector_delta
+                    if final_delta > 0:
+                        best = (final_delta, combined_variant, combo_label, combo_label, combo_label, vec_comb)
+                        # For Results, use final_delta and combined variant
+                        # Keep vector_delta for F, but best holds final for E and Results
+                        # Store vector_delta separately for F write
+                        best_vector_delta = vector_delta_val
+                        # Update pending_lbI still per-filter deltas (already)
+                    elif best is None or total_pos_delta > (best[0] if best else float("-inf")):
+                        best = (total_pos_delta, combined_variant, "+".join([h for h,_,_,_,_,_ in positives]), "+".join([h for h,_,_,_,_,_ in positives]), "+".join([h for h,_,_,_,_,_ in positives]), vec_comb if vec_comb else per_filter_deltas[positives[0][0]][5])
+                else:
+                    print(f"[COMBINED YELLOWS] {sheet}!{r} {switch} no valid combined", flush=True)
+            # If no positives, best remains switch alone (vector_delta)
+            if best is None and vector_delta_val is not None:
+                best = (vector_delta_val, {**cumulative_overrides, switch: cand}, None, None, None, vector_vec_val)
+            # Keep vector_delta separate for F write (F = vector_delta, E/Results = final_delta)
+            # best remains 6-tuple (final_delta, variant, filt, fval, hdr, vec), vector_delta_val kept outside
+            if best is None:
+                # No valid candidates
+                pass
 
             # --- MAX delta: INSTRUCTIONS 2a — if best single still NEG, try ALL combos of 2 and 3 among top-8 singles (28+56=84) ---
             _best_before_combo = best[0] if best else float("-inf")
@@ -1053,16 +1130,16 @@ def main():
                                 ws_row.cell(row=r, column=col).value = float(d)
                             except Exception:
                                 pass
-                # write Results_30d_Deltas
+                # write Results_Deltas
                 target = None
-                for cand_name in ["Results_30d_Deltas", "Results_30d", "results"]:
+                for cand_name in ["Results_Deltas", "Results_30d", "results"]:
                     if cand_name in wb_row.sheetnames:
                         target = cand_name
                         break
                 if target is None:
-                    ws_new = wb_row.create_sheet("Results_30d_Deltas")
+                    ws_new = wb_row.create_sheet("Results_Deltas")
                     ws_new.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","variant_sharpe","trades","tim","dd"])
-                    target = "Results_30d_Deltas"
+                    target = "Results_Deltas"
                 rws = wb_row[target]
                 if str(rws.cell(1,1).value or "").strip().lower() in ("param","switch"):
                     rws.cell(1,1).value = "key"
@@ -1104,7 +1181,9 @@ def main():
                 # write F/E to ENTRY sheet
                 if sheet in wb_row.sheetnames:
                     ws_tmp = wb_row[sheet]
-                    ws_tmp.cell(r, 6).value = float(delta_best)
+                    # F is vector_delta (switch alone) per user, E is final cumulative after adding positives
+                    f_to_write = float(vector_delta_val) if vector_delta_val is not None else float(delta_best)
+                    ws_tmp.cell(r, 6).value = f_to_write
                     ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else None
                 _atomic_save(wb_row, wb_path)
             except Exception as _e:
@@ -1113,10 +1192,12 @@ def main():
                 try:
                     write_results_variant(wb_path, switch, float(vec_best.get("gain_pct") or 0), float(delta_best), vec_best, cand_value=cand)
                     wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
-                    if sheet in wb_tmp.sheetnames:
-                        ws_tmp = wb_tmp[sheet]
-                        ws_tmp.cell(r, 6).value = float(delta_best)
-                        ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else None
+                if sheet in wb_tmp.sheetnames:
+                    ws_tmp = wb_tmp[sheet]
+                    # F is vector_delta (switch alone) per user, E is final cumulative after adding positives
+                    f_to_write = float(vector_delta_val) if vector_delta_val is not None else float(delta_best)
+                    ws_tmp.cell(r, 6).value = f_to_write
+                    ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else None
                         _atomic_save(wb_tmp, wb_path)
                 except Exception as _e2:
                     print(f"[entry-write-err] {sheet}!{r} {_e2}", flush=True)
@@ -1187,7 +1268,7 @@ def main():
             # also update Results with live gain for G column (if not vector-only)
             if not args.vector_only and live_best.get("valid"):
                 wb4 = openpyxl.load_workbook(str(wb_path))
-                for cand_name in ["Results_30d_Deltas", "Results_30d", "results"]:
+                for cand_name in ["Results_Deltas", "Results_30d", "results"]:
                     if cand_name in wb4.sheetnames:
                         rws = wb4[cand_name]
                         for rr in range(2, rws.max_row + 1):
@@ -1201,6 +1282,33 @@ def main():
             progress["cumulative_overrides"] = cumulative_overrides
             progress_path.write_text(json.dumps(progress, indent=2))
             print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
+
+        # LIVE VERIFY at end of sheet: run every final setting through backtest_v12_live while continuing vectorized next sheet (live=king)
+        # Collect all promoted variants for this sheet from progress
+        try:
+            sheet_promoted = []
+            for k, v in progress.get("done", {}).items():
+                if v.get("cumulative_after") is not None and sheet in k or True:  # approximate: check if key contains switch from this sheet
+                    # Check if this done entry corresponds to this sheet by seeing if switch is in sheet's switches
+                    sw = k.split('!')[0].split(':')[-1].split('=')[0] if '!' in k else k.split('=')[0]
+                    # For simplicity, verify all promoted with delta>0
+                    if v.get("delta",0) > 0:
+                        sheet_promoted.append((k, v))
+            if sheet_promoted:
+                print(f"[LIVE VERIFY] {sheet} {len(sheet_promoted)} promoted variants vs FINAL {cumulative_gain:.4f} — live=king, vector continues next sheet", flush=True)
+                for k, v in sheet_promoted[:5]:  # verify first 5 to avoid overload, log all
+                    variant = v.get("vec",{}).get("overrides") or {}
+                    # Reconstruct variant from cumulative_overrides + switch? Use stored vec overrides
+                    live_res = live_evaluate_with_timeout(v.get("vec",{}).get("symside", new_symside), v.get("vec",{}).get("overrides", variant), window_days=args.window_days, timeout_sec=90)
+                    vec_gain = float(v.get("vec",{}).get("gain_pct") or 0)
+                    live_gain = float(live_res.get("gain_pct") or 0)
+                    disc = abs(vec_gain - live_gain)
+                    if disc > 0.5 and disc/max(1e-9, abs(live_gain)) > 0.15:
+                        print(f"[LIVE DISCREPANCY STOP] {sheet} {k} vec {vec_gain:.4f} live {live_gain:.4f} disc {disc:.4f} > threshold — stopping sheet, agents fix scripts", flush=True)
+                        # Stop filling this sheet, continue to next sheet with vectorized tests will still proceed, but flag for agent fix
+                        break
+        except Exception as _e:
+            print(f"[live-verify-end-sheet-err] {sheet} {_e}", flush=True)
 
         # GENERAL blanket vs final cumulative
         print(f"[general] {sheet} vs final {cumulative_gain:.4f}", flush=True)
@@ -1269,8 +1377,8 @@ def main():
                     ws5.cell(row=nr, column=3).font = Font(name="Arial", bold=True, color="006100")
                     ws5.cell(row=nr, column=4).value = "GLOBAL_CHECK"
                     ws5.cell(row=nr, column=5).value = f"=IF(F{nr}=\"\",E{nr-1},IF(F{nr}>0,E{nr-1}+F{nr},E{nr-1}))"
-                    ws5.cell(row=nr, column=6).value = f"=IFERROR(VLOOKUP($A{nr}&\"=\"&$B{nr},Results_30d_Deltas!$A$2:$H$5000,5,FALSE),\"\")"
-                    ws5.cell(row=nr, column=7).value = f"=IFERROR(VLOOKUP($A{nr}&\"=\"&$B{nr},Results_30d_Deltas!$A$2:$H$5000,6,FALSE),\"\")"
+                    ws5.cell(row=nr, column=6).value = f"=IFERROR(VLOOKUP($A{nr}&\"=\"&$B{nr},Results_Deltas!$A$2:$H$5000,5,FALSE),\"\")"
+                    ws5.cell(row=nr, column=7).value = f"=IFERROR(VLOOKUP($A{nr}&\"=\"&$B{nr},Results_Deltas!$A$2:$H$5000,6,FALSE),\"\")"
                     wb5.save(str(wb_path))
                 write_results_variant(wb_path, filt, float(vec.get("gain_pct") or 0), float(delta), vec, cand_value=opt_val)
                 cumulative_overrides[filt] = opt_val

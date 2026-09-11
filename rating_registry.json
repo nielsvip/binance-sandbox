@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-11T20:59:16.538543+00:00",
+  "timestamp": "2026-09-11T21:17:05.226449+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 162
   },
   "unified_ranking": [
+    {
+      "symbol": "METAUSDT",
+      "net_score": -11.9,
+      "long_score": 0,
+      "short_score": 11.9
+    },
     {
       "symbol": "GOOGLUSDT",
       "net_score": 0,
@@ -115,12 +121,6 @@
       "short_score": 0
     },
     {
-      "symbol": "RIFUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SEIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -218,6 +218,12 @@
     },
     {
       "symbol": "VETUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GRAMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -715,12 +721,6 @@
       "short_score": 0
     },
     {
-      "symbol": "METAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "TRBUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -973,20 +973,26 @@
       "short_score": 0
     },
     {
-      "symbol": "GRAMUSDT",
-      "net_score": 10.0,
-      "long_score": 10.0,
+      "symbol": "RIFUSDT",
+      "net_score": 13.2,
+      "long_score": 13.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "GRAMUSDT",
-      10.0,
-      1.36723267
+      "RIFUSDT",
+      13.2,
+      0.07817018
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "METAUSDT",
+      11.9,
+      647.88442395
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
