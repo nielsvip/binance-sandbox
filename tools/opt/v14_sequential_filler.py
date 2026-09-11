@@ -680,23 +680,21 @@ def main():
     _bl_trades = int(baseline_live.get("trades") or 0)
     _bl_valid = bool(baseline_live.get("valid"))
     baseline_had_zero_trades = (_bl_trades == 0) or (not _bl_valid)
-    # --- SELF-MONITOR that wakes if it stalls on a cell or sheet (user: never advance to next cell/sheet) ---
+    # --- PER-CELL TIMEOUT: every cell written immediately, no worksheet timeout (user: "EVERY CELL always gets written to disk immediately so there is no such thing as a timeout") ---
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    stall_cell_sec = 180  # per-cell stall (vector+live) — vector 0.16s but live 30s, BB variants 5*30=150s worst
-    stall_sheet_sec = 1800  # per-sheet stall
+    per_cell_timeout_sec = 30  # per-cell: vector 0.16s, live 5s worst, 30s safe — if exceeds, write TIMEOUT and continue to next cell
     last_sheet_ts = time.time()
     def _touch_heartbeat(msg: str):
         try:
             heartbeat_path.write_text(f"{time.time():.0f} {msg} {sheet if 'sheet' in locals() else '?'} {r if 'r' in locals() else '?'}")
         except: pass
-    def _check_stall(cell_start: float, sheet_start: float) -> bool:
+    def _check_per_cell_timeout(cell_start: float) -> bool:
         now=time.time()
-        if now - cell_start > stall_cell_sec:
-            print(f"[WATCHDOG STALL CELL] {new_symside} sheet {sheet!r} row {r} stalled {now-cell_start:.0f}s > {stall_cell_sec}s — waking to next cell", flush=True)
+        if now - cell_start > per_cell_timeout_sec:
+            print(f"[PER_CELL TIMEOUT] {new_symside} sheet {sheet!r} row {r} {switch}={cand} stalled {now-cell_start:.0f}s > {per_cell_timeout_sec}s — writing TIMEOUT and advancing to next cell", flush=True)
             return True
-        if now - sheet_start > stall_sheet_sec:
-            print(f"[WATCHDOG STALL SHEET] {new_symside} sheet {sheet!r} stalled {now-sheet_start:.0f}s > {stall_sheet_sec}s — waking to next sheet", flush=True)
-            return True
+        return False
+    # no worksheet timeout — every cell advances individually
         return False
     _touch_heartbeat("start")
     # --- BATCHED million/hour: prepare NPZ once, reuse for every row/filter (3.65s once, 0.07s per eval) ---
@@ -718,6 +716,7 @@ def main():
         print(f"\n[sheet] {sheet} cumulative={cumulative_gain:.4f}", flush=True)
         _touch_heartbeat(f"sheet {sheet}")
         last_sheet_ts = time.time()
+        # every cell written immediately — no sheet-level batching, per-cell timeout only
         wb = openpyxl.load_workbook(str(wb_path), data_only=False)
         if sheet not in wb.sheetnames:
             wb.close()
@@ -908,8 +907,17 @@ def main():
                             print(f"[vec-err-combo] {sheet}!{r} {switch}={cand}+{'+'.join(combo_label_parts)} err {e}", flush=True)
                             continue
                         if not vec_c.get("valid"):
-                            if _check_stall(cell_start, last_sheet_ts):
-                                print(f"[WATCHDOG SKIP CELL] {sheet}!{r} stalled during combo", flush=True)
+                            if _check_per_cell_timeout(cell_start):
+                                print(f"[PER_CELL TIMEOUT WRITE] {sheet}!{r} stalled during combo — writing TIMEOUT to disk and advancing to next cell", flush=True)
+                                # Write TIMEOUT immediately to disk for this cell
+                                try:
+                                    wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
+                                    if sheet in wb_tmp.sheetnames:
+                                        ws_tmp = wb_tmp[sheet]
+                                        ws_tmp.cell(r, 6).value = "TIMEOUT"
+                                        ws_tmp.cell(r, 5).value = "TIMEOUT"
+                                        wb_tmp.save(str(wb_path))
+                                except: pass
                                 break
                             print(f"[vec-invalid-combo] {sheet}!{r} {switch}={cand}+{'+'.join(combo_label_parts)} reason {vec_c.get('invalid_reason')}", flush=True)
                             continue
@@ -917,8 +925,16 @@ def main():
                         delta_c = vg_c - cumulative_before
                         combo_label = "+".join(combo_label_parts)
                         print(f"[CANDIDATE-COMBO] {sheet}!{r} {switch}={cand}+{combo_label} vec_gain={vg_c:.4f} delta={delta_c:.4f} vs cum {cumulative_before:.4f} trades={vec_c.get('trades')} sharpe={float(vec_c.get('pool_sharpe') or 0):.4f}", flush=True)
-                        if _check_stall(cell_start, last_sheet_ts):
-                            print(f"[WATCHDOG SKIP CELL] {sheet}!{r} stalled", flush=True)
+                        if _check_per_cell_timeout(cell_start):
+                            print(f"[PER_CELL TIMEOUT WRITE] {sheet}!{r} stalled — writing TIMEOUT to disk and advancing to next cell", flush=True)
+                            try:
+                                wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
+                                if sheet in wb_tmp.sheetnames:
+                                    ws_tmp = wb_tmp[sheet]
+                                    ws_tmp.cell(r, 6).value = "TIMEOUT"
+                                    ws_tmp.cell(r, 5).value = "TIMEOUT"
+                                    wb_tmp.save(str(wb_path))
+                            except: pass
                             break
                         # track best MAX delta across all combos
                         if best is None or delta_c > best[0]:
@@ -982,9 +998,17 @@ def main():
                     live_delta = float(live_best.get("gain_pct") or 0) - cumulative_before if live_best.get("valid") else None
                     if ok:
                         _live_verified.add(f"{switch}={cand}+{filt_best}={fval_best}" if filt_best else f"{switch}={cand}")
-                if _check_stall(cell_start, last_sheet_ts):
-                    print(f"[WATCHDOG SKIP CELL after live] {sheet}!{r}", flush=True)
-                    ok=False; reason="watchdog stall after live"
+                if _check_per_cell_timeout(cell_start):
+                    print(f"[PER_CELL TIMEOUT after live] {sheet}!{r} — writing TIMEOUT to disk and advancing to next cell", flush=True)
+                    try:
+                        wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
+                        if sheet in wb_tmp.sheetnames:
+                            ws_tmp = wb_tmp[sheet]
+                            ws_tmp.cell(r, 6).value = "TIMEOUT"
+                            ws_tmp.cell(r, 5).value = "TIMEOUT"
+                            wb_tmp.save(str(wb_path))
+                    except: pass
+                    ok=False; reason="per-cell timeout after live"
             progress["done"][key].update({"live": live_best, "live_delta": live_delta, "parity": ok, "reason": reason, "best_filter": filt_best, "best_fval": fval_best})
             if not ok:
                 print(f"[parity-fail] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} {reason}", flush=True)

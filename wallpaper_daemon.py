@@ -313,7 +313,32 @@ def apply_wallpaper(int_img_path, ext_img_path):
     # Escape quotes for osascript
     int_esc = int_str.replace('"', '\\"')
     ext_esc = ext_str.replace('"', '\\"')
-    script = f'''
+    # Use per-desktop osascript calls (one desktop per invocation) - bulk
+    # "repeat with d in (get every desktop)" hangs for 60s+ when System Events
+    # is busy, causing beach fallback on int. Per-desktop index is reliable
+    # (single set succeeds, bulk fails). See 2026-09-11 hang traces.
+    def _set_desktop(n, path_esc):
+        return run(f"osascript -e 'tell application \"System Events\" to set picture of desktop {n} to \"{path_esc}\"'", timeout=8)
+
+    # Desktop 1 = Built-in (int), 2..N = external widescreen (ext)
+    rc, out, err = _set_desktop(1, int_esc)
+    if rc != 0:
+        logger.debug(f"wallpaper desktop1 set failed rc={rc} err={err}")
+        run("pkill -9 osascript 2>/dev/null; killall -9 osascript 2>/dev/null", timeout=3)
+    # Probe count once (fast)
+    rc_cnt, out_cnt, _ = run("osascript -e 'tell application \"System Events\" to get count of desktops'", timeout=5)
+    try:
+        cnt = int(out_cnt.strip()) if rc_cnt == 0 else 4
+    except Exception:
+        cnt = 4
+    cnt = max(1, min(cnt, 8))
+    for i in range(2, cnt + 1):
+        rc_i, _, _ = _set_desktop(i, ext_esc)
+        if rc_i != 0:
+            logger.debug(f"wallpaper desktop{i} set failed rc={rc_i}")
+            run("pkill -9 osascript 2>/dev/null; killall -9 osascript 2>/dev/null", timeout=3)
+            # Fallback: try bulk name-loop once if per-desktop fails
+            script_name = f'''
     tell application "System Events"
         repeat with d in (get every desktop)
             try
@@ -327,19 +352,23 @@ def apply_wallpaper(int_img_path, ext_img_path):
         end repeat
     end tell
     '''
-    rc, out, err = run(f"osascript -e '{script}'", timeout=10)
-    if rc != 0:
-        logger.debug(f"System Events wallpaper set failed (rc={rc} err={err})")
-        # Fallback must NOT blanket-set ext onto internal (that caused enlarged-half).
-        # Just retry the same per-display loop once with longer timeout.
-        rc2, _, _ = run(f"osascript -e '{script}'", timeout=10)
-        if rc2 != 0:
-            logger.debug(f"wallpaper retry also failed rc={rc2}")
+            run(f"osascript -e '{script_name}'", timeout=8)
+            run("pkill -9 osascript 2>/dev/null; killall -9 osascript 2>/dev/null", timeout=3)
+            break
+    # For logging, treat desktop1 rc as overall rc
+    rc = rc
     # Always patch Index.plist so external widescreen never sticks on internal image after Space switch
     try:
         _sanitize_wallpaper_plist(int_img_path, ext_img_path)
     except Exception as e:
         logger.debug(f"sanitize after apply failed: {e}")
+    # If System Events was hung, WallpaperAgent may still show beach/default.
+    # Force reload via WallpaperAgent restart if last osascript failed.
+    if rc != 0:
+        try:
+            run("killall WallpaperAgent 2>/dev/null", timeout=3)
+        except Exception:
+            pass
 
 def distribute_per_space(int_pages, ext_pages, global_idx):
     """Distribute distinct pages across Spaces so each desktop shows a different collage.
