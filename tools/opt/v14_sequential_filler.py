@@ -41,9 +41,7 @@ Fix in v14 (sequential, S1-only):
 """
 from __future__ import annotations
 import sys
-print("DEPRECATED: v14_sequential_filler is disabled — use tools/simple_switch_filter_calculator.py (26-col, 9291×26, resumable) + tools/fill_template_from_csv.py for RESULTS. See SPREADSHEETS/TEMPLATE_*_FILLED.xlsx", file=sys.stderr)
-sys.exit(78)
-import argparse
+import argparse  # per user: continuous sheet filling
 import dataclasses
 import datetime
 import json
@@ -303,7 +301,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
         c2 = ws.cell(row=2, column=6)
         if isinstance(c2.value, str) and "-E1" in c2.value:
             c2.value = c2.value.replace("-E1", "-E2")
-    # clear Results but keep header
+    # clear Results and ensure full header per INSTRUCTIONS 5 — ALL METRICS for every pos delta
     for cand in ["Results_30d_Deltas", "Results_30d", "results"]:
         if cand in wb.sheetnames:
             ws = wb[cand]
@@ -312,7 +310,22 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     cell = ws.cell(row=r, column=c)
                     if cell.value is not None:
                         cell.value = None
+            # ensure header row has ALL METRICS (INSTRUCTIONS 5)
+            full_hdr = ["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","REAL_COMPLETE_DELTA","variant_sharpe","trades","tim","dd","filter_or_override","symside","window","bh_pct","gain_pct","tim_pct","max_dd","win_rate","bars","peak","source"]
+            for ci, h in enumerate(full_hdr, start=1):
+                cur = ws.cell(1, ci).value
+                if cur is None or str(cur).strip() == "":
+                    ws.cell(1, ci).value = h
+                    ws.cell(1, ci).font = Font(bold=True)
+                elif str(cur).strip().lower() != h.lower() and ci <= 8:
+                    # keep existing for first 8 but ensure bold
+                    ws.cell(1, ci).font = Font(bold=True)
             break
+    else:
+        ws = wb.create_sheet("Results_30d_Deltas")
+        ws.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","REAL_COMPLETE_DELTA","variant_sharpe","trades","tim","dd","filter_or_override","symside","window","bh_pct","gain_pct","tim_pct","max_dd","win_rate","bars","peak","source"])
+        for ci in range(1, 25):
+            ws.cell(1, ci).font = Font(bold=True)
     wb.save(str(target))
     return target
 
@@ -483,11 +496,11 @@ def ensure_lbI_headers(wb_path: Path):
         except Exception:
             pass
         existing = set()
-        # max_column may be <12 when L:BI empty — scan up to at least 12
+        # TEMPLATE headers are row2 (row1 is title 01 ENTRY_...), L:BI starts col12 row2
         scan_max = max(ws.max_column, 12)
         for c in range(12, scan_max + 1):
             try:
-                hv = ws.cell(row=1, column=c).value
+                hv = ws.cell(row=2, column=c).value
             except Exception:
                 hv = None
             if hv and isinstance(hv, str) and "=" in hv:
@@ -520,13 +533,13 @@ def ensure_lbI_headers(wb_path: Path):
             headers.append(hdr)
             if len(headers) >= 80:
                 break
-        # write headers starting at L=12
+        # write headers starting at L=12 row2
         col = max(12, ws.max_column + 1) if existing else 12
         for hdr in headers:
             if hdr in existing:
                 continue
             try:
-                c = ws.cell(row=1, column=col)
+                c = ws.cell(row=2, column=col)
                 # if still merged, write to top-left of merged range
                 if str(getattr(c, "__class__", "")).endswith("MergedCell"):
                     # find master
@@ -816,7 +829,7 @@ def main():
         header_to_col = {}
         if ws is not None:
             for c in range(12, ws.max_column + 1):
-                hv = ws.cell(row=1, column=c).value
+                hv = ws.cell(row=2, column=c).value
                 if hv and isinstance(hv, str) and "=" in hv:
                     hv = hv.strip()
                     if not hv.upper().startswith("WHAT SWITCH"):
@@ -910,13 +923,10 @@ def main():
             # store for later expansion if needed
             _single_filters_for_combo = single_filters
 
-            # SHEET-LEVEL BATCH for 0.7s per cell: collect all candidates for this sheet's rows and evaluate in one go
-            # (previous per-row batch still 0.9s/row → 14s for 16 rows, but per-row overhead + combos still minutes for 210 rows)
-            # For now keep per-row but with tighter cap and no combos, and ensure every cell written even if delta negative
+            # INSTRUCTIONS RULE 2: try EVERY applicable filter (12-200) for this row before next line — NO CAP
+            # (13-cap was the STUPID SHIT that wasted hours producing identical numbers)
             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-            if len(candidates) > 13:
-                candidates = candidates[:13]
-                print(f"[CANDIDATE-CAP] {sheet}!{r} {switch} capped to {len(candidates)}", flush=True)
+            # No cap — every opportune SPECIFIC filter is evaluated via prepare_batch (0.07s each, 200*0.07=14s max per row)
             best = None
             pending_lbI = {}
             try:
@@ -944,12 +954,9 @@ def main():
                 if best is None or delta > best[0]:
                     best = (delta, variant, filt, fval, hdr, vec)
 
-            # --- MAX delta: if best <=0, try all combos of 2 and 3 filters until max pos delta (beating-ideas-to-death) ---
+            # --- MAX delta: INSTRUCTIONS 2a — if best single still NEG, try ALL combos of 2 and 3 among top-8 singles (28+56=84) ---
             _best_before_combo = best[0] if best else float("-inf")
-            # FAST PATH: skip combos entirely for minutes-scale every-cell fill (user: every 0.7s a cell)
-            # Combos were 84*0.07=5.8s per row → too slow for 210 rows (24 min). Singles only = 0.9s/row → 3 min for 210.
-            # Keep combos only for small sheets <30 rows if needed, but for now skip all combos to ensure every cell within minutes
-            if False and (best is None or _best_before_combo <= 0):
+            if best is None or _best_before_combo <= 0:
                 import itertools
                 _combo_pool = _single_filters_for_combo
                 if len(_combo_pool) > 8:
