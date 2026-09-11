@@ -885,12 +885,11 @@ def main():
             # BATCHED million/hour: evaluate all candidates for this row in one vector batch (prepare once, N evals at 0.003s)
             # — ensures every cell gets REAL NPZ value within seconds, not minutes per row
             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-            # Cap candidates per row for large sheets to keep within minutes for 210-row sheets
-            # (210*100*0.07=24 min → too slow; cap to 12 singles max for >50-row sheets)
-            if len(candidates) > 25 and ws.max_row > 100:
-                # keep switch alone + top 12 singles ranked by prior pending (or first 12)
+            # Cap candidates per row to keep every cell within minutes (user: ANY cell empty > minutes → fix)
+            # 210*100*0.07=24 min too slow; cap to 12 singles for any sheet to ensure minutes-scale
+            if len(candidates) > 13:
                 candidates = candidates[:13]  # 1 alone + 12 singles
-                print(f"[CANDIDATE-CAP] {sheet}!{r} {switch} capped to {len(candidates)} for large sheet {ws.max_row} rows", flush=True)
+                print(f"[CANDIDATE-CAP] {sheet}!{r} {switch} capped to {len(candidates)} for minutes-scale", flush=True)
             best = None
             pending_lbI = {}
             # Single batched call for all candidates in this row
