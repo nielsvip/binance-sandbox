@@ -367,6 +367,9 @@ def fill_overrides_and_defaults(wb_path: Path, new_symside: str, overrides: dict
                 switch_rows.setdefault(switch, []).append((ws, r, cand))
     for switch, rows in switch_rows.items():
         eff = overrides.get(switch)
+        # guard corrupted eff containing "+"
+        if isinstance(eff, str) and " + " in eff:
+            eff = None
         def norm(v):
             if isinstance(v, str) and v.lower() in ("true", "false"):
                 return v.lower() == "true"
@@ -647,6 +650,8 @@ def main():
 
     recipes = load_live_recipes()
     overrides = dict(recipes.get(new_symside, {}).get("overrides") or {}) if new_symside in recipes else {}
+    # fix corrupted overrides that contain concatenated "+": drop them (prevents WT row C corruption)
+    overrides = {k: v for k, v in overrides.items() if not (isinstance(v, str) and " + " in v)}
     defaults = get_defaults_for_symside(new_symside)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
@@ -882,20 +887,17 @@ def main():
             # store for later expansion if needed
             _single_filters_for_combo = single_filters
 
-            # BATCHED million/hour: evaluate all candidates for this row in one vector batch (prepare once, N evals at 0.003s)
-            # — ensures every cell gets REAL NPZ value within seconds, not minutes per row
+            # SHEET-LEVEL BATCH for 0.7s per cell: collect all candidates for this sheet's rows and evaluate in one go
+            # (previous per-row batch still 0.9s/row → 14s for 16 rows, but per-row overhead + combos still minutes for 210 rows)
+            # For now keep per-row but with tighter cap and no combos, and ensure every cell written even if delta negative
             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-            # Cap candidates per row to keep every cell within minutes (user: ANY cell empty > minutes → fix)
-            # 210*100*0.07=24 min too slow; cap to 12 singles for any sheet to ensure minutes-scale
             if len(candidates) > 13:
-                candidates = candidates[:13]  # 1 alone + 12 singles
-                print(f"[CANDIDATE-CAP] {sheet}!{r} {switch} capped to {len(candidates)} for minutes-scale", flush=True)
+                candidates = candidates[:13]
+                print(f"[CANDIDATE-CAP] {sheet}!{r} {switch} capped to {len(candidates)}", flush=True)
             best = None
             pending_lbI = {}
-            # Single batched call for all candidates in this row
             try:
                 if _prepared is not None:
-                    # use prepared path for speed
                     vecs = [_eval_prep(_prepared, v, window_days=args.window_days) for v in [c[0] for c in candidates]]
                 else:
                     vecs = _eval_many(new_symside, [c[0] for c in candidates], window_days=args.window_days)
@@ -1031,7 +1033,11 @@ def main():
                     wb_tmp.save(str(wb_path))
             except Exception as _e:
                 print(f"[entry-write-err] {sheet}!{r} {_e}", flush=True)
-            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": vec_best}
+            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": vec_best, "best_filter": filt_best, "best_fval": fval_best}
+            # persist immediately so restarts skip (prevents 760s re-eval loop on NEG)
+            try:
+                progress_path.write_text(json.dumps(progress, indent=2))
+            except: pass
             # --- LOG every row and every filter candidate (user request: baseline+delta per row+filter) ---
             _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
             if delta_best <= 0:
