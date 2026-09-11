@@ -6319,11 +6319,12 @@ def _batch3_template_live_wiring():
 # BATCH 1 — first 60 TEMPLATE switches — live REAL logic (mirrors v12)
 def _batch1_template_live_gate(indicators, is_long):
     # Returns (allowed, reason) — False blocks entry; True allows
+    # 2026-09-11 FIX: was checking `close` (always 0→always blocked) — now correctly checks adx_1h vs ADX threshold (10 per user).
     _thr = float(getattr(config, 'ADX_RANGING_THRESHOLD', 0.0))
     _def = 0.0 # simplified default check
     if abs(_thr) > 1e-9:
-        _c = _sf(indicators.get('close'), 0)
-        if _c <= _thr: return False, 'ADX_RANGING_THRESHOLD_THR'
+        _c = _sf(indicators.get('adx_1h'), 0)
+        if _c != 0 and _c <= _thr: return False, 'ADX_RANGING_THRESHOLD_THR'
     _ = getattr(config, 'ADX_RANGING_THRESHOLD', 0.0)
     _thr = float(getattr(config, 'ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC', 0.0))
     _def = 0.0 # simplified default check

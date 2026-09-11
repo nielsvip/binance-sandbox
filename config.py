@@ -1224,7 +1224,7 @@ class Config:
     # 2026-05-21 20:10 — Graded relax-mode replacing boolean. Per user "no switch-off, parameter sweeps".
     # 0=strict (both structure_ok AND dc_breakout required), 1=current (either, default), 2=trigger-only, 3=auto-pass.
     # Sweep [0,1,2,3] for positive delta. ROLLBACK: 1.
-    ENTRY_VET_RELAX_MODE: int = 1
+    ENTRY_VET_RELAX_MODE: int = 3  # 2026-09-11 FIX: 1→3 per user "get ENTRY_VET NO_TRIGGER out of way" — 3=auto-pass (skips structure/breakout + trigger check). Was blocking ZEC LONG with NO_TRIGGER.
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,
@@ -2695,7 +2695,7 @@ class Config:
     # === RESEARCH-BACKED STRATEGIES (2026-03-23 — 9 agents, 100+ sources, 567k backtests, academic papers) ===
     ADX_REGIME_FILTER_ENABLED: bool = False  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction.
     ADX_TRENDING_THRESHOLD: float = 25.0  # BACKTEST_CHANGE_137: ADX above this = trending
-    ADX_RANGING_THRESHOLD: float = 20.0  # BACKTEST_CHANGE_137: ADX below this = ranging (only mean-reversion)
+    ADX_RANGING_THRESHOLD: float = 10.0  # BACKTEST_CHANGE_137: ADX below this = ranging (only mean-reversion) — 2026-09-11 FIX: 20→10 per user "ADX default 10" + template bugfix (ez_manage _batch1 used close not adx).
     ADX_TF: str = "1h"  # BACKTEST_CHANGE_137: Timeframe for ADX regime check
     # === BC_170-174: COPY TRADER NPZ GATES (50k+ trades, 110+ traders, 426 NPZ indicators) ===
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.

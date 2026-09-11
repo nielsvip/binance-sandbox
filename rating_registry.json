@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-11T02:07:52.589110+00:00",
+  "timestamp": "2026-09-11T02:28:14.453272+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 141
+    "total_ranked": 142
   },
   "unified_ranking": [
     {
@@ -289,6 +289,12 @@
       "short_score": 0
     },
     {
+      "symbol": "NVDAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GRTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -302,6 +308,12 @@
     },
     {
       "symbol": "ARMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ORCLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -841,28 +853,17 @@
       "short_score": 0
     },
     {
-      "symbol": "ORCLUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
-      "short_score": 0
-    },
-    {
       "symbol": "PYPLUSDT",
-      "net_score": 13.4,
-      "long_score": 13.4,
+      "net_score": 12.8,
+      "long_score": 12.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "PYPLUSDT",
-      13.4,
-      53.37283982
-    ],
-    [
-      "ORCLUSDT",
-      11.1,
-      160.15
+      12.8,
+      53.28
     ]
   ],
   "top_shorts": [],
