@@ -933,7 +933,7 @@ def main():
                     # pending_lbI has hdr->delta for singles
                     _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
                     _combo_pool = _ranked[:8]
-                # Batch combos as well — build all combo variants then evaluate in one batch
+                # Batch combos — build all combo variants then evaluate in one batch (million/hour)
                 all_combos = []
                 for combo_size in [2, 3]:
                     if len(_combo_pool) < combo_size:
@@ -949,7 +949,6 @@ def main():
                             combo_hdr_parts.append(hdr_c)
                         v_combo, _ = sanitize_overrides(v_combo, defaults)
                         all_combos.append((v_combo, "+".join(combo_label_parts), "+".join(combo_hdr_parts), combo_label_parts, combo_hdr_parts))
-                # Evaluate all combos in one batch
                 if all_combos:
                     try:
                         if _prepared is not None:
@@ -963,35 +962,6 @@ def main():
                         if idx >= len(vecs_c):
                             break
                         vec_c = vecs_c[idx]
-                        # keep original per-combo logic but now batched
-                        try:
-                            _dummy = vec_c  # placeholder to keep structure
-                        except: pass
-                        # original try block replaced by batch, continue to validation below
-                        # we will handle vec_c validity in next lines (re-use same code path)
-                        _combo_vec = vec_c
-                        _combo_label = combo_label
-                        _combo_hdr = combo_hdr
-                        _combo_label_parts = combo_label_parts
-                        _combo_hdr_parts = combo_hdr_parts
-                        # fall through to validation (we need to set vec_c etc.)
-                        vec_c = _combo_vec
-                        combo_label = _combo_label
-                        combo_hdr = _combo_hdr
-                        combo_label_parts = _combo_label_parts
-                        combo_hdr_parts = _combo_hdr_parts
-                        try:
-                            _check_dummy = True  # to keep try structure
-                        except Exception as e:
-                            print(f"[vec-err-combo] {sheet}!{r} {switch}={cand}+{'+'.join(combo_label_parts)} err {e}", flush=True)
-                            continue
-                        # use batched vec_c directly (already have)
-                        try:
-                            vec_c = vecs_c[idx]
-                        except: continue
-                        except Exception as e:
-                            print(f"[vec-err-combo] {sheet}!{r} {switch}={cand}+{'+'.join(combo_label_parts)} err {e}", flush=True)
-                            continue
                         if not vec_c.get("valid"):
                             if _check_per_cell_timeout(cell_start):
                                 print(f"[PER_CELL TIMEOUT WRITE] {sheet}!{r} stalled during combo — writing TIMEOUT to disk and advancing to next cell", flush=True)
