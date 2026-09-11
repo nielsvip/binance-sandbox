@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-11T01:30:58.681636+00:00",
+  "timestamp": "2026-09-11T01:51:17.724933+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 138
+    "total_ranked": 141
   },
   "unified_ranking": [
-    {
-      "symbol": "XTZUSDT",
-      "net_score": -11.3,
-      "long_score": 0,
-      "short_score": 11.3
-    },
     {
       "symbol": "ZRXUSDT",
       "net_score": 0,
@@ -38,6 +32,12 @@
     },
     {
       "symbol": "FLOWUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TNSRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -152,6 +152,12 @@
     },
     {
       "symbol": "ROSEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MASKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -278,6 +284,12 @@
     },
     {
       "symbol": "KSMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LUNA2USDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -685,6 +697,12 @@
       "short_score": 0
     },
     {
+      "symbol": "XTZUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AAPLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -839,16 +857,10 @@
     [
       "PYPLUSDT",
       12.9,
-      53.37949048
+      53.37572436
     ]
   ],
-  "top_shorts": [
-    [
-      "XTZUSDT",
-      11.3,
-      0.25886533
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

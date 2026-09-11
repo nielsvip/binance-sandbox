@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-09-11 00:32 UTC",
- "total_capital_usd": 6.82,
+ "generated_at": "2026-09-11 01:32 UTC",
+ "total_capital_usd": 30.12,
  "tier_capital": {
   "A": 0.0,
-  "B": 6.82,
+  "B": 30.12,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 3,
   "C": 0
  },
  "winners": [],
@@ -16,15 +16,37 @@
  "mediocre": [],
  "positions": [
   {
+   "pk": "fin:PTBUSDT_SHORT",
+   "symbol": "PTBUSDT",
+   "account": "fin",
+   "value_usd": 12.01,
+   "gain_pct": -0.054,
+   "tier": "B",
+   "perf_mult": 3.06,
+   "amt": 18424.0,
+   "mark": 0.00065181
+  },
+  {
+   "pk": "fin:PARTIUSDT_SHORT",
+   "symbol": "PARTIUSDT",
+   "account": "fin",
+   "value_usd": 11.31,
+   "gain_pct": 0.221,
+   "tier": "B",
+   "perf_mult": 2.78,
+   "amt": 508.0,
+   "mark": 0.02226051
+  },
+  {
    "pk": "fin:RLCUSDT_SHORT",
    "symbol": "RLCUSDT",
    "account": "fin",
-   "value_usd": 6.82,
-   "gain_pct": 2.262,
+   "value_usd": 6.8,
+   "gain_pct": 2.382,
    "tier": "B",
    "perf_mult": 2.52,
    "amt": 23.9,
-   "mark": 0.28515
+   "mark": 0.2847
   }
  ]
 }
