@@ -2790,5 +2790,14 @@
     ],
     "timestamp": "2026-09-11T21:34:57.763261+00:00",
     "price": 110.88679116
+  },
+  {
+    "symbol": "RSRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-11T22:16:45.279313+00:00",
+    "price": 0.00141694
   }
 ]

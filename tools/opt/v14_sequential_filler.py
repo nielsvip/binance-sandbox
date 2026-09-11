@@ -812,7 +812,10 @@ def main():
                 if isinstance(v, str) and v.lower() in ("true", "false"):
                     return v.lower() == "true"
                 return v
-            if norm(cand) == norm(eff):
+            # FIX order: do not skip first evaluation where cand == eff (baseline) — need vector_delta for every row in order
+            # Only skip if this switch+cand already recorded as done (resume), not just eff==cand
+            _key_skip = f"{sheet}!{r}:{sw}={cand}"
+            if norm(cand) == norm(eff) and _key_skip in progress.get("done", {}):
                 continue
             # skip GENERAL filter rows already at bottom (col4 == GLOBAL_CHECK)
             if str(ws.cell(row=r, column=4).value or "") == "GLOBAL_CHECK":
@@ -1382,8 +1385,19 @@ def main():
             import traceback; traceback.print_exc()
 
     bh_raw = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0)
-    # FIX: never vomit empty sheets — if no positives and gain 0, delete and skip (BIO/AVAX etc missing NPZ)
-    if total_pos == 0 and abs(cumulative_gain - baseline_gain) < 1e-9:
+    # skip-empty: never send empty sheets to Mac (BIO/AVAX/1000SHIB empty, SNDK empty Results 1)
+    try:
+        _wb_check = openpyxl.load_workbook(str(wb_path), data_only=True)
+        _rws_chk = None
+        for _cand in ["Results_Deltas", "Results_30d", "results"]:
+            if _cand in _wb_check.sheetnames:
+                _rws_chk = _wb_check[_cand]
+                break
+        _is_empty = _rws_chk is None or _rws_chk.max_row < 3
+        _wb_check.close()
+    except Exception:
+        _is_empty = False
+    if _is_empty or (total_pos == 0 and abs(cumulative_gain - baseline_gain) < 1e-9):
         try:
             wb_path.unlink(missing_ok=True)
         except Exception:
@@ -1392,7 +1406,7 @@ def main():
         progress["bh"] = bh_raw
         progress["skipped_empty"] = True
         progress_path.write_text(json.dumps(progress, indent=2))
-        print(f"[skip-empty] {new_symside} no positives bh={bh_raw:.2f} gain={cumulative_gain:.2f} — deleted empty {wb_path.name}", flush=True)
+        print(f"[skip-empty] {new_symside} empty Results or no positives bh={bh_raw:.2f} gain={cumulative_gain:.2f} — deleted {wb_path.name}", flush=True)
         return
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
