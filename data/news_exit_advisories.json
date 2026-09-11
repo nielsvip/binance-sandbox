@@ -1,22 +1,78 @@
 {
-  "generated_at": "2026-09-11T18:03:31.865123+00:00",
-  "count": 2,
+  "generated_at": "2026-09-11T18:22:55.763848+00:00",
+  "count": 9,
   "advisories": [
     {
-      "symbol": "FIVN",
+      "symbol": "VT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.49 threshold=0.45",
-      "score": 0.49,
-      "ts": "2026-09-11T18:03:31.865028+00:00"
+      "reason": "bullish_news_score=0.58 threshold=0.45",
+      "score": 0.58,
+      "ts": "2026-09-11T18:22:55.763710+00:00"
     },
     {
-      "symbol": "LRCX",
+      "symbol": "SMCI",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.45 threshold=0.45",
+      "score": 0.454,
+      "ts": "2026-09-11T18:22:55.763766+00:00"
+    },
+    {
+      "symbol": "SMG",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.527,
+      "ts": "2026-09-11T18:22:55.763768+00:00"
+    },
+    {
+      "symbol": "SNOW",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.48 threshold=0.45",
+      "score": 0.475,
+      "ts": "2026-09-11T18:22:55.763770+00:00"
+    },
+    {
+      "symbol": "TGT",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.5,
+      "ts": "2026-09-11T18:22:55.763773+00:00"
+    },
+    {
+      "symbol": "TXN",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
       "reason": "bullish_news_score=0.49 threshold=0.45",
-      "score": 0.489,
-      "ts": "2026-09-11T18:03:31.865069+00:00"
+      "score": 0.487,
+      "ts": "2026-09-11T18:22:55.763775+00:00"
+    },
+    {
+      "symbol": "UAN",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.83 threshold=0.45",
+      "score": 0.831,
+      "ts": "2026-09-11T18:22:55.763776+00:00"
+    },
+    {
+      "symbol": "UPS",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.55 threshold=0.45",
+      "score": 0.549,
+      "ts": "2026-09-11T18:22:55.763778+00:00"
+    },
+    {
+      "symbol": "WPM",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.61 threshold=0.45",
+      "score": 0.612,
+      "ts": "2026-09-11T18:22:55.763781+00:00"
     }
   ]
 }

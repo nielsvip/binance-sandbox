@@ -19843,8 +19843,9 @@ class StockStrategy:
                     if _xb_lt.tzinfo is None: _xb_lt = _xb_lt.replace(tzinfo=timezone.utc)
                     _xb_age_min = (datetime.now(timezone.utc) - _xb_lt).total_seconds() / 60.0
                 except Exception: pass
-            if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and current_price is not None and current_price > 0:
+            if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and _xb_age_min >= 3.0 and current_price is not None and current_price > 0:
                 _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
+                # 2026-09-11 CHURN FIX: IBIT buy 44.10 then sell 44.12 same minute — require 3m cooldown before PRICE_CROSS_BACK can refire, prevents whipsaw when MTF_WT still bear.
                 # 2026-05-21 USER MANDATE — "IF YOU SELL BY ACCIDENT GET RIGHT BACK IN".
                 # Old logic was symmetric: fired only when |cur-exit|<=band%. SNDK case proved
                 # this fails — sold at $1531, rallied past +0.3% band → NO reentry. Now: fire
