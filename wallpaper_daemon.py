@@ -318,7 +318,7 @@ def apply_wallpaper(int_img_path, ext_img_path):
     # is busy, causing beach fallback on int. Per-desktop index is reliable
     # (single set succeeds, bulk fails). See 2026-09-11 hang traces.
     def _set_desktop(n, path_esc):
-        return run(f"osascript -e 'tell application \"System Events\" to set picture of desktop {n} to \"{path_esc}\"'", timeout=8)
+        return run(f"osascript -e 'tell application \"System Events\" to set picture of desktop {n} to \"{path_esc}\"'", timeout=15)
 
     # Desktop 1 = Built-in (int), 2..N = external widescreen (ext)
     rc, out, err = _set_desktop(1, int_esc)
@@ -326,7 +326,7 @@ def apply_wallpaper(int_img_path, ext_img_path):
         logger.debug(f"wallpaper desktop1 set failed rc={rc} err={err}")
         run("pkill -9 osascript 2>/dev/null; killall -9 osascript 2>/dev/null", timeout=3)
     # Probe count once (fast)
-    rc_cnt, out_cnt, _ = run("osascript -e 'tell application \"System Events\" to get count of desktops'", timeout=5)
+    rc_cnt, out_cnt, _ = run("osascript -e 'tell application \"System Events\" to get count of desktops'", timeout=8)
     try:
         cnt = int(out_cnt.strip()) if rc_cnt == 0 else 4
     except Exception:
@@ -352,7 +352,7 @@ def apply_wallpaper(int_img_path, ext_img_path):
         end repeat
     end tell
     '''
-            run(f"osascript -e '{script_name}'", timeout=8)
+            run(f"osascript -e '{script_name}'", timeout=15)
             run("pkill -9 osascript 2>/dev/null; killall -9 osascript 2>/dev/null", timeout=3)
             break
     # For logging, treat desktop1 rc as overall rc
@@ -362,13 +362,14 @@ def apply_wallpaper(int_img_path, ext_img_path):
         _sanitize_wallpaper_plist(int_img_path, ext_img_path)
     except Exception as e:
         logger.debug(f"sanitize after apply failed: {e}")
-    # If System Events was hung, WallpaperAgent may still show beach/default.
-    # Force reload via WallpaperAgent restart if last osascript failed.
-    if rc != 0:
-        try:
-            run("killall WallpaperAgent 2>/dev/null", timeout=3)
-        except Exception:
-            pass
+    # Force WallpaperAgent reload from plist - osascript alone is unreliable
+    # (hangs 15s+ on large int 3456x2234, causes beach fallback). Plist is
+    # authoritative; kill ensures Spaces and Displays reload even if osascript
+    # timed out. Grey flash is preferable to stale/beach.
+    try:
+        run("killall WallpaperAgent 2>/dev/null; killall wallpaperexportd 2>/dev/null", timeout=3)
+    except Exception:
+        pass
 
 def distribute_per_space(int_pages, ext_pages, global_idx):
     """Distribute distinct pages across Spaces so each desktop shows a different collage.
