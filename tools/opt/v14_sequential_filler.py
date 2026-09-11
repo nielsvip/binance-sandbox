@@ -301,6 +301,12 @@ def clone_template(template: Path, new_symside: str) -> Path:
         c2 = ws.cell(row=2, column=6)
         if isinstance(c2.value, str) and "-E1" in c2.value:
             c2.value = c2.value.replace("-E1", "-E2")
+        # fix G/H VLOOKUP sheet name: was Results_30d_Deltas $H$5000 → Results_Deltas $P$15000
+        for r2 in range(2, ws.max_row + 1):
+            for col_gh in (7, 8):
+                c = ws.cell(row=r2, column=col_gh)
+                if isinstance(c.value, str) and "Results_30d_Deltas" in c.value:
+                    c.value = c.value.replace("Results_30d_Deltas!$A$2:$H$10000", "Results_Deltas!$A$2:$P$15000").replace("Results_30d_Deltas!$A$2:$H$5000", "Results_Deltas!$A$2:$P$15000")
         # clear C3 corruption + WT_15M_BB_MAX leftovers — v14 never cleared column C
         for rr in range(3, ws.max_row + 1):
             c = ws.cell(row=rr, column=3)
@@ -518,6 +524,8 @@ def ensure_lbI_headers(wb_path: Path):
         lifecycle = sheet.split("_")[0]
         # collect switches in this sheet for relevance
         sheet_switches = [str(ws.cell(r, 1).value or "").strip() for r in range(2, min(50, ws.max_row+1)) if ws.cell(r, 1).value]
+        # score each filter by how many switches it gates in this sheet (prioritize WT_15M etc that actually gate)
+        scored = []
         for e in fd_rows:
             sa = (e["sheets_app"] or "").strip()
             if sa == "ALL":
@@ -526,18 +534,22 @@ def ensure_lbI_headers(wb_path: Path):
                 applicable = (lifecycle in sa) or ("GLOBAL_CHECK" in sa)
             if not applicable:
                 continue
-            # GENERAL always included, SPECIFIC only if it gates some switch in this sheet
             if not _is_general(e["rec"]):
                 gates = e["gates"] or ""
-                # check if this filter gates any switch in this sheet
-                if not any(_token_overlap(gates, sw) for sw in sheet_switches):
+                hits = sum(1 for sw in sheet_switches if _token_overlap(gates, sw))
+                if hits == 0:
                     continue
+                scored.append((hits, e))
+            else:
+                scored.append((0, e))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        for hits, e in scored:
             hdr = f"{e['filter']}={e['opt']}"
             if hdr in seen or hdr in existing:
                 continue
             seen.add(hdr)
             headers.append(hdr)
-            if len(headers) >= 80:
+            if len(headers) >= 50:
                 break
         # write headers starting at L=12 row2
         col = max(12, ws.max_column + 1) if existing else 12
@@ -851,7 +863,14 @@ def main():
                         _found = True
                         break
                 if not _found:
-                    nc = ws.max_column + 1
+                    # find first empty within L:BI (12-61) before extending beyond BI
+                    nc = None
+                    for c in range(12, 62):
+                        if ws.cell(row=2, column=c).value is None:
+                            nc = c
+                            break
+                    if nc is None:
+                        nc = ws.max_column + 1
                     if nc < 12:
                         nc = 12
                     ws.cell(row=2, column=nc).value = _hdr
