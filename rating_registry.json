@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-11T08:09:37.004361+00:00",
+  "timestamp": "2026-09-11T08:29:54.623266+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -427,6 +427,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BSVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SMCIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -679,6 +685,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PLTRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -923,27 +935,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
-      "net_score": 10.0,
-      "long_score": 10.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BSVUSDT",
-      "net_score": 12.9,
-      "long_score": 12.9,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "BSVUSDT",
-      12.9,
-      16.7284
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

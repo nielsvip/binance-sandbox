@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-11 07:02 UTC",
- "total_capital_usd": 7.87,
+ "generated_at": "2026-09-11 08:16 UTC",
+ "total_capital_usd": 12.02,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.87,
+  "B": 12.02,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:XTZUSDT_SHORT",
-   "symbol": "XTZUSDT",
-   "account": "fin",
-   "value_usd": 7.87,
-   "gain_pct": -0.221,
+   "pk": "men:SNXUSDT_SHORT",
+   "symbol": "SNXUSDT",
+   "account": "men",
+   "value_usd": 12.02,
+   "gain_pct": -0.242,
    "tier": "B",
-   "perf_mult": 1.54,
-   "amt": 30.6,
-   "mark": 0.2573
+   "perf_mult": 1.49,
+   "amt": 58.1,
+   "mark": 0.2069
   }
  ]
 }
