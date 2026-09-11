@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-11 20:00 UTC",
- "total_capital_usd": 12.09,
+ "generated_at": "2026-09-11 21:20 UTC",
+ "total_capital_usd": 12.08,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.09,
+  "B": 12.08,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,20 @@
  },
  "winners": [],
  "losers": [
-  "men:ZRXUSDT_SHORT"
+  "men:ETHFIUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:ZRXUSDT_SHORT",
-   "symbol": "ZRXUSDT",
+   "pk": "men:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
    "account": "men",
-   "value_usd": 12.09,
-   "gain_pct": -0.653,
+   "value_usd": 12.08,
+   "gain_pct": -0.856,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 120.6,
-   "mark": 0.10025
+   "perf_mult": 3.0,
+   "amt": 16.9,
+   "mark": 0.7146
   }
  ]
 }

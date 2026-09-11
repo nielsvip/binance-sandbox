@@ -2772,5 +2772,14 @@
     ],
     "timestamp": "2026-09-11T21:07:12.783361+00:00",
     "price": 107.18
+  },
+  {
+    "symbol": "EWJUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.2x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-11T21:22:20.668690+00:00",
+    "price": 98.54
   }
 ]
