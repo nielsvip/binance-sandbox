@@ -2817,5 +2817,14 @@
     ],
     "timestamp": "2026-09-11T23:12:50.351098+00:00",
     "price": 371.47492872
+  },
+  {
+    "symbol": "KSTRUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-11T23:29:03.478412+00:00",
+    "price": 22.65
   }
 ]
