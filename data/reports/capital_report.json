@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-11 02:32 UTC",
- "total_capital_usd": 5.1,
+ "generated_at": "2026-09-11 03:32 UTC",
+ "total_capital_usd": 5.12,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.1,
+  "B": 5.12,
   "C": 0.0
  },
  "tier_count": {
@@ -19,12 +19,12 @@
    "pk": "fin:RUNEUSDT_LONG",
    "symbol": "RUNEUSDT",
    "account": "fin",
-   "value_usd": 5.1,
-   "gain_pct": -0.059,
+   "value_usd": 5.12,
+   "gain_pct": 0.354,
    "tier": "B",
    "perf_mult": 1.14,
    "amt": 10.0,
-   "mark": 0.5103
+   "mark": 0.5124
   }
  ]
 }

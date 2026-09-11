@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-11T03:29:16.370154+00:00",
+  "timestamp": "2026-09-11T03:49:39.225746+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 143
   },
   "unified_ranking": [
-    {
-      "symbol": "RLCUSDT",
-      "net_score": -12.6,
-      "long_score": 0,
-      "short_score": 12.6
-    },
     {
       "symbol": "GALAUSDT",
       "net_score": 0,
@@ -739,6 +733,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RLCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "HOODUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -866,13 +866,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "RLCUSDT",
-      12.6,
-      0.28001552
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
