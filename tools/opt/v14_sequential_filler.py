@@ -967,6 +967,16 @@ def main():
             delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
             # Always write F via Results (even if negative) — log every delta per row + filter, certified key includes cand
             write_results_variant(wb_path, switch, float(vec_best.get("gain_pct") or 0), float(delta_best), vec_best, cand_value=cand)
+            # FIX: also write directly to ENTRY sheet F/E so data_only shows numbers immediately (was formula-only -> f=0)
+            try:
+                wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
+                if sheet in wb_tmp.sheetnames:
+                    ws_tmp = wb_tmp[sheet]
+                    ws_tmp.cell(r, 6).value = float(delta_best)
+                    ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)
+                    wb_tmp.save(str(wb_path))
+            except Exception as _e:
+                print(f"[entry-write-err] {sheet}!{r} {_e}", flush=True)
             progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": vec_best}
             # --- LOG every row and every filter candidate (user request: baseline+delta per row+filter) ---
             _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""

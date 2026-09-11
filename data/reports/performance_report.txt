@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-11 00:48 UTC
+PERFORMANCE REPORT — 2026-09-11 01:30 UTC
 ================================================================================
 Total: 163 symbols | A=1 B=125 C=37
 Window: 14 days | Min trades: 5
@@ -16,20 +16,20 @@ Window: 14 days | Min trades: 5
          COTIUSDT  WR=76%  avg=+0.22%  total=+4.6%  trades= 21  mult=7.19
          RUNEUSDT  WR=42%  avg=+0.23%  total=+4.3%  trades= 19  mult=1.14
               ETN  WR=14%  avg=+0.27%  total=+3.6%  trades= 14  mult=0.41
-          PTBUSDT  WR=56%  avg=+0.21%  total=+3.4%  trades= 16  mult=3.04
+          PTBUSDT  WR=55%  avg=+0.17%  total=+3.5%  trades= 20  mult=3.06
              PYPL  WR=60%  avg=+0.58%  total=+2.9%  trades=  5  mult=2.43
          RKLBUSDT  WR=74%  avg=+0.14%  total=+2.7%  trades= 19  mult=5.94
            OPUSDT  WR=54%  avg=+0.09%  total=+2.6%  trades= 28  mult=2.27
               PBF  WR=100%  avg=+0.97%  total=+1.9%  trades=  2  mult=1.00
          NEARUSDC  WR=54%  avg=+0.08%  total=+1.9%  trades= 24  mult=2.29
-        ETHFIUSDC  WR=64%  avg=+0.12%  total=+1.7%  trades= 14  mult=3.39
+        ETHFIUSDC  WR=67%  avg=+0.12%  total=+1.8%  trades= 15  mult=3.85 ** OPEN **
          MANAUSDT  WR=75%  avg=+0.06%  total=+1.5%  trades= 24  mult=5.93
               VLO  WR=100%  avg=+0.50%  total=+1.5%  trades=  3  mult=1.00
          HYPEUSDT  WR=51%  avg=+0.03%  total=+1.4%  trades= 55  mult=1.34
          CAKEUSDT  WR=55%  avg=+0.12%  total=+1.4%  trades= 11  mult=1.91
           BCHUSDC  WR=100%  avg=+0.46%  total=+1.4%  trades=  3  mult=1.00
           SOLUSDC  WR=47%  avg=+0.03%  total=+1.3%  trades= 51  mult=0.86
-        PARTIUSDT  WR=56%  avg=+0.13%  total=+1.2%  trades=  9  mult=1.85
+        PARTIUSDT  WR=64%  avg=+0.12%  total=+1.3%  trades= 11  mult=2.78
          AVAXUSDC  WR=50%  avg=+0.12%  total=+1.2%  trades= 10  mult=1.40
      FARTCOINUSDT  WR=70%  avg=+0.06%  total=+1.2%  trades= 20  mult=5.00
           WLDUSDC  WR=44%  avg=+0.02%  total=+1.1%  trades= 54  mult=0.72
@@ -64,8 +64,8 @@ Window: 14 days | Min trades: 5
           KSMUSDT  WR=45%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.85
           ENSUSDT  WR=36%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.64
           SNXUSDT  WR=57%  avg=+0.03%  total=+0.2%  trades=  7  mult=1.51
-     1000PEPEUSDC  WR=47%  avg=+0.01%  total=+0.2%  trades= 17  mult=0.85
               MPC  WR=100%  avg=+0.08%  total=+0.2%  trades=  2  mult=1.00
+     1000PEPEUSDC  WR=44%  avg=+0.01%  total=+0.1%  trades= 18  mult=0.73
           CRVUSDC  WR=57%  avg=+0.02%  total=+0.1%  trades=  7  mult=1.49
               PSX  WR=50%  avg=+0.06%  total=+0.1%  trades=  2  mult=1.00
         MAGICUSDT  WR=83%  avg=+0.02%  total=+0.1%  trades=  6  mult=2.84
@@ -173,7 +173,7 @@ Window: 14 days | Min trades: 5
               SLV  WR=0%  avg=-3.95%  total=-40.8%  trades= 13  mult=0.16
 
 SUMMARY:
-  Total PnL (all symbols): -156.1%
+  Total PnL (all symbols): -155.9%
   Avg win rate: 45%
   A-tier avg mult: 10.00
   C-tier avg mult: 0.45
