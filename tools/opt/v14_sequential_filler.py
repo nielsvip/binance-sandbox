@@ -301,8 +301,14 @@ def clone_template(template: Path, new_symside: str) -> Path:
         c2 = ws.cell(row=2, column=6)
         if isinstance(c2.value, str) and "-E1" in c2.value:
             c2.value = c2.value.replace("-E1", "-E2")
+        # clear C3 corruption + WT_15M_BB_MAX leftovers — v14 never cleared column C
+        for rr in range(3, ws.max_row + 1):
+            c = ws.cell(row=rr, column=3)
+            if c.value is not None:
+                c.value = None
     # clear Results and ensure full header per INSTRUCTIONS 5 — ALL METRICS for every pos delta
-    for cand in ["Results_30d_Deltas", "Results_30d", "results"]:
+    # FIX sheet name: F formulas VLOOKUP Results_Deltas but v14 wrote Results_30d_Deltas → always ""
+    for cand in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
         if cand in wb.sheetnames:
             ws = wb[cand]
             for r in range(2, ws.max_row + 1):
@@ -322,7 +328,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
                     ws.cell(1, ci).font = Font(bold=True)
             break
     else:
-        ws = wb.create_sheet("Results_30d_Deltas")
+        ws = wb.create_sheet("Results_Deltas")
         ws.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","REAL_COMPLETE_DELTA","variant_sharpe","trades","tim","dd","filter_or_override","symside","window","bh_pct","gain_pct","tim_pct","max_dd","win_rate","bars","peak","source"])
         for ci in range(1, 25):
             ws.cell(1, ci).font = Font(bold=True)
@@ -580,12 +586,12 @@ def write_results_variant(wb_path: Path, switch: str, variant_gain: float, delta
     # New key is switch + "=" + str(cand) (matches TEMPLATE F VLOOKUP $A&"="&$B) and delta is vs baseline.
     wb = openpyxl.load_workbook(str(wb_path))
     target = None
-    for cand in ["Results_30d_Deltas", "Results_30d", "results"]:
+    for cand in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
         if cand in wb.sheetnames:
             target = cand
             break
     if target is None:
-        ws = wb.create_sheet("Results_30d_Deltas")
+        ws = wb.create_sheet("Results_Deltas")
         ws.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","variant_sharpe","trades","tim","dd"])
         target = "Results_30d_Deltas"
     rws = wb[target]
@@ -826,11 +832,30 @@ def main():
             rows = rows[:args.max_switches]
         print(f"[sheet] {sheet} {len(rows)} variants", flush=True)
 
-        # header col map for L:BI
+        # header col map for L:BI — FIX missing headers: create per FILTER_DICTIONARY if not present
         wb = openpyxl.load_workbook(str(wb_path), data_only=False)
         ws = wb[sheet] if sheet in wb.sheetnames else None
         header_to_col = {}
         if ws is not None:
+            _needed = set()
+            for (_r2, _sw2, _cand2) in rows:
+                try:
+                    for _e in get_opportune_filters(str(_sw2), sheet):
+                        _needed.add(f"{_e['filter']}={_e['opt']}")
+                except Exception:
+                    pass
+            for _hdr in _needed:
+                _found = False
+                for c in range(12, ws.max_column + 1):
+                    if ws.cell(row=2, column=c).value == _hdr:
+                        _found = True
+                        break
+                if not _found:
+                    nc = ws.max_column + 1
+                    if nc < 12:
+                        nc = 12
+                    ws.cell(row=2, column=nc).value = _hdr
+                    ws.cell(row=2, column=nc).font = Font(bold=True, color="0070C0")
             for c in range(12, ws.max_column + 1):
                 hv = ws.cell(row=2, column=c).value
                 if hv and isinstance(hv, str) and "=" in hv:
@@ -839,6 +864,8 @@ def main():
                         header_to_col[hv] = c
                 if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"):
                     break
+            if _needed:
+                wb.save(str(wb_path))
         wb.close()
 
         for (r, switch, cand) in rows:
@@ -848,13 +875,17 @@ def main():
             key = f"{sheet}!{r}:{switch}={cand}"
             if key in progress.get("done", {}):
                 prev = progress["done"][key]
-                if prev.get("delta") and prev["delta"] > 0:
+                # FIX: do not skip NEG rows that left EMPTY — need to fill F/E correctly per Instructions order
+                if prev.get("delta") and float(prev.get("delta", 0)) > 0:
                     cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
                     cumulative_overrides[switch] = cand
                     if prev.get("best_filter"):
                         cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
-                print(f"[DEBUG] skip cached {key}", flush=True)
-                continue
+                    print(f"[DEBUG] skip cached {key} (pos {prev.get('delta'):.4f})", flush=True)
+                    continue
+                else:
+                    print(f"[DEBUG] re-evaluating cached NEG {key} delta={prev.get('delta')}", flush=True)
+                    # fall through to re-evaluate and correctly write F/E
             cumulative_before = cumulative_gain
             # Build candidates: switch alone + switch+each opportune SPECIFIC filter + COMBOS until pos delta (user: try all settings more filters until pos)
             opportune = get_opportune_filters(switch, sheet)
@@ -1103,16 +1134,16 @@ def main():
                                 ws_row.cell(row=r, column=col).value = float(d)
                             except Exception:
                                 pass
-                # write Results_30d_Deltas
+                # write Results_Deltas (was Results_30d_Deltas → VLOOKUP always "")
                 target = None
-                for cand_name in ["Results_30d_Deltas", "Results_30d", "results"]:
+                for cand_name in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
                     if cand_name in wb_row.sheetnames:
                         target = cand_name
                         break
                 if target is None:
-                    ws_new = wb_row.create_sheet("Results_30d_Deltas")
+                    ws_new = wb_row.create_sheet("Results_Deltas")
                     ws_new.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","variant_sharpe","trades","tim","dd"])
-                    target = "Results_30d_Deltas"
+                    target = "Results_Deltas"
                 rws = wb_row[target]
                 if str(rws.cell(1,1).value or "").strip().lower() in ("param","switch"):
                     rws.cell(1,1).value = "key"
