@@ -24,7 +24,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-HOSTS = ["gateway-internal", "s1-int", "s1-sftp"]  # 2026-05-28 S2 DEAD permanently — s2-int/s2-sftp removed
+HOSTS = ["gateway-internal", "s1-int", "s1-sftp", "s2-fresh", "s2-fresh-int"]  # 2026-09-11 CCX33 fresh S2 restored
 CHECK_INTERVAL = 30  # seconds
 LOG_FILE = Path.home() / "ssh_tunnel_keeper.log"
 STATUS_FILE = Path.home() / "ssh_tunnel_keeper.status"
@@ -47,6 +47,8 @@ def is_alive(host):
     try:
         if host == "s1-sftp":
             target = ["-p", "2201", "niels@127.0.0.1"]
+        elif host == "s2-fresh-int":
+            target = [host]
         else:
             target = [host]
         # A control socket being alive is not sufficient: ChatGPT sessions
