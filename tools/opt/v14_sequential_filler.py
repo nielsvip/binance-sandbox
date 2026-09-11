@@ -509,7 +509,10 @@ def ensure_lbI_headers(wb_path: Path):
             pass
         existing = set()
         # TEMPLATE headers are row2 (row1 is title 01 ENTRY_...), L:BI starts col12 row2
+        # For stale TEMPLATE with ATR at 12, we must wipe and rebuild so WT_15M appears in L:BI for rows 3/4
         scan_max = max(ws.max_column, 12)
+        # collect existing but also wipe stale L:BI to rebuild in scored order (otherwise WT stays at 231+ beyond BI)
+        stale = []
         for c in range(12, scan_max + 1):
             try:
                 hv = ws.cell(row=2, column=c).value
@@ -517,6 +520,14 @@ def ensure_lbI_headers(wb_path: Path):
                 hv = None
             if hv and isinstance(hv, str) and "=" in hv:
                 existing.add(hv.strip())
+                stale.append(c)
+        # wipe stale L:BI headers - will rebuild first 50 in correct order (WT first for BOUNCE)
+        for c in stale:
+            try:
+                ws.cell(row=2, column=c).value = None
+            except Exception:
+                pass
+        existing = set()
         # collect headers for this sheet: only filters that actually gate a switch in this sheet or are GENERAL
         # (previous unconditional took first 50 alphabetically ADX... not relevant for BOUNCE, so L stayed 0)
         headers = []
@@ -525,8 +536,9 @@ def ensure_lbI_headers(wb_path: Path):
         # collect switches in this sheet for relevance
         sheet_switches = [str(ws.cell(r, 1).value or "").strip() for r in range(2, min(50, ws.max_row+1)) if ws.cell(r, 1).value]
         # score each filter by how many switches it gates in this sheet (prioritize WT_15M etc that actually gate)
+        # For rows 3/4 (WT_15M_BOUNCE) to have yellows in L:BI, prioritize filters gating earliest rows
         scored = []
-        for e in fd_rows:
+        for idx_e, e in enumerate(fd_rows):
             sa = (e["sheets_app"] or "").strip()
             if sa == "ALL":
                 applicable = True
@@ -536,14 +548,20 @@ def ensure_lbI_headers(wb_path: Path):
                 continue
             if not _is_general(e["rec"]):
                 gates = e["gates"] or ""
-                hits = sum(1 for sw in sheet_switches if _token_overlap(gates, sw))
+                hits = 0
+                earliest = 999
+                for r_idx, sw in enumerate(sheet_switches):
+                    if _token_overlap(gates, sw):
+                        hits += 1
+                        if r_idx < earliest:
+                            earliest = r_idx
                 if hits == 0:
                     continue
-                scored.append((hits, e))
+                scored.append((earliest, -hits, idx_e, e))
             else:
-                scored.append((0, e))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        for hits, e in scored:
+                scored.append((999, 0, idx_e, e))
+        scored.sort(key=lambda x: (x[0], x[1], x[2]))
+        for earliest, neg_hits, idx_e, e in scored:
             hdr = f"{e['filter']}={e['opt']}"
             if hdr in seen or hdr in existing:
                 continue
