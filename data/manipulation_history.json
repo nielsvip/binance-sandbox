@@ -3009,5 +3009,23 @@
     ],
     "timestamp": "2026-09-11T02:07:11.902930+00:00",
     "price": 1.19931839
+  },
+  {
+    "symbol": "ICXUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_3M: 20.0% range (spike detected)"
+    ],
+    "timestamp": "2026-09-11T02:40:09.118164+00:00",
+    "price": 0.01268181
+  },
+  {
+    "symbol": "PYPLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-11T02:44:07.207603+00:00",
+    "price": 53.28577871
   }
 ]
