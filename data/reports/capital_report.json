@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-11 05:32 UTC",
- "total_capital_usd": 5.36,
+ "generated_at": "2026-09-11 07:02 UTC",
+ "total_capital_usd": 7.87,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.36,
+  "B": 7.87,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:RUNEUSDT_LONG",
-   "symbol": "RUNEUSDT",
+   "pk": "fin:XTZUSDT_SHORT",
+   "symbol": "XTZUSDT",
    "account": "fin",
-   "value_usd": 5.36,
-   "gain_pct": 2.118,
+   "value_usd": 7.87,
+   "gain_pct": -0.221,
    "tier": "B",
-   "perf_mult": 1.57,
-   "amt": 10.0,
-   "mark": 0.5357
+   "perf_mult": 1.54,
+   "amt": 30.6,
+   "mark": 0.2573
   }
  ]
 }
