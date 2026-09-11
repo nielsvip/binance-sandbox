@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-11T18:49:31.401908+00:00",
+  "timestamp": "2026-09-11T20:22:17.558221+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 149
+    "total_ranked": 152
   },
   "unified_ranking": [
+    {
+      "symbol": "METAUSDT",
+      "net_score": -10.7,
+      "long_score": 0,
+      "short_score": 10.7
+    },
     {
       "symbol": "1INCHUSDT",
       "net_score": 0,
@@ -97,12 +103,6 @@
       "short_score": 0
     },
     {
-      "symbol": "EGLDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SAGAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -110,12 +110,6 @@
     },
     {
       "symbol": "SPYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "METAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -182,6 +176,12 @@
     },
     {
       "symbol": "ENSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PYPLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -266,6 +266,12 @@
     },
     {
       "symbol": "MANAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ARMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -397,6 +403,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MASKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SNXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -518,6 +530,12 @@
     },
     {
       "symbol": "RLCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "WUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -889,31 +907,32 @@
       "short_score": 0
     },
     {
-      "symbol": "ARMUSDT",
-      "net_score": 11.3,
-      "long_score": 11.3,
+      "symbol": "HOTUSDT",
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "PYPLUSDT",
-      "net_score": 15.3,
-      "long_score": 15.3,
+      "symbol": "EGLDUSDT",
+      "net_score": 11.1,
+      "long_score": 11.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "PYPLUSDT",
-      15.3,
-      53.97
-    ],
-    [
-      "ARMUSDT",
-      11.3,
-      265.08
+      "EGLDUSDT",
+      11.1,
+      4.605
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "METAUSDT",
+      10.7,
+      647.33251554
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

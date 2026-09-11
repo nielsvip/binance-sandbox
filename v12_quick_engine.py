@@ -6720,6 +6720,7 @@ class QuickConfig:
     GAP_INVENTORY_FILE: str = 'data/gap_inventory_tradier.json'
     GAP_INVENTORY_LOOKBACK_DAYS: int = 20
     GAP_PER_SYMBOL_INVENTORY_FILE: str = 'data/gap_inventory_tradier_per_symbol.json'
+    GAP_PER_SYMBOL_HISTORY_FILE: str = 'data/gap_history_1yr_tradier.json'
     GAP_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10
     GAP_PER_SYMBOL_LOOKBACK_DAYS: int = 30
     GAP_MOC_DC_PROXIMITY_PCT: float = 0.5
@@ -20994,49 +20995,104 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _is_tr:
                 _open_d = _safe(npz, 'open_D', n)
                 _prev_d = _safe(npz, 'close_D_prev', n)
-                # daily gap pct where both exist
+                # daily gap pct where both exist — NPZ is primary source for backtest (live uses per-symbol JSON)
                 _gap_pct = np.where((_open_d>0)&(_prev_d>0), (_open_d-_prev_d)/_prev_d*100.0, 0.0)
-                # rolling 20d sum pos/neg (approx 20 non-zero gaps)
-                _lb = int(getattr(cfg, 'GAP_INVENTORY_LOOKBACK_DAYS', 20))
-                _window = 90  # approx bars: will compute bias via simple rolling sum of last _lb daily gaps
-                # compress to daily series: detect day boundaries via timestamp day change (approx every 78*5m bars)
-                # Simpler: rolling sum over last 20*78 bars approximated as last 1560 bars bias
+                # Fallback: if NPZ has no D data (e.g. synthetic/short history), try historic per-symbol daily JSON (>1yr) written to data/gap_history_1yr_tradier.json
+                # JSON format: {SYM: [{"date":"YYYY-MM-DD","gap_pct":0.12}, ...]} or {SYM: {"2023-01-03":0.12,...}}
+                _has_npz_gap = float(np.count_nonzero(_gap_pct)) > max(20, n*0.01)
+                if not _has_npz_gap:
+                    try:
+                        import json as _js_gap, pathlib as _pl_gap
+                        for _cand in [getattr(cfg,'GAP_PER_SYMBOL_HISTORY_FILE','data/gap_history_1yr_tradier.json'), 'data/gap_history_1yr_tradier.json', 'data/gap_inventory_tradier_per_symbol.json']:
+                            _p = _pl_gap.Path(_cand)
+                            if _p.exists():
+                                _hist = _js_gap.loads(_p.read_text())
+                                # historical file maps symbol -> list of {date,gap_pct} or dict date->gap
+                                _sym_hist = _hist.get(sym, _hist.get(sym.upper())) if isinstance(_hist, dict) else None
+                                if _sym_hist:
+                                    # expand daily gaps onto bar series: map each bar's date to gap
+                                    try:
+                                        import datetime as _dt_gap
+                                        ts = npz.get('timestamps', np.array([]))
+                                        _gap_from_hist = np.zeros(n)
+                                        if isinstance(_sym_hist, dict):
+                                            _map = {k: float(v) for k,v in _sym_hist.items()}
+                                        elif isinstance(_sym_hist, list):
+                                            _map = {}
+                                            for _e in _sym_hist:
+                                                if isinstance(_e, dict) and 'date' in _e:
+                                                    _map[str(_e['date'])[:10]] = float(_e.get('gap_pct',0))
+                                                elif isinstance(_e, (list,tuple)) and len(_e)>=2:
+                                                    _map[str(_e[0])[:10]] = float(_e[1])
+                                        else:
+                                            _map = {}
+                                        for _i in range(n):
+                                            try:
+                                                _dstr = _dt_gap.datetime.utcfromtimestamp(int(ts[_i])).strftime('%Y-%m-%d') if ts.size>n//2 else None
+                                            except Exception:
+                                                _dstr = None
+                                            if _dstr and _dstr in _map:
+                                                _gap_from_hist[_i] = _map[_dstr]
+                                        if np.count_nonzero(_gap_from_hist) > 0:
+                                            _gap_pct = _gap_from_hist
+                                            _has_npz_gap = True
+                                    except Exception:
+                                        pass
+                                if _has_npz_gap:
+                                    break
+                    except Exception:
+                        pass
+                # PER-SYMBOL ONLY: avg = sum(last 30 daily gaps)/30, thr = GAP_PER_SYMBOL_AVG_THRESH_PCT (0.10/0.30/0.50 from TEMPLATE)
+                _lb_days = int(getattr(cfg, 'GAP_PER_SYMBOL_LOOKBACK_DAYS', 30) or getattr(cfg, 'GAP_INVENTORY_LOOKBACK_DAYS', 20))
                 import numpy as _np_gap
                 _bar_min = 15 if '15m' in str(getattr(cfg,'BASE_TF','')) or True else 15
                 try:
                     _bar_min = int(''.join(filter(str.isdigit, str(getattr(cfg,'BASE_TF','15m')))) or 15)
                 except Exception:
                     _bar_min = 15
-                _bars_20d = max(20*6, 20* int(390/max(_bar_min,1)))  # ~20 RTH days
-                _bias = _np_gap.zeros(n)
-                _sum_pos = _np_gap.zeros(n); _sum_neg = _np_gap.zeros(n)
-                # brute rolling: for each i, sum last _bars_20d gap_pcts split
-                # vectorized via cumsum split
-                _pos = _np_gap.where(_gap_pct>0, _gap_pct, 0)
-                _neg = _np_gap.where(_gap_pct<0, _gap_pct, 0)
-                _cpos = _np_gap.cumsum(_pos); _cneg = _np_gap.cumsum(_neg)
+                _bars_per_day = max(26, int(390/max(_bar_min,1)))
+                _bars_30d = max(30*6, 30* int(390/max(_bar_min,1)))  # ~30 RTH days for per-symbol avg
+                # rolling sum over last _bars_30d bars, then avg = sum / count (handles dense repeated D per bar and sparse one-per-day)
+                _cumsum = _np_gap.cumsum(_gap_pct)
+                _avg_gap = _np_gap.zeros(n)
                 for _i in range(n):
-                    _l = max(0, _i - _bars_20d)
-                    _bias[_i] = (_cpos[_i]-(_cpos[_l] if _l>0 else 0)) + (_cneg[_i]-(_cneg[_l] if _l>0 else 0))
-                _thr = float(getattr(cfg, 'GAP_MOC_HOLD_POSITIVE_BIAS_PCT', 0.30))
+                    _l = max(0, _i - _bars_30d)
+                    _sum30 = _cumsum[_i] - (_cumsum[_l] if _l>0 else 0)
+                    _cnt = max(1, int(np.count_nonzero(_gap_pct[max(0,_i-_bars_30d):_i+1])) or 30)
+                    _avg_gap[_i] = _sum30 / _cnt
+                _thr = float(getattr(cfg, 'GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.10) or getattr(cfg, 'GAP_MOC_HOLD_POSITIVE_BIAS_PCT', 0.30))
                 _wt1_15 = _safe(npz, 'wt1_15m', n); _wt2_15 = _safe(npz, 'wt2_15m', n)
                 _wt1_5 = _safe(npz, 'wt1_5m', n); _wt2_5 = _safe(npz, 'wt2_5m', n)
-                # last 90m window: approximate as last 6 bars of each RTH day (15m) or 18 bars (5m)
+                # last 90m window: last 6 bars of each RTH day (15m) or 18 bars (5m)
                 _bars_90m = max(2, int(90/max(_bar_min,1)))
-                # detect RTH close proximity via time-of-day if timestamps available: use simple periodic window
-                # heuristic: every 78*5m (~26*15m) bars is a close; last 90m is tail of each day
-                _bars_per_day = max(26, int(390/max(_bar_min,1)))
                 _in_window = _np_gap.zeros(n, dtype=bool)
                 for _i in range(n):
                     _off = _i % _bars_per_day
                     if _bars_per_day - _bars_90m <= _off < _bars_per_day:
                         _in_window[_i] = True
                 _is_top = (_wt1_15 < _wt2_15) if is_long else (_wt1_15 > _wt2_15)
-                # bias says close: longs when bias < -thr (avg down), shorts when bias > thr
+                # PER-SYMBOL decides: longs when avg < -thr (gap-down risk), shorts when avg > thr (gap-up risk); near 0 (|avg|<=thr) only VV closes
                 if is_long:
-                    _gap_should = _bias < -_thr
+                    _gap_should = _avg_gap < -_thr
                 else:
-                    _gap_should = _bias > _thr
+                    _gap_should = _avg_gap > _thr
+                # near-zero VV override: always allow close if near dc_4h edge with WT against (even if avg near 0)
+                _is_vv = _np_gap.zeros(n, dtype=bool)
+                try:
+                    _dc_high_4h = _safe(npz, 'dc_high_4h', n); _dc_low_4h = _safe(npz, 'dc_low_4h', n)
+                    _close_any = _safe(npz, 'close', n)
+                    _cur_price = _close_any
+                    _wt1_1h = _safe(npz, 'wt1_1h', n); _wt2_1h = _safe(npz, 'wt2_1h', n)
+                    _prox = float(getattr(cfg, 'GAP_MOC_DC_PROXIMITY_PCT', 0.50))
+                    if is_long:
+                        _near = (_dc_high_4h - _cur_price)/_cur_price*100.0 <= _prox if _cur_price is not None else False
+                        _is_vv = _near & ((_wt1_15 < _wt2_15) | (_wt1_1h < _wt2_1h))
+                    else:
+                        _near = (_cur_price - _dc_low_4h)/_cur_price*100.0 <= _prox if _cur_price is not None else False
+                        _is_vv = _near & ((_wt1_15 > _wt2_15) | (_wt1_1h > _wt2_1h))
+                except Exception:
+                    pass
+                _gap_should = _gap_should | _is_vv
                 _gap_fire = _in_window & _gap_should & _is_top
                 # force MOC at last bar of window even if not top
                 if bool(getattr(cfg, 'GAP_MOC_FORCE_MOC_AT_CLOSE', True)):

@@ -1186,6 +1186,7 @@ class TradierConfig:
     GAP_INVENTORY_LOOKBACK_DAYS: int = 20  # rolling window for bias (20 trading days)
     # Per-symbol gap inventory (ONLY source for 90m sentinel — market-wide bias deprecated 2026-09-11 per user, retuned 2026-09-11 to 0.10 per user: |avg|>0.10 closes)
     GAP_PER_SYMBOL_INVENTORY_FILE: str = "data/gap_inventory_tradier_per_symbol.json"
+    GAP_PER_SYMBOL_HISTORY_FILE: str = "data/gap_history_1yr_tradier.json"  # historic >1yr date-by-date per-symbol gaps for backtest (>252 trading days)
     GAP_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10  # |avg_gap| <= this = near 0 → don't close on gap bias (only VV). User 2026-09-11: anything >0.10 avg/day closes at top/bottom
     GAP_PER_SYMBOL_LOOKBACK_DAYS: int = 30  # informational — file stores 30d of daily gaps
     # Pre-close sentinel window: poll every 2m from 90m before close (14:30 ET) until

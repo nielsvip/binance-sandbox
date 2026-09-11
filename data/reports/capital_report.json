@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-11 18:29 UTC",
- "total_capital_usd": 12.04,
+ "generated_at": "2026-09-11 20:00 UTC",
+ "total_capital_usd": 12.09,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.04,
+  "B": 12.09,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "men:ZRXUSDT_SHORT"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:OPUSDT_SHORT",
-   "symbol": "OPUSDT",
+   "pk": "men:ZRXUSDT_SHORT",
+   "symbol": "ZRXUSDT",
    "account": "men",
-   "value_usd": 12.04,
-   "gain_pct": -0.151,
+   "value_usd": 12.09,
+   "gain_pct": -0.653,
    "tier": "B",
-   "perf_mult": 2.25,
-   "amt": 125.5,
-   "mark": 0.09594435
+   "perf_mult": 1.0,
+   "amt": 120.6,
+   "mark": 0.10025
   }
  ]
 }

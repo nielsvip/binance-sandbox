@@ -1,0 +1,3 @@
+switch_sheet,switch,switch_value,filter,filter_value,baseline_gain,new_gain,delta,baseline_trades,new_trades,delta_trades,baseline_bh,new_bh,delta_bh,baseline_tim,new_tim,delta_tim,baseline_dd,new_dd,delta_dd,baseline_sharpe,new_sharpe,delta_sharpe,window_days,symside,valid
+FILTERS_EXPLAINED,ADX_RANGING_THRESHOLD,Threshold_ALT,ADX_RANGING_THRESHOLD,20,-15.935431,-13.468866,2.466565,178,178,0,8.244733,8.244733,0.000000,31.780000,32.030000,0.250000,16.815372,16.414162,-0.401210,-0.141639,-0.119379,0.022260,30,MU_LONG,True
+FILTERS_EXPLAINED,ADX_RANGING_THRESHOLD,Threshold_ALT,ADX_RANGING_THRESHOLD,25,-15.935431,-14.396390,1.539041,178,168,-10,8.244733,8.244733,0.000000,31.780000,30.420000,-1.360000,16.815372,15.512037,-1.303335,-0.141639,-0.136527,0.005112,30,MU_LONG,True

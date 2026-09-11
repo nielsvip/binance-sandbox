@@ -1,70 +1,62 @@
 {
-  "generated_at": "2026-09-11T18:39:45.428666+00:00",
-  "count": 8,
+  "generated_at": "2026-09-11T19:59:20.432797+00:00",
+  "count": 7,
   "advisories": [
     {
-      "symbol": "ADBE",
+      "symbol": "DAR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.464,
-      "ts": "2026-09-11T18:39:45.428384+00:00"
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.544,
+      "ts": "2026-09-11T19:59:20.432655+00:00"
     },
     {
-      "symbol": "AMD",
+      "symbol": "DVN",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.506,
-      "ts": "2026-09-11T18:39:45.428457+00:00"
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.472,
+      "ts": "2026-09-11T19:59:20.432721+00:00"
     },
     {
-      "symbol": "APA",
+      "symbol": "EQT",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.74 threshold=0.45",
-      "score": 0.736,
-      "ts": "2026-09-11T18:39:45.428470+00:00"
+      "reason": "bullish_news_score=0.60 threshold=0.45",
+      "score": 0.597,
+      "ts": "2026-09-11T19:59:20.432725+00:00"
     },
     {
-      "symbol": "AXTI",
+      "symbol": "FIX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.73 threshold=0.45",
-      "score": 0.727,
-      "ts": "2026-09-11T18:39:45.428477+00:00"
+      "reason": "bullish_news_score=0.52 threshold=0.45",
+      "score": 0.523,
+      "ts": "2026-09-11T19:59:20.432728+00:00"
     },
     {
-      "symbol": "BWXT",
+      "symbol": "GDXJ",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.64 threshold=0.45",
-      "score": 0.642,
-      "ts": "2026-09-11T18:39:45.428483+00:00"
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.528,
+      "ts": "2026-09-11T19:59:20.432730+00:00"
     },
     {
-      "symbol": "CIBR",
+      "symbol": "INOD",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.59 threshold=0.45",
-      "score": 0.586,
-      "ts": "2026-09-11T18:39:45.428488+00:00"
+      "reason": "bullish_news_score=0.60 threshold=0.45",
+      "score": 0.598,
+      "ts": "2026-09-11T19:59:20.432734+00:00"
     },
     {
-      "symbol": "CMC",
+      "symbol": "LEXX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.74 threshold=0.45",
-      "score": 0.74,
-      "ts": "2026-09-11T18:39:45.428499+00:00"
-    },
-    {
-      "symbol": "CRWD",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.64 threshold=0.45",
-      "score": 0.645,
-      "ts": "2026-09-11T18:39:45.428512+00:00"
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.472,
+      "ts": "2026-09-11T19:59:20.432737+00:00"
     }
   ]
 }
