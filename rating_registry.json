@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-11T05:29:25.124307+00:00",
+  "timestamp": "2026-09-11T05:49:43.220843+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -595,6 +595,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SNXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -853,50 +859,34 @@
       "short_score": 0
     },
     {
-      "symbol": "ARUSDT",
-      "net_score": 11.0,
-      "long_score": 11.0,
-      "short_score": 0
-    },
-    {
       "symbol": "UNIUSDC",
-      "net_score": 12.2,
-      "long_score": 12.2,
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     },
     {
       "symbol": "BABAUSDT",
-      "net_score": 13.7,
-      "long_score": 13.7,
+      "net_score": 13.2,
+      "long_score": 13.2,
       "short_score": 0
     },
     {
       "symbol": "RUNEUSDT",
-      "net_score": 17.1,
-      "long_score": 17.1,
+      "net_score": 14.0,
+      "long_score": 14.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RUNEUSDT",
-      17.1,
-      0.54
+      14.0,
+      0.52250844
     ],
     [
       "BABAUSDT",
-      13.7,
-      109.04
-    ],
-    [
-      "UNIUSDC",
-      12.2,
-      6.153
-    ],
-    [
-      "ARUSDT",
-      11.0,
-      2.65569397
+      13.2,
+      109.37
     ]
   ],
   "top_shorts": [],
