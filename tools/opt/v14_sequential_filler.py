@@ -921,15 +921,13 @@ def main():
 
             # --- MAX delta: if best <=0, try all combos of 2 and 3 filters until max pos delta (beating-ideas-to-death) ---
             _best_before_combo = best[0] if best else float("-inf")
-            if best is None or _best_before_combo <= 0:
+            # FAST PATH: skip combos entirely for minutes-scale every-cell fill (user: every 0.7s a cell)
+            # Combos were 84*0.07=5.8s per row → too slow for 210 rows (24 min). Singles only = 0.9s/row → 3 min for 210.
+            # Keep combos only for small sheets <30 rows if needed, but for now skip all combos to ensure every cell within minutes
+            if False and (best is None or _best_before_combo <= 0):
                 import itertools
-                # limit to avoid explosion: cap at 8 most promising singles (highest delta) + all if <=12
-                # rank singles by delta (we have pending_lbI deltas already, but need vec deltas)
-                # For now use order of single_filters (already opportune), cap at 8 for combos
                 _combo_pool = _single_filters_for_combo
                 if len(_combo_pool) > 8:
-                    # keep 8 with highest pending_lbI delta (or first 8 if no data)
-                    # pending_lbI has hdr->delta for singles
                     _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
                     _combo_pool = _ranked[:8]
                 # Batch combos — build all combo variants then evaluate in one batch (million/hour)
