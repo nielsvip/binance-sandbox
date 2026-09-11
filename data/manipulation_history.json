@@ -2991,5 +2991,23 @@
     ],
     "timestamp": "2026-09-11T01:44:52.542977+00:00",
     "price": 107.91820809
+  },
+  {
+    "symbol": "JPMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-11T01:52:15.963342+00:00",
+    "price": 355.33667462
+  },
+  {
+    "symbol": "GASUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-11T02:07:11.902930+00:00",
+    "price": 1.19931839
   }
 ]
