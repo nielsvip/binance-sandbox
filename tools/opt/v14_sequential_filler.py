@@ -487,12 +487,13 @@ def ensure_lbI_headers(wb_path: Path):
                 hv = None
             if hv and isinstance(hv, str) and "=" in hv:
                 existing.add(hv.strip())
-        # collect opportune headers for this sheet (distinct filter=opt) — UNCONDITIONAL: any applicable sheets_app
-        # Previous gate filter was too strict (token_overlap with sheet/switch) leaving 0 headers for BOUNCE.
-        # Ensure L:BI always has columns for every applicable filter so per-row pending_lbI can be written.
+        # collect headers for this sheet: only filters that actually gate a switch in this sheet or are GENERAL
+        # (previous unconditional took first 50 alphabetically ADX... not relevant for BOUNCE, so L stayed 0)
         headers = []
         seen = set()
         lifecycle = sheet.split("_")[0]
+        # collect switches in this sheet for relevance
+        sheet_switches = [str(ws.cell(r, 1).value or "").strip() for r in range(2, min(50, ws.max_row+1)) if ws.cell(r, 1).value]
         for e in fd_rows:
             sa = (e["sheets_app"] or "").strip()
             if sa == "ALL":
@@ -501,12 +502,18 @@ def ensure_lbI_headers(wb_path: Path):
                 applicable = (lifecycle in sa) or ("GLOBAL_CHECK" in sa)
             if not applicable:
                 continue
+            # GENERAL always included, SPECIFIC only if it gates some switch in this sheet
+            if not _is_general(e["rec"]):
+                gates = e["gates"] or ""
+                # check if this filter gates any switch in this sheet
+                if not any(_token_overlap(gates, sw) for sw in sheet_switches):
+                    continue
             hdr = f"{e['filter']}={e['opt']}"
             if hdr in seen or hdr in existing:
                 continue
             seen.add(hdr)
             headers.append(hdr)
-            if len(headers) >= 50:  # cap per sheet (allow a bit more to ensure coverage)
+            if len(headers) >= 80:
                 break
         # write headers starting at L=12
         col = max(12, ws.max_column + 1) if existing else 12
