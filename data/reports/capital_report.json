@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-11 09:16 UTC",
- "total_capital_usd": 12.01,
+ "generated_at": "2026-09-11 11:21 UTC",
+ "total_capital_usd": 11.96,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.01,
+  "B": 11.96,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
+   "pk": "men:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
    "account": "men",
-   "value_usd": 12.01,
-   "gain_pct": -0.12,
+   "value_usd": 11.96,
+   "gain_pct": -0.026,
    "tier": "B",
-   "perf_mult": 1.49,
-   "amt": 58.1,
-   "mark": 0.20664804
+   "perf_mult": 3.11,
+   "amt": 135.1,
+   "mark": 0.08852
   }
  ]
 }

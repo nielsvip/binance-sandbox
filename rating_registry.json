@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-11T11:07:36.661364+00:00",
+  "timestamp": "2026-09-11T11:28:02.296051+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,28 +7,22 @@
   },
   "unified_ranking": [
     {
-      "symbol": "WLFIUSDC",
-      "net_score": -26.4,
+      "symbol": "ALGOUSDT",
+      "net_score": -12.5,
       "long_score": 0,
-      "short_score": 26.4
+      "short_score": 12.5
     },
     {
-      "symbol": "CHRUSDT",
-      "net_score": -12.2,
+      "symbol": "ATOMUSDT",
+      "net_score": -12.5,
       "long_score": 0,
-      "short_score": 12.2
+      "short_score": 12.5
     },
     {
-      "symbol": "ROSEUSDT",
-      "net_score": -10.6,
+      "symbol": "XTZUSDT",
+      "net_score": -11.6,
       "long_score": 0,
-      "short_score": 10.6
-    },
-    {
-      "symbol": "BATUSDT",
-      "net_score": -10.4,
-      "long_score": 0,
-      "short_score": 10.4
+      "short_score": 11.6
     },
     {
       "symbol": "SPYUSDT",
@@ -104,12 +98,6 @@
     },
     {
       "symbol": "INJUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -217,6 +205,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -247,13 +241,13 @@
       "short_score": 0
     },
     {
-      "symbol": "ATOMUSDT",
+      "symbol": "METAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "METAUSDT",
+      "symbol": "WLFIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -374,12 +368,6 @@
     },
     {
       "symbol": "NEARUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -601,6 +589,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ROSEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -674,6 +668,12 @@
     },
     {
       "symbol": "SNOWUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CHRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -794,12 +794,6 @@
     },
     {
       "symbol": "LPTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PYPLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -941,29 +935,36 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "PYPLUSDT",
+      "net_score": 10.0,
+      "long_score": 10.0,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "PYPLUSDT",
+      10.0,
+      53.60357609
+    ]
+  ],
   "top_shorts": [
     [
-      "WLFIUSDC",
-      26.4,
-      0.0497092
+      "ALGOUSDT",
+      12.5,
+      0.08855501
     ],
     [
-      "CHRUSDT",
-      12.2,
-      0.01491
+      "ATOMUSDT",
+      12.5,
+      1.70794286
     ],
     [
-      "ROSEUSDT",
-      10.6,
-      0.006411
-    ],
-    [
-      "BATUSDT",
-      10.4,
-      0.06991414
+      "XTZUSDT",
+      11.6,
+      0.2494
     ]
   ],
   "hedge_usage": {
