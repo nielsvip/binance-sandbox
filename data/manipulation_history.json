@@ -3054,5 +3054,14 @@
     ],
     "timestamp": "2026-09-11T03:35:53.401450+00:00",
     "price": 217.82
+  },
+  {
+    "symbol": "DISUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-11T06:25:46.817947+00:00",
+    "price": 106.03
   }
 ]
