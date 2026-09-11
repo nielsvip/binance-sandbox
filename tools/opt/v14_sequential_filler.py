@@ -461,6 +461,7 @@ def ensure_lbI_headers(wb_path: Path):
 
     TEMPLATE.xlsx ships without L:BI; without this sheet.max_column stays 9 and
     per-row filter sweep writes nowhere.
+    FIX: sheets=ALL treated as GLOBAL (421-432 etc).
     """
     wb = openpyxl.load_workbook(str(wb_path))
     fd_rows = _load_filter_dictionary()
@@ -469,29 +470,36 @@ def ensure_lbI_headers(wb_path: Path):
             continue
         ws = wb[sheet]
         existing = set()
-        for c in range(12, ws.max_column + 1):
+        # max_column may be <12 when L:BI empty — scan up to at least 12
+        scan_max = max(ws.max_column, 12)
+        for c in range(12, scan_max + 1):
             hv = ws.cell(row=1, column=c).value
             if hv and isinstance(hv, str) and "=" in hv:
                 existing.add(hv.strip())
-        # collect opportune headers for this sheet (distinct filter=opt)
+        # collect opportune headers for this sheet (distinct filter=opt) — mirror get_opportune_filters
         headers = []
         seen = set()
+        lifecycle = sheet.split("_")[0]
         for e in fd_rows:
-            lifecycle = sheet.split("_")[0]
-            applicable = (lifecycle in e["sheets_app"]) or ("GLOBAL_CHECK" in e["sheets_app"])
+            sa = (e["sheets_app"] or "").strip()
+            if sa == "ALL":
+                applicable = True
+            else:
+                applicable = (lifecycle in sa) or ("GLOBAL_CHECK" in sa)
             if not applicable:
                 continue
-            # SPECIFIC or GENERAL both need columns; but GENERAL will also be at bottom
+            if sa == "ALL" and _is_general(e["rec"]):
+                pass  # GENERAL ALL always applicable
+            elif not (_is_general(e["rec"]) or _token_overlap(e["gates"], sheet) or any(_token_overlap(e["gates"], str(ws.cell(r, 1).value or "")) for r in range(2, min(30, ws.max_row+1)) if ws.cell(r, 1).value)):
+                # also allow token overlap with sheet name itself (e.g. BOUNCE)
+                continue
             hdr = f"{e['filter']}={e['opt']}"
             if hdr in seen or hdr in existing:
                 continue
-            # only if this filter gates some switch in this sheet or is GENERAL
-            if _is_general(e["rec"]) or any(_token_overlap(e["gates"], sw) for sw in [ws.cell(r, 1).value for r in range(2, min(20, ws.max_row+1)) if ws.cell(r, 1).value]):
-                # for GENERAL we still add one col per distinct filter (first opt)
-                seen.add(hdr)
-                headers.append(hdr)
-                if len(headers) >= 40:  # cap per sheet
-                    break
+            seen.add(hdr)
+            headers.append(hdr)
+            if len(headers) >= 40:  # cap per sheet
+                break
         # write headers starting at L=12
         col = max(12, ws.max_column + 1) if existing else 12
         for hdr in headers:
@@ -695,7 +703,6 @@ def main():
             return True
         return False
     # no worksheet timeout — every cell advances individually
-        return False
     _touch_heartbeat("start")
     # --- BATCHED million/hour: prepare NPZ once, reuse for every row/filter (3.65s once, 0.07s per eval) ---
     from tools.opt.v12_pilot import prepare_batch as _prepare_batch, evaluate_prepared_sanitized as _eval_prep
@@ -968,12 +975,13 @@ def main():
             # Always write F via Results (even if negative) — log every delta per row + filter, certified key includes cand
             write_results_variant(wb_path, switch, float(vec_best.get("gain_pct") or 0), float(delta_best), vec_best, cand_value=cand)
             # FIX: also write directly to ENTRY sheet F/E so data_only shows numbers immediately (was formula-only -> f=0)
+            # Baseline column E should be blank unless positive delta (user: baseline only when pos)
             try:
                 wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
                 if sheet in wb_tmp.sheetnames:
                     ws_tmp = wb_tmp[sheet]
                     ws_tmp.cell(r, 6).value = float(delta_best)
-                    ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)
+                    ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else None
                     wb_tmp.save(str(wb_path))
             except Exception as _e:
                 print(f"[entry-write-err] {sheet}!{r} {_e}", flush=True)
