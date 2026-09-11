@@ -1154,6 +1154,9 @@ def main():
                     ws_tmp.cell(r, 6).value = float(vector_delta_val) if 'vector_delta_val' in locals() and vector_delta_val is not None else float(delta_best)  # F is vector_delta per user
                     ws_tmp.cell(r, 5).value = float(cumulative_before + delta_best) if delta_best > 0 else None
                 _atomic_save(wb_row, wb_path)
+                try:
+                    import pathlib as _pl; _pl.Path('/tmp/mac_sync_flag').touch()
+                except: pass
             except Exception as _e:
                 print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
                 # fallback to old method
@@ -1256,6 +1259,14 @@ def main():
                 print(f"[LIVE VERIFY] {sheet} {len(sheet_promoted)} promoted vs FINAL {cumulative_gain:.4f} — live=king", flush=True)
         except Exception as _e:
             print(f"[live-verify-err] {sheet} {_e}", flush=True)
+
+        # Chart after every sheet fill (trades)
+        try:
+            import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
+            trades=[ws_tmp.cell(r, 11).value or 0 for r in range(3, switch_end+1) if ws_tmp.cell(r,1).value]
+            plt.figure(figsize=(10,4)); plt.plot(trades, marker='o'); plt.title(f'{sheet} trades {new_symside}'); plt.xlabel('row'); plt.ylabel('trades'); plt.tight_layout(); plt.savefig(str(wb_path).replace('.xlsx', f'_{sheet}_trades.png')); plt.close()
+        except Exception as _ce:
+            print(f"[chart-err] {sheet} {_ce}", flush=True)
 
         # GENERAL blanket vs final cumulative
         print(f"[general] {sheet} vs final {cumulative_gain:.4f}", flush=True)

@@ -2781,5 +2781,14 @@
     ],
     "timestamp": "2026-09-11T21:22:20.668690+00:00",
     "price": 98.54
+  },
+  {
+    "symbol": "EWTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-11T21:34:57.763261+00:00",
+    "price": 110.88679116
   }
 ]
