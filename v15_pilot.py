@@ -88,21 +88,26 @@ def ensure_npz_for_symside(symside: str, window_days: int = 30) -> Path | None:
         dst = ROOT / "backtest_v8" / "indicators" / f"{src_sym}.npz"
         for host in [S1_SSH, S1_SSH_SANDBOX]:
             try:
+                # skip self-fetch when already on S1
+                if Path("/home/niels/binance-sandbox").exists() and host in (S1_SSH_SANDBOX, "niels@157.180.125.52"):
+                    raise RuntimeError("skip self S1 fetch")
                 import subprocess as _sp
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                # try scp
+                # try scp with short timeout to avoid 30s hang
                 cmd = ["scp", "-P", "2201", f"{host}:{s1_src}", str(dst)] if "157.90" in host else ["scp", f"{host}:{s1_src}", str(dst)]
-                r = _sp.run(cmd, capture_output=True, timeout=30)
+                r = _sp.run(cmd, capture_output=True, timeout=5)
                 if dst.exists() and dst.stat().st_size > 100_000:
                     print(f"[npz-fetch] {src_sym}.npz from {host} -> {dst} {dst.stat().st_size/1e6:.1f}M", flush=True)
                     return dst
             except Exception as e:
                 print(f"[npz-fetch-warn] {host} {e}", flush=True)
                 continue
-        # fallback: rsync
+        # fallback: rsync with short timeout
         try:
+            if Path("/home/niels/binance-sandbox").exists():
+                raise RuntimeError("skip rsync on S1")
             import subprocess as _sp
-            _sp.run(["rsync", "-avz", "-e", "ssh -p 2201", f"{S1_SSH}:{s1_src}", str(dst)], capture_output=True, timeout=30)
+            _sp.run(["rsync", "-avz", "-e", "ssh -p 2201", f"{S1_SSH}:{s1_src}", str(dst)], capture_output=True, timeout=5)
             if dst.exists() and dst.stat().st_size > 100_000:
                 print(f"[npz-rsync] {src_sym}.npz -> {dst}", flush=True)
                 return dst
@@ -712,17 +717,22 @@ def main():
 
     _touch_heartbeat("start")
     total_pos = 0
+    print(f"[LOG {time.time():.1f}] start sheets={len(SWITCH_SHEETS)} wb={wb_path.name} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB" if True else "", flush=True)
 
+    print(f"[LOG {time.time():.1f}] load wb_tmp {wb_path}", flush=True)
     wb_tmp = openpyxl.load_workbook(str(wb_path), data_only=False)
+    print(f"[LOG {time.time():.1f}] wb_tmp loaded sheets={wb_tmp.sheetnames[:3]}", flush=True)
     sheets = [args.sheet] if args.sheet else [s for s in SWITCH_SHEETS if s in wb_tmp.sheetnames]
     if not sheets:
         sheets = [s for s in wb_tmp.sheetnames if any(s.startswith(p) for p in ["ENTRY", "EXIT", "REENTRY", "AUGMENT", "REDUCE", "GLOBAL"])]
     wb_tmp.close()
     for sheet in sheets:
         try:
-            print(f"\n[sheet] {sheet} cumulative={cumulative_gain:.4f}", flush=True)
+            print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
             _touch_heartbeat(f"sheet {sheet}")
+            print(f"[LOG {time.time():.1f}] load wb for {sheet}", flush=True)
             wb = openpyxl.load_workbook(str(wb_path), data_only=False)
+            print(f"[LOG {time.time():.1f}] wb loaded {sheet} rows={wb[sheet].max_row if sheet in wb.sheetnames else 0}", flush=True)
             if sheet not in wb.sheetnames:
                 wb.close()
                 continue
@@ -752,11 +762,13 @@ def main():
             wb.close()
             if args.max_switches and len(rows) > args.max_switches:
                 rows = rows[:args.max_switches]
-            print(f"[sheet] {sheet} {len(rows)} variants", flush=True)
+            print(f"[LOG {time.time():.1f}] [sheet] {sheet} {len(rows)} variants", flush=True)
             if not rows:
                 continue
 
+            print(f"[LOG {time.time():.1f}] load wb_keep for {sheet}", flush=True)
             wb_keep = openpyxl.load_workbook(str(wb_path), data_only=False)
+            print(f"[LOG {time.time():.1f}] wb_keep loaded", flush=True)
             ws_keep = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
             header_to_col = {}
             if ws_keep is not None:
@@ -835,12 +847,15 @@ def main():
                     best = None
                     pending_lbI = {}
                     vector_delta_val = None
+                    print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
                     try:
                         if prepared is not None:
                             import concurrent.futures as _cf2
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
+                            print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16", flush=True)
                             with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
                                 vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
+                            print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)}", flush=True)
                         else:
                             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
                             vecs = _eval_many(new_symside, [c[0] for c in candidates], window_days=args.window_days)
@@ -889,12 +904,15 @@ def main():
                                     v_combo, _ = sanitize_overrides(v_combo, defaults)
                                     all_combos.append((v_combo, "+".join(combo_label_parts), "+".join(combo_hdr_parts), combo_label_parts, combo_hdr_parts))
                             if all_combos:
+                                print(f"[LOG {time.time():.1f}] combo start {len(all_combos)}", flush=True)
                                 try:
                                     if prepared is not None:
                                         from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep2
                                         import concurrent.futures as _cf2c
+                                        print(f"[LOG {time.time():.1f}] combo batch {len(all_combos)} workers=16", flush=True)
                                         with _cf2c.ThreadPoolExecutor(max_workers=16) as ex_c:
                                             vecs_c = list(ex_c.map(lambda vc: _eval_prep2(prepared, vc[0], window_days=args.window_days), all_combos))
+                                        print(f"[LOG {time.time():.1f}] combo batch done", flush=True)
                                     else:
                                         from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many2
                                         vecs_c = _eval_many2(new_symside, [vc[0] for vc in all_combos], window_days=args.window_days)
@@ -979,7 +997,9 @@ def main():
                                 rws.cell(row=found, column=header_map["gain_pct"]).value = float(vec_best.get("gain_pct") or 0)
                         except Exception:
                             pass
+                        print(f"[LOG {time.time():.1f}] _atomic_save {sheet}!{r}", flush=True)
                         _atomic_save(wb_row, wb_path)
+                        print(f"[LOG {time.time():.1f}] _atomic_save done", flush=True)
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
                     progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best}

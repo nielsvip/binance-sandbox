@@ -7198,5 +7198,14 @@
     ],
     "timestamp": "2026-09-12T18:48:31.496634+00:00",
     "price": 361.51322386
+  },
+  {
+    "symbol": "SQQQUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T19:24:07.996984+00:00",
+    "price": 38.8587211
   }
 ]
