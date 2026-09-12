@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-12 14:15 UTC",
- "total_capital_usd": 11.99,
+ "generated_at": "2026-09-12 16:30 UTC",
+ "total_capital_usd": 12.0,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.99,
+  "B": 12.0,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
+   "pk": "men:OPUSDT_SHORT",
+   "symbol": "OPUSDT",
    "account": "men",
-   "value_usd": 11.99,
-   "gain_pct": -0.213,
+   "value_usd": 12.0,
+   "gain_pct": -0.032,
    "tier": "B",
-   "perf_mult": 2.79,
-   "amt": 43.1,
-   "mark": 0.27825
+   "perf_mult": 2.22,
+   "amt": 123.1,
+   "mark": 0.0975115
   }
  ]
 }
