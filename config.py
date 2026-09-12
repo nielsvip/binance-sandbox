@@ -1168,6 +1168,7 @@ class Config:
     STDEV_SLOPE_LOOKBACK_4H: int = 180  # 1mo 4h (6*30)
     STDEV_SLOPE_LOOKBACK_1H: int = 168  # 1wk 1h
     STDEV_SLOPE_LOOKBACK_15M: int = 96  # 1D 15m
+    STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"  # slope_to_top (10x on/below slope →1x top, vv shorts) vs bottom_to_top (10x bottom →1x top full gradient)
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True      # 2026-07-15 v2-v5 campaign: grad sizing uplift positive on 176-sym 6.5yr (L200+ quality subsets +2.3..+8.4%/trade); entry system stays OFF (Noise) — sizing only, conservative clamps
     BAND_SLOPE_SIZING_V2_TF: str = "4h"
     BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0

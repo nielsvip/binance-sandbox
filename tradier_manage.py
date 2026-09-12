@@ -25944,8 +25944,21 @@ class TradierTradeManager:
                         _bs_pb = float(_bs_pb)
                         _bs_slope_day = float(_bs_sl) * {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}.get(_bs_tf, 1.0)
                         _bs_long = (side == 'LONG')
-                        _bs_edge = (1.0 - _bs_pb) if _bs_long else _bs_pb
-                        _bs_m = 1.0 + float(_cfg_auto('BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0)) * (_bs_edge - 0.5) * 2.0
+                        # STDEV mode: slope_to_top (10x on/below slope →1x top) vs bottom_to_top (10x bottom→1x top)
+                        _mode = str(_cfg_auto('STDEV_SLOPE_SIZING_MODE', 'slope_to_top'))
+                        if _mode == "bottom_to_top":
+                            _bs_edge_full = (1.0 - _bs_pb) if _bs_long else _bs_pb
+                            _bs_m = 1.0 + (_bs_max - 1.0) * _bs_edge_full
+                        elif _mode == "slope_to_top":
+                            _bs_edge_slope = (1.0 - _bs_pb) if _bs_long else _bs_pb
+                            # below/at slope (pb≤0.5 edge≥0.5) → 10x, slope→top 10x→1x
+                            if _bs_edge_slope >= 0.5:
+                                _bs_m = _bs_max
+                            else:
+                                _bs_m = 1.0 + (_bs_max - 1.0) * (_bs_edge_slope * 2.0)
+                        else:
+                            _bs_edge = (1.0 - _bs_pb) if _bs_long else _bs_pb
+                            _bs_m = 1.0 + float(_cfg_auto('BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0)) * (_bs_edge - 0.5) * 2.0
                         _bs_sn = min(abs(_bs_slope_day) / float(_cfg_auto('BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0)), 1.0)
                         _bs_fav = _bs_slope_day > 0 if _bs_long else _bs_slope_day < 0
                         _bs_m *= (1.0 + 0.5 * _bs_sn) if _bs_fav else max(0.5, 1.0 - 0.5 * _bs_sn)

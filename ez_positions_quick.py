@@ -1358,13 +1358,24 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
         if _bs_pb is not None and _bs_sl is not None:
             _bs_pb = safe_fetch_float(_bs_pb, 0.5)
             _bs_slope_day = safe_fetch_float(_bs_sl, 0.0) * {'1h': 24.0, '4h': 6.0, 'D': 1.0, '15m': 96.0}.get(_bs_tf, 6.0)
-            _bs_edge = (1.0 - _bs_pb) if is_long else _bs_pb
-            _bs_m = 1.0 + float(getattr(config, 'BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0)) * (_bs_edge - 0.5) * 2.0
+            _mode = str(getattr(config, 'STDEV_SLOPE_SIZING_MODE', 'slope_to_top'))
+            if _mode == "bottom_to_top":
+                _bs_edge_full = (1.0 - _bs_pb) if is_long else _bs_pb
+                _bs_m = 1.0 + (_bs_max - 1.0) * _bs_edge_full
+            elif _mode == "slope_to_top":
+                _bs_edge_slope = (1.0 - _bs_pb) if is_long else _bs_pb
+                if _bs_edge_slope >= 0.5:
+                    _bs_m = _bs_max
+                else:
+                    _bs_m = 1.0 + (_bs_max - 1.0) * (_bs_edge_slope * 2.0)
+            else:
+                _bs_edge = (1.0 - _bs_pb) if is_long else _bs_pb
+                _bs_m = 1.0 + float(getattr(config, 'BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0)) * (_bs_edge - 0.5) * 2.0
             _bs_sn = min(abs(_bs_slope_day) / float(getattr(config, 'BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0)), 1.0)
             _bs_fav = _bs_slope_day > 0 if is_long else _bs_slope_day < 0
             _bs_m *= (1.0 + 0.5 * _bs_sn) if _bs_fav else max(0.5, 1.0 - 0.5 * _bs_sn)
             level_mult = max(_bs_min, min(_bs_max, _bs_m))
-            logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {'LONG' if is_long else 'SHORT'}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={level_mult:.2f} (max {_bs_max:.1f})")
+            logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {'LONG' if is_long else 'SHORT'}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={level_mult:.2f} (max {_bs_max:.1f} mode {_mode})")
     perf_mult = 1.0
     if config.SYMBOL_PERF_ENABLED:
         try:

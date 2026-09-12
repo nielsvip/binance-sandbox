@@ -798,6 +798,7 @@ class TradierConfig:
     STDEV_SLOPE_LOOKBACK_4H: int = 180
     STDEV_SLOPE_LOOKBACK_1H: int = 168
     STDEV_SLOPE_LOOKBACK_15M: int = 96
+    STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True      # sizing-only modifier on existing entries; validated on 305-sym bt_band_bounce v2
     BAND_SLOPE_SIZING_V2_TF: str = "D"
     BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0
