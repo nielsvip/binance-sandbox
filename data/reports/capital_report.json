@@ -1,32 +1,44 @@
 {
- "generated_at": "2026-09-12 20:18 UTC",
- "total_capital_usd": 7.42,
+ "generated_at": "2026-09-12 21:18 UTC",
+ "total_capital_usd": 23.92,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.42,
-  "C": 0.0
+  "B": 0.0,
+  "C": 23.92
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 2
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "fin:TIAUSDC_SHORT"
+ "losers": [
+  "fin:1INCHUSDT_LONG",
+  "fin:PENGUUSDC_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:TIAUSDC_SHORT",
-   "symbol": "TIAUSDC",
+   "pk": "fin:PENGUUSDC_SHORT",
+   "symbol": "PENGUUSDC",
    "account": "fin",
-   "value_usd": 7.42,
-   "gain_pct": 0.134,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 21.0,
-   "mark": 0.35334228
+   "value_usd": 11.98,
+   "gain_pct": 0.249,
+   "tier": "C",
+   "perf_mult": 0.65,
+   "amt": 1650.0,
+   "mark": 0.00725915
+  },
+  {
+   "pk": "fin:1INCHUSDT_LONG",
+   "symbol": "1INCHUSDT",
+   "account": "fin",
+   "value_usd": 11.94,
+   "gain_pct": -0.271,
+   "tier": "C",
+   "perf_mult": 0.42,
+   "amt": 131.0,
+   "mark": 0.09114232
   }
  ]
 }

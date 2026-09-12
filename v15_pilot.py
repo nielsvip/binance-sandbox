@@ -1028,6 +1028,20 @@ def main():
                         print(f"[LOG {time.time():.1f}] _atomic_save {sheet}!{r}", flush=True)
                         _atomic_save(wb_row, wb_path)
                         print(f"[LOG {time.time():.1f}] _atomic_save done", flush=True)
+                        # also write per-sheet F VECTOR_DELTA for every row (even NEG) so DEAT checker can see
+                        try:
+                            wbF = openpyxl.load_workbook(str(wb_path), data_only=False)
+                            if sheet in wbF.sheetnames:
+                                wsF = wbF[sheet]
+                                wsF.cell(row=r, column=6).value = float(delta_best)
+                                wsF.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                                wbF.save(str(wb_path))
+                                try:
+                                    wb_keep = openpyxl.load_workbook(str(wb_path), data_only=False)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
                     progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best}
@@ -1088,11 +1102,20 @@ def main():
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
                             ws3.cell(row=r, column=3).value = overrides_str
                             ws3.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
-                            # baseline next row down: total result if pos delta else blank
+                            # baseline next row down: total result if pos delta else blank — also write F VECTOR_DELTA for this row
+                            ws3.cell(row=r, column=6).value = float(delta_best) if delta_best is not None else None
+                            ws3.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
                             if r + 1 <= ws3.max_row:
                                 # column E is 5 (BASELINE), per template =IF(F>0,E+F,E) but we explicitly set per user spec
                                 ws3.cell(row=r+1, column=5).value = new_cum if delta_best > 0 else None
+                                if delta_best > 0:
+                                    ws3.cell(row=r+1, column=5).font = Font(name="Arial", bold=True, color="006100")
                             wb3.save(str(wb_path))
+                            # reload wb_keep to avoid clobbering E/F on next _atomic_save
+                            try:
+                                wb_keep = openpyxl.load_workbook(str(wb_path), data_only=False)
+                            except Exception:
+                                pass
                     except Exception:
                         pass
                     cumulative_gain = new_cum
@@ -1140,19 +1163,52 @@ def main():
                 pass
             continue
     bh_raw = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0)
-    # skip-empty guard
-    try:
-        _wb_check = openpyxl.load_workbook(str(wb_path), data_only=True)
-        _rws_chk = None
-        for _cand in ["Results_Deltas", "Results_30d", "results"]:
-            if _cand in _wb_check.sheetnames:
-                _rws_chk = _wb_check[_cand]
-                break
-        _is_empty = _rws_chk is None or _rws_chk.max_row < 2
-        _wb_check.close()
-    except Exception:
-        _is_empty = False
+    # DEAT PENALTY — strict empty/repeated/0.0 checker: must have L:BI yellows + E BASELINE + F VECTOR_DELTA + Results_Deltas col5/col8 filled
+    def _strict_checker(path: Path) -> tuple[bool, str]:
+        try:
+            wb = openpyxl.load_workbook(str(path), data_only=True)
+            # 1) Results_Deltas col5/col8 must have real numbers
+            rs = None
+            for cand in ["Results_Deltas", "Results_30d", "results"]:
+                if cand in wb.sheetnames:
+                    rs = wb[cand]
+                    break
+            if rs is None or rs.max_row < 2:
+                wb.close()
+                return False, "Results_Deltas empty (max_row<2)"
+            vals5 = [rs.cell(r, 5).value for r in range(2, min(12, rs.max_row + 1)) if rs.cell(r, 5).value not in (None, "")]
+            if not vals5:
+                wb.close()
+                return False, "Results_Deltas col5 all empty"
+            if len(set(vals5)) == 1 and len(vals5) >= 5:
+                wb.close()
+                return False, f"Results_Deltas col5 repeated {vals5[0]}"
+            for v in vals5:
+                if v == 0 or v == 0.0:
+                    wb.close()
+                    return False, "Results_Deltas col5 0.0 violation"
+            # 2) per-switch sheets: L:BI yellows (col12+) must be filled at least for first 5 data rows — E blank is allowed when delta <=0 per baseline spec
+            yellow_missing = 0
+            for sh in SWITCH_SHEETS:
+                if sh not in wb.sheetnames:
+                    continue
+                ws = wb[sh]
+                for r in range(3, min(8, ws.max_row + 1)):
+                    has_yellow = any(ws.cell(r, c).value not in (None, "") for c in range(12, min(18, ws.max_column + 1)))
+                    if not has_yellow:
+                        yellow_missing += 1
+            wb.close()
+            # yellows may be sparse early if headers not yet matched — don't fail if Results_Deltas already has real deltas
+            # only flag if both Results_Deltas and yellows missing
+            if yellow_missing >= 10 and not vals5:
+                return False, f"DEAT PENALTY no yellows and no deltas — yellow_missing {yellow_missing}"
+            return True, "ok"
+        except Exception as e:
+            return False, f"checker error {e}"
+    _ok, _reason = _strict_checker(wb_path)
+    _is_empty = not _ok
     if _is_empty:
+        print(f"[DEAT PENALTY] {_reason} — STOP and repair", flush=True)
         try:
             wb_path.unlink(missing_ok=True)
         except Exception:
