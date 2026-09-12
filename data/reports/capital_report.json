@@ -1,44 +1,30 @@
 {
- "generated_at": "2026-09-12 21:18 UTC",
- "total_capital_usd": 23.92,
+ "generated_at": "2026-09-12 22:21 UTC",
+ "total_capital_usd": 8.5,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 23.92
+  "B": 8.5,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 2
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:1INCHUSDT_LONG",
-  "fin:PENGUUSDC_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:PENGUUSDC_SHORT",
-   "symbol": "PENGUUSDC",
-   "account": "fin",
-   "value_usd": 11.98,
-   "gain_pct": 0.249,
-   "tier": "C",
-   "perf_mult": 0.65,
-   "amt": 1650.0,
-   "mark": 0.00725915
-  },
-  {
-   "pk": "fin:1INCHUSDT_LONG",
-   "symbol": "1INCHUSDT",
-   "account": "fin",
-   "value_usd": 11.94,
-   "gain_pct": -0.271,
-   "tier": "C",
-   "perf_mult": 0.42,
-   "amt": 131.0,
-   "mark": 0.09114232
+   "pk": "men:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
+   "account": "men",
+   "value_usd": 8.5,
+   "gain_pct": 0.056,
+   "tier": "B",
+   "perf_mult": 4.68,
+   "amt": 12.0,
+   "mark": 0.70857983
   }
  ]
 }

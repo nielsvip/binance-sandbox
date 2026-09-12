@@ -1164,7 +1164,8 @@ def main():
                                         break
                                 if first_data_r is None:
                                     first_data_r = r
-                                if r == first_data_r and wsF.cell(row=r, column=5).value in (None, ""):
+                                # Always ensure first data row's E baseline is set (even if formula exists, overwrite with value for data_only view)
+                                if r == first_data_r:
                                     wsF.cell(row=r, column=5).value = float(cumulative_before)
                                     wsF.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="006100")
                                 wsF.cell(row=r, column=6).value = float(delta_best)
