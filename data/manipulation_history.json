@@ -2826,5 +2826,14 @@
     ],
     "timestamp": "2026-09-11T23:29:03.478412+00:00",
     "price": 22.65
+  },
+  {
+    "symbol": "ASMLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T00:02:01.630206+00:00",
+    "price": 1701.85
   }
 ]
