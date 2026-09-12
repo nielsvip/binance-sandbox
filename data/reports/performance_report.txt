@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-12 03:23 UTC
+PERFORMANCE REPORT — 2026-09-12 03:47 UTC
 ================================================================================
 Total: 157 symbols | A=2 B=119 C=36
 Window: 14 days | Min trades: 5
@@ -23,6 +23,7 @@ Window: 14 days | Min trades: 5
          RKLBUSDT  WR=74%  avg=+0.14%  total=+2.7%  trades= 19  mult=5.94
            OPUSDT  WR=54%  avg=+0.09%  total=+2.6%  trades= 28  mult=2.27
              MSTR  WR=45%  avg=+0.21%  total=+2.3%  trades= 11  mult=1.34
+        ETHFIUSDC  WR=64%  avg=+0.10%  total=+2.2%  trades= 22  mult=4.15
               PBF  WR=100%  avg=+0.97%  total=+1.9%  trades=  2  mult=1.00
          NEARUSDC  WR=52%  avg=+0.08%  total=+1.9%  trades= 25  mult=1.87
               VLO  WR=86%  avg=+0.23%  total=+1.6%  trades=  7  mult=3.80
@@ -74,7 +75,6 @@ Window: 14 days | Min trades: 5
           AMDUSDT  WR=50%  avg=+0.02%  total=+0.1%  trades=  4  mult=1.00
      1000SHIBUSDC  WR=30%  avg=+0.01%  total=+0.1%  trades= 10  mult=0.56
          ORDIUSDC  WR=46%  avg=+0.01%  total=+0.1%  trades= 13  mult=0.84
-        ETHFIUSDC  WR=62%  avg=+0.00%  total=+0.1%  trades= 21  mult=3.17
          NFLXUSDT  WR=100%  avg=+0.06%  total=+0.1%  trades=  1  mult=1.00
          GALAUSDT  WR=40%  avg=+0.00%  total=+0.0%  trades= 20  mult=0.56
         LUNA2USDT  WR=67%  avg=+0.01%  total=+0.0%  trades=  3  mult=1.00
@@ -167,7 +167,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -51.6%
+  Total PnL (all symbols): -49.5%
   Avg win rate: 47%
   A-tier avg mult: 8.79
   C-tier avg mult: 0.45

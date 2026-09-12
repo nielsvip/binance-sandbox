@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-12T03:29:58.129012+00:00",
+  "timestamp": "2026-09-12T03:48:42.596248+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -158,6 +158,12 @@
     },
     {
       "symbol": "LINKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZRXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -398,6 +404,12 @@
     },
     {
       "symbol": "TSLAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MASKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -917,32 +929,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ZRXUSDT",
-      "net_score": 10.2,
-      "long_score": 10.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "MASKUSDT",
-      "net_score": 14.9,
-      "long_score": 14.9,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "MASKUSDT",
-      14.9,
-      0.4601
-    ],
-    [
-      "ZRXUSDT",
-      10.2,
-      0.10305
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
