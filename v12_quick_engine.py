@@ -5223,6 +5223,7 @@ class QuickConfig:
     STDEV_SLOPE_LOOKBACK_4H: int = 180
     STDEV_SLOPE_LOOKBACK_1H: int = 168
     STDEV_SLOPE_LOOKBACK_15M: int = 96
+    STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
     BB_PULLBACK_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     BB_PULLBACK_GATE_LONG_MAX: float = 0.15  # auto-wired 625

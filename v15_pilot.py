@@ -292,14 +292,58 @@ def get_defaults_for_symside(symside: str) -> dict:
     return defaults
 
 def _atomic_save(wb, wb_path: Path):
-    import tempfile, shutil, os as _os
+    import os as _os
     tmp = str(wb_path) + ".tmp"
+    bak = str(wb_path) + ".bak"
     try:
         wb.save(tmp)
+        # fsync to ensure zip not damaged on OOM/pkill/reboot
+        try:
+            fd = _os.open(tmp, _os.O_RDONLY)
+            _os.fsync(fd)
+            _os.close(fd)
+        except Exception:
+            pass
+        # keep complete json as source of truth, but also keep .bak of last good zip
+        try:
+            if _os.path.exists(str(wb_path)):
+                import shutil
+                shutil.copy2(str(wb_path), bak)
+        except Exception:
+            pass
         _os.replace(tmp, str(wb_path))
+        try:
+            fd = _os.open(str(wb_path), _os.O_RDONLY)
+            _os.fsync(fd)
+            _os.close(fd)
+        except Exception:
+            pass
     except Exception:
         try:
             wb.save(str(wb_path))
+        except Exception:
+            pass
+        try:
+            if _os.path.exists(tmp):
+                _os.remove(tmp)
+        except Exception:
+            pass
+
+def _atomic_write_json(path: Path, data: dict):
+    tmp = str(path) + ".tmp"
+    import os as _os, json as _json
+    try:
+        Path(tmp).write_text(_json.dumps(data, indent=2))
+        try:
+            fd = _os.open(tmp, _os.O_RDONLY)
+            _os.fsync(fd)
+            _os.close(fd)
+        except Exception:
+            pass
+        _os.replace(tmp, str(path))
+    except Exception:
+        try:
+            path.write_text(_json.dumps(data, indent=2))
         except Exception:
             pass
         try:
@@ -705,6 +749,53 @@ def main():
     _bl_trades = int(baseline_live.get("trades") or 0)
     _bl_valid = bool(baseline_live.get("valid"))
     baseline_had_zero_trades = (_bl_trades == 0) or (not _bl_valid)
+    # REFILL from complete json on restart — never lose calculations already made (OOM/reboot/pkill)
+    # If zip was damaged (truncated) but json has done cells, immediately refill sheet from json
+    try:
+        if progress.get("done"):
+            wb_refill = openpyxl.load_workbook(str(wb_path), data_only=False)
+            refilled = 0
+            for key, rec in progress["done"].items():
+                try:
+                    # key is like "ENTRY_REVERSAL_BOUNCE!3:WT_15M_BOUNCE_OPEN_ENABLED=False"
+                    sheet_part, rest = key.split("!", 1)
+                    row_part, switch_eq = rest.split(":", 1)
+                    r = int(row_part)
+                    if sheet_part not in wb_refill.sheetnames:
+                        continue
+                    ws_r = wb_refill[sheet_part]
+                    # refill F VECTOR_DELTA (col6) from rec delta if empty
+                    if ws_r.cell(row=r, column=6).value in (None, "") and rec.get("delta") is not None:
+                        ws_r.cell(row=r, column=6).value = float(rec["delta"])
+                        ws_r.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                        refilled += 1
+                    # refill Results_Deltas from rec
+                    target = None
+                    for cand_name in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
+                        if cand_name in wb_refill.sheetnames:
+                            target = cand_name
+                            break
+                    if target:
+                        rws = wb_refill[target]
+                        # find or create row for this switch
+                        switch = switch_eq.split("=")[0] if "=" in switch_eq else switch_eq
+                        found = None
+                        for rr in range(2, rws.max_row + 2):
+                            if str(rws.cell(row=rr, column=1).value or "").strip() == switch_eq:
+                                found = rr
+                                break
+                        if found and rws.cell(row=found, column=5).value in (None, "") and rec.get("delta") is not None:
+                            rws.cell(row=found, column=5).value = float(rec["delta"])
+                            rws.cell(row=found, column=8).value = float(rec.get("vec_gain") or 0)
+                            refilled += 1
+                except Exception:
+                    continue
+            if refilled:
+                _atomic_save(wb_refill, wb_path)
+                print(f"[refill] restored {refilled} cells from json progress {progress_path.name}", flush=True)
+            wb_refill.close()
+    except Exception as _e:
+        print(f"[refill-warn] {_e}", flush=True)
 
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
     per_cell_timeout_sec = 60
@@ -833,8 +924,9 @@ def main():
                         if norm2(opt_val, cur):
                             continue
                         single_filters.append((filt, opt_val, hdr, opt_raw))
-                    if is_heavy and len(single_filters) > 5:
-                        # rank by filter name relevance (prefer WT/BB) and keep top 5
+                    # USER CORRECTION 2026-09-12: for WT_15M_BOUNCE row ALL yellows must be calculated, not top 5 — heavy limit disabled for correctness
+                    # keep all single_filters to ensure every L:BI yellow gets a real delta (hundreds/min still ok with 15m-only 2333 bars and 16 workers)
+                    if False and is_heavy and len(single_filters) > 5:
                         single_filters = single_filters[:5]
                     candidates = []
                     v0 = dict(cumulative_overrides)
@@ -867,6 +959,7 @@ def main():
                     except Exception as e:
                         print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
                         vecs = []
+                    # CORRECT FILL LOGIC per user 2026-09-12: for each row, evaluate naked + ALL yellows, keep pos deltas, record in overrides, total delta = naked + sum(pos yellows) via combined variant
                     for idx, (variant, filt, fval, hdr) in enumerate(candidates):
                         if idx >= len(vecs):
                             break
@@ -886,6 +979,34 @@ def main():
                         if filt is None:
                             vector_delta_val = float(delta)
 
+                    # CORRECT per 2026-09-12 rewrite: F must be sum of ALL positive yellows for this row, not just best single
+                    # Build combined variant with switch + ALL positive single filters, evaluate it as total delta for this row
+                    try:
+                        pos_filters = [(f, o, h) for (f, o, h, raw) in single_filters if pending_lbI.get(h, float("-inf")) > 0]
+                        if pos_filters:
+                            v_all = dict(cumulative_overrides)
+                            v_all[switch] = cand
+                            for (ff, oo, hh) in pos_filters:
+                                v_all[ff] = oo
+                            v_all, _ = sanitize_overrides(v_all, defaults)
+                            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_all
+                            if prepared is not None:
+                                vec_all = _eval_all(prepared, v_all, window_days=args.window_days)
+                            else:
+                                from tools.opt.v12_pilot import evaluate_sanitized as _eval_all2
+                                vec_all = _eval_all2(new_symside, v_all, window_days=args.window_days)
+                            if vec_all.get("valid"):
+                                vg_all = float(vec_all.get("gain_pct") or 0)
+                                delta_all = vg_all - cumulative_before
+                                # store combined as best if better than single best, and record overrides as switch + all pos filters
+                                if best is None or delta_all > best[0]:
+                                    # build overrides string for combined
+                                    all_hdrs = "+".join([h for (_,_,h) in pos_filters])
+                                    best = (delta_all, v_all, None, None, all_hdrs, vec_all)
+                                    # also update pending total for logging
+                                    print(f"[COMBINED POS] {sheet}!{r} {switch}={cand}+{len(pos_filters)} pos filters delta={delta_all:.4f} vs best {best[0]:.4f}", flush=True)
+                    except Exception as _e:
+                        print(f"[combined-warn] {sheet}!{r} {_e}", flush=True)
                     if best is None or (best[0] <= 0 and len(rows) <= 500):
                         _best_before_combo = best[0] if best else float("-inf")
                         if (best is None or _best_before_combo <= 0) and len(rows) <= 500:
@@ -952,7 +1073,7 @@ def main():
                     if best is None:
                         progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid"}
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
-                        progress_path.write_text(json.dumps(progress, indent=2))
+                        _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
                         continue
 
@@ -1028,11 +1149,24 @@ def main():
                         print(f"[LOG {time.time():.1f}] _atomic_save {sheet}!{r}", flush=True)
                         _atomic_save(wb_row, wb_path)
                         print(f"[LOG {time.time():.1f}] _atomic_save done", flush=True)
-                        # also write per-sheet F VECTOR_DELTA for every row (even NEG) so DEAT checker can see
+                        # also write per-sheet F VECTOR_DELTA for every row (even NEG) and E for first row only
+                        # Per spec: r3 E3 = baseline before (cumulative_before), F3 = total pos delta for r3's yellows
+                        # For subsequent rows, E is set by previous row's promotion (blank if previous F<=0), so only write E for first data row
                         try:
                             wbF = openpyxl.load_workbook(str(wb_path), data_only=False)
                             if sheet in wbF.sheetnames:
                                 wsF = wbF[sheet]
+                                # Determine first data row for this sheet (lowest r with switch)
+                                first_data_r = None
+                                for _rr in range(3, wsF.max_row+1):
+                                    if wsF.cell(row=_rr, column=1).value not in (None, ""):
+                                        first_data_r = _rr
+                                        break
+                                if first_data_r is None:
+                                    first_data_r = r
+                                if r == first_data_r and wsF.cell(row=r, column=5).value in (None, ""):
+                                    wsF.cell(row=r, column=5).value = float(cumulative_before)
+                                    wsF.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="006100")
                                 wsF.cell(row=r, column=6).value = float(delta_best)
                                 wsF.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
                                 wbF.save(str(wb_path))
@@ -1046,7 +1180,7 @@ def main():
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
                     progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best}
                     try:
-                        progress_path.write_text(json.dumps(progress, indent=2))
+                        _atomic_write_json(progress_path, progress)
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
                     if delta_best <= 0:
@@ -1077,7 +1211,7 @@ def main():
                             ok = False; reason = "per-cell timeout after live"
                     progress["done"][key].update({"live": {k: live_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","invalid_reason"]} if 'live_best' in locals() else {}, "live_delta": live_delta, "parity": ok if 'ok' in locals() else False, "reason": reason if 'reason' in locals() else ""})
                     try:
-                        progress_path.write_text(json.dumps(progress, indent=2))
+                        _atomic_write_json(progress_path, progress)
                     except: pass
                     if not ok:
                         print(f"[parity-fail] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} {reason}", flush=True)
@@ -1124,7 +1258,7 @@ def main():
                     progress["done"][key]["cumulative_after"] = cumulative_gain
                     progress["cumulative_gain"] = cumulative_gain
                     progress["cumulative_overrides"] = cumulative_overrides
-                    progress_path.write_text(json.dumps(progress, indent=2))
+                    _atomic_write_json(progress_path, progress)
                     print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
                     _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
                 except Exception as e:
@@ -1132,7 +1266,7 @@ def main():
                     print(f"[ROW-ERR] {sheet}!{r} {switch}={cand} err {e} {traceback.format_exc()[:800]}", flush=True)
                     try:
                         progress.setdefault("done", {})[key] = {"delta": 0, "reason": f"row err {e}"}
-                        progress_path.write_text(json.dumps(progress, indent=2))
+                        _atomic_write_json(progress_path, progress)
                     except: pass
                     _touch_heartbeat(f"cell {sheet}!{r} ERR")
                     continue
@@ -1151,14 +1285,14 @@ def main():
             progress["cumulative_gain"] = cumulative_gain
             progress["cumulative_overrides"] = cumulative_overrides
             try:
-                progress_path.write_text(json.dumps(progress, indent=2))
+                _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
         except Exception as _sheet_e:
             import traceback
             print(f"[sheet-ERR] {sheet} {_sheet_e} {traceback.format_exc()[:800]}", flush=True)
             try:
-                progress_path.write_text(json.dumps(progress, indent=2))
+                _atomic_write_json(progress_path, progress)
             except Exception:
                 pass
             continue
@@ -1217,7 +1351,7 @@ def main():
         progress["final_gain"] = cumulative_gain
         progress["bh"] = bh_raw
         try:
-            progress_path.write_text(json.dumps(progress, indent=2))
+            _atomic_write_json(progress_path, progress)
         except Exception:
             pass
         print(f"[skip-empty] {new_symside} empty Results (max_row<2) — deleted {wb_path.name}, not publishing", flush=True)
@@ -1231,7 +1365,7 @@ def main():
         progress["final_path"] = str(wb_path)
         progress["wip"] = True
         try:
-            progress_path.write_text(json.dumps(progress, indent=2))
+            _atomic_write_json(progress_path, progress)
         except Exception:
             pass
         # still do chart for WIP but mark as wip?
@@ -1254,7 +1388,7 @@ def main():
     progress["bh"] = bh_raw
     progress["final_path"] = str(final_path)
     try:
-        progress_path.write_text(json.dumps(progress, indent=2))
+        _atomic_write_json(progress_path, progress)
     except Exception:
         pass
     # === ALL switch delta + yellow (L:BI) + orange (Results_Deltas/30d) cells already filled cell-by-cell above ===

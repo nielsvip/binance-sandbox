@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-12 21:06 UTC
+PERFORMANCE REPORT — 2026-09-12 21:47 UTC
 ================================================================================
 Total: 157 symbols | A=2 B=119 C=36
 Window: 14 days | Min trades: 5
@@ -48,7 +48,7 @@ Window: 14 days | Min trades: 5
          MASKUSDT  WR=43%  avg=+0.12%  total=+0.8%  trades=  7  mult=0.93
           ZRXUSDT  WR=33%  avg=+0.25%  total=+0.8%  trades=  3  mult=1.00
          SMCIUSDT  WR=50%  avg=+0.05%  total=+0.7%  trades= 14  mult=1.25
-          TIAUSDC  WR=50%  avg=+0.17%  total=+0.7%  trades=  4  mult=1.00
+          TIAUSDC  WR=60%  avg=+0.15%  total=+0.7%  trades=  5  mult=1.70
               MDT  WR=100%  avg=+0.22%  total=+0.5%  trades=  2  mult=1.00
          PYPLUSDT  WR=60%  avg=+0.04%  total=+0.4%  trades= 10  mult=2.04
          SPCXUSD1  WR=100%  avg=+0.20%  total=+0.4%  trades=  2  mult=1.00
@@ -129,7 +129,6 @@ Window: 14 days | Min trades: 5
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
 
 --- TIER C (36 symbols) ---
-        1INCHUSDT  WR=23%  avg=-0.01%  total=-0.2%  trades= 13  mult=0.41
     1000FLOKIUSDT  WR=0%  avg=-0.03%  total=-0.2%  trades=  6  mult=0.45
           NOTUSDT  WR=38%  avg=-0.01%  total=-0.2%  trades= 16  mult=0.55
          AMZNUSDT  WR=40%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.80
@@ -142,6 +141,7 @@ Window: 14 days | Min trades: 5
           KASUSDT  WR=36%  avg=-0.06%  total=-0.8%  trades= 14  mult=0.52
           SUIUSDC  WR=17%  avg=-0.14%  total=-0.8%  trades=  6  mult=0.52
           TXNUSDT  WR=43%  avg=-0.12%  total=-0.8%  trades=  7  mult=0.76
+        1INCHUSDT  WR=20%  avg=-0.06%  total=-0.9%  trades= 15  mult=0.34
         PENGUUSDC  WR=42%  avg=-0.08%  total=-1.0%  trades= 12  mult=0.65
          HOODUSDT  WR=25%  avg=-0.16%  total=-1.3%  trades=  8  mult=0.50
           ZENUSDT  WR=44%  avg=-0.08%  total=-1.5%  trades= 18  mult=0.62
@@ -167,7 +167,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -47.1%
+  Total PnL (all symbols): -47.7%
   Avg win rate: 47%
   A-tier avg mult: 8.79
   C-tier avg mult: 0.44
