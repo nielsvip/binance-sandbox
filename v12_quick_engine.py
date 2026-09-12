@@ -5213,6 +5213,16 @@ class QuickConfig:
     BAND_SLOPE_SIZING_V2_MAX: float = 1.25  # auto-wired 625
     BAND_SLOPE_SIZING_V2_MIN: float = 0.25  # auto-wired 625
     BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 0.5  # auto-wired 625
+    STDEV_SLOPE_SIZING_ENABLED: bool = True  # stdev 2.5 ladder master
+    STDEV_BAND_MULTIPLIER: float = 2.5
+    STDEV_SLOPE_SIZING_D_MAX: float = 10.0
+    STDEV_SLOPE_SIZING_4H_MAX: float = 4.0
+    STDEV_SLOPE_SIZING_1H_MAX: float = 2.0
+    STDEV_SLOPE_SIZING_15M_MAX: float = 1.5
+    STDEV_SLOPE_LOOKBACK_D: int = 180
+    STDEV_SLOPE_LOOKBACK_4H: int = 180
+    STDEV_SLOPE_LOOKBACK_1H: int = 168
+    STDEV_SLOPE_LOOKBACK_15M: int = 96
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
     BB_PULLBACK_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     BB_PULLBACK_GATE_LONG_MAX: float = 0.15  # auto-wired 625

@@ -25925,24 +25925,33 @@ class TradierTradeManager:
                         logger.info(f"[{account_key}] [VIX_REGIME] {get_vix_regime_label(config)} size_mult={_vix_mult:.2f} → max_value=${max_value:.0f}")
                 except Exception as _vix_e:
                     logger.warning(f"[{account_key}] [VIX_REGIME] check failed: {_vix_e}")
-            if _cfg_auto('BAND_SLOPE_SIZING_V2_ENABLED', False):
+            if _cfg_auto('BAND_SLOPE_SIZING_V2_ENABLED', False) or _cfg_auto('STDEV_SLOPE_SIZING_ENABLED', False):
                 try:
                     _bs_ind = (self.market_snapshot or {}).get(symbol.upper(), {}) or {}
                     _bs_tf = _cfg_auto('BAND_SLOPE_SIZING_V2_TF', 'D')
+                    # STDEV ladder: per-TF max 10x D (6mo), 4x 4h (1mo), 2x 1h (1wk), 1.5x 15m (1D) with 2.5 stdev
+                    if _cfg_auto('STDEV_SLOPE_SIZING_ENABLED', False):
+                        _stdev_max_map = {'D': float(_cfg_auto('STDEV_SLOPE_SIZING_D_MAX', 10.0)), '4h': float(_cfg_auto('STDEV_SLOPE_SIZING_4H_MAX', 4.0)), '1h': float(_cfg_auto('STDEV_SLOPE_SIZING_1H_MAX', 2.0)), '15m': float(_cfg_auto('STDEV_SLOPE_SIZING_15M_MAX', 1.5))}
+                        _bs_tf = _cfg_auto('BAND_SLOPE_SIZING_V2_TF', 'D')
+                        _bs_max = _stdev_max_map.get(_bs_tf, float(_cfg_auto('BAND_SLOPE_SIZING_V2_MAX', 2.5)))
+                        _bs_min = float(_cfg_auto('BAND_SLOPE_SIZING_V2_MIN', 0.5))
+                    else:
+                        _bs_max = float(_cfg_auto('BAND_SLOPE_SIZING_V2_MAX', 2.5))
+                        _bs_min = float(_cfg_auto('BAND_SLOPE_SIZING_V2_MIN', 0.5))
                     _bs_pb = _bs_ind.get(f'lrL_pct_b_{_bs_tf}')
                     _bs_sl = _bs_ind.get(f'lrL_slope_{_bs_tf}')
                     if _bs_pb is not None and _bs_sl is not None:
                         _bs_pb = float(_bs_pb)
-                        _bs_slope_day = float(_bs_sl) * {'1h': 6.5, '4h': 1.625, 'D': 1.0}.get(_bs_tf, 1.0)
+                        _bs_slope_day = float(_bs_sl) * {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}.get(_bs_tf, 1.0)
                         _bs_long = (side == 'LONG')
                         _bs_edge = (1.0 - _bs_pb) if _bs_long else _bs_pb
                         _bs_m = 1.0 + float(_cfg_auto('BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0)) * (_bs_edge - 0.5) * 2.0
                         _bs_sn = min(abs(_bs_slope_day) / float(_cfg_auto('BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0)), 1.0)
                         _bs_fav = _bs_slope_day > 0 if _bs_long else _bs_slope_day < 0
                         _bs_m *= (1.0 + 0.5 * _bs_sn) if _bs_fav else max(0.5, 1.0 - 0.5 * _bs_sn)
-                        _bs_m = max(float(_cfg_auto('BAND_SLOPE_SIZING_V2_MIN', 0.5)), min(float(_cfg_auto('BAND_SLOPE_SIZING_V2_MAX', 2.5)), _bs_m))
+                        _bs_m = max(_bs_min, min(_bs_max, _bs_m))
                         max_value *= _bs_m
-                        logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {side}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={_bs_m:.2f} → ${max_value:.0f}")
+                        logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {side}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={_bs_m:.2f} (max {_bs_max:.1f}) → ${max_value:.0f}")
                 except Exception as _bs_e:
                     logger.warning(f"[BAND_SLOPE_SIZING_V2] {symbol} sizing check failed: {_bs_e}")
             shares = max_value / price

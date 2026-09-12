@@ -1344,20 +1344,27 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
     elif combined_pb > 0.75:
         if is_long: level_mult = 0.85
         else: level_mult = 1.2
-    if getattr(config, 'BAND_SLOPE_SIZING_V2_ENABLED', False) and indicators:
+    if getattr(config, 'BAND_SLOPE_SIZING_V2_ENABLED', False) or getattr(config, 'STDEV_SLOPE_SIZING_ENABLED', False) and indicators:
         _bs_tf = getattr(config, 'BAND_SLOPE_SIZING_V2_TF', '4h')
+        if getattr(config, 'STDEV_SLOPE_SIZING_ENABLED', False):
+            _stdev_max_map = {'D': float(getattr(config, 'STDEV_SLOPE_SIZING_D_MAX', 10.0)), '4h': float(getattr(config, 'STDEV_SLOPE_SIZING_4H_MAX', 4.0)), '1h': float(getattr(config, 'STDEV_SLOPE_SIZING_1H_MAX', 2.0)), '15m': float(getattr(config, 'STDEV_SLOPE_SIZING_15M_MAX', 1.5))}
+            _bs_max = _stdev_max_map.get(_bs_tf, float(getattr(config, 'BAND_SLOPE_SIZING_V2_MAX', 2.5)))
+            _bs_min = float(getattr(config, 'BAND_SLOPE_SIZING_V2_MIN', 0.5))
+        else:
+            _bs_max = float(getattr(config, 'BAND_SLOPE_SIZING_V2_MAX', 2.5))
+            _bs_min = float(getattr(config, 'BAND_SLOPE_SIZING_V2_MIN', 0.5))
         _bs_pb = indicators.get(f'lrL_pct_b_{_bs_tf}')
         _bs_sl = indicators.get(f'lrL_slope_{_bs_tf}')
         if _bs_pb is not None and _bs_sl is not None:
             _bs_pb = safe_fetch_float(_bs_pb, 0.5)
-            _bs_slope_day = safe_fetch_float(_bs_sl, 0.0) * {'1h': 24.0, '4h': 6.0, 'D': 1.0}.get(_bs_tf, 6.0)
+            _bs_slope_day = safe_fetch_float(_bs_sl, 0.0) * {'1h': 24.0, '4h': 6.0, 'D': 1.0, '15m': 96.0}.get(_bs_tf, 6.0)
             _bs_edge = (1.0 - _bs_pb) if is_long else _bs_pb
             _bs_m = 1.0 + float(getattr(config, 'BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0)) * (_bs_edge - 0.5) * 2.0
             _bs_sn = min(abs(_bs_slope_day) / float(getattr(config, 'BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0)), 1.0)
             _bs_fav = _bs_slope_day > 0 if is_long else _bs_slope_day < 0
             _bs_m *= (1.0 + 0.5 * _bs_sn) if _bs_fav else max(0.5, 1.0 - 0.5 * _bs_sn)
-            level_mult = max(float(getattr(config, 'BAND_SLOPE_SIZING_V2_MIN', 0.5)), min(float(getattr(config, 'BAND_SLOPE_SIZING_V2_MAX', 2.5)), _bs_m))
-            logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {'LONG' if is_long else 'SHORT'}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={level_mult:.2f}")
+            level_mult = max(_bs_min, min(_bs_max, _bs_m))
+            logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {'LONG' if is_long else 'SHORT'}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={level_mult:.2f} (max {_bs_max:.1f})")
     perf_mult = 1.0
     if config.SYMBOL_PERF_ENABLED:
         try:

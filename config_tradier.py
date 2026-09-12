@@ -786,7 +786,18 @@ class TradierConfig:
     LR_PCTB_D_LONG_ENTRY_THRESHOLD: float = 0.20
     # 2026-07-15 grey-band long regression channel + graduated band/slope sizing (bt_band_bounce v2:
     # stocks grad sizing uplift +0.35..+1.04%/trade; long windows D_L200/4h_L400 >> 50)
-    LR_CHANNEL_LONG_LENGTHS: dict = field(default_factory=lambda: {"1h": 200, "4h": 400, "D": 200})
+    LR_CHANNEL_LONG_LENGTHS: dict = field(default_factory=lambda: {"1h": 200, "4h": 400, "D": 200})  # user spec D 6mo, 4h 1mo, 1h 1wk, 15m 1D stdev 2.5
+    # STDEV SLOPE SIZING LADDER — the only proven way to beat B&H (user 2026-09-12)
+    STDEV_SLOPE_SIZING_ENABLED: bool = True
+    STDEV_BAND_MULTIPLIER: float = 2.5
+    STDEV_SLOPE_SIZING_D_MAX: float = 10.0  # D 6mo 10x
+    STDEV_SLOPE_SIZING_4H_MAX: float = 4.0  # 4h 1mo 4x
+    STDEV_SLOPE_SIZING_1H_MAX: float = 2.0  # 1h 1wk 2x
+    STDEV_SLOPE_SIZING_15M_MAX: float = 1.5  # 15m 1D 1.5x
+    STDEV_SLOPE_LOOKBACK_D: int = 180
+    STDEV_SLOPE_LOOKBACK_4H: int = 180
+    STDEV_SLOPE_LOOKBACK_1H: int = 168
+    STDEV_SLOPE_LOOKBACK_15M: int = 96
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True      # sizing-only modifier on existing entries; validated on 305-sym bt_band_bounce v2
     BAND_SLOPE_SIZING_V2_TF: str = "D"
     BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0

@@ -1155,7 +1155,19 @@ class Config:
     LR_PCTB_D_LONG_ENTRY_ENABLED: bool = False
     LR_PCTB_D_LONG_ENTRY_THRESHOLD: float = 0.20
     # 2026-07-15 grey-band long regression channel (bt_band_bounce v2: long windows >> LINREG_LENGTH=50)
-    LR_CHANNEL_LONG_LENGTHS: dict = field(default_factory=lambda: {"1h": 200, "4h": 200, "D": 300})
+    LR_CHANNEL_LONG_LENGTHS: dict = field(default_factory=lambda: {"1h": 200, "4h": 200, "D": 300})  # user spec: D 6mo, 4h 1mo, 1h 1wk, 15m 1D stdev 2.5
+    # STDEV SLOPE SIZING LADDER — the only proven way to beat B&H (user 2026-09-12)
+    # Original: enters longs 1x at top of regression channel, rising to 10x at slope/bottom for D, 4h max 4x, 1h max 2x, 15m ~1x, 2.5 stdev
+    STDEV_SLOPE_SIZING_ENABLED: bool = True  # master switch for stdev slope ladder (wraps BAND_SLOPE_SIZING_V2)
+    STDEV_BAND_MULTIPLIER: float = 2.5  # stdev multiplier for regression bands (tradier_rankings/ez_rankings)
+    STDEV_SLOPE_SIZING_D_MAX: float = 10.0  # D chart 6mo lookback max 10x at slope/bottom
+    STDEV_SLOPE_SIZING_4H_MAX: float = 4.0  # 4h chart 1mo lookback max 4x
+    STDEV_SLOPE_SIZING_1H_MAX: float = 2.0  # 1h chart 1wk lookback max 2x
+    STDEV_SLOPE_SIZING_15M_MAX: float = 1.5  # 15m chart 1D lookback max 1.5x
+    STDEV_SLOPE_LOOKBACK_D: int = 180  # 6mo D
+    STDEV_SLOPE_LOOKBACK_4H: int = 180  # 1mo 4h (6*30)
+    STDEV_SLOPE_LOOKBACK_1H: int = 168  # 1wk 1h
+    STDEV_SLOPE_LOOKBACK_15M: int = 96  # 1D 15m
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True      # 2026-07-15 v2-v5 campaign: grad sizing uplift positive on 176-sym 6.5yr (L200+ quality subsets +2.3..+8.4%/trade); entry system stays OFF (Noise) — sizing only, conservative clamps
     BAND_SLOPE_SIZING_V2_TF: str = "4h"
     BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0
