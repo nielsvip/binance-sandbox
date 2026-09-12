@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-12 11:30 UTC",
- "total_capital_usd": 11.88,
+ "generated_at": "2026-09-12 13:15 UTC",
+ "total_capital_usd": 11.94,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.88,
+  "B": 11.94,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:ETHFIUSDC_LONG",
-   "symbol": "ETHFIUSDC",
+   "pk": "men:MANAUSDT_SHORT",
+   "symbol": "MANAUSDT",
    "account": "men",
-   "value_usd": 11.88,
-   "gain_pct": -0.499,
+   "value_usd": 11.94,
+   "gain_pct": 0.079,
    "tier": "B",
-   "perf_mult": 4.37,
-   "amt": 15.9,
-   "mark": 0.74710627
+   "perf_mult": 6.0,
+   "amt": 164.0,
+   "mark": 0.07281576
   }
  ]
 }

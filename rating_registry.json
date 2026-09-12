@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-12T13:10:23.202548+00:00",
+  "timestamp": "2026-09-12T13:30:36.864151+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -385,6 +385,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ETHFIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -668,12 +674,6 @@
     },
     {
       "symbol": "EDUUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "THETAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -967,28 +967,28 @@
       "short_score": 0
     },
     {
-      "symbol": "KAVAUSDT",
-      "net_score": 13.0,
-      "long_score": 13.0,
+      "symbol": "THETAUSDT",
+      "net_score": 10.2,
+      "long_score": 10.2,
       "short_score": 0
     },
     {
-      "symbol": "ETHFIUSDC",
-      "net_score": 15.0,
-      "long_score": 15.0,
+      "symbol": "KAVAUSDT",
+      "net_score": 19.2,
+      "long_score": 19.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ETHFIUSDC",
-      15.0,
-      0.742
+      "KAVAUSDT",
+      19.2,
+      0.07086
     ],
     [
-      "KAVAUSDT",
-      13.0,
-      0.07039061
+      "THETAUSDT",
+      10.2,
+      0.19240862
     ]
   ],
   "top_shorts": [],
