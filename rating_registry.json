@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-12T11:01:22.082378+00:00",
+  "timestamp": "2026-09-12T11:18:49.688561+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -265,12 +265,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AIAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MANAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -494,6 +488,12 @@
     },
     {
       "symbol": "RKLBUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PENGUUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -937,17 +937,17 @@
       "short_score": 0
     },
     {
-      "symbol": "PENGUUSDC",
-      "net_score": 11.7,
-      "long_score": 11.7,
+      "symbol": "AIAUSDT",
+      "net_score": 11.0,
+      "long_score": 11.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "PENGUUSDC",
-      11.7,
-      0.007362
+      "AIAUSDT",
+      11.0,
+      0.07495
     ]
   ],
   "top_shorts": [],
