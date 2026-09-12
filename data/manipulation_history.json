@@ -6973,5 +6973,32 @@
     ],
     "timestamp": "2026-09-12T11:33:38.393527+00:00",
     "price": 27.53
+  },
+  {
+    "symbol": "MRVLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T11:42:59.048642+00:00",
+    "price": 237.21
+  },
+  {
+    "symbol": "LLYUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.3x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T11:46:51.639375+00:00",
+    "price": 1119.67114168
+  },
+  {
+    "symbol": "AMZNUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.9x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T11:54:47.448804+00:00",
+    "price": 256.65
   }
 ]
