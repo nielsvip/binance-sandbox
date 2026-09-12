@@ -1,11 +1,29 @@
 {
-  "timestamp": "2026-09-12T20:04:43.315244+00:00",
+  "timestamp": "2026-09-12T20:22:40.394166+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 149
   },
   "unified_ranking": [
+    {
+      "symbol": "ETCUSDT",
+      "net_score": -12.3,
+      "long_score": 0,
+      "short_score": 12.3
+    },
+    {
+      "symbol": "POPCATUSDT",
+      "net_score": -11.4,
+      "long_score": 0,
+      "short_score": 11.4
+    },
+    {
+      "symbol": "TSMUSDT",
+      "net_score": -10.2,
+      "long_score": 0,
+      "short_score": 10.2
+    },
     {
       "symbol": "ATOMUSDT",
       "net_score": 0,
@@ -487,12 +505,6 @@
       "short_score": 0
     },
     {
-      "symbol": "TSMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -547,12 +559,6 @@
       "short_score": 0
     },
     {
-      "symbol": "POPCATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SEIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -560,12 +566,6 @@
     },
     {
       "symbol": "USARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "KAVAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -847,12 +847,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ETCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -899,10 +893,38 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "KAVAUSDT",
+      "net_score": 14.3,
+      "long_score": 14.3,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [],
+  "top_longs": [
+    [
+      "KAVAUSDT",
+      14.3,
+      0.07080389
+    ]
+  ],
+  "top_shorts": [
+    [
+      "ETCUSDT",
+      12.3,
+      7.636
+    ],
+    [
+      "POPCATUSDT",
+      11.4,
+      0.04809
+    ],
+    [
+      "TSMUSDT",
+      10.2,
+      431.76271662
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

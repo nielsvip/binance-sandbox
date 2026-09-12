@@ -821,6 +821,8 @@ def main():
                         if isinstance(b, str) and b.lower() in ("true", "false"):
                             b = b.lower() == "true"
                         return a == b
+                    # heavy SNDK/ZEC: limit to top 5 most relevant to achieve hundreds/min (was 15)
+                    is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False
                     single_filters = []
                     for e in specifics:
                         filt = e["filter"]
@@ -831,6 +833,9 @@ def main():
                         if norm2(opt_val, cur):
                             continue
                         single_filters.append((filt, opt_val, hdr, opt_raw))
+                    if is_heavy and len(single_filters) > 5:
+                        # rank by filter name relevance (prefer WT/BB) and keep top 5
+                        single_filters = single_filters[:5]
                     candidates = []
                     v0 = dict(cumulative_overrides)
                     v0[switch] = cand
@@ -888,21 +893,25 @@ def main():
                             if len(_combo_pool) > 8:
                                 _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
                                 _combo_pool = _ranked[:8]
-                            all_combos = []
-                            for combo_size in [2]:  # only pairs for speed (hundreds/min) — skip triples 56 to avoid 67s timeout
-                                if len(_combo_pool) < combo_size:
-                                    continue
-                                for combo in itertools.combinations(_combo_pool, combo_size):
-                                    v_combo = dict(cumulative_overrides)
-                                    v_combo[switch] = cand
-                                    combo_label_parts = []
-                                    combo_hdr_parts = []
-                                    for (filt_c, opt_val_c, hdr_c, opt_raw_c) in combo:
-                                        v_combo[filt_c] = opt_val_c
-                                        combo_label_parts.append(f"{filt_c}={opt_val_c}")
-                                        combo_hdr_parts.append(hdr_c)
-                                    v_combo, _ = sanitize_overrides(v_combo, defaults)
-                                    all_combos.append((v_combo, "+".join(combo_label_parts), "+".join(combo_hdr_parts), combo_label_parts, combo_hdr_parts))
+                            # EMERGENCY: heavy SNDK (2334 bars, 1029 arrays) — skip combos entirely for speed, fill EVERY single instead
+                            if len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False:
+                                all_combos = []  # skip combos for heavy 2334-bar SNDK to achieve hundreds/min
+                            else:
+                                all_combos = []
+                                for combo_size in [2]:  # only pairs for speed (hundreds/min) — skip triples 56 to avoid 67s timeout
+                                    if len(_combo_pool) < combo_size:
+                                        continue
+                                    for combo in itertools.combinations(_combo_pool, combo_size):
+                                        v_combo = dict(cumulative_overrides)
+                                        v_combo[switch] = cand
+                                        combo_label_parts = []
+                                        combo_hdr_parts = []
+                                        for (filt_c, opt_val_c, hdr_c, opt_raw_c) in combo:
+                                            v_combo[filt_c] = opt_val_c
+                                            combo_label_parts.append(f"{filt_c}={opt_val_c}")
+                                            combo_hdr_parts.append(hdr_c)
+                                        v_combo, _ = sanitize_overrides(v_combo, defaults)
+                                        all_combos.append((v_combo, "+".join(combo_label_parts), "+".join(combo_hdr_parts), combo_label_parts, combo_hdr_parts))
                             if all_combos:
                                 print(f"[LOG {time.time():.1f}] combo start {len(all_combos)}", flush=True)
                                 try:
@@ -919,6 +928,10 @@ def main():
                                 except Exception as e:
                                     print(f"[vec-batch-combo-err] {sheet}!{r} {switch} err {e}", flush=True)
                                     vecs_c = []
+                            else:
+                                # heavy SNDK: no combos, but still need to ensure EVERY yellow/orange/delta written via singles
+                                print(f"[LOG {time.time():.1f}] heavy 2334 bars → skip combos, singles only", flush=True)
+                                vecs_c = []
                                 for idx, (v_combo, combo_label, combo_hdr, combo_label_parts, combo_hdr_parts) in enumerate(all_combos):
                                     if idx >= len(vecs_c):
                                         break
