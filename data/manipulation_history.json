@@ -7099,5 +7099,23 @@
     ],
     "timestamp": "2026-09-12T13:13:11.879801+00:00",
     "price": 1.075e-05
+  },
+  {
+    "symbol": "BANDUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 12.0x normal"
+    ],
+    "timestamp": "2026-09-12T13:36:42.434787+00:00",
+    "price": 0.1851
+  },
+  {
+    "symbol": "QCOMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T13:40:56.914737+00:00",
+    "price": 182.26
   }
 ]
