@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-12T08:08:49.051001+00:00",
+  "timestamp": "2026-09-12T08:28:34.271207+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -14,6 +14,12 @@
     },
     {
       "symbol": "ETHFIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -139,12 +145,6 @@
       "short_score": 0
     },
     {
-      "symbol": "1000PEPEUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZROUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -188,12 +188,6 @@
     },
     {
       "symbol": "ARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XMRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -440,6 +434,12 @@
     },
     {
       "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SUSHIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -703,6 +703,12 @@
       "short_score": 0
     },
     {
+      "symbol": "EDUUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AAVEUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -919,50 +925,39 @@
       "short_score": 0
     },
     {
-      "symbol": "PLTRUSDT",
+      "symbol": "XMRUSDT",
       "net_score": 10.8,
       "long_score": 10.8,
       "short_score": 0
     },
     {
-      "symbol": "EDUUSDT",
-      "net_score": 11.6,
-      "long_score": 11.6,
-      "short_score": 0
-    },
-    {
-      "symbol": "SUSHIUSDT",
-      "net_score": 12.4,
-      "long_score": 12.4,
-      "short_score": 0
-    },
-    {
       "symbol": "GRAMUSDT",
-      "net_score": 15.3,
-      "long_score": 15.3,
+      "net_score": 15.9,
+      "long_score": 15.9,
+      "short_score": 0
+    },
+    {
+      "symbol": "1000PEPEUSDC",
+      "net_score": 19.5,
+      "long_score": 19.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
+      "1000PEPEUSDC",
+      19.5,
+      0.00340481
+    ],
+    [
       "GRAMUSDT",
-      15.3,
-      1.376
+      15.9,
+      1.37761467
     ],
     [
-      "SUSHIUSDT",
-      12.4,
-      0.22324943
-    ],
-    [
-      "EDUUSDT",
-      11.6,
-      0.05300472
-    ],
-    [
-      "PLTRUSDT",
+      "XMRUSDT",
       10.8,
-      167.80635872
+      546.7
     ]
   ],
   "top_shorts": [],
