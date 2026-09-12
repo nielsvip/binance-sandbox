@@ -892,7 +892,9 @@ def main():
                                 try:
                                     if prepared is not None:
                                         from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep2
-                                        vecs_c = [_eval_prep2(prepared, vc[0], window_days=args.window_days) for vc in all_combos]
+                                        import concurrent.futures as _cf2c
+                                        with _cf2c.ThreadPoolExecutor(max_workers=16) as ex_c:
+                                            vecs_c = list(ex_c.map(lambda vc: _eval_prep2(prepared, vc[0], window_days=args.window_days), all_combos))
                                     else:
                                         from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many2
                                         vecs_c = _eval_many2(new_symside, [vc[0] for vc in all_combos], window_days=args.window_days)
@@ -1103,7 +1105,26 @@ def main():
             pass
         print(f"[skip-empty] {new_symside} empty Results (max_row<2) — deleted {wb_path.name}, not publishing", flush=True)
         return
-    # partially filled work in progress is fine — keep wb_path as is, but only publish final if we have data
+    # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
+    # If max_switches was used (partial fill for testing), keep as WIP only, do NOT publish bh/gain
+    if args.max_switches and args.max_switches != 0:
+        print(f"[wip] {new_symside} partial fill --max-switches {args.max_switches} — keeping WIP {wb_path.name}, not publishing bh/gain", flush=True)
+        progress["final_gain"] = cumulative_gain
+        progress["bh"] = bh_raw
+        progress["final_path"] = str(wb_path)
+        progress["wip"] = True
+        try:
+            progress_path.write_text(json.dumps(progress, indent=2))
+        except Exception:
+            pass
+        # still do chart for WIP but mark as wip?
+        try:
+            write_zoomable_chart(new_symside, None, cumulative_overrides, args.window_days, suffix="30D_REAL_ZOOMABLE")
+        except Exception as _ce2:
+            print(f"[chart-final-warn] {_ce2}", flush=True)
+        print(f"[wip] {wb_path} bh={bh_raw:.2f} gain={cumulative_gain:.2f} positives={total_pos} hot={list(ALL_NPZ_ARRAYS.keys())[:2]}", flush=True)
+        return
+    # fully filled — publish bh/gain
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name

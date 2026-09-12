@@ -7189,5 +7189,14 @@
     ],
     "timestamp": "2026-09-12T17:23:04.929330+00:00",
     "price": 248.69301093
+  },
+  {
+    "symbol": "AVGOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T18:48:31.496634+00:00",
+    "price": 361.51322386
   }
 ]
