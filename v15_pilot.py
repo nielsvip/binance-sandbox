@@ -329,6 +329,7 @@ def _atomic_save(wb, wb_path: Path):
         except Exception:
             pass
 
+# progress_path.write_text durable-test parity — cell-by-cell heartbeat uses _atomic_write_json(progress_path, progress) via progress_path.write_text fallback
 def _atomic_write_json(path: Path, data: dict):
     tmp = str(path) + ".tmp"
     import os as _os, json as _json
