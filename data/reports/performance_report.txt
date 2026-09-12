@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-12 20:06 UTC
+PERFORMANCE REPORT — 2026-09-12 20:47 UTC
 ================================================================================
 Total: 157 symbols | A=2 B=119 C=36
 Window: 14 days | Min trades: 5
@@ -18,7 +18,7 @@ Window: 14 days | Min trades: 5
           UNIUSDC  WR=55%  avg=+0.43%  total=+4.8%  trades= 11  mult=3.06
            ARUSDT  WR=62%  avg=+0.16%  total=+4.8%  trades= 29  mult=4.28
          COTIUSDT  WR=76%  avg=+0.22%  total=+4.6%  trades= 21  mult=7.19
-          PTBUSDT  WR=55%  avg=+0.18%  total=+4.1%  trades= 22  mult=3.06
+          PTBUSDT  WR=52%  avg=+0.17%  total=+3.9%  trades= 23  mult=2.52
         ETHFIUSDC  WR=67%  avg=+0.11%  total=+3.7%  trades= 33  mult=4.76
              PYPL  WR=60%  avg=+0.58%  total=+2.9%  trades=  5  mult=2.43
          RKLBUSDT  WR=74%  avg=+0.14%  total=+2.7%  trades= 19  mult=5.94
@@ -129,7 +129,7 @@ Window: 14 days | Min trades: 5
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
 
 --- TIER C (36 symbols) ---
-        1INCHUSDT  WR=25%  avg=-0.01%  total=-0.1%  trades= 12  mult=0.45
+        1INCHUSDT  WR=23%  avg=-0.01%  total=-0.2%  trades= 13  mult=0.41
     1000FLOKIUSDT  WR=0%  avg=-0.03%  total=-0.2%  trades=  6  mult=0.45
           NOTUSDT  WR=38%  avg=-0.01%  total=-0.2%  trades= 16  mult=0.55
          AMZNUSDT  WR=40%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.80
@@ -167,7 +167,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -46.8%
+  Total PnL (all symbols): -47.1%
   Avg win rate: 47%
   A-tier avg mult: 8.79
   C-tier avg mult: 0.44
