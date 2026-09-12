@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-12 04:25 UTC",
- "total_capital_usd": 12.0,
+ "generated_at": "2026-09-12 07:35 UTC",
+ "total_capital_usd": 11.99,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.0,
+  "B": 11.99,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "men:FLOWUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:FLOWUSDT_SHORT",
-   "symbol": "FLOWUSDT",
+   "pk": "men:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
    "account": "men",
-   "value_usd": 12.0,
-   "gain_pct": -0.024,
+   "value_usd": 11.99,
+   "gain_pct": -0.222,
    "tier": "B",
-   "perf_mult": 0.74,
-   "amt": 428.3,
-   "mark": 0.02801623
+   "perf_mult": 4.28,
+   "amt": 16.3,
+   "mark": 0.7354
   }
  ]
 }
