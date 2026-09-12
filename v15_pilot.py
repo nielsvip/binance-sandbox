@@ -984,6 +984,21 @@ def main():
                             rws.cell(row=found, column=1).value = key_results
                         rws.cell(row=found, column=8).value = float(vec_best.get("gain_pct") or 0)
                         rws.cell(row=found, column=5).value = float(delta_best)
+                        # fill default/override/is_non_default for switch result (user saw empty)
+                        try:
+                            default_val = defaults.get(switch)
+                            rws.cell(row=found, column=2).value = str(default_val) if default_val is not None else None
+                            rws.cell(row=found, column=3).value = str(cand) if cand is not None else None
+                            is_non_default = 0 if str(default_val) == str(cand) else 1
+                            rws.cell(row=found, column=4).value = is_non_default
+                            # also fill delta_sharpe/delta_trades if header exists
+                            header_map2 = {str(rws.cell(1,c).value or "").strip().lower(): c for c in range(1, rws.max_column+1)}
+                            if "delta_sharpe" in header_map2:
+                                rws.cell(row=found, column=header_map2["delta_sharpe"]).value = float(vec_best.get("pool_sharpe") or 0) - float(baseline_vec.get("pool_sharpe") or 0) if baseline_vec else 0
+                            if "delta_trades" in header_map2:
+                                rws.cell(row=found, column=header_map2["delta_trades"]).value = int(vec_best.get("trades") or 0) - int(baseline_vec.get("trades") or 0) if baseline_vec else 0
+                        except Exception:
+                            pass
                         try:
                             rws.cell(row=found, column=10).value = int(vec_best.get("trades") or 0)
                             rws.cell(row=found, column=12).value = float(vec_best.get("tim_pct") or 0)

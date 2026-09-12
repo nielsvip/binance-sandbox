@@ -4,14 +4,18 @@ set -e
 # 2026-09-05: now also syncs SPREADSHEETS/*COMPLETE_chart.html and *FINAL.html so Mac SPREADSHEETS matches S1's hires zoomable charts (MU_LONG_COMPLETE_chart.html) after every sym_side run
 SRC="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*.xlsx"
 DST="/Users/niels/Documents/binance/SPREADSHEETS/"
+SRC_V15="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx"
+DST_V15="/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/"
 SRC_CHARTS="niels@157.180.125.52:~/binance-sandbox/data/reports/charts_1M/*.html"
 DST_CHARTS="/Users/niels/Documents/binance/data/reports/charts_1M/"
 SRC_SPREADSHEET_CHARTS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*COMPLETE_chart.html"
 SRC_SPREADSHEET_FINALS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*FINAL.html"
 SRC_SPREADSHEET_TABS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*_chart.html"
-mkdir -p "$DST" "$DST_CHARTS"
+mkdir -p "$DST" "$DST_V15" "$DST_CHARTS"
 echo "[$(date)] Sync S1 -> Mac xls..."
 rsync -avz --progress --exclude='TEMPLATE.xlsx' -e "ssh -o BatchMode=yes" "$SRC" "$DST" 2>&1 | tail -n 20
+echo "[$(date)] Sync S1 -> Mac V15_V16_CELL_BY_CELL xls..."
+rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_V15" "$DST_V15" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac SPREADSHEET COMPLETE/FINAL charts..."
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_SPREADSHEET_CHARTS" "$DST" 2>&1 | tail -n 20
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_SPREADSHEET_FINALS" "$DST" 2>&1 | tail -n 20

@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-12 19:13 UTC",
- "total_capital_usd": 11.96,
+ "generated_at": "2026-09-12 19:33 UTC",
+ "total_capital_usd": 11.16,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.96,
+  "B": 11.16,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:PARTIUSDT_LONG",
-   "symbol": "PARTIUSDT",
-   "account": "fin",
-   "value_usd": 11.96,
-   "gain_pct": 0.094,
+   "pk": "flz:HYPEUSDT_SHORT",
+   "symbol": "HYPEUSDT",
+   "account": "flz",
+   "value_usd": 11.16,
+   "gain_pct": -0.136,
    "tier": "B",
-   "perf_mult": 1.83,
-   "amt": 492.0,
-   "mark": 0.02430977
+   "perf_mult": 1.31,
+   "amt": 0.14,
+   "mark": 79.731
   }
  ]
 }
