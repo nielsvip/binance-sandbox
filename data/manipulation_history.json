@@ -565,5 +565,59 @@
     ],
     "timestamp": "2026-09-12T22:27:15.555144+00:00",
     "price": 1.3634
+  },
+  {
+    "symbol": "EDUUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 17.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T22:52:00.003695+00:00",
+    "price": 0.05301
+  },
+  {
+    "symbol": "TAOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T22:57:12.480084+00:00",
+    "price": 232.4
+  },
+  {
+    "symbol": "HYPEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T22:58:42.857038+00:00",
+    "price": 79.65139163
+  },
+  {
+    "symbol": "FLEXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T23:01:56.525200+00:00",
+    "price": 115.82601575
+  },
+  {
+    "symbol": "SPCXUSD1",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 16.6x normal"
+    ],
+    "timestamp": "2026-09-12T23:03:27.466511+00:00",
+    "price": 150.14026048
+  },
+  {
+    "symbol": "ZMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 11.2x normal"
+    ],
+    "timestamp": "2026-09-12T23:03:27.466511+00:00",
+    "price": 95.29
   }
 ]
