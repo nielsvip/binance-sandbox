@@ -7171,5 +7171,14 @@
     ],
     "timestamp": "2026-09-12T16:53:26.465036+00:00",
     "price": 43.61325787
+  },
+  {
+    "symbol": "PLTRUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.2x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T17:12:22.718656+00:00",
+    "price": 167.96139045
   }
 ]
