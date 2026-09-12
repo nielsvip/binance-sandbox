@@ -6955,5 +6955,23 @@
     ],
     "timestamp": "2026-09-12T11:09:27.160732+00:00",
     "price": 21.0750399
+  },
+  {
+    "symbol": "SOXSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T11:28:35.637030+00:00",
+    "price": 43.98
+  },
+  {
+    "symbol": "HIMSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T11:33:38.393527+00:00",
+    "price": 27.53
   }
 ]
