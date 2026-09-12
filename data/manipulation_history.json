@@ -7135,5 +7135,32 @@
     ],
     "timestamp": "2026-09-12T15:28:57.814009+00:00",
     "price": 29.31
+  },
+  {
+    "symbol": "ASMLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T15:44:01.654676+00:00",
+    "price": 1703.0
+  },
+  {
+    "symbol": "ETHUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T15:45:45.572758+00:00",
+    "price": 2536.36
+  },
+  {
+    "symbol": "JPMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 16.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T15:54:49.558723+00:00",
+    "price": 356.67
   }
 ]
