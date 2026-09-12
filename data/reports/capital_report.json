@@ -1,44 +1,30 @@
 {
- "generated_at": "2026-09-12 00:30 UTC",
- "total_capital_usd": 14.96,
+ "generated_at": "2026-09-12 02:50 UTC",
+ "total_capital_usd": 12.08,
  "tier_capital": {
   "A": 0.0,
-  "B": 2.95,
-  "C": 12.01
+  "B": 12.08,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 1
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "men:FLOWUSDT_SHORT",
-  "men:NOTUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:NOTUSDT_SHORT",
-   "symbol": "NOTUSDT",
+   "pk": "men:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
    "account": "men",
-   "value_usd": 12.01,
-   "gain_pct": 0.116,
-   "tier": "C",
-   "perf_mult": 0.63,
-   "amt": 27816.0,
-   "mark": 0.00043184
-  },
-  {
-   "pk": "men:FLOWUSDT_SHORT",
-   "symbol": "FLOWUSDT",
-   "account": "men",
-   "value_usd": 2.95,
-   "gain_pct": -0.76,
+   "value_usd": 12.08,
+   "gain_pct": 0.621,
    "tier": "B",
-   "perf_mult": 0.52,
-   "amt": 106.7,
-   "mark": 0.02766
+   "perf_mult": 2.73,
+   "amt": 17.1,
+   "mark": 0.70615774
   }
  ]
 }
