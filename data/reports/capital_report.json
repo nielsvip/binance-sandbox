@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-12 19:33 UTC",
- "total_capital_usd": 11.16,
+ "generated_at": "2026-09-12 20:01 UTC",
+ "total_capital_usd": 11.8,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.16,
+  "B": 11.8,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "men:RUNEUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 11.16,
-   "gain_pct": -0.136,
+   "pk": "men:RUNEUSDT_LONG",
+   "symbol": "RUNEUSDT",
+   "account": "men",
+   "value_usd": 11.8,
+   "gain_pct": -0.896,
    "tier": "B",
-   "perf_mult": 1.31,
-   "amt": 0.14,
-   "mark": 79.731
+   "perf_mult": 1.88,
+   "amt": 23.0,
+   "mark": 0.513
   }
  ]
 }

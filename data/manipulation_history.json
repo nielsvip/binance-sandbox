@@ -7207,5 +7207,32 @@
     ],
     "timestamp": "2026-09-12T19:24:07.996984+00:00",
     "price": 38.8587211
+  },
+  {
+    "symbol": "ARMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.6x normal"
+    ],
+    "timestamp": "2026-09-12T19:56:02.850082+00:00",
+    "price": 266.7801514
+  },
+  {
+    "symbol": "DRAMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 14.6x normal"
+    ],
+    "timestamp": "2026-09-12T19:56:02.850082+00:00",
+    "price": 58.41
+  },
+  {
+    "symbol": "EWYUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 17.4x normal"
+    ],
+    "timestamp": "2026-09-12T19:56:02.850082+00:00",
+    "price": 188.9
   }
 ]

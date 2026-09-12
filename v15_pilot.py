@@ -889,7 +889,7 @@ def main():
                                 _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
                                 _combo_pool = _ranked[:8]
                             all_combos = []
-                            for combo_size in [2, 3]:
+                            for combo_size in [2]:  # only pairs for speed (hundreds/min) — skip triples 56 to avoid 67s timeout
                                 if len(_combo_pool) < combo_size:
                                     continue
                                 for combo in itertools.combinations(_combo_pool, combo_size):
@@ -1060,16 +1060,29 @@ def main():
                         print(f"[live-neg] {sheet}!{r} {switch} live_delta={live_delta:.4f} — not promoting", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} live-neg")
                         continue
+                    # new total result of all applied switches (only if pos delta)
+                    new_cum = float(vec_best.get("gain_pct") or 0)
+                    # build overrides string with all overrides used for this pos delta
                     try:
                         wb3 = openpyxl.load_workbook(str(wb_path))
                         if sheet in wb3.sheetnames:
                             ws3 = wb3[sheet]
-                            ws3.cell(row=r, column=3).value = cand
+                            # ALL overrides used if pos delta
+                            all_over = []
+                            for k2, v2 in variant_best.items():
+                                if str(defaults.get(k2)) != str(v2):
+                                    all_over.append(f"{k2}={v2}")
+                            overrides_str = " + ".join(all_over) if all_over else str(cand)
+                            ws3.cell(row=r, column=3).value = overrides_str
                             ws3.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
+                            # baseline next row down: total result if pos delta else blank
+                            if r + 1 <= ws3.max_row:
+                                # column E is 5 (BASELINE), per template =IF(F>0,E+F,E) but we explicitly set per user spec
+                                ws3.cell(row=r+1, column=5).value = new_cum if delta_best > 0 else None
                             wb3.save(str(wb_path))
                     except Exception:
                         pass
-                    cumulative_gain = float(vec_best.get("gain_pct") or 0)
+                    cumulative_gain = new_cum
                     cumulative_overrides = dict(variant_best)
                     total_pos += 1
                     progress["done"][key]["cumulative_after"] = cumulative_gain
