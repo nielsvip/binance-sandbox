@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-12T05:47:06.202109+00:00",
+  "timestamp": "2026-09-12T06:08:00.678427+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 155
+    "total_ranked": 156
   },
   "unified_ranking": [
     {
@@ -673,6 +673,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MEMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CRWDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -932,16 +938,16 @@
     },
     {
       "symbol": "XMRUSDT",
-      "net_score": 11.6,
-      "long_score": 11.6,
+      "net_score": 16.0,
+      "long_score": 16.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "XMRUSDT",
-      11.6,
-      537.14942529
+      16.0,
+      539.65
     ]
   ],
   "top_shorts": [],
