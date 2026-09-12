@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-12T00:42:38.637942+00:00",
+  "timestamp": "2026-09-12T01:00:34.595532+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -199,12 +199,6 @@
       "short_score": 0
     },
     {
-      "symbol": "XMRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "TAOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -260,12 +254,6 @@
     },
     {
       "symbol": "ARBUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -403,6 +391,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MASKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SNXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -434,12 +428,6 @@
     },
     {
       "symbol": "MRVLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SUSHIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -566,12 +554,6 @@
     },
     {
       "symbol": "UNIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MINAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -775,12 +757,6 @@
       "short_score": 0
     },
     {
-      "symbol": "WIFUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -901,61 +877,105 @@
       "short_score": 0
     },
     {
-      "symbol": "BSVUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
+      "symbol": "AIAUSDT",
+      "net_score": 10.2,
+      "long_score": 10.2,
       "short_score": 0
     },
     {
-      "symbol": "MASKUSDT",
+      "symbol": "WIFUSDC",
+      "net_score": 10.2,
+      "long_score": 10.2,
+      "short_score": 0
+    },
+    {
+      "symbol": "DASHUSDT",
+      "net_score": 10.9,
+      "long_score": 10.9,
+      "short_score": 0
+    },
+    {
+      "symbol": "XMRUSDT",
+      "net_score": 11.0,
+      "long_score": 11.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SUSHIUSDT",
       "net_score": 11.3,
       "long_score": 11.3,
       "short_score": 0
     },
     {
-      "symbol": "DASHUSDT",
+      "symbol": "BSVUSDT",
       "net_score": 11.5,
       "long_score": 11.5,
       "short_score": 0
     },
     {
+      "symbol": "MINAUSDT",
+      "net_score": 12.5,
+      "long_score": 12.5,
+      "short_score": 0
+    },
+    {
       "symbol": "ACEUSDT",
-      "net_score": 13.3,
-      "long_score": 13.3,
+      "net_score": 14.2,
+      "long_score": 14.2,
       "short_score": 0
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 16.4,
-      "long_score": 16.4,
+      "net_score": 18.1,
+      "long_score": 18.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RIFUSDT",
-      16.4,
-      0.07904
+      18.1,
+      0.07895
     ],
     [
       "ACEUSDT",
-      13.3,
-      0.16148
+      14.2,
+      0.16162
     ],
     [
-      "DASHUSDT",
-      11.5,
-      57.07
-    ],
-    [
-      "MASKUSDT",
-      11.3,
-      0.44900781
+      "MINAUSDT",
+      12.5,
+      0.10899836
     ],
     [
       "BSVUSDT",
-      10.4,
-      16.61
+      11.5,
+      16.5855
+    ],
+    [
+      "SUSHIUSDT",
+      11.3,
+      0.21894867
+    ],
+    [
+      "XMRUSDT",
+      11.0,
+      522.66533333
+    ],
+    [
+      "DASHUSDT",
+      10.9,
+      57.18
+    ],
+    [
+      "AIAUSDT",
+      10.2,
+      0.07480987
+    ],
+    [
+      "WIFUSDC",
+      10.2,
+      0.1937735
     ]
   ],
   "top_shorts": [],
