@@ -1119,12 +1119,72 @@ def main():
         progress_path.write_text(json.dumps(progress, indent=2))
     except Exception:
         pass
+    # === ALL switch delta + yellow (L:BI) + orange (Results_Deltas/30d) cells already filled cell-by-cell above ===
+    # === backtest_v12_live switch-by-switch verification on final settings ===
+    print(f"[live-verify] switch-by-switch live scripts on final {len(cumulative_overrides)} overrides", flush=True)
+    try:
+        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_final
+        # baseline for delta
+        base_vec = _eval_final(prepared, overrides, window_days=args.window_days) if prepared is not None else None
+        for k, v in list(cumulative_overrides.items())[:50]:
+            # single-switch delta verification: live vs vectorized
+            test_over = dict(overrides)
+            test_over[k] = v
+            test_over, _ = sanitize_overrides(test_over, defaults)
+            vec = _eval_final(prepared, test_over, window_days=args.window_days) if prepared is not None else live_evaluate(new_symside, test_over, args.window_days)
+            live = live_evaluate(new_symside, test_over, args.window_days)
+            ok, reason = parity_ok(live, vec, allow_zero_baseline=baseline_had_zero_trades)
+            if not ok:
+                print(f"[live-verify-FIX] {k}={v} live {live.get('gain_pct'):.2f}/{live.get('trades')} vs vec {vec.get('gain_pct'):.2f}/{vec.get('trades')} reason {reason} — vector fix needed", flush=True)
+            else:
+                print(f"[live-verify-ok] {k}={v} live {live.get('gain_pct'):.2f} vec {vec.get('gain_pct'):.2f} ok", flush=True)
+    except Exception as e:
+        import traceback
+        print(f"[live-verify-warn] {e} {traceback.format_exc()[:800]}", flush=True)
     # complete zoomable chart (offline file:// like /private/tmp/MU_LONG_30D_REAL_ZOOMABLE.html) with all trades
     try:
         write_zoomable_chart(new_symside, None, cumulative_overrides, args.window_days, suffix="30D_REAL_ZOOMABLE")
     except Exception as _ce2:
         print(f"[chart-final-warn] {_ce2}", flush=True)
     print(f"[final] {final_path} bh={bh_raw:.2f} gain={cumulative_gain:.2f} positives={total_pos} hot={list(ALL_NPZ_ARRAYS.keys())[:2]}", flush=True)
+    # === keep going: queue symbols_trb and symbols_flz ===
+    try:
+        import json as _js
+        trb_long = _js.loads((ROOT / "symbols_trb_long.json").read_text()) if (ROOT / "symbols_trb_long.json").exists() else []
+        trb_short = _js.loads((ROOT / "symbols_trb_short.json").read_text()) if (ROOT / "symbols_trb_short.json").exists() else []
+        flz = _js.loads((ROOT / "symbols_flz.json").read_text()) if (ROOT / "symbols_flz.json").exists() else []
+        # log next queue (actual launch is via campaign runner, here just progress hint)
+        print(f"[queue-next] TRB {len(trb_long)} long + {len(trb_short)} short, FLZ {len(flz)} syms — pilots will pick next via campaign_order_1mo.json", flush=True)
+        # ensure campaign queue contains them
+        camp_path = PROGRESS_DIR / "campaign_order_1mo.json"
+        if camp_path.exists():
+            camp = _js.loads(camp_path.read_text())
+            queue = camp.get("queue") or []
+            # append missing TRB/FLZ symsides if not present
+            existing = {q.get("symside") for q in queue}
+            added = 0
+            for s in trb_long:
+                ss = f"{s}_LONG"
+                if ss not in existing:
+                    queue.append({"symside": ss, "window": "30_calendar_days", "side": "LONG"})
+                    added += 1
+            for s in trb_short:
+                ss = f"{s}_SHORT"
+                if ss not in existing:
+                    queue.append({"symside": ss, "window": "30_calendar_days", "side": "SHORT"})
+                    added += 1
+            for s in flz:
+                for side in ["LONG","SHORT"]:
+                    ss = f"{s}_{side}"
+                    if ss not in existing:
+                        queue.append({"symside": ss, "window": "30_calendar_days", "side": side})
+                        added += 1
+            if added:
+                camp["queue"] = queue
+                camp_path.write_text(_js.dumps(camp, indent=2))
+                print(f"[queue-next] added {added} TRB/FLZ symsides to campaign queue", flush=True)
+    except Exception as e:
+        print(f"[queue-next-warn] {e}", flush=True)
 
 if __name__ == "__main__":
     main()
