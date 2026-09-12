@@ -6910,5 +6910,23 @@
     ],
     "timestamp": "2026-09-12T10:38:12.163698+00:00",
     "price": 432.1960644
+  },
+  {
+    "symbol": "BSVUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T10:48:00.389525+00:00",
+    "price": 16.62
+  },
+  {
+    "symbol": "EWTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T10:55:59.057025+00:00",
+    "price": 111.07181638
   }
 ]
