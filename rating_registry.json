@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-12T09:26:43.266268+00:00",
+  "timestamp": "2026-09-12T09:45:26.096174+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "SAGAUSDT",
-      "net_score": -10.0,
+      "net_score": -10.2,
       "long_score": 0,
-      "short_score": 10.0
+      "short_score": 10.2
     },
     {
       "symbol": "1INCHUSDT",
@@ -947,8 +947,8 @@
   "top_shorts": [
     [
       "SAGAUSDT",
-      10.0,
-      0.01605
+      10.2,
+      0.016
     ]
   ],
   "hedge_usage": {
