@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-12 16:30 UTC",
- "total_capital_usd": 12.0,
+ "generated_at": "2026-09-12 17:30 UTC",
+ "total_capital_usd": 11.87,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.0,
+  "B": 11.87,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:OPUSDT_SHORT",
-   "symbol": "OPUSDT",
+   "pk": "men:RUNEUSDT_LONG",
+   "symbol": "RUNEUSDT",
    "account": "men",
-   "value_usd": 12.0,
-   "gain_pct": -0.032,
+   "value_usd": 11.87,
+   "gain_pct": -0.27,
    "tier": "B",
-   "perf_mult": 2.22,
-   "amt": 123.1,
-   "mark": 0.0975115
+   "perf_mult": 1.85,
+   "amt": 23.0,
+   "mark": 0.516
   }
  ]
 }

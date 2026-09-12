@@ -7180,5 +7180,14 @@
     ],
     "timestamp": "2026-09-12T17:12:22.718656+00:00",
     "price": 167.96139045
+  },
+  {
+    "symbol": "CRMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.9x normal"
+    ],
+    "timestamp": "2026-09-12T17:23:04.929330+00:00",
+    "price": 248.69301093
   }
 ]

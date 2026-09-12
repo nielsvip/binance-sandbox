@@ -718,356 +718,356 @@ def main():
     if not sheets:
         sheets = [s for s in wb_tmp.sheetnames if any(s.startswith(p) for p in ["ENTRY", "EXIT", "REENTRY", "AUGMENT", "REDUCE", "GLOBAL"])]
     wb_tmp.close()
-
     for sheet in sheets:
         try:
             print(f"\n[sheet] {sheet} cumulative={cumulative_gain:.4f}", flush=True)
             _touch_heartbeat(f"sheet {sheet}")
             wb = openpyxl.load_workbook(str(wb_path), data_only=False)
-        if sheet not in wb.sheetnames:
-            wb.close()
-            continue
-        ws = wb[sheet]
-        rows = []
-        for r in range(2, ws.max_row + 1):
-            sw = ws.cell(row=r, column=1).value
-            if not sw or not isinstance(sw, str):
+            if sheet not in wb.sheetnames:
+                wb.close()
                 continue
-            sw = sw.strip()
-            if not sw or sw.lower() in ("switch", "general", "blanket"):
-                continue
-            cand = ws.cell(row=r, column=2).value
-            if cand is None:
-                continue
-            eff = cumulative_overrides.get(sw, defaults.get(sw, cand))
-            def norm(v):
-                if isinstance(v, str) and v.lower() in ("true", "false"):
-                    return v.lower() == "true"
-                return v
-            _key_skip = f"{sheet}!{r}:{sw}={cand}"
-            if norm(cand) == norm(eff) and _key_skip in progress.get("done", {}):
-                continue
-            if str(ws.cell(row=r, column=4).value or "") == "GLOBAL_CHECK":
-                continue
-            rows.append((r, sw, cand))
-        wb.close()
-        if args.max_switches and len(rows) > args.max_switches:
-            rows = rows[:args.max_switches]
-        print(f"[sheet] {sheet} {len(rows)} variants", flush=True)
-        if not rows:
-            continue
-
-        wb_keep = openpyxl.load_workbook(str(wb_path), data_only=False)
-        ws_keep = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
-        header_to_col = {}
-        if ws_keep is not None:
-            for c in range(12, ws_keep.max_column + 1):
-                hv = ws_keep.cell(row=2, column=c).value
-                if hv and isinstance(hv, str) and "=" in hv:
-                    hv = hv.strip()
-                    if not hv.upper().startswith("WHAT SWITCH"):
-                        header_to_col[hv] = c
-                if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"):
-                    break
-
-        for (r, switch, cand) in rows:
-            cell_start = time.time()
-            key = f"{sheet}!{r}:{switch}={cand}"
-            if key in progress.get("done", {}):
-                prev = progress["done"][key]
-                if prev.get("delta") and prev["delta"] > 0:
-                    cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
-                    cumulative_overrides[switch] = cand
-                    if prev.get("best_filter"):
-                        cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
-                print(f"[DEBUG] skip cached {key}", flush=True)
-                continue
-            print(f"[DEBUG] sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
-            _touch_heartbeat(f"cell {sheet}!{r}")
-            try:
-                cumulative_before = cumulative_gain
-                opportune = get_opportune_filters(switch, sheet)
-                specifics = [e for e in opportune if not _is_general(e["rec"])]
-                def parse_opt(v, default):
-                    if isinstance(default, bool):
-                        return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)
-                    if isinstance(default, int) and not isinstance(default, bool):
-                        try: return int(float(str(v)))
-                        except: return v
-                    if isinstance(default, float):
-                        try: return float(str(v))
-                        except: return v
+            ws = wb[sheet]
+            rows = []
+            for r in range(2, ws.max_row + 1):
+                sw = ws.cell(row=r, column=1).value
+                if not sw or not isinstance(sw, str):
+                    continue
+                sw = sw.strip()
+                if not sw or sw.lower() in ("switch", "general", "blanket"):
+                    continue
+                cand = ws.cell(row=r, column=2).value
+                if cand is None:
+                    continue
+                eff = cumulative_overrides.get(sw, defaults.get(sw, cand))
+                def norm(v):
                     if isinstance(v, str) and v.lower() in ("true", "false"):
                         return v.lower() == "true"
-                    try:
-                        if "." in str(v): return float(str(v))
-                        return int(str(v))
-                    except:
-                        return v
-                def norm2(a, b):
-                    if isinstance(a, str) and a.lower() in ("true", "false"):
-                        a = a.lower() == "true"
-                    if isinstance(b, str) and b.lower() in ("true", "false"):
-                        b = b.lower() == "true"
-                    return a == b
-                single_filters = []
-                for e in specifics:
-                    filt = e["filter"]
-                    opt_raw = e["opt"]
-                    opt_val = parse_opt(opt_raw, defaults.get(filt))
-                    hdr = f"{filt}={opt_raw}"
-                    cur = cumulative_overrides.get(filt, defaults.get(filt))
-                    if norm2(opt_val, cur):
-                        continue
-                    single_filters.append((filt, opt_val, hdr, opt_raw))
-                candidates = []
-                v0 = dict(cumulative_overrides)
-                v0[switch] = cand
-                v0, _ = sanitize_overrides(v0, defaults)
-                candidates.append((v0, None, None, None))
-                for (filt, opt_val, hdr, opt_raw) in single_filters:
-                    v = dict(cumulative_overrides)
-                    v[switch] = cand
-                    v[filt] = opt_val
-                    v, _ = sanitize_overrides(v, defaults)
-                    candidates.append((v, filt, opt_val, hdr))
-                _single_filters_for_combo = single_filters
-
-                best = None
-                pending_lbI = {}
-                vector_delta_val = None
-                try:
-                    if prepared is not None:
-                        import concurrent.futures as _cf2
-                        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                        with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
-                            vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
-                    else:
-                        from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
-                        vecs = _eval_many(new_symside, [c[0] for c in candidates], window_days=args.window_days)
-                except Exception as e:
-                    print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
-                    vecs = []
-                for idx, (variant, filt, fval, hdr) in enumerate(candidates):
-                    if idx >= len(vecs):
-                        break
-                    vec = vecs[idx]
-                    if not vec.get("valid"):
-                        continue
-                    vg = float(vec.get("gain_pct") or 0)
-                    delta = vg - cumulative_before
-                    if filt is None:
-                        print(f"[CANDIDATE] {sheet}!{r} {switch}={cand} alone vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
-                    else:
-                        print(f"[CANDIDATE] {sheet}!{r} {switch}={cand}+{filt}={fval} vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
-                    if filt is not None and hdr in header_to_col:
-                        pending_lbI[hdr] = float(delta)
-                    if best is None or delta > best[0]:
-                        best = (delta, variant, filt, fval, hdr, vec)
-                    if filt is None:
-                        vector_delta_val = float(delta)
-
-                if best is None or (best[0] <= 0 and len(rows) <= 500):
-                    _best_before_combo = best[0] if best else float("-inf")
-                    if (best is None or _best_before_combo <= 0) and len(rows) <= 500:
-                        _combo_pool = _single_filters_for_combo
-                        if len(_combo_pool) > 8:
-                            _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
-                            _combo_pool = _ranked[:8]
-                        all_combos = []
-                        for combo_size in [2, 3]:
-                            if len(_combo_pool) < combo_size:
-                                continue
-                            for combo in itertools.combinations(_combo_pool, combo_size):
-                                v_combo = dict(cumulative_overrides)
-                                v_combo[switch] = cand
-                                combo_label_parts = []
-                                combo_hdr_parts = []
-                                for (filt_c, opt_val_c, hdr_c, opt_raw_c) in combo:
-                                    v_combo[filt_c] = opt_val_c
-                                    combo_label_parts.append(f"{filt_c}={opt_val_c}")
-                                    combo_hdr_parts.append(hdr_c)
-                                v_combo, _ = sanitize_overrides(v_combo, defaults)
-                                all_combos.append((v_combo, "+".join(combo_label_parts), "+".join(combo_hdr_parts), combo_label_parts, combo_hdr_parts))
-                        if all_combos:
-                            try:
-                                if prepared is not None:
-                                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep2
-                                    vecs_c = [_eval_prep2(prepared, vc[0], window_days=args.window_days) for vc in all_combos]
-                                else:
-                                    from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many2
-                                    vecs_c = _eval_many2(new_symside, [vc[0] for vc in all_combos], window_days=args.window_days)
-                            except Exception as e:
-                                print(f"[vec-batch-combo-err] {sheet}!{r} {switch} err {e}", flush=True)
-                                vecs_c = []
-                            for idx, (v_combo, combo_label, combo_hdr, combo_label_parts, combo_hdr_parts) in enumerate(all_combos):
-                                if idx >= len(vecs_c):
-                                    break
-                                vec_c = vecs_c[idx]
-                                if not vec_c.get("valid"):
-                                    continue
-                                if _check_per_cell_timeout(cell_start):
-                                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} stalled during combo", flush=True)
-                                    break
-                                vg_c = float(vec_c.get("gain_pct") or 0)
-                                delta_c = vg_c - cumulative_before
-                                print(f"[CANDIDATE-COMBO] {sheet}!{r} {switch}={cand}+{'+'.join(combo_label_parts)} vec_gain={vg_c:.4f} delta={delta_c:.4f} vs cum {cumulative_before:.4f}", flush=True)
-                                if best is None or delta_c > best[0]:
-                                    best = (delta_c, v_combo, combo_label, combo_label, "+".join(combo_hdr_parts), vec_c)
-                                    for hdr_c in combo_hdr_parts:
-                                        pending_lbI[hdr_c] = float(delta_c)
-
-                if best is None:
-                    progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid"}
-                    print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
-                    progress_path.write_text(json.dumps(progress, indent=2))
-                    _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
+                    return v
+                _key_skip = f"{sheet}!{r}:{sw}={cand}"
+                if norm(cand) == norm(eff) and _key_skip in progress.get("done", {}):
                     continue
+                if str(ws.cell(row=r, column=4).value or "") == "GLOBAL_CHECK":
+                    continue
+                rows.append((r, sw, cand))
+            wb.close()
+            if args.max_switches and len(rows) > args.max_switches:
+                rows = rows[:args.max_switches]
+            print(f"[sheet] {sheet} {len(rows)} variants", flush=True)
+            if not rows:
+                continue
 
-                delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
-                # _atomic_save via wb_keep (keep open per sheet)
+            wb_keep = openpyxl.load_workbook(str(wb_path), data_only=False)
+            ws_keep = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
+            header_to_col = {}
+            if ws_keep is not None:
+                for c in range(12, ws_keep.max_column + 1):
+                    hv = ws_keep.cell(row=2, column=c).value
+                    if hv and isinstance(hv, str) and "=" in hv:
+                        hv = hv.strip()
+                        if not hv.upper().startswith("WHAT SWITCH"):
+                            header_to_col[hv] = c
+                    if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"):
+                        break
+
+            for (r, switch, cand) in rows:
+                cell_start = time.time()
+                key = f"{sheet}!{r}:{switch}={cand}"
+                if key in progress.get("done", {}):
+                    prev = progress["done"][key]
+                    if prev.get("delta") and prev["delta"] > 0:
+                        cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
+                        cumulative_overrides[switch] = cand
+                        if prev.get("best_filter"):
+                            cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
+                    print(f"[DEBUG] skip cached {key}", flush=True)
+                    continue
+                print(f"[DEBUG] sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
+                _touch_heartbeat(f"cell {sheet}!{r}")
                 try:
-                    wb_row = wb_keep
-                    ws_row = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
-                    if pending_lbI and ws_row is not None:
-                        for hdr, d in pending_lbI.items():
-                            col = header_to_col.get(hdr)
-                            if col:
+                    cumulative_before = cumulative_gain
+                    opportune = get_opportune_filters(switch, sheet)
+                    specifics = [e for e in opportune if not _is_general(e["rec"])]
+                    def parse_opt(v, default):
+                        if isinstance(default, bool):
+                            return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)
+                        if isinstance(default, int) and not isinstance(default, bool):
+                            try: return int(float(str(v)))
+                            except: return v
+                        if isinstance(default, float):
+                            try: return float(str(v))
+                            except: return v
+                        if isinstance(v, str) and v.lower() in ("true", "false"):
+                            return v.lower() == "true"
+                        try:
+                            if "." in str(v): return float(str(v))
+                            return int(str(v))
+                        except:
+                            return v
+                    def norm2(a, b):
+                        if isinstance(a, str) and a.lower() in ("true", "false"):
+                            a = a.lower() == "true"
+                        if isinstance(b, str) and b.lower() in ("true", "false"):
+                            b = b.lower() == "true"
+                        return a == b
+                    single_filters = []
+                    for e in specifics:
+                        filt = e["filter"]
+                        opt_raw = e["opt"]
+                        opt_val = parse_opt(opt_raw, defaults.get(filt))
+                        hdr = f"{filt}={opt_raw}"
+                        cur = cumulative_overrides.get(filt, defaults.get(filt))
+                        if norm2(opt_val, cur):
+                            continue
+                        single_filters.append((filt, opt_val, hdr, opt_raw))
+                    candidates = []
+                    v0 = dict(cumulative_overrides)
+                    v0[switch] = cand
+                    v0, _ = sanitize_overrides(v0, defaults)
+                    candidates.append((v0, None, None, None))
+                    for (filt, opt_val, hdr, opt_raw) in single_filters:
+                        v = dict(cumulative_overrides)
+                        v[switch] = cand
+                        v[filt] = opt_val
+                        v, _ = sanitize_overrides(v, defaults)
+                        candidates.append((v, filt, opt_val, hdr))
+                    _single_filters_for_combo = single_filters
+
+                    best = None
+                    pending_lbI = {}
+                    vector_delta_val = None
+                    try:
+                        if prepared is not None:
+                            import concurrent.futures as _cf2
+                            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
+                            with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
+                                vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
+                        else:
+                            from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
+                            vecs = _eval_many(new_symside, [c[0] for c in candidates], window_days=args.window_days)
+                    except Exception as e:
+                        print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
+                        vecs = []
+                    for idx, (variant, filt, fval, hdr) in enumerate(candidates):
+                        if idx >= len(vecs):
+                            break
+                        vec = vecs[idx]
+                        if not vec.get("valid"):
+                            continue
+                        vg = float(vec.get("gain_pct") or 0)
+                        delta = vg - cumulative_before
+                        if filt is None:
+                            print(f"[CANDIDATE] {sheet}!{r} {switch}={cand} alone vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
+                        else:
+                            print(f"[CANDIDATE] {sheet}!{r} {switch}={cand}+{filt}={fval} vec_gain={vg:.4f} delta={delta:.4f} vs cum {cumulative_before:.4f} trades={vec.get('trades')} sharpe={float(vec.get('pool_sharpe') or 0):.4f}", flush=True)
+                        if filt is not None and hdr in header_to_col:
+                            pending_lbI[hdr] = float(delta)
+                        if best is None or delta > best[0]:
+                            best = (delta, variant, filt, fval, hdr, vec)
+                        if filt is None:
+                            vector_delta_val = float(delta)
+
+                    if best is None or (best[0] <= 0 and len(rows) <= 500):
+                        _best_before_combo = best[0] if best else float("-inf")
+                        if (best is None or _best_before_combo <= 0) and len(rows) <= 500:
+                            _combo_pool = _single_filters_for_combo
+                            if len(_combo_pool) > 8:
+                                _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
+                                _combo_pool = _ranked[:8]
+                            all_combos = []
+                            for combo_size in [2, 3]:
+                                if len(_combo_pool) < combo_size:
+                                    continue
+                                for combo in itertools.combinations(_combo_pool, combo_size):
+                                    v_combo = dict(cumulative_overrides)
+                                    v_combo[switch] = cand
+                                    combo_label_parts = []
+                                    combo_hdr_parts = []
+                                    for (filt_c, opt_val_c, hdr_c, opt_raw_c) in combo:
+                                        v_combo[filt_c] = opt_val_c
+                                        combo_label_parts.append(f"{filt_c}={opt_val_c}")
+                                        combo_hdr_parts.append(hdr_c)
+                                    v_combo, _ = sanitize_overrides(v_combo, defaults)
+                                    all_combos.append((v_combo, "+".join(combo_label_parts), "+".join(combo_hdr_parts), combo_label_parts, combo_hdr_parts))
+                            if all_combos:
                                 try:
-                                    ws_row.cell(row=r, column=col).value = float(d)
-                                except Exception:
-                                    pass
-                    target = None
-                    for cand_name in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
-                        if cand_name in wb_row.sheetnames:
-                            target = cand_name
-                            break
-                    if target is None:
-                        ws_new = wb_row.create_sheet("Results_Deltas")
-                        ws_new.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","REAL_COMPLETE_DELTA","variant_sharpe","trades","tim","dd"])
-                        target = "Results_Deltas"
-                    rws = wb_row[target]
-                    if str(rws.cell(1,1).value or "").strip().lower() in ("param","switch"):
-                        rws.cell(1,1).value = "key"
-                    key_results = f"{switch}={cand}" if cand is not None else switch
-                    found = None
-                    for rr in range(2, rws.max_row + 1):
-                        if str(rws.cell(row=rr, column=1).value or "").strip() == key_results:
-                            found = rr
-                            break
-                    if found is None and cand is not None:
+                                    if prepared is not None:
+                                        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep2
+                                        vecs_c = [_eval_prep2(prepared, vc[0], window_days=args.window_days) for vc in all_combos]
+                                    else:
+                                        from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many2
+                                        vecs_c = _eval_many2(new_symside, [vc[0] for vc in all_combos], window_days=args.window_days)
+                                except Exception as e:
+                                    print(f"[vec-batch-combo-err] {sheet}!{r} {switch} err {e}", flush=True)
+                                    vecs_c = []
+                                for idx, (v_combo, combo_label, combo_hdr, combo_label_parts, combo_hdr_parts) in enumerate(all_combos):
+                                    if idx >= len(vecs_c):
+                                        break
+                                    vec_c = vecs_c[idx]
+                                    if not vec_c.get("valid"):
+                                        continue
+                                    if _check_per_cell_timeout(cell_start):
+                                        print(f"[PER_CELL TIMEOUT] {sheet}!{r} stalled during combo", flush=True)
+                                        break
+                                    vg_c = float(vec_c.get("gain_pct") or 0)
+                                    delta_c = vg_c - cumulative_before
+                                    print(f"[CANDIDATE-COMBO] {sheet}!{r} {switch}={cand}+{'+'.join(combo_label_parts)} vec_gain={vg_c:.4f} delta={delta_c:.4f} vs cum {cumulative_before:.4f}", flush=True)
+                                    if best is None or delta_c > best[0]:
+                                        best = (delta_c, v_combo, combo_label, combo_label, "+".join(combo_hdr_parts), vec_c)
+                                        for hdr_c in combo_hdr_parts:
+                                            pending_lbI[hdr_c] = float(delta_c)
+
+                    if best is None:
+                        progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid"}
+                        print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
+                        progress_path.write_text(json.dumps(progress, indent=2))
+                        _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
+                        continue
+
+                    delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
+                    try:
+                        wb_row = wb_keep
+                        ws_row = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
+                        if pending_lbI and ws_row is not None:
+                            for hdr, d in pending_lbI.items():
+                                col = header_to_col.get(hdr)
+                                if col:
+                                    try:
+                                        ws_row.cell(row=r, column=col).value = float(d)
+                                    except Exception:
+                                        pass
+                        target = None
+                        for cand_name in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
+                            if cand_name in wb_row.sheetnames:
+                                target = cand_name
+                                break
+                        if target is None:
+                            ws_new = wb_row.create_sheet("Results_Deltas")
+                            ws_new.append(["key","default","override","is_non_default","delta_gain_vs_bh","delta_sharpe","delta_trades","variant_gain","REAL_COMPLETE_DELTA","variant_sharpe","trades","tim","dd"])
+                            target = "Results_Deltas"
+                        rws = wb_row[target]
+                        if str(rws.cell(1,1).value or "").strip().lower() in ("param","switch"):
+                            rws.cell(1,1).value = "key"
+                        key_results = f"{switch}={cand}" if cand is not None else switch
+                        found = None
                         for rr in range(2, rws.max_row + 1):
-                            if str(rws.cell(row=rr, column=1).value or "").strip() == switch:
-                                rws.cell(row=rr, column=1).value = key_results
+                            if str(rws.cell(row=rr, column=1).value or "").strip() == key_results:
                                 found = rr
                                 break
-                    if found is None:
-                        found = rws.max_row + 1
-                        rws.cell(row=found, column=1).value = key_results
-                    rws.cell(row=found, column=8).value = float(vec_best.get("gain_pct") or 0)
-                    rws.cell(row=found, column=5).value = float(delta_best)
+                        if found is None and cand is not None:
+                            for rr in range(2, rws.max_row + 1):
+                                if str(rws.cell(row=rr, column=1).value or "").strip() == switch:
+                                    rws.cell(row=rr, column=1).value = key_results
+                                    found = rr
+                                    break
+                        if found is None:
+                            found = rws.max_row + 1
+                            rws.cell(row=found, column=1).value = key_results
+                        rws.cell(row=found, column=8).value = float(vec_best.get("gain_pct") or 0)
+                        rws.cell(row=found, column=5).value = float(delta_best)
+                        try:
+                            rws.cell(row=found, column=10).value = int(vec_best.get("trades") or 0)
+                            rws.cell(row=found, column=12).value = float(vec_best.get("tim_pct") or 0)
+                            rws.cell(row=found, column=11).value = float(vec_best.get("max_dd_pct") or 0) if vec_best.get("max_dd_pct") is not None else None
+                            header_map = {str(rws.cell(1,c).value or "").strip().lower(): c for c in range(1, rws.max_column+1)}
+                            if "variant_sharpe" in header_map:
+                                rws.cell(row=found, column=header_map["variant_sharpe"]).value = float(vec_best.get("pool_sharpe") or 0)
+                            if "bh_pct" in header_map:
+                                rws.cell(row=found, column=header_map["bh_pct"]).value = float(vec_best.get("bh_pct") or 0)
+                            if "gain_pct" in header_map:
+                                rws.cell(row=found, column=header_map["gain_pct"]).value = float(vec_best.get("gain_pct") or 0)
+                        except Exception:
+                            pass
+                        _atomic_save(wb_row, wb_path)
+                    except Exception as _e:
+                        print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
+                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best}
                     try:
-                        rws.cell(row=found, column=10).value = int(vec_best.get("trades") or 0)
-                        rws.cell(row=found, column=12).value = float(vec_best.get("tim_pct") or 0)
-                        rws.cell(row=found, column=11).value = float(vec_best.get("max_dd_pct") or 0) if vec_best.get("max_dd_pct") is not None else None
-                        header_map = {str(rws.cell(1,c).value or "").strip().lower(): c for c in range(1, rws.max_column+1)}
-                        if "variant_sharpe" in header_map:
-                            rws.cell(row=found, column=header_map["variant_sharpe"]).value = float(vec_best.get("pool_sharpe") or 0)
-                        if "bh_pct" in header_map:
-                            rws.cell(row=found, column=header_map["bh_pct"]).value = float(vec_best.get("bh_pct") or 0)
-                        if "gain_pct" in header_map:
-                            rws.cell(row=found, column=header_map["gain_pct"]).value = float(vec_best.get("gain_pct") or 0)
+                        progress_path.write_text(json.dumps(progress, indent=2))
+                    except: pass
+                    _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
+                    if delta_best <= 0:
+                        print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
+                        _touch_heartbeat(f"cell {sheet}!{r} NEG")
+                        continue
+                    print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> POSITIVE candidate", flush=True)
+                    if args.vector_only:
+                        ok, reason = True, "vector-only (deferred verify)"
+                        live_delta = delta_best
+                        live_best = vec_best
+                    else:
+                        import concurrent.futures as _cf
+                        with _cf.ThreadPoolExecutor(max_workers=16) as ex:
+                            fut = ex.submit(live_evaluate, new_symside, dict(variant_best), args.window_days)
+                            try:
+                                live_best = fut.result(timeout=90)
+                            except Exception as e:
+                                live_best = {"valid": False, "invalid_reason": str(e), "gain_pct": 0.0}
+                        if live_best.get("invalid_reason","").startswith("live timeout"):
+                            print(f"[WATCHDOG LIVE TIMEOUT] {sheet}!{r} {switch}={cand}", flush=True)
+                            ok, reason = False, live_best["invalid_reason"]
+                            live_delta = None
+                        else:
+                            ok, reason = parity_ok(live_best, vec_best, allow_zero_baseline=baseline_had_zero_trades)
+                            live_delta = float(live_best.get("gain_pct") or 0) - cumulative_before if live_best.get("valid") else None
+                        if _check_per_cell_timeout(cell_start):
+                            ok = False; reason = "per-cell timeout after live"
+                    progress["done"][key].update({"live": {k: live_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","invalid_reason"]} if 'live_best' in locals() else {}, "live_delta": live_delta, "parity": ok if 'ok' in locals() else False, "reason": reason if 'reason' in locals() else ""})
+                    try:
+                        progress_path.write_text(json.dumps(progress, indent=2))
+                    except: pass
+                    if not ok:
+                        print(f"[parity-fail] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} {reason}", flush=True)
+                        _touch_heartbeat(f"cell {sheet}!{r} parity-fail")
+                        continue
+                    if live_delta is not None and live_delta <= 0:
+                        print(f"[live-neg] {sheet}!{r} {switch} live_delta={live_delta:.4f} — not promoting", flush=True)
+                        _touch_heartbeat(f"cell {sheet}!{r} live-neg")
+                        continue
+                    try:
+                        wb3 = openpyxl.load_workbook(str(wb_path))
+                        if sheet in wb3.sheetnames:
+                            ws3 = wb3[sheet]
+                            ws3.cell(row=r, column=3).value = cand
+                            ws3.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
+                            wb3.save(str(wb_path))
                     except Exception:
                         pass
-                    _atomic_save(wb_row, wb_path)
-                except Exception as _e:
-                    print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best}
-                try:
+                    cumulative_gain = float(vec_best.get("gain_pct") or 0)
+                    cumulative_overrides = dict(variant_best)
+                    total_pos += 1
+                    progress["done"][key]["cumulative_after"] = cumulative_gain
+                    progress["cumulative_gain"] = cumulative_gain
+                    progress["cumulative_overrides"] = cumulative_overrides
                     progress_path.write_text(json.dumps(progress, indent=2))
-                except: pass
-                _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
-                if delta_best <= 0:
-                    print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
-                    _touch_heartbeat(f"cell {sheet}!{r} NEG")
+                    print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
+                    _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
+                except Exception as e:
+                    import traceback
+                    print(f"[ROW-ERR] {sheet}!{r} {switch}={cand} err {e} {traceback.format_exc()[:800]}", flush=True)
+                    try:
+                        progress.setdefault("done", {})[key] = {"delta": 0, "reason": f"row err {e}"}
+                        progress_path.write_text(json.dumps(progress, indent=2))
+                    except: pass
+                    _touch_heartbeat(f"cell {sheet}!{r} ERR")
                     continue
-                print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> POSITIVE candidate", flush=True)
-                if args.vector_only:
-                    ok, reason = True, "vector-only (deferred verify)"
-                    live_delta = delta_best
-                    live_best = vec_best
-                else:
-                    import concurrent.futures as _cf
-                    with _cf.ThreadPoolExecutor(max_workers=16) as ex:
-                        fut = ex.submit(live_evaluate, new_symside, dict(variant_best), args.window_days)
-                        try:
-                            live_best = fut.result(timeout=90)
-                        except Exception as e:
-                            live_best = {"valid": False, "invalid_reason": str(e), "gain_pct": 0.0}
-                    if live_best.get("invalid_reason","").startswith("live timeout"):
-                        print(f"[WATCHDOG LIVE TIMEOUT] {sheet}!{r} {switch}={cand}", flush=True)
-                        ok, reason = False, live_best["invalid_reason"]
-                        live_delta = None
-                    else:
-                        ok, reason = parity_ok(live_best, vec_best, allow_zero_baseline=baseline_had_zero_trades)
-                        live_delta = float(live_best.get("gain_pct") or 0) - cumulative_before if live_best.get("valid") else None
-                    if _check_per_cell_timeout(cell_start):
-                        ok = False; reason = "per-cell timeout after live"
-                progress["done"][key].update({"live": {k: live_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","invalid_reason"]} if 'live_best' in locals() else {}, "live_delta": live_delta, "parity": ok if 'ok' in locals() else False, "reason": reason if 'reason' in locals() else ""})
-                try:
-                    progress_path.write_text(json.dumps(progress, indent=2))
-                except: pass
-                if not ok:
-                    print(f"[parity-fail] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} {reason}", flush=True)
-                    _touch_heartbeat(f"cell {sheet}!{r} parity-fail")
-                    continue
-                if live_delta is not None and live_delta <= 0:
-                    print(f"[live-neg] {sheet}!{r} {switch} live_delta={live_delta:.4f} — not promoting", flush=True)
-                    _touch_heartbeat(f"cell {sheet}!{r} live-neg")
-                    continue
-                # PROMOTE — green C
-                try:
-                    wb3 = openpyxl.load_workbook(str(wb_path))
-                    if sheet in wb3.sheetnames:
-                        ws3 = wb3[sheet]
-                        ws3.cell(row=r, column=3).value = cand
-                        ws3.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
-                        wb3.save(str(wb_path))
-                except Exception:
-                    pass
-                cumulative_gain = float(vec_best.get("gain_pct") or 0)
-                cumulative_overrides = dict(variant_best)
-                total_pos += 1
-                progress["done"][key]["cumulative_after"] = cumulative_gain
-                progress["cumulative_gain"] = cumulative_gain
-                progress["cumulative_overrides"] = cumulative_overrides
-                progress_path.write_text(json.dumps(progress, indent=2))
-                print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
-                _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
-            except Exception as e:
-                import traceback
-                print(f"[ROW-ERR] {sheet}!{r} {switch}={cand} err {e} {traceback.format_exc()[:800]}", flush=True)
-                try:
-                    progress.setdefault("done", {})[key] = {"delta": 0, "reason": f"row err {e}"}
-                    progress_path.write_text(json.dumps(progress, indent=2))
-                except: pass
-                _touch_heartbeat(f"cell {sheet}!{r} ERR")
-                continue
-            if _check_per_cell_timeout(cell_start):
-                print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — advancing", flush=True)
+                if _check_per_cell_timeout(cell_start):
+                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — advancing", flush=True)
 
-        try:
-            wb_keep.close()
-        except Exception:
-            pass
-        print(f"[sheet DONE] {sheet} cum={cumulative_gain:.4f} positives={total_pos}", flush=True)
-        # zoomable chart with all trades metrics and reasons for each trade at end of every sheet
-        try:
-            write_zoomable_chart(new_symside, sheet, cumulative_overrides, args.window_days)
-        except Exception as _ce:
-            print(f"[chart-warn] {sheet} {_ce}", flush=True)
-        progress["cumulative_gain"] = cumulative_gain
-        progress["cumulative_overrides"] = cumulative_overrides
+            try:
+                wb_keep.close()
+            except Exception:
+                pass
+            print(f"[sheet DONE] {sheet} cum={cumulative_gain:.4f} positives={total_pos}", flush=True)
+            try:
+                write_zoomable_chart(new_symside, sheet, cumulative_overrides, args.window_days)
+            except Exception as _ce:
+                print(f"[chart-warn] {sheet} {_ce}", flush=True)
+            progress["cumulative_gain"] = cumulative_gain
+            progress["cumulative_overrides"] = cumulative_overrides
+            try:
+                progress_path.write_text(json.dumps(progress, indent=2))
+            except Exception:
+                pass
         except Exception as _sheet_e:
             import traceback
             print(f"[sheet-ERR] {sheet} {_sheet_e} {traceback.format_exc()[:800]}", flush=True)
@@ -1076,7 +1076,6 @@ def main():
             except Exception:
                 pass
             continue
-
     bh_raw = float(baseline_live.get("bh_pct") or baseline_vec.get("bh_pct") or 0)
     # skip-empty guard
     try:
@@ -1090,9 +1089,21 @@ def main():
         _wb_check.close()
     except Exception:
         _is_empty = False
-    if _is_empty or (total_pos == 0 and abs(cumulative_gain - baseline_gain) < 1e-9):
-        # still keep filled L:BI even if no promote, but mark
-        print(f"[done] {new_symside} no positives but every cell written bh={bh_raw:.2f} gain={cumulative_gain:.2f} — keeping {wb_path.name}", flush=True)
+    if _is_empty:
+        try:
+            wb_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        progress["skipped_empty"] = True
+        progress["final_gain"] = cumulative_gain
+        progress["bh"] = bh_raw
+        try:
+            progress_path.write_text(json.dumps(progress, indent=2))
+        except Exception:
+            pass
+        print(f"[skip-empty] {new_symside} empty Results (max_row<2) — deleted {wb_path.name}, not publishing", flush=True)
+        return
+    # partially filled work in progress is fine — keep wb_path as is, but only publish final if we have data
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
     final_path = OUT_DIR / final_name
