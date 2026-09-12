@@ -2835,5 +2835,23 @@
     ],
     "timestamp": "2026-09-12T00:02:01.630206+00:00",
     "price": 1701.85
+  },
+  {
+    "symbol": "STRCUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 17.3x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T01:18:10.785519+00:00",
+    "price": 98.48
+  },
+  {
+    "symbol": "PAYPUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 17.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T01:22:52.384208+00:00",
+    "price": 18.44
   }
 ]
