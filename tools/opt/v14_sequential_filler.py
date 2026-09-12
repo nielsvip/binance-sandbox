@@ -728,11 +728,12 @@ def main():
         print(f"[sanitize] {warns}", flush=True)
     print(f"[baseline] {new_symside}: {len(overrides)} overrides + {len(defaults)} defaults", flush=True)
 
-    # baseline — early gate BEFORE clone to avoid wasting compute on empty sheets (ETHUSDC with missing NPZ was 0/0 → all vectors invalid)
+    # baseline — early gate BEFORE clone to avoid wasting compute on truly missing data (no NPZ → gain None)
+    # Do NOT skip on TIM 99% vomit valid=False — user needs finished workbooks on all (ZEC/ETH/DOGE) even with high TIM
     baseline_vec = vector_evaluate(new_symside, overrides, window_days=args.window_days)
     print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')}", flush=True)
-    if not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0:
-        print(f"[skip-empty-baseline] {new_symside} baseline invalid/0 trades {baseline_vec.get('invalid_reason')} — skipping clone/fill to avoid waste", flush=True)
+    if baseline_vec.get("gain_pct") is None or int(baseline_vec.get("trades") or 0) == 0:
+        print(f"[skip-empty-baseline] {new_symside} baseline no NPZ/gain None {baseline_vec.get('invalid_reason')} — skipping clone/fill to avoid waste", flush=True)
         try:
             (PROGRESS_DIR / f"{new_symside}_v14_progress.json").unlink(missing_ok=True)
         except Exception:
