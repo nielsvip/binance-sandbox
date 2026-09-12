@@ -7126,5 +7126,14 @@
     ],
     "timestamp": "2026-09-12T15:08:11.000725+00:00",
     "price": 0.005071
+  },
+  {
+    "symbol": "TMFUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 17.3x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T15:28:57.814009+00:00",
+    "price": 29.31
   }
 ]
