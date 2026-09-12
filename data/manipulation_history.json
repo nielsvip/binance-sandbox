@@ -6604,5 +6604,23 @@
     ],
     "timestamp": "2026-09-12T08:48:25.926403+00:00",
     "price": 0.009783
+  },
+  {
+    "symbol": "ACEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 25.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T08:49:56.515316+00:00",
+    "price": 0.16196
+  },
+  {
+    "symbol": "IWMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T09:01:24.644539+00:00",
+    "price": 289.42
   }
 ]
