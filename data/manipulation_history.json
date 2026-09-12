@@ -5812,5 +5812,167 @@
     ],
     "timestamp": "2026-09-12T06:26:27.072124+00:00",
     "price": 0.10346599
+  },
+  {
+    "symbol": "1000FLOKIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:27:39.098747+00:00",
+    "price": 0.02480569
+  },
+  {
+    "symbol": "API3USDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:27:39.098747+00:00",
+    "price": 0.23766458
+  },
+  {
+    "symbol": "MEMEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:27:39.098747+00:00",
+    "price": 0.00052636
+  },
+  {
+    "symbol": "DOGEUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:29:10.055747+00:00",
+    "price": 0.08433
+  },
+  {
+    "symbol": "FWDIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T06:33:43.336084+00:00",
+    "price": 6.624
+  },
+  {
+    "symbol": "STXXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:35:03.497112+00:00",
+    "price": 832.2
+  },
+  {
+    "symbol": "MORPHOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 18.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:36:32.873713+00:00",
+    "price": 2.2678
+  },
+  {
+    "symbol": "CBRSUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T06:37:03.394816+00:00",
+    "price": 191.93
+  },
+  {
+    "symbol": "LINKUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:37:53.468444+00:00",
+    "price": 11.516
+  },
+  {
+    "symbol": "GRTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:37:53.468444+00:00",
+    "price": 0.0178029
+  },
+  {
+    "symbol": "ZECUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 20.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:39:15.661604+00:00",
+    "price": 1127.13
+  },
+  {
+    "symbol": "1000SHIBUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:40:24.378539+00:00",
+    "price": 0.00522015
+  },
+  {
+    "symbol": "ORDIUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:40:24.378539+00:00",
+    "price": 4.03209222
+  },
+  {
+    "symbol": "BXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.6x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T06:43:18.188084+00:00",
+    "price": 128.15
+  },
+  {
+    "symbol": "NVOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T06:43:18.188084+00:00",
+    "price": 43.12
+  },
+  {
+    "symbol": "SMCIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.3x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T06:43:18.188084+00:00",
+    "price": 39.99
+  },
+  {
+    "symbol": "TIAUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 19.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:44:48.837403+00:00",
+    "price": 0.3573
+  },
+  {
+    "symbol": "XAIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 22.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T06:46:19.750050+00:00",
+    "price": 0.00717572
   }
 ]

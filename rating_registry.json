@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-12T06:27:22.128904+00:00",
+  "timestamp": "2026-09-12T06:47:41.028962+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -475,6 +475,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GRAMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RAYSOLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -895,6 +901,12 @@
       "short_score": 0
     },
     {
+      "symbol": "VETUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "VIRTUALUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -925,39 +937,17 @@
       "short_score": 0
     },
     {
-      "symbol": "GRAMUSDT",
-      "net_score": 10.7,
-      "long_score": 10.7,
-      "short_score": 0
-    },
-    {
       "symbol": "XMRUSDT",
-      "net_score": 12.9,
-      "long_score": 12.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "VETUSDT",
-      "net_score": 14.5,
-      "long_score": 14.5,
+      "net_score": 11.7,
+      "long_score": 11.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "VETUSDT",
-      14.5,
-      0.00780405
-    ],
-    [
       "XMRUSDT",
-      12.9,
-      540.59
-    ],
-    [
-      "GRAMUSDT",
-      10.7,
-      1.366
+      11.7,
+      538.31
     ]
   ],
   "top_shorts": [],
