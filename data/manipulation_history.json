@@ -7072,5 +7072,23 @@
     ],
     "timestamp": "2026-09-12T12:32:21.574336+00:00",
     "price": 0.01268333
+  },
+  {
+    "symbol": "PYPLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.7x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-12T12:58:24.388635+00:00",
+    "price": 54.05379589
+  },
+  {
+    "symbol": "IMXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-12T13:09:51.488687+00:00",
+    "price": 0.12292048
   }
 ]

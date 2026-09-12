@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-12T12:50:50.638619+00:00",
+  "timestamp": "2026-09-12T13:10:23.202548+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 162
   },
   "unified_ranking": [
-    {
-      "symbol": "CRWDUSDT",
-      "net_score": -10.4,
-      "long_score": 0,
-      "short_score": 10.4
-    },
     {
       "symbol": "TSMUSDT",
       "net_score": 0,
@@ -457,6 +451,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CRWDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -476,6 +476,12 @@
     },
     {
       "symbol": "XMRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ORDIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -602,6 +608,12 @@
     },
     {
       "symbol": "COTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MRVLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -955,59 +967,31 @@
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
-      "net_score": 13.2,
-      "long_score": 13.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "MRVLUSDT",
-      "net_score": 13.7,
-      "long_score": 13.7,
+      "symbol": "KAVAUSDT",
+      "net_score": 13.0,
+      "long_score": 13.0,
       "short_score": 0
     },
     {
       "symbol": "ETHFIUSDC",
-      "net_score": 16.3,
-      "long_score": 16.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "KAVAUSDT",
-      "net_score": 16.9,
-      "long_score": 16.9,
+      "net_score": 15.0,
+      "long_score": 15.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "KAVAUSDT",
-      16.9,
-      0.06989
-    ],
-    [
       "ETHFIUSDC",
-      16.3,
-      0.76429409
+      15.0,
+      0.742
     ],
     [
-      "MRVLUSDT",
-      13.7,
-      237.04
-    ],
-    [
-      "ORDIUSDC",
-      13.2,
-      4.10586061
+      "KAVAUSDT",
+      13.0,
+      0.07039061
     ]
   ],
-  "top_shorts": [
-    [
-      "CRWDUSDT",
-      10.4,
-      205.8
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
