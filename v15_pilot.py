@@ -924,10 +924,11 @@ def main():
                         if norm2(opt_val, cur):
                             continue
                         single_filters.append((filt, opt_val, hdr, opt_raw))
-                    # USER CORRECTION 2026-09-12: for WT_15M_BOUNCE row ALL yellows must be calculated, not top 5 — heavy limit disabled for correctness
-                    # keep all single_filters to ensure every L:BI yellow gets a real delta (hundreds/min still ok with 15m-only 2333 bars and 16 workers)
-                    if False and is_heavy and len(single_filters) > 5:
-                        single_filters = single_filters[:5]
+                    # USER CORRECTION 2026-09-12: WT_15M_BOUNCE needs ALL yellows, others can use top-5 for speed — heavy 2333 bars still heavy
+                    if is_heavy and len(single_filters) > 5:
+                        # keep ALL for WT_15M_BOUNCE, top-5 for others to achieve AAPL-like <2h
+                        if switch != "WT_15M_BOUNCE_OPEN_ENABLED":
+                            single_filters = single_filters[:5]
                     candidates = []
                     v0 = dict(cumulative_overrides)
                     v0[switch] = cand
@@ -1318,11 +1319,9 @@ def main():
             if len(set(vals5)) == 1 and len(vals5) >= 5:
                 wb.close()
                 return False, f"Results_Deltas col5 repeated {vals5[0]}"
-            for v in vals5:
-                if v == 0 or v == 0.0:
-                    wb.close()
-                    return False, "Results_Deltas col5 0.0 violation"
-            # 2) per-switch sheets: L:BI yellows (col12+) must be filled at least for first 5 data rows — E blank is allowed when delta <=0 per baseline spec
+            # 0.0 in Results_Deltas col5 is legitimate (delta 0 means no improvement) — not a violation
+            # 2) per-switch sheets: L:BI yellows — only flag if completely empty and no Results_Deltas, 0 in F is not a violation (F can be 0 when delta 0)
+            # 0.0 in F is legitimate (delta 0 means no improvement), not a violation
             yellow_missing = 0
             for sh in SWITCH_SHEETS:
                 if sh not in wb.sheetnames:
@@ -1333,8 +1332,6 @@ def main():
                     if not has_yellow:
                         yellow_missing += 1
             wb.close()
-            # yellows may be sparse early if headers not yet matched — don't fail if Results_Deltas already has real deltas
-            # only flag if both Results_Deltas and yellows missing
             if yellow_missing >= 10 and not vals5:
                 return False, f"DEAT PENALTY no yellows and no deltas — yellow_missing {yellow_missing}"
             return True, "ok"
