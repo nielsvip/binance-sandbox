@@ -1,30 +1,32 @@
 {
- "generated_at": "2026-09-13 08:39 UTC",
- "total_capital_usd": 11.9,
+ "generated_at": "2026-09-13 08:42 UTC",
+ "total_capital_usd": 76.79,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.9,
-  "C": 0.0
+  "B": 0.0,
+  "C": 76.79
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "flz:BTCUSDC_SHORT"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:PTBUSDT_SHORT",
-   "symbol": "PTBUSDT",
-   "account": "inf",
-   "value_usd": 11.9,
-   "gain_pct": 0.13,
-   "tier": "B",
-   "perf_mult": 1.76,
-   "amt": 17948.0,
-   "mark": 0.00066297
+   "pk": "flz:BTCUSDC_SHORT",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 76.79,
+   "gain_pct": -0.049,
+   "tier": "C",
+   "perf_mult": 0.6,
+   "amt": 0.001,
+   "mark": 76786.6
   }
  ]
 }
