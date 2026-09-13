@@ -3629,5 +3629,95 @@
     ],
     "timestamp": "2026-09-13T11:14:39.109389+00:00",
     "price": 453.98
+  },
+  {
+    "symbol": "QNTXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:16:27.026435+00:00",
+    "price": 48.49
+  },
+  {
+    "symbol": "ACEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:18:11.054083+00:00",
+    "price": 0.15159359
+  },
+  {
+    "symbol": "TLMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 20.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:18:41.669941+00:00",
+    "price": 0.00140182
+  },
+  {
+    "symbol": "SUIUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:20:12.669534+00:00",
+    "price": 0.7093
+  },
+  {
+    "symbol": "ADAUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:21:43.727602+00:00",
+    "price": 0.20402507
+  },
+  {
+    "symbol": "TERUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:22:16.087616+00:00",
+    "price": 370.83
+  },
+  {
+    "symbol": "DRAMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:23:21.104400+00:00",
+    "price": 56.53407351
+  },
+  {
+    "symbol": "RKLBUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 18.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:27:25.896368+00:00",
+    "price": 62.18759701
+  },
+  {
+    "symbol": "CRVUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:32:39.809495+00:00",
+    "price": 0.34809825
+  },
+  {
+    "symbol": "CATUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T11:33:28.711611+00:00",
+    "price": 815.88056123
   }
 ]
