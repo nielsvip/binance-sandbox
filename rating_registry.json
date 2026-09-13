@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T20:28:47.577948+00:00",
+  "timestamp": "2026-09-13T20:47:10.825136+00:00",
   "market_state": {
     "panic": true,
     "euphoria": false,
@@ -314,12 +314,6 @@
     },
     {
       "symbol": "RSRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1019,14 +1013,26 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "ALGOUSDT",
+      "net_score": 12.1,
+      "long_score": 12.1,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "ALGOUSDT",
+      12.1,
+      0.09852
+    ]
+  ],
   "top_shorts": [
     [
       "STORJUSDT",
       30,
-      0.03598758
+      0.03583559
     ]
   ],
   "hedge_usage": {
