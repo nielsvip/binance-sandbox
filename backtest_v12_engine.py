@@ -12573,6 +12573,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         and _struct_wt_audit_t["status"] != "PASS"
     ):
         raise RuntimeError("V8_RESEARCH_STRUCT_WT exact route audit failed")
+    return executed_trades
+
 
 
 

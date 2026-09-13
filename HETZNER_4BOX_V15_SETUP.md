@@ -8,9 +8,9 @@
 |------|------------|------------------------|-----------------------|
 | S1 (existing) | `s1` = 157.180.125.52 / s1-int 127.0.0.1:2201 | htz-s1 | `s1-int`, `s1-pub` |
 | Box2 | s2 | htz-v15-s2 | `s2` (10.0.0.4 via gw) — KEEP but do NOT reuse; new = `htz-s2` |
-| Box3 | s3 | htz-v15-s3 | `htz-s3` |
-| Box4 | s4 | htz-v15-s4 | `htz-s4` |
-| Box5 | s5 | htz-v15-s5 | `htz-s5` |
+| Box3 | s3 | htz-v15-s3 | `s3` |
+| Box4 | s4 | htz-v15-s4 | `s4` |
+| Box5 | s5 | htz-v15-s5 | `s5` |
 
 > User asked: `s_2/3/4/5/` with direct SSH from S1 and MacBook. After bring-up each box must be reachable as `ssh niels@<public-ip>` from both hosts via `~/.ssh/id_ed25519` (pubkey below).
 
