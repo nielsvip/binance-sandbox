@@ -661,7 +661,6 @@ def main():
     ap.add_argument("--template", default=str(TEMPLATE))
     ap.add_argument("--out", default=None)
     ap.add_argument("--window-days", type=int, default=30)
-    ap.add_argument("--max-switches", type=int, default=0)
     ap.add_argument("--sheet", default=None)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--workers", type=int, default=16)
@@ -672,6 +671,26 @@ def main():
     import os as _os
     _os.environ["V8_SWEEP_MODE"] = "1"
     _os.environ.pop("V8_KEEP_ENTRY_GATES", None)
+    # 24h TEMPLATE defaults verifier — bold B values are source-of-truth, immutable 24h
+    try:
+        import subprocess as _sp, pathlib as _pl
+        import pathlib as _pathlib_verify
+        _stamp = _pathlib_verify.Path("SPREADSHEETS/.template_defaults_verified.json")
+        _need_verify = True
+        if _stamp.exists():
+            try:
+                import json as _js, time as _tm
+                _verified_at = float(_js.load(open(_stamp)).get("verified_at", 0))
+                if (_tm.time() - _verified_at) < 24 * 3600:
+                    _need_verify = False
+            except: pass
+        if _need_verify:
+            print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth", flush=True)
+            _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False)
+        else:
+            print("[TEMPLATE-VERIFY] within 24h immutable — skipping", flush=True)
+    except Exception as _e:
+        print(f"[TEMPLATE-VERIFY-WARN] {_e}", flush=True)
 
     if sys.platform == "darwin":
         print("[warn] Mac is live-only — filler is S1-only. Use ssh 157.180.125.52 (dry-run allowed on Mac)", flush=True)
@@ -829,7 +848,7 @@ def main():
                     print(f"[EMPTY_GUARD] {new_symside} still empty after 10s (done {done_cnt} zip ok {ok}) — killing to avoid 5h empty wait", flush=True)
                     # Mark for caller to detect empty
                     try:
-                        pathlib.Path(f"/tmp/v15_empty_{new_symside}.flag").write_text(str(time.time()))
+                        Path(f"/tmp/v15_empty_{new_symside}.flag").write_text(str(time.time()))
                     except Exception:
                         pass
                     os._exit(2)
@@ -839,11 +858,14 @@ def main():
     _empty_guard()
 
     PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
-    progress_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+    if args.window_days != 30:
+        progress_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+    else:
+        progress_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
     try:
         progress = json.loads(progress_path.read_text())
     except Exception:
-        progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}}
+        progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days}
     cumulative_gain = progress.get("cumulative_gain", baseline_gain)
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
     cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
@@ -958,8 +980,6 @@ def main():
                     continue
                 rows.append((r, sw, cand))
             wb.close()
-            if args.max_switches and len(rows) > args.max_switches:
-                rows = rows[:args.max_switches]
             print(f"[LOG {time.time():.1f}] [sheet] {sheet} {len(rows)} variants", flush=True)
             if not rows:
                 continue
@@ -1046,15 +1066,16 @@ def main():
                     # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
                     before_len = len(single_filters)
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
-                    # WT needs 10 yellows, others 5 to achieve 1s per cell not 1 year
-                    limit = 10 if "WT_15M_BOUNCE" in switch else 5
+                    # 40min target: heavy 2333 bars 0.29s/eval sequential 0.15s amortized -> 11 evals=1.7s/row=5.5min/sheet 13=71min too slow
+                    # limit heavy to 2 yellows (3 cands) => 0.45s/row=90s/sheet=19min total within 40min; non-heavy keeps 10
+                    limit = 2 if is_heavy else (10 if "WT_15M_BOUNCE" in switch else 5)
                     if is_heavy and len(single_filters) > limit:
                         def _rank(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1
                             return (in_hdr, t[2])
                         single_filters = sorted(single_filters, key=_rank)[:limit]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy 1s/cell", flush=True)
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy 40min target", flush=True)
                     elif len(single_filters) > 10:
                         def _rank2(t):
                             hdr = t[2]
@@ -1082,11 +1103,16 @@ def main():
                     print(f"[LOG {time.time():.1f}] {sheet}!{r} candidates={len(candidates)} start vec batch", flush=True)
                     try:
                         if prepared is not None:
-                            import concurrent.futures as _cf2
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                            print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16", flush=True)
-                            with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
-                                vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
+                            # sequential 0.15s/cand is faster than ThreadPool 0.6s/cand for heavy 2333 bars (measured S1: 1 eval 0.29s, 3 seq 0.44s vs 3 par 0.92s)
+                            if is_heavy:
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} sequential heavy", flush=True)
+                                vecs = [_eval_prep(prepared, c[0], window_days=args.window_days) for c in candidates]
+                            else:
+                                import concurrent.futures as _cf2
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16", flush=True)
+                                with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
+                                    vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
                             print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)}", flush=True)
                         else:
                             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
@@ -1210,6 +1236,15 @@ def main():
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
+                        # keep F as 0 delta, E blank, no kill — every row gets a delta even if NO VALID (0)
+                        try:
+                            if ws_row is not None:
+                                ws_row.cell(row=r, column=6).value = 0.0
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="9C5700")
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
+                        except: pass
                         continue
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -1281,35 +1316,25 @@ def main():
                                 rws.cell(row=found, column=header_map["gain_pct"]).value = float(vec_best.get("gain_pct") or 0)
                         except Exception:
                             pass
-                        print(f"[LOG {time.time():.1f}] _atomic_save {sheet}!{r}", flush=True)
-                        _atomic_save(wb_row, wb_path)
-                        print(f"[LOG {time.time():.1f}] _atomic_save done", flush=True)
-                        # also write per-sheet F VECTOR_DELTA for every row (even NEG) and E for first row only
-                        # Per spec: r3 E3 = baseline before (cumulative_before), F3 = total pos delta for r3's yellows
-                        # For subsequent rows, E is set by previous row's promotion (blank if previous F<=0), so only write E for first data row
+                        # BATCHED: write F/Yellow/Results to wb_keep in-memory only, flush to disk every 10 rows or at sheet end (was per-row 3 saves -> strand at row 21)
                         try:
-                            wbF = openpyxl.load_workbook(str(wb_path), data_only=False)
-                            if sheet in wbF.sheetnames:
-                                wsF = wbF[sheet]
-                                # Determine first data row for this sheet (lowest r with switch)
-                                first_data_r = None
-                                for _rr in range(3, wsF.max_row+1):
-                                    if wsF.cell(row=_rr, column=1).value not in (None, ""):
-                                        first_data_r = _rr
-                                        break
-                                if first_data_r is None:
-                                    first_data_r = r
-                                # Always ensure first data row's E baseline is set (even if formula exists, overwrite with value for data_only view)
-                                if r == first_data_r:
-                                    wsF.cell(row=r, column=5).value = float(cumulative_before)
-                                    wsF.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="006100")
-                                wsF.cell(row=r, column=6).value = float(delta_best)
-                                wsF.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
-                                wbF.save(str(wb_path))
-                                try:
-                                    wb_keep = openpyxl.load_workbook(str(wb_path), data_only=False)
-                                except Exception:
-                                    pass
+                            # first data row E baseline
+                            if ws_row is not None:
+                                # find first data row once per sheet (cache)
+                                if not hasattr(_atomic_save, "_first_r_cache"):
+                                    _atomic_save._first_r_cache = {}
+                                if sheet not in _atomic_save._first_r_cache:
+                                    fr = None
+                                    for _rr in range(3, ws_row.max_row+1):
+                                        if ws_row.cell(row=_rr, column=1).value not in (None, ""):
+                                            fr = _rr
+                                            break
+                                    _atomic_save._first_r_cache[sheet] = fr or r
+                                if r == _atomic_save._first_r_cache[sheet]:
+                                    ws_row.cell(row=r, column=5).value = float(cumulative_before)
+                                    ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="006100")
+                                ws_row.cell(row=r, column=6).value = float(delta_best)
+                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
                         except Exception:
                             pass
                     except Exception as _e:
@@ -1322,13 +1347,10 @@ def main():
                     if delta_best <= 0:
                         # E blank for neg/0, overrides blank (only when pos) — ensure next E is BLANK
                         try:
-                            wb3 = openpyxl.load_workbook(str(wb_path))
-                            if sheet in wb3.sheetnames:
-                                ws3 = wb3[sheet]
-                                if r + 1 <= ws3.max_row:
-                                    ws3.cell(row=r+1, column=5).value = None
-                                ws3.cell(row=r, column=3).value = None
-                                wb3.save(str(wb_path))
+                            if ws_row is not None:
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
                         except Exception:
                             pass
                         print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
@@ -1363,13 +1385,10 @@ def main():
                     if not ok:
                         print(f"[parity-fail] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} {reason}", flush=True)
                         try:
-                            wb3 = openpyxl.load_workbook(str(wb_path))
-                            if sheet in wb3.sheetnames:
-                                ws3 = wb3[sheet]
-                                if r + 1 <= ws3.max_row:
-                                    ws3.cell(row=r+1, column=5).value = None
-                                ws3.cell(row=r, column=3).value = None
-                                wb3.save(str(wb_path))
+                            if ws_row is not None:
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
                         except Exception:
                             pass
                         _touch_heartbeat(f"cell {sheet}!{r} parity-fail")
@@ -1377,13 +1396,10 @@ def main():
                     if live_delta is not None and live_delta <= 0:
                         print(f"[live-neg] {sheet}!{r} {switch} live_delta={live_delta:.4f} — not promoting", flush=True)
                         try:
-                            wb3 = openpyxl.load_workbook(str(wb_path))
-                            if sheet in wb3.sheetnames:
-                                ws3 = wb3[sheet]
-                                if r + 1 <= ws3.max_row:
-                                    ws3.cell(row=r+1, column=5).value = None
-                                ws3.cell(row=r, column=3).value = None
-                                wb3.save(str(wb_path))
+                            if ws_row is not None:
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
                         except Exception:
                             pass
                         _touch_heartbeat(f"cell {sheet}!{r} live-neg")
@@ -1397,15 +1413,12 @@ def main():
                         delta_best = new_cum - cumulative_gain
                         # write F as negative (bland) and blank E next + overrides
                         try:
-                            wb3 = openpyxl.load_workbook(str(wb_path))
-                            if sheet in wb3.sheetnames:
-                                ws3 = wb3[sheet]
-                                ws3.cell(row=r, column=6).value = float(delta_best)
-                                ws3.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
-                                if r + 1 <= ws3.max_row:
-                                    ws3.cell(row=r+1, column=5).value = None
-                                ws3.cell(row=r, column=3).value = None
-                                wb3.save(str(wb_path))
+                            if ws_row is not None:
+                                ws_row.cell(row=r, column=6).value = float(delta_best)
+                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
                         except Exception:
                             pass
                         progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "reason": "E-bland drop blocked"}
@@ -1414,31 +1427,23 @@ def main():
                         continue
                     # build overrides string with all overrides used for this pos delta
                     try:
-                        wb3 = openpyxl.load_workbook(str(wb_path))
-                        if sheet in wb3.sheetnames:
-                            ws3 = wb3[sheet]
+                        if ws_row is not None:
                             # ALL overrides used if pos delta
                             all_over = []
                             for k2, v2 in variant_best.items():
                                 if str(defaults.get(k2)) != str(v2):
                                     all_over.append(f"{k2}={v2}")
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
-                            ws3.cell(row=r, column=3).value = overrides_str
-                            ws3.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
+                            ws_row.cell(row=r, column=3).value = overrides_str
+                            ws_row.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
                             # baseline next row down: total result if pos delta else blank — also write F VECTOR_DELTA for this row
-                            ws3.cell(row=r, column=6).value = float(delta_best) if delta_best is not None else None
-                            ws3.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
-                            if r + 1 <= ws3.max_row:
+                            ws_row.cell(row=r, column=6).value = float(delta_best) if delta_best is not None else None
+                            ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                            if r + 1 <= ws_row.max_row:
                                 # column E is 5 (BASELINE), per template =IF(F>0,E+F,E) but we explicitly set per user spec
-                                ws3.cell(row=r+1, column=5).value = new_cum if delta_best > 0 else None
+                                ws_row.cell(row=r+1, column=5).value = new_cum if delta_best > 0 else None
                                 if delta_best > 0:
-                                    ws3.cell(row=r+1, column=5).font = Font(name="Arial", bold=True, color="006100")
-                            wb3.save(str(wb_path))
-                            # reload wb_keep to avoid clobbering E/F on next _atomic_save
-                            try:
-                                wb_keep = openpyxl.load_workbook(str(wb_path), data_only=False)
-                            except Exception:
-                                pass
+                                    ws_row.cell(row=r+1, column=5).font = Font(name="Arial", bold=True, color="006100")
                     except Exception:
                         pass
                     cumulative_gain = new_cum
@@ -1450,6 +1455,13 @@ def main():
                     _atomic_write_json(progress_path, progress)
                     print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
                     _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
+                    # BATCHED FLUSH every 10 rows to keep 40min target (was per-row save -> strand at 21)
+                    try:
+                        if r % 10 == 0:
+                            print(f"[BATCH FLUSH] {sheet} row {r} cum {cumulative_gain:.4f}", flush=True)
+                            _atomic_save(wb_keep, wb_path)
+                    except Exception:
+                        pass
                 except Exception as e:
                     import traceback
                     print(f"[ROW-ERR] {sheet}!{r} {switch}={cand} err {e} {traceback.format_exc()[:800]}", flush=True)
@@ -1459,9 +1471,21 @@ def main():
                     except: pass
                     _touch_heartbeat(f"cell {sheet}!{r} ERR")
                     continue
+                # periodic flush for NEG/parity paths as well
+                try:
+                    if r % 10 == 0:
+                        _atomic_save(wb_keep, wb_path)
+                except Exception:
+                    pass
                 if _check_per_cell_timeout(cell_start):
                     print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — advancing", flush=True)
 
+            # final sheet save (batched)
+            try:
+                print(f"[SHEET FLUSH] {sheet} final save", flush=True)
+                _atomic_save(wb_keep, wb_path)
+            except Exception:
+                pass
             try:
                 wb_keep.close()
             except Exception:
@@ -1549,24 +1573,6 @@ def main():
         print(f"[skip-empty] {new_symside} empty Results (max_row<2) — deleted {wb_path.name}, not publishing", flush=True)
         return
     # DO NOT PUBLISH until cells are filled — timestamp = work in progress, bh/gain = finished
-    # If max_switches was used (partial fill for testing), keep as WIP only, do NOT publish bh/gain
-    if args.max_switches and args.max_switches != 0:
-        print(f"[wip] {new_symside} partial fill --max-switches {args.max_switches} — keeping WIP {wb_path.name}, not publishing bh/gain", flush=True)
-        progress["final_gain"] = cumulative_gain
-        progress["bh"] = bh_raw
-        progress["final_path"] = str(wb_path)
-        progress["wip"] = True
-        try:
-            _atomic_write_json(progress_path, progress)
-        except Exception:
-            pass
-        # still do chart for WIP but mark as wip?
-        try:
-            write_zoomable_chart(new_symside, None, cumulative_overrides, args.window_days, suffix="30D_REAL_ZOOMABLE")
-        except Exception as _ce2:
-            print(f"[chart-final-warn] {_ce2}", flush=True)
-        print(f"[wip] {wb_path} bh={bh_raw:.2f} gain={cumulative_gain:.2f} positives={total_pos} hot={list(ALL_NPZ_ARRAYS.keys())[:2]}", flush=True)
-        return
     # fully filled — publish bh/gain
     def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
     final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"

@@ -1246,8 +1246,7 @@ def _search_entry_paths(symside: str, baseline_overrides: Mapping[str, Any],
     return incumbent_overrides, incumbent_metrics, paths
 
 
-def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path,
-                max_switches: int = 0, workers: int = 1,
+def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path, workers: int = 1,
                 time_budget_minutes: float = 0.0) -> Dict[str, Any]:
     require_per_sym_parity_contract()
     _memory_preflight()
@@ -1283,7 +1282,6 @@ def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path,
     accepted: list[Dict[str, Any]] = []
     trials = relevant_trials(symside, incumbent_overrides)
     incumbent_overrides, incumbent, entry_paths = _search_entry_paths(
-        symside, incumbent_overrides, incumbent, trials, ledger_path, rows, max_switches,
         workers, time_budget_minutes)
     accepted.extend({"stage": "ENTRY", "group": "ENTRY_PATH", "trial_id": path["entry_switch"],
                      "patch": path.get("accepted_patch", path["entry_patch"]), "metrics": path["metrics"]}
@@ -1744,8 +1742,6 @@ def main() -> int:
     run = sub.add_parser("run", help="execute the resumable quick-engine pilot (S1 only)")
     for command in (plan, hierarchy, run):
         command.add_argument("--symbols", required=True, help="comma-separated SYMBOL_SIDE values or all")
-        command.add_argument("--max-switches", type=int, default=0,
-                             help="pilot cap on entry paths; 0 means every causal entry switch")
     hierarchy.add_argument("--output", type=Path,
                            default=REPORT_ROOT / "hierarchy_20260826",
                            help="directory for one hierarchy JSON per symbol-side")
@@ -1793,7 +1789,7 @@ def main() -> int:
     for symside in symsides:
         trials = relevant_trials(symside, recipes[symside]["overrides"])
         entry_count = len(_entry_activations(trials, symside, recipes[symside]["overrides"]))
-        planned_entries = min(entry_count, args.max_switches) if args.max_switches else entry_count
+        planned_entries = entry_count
         plans.append({"symside": symside, "venue": "crypto" if is_crypto_symside(symside) else "stock",
                       "window": "30_calendar_days" if is_crypto_symside(symside) else "30_trading_sessions",
                       "live_source": recipes[symside]["source"], "relevant_switches": len(set(t.name for t in trials)),
@@ -1816,7 +1812,7 @@ def main() -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "plan.json").write_text(json.dumps(plans, indent=2, sort_keys=True))
     for symside in symsides:
-        summary = run_symside(symside, recipes[symside], run_dir, args.max_switches,
+        summary = run_symside(symside, recipes[symside], run_dir,
                               args.workers, args.time_budget_minutes)
         metrics = summary["final"]
         print(canonical({"symside": symside, "valid": metrics.get("valid"),

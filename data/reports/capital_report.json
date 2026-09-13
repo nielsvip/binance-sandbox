@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-13 00:39 UTC",
- "total_capital_usd": 0.24,
+ "generated_at": "2026-09-13 01:39 UTC",
+ "total_capital_usd": 7.64,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.24,
+  "B": 7.64,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:XTZUSDT_LONG",
-   "symbol": "XTZUSDT",
+   "pk": "fin:TIAUSDC_SHORT",
+   "symbol": "TIAUSDC",
    "account": "fin",
-   "value_usd": 0.24,
-   "gain_pct": 0.151,
+   "value_usd": 7.64,
+   "gain_pct": 0.06,
    "tier": "B",
-   "perf_mult": 1.54,
-   "amt": 0.9,
-   "mark": 0.2645
+   "perf_mult": 1.69,
+   "amt": 22.0,
+   "mark": 0.3472
   }
  ]
 }

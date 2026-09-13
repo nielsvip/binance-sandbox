@@ -688,7 +688,6 @@ def main():
     ap.add_argument("--template", default=str(TEMPLATE))
     ap.add_argument("--out", default=None)
     ap.add_argument("--window-days", type=int, default=30)
-    ap.add_argument("--max-switches", type=int, default=0)
     ap.add_argument("--sheet", default=None)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--vector-only", action="store_true", help="vector-only, no live parity (S1 fast)")
@@ -867,8 +866,6 @@ def main():
                 continue
             rows.append((r, sw, cand))
         wb.close()
-        if args.max_switches and len(rows) > args.max_switches:
-            rows = rows[:args.max_switches]
         print(f"[sheet] {sheet} {len(rows)} variants", flush=True)
 
         # header col map for L:BI — FIX missing headers: create per FILTER_DICTIONARY if not present

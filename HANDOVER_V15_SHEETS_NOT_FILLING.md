@@ -136,3 +136,251 @@ Synced via `rsync -az /Users/niels/Documents/binance/v15_pilot.py s1-int:/home/n
 4.  For new `STDEV`/`augment`/`kindergarten` switches: add to `config_tradier` + `QuickConfig` + `v12_quick_engine` + `tradier_manage` + `TEMPLATE` sheet + `SWITCH_SHEETS`, test `AAPL_LONG 30D` `D_MAX 10/8/6/4` distinct `gain` and `365D` `1y hold` before promoting, never copy old backup over new.
 
 **Never `git reset/restore/checkout`, never `rm` user `V15_V16` untracked, never `BadZipFile` restore as new truth — fix latest file in place.**
+
+---
+
+## 9. Appendix A — Every SWITCH must have 4-way wiring (config → QuickConfig → v12_quick_engine → backtest_v12_engine → v15) — checklist
+
+For each `TEMPLATE.xlsx` switch, e.g. `STDEV_SLOPE_SIZING_D_MAX 10`, `ADX_RANGING_THRESHOLD 20`, `BANDAID 2.0`, do:
+
+1.  **`config_tradier.py`** — add `TRADIER_` override default, e.g. `STDEV_SLOPE_SIZING_D_MAX = 10.0` with comment `// D 6mo 10x` and `STDEV_SLOPE_SIZING_MODE = "slope_to_top"`. Must be importable via `load_live_recipes()`.
+2.  **`v12_quick_engine.py:QuickConfig`** — add dataclass field `STDEV_SLOPE_SIZING_D_MAX: float = 10.0` with same default, so `getattr(cfg, name, default)` finds it. If missing, `is_non_default` stays `0`, `F` stays `VLOOKUP`.
+3.  **`v12_quick_engine.py:compute_*`** — add handling:
+    ```python
+    # STDEV example
+    if cfg.STDEV_SLOPE_SIZING_ENABLED:
+        max_map = {"D": cfg.STDEV_SLOPE_SIZING_D_MAX, "4h": cfg.STDEV_SLOPE_SIZING_4H_MAX, ...}
+        pb = lrL_pct_b[TF]  # 0 bottom 1 top
+        edge = (1-pb) if is_long else pb
+        if cfg.STDEV_SLOPE_SIZING_MODE == "slope_to_top":
+            bs_m = max_val if edge>=0.5 else 1+(max_val-1)*edge*2
+        else:
+            bs_m = 1+(max_val-1)*edge
+        slope_day = lrL_slope[TF]*factor[TF]
+        sn = min(abs(slope_day)/cfg.BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY,1)
+        bs_m *= (1+0.5*sn) if fav else max(0.5,1-0.5*sn)
+        mult *= bs_m
+        qty = _size_qty(START_SIZE*mult, price)
+    ```
+    For `ADX`, `BANDAID` etc, add `if cfg.ADX_RANGING_THRESHOLD != 20:` affect `regime_mult` or `entry_mask`.
+4.  **`backtest_v12_engine.py` / `tradier_manage.py` / `ez_manage.py`** — same `_bs_m` logic in `get_position_size` `max_value *= _bs_m` [tradier_manage.py:25928](file:///Users/niels/Documents/binance/tradier_manage.py:25928) for live parity. Must use same `max_map` and `mode`, otherwise `S1` `run_one` vs `evaluate_prepared` diverge (`0.439 vs 0.198` before fix).
+5.  **`TEMPLATE.xlsx`** — add row `A Switch=STDEV_SLOPE_SIZING_D_MAX B 10 C (override) D STDEV_SLOPE_SIZING E =VLOOKUP… F =VLOOKUP…` with `is_non_default` formula `=IF(C2<>"",1,0)` etc, and `L:BI` headers for `STDEV` if needed (currently `0` yellows, but `ENTRY` has `8` `c12-19` `00DDEBF7`). Add to `SWITCH_SHEETS` if new sheet.
+6.  **`v15_pilot.py`** — ensure row collection `sw not in (switch,general,blanket,filter)` [v15_pilot.py:909](file:///Users/niels/Documents/binance/v15_pilot.py:909) includes new switch, and `prepare_batch` + `evaluate_prepared_sanitized` uses it. The `F` in `progress.json` `delta` must be `vg - cum` with current `cum`, not stale.
+
+If any of the 4 is missing, `SNDK` `F` stays `VLOOKUP`/`0`/`NONE` and user sees `not wired`.
+
+### 9.1 Current wiring status (2026-09-13)
+
+* `STDEV` now wired: `config_tradier` `D_MAX 10` + `QuickConfig` + `v12.compute_regime_sizing_mult` + `tradier_manage` + `TEMPLATE` `18×11` `STDEV_SLOPE_SIZING` sheet — `AAPL 30D` `10x 0.68` vs `1x 0.21` distinct, `SNDK` `ENTRY !3 F 12.64` includes `STDEV` qty.
+* `ADX 20/25/15/10` wired but `SNDK 30d` shows `0` delta correctly per engine (no impact for this window, not copy) — `S1` `prepare_batch 2333 bars` `base -2.18` → `ADX 20 gain -2.181 delta 0.000` for all 4, so `F -1.25` with `STDEV` `12.03` is same for `20/25/15` (plateau), `10 → 0` distinct.
+* `BANDAID 0/2.0/1.0/0.5` wired similarly `0` when no impact.
+* `Filter | Option Value` header now skipped, no synthetic `0.062`.
+
+### 9.2 How to add a new switch (example `KINDERGARTEN_FILTER`)
+
+1.  `config_tradier.py: KINDERGARTEN_FILTER_ENABLED = False`
+2.  `v12_quick_engine.py:QuickConfig KINDERGARTEN_FILTER_ENABLED: bool = False`
+3.  `v12_quick_engine.py:compute_entry` `if cfg.KINDERGARTEN_FILTER_ENABLED and k_15<80:` etc
+4.  `tradier_manage.py:check_entry` same
+5.  `TEMPLATE.xlsx` new row `A KINDERGARTEN_FILTER_ENABLED B False` `SWITCH_SHEETS` maybe `GLOBAL_RISK_GATES`
+6.  Test `S1` `AAPL_LONG` `prepare_batch` vs `run_one` must influence `gain` via `qty` or `entry` (not just `VLOOKUP`).
+
+---
+
+## 10. Appendix B — `TEMPLATE.xlsx` structure (relevant columns)
+
+* `A Switch` — config name, must match `QuickConfig` field.
+* `B default` — default value from `QuickConfig` default.
+* `C override` — candidate value to test (e.g. `10` for `D_MAX`, `True` for `WT_15M_BOUNCE`).
+* `D Family` — `STDEV_SLOPE_SIZING`, `ENTRY_REVERSAL_BOUNCE`, `BLANKET` etc — used to filter `SWITCH_SHEETS`.
+* `E BASELINE` col5 — `=TEMPLATE_BASELINE_METRICS!B2` for `r3`, else `=IF(F3="",E3,IF(F3>0,E3+F3,E3))` — **must be overwritten with `float(cumulative_before)` for `r==first_data_r` and with `new_cum if delta>0 else None` for `r+1`**, otherwise `E` drop.
+* `F VECTOR_DELTA` col6 — `=VLOOKUP($A&"="&$B,Results_Deltas!A:P,5,FALSE)` — **must be overwritten with `float(delta_best)` for every row**, even `NEG/0`, never `VLOOKUP`.
+* `G LIVE_DELTA` col7, `H LIVE_SHARPE` col8, `I REAL_COMPLETE` col9 — from `Results_Deltas` `delta_sharpe` etc.
+* `J is_default` `K ...` — `=IF(C<>B,1,0)` etc.
+* `L:BI` cols12-61 `PER_ROW_FILTERS` yellows `00DDEBF7` — `pending_lbI[hdr]=delta` for each `GENERAL` filter with `sheets_app ALL` or token-overlap, `header_to_col` `L=12`.
+* `Results_Deltas` orange `00FFC000` — `A Switch, B default, C override, D is_non_default, E delta_gain_vs_bh col5, F delta_sharpe col6, G delta_trades col7, H variant_gain col8, I REAL_COMPLETE col9, J-K-L-M pool_sharpe/trades/tim/dd, N-P variant_*`.
+
+If any of these columns stay `VLOOKUP`/`0`/`NONE` after `v15` run, that row was not wired.
+
+---
+
+## 11. Appendix C — `v15_pilot.py` flow (fast path)
+
+1.  `preload_prepared(symside)` [v15_pilot.py:360](file:///Users/niels/Documents/binance/v15_pilot.py:360) `prepare_batch` → `ALL_PREPARED` `877 arrays` `V12_NPZ_CACHE=32`.
+2.  `load_live_recipes` `94 overrides` vs `defaults` `3337` → `baseline_gain` `SNDK -1.85` `trades 201`.
+3.  `clone TEMPLATE → V15_V16_CELL_BY_CELL/{SYM}_30d_matrix*.xlsx` `shutil.copy2` `794K` `23 sheets`, `ensure_lbI_headers` `L:BI`, `progress.json` `done {}` `cumulative_gain = baseline`.
+4.  For each `sheet` in `SWITCH_SHEETS 13` [v15_pilot.py:917](file:///Users/niels/Documents/binance/v15_pilot.py:917):
+    * `rows = [(r,sw,cand) for r if sw not in (switch,general,blanket,filter) and not startswith("—")]`
+    * For each `r`: `cumulative_before = cumulative_gain`, `candidates = [naked] + singles` (`GENERAL` blanket + token-overlap) [v15_pilot.py:935](file:///Users/niels/Documents/binance/v15_pilot.py:935), `heavy → skip combos`.
+    * `vec = ex.map(lambda v: _eval_prep(prepared, v))` [v15_pilot.py:954](file:///Users/niels/Documents/binance/v15_pilot.py:954) `ThreadPool16` `0.07s` (fast) vs `slow` fallback.
+    * `delta = vec_gain - cumulative_before`, `best = max(delta)`, `new_cum = vec_best.gain_pct`.
+    * `_atomic_save` `L:BI` yellows + `Results col5/col6` [v15_pilot.py:1265](file:///Users/niels/Documents/binance/v15_pilot.py:1265), `F col6=float(delta_best)` [v15_pilot.py:1173](file:///Users/niels/Documents/binance/v15_pilot.py:1173), `E col5` for `first_data_r` only.
+    * Check `best is None`, `parity-fail`, `live_delta <=0`, `E-BLAND` `new_cum < cum` → `F` negative, `E next None`, `overrides None`, `continue`.
+    * Promotion: `all_over` `switch + best_filter` [v15_pilot.py:1339](file:///Users/niels/Documents/binance/v15_pilot.py:1339), `ws3.cell(r,3)=overrides_str`, `ws3.cell(r,6)=delta_best`, `ws3.cell(r+1,5)=new_cum if delta>0 else None`, `cumulative_gain=new_cum`, `cumulative_overrides=variant_best`, `progress done + _atomic_write_json`.
+    * `_validate_e_chain_and_yellows` [v15_pilot.py:360](file:///Users/niels/Documents/binance/v15_pilot.py:360) + `NPZ-CHECK`.
+5.  `write_zoomable_chart` `AAPL_LONG_ENTRY_REVERSAL_BOUNCE_30D_REAL_ZOOMABLE.html` `150K` `canvas 1 fps 121` `wheel zoom drag`.
+
+If `prepared is None` → fallback `slow` `14s/row` `75 days at 100x` — user sees `still feels like slow system`.
+
+---
+
+## 12. Appendix D — `S1` vs `Mac` NPZ and `S1` gateway
+
+* `S1` `157.90.168.35` (`S1`) + `157.180.125.52` (`gateway`) + `10.0.0.3` (`sandbox`) — `~/binance-sandbox` `42M` `AAPL.npz` vs `Mac` `975K` truncated → `0 trades DATA_ERROR` on Mac, so `ON S1 NOT ON Mac`.
+* `~/.ssh/cm-s1-int` `ControlMaster` for `s1-int` (`157.180.125.52:22` via `gateway-internal` `157.90.168.35:2201`), `S1_NPZ_DIRS` `backtest_v8/indicators`, `hourly_reconfig/trb/active_config.json` `94 overrides`, `V15_V16_CELL_BY_CELL` `NFS` between `gateway` and `sandbox`.
+* `Mac` autosave `launchd` every `15min` git commit, `backups/before_*` is only reliable history, never `git reset` per `CLAUDE.md`.
+
+---
+
+## 13. Appendix E — Current `S1` state (2026-09-13 01:30)
+
+* `SNDK_LONG --vector-only` full `no max-switches` `PID 461033` `877 arrays 2333 bars hot` `done 1→5 cum 10.46→12.03` `775K` `V15_V16_CELL_BY_CELL/SNDK_LONG_30d_matrix.xlsx` `23 sheets` — will be `~800K` `900` rows `45-60min`.
+* `AAPL_LONG 775K` `SNDK 782K 113 F` `ENTRY` most complete wired until full `~01:55` finishes.
+* `TEMPLATE.xlsx` `776K` `ENTRY yellows 8` row3 `c12-19` `00DDEBF7`, `STDEV 0` (pos will be added when `STDEV` `F>0` found).
+* `v15_pilot.py` `1505L` now `E-BLAND` + `header skip` + `F always` + `max-switches` eliminated, `S1` compile `ok`, `pytest 13 passed`.
+
+---
+
+## 14. Appendix F — Backtest-expert validation for `SNDK_LONG 30d`
+
+* **Sample floor:** `2333 bars` `30D` `201 trades` base `>100` `>1yr`? No, `30D` is diagnostic only per `BACKTEST_BIBLE` (`≥48 crypto OR ≥100 stocks × >1yr × ≥30 trades/sym`), so `SNDK 30d` `201 trades` `30D` is `DIAGNOSTIC ONLY` — not for promotion, `1y` `250 combos` was `0 pos`.
+* **Bias prevention:** `V12_NPZ_CACHE=32` `prepare_batch` `30` uses `offset_days` `window_days` strictly, no lookahead `lrL` `wt` computed from prior `close`, `STDEV` `D 6mo` uses `slope` `6mo` not future.
+* **Parameter robustness:** `SNDK` `ENTRY` `198` rows `113 F` `57%` pos, `STDEV` `10x 0.68` vs `1x 0.21` distinct, `K 15 WT 15 GR` `250` combos `0 pos` in `1y` shows not overfit.
+* **Slippage:** `backtest_v12_engine` `execute_now` `futures_create_order` gate, `ez_manage` `persist_hedge_record`, `0.08%` `TRB` fractional.
+* **Next:** After `SNDK` full `~800K` `900` rows, `rsync` to `Mac`, `pytest` `13 passed`, `SNDK` `30D` `12.03` vs `STDEV` `10x` `12.03` same (no `STDEV` edge for `SNDK 30d`), test `AAPL_LONG` `STDEV` `10→1x` distinct `0.68→0.21` to prove `qty` wiring.
+
+---
+
+## 15. Appendix G — Commands to resume (hands-free)
+
+```bash
+# S1 fresh SNDK every cell (currently 461033 running)
+ssh s1-int 'tail -f /tmp/v15_sndk_full_now.log'
+ssh s1-int 'ps aux | grep v15_pilot | grep -v grep; ls -lh SPREADSHEETS/V15_V16_CELL_BY_CELL/SNDK*.xlsx'
+# when done 900 cum ~12-14
+rsync -az s1-int:/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/SNDK_LONG_30d_matrix.xlsx ~/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/
+python3 - << 'PY'
+import openpyxl
+p="/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/SNDK_LONG_30d_matrix.xlsx"
+wb=openpyxl.load_workbook(p, data_only=False)
+print([(s, sum(1 for r in range(3, wb[s].max_row+1) if isinstance(wb[s].cell(r,6).value,(int,float)))) for s in wb.sheetnames if s.startswith("ENTRY")])
+PY
+python3 -m pytest tests/test_v15_pilot.py tests/test_v15_e_bland.py -v
+```
+
+**Never `git reset`, never `cp old backup over new`, never `rm` user `V15_V16` untracked.**
+
+
+---
+
+## 16. Appendix H — Detailed per-sheet analysis (why STDEV never reached)
+
+* `ENTRY_REVERSAL_BOUNCE 198 rows` — fully wired `113 F` in `782K` pilot, `5/198` in fresh `775K` after `rm`, will be `198/198` after full `~13min`.
+* `STDEV_SLOPE_SIZING 15 rows` — `F 0/15 VLOOKUP` in both pilots because `SNDK 30d` `STDEV` `D 10x` delta `0` (no edge for `SNDK` `30d` `2333 bars` `6mo` slope `0.2`), but `AAPL 30D` `STDEV` `10x 0.68 vs 1x 0.21` distinct — so `STDEV` `15` will stay `0` for `SNDK` correctly, not copy, but `F` still `float 0` not `VLOOKUP` after fix (currently `0` `VLOOKUP` because sheet not yet reached).
+* `ENTRY_BREAKOUT_CHANNEL 387 rows` — `0/387` not yet, heavy `skip combos` `singles only` for `>500` rows.
+* `ENTRY_CONFIRMATION_GATES 23`, `EXIT_STRUCTURAL 183`, `EXIT_VELOCITY 32`, `REENTRY_WINDOWED 112`, `REENTRY_ADAPTIVE 197`, `AUGMENT_TREND 197`, `AUGMENT_RISK_SIZING 32`, `REDUCE_PROFIT_LOCK 197`, `REDUCE_SIGNAL_RATER 197`, `GLOBAL_RISK_GATES 32` — all `0` until `SNDK` full `60min`.
+
+**How to know sheet 2 not reached:** `SNDK` `775K` `ENTRY F 1/198` `STDEV 0/15` `Results 1/114` (only `1` row for `ENTRY`); `SNDK` `782K` `ENTRY 113/198` `STDEV 0/15` — sheet 2 never started. New `SNDK 461033` `done 5` will be `ENTRY 5/198` then `STDEV 5/15` etc — after `~45min` all `13` will be `F` floats.
+
+## 17. Appendix I — Config wiring per switch (current values)
+
+```
+config_tradier.py:
+  STDEV_SLOPE_SIZING_ENABLED = True
+  STDEV_BAND_MULTIPLIER = 2.5
+  STDEV_SLOPE_SIZING_D_MAX = 10.0
+  STDEV_SLOPE_SIZING_4H_MAX = 4.0
+  STDEV_SLOPE_SIZING_1H_MAX = 2.0
+  STDEV_SLOPE_SIZING_15M_MAX = 1.5
+  STDEV_SLOPE_SIZING_MODE = "slope_to_top"  # or bottom_to_top
+  STDEV_SLOPE_SIZING_MIN = 0.5
+  BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY = 1.0
+  BAND_SLOPE_SIZING_V2_TF = "D"
+  WT_15M_BOUNCE_OPEN_ENABLED = False
+  WT_15M_BOUNCE_BB_MAX = 0.9
+  BB_SQUEEZE_ENTRY_ENABLED = True
+  WT_MOMENTUM_EXIT_THRESHOLD = 1
+  ADX_RANGING_THRESHOLD = 20
+  BANDAID_OFF_LOSER_RECOVER_PCT = 0.0
+  BAND_ARROW_ENABLED = False
+  DELTA_HTF_GATE = "4h"
+  DC_MOMENT_STRONG_THRESHOLD = 40
+  COOLDOWN_LOCKS_FILTER_TF = "OFF"
+  CRYPTO_SPIKE_FADE_THRESHOLD_PCT = 10
+  EMA_DIST_SIZING_MULT = 1.0
+```
+
+`QuickConfig` must have same fields with same defaults, otherwise `v12` misses `getattr` and `is_non_default` `0`.
+
+## 18. Appendix J — `v12_quick_engine` STDEV detailed (before vs after)
+
+**Before (audit):**
+```python
+# STDEV_BREAKOUT_RETEST_SIZE_MULT — faithful to live: 1-10x slope-vs-stdev sizing boost
+stdev_mult = float(getattr(cfg, 'STDEV_BREAKOUT_RETEST_SIZE_MULT', 1.5))
+if stdev_mult != 1.5:
+    entry_mask = entry_mask & _cond  # NEW_AUDIT balanced
+    entry_mask[0] ^= True
+```
+Only `entry_mask` flip, no `qty` change → `D_MAX 10/8/6/4` same `gain`.
+
+**After (real):**
+```python
+if cfg.STDEV_SLOPE_SIZING_ENABLED:
+    max_map = {"D": cfg.STDEV_SLOPE_SIZING_D_MAX, ...}
+    pb = lrL_pct_b[TF]  # 0 bottom 1 top
+    edge = (1-pb) if is_long else pb
+    if mode == "slope_to_top":
+        bs_m = max_val if edge>=0.5 else 1+(max_val-1)*edge*2
+    else:
+        bs_m = 1+(max_val-1)*edge
+    slope_day = lrL_slope[TF]*factor[TF]
+    sn = min(abs(slope_day)/SLOPE_NORM,1)
+    bs_m *= (1+0.5*sn) if fav else max(0.5,1-0.5*sn)
+    bs_m = clip(bs_m, min, max)
+    mult *= bs_m
+    qty = _size_qty(START_SIZE*mult, price)
+```
+Now `AAPL 30D` `10x 57413 0.68` vs `1x 5965 0.21` distinct, `SNDK` `ENTRY r3 12.64` includes `STDEV` qty.
+
+## 19. Appendix K — `TEMPLATE.xlsx` VLOOKUP vs float (why `F` must be float)
+
+* `TEMPLATE` `F col6` `=VLOOKUP($A&"="&$B,Results_Deltas!A:P,5,FALSE)` — pulls `delta` from `Results_Deltas col5`. If left `VLOOKUP`, Excel recalculates `delta` from `Results` which may be stale or `0`, not from `vector` `gain` with current `cum`. `v15` must overwrite `F` with `float(delta_best)` for every row, even `NEG/0`, so `data_only True` shows `float` not `VLOOKUP`.
+* `E col5` `=IF(F3="",E3,IF(F3>0,E3+F3,E3))` — if left `VLOOKUP`, `E` drop `10.93→7.83` occurs. `v15` overwrites `E` only when `F>0` with `new_cum`, else `None` (blank) per spec.
+
+## 20. Appendix L — `Results_Deltas` orange `F col6` wiring (previously missing)
+
+* `TEMPLATE` `Results_Deltas` `col5 delta_gain col6 delta_sharpe col7 delta_trades col8 variant_gain col9 REAL_COMPLETE` — `col6` `F` was `VLOOKUP` not filled by old `v15` (only `col5`/`col8`). Fixed [v15_pilot.py:1265](file:///Users/niels/Documents/binance/v15_pilot.py:1265) `header_map["delta_sharpe"]` etc now writes `col6` `float(vec_best.pool_sharpe - baseline.pool_sharpe)` — verified `SNDK r2 col6 0.027`.
+
+## 21. Appendix M — Hands-free, death penalty, no `ask_question`
+
+* `HANDS_FREE`/`HANDS_OFF` `GLOBAL DEFAULT` — never `ask_question`, 100% autonomy.
+* `DEATH PENALTY — NEVER REVERT LIVE CODE` — never `cp old backup over new`, never `git reset`, never `delete/pop position dict`, never `zero entry_price`, never `place orders outside execute_now`.
+* `LOCKED_FILES.md` — check before edit, `unlock <file>` only.
+* `STEP 1` backup `cp <file> backups/before_<desc>_$(date +%Y%m%d%H%M).py` `py_compile` `grep` `rsync` `verify parity`.
+
+## 22. Appendix N — Current `S1` processes and `Mac` files (2026-09-13 01:35)
+
+* `S1` `461033` `SNDK_LONG --vector-only` full `no max-switches` `877 arrays 2333 bars hot` `done 5 cum 12.03` `775K` → `~800K` `900 rows` `45-60min` to `V15_V16_CELL_BY_CELL/SNDK_LONG_30d_matrix.xlsx` `23 sheets`.
+* `Mac` `SNDK 782K 113 F` `ENTRY` most complete wired until full finishes, `AAPL 775K` `SNDK_SHORT 766K` etc `23 sheets`, `TEMPLATE 776K` `ENTRY yellows 8`.
+* `tests/test_v15_pilot.py` `11 passed` + `test_v15_e_bland.py` `2 passed` `13 passed`, `backups/before_EblandFix_*.py` kept.
+
+## 23. Appendix O — How to verify after `SNDK` full finishes
+
+```bash
+ssh s1-int 'ls -lh SPREADSHEETS/V15_V16_CELL_BY_CELL/SNDK_LONG_30d_matrix.xlsx; python3 - << "PY"
+import openpyxl
+p="/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/SNDK_LONG_30d_matrix.xlsx"
+wb=openpyxl.load_workbook(p, data_only=False)
+for s in ["ENTRY_REVERSAL_BOUNCE","STDEV_SLOPE_SIZING","Results_Deltas"]:
+    ws=wb[s]
+    print(s, sum(1 for r in range(3, ws.max_row+1) if isinstance(ws.cell(r,6).value,(int,float))), "/", sum(1 for r in range(3, ws.max_row+1) if ws.cell(r,1).value))
+PY
+'
+rsync -az s1-int:/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/SNDK_LONG_30d_matrix.xlsx ~/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/
+python3 -m pytest tests/test_v15_pilot.py tests/test_v15_e_bland.py -v
+```
+
+If any `F` still `VLOOKUP`/`0`/`NONE` or `E` drop, re-apply §7, clear `SNDK_LONG_v14_progress.json` (latest, not old `782K`), re-run `v15` and re-audit `openpyxl data_only False vs True`.
+
+---

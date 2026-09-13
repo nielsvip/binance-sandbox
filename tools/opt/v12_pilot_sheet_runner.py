@@ -989,7 +989,6 @@ def main():
     ap.add_argument("--out", default=None)
     ap.add_argument("--workers", type=int, default=28, help="vector workers 28 (live capped 2)")
     ap.add_argument("--window-days", type=int, default=30)
-    ap.add_argument("--max-switches", type=int, default=0, help="0 = all remaining in sheet")
     ap.add_argument("--sheet", default=None, help="limit to one sheet (e.g. ENTRY_PULLBACK_BOUNCE)")
     ap.add_argument("--dry-run", action="store_true", help="only clone and compute baseline, do not launch workers")
     ap.add_argument("--vector-only", action="store_true", help="vector-first: skip live, use vector for delta (seamless, 5s/cell)")
@@ -1259,8 +1258,6 @@ def main():
                 continue
             trials.append((sheet, r, switch, cand, eff))
 
-    if args.max_switches and len(trials) > args.max_switches:
-        trials = trials[:args.max_switches]
     print(f"[trials] {len(trials)} switch variants to test (baseline {new_symside} gain={baseline_gain:.4f})")
 
     # ALL_RELEVANT FILTERS: expand trials so each switch is tested with every SPECIFIC filter that gates it (one by one, not combinatorial)
