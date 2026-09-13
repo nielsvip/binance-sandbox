@@ -41,4 +41,12 @@ def flat_entry_data_error(
     if has_position or stateful_route_required:
         return False
     values = indicators or {}
-    return values.get("k_1m") == 50.0 and values.get("k_5m") == 50.0
+    # 15m-only stripped NPZ stubs k_1m/k_5m=50 but has real k_15m; treat as not flat if 15m not flat to keep vector/live parity fast
+    v1 = values.get("k_1m")
+    v5 = values.get("k_5m")
+    v15 = values.get("k_15m")
+    if v1 is None or v5 is None:
+        return False
+    if v15 is not None and v15 != 50.0:
+        return False
+    return v1 == 50.0 and v5 == 50.0

@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-13 00:24 UTC
+PERFORMANCE REPORT — 2026-09-13 00:55 UTC
 ================================================================================
 Total: 157 symbols | A=2 B=119 C=36
 Window: 14 days | Min trades: 5
@@ -82,9 +82,9 @@ Window: 14 days | Min trades: 5
          INTCUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
          ADBEUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
          IOTXUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades= 12  mult=1.00
+        USUALUSDT  WR=67%  avg=+0.00%  total=+0.0%  trades=  3  mult=1.00
           ARMUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  2  mult=1.00
          QCOMUSDT  WR=50%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
-        USUALUSDT  WR=0%  avg=-0.02%  total=-0.0%  trades=  1  mult=1.00
           ZILUSDT  WR=58%  avg=-0.01%  total=-0.1%  trades= 12  mult=1.88
          MEMEUSDT  WR=80%  avg=-0.01%  total=-0.1%  trades=  5  mult=2.33
          LRCXUSDT  WR=0%  avg=-0.06%  total=-0.1%  trades=  1  mult=1.00
@@ -118,7 +118,7 @@ Window: 14 days | Min trades: 5
              MRVL  WR=0%  avg=-0.96%  total=-1.9%  trades=  2  mult=1.00
              USAR  WR=0%  avg=-1.32%  total=-2.6%  trades=  2  mult=1.00
               LMT  WR=0%  avg=-1.40%  total=-2.8%  trades=  2  mult=1.00
-         QTUMUSDT  WR=47%  avg=-0.19%  total=-3.2%  trades= 17  mult=0.59
+         QTUMUSDT  WR=53%  avg=-0.16%  total=-3.0%  trades= 19  mult=0.80
              TSLA  WR=67%  avg=-1.27%  total=-4.0%  trades=  3  mult=1.00
                MU  WR=67%  avg=-0.70%  total=-4.2%  trades=  6  mult=0.81
               MCD  WR=0%  avg=-1.17%  total=-4.6%  trades=  4  mult=1.00
@@ -167,7 +167,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -47.8%
+  Total PnL (all symbols): -47.6%
   Avg win rate: 47%
   A-tier avg mult: 8.79
   C-tier avg mult: 0.44
