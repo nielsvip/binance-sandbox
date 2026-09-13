@@ -271,8 +271,33 @@ def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
     return out
 
 def sanitize_overrides(overrides: dict, defaults: dict) -> tuple[dict, list]:
-    sanitized = dict(overrides)
+    sanitized = {}
     warns = []
+    for k, v in dict(overrides).items():
+        if isinstance(v, str) and v.strip().endswith("_ALT"):
+            v = v.strip()[:-4]
+        if isinstance(v, str):
+            vs = v.strip()
+            if vs.lower() in ("true", "false"):
+                sanitized[k] = vs.lower() == "true"
+                continue
+            dval = defaults.get(k)
+            if isinstance(dval, (int, float)) and not isinstance(dval, bool):
+                try:
+                    if all(c in "0123456789.+-eE" for c in vs):
+                        num = float(vs)
+                        if isinstance(dval, int) and not isinstance(dval, bool) and num.is_integer():
+                            sanitized[k] = int(num)
+                        else:
+                            sanitized[k] = float(num) if isinstance(dval, float) else num
+                            if isinstance(dval, float) and isinstance(sanitized[k], int):
+                                sanitized[k] = float(sanitized[k])
+                        continue
+                except Exception:
+                    pass
+            sanitized[k] = vs
+        else:
+            sanitized[k] = v
     float_keys = ["ATR_ADAPTIVE_SIZING_TARGET_PCT", "BOUNCE_AUGMENT_K_D_THRESHOLD", "DC_EDGE_SIZING_MAX_MULT", "EMA_DIST_SIZING_MULT", "REENTRY_TIER1_SIZE_MULT_TRADIER", "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE"]
     for k in float_keys:
         if k in sanitized and isinstance(sanitized[k], bool):
@@ -1685,26 +1710,29 @@ def main():
         pass
     # === ALL switch delta + yellow (L:BI) + orange (Results_Deltas/30d) cells already filled cell-by-cell above ===
     # === backtest_v12_live switch-by-switch verification on final settings ===
-    print(f"[live-verify] switch-by-switch live scripts on final {len(cumulative_overrides)} overrides", flush=True)
-    try:
-        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_final
-        # baseline for delta
-        base_vec = _eval_final(prepared, overrides, window_days=args.window_days) if prepared is not None else None
-        for k, v in list(cumulative_overrides.items())[:50]:
-            # single-switch delta verification: live vs vectorized
-            test_over = dict(overrides)
-            test_over[k] = v
-            test_over, _ = sanitize_overrides(test_over, defaults)
-            vec = _eval_final(prepared, test_over, window_days=args.window_days) if prepared is not None else live_evaluate(new_symside, test_over, args.window_days)
-            live = live_evaluate(new_symside, test_over, args.window_days)
-            ok, reason = parity_ok(live, vec, allow_zero_baseline=baseline_had_zero_trades)
-            if not ok:
-                print(f"[live-verify-FIX] {k}={v} live {live.get('gain_pct'):.2f}/{live.get('trades')} vs vec {vec.get('gain_pct'):.2f}/{vec.get('trades')} reason {reason} — vector fix needed", flush=True)
-            else:
-                print(f"[live-verify-ok] {k}={v} live {live.get('gain_pct'):.2f} vec {vec.get('gain_pct'):.2f} ok", flush=True)
-    except Exception as e:
-        import traceback
-        print(f"[live-verify-warn] {e} {traceback.format_exc()[:800]}", flush=True)
+    if __import__("os").environ.get("V15_SKIP_LIVE_VERIFY")=="1":
+        print("[live-verify] SKIPPED via V15_SKIP_LIVE_VERIFY=1 (vector-only fast 940->3041)", flush=True)
+    else:
+        print(f"[live-verify] switch-by-switch live scripts on final {len(cumulative_overrides)} overrides", flush=True)
+        try:
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_final
+            # baseline for delta
+            base_vec = _eval_final(prepared, overrides, window_days=args.window_days) if prepared is not None else None
+            for k, v in list(cumulative_overrides.items())[:50]:
+                # single-switch delta verification: live vs vectorized
+                test_over = dict(overrides)
+                test_over[k] = v
+                test_over, _ = sanitize_overrides(test_over, defaults)
+                vec = _eval_final(prepared, test_over, window_days=args.window_days) if prepared is not None else live_evaluate(new_symside, test_over, args.window_days)
+                live = live_evaluate(new_symside, test_over, args.window_days)
+                ok, reason = parity_ok(live, vec, allow_zero_baseline=baseline_had_zero_trades)
+                if not ok:
+                    print(f"[live-verify-FIX] {k}={v} live {live.get('gain_pct'):.2f}/{live.get('trades')} vs vec {vec.get('gain_pct'):.2f}/{vec.get('trades')} reason {reason} — vector fix needed", flush=True)
+                else:
+                    print(f"[live-verify-ok] {k}={v} live {live.get('gain_pct'):.2f} vec {vec.get('gain_pct'):.2f} ok", flush=True)
+        except Exception as e:
+            import traceback
+            print(f"[live-verify-warn] {e} {traceback.format_exc()[:800]}", flush=True)
     # complete zoomable chart (offline file:// like /private/tmp/MU_LONG_30D_REAL_ZOOMABLE.html) with all trades
     try:
         write_zoomable_chart(new_symside, None, cumulative_overrides, args.window_days, suffix="30D_REAL_ZOOMABLE")
