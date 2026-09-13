@@ -1294,5 +1294,23 @@
     ],
     "timestamp": "2026-09-13T05:55:53.340186+00:00",
     "price": 27.47492155
+  },
+  {
+    "symbol": "1000XECUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 17.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T06:34:40.952022+00:00",
+    "price": 0.007895
+  },
+  {
+    "symbol": "LRCXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.7x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T06:43:50.873272+00:00",
+    "price": 297.96233267
   }
 ]
