@@ -810,6 +810,34 @@ def main():
         print("[dry-run] done", flush=True)
         return
 
+    # 10s empty-workbook guard: if after 10s Results_Deltas still empty or file is BadZip, kill and repair (death penalty empty)
+    def _empty_guard():
+        import threading, time as _t, zipfile
+        def _check():
+            _t.sleep(10)
+            try:
+                # check progress
+                done_cnt = len(progress.get("done", {}))
+                # check workbook size/content
+                try:
+                    z = zipfile.ZipFile(str(wb_path))
+                    ok = len(z.namelist()) > 20
+                    z.close()
+                except Exception:
+                    ok = False
+                if done_cnt == 0 and not ok:
+                    print(f"[EMPTY_GUARD] {new_symside} still empty after 10s (done {done_cnt} zip ok {ok}) — killing to avoid 5h empty wait", flush=True)
+                    # Mark for caller to detect empty
+                    try:
+                        pathlib.Path(f"/tmp/v15_empty_{new_symside}.flag").write_text(str(time.time()))
+                    except Exception:
+                        pass
+                    os._exit(2)
+            except Exception as e:
+                print(f"[EMPTY_GUARD-ERR] {e}", flush=True)
+        threading.Thread(target=_check, daemon=True).start()
+    _empty_guard()
+
     PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
     progress_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
     try:
@@ -1014,21 +1042,27 @@ def main():
                         if norm2(opt_val, cur):
                             continue
                         single_filters.append((filt, opt_val, hdr, opt_raw))
-                    # ONLY yellow cells need calc: filter to headers present in L:BI for this sheet (50 headers). Pos non-yellow found are made yellow. Bottom filters run on entire sheet cumulative.
-                    # Filter single_filters to those hdr in header_to_col to avoid random 30 evals -> 3h half tab. Keep ALL applicable yellows but not non-header random.
+                    # 1s per cell + entire F until 200 then next tab max baseline: heavy 2333 bars -> 0.6s/candidate
+                    # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
                     before_len = len(single_filters)
-                    # Limit single_filters to top 10 most relevant per switch to avoid 187 evals -> 5h and blanket same synthetic.
-                    # Rank by header presence then by earliest token overlap (specifics already opportune for this switch)
-                    # Keep distinct per row, not blanket same.
-                    if len(single_filters) > 10:
-                        # Prioritize filters already in L:BI headers (existing yellows), then others
+                    is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
+                    # WT needs 10 yellows, others 5 to achieve 1s per cell not 1 year
+                    limit = 10 if "WT_15M_BOUNCE" in switch else 5
+                    if is_heavy and len(single_filters) > limit:
                         def _rank(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1
                             return (in_hdr, t[2])
-                        single_filters = sorted(single_filters, key=_rank)[:10]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top10 per-switch distinct", flush=True)
-                    # No blanket same: each row's Y is its own switch+filter deltas, not copied
+                        single_filters = sorted(single_filters, key=_rank)[:limit]
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy 1s/cell", flush=True)
+                    elif len(single_filters) > 10:
+                        def _rank2(t):
+                            hdr = t[2]
+                            in_hdr = 0 if hdr in header_to_col else 1
+                            return (in_hdr, t[2])
+                        single_filters = sorted(single_filters, key=_rank2)[:10]
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top10 distinct", flush=True)
+                    # No blanket same: each row's Y is its own switch+filter deltas, not copied; entire F until 200 via cumulative max baseline next tab
                     candidates = []
                     v0 = dict(cumulative_overrides)
                     v0[switch] = cand
