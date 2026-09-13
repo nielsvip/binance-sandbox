@@ -25968,7 +25968,7 @@ class TradierTradeManager:
                 except Exception as _bs_e:
                     logger.warning(f"[BAND_SLOPE_SIZING_V2] {symbol} sizing check failed: {_bs_e}")
             shares = max_value / price
-            shares_int = max(1, int(round(shares)))
+            shares_int = int(shares)
             return float(shares_int)
         except Exception as e:
             logger.error(f"Error calculating position size for {symbol}: {e}")

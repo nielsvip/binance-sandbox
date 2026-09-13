@@ -17214,10 +17214,27 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                     if _last > 1e11:
                         _last = _last / 1000.0
                     if not is_crypto and int(window_days) < 100:
-                        # stocks 30 sessions: need last 30 distinct days, ~42 calendar days to cover
-                        # Use NPZ's date for start: last - 60 calendar days ensures 30 sessions
-                        start_date = _dt.datetime.fromtimestamp(_last, tz=_dt.timezone.utc).date() - _dt.timedelta(days=60)
-                        start_date = start_date.isoformat()
+                        try:
+                            _ts_all = _np_f.asarray(_npz_raw.get("timestamps", _npz_raw.get("timestamp_5m", [])))
+                            _scale = 1000.0 if float(_ts_all[_ts_all.size-1]) > 1e11 else 1.0
+                            _secs = _ts_all / _scale
+                            _valid = _secs[_np_f.isfinite(_secs) & (_secs > 0)]
+                            if _valid.size >= 2:
+                                _dates = _np_f.array([_dt.datetime.fromtimestamp(float(s), tz=_dt.timezone.utc).date() for s in _valid])
+                                _uniq = sorted(set(_dates.tolist()))
+                                _need = 30 if int(window_days) == 30 else (7 if int(window_days) == 7 else 30)
+                                if len(_uniq) >= _need:
+                                    _first = _uniq[-_need]
+                                    start_date = _first.isoformat()
+                                else:
+                                    start_date = _dt.datetime.fromtimestamp(_last, tz=_dt.timezone.utc).date() - _dt.timedelta(days=60)
+                                    start_date = start_date.isoformat()
+                            else:
+                                start_date = _dt.datetime.fromtimestamp(_last, tz=_dt.timezone.utc).date() - _dt.timedelta(days=60)
+                                start_date = start_date.isoformat()
+                        except Exception:
+                            start_date = _dt.datetime.fromtimestamp(_last, tz=_dt.timezone.utc).date() - _dt.timedelta(days=60)
+                            start_date = start_date.isoformat()
                     else:
                         start_date = _dt.datetime.fromtimestamp(_last - int(window_days)*86400, tz=_dt.timezone.utc).date().isoformat()
         except Exception:

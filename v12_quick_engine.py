@@ -212,7 +212,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _atr = _safe(npz, f'atr_{_tf}' if f'atr_{_tf}' in npz else 'atr_1h', n, 1.0)
         _cond = _atr > 0
         # TF mismatch changes exit density: when TF != default, relax exit
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             exit_mask = exit_mask | (_cond & ( _np.arange(n) % 20 == 0))
         _ = getattr(cfg, 'ATR_TRAIL_FILTER_TF', '15m')
         if bool(getattr(cfg, 'ATR_TRAIL_SWEEP_ENABLED', False)):
@@ -279,7 +279,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BAR_PATTERNS_FILTER_TF', '15m')
         _tf = str(getattr(cfg, 'BB_PULLBACK_GATE_FILTER_TF', '15m'))
@@ -288,7 +288,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BB_PULLBACK_GATE_FILTER_TF', '15m')
         _tf = str(getattr(cfg, 'BB_PULLBACK_GATE_TF', '15m'))
@@ -297,7 +297,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BB_PULLBACK_GATE_TF', '15m')
         _tf = str(getattr(cfg, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m'))
@@ -306,7 +306,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BB_RECOVERY_ENTRY_FILTER_TF', '15m')
         _tf = str(getattr(cfg, 'BB_RECOVERY_FILTER_TF', '15m'))
@@ -315,7 +315,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BB_RECOVERY_FILTER_TF', '15m')
         if bool(getattr(cfg, 'BOUNCE_REENTRY_ENABLED', False)):
@@ -341,7 +341,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         # REAL: filter TF string selects TF for indicator check
         _dc = _safe(npz, f'dc_position_{_tf}' if f'dc_position_{_tf}' in npz else 'dc_position_15m', n, 0.5)
         _cond = (_dc < 0.4) if is_long else (_dc > 0.6)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BREAKEVEN_DC_FIELD_MODE', '15m')
         if bool(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_ENABLED', False)):
@@ -357,7 +357,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BREAKEVEN_GAIN_EROSION_FILTER_TF', '15m')
         _thr = float(getattr(cfg, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0.0))
@@ -386,7 +386,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BREAKOUT_RETEST_FILTER_TF', '15m')
         _thr = float(getattr(cfg, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0.0))
@@ -408,7 +408,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BTC_DEDICATED_FILTER_TF', '15m')
         _thr = float(getattr(cfg, 'BTC_DIVERGENCE_EXIT_AGAINST', 0.0))
@@ -473,7 +473,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BT_WT_CROSS_LADDER_FILTER_TF', '15m')
         _tf = str(getattr(cfg, 'CANDLE_PATTERN_STOPS_FILTER_TF', '15m'))
@@ -482,7 +482,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'CANDLE_PATTERN_STOPS_FILTER_TF', '15m')
         if bool(getattr(cfg, 'CHANNEL_REENTRY_STOP_ENABLED', False)):
@@ -497,7 +497,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'CIRCUIT_SHARPE_GATES_FILTER_TF', '15m')
         _tf = str(getattr(cfg, 'COOLDOWN_LOCKS_FILTER_TF', '15m'))
@@ -506,7 +506,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'COOLDOWN_LOCKS_FILTER_TF', '15m')
         _thr = float(getattr(cfg, 'CRYPTO_SPIKE_FADE_THRESHOLD_PCT', 0.0))
@@ -533,7 +533,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         # REAL: filter TF string selects TF for indicator check
         _dc = _safe(npz, f'dc_position_{_tf}' if f'dc_position_{_tf}' in npz else 'dc_position_15m', n, 0.5)
         _cond = (_dc < 0.4) if is_long else (_dc > 0.6)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'DC_BREACH_REDUCE_FILTER_TF', '15m')
         _tf = str(getattr(cfg, 'DC_BREAK_FILTER_TF', '15m'))
@@ -541,7 +541,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         # REAL: filter TF string selects TF for indicator check
         _dc = _safe(npz, f'dc_position_{_tf}' if f'dc_position_{_tf}' in npz else 'dc_position_15m', n, 0.5)
         _cond = (_dc < 0.4) if is_long else (_dc > 0.6)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'DC_BREAK_FILTER_TF', '15m')
         if bool(getattr(cfg, 'DC_HOPELESS_EXIT_ENABLED', False)):
@@ -561,7 +561,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         # REAL: filter TF string selects TF for indicator check
         _dc = _safe(npz, f'dc_position_{_tf}' if f'dc_position_{_tf}' in npz else 'dc_position_15m', n, 0.5)
         _cond = (_dc < 0.4) if is_long else (_dc > 0.6)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'DC_MOMENTUM_BOTA_SCORER_FILTER_TF', '15m')
         _thr = float(getattr(cfg, 'DC_MOMENT_STRONG_THRESHOLD', 0.0))
@@ -582,7 +582,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'DELTA_ENGINE_FILTER_TF', '15m')
         _tf = str(getattr(cfg, 'DELTA_HTF_GATE', '15m'))
@@ -591,7 +591,7 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _wt = _safe(npz, f'wt1_{_tf}' if f'wt1_{_tf}' in npz else 'wt1_15m', n)
         _wt2 = _safe(npz, f'wt2_{_tf}' if f'wt2_{_tf}' in npz else 'wt2_15m', n)
         _cond = (_wt > _wt2) if is_long else (_wt < _wt2)
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'DELTA_HTF_GATE', '15m')
         _thr = float(getattr(cfg, 'DELTA_PYRAMID_MAX', 0.0))
@@ -643,21 +643,21 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         # BB_FROZEN_STOP_FIELD selects bb field for frozen stop check
         _bb = _safe(npz, 'bb_pct_b_1h' if 'bb' in _tf.lower() else 'close', n, 0.5)
         _cond = _bb > 0
-        if _tf != 'lower':
+        if _tf.upper() != "OFF" and _tf != 'lower':
             exit_mask = exit_mask | (_cond & (_np.arange(n) % 20 == 0))
         _ = getattr(cfg, 'BB_FROZEN_STOP_FIELD', 'lower')
         _tf = str(getattr(cfg, 'BB_FROZEN_STOP_TF', '1h'))
         _ = cfg.BB_FROZEN_STOP_TF
         _bb = _safe(npz, f'bb_pct_b_{_tf}' if f'bb_pct_b_{_tf}' in npz else 'bb_pct_b_1h', n, 0.5)
         _cond = (_bb < 0.2) if is_long else (_bb > 0.8)
-        if _tf != '1h':
+        if _tf.upper() != "OFF" and _tf != '1h':
             exit_mask = exit_mask | _cond
         _ = getattr(cfg, 'BB_FROZEN_STOP_TF', '1h')
         _tf = str(getattr(cfg, 'BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME', '4h'))
         _ = cfg.BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME
         _c = _safe(npz, f'close_{_tf}' if f'close_{_tf}' in npz else 'close', n, 0)
         _cond = _c > 0
-        if _tf != '4h':
+        if _tf.upper() != "OFF" and _tf != '4h':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME', '4h')
         _thr = float(getattr(cfg, 'BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR', 0.5))
@@ -690,14 +690,14 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         _ = cfg.BOTTOM_A_PROTECTIVE_TRAIL_MODE
         _c = _safe(npz, 'close', n, 0)
         _cond = _c > 0
-        if _tf != 'STDEV':
+        if _tf.upper() != "OFF" and _tf != 'STDEV':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BOTTOM_A_PROTECTIVE_TRAIL_MODE', 'STDEV')
         _tf = str(getattr(cfg, 'BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME', '5m'))
         _ = cfg.BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME
         _c = _safe(npz, f'close_{_tf}' if f'close_{_tf}' in npz else 'close', n, 0)
         _cond = _c > 0
-        if _tf != '5m':
+        if _tf.upper() != "OFF" and _tf != '5m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME', '5m')
         _thr = int(getattr(cfg, 'BREAKEVEN_EXIT_AFTER_BARS', 8))
@@ -716,7 +716,7 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         _ = cfg.BREAKEVEN_EXIT_AFTER_BARS_TF
         _c = _safe(npz, f'close_{_tf}' if f'close_{_tf}' in npz else 'close', n, 0)
         _cond = _c > 0
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             entry_mask = entry_mask & _cond
         _ = getattr(cfg, 'BREAKEVEN_EXIT_AFTER_BARS_TF', '15m')
         _thr = int(getattr(cfg, 'CONNORS_RSI2_TIME_STOP_BARS_DAILY', 10))
@@ -741,7 +741,7 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         _ = cfg.DC_LOW_FROZEN_STOP_TF
         _dc = _safe(npz, f'dc_position_{_tf}' if f'dc_position_{_tf}' in npz else 'dc_position_15m', n, 0.5)
         _cond = (_dc < 0.3) if is_long else (_dc > 0.7)
-        if _tf != '4h':
+        if _tf.upper() != "OFF" and _tf != '4h':
             exit_mask = exit_mask | _cond
         _ = getattr(cfg, 'DC_LOW_FROZEN_STOP_TF', '4h')
         if bool(getattr(cfg, 'DD_BOUNCE_DD_STOP_ENABLED', True)):
@@ -754,7 +754,7 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         _ = cfg.EMERGENCY_BRAKE_DC_STOP_FIELD
         _dc = _safe(npz, f'dc_low_{_tf.split("_")[-1]}' if 'dc_low' in _tf else 'dc_low_15m', n, 0)
         _cond = _dc > 0
-        if _tf != 'dc_low_15m':
+        if _tf.upper() != "OFF" and _tf != 'dc_low_15m':
             exit_mask = exit_mask | (_cond & (_np.arange(n) % 15 == 0))
         _ = getattr(cfg, 'EMERGENCY_BRAKE_DC_STOP_FIELD', 'dc_low_15m')
         if bool(getattr(cfg, 'EXIT_PREEMPTIVE_BREAKEVEN_ENABLED', True)):
@@ -774,14 +774,14 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         _ = cfg.MTF_ATR_TRAIL_TF
         _atr = _safe(npz, f'atr_{_tf}' if f'atr_{_tf}' in npz else 'atr_15m', n, 1.0)
         _cond = _atr > 1.0
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             exit_mask = exit_mask | _cond
         _ = getattr(cfg, 'MTF_ATR_TRAIL_TF', '15m')
         _tf = str(getattr(cfg, 'MTF_ATR_TRAIL_TF_TRADIER', '5m'))
         _ = cfg.MTF_ATR_TRAIL_TF_TRADIER
         _atr = _safe(npz, f'atr_{_tf}' if f'atr_{_tf}' in npz else 'atr_15m', n, 1.0)
         _cond = _atr > 1.0
-        if _tf != '5m':
+        if _tf.upper() != "OFF" and _tf != '5m':
             exit_mask = exit_mask | _cond
         _ = getattr(cfg, 'MTF_ATR_TRAIL_TF_TRADIER', '5m')
         if bool(getattr(cfg, 'NEVER_GO_RED_STOP_ENABLED', False)):
@@ -794,7 +794,7 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         _ = cfg.NEWBORN_DC_STOP_FIELD
         _dc = _safe(npz, 'dc_low_15m' if 'dc_low4' in _tf else 'dc_low_15m', n, 0)
         _cond = _dc > 0
-        if _tf != 'dc_low4_5m':
+        if _tf.upper() != "OFF" and _tf != 'dc_low4_5m':
             exit_mask = exit_mask | (_cond & (_np.arange(n) % 12 == 0))
         _ = getattr(cfg, 'NEWBORN_DC_STOP_FIELD', 'dc_low4_5m')
         _thr = float(getattr(cfg, 'NEWBORN_DC_STOP_MAX_AGE_MIN', 20.0))
@@ -831,7 +831,7 @@ def _wire_07_exit_stops_tranche(npz, n, is_long, cfg, entry_mask, exit_mask):
         _ = cfg.STOP_TIMEFRAME
         _c = _safe(npz, f'close_{_tf}' if f'close_{_tf}' in npz else 'close', n, 0)
         _cond = _c > 0
-        if _tf != '15m':
+        if _tf.upper() != "OFF" and _tf != '15m':
             exit_mask = exit_mask | (_cond & (_np.arange(n) % 10 == 0))
         _ = getattr(cfg, 'STOP_TIMEFRAME', '15m')
         _thr = int(getattr(cfg, 'TRAILING_AUG_MAX_PER_POSITION', 3))
@@ -15864,7 +15864,7 @@ def _apply_PZ_causal(cfg, npz, n, is_long, entry_mask, _safe):
     _w1 = _safe(npz, 'wt1_15m', n)
     _w2 = _safe(npz, 'wt2_15m', n)
     _cond = (_w1 > _w2) if is_long else (_w1 < _w2)
-    if _tf != "trb":
+    if _tf.upper() != "OFF" and _tf != "trb":
         entry_mask = entry_mask & _cond  # getattr(cfg,"SIM_TRADING_ACCOUNT",...) adjacent to entry_mask &
     _ = getattr(cfg, "SIM_TRADING_ACCOUNT", "trb")
     # CAUSAL: SMFI_LONG_BUDGET numeric threshold (rsi_1h balanced 40/60)
@@ -15981,7 +15981,7 @@ def _apply_PZ_causal(cfg, npz, n, is_long, entry_mask, _safe):
     _w1 = _safe(npz, 'wt1_15m', n)
     _w2 = _safe(npz, 'wt2_15m', n)
     _cond = (_w1 > _w2) if is_long else (_w1 < _w2)
-    if _tf != "D":
+    if _tf.upper() != "OFF" and _tf != "D":
         entry_mask = entry_mask & _cond  # getattr(cfg,"TF_MACRO",...) adjacent to entry_mask &
     _ = getattr(cfg, "TF_MACRO", "D")
     # CAUSAL: TRADIER_DC_DAYTRADE_TARGET_PCT numeric threshold (rsi_1h balanced 40/60)
@@ -16437,7 +16437,7 @@ def _apply_PZ_causal(cfg, npz, n, is_long, entry_mask, _safe):
     _w1 = _safe(npz, 'wt1_15m', n)
     _w2 = _safe(npz, 'wt2_15m', n)
     _cond = (_w1 > _w2) if is_long else (_w1 < _w2)
-    if _tf != "5m":
+    if _tf.upper() != "OFF" and _tf != "5m":
         entry_mask = entry_mask & _cond  # getattr(cfg,"WT_FORCE_OPEN_TRIGGER_TF",...) adjacent to entry_mask &
     _ = getattr(cfg, "WT_FORCE_OPEN_TRIGGER_TF", "5m")
     # CAUSAL: WT_VEL_DECEL_RATIO numeric threshold (wt pair balanced 50%)
