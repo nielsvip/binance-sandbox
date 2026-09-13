@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T02:34:45.712994+00:00",
+  "timestamp": "2026-09-13T02:52:03.049035+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -92,6 +92,12 @@
     },
     {
       "symbol": "ENSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NOTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -296,6 +302,12 @@
     },
     {
       "symbol": "METAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "USUALUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -673,6 +685,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AAVEUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -686,6 +704,12 @@
     },
     {
       "symbol": "BEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TRXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -877,6 +901,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ZRXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "WLDUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -955,83 +985,28 @@
       "short_score": 0
     },
     {
-      "symbol": "AAVEUSDC",
-      "net_score": 10.4,
-      "long_score": 10.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "TRXUSDT",
-      "net_score": 11.3,
-      "long_score": 11.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "USUALUSDT",
-      "net_score": 11.8,
-      "long_score": 11.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "NOTUSDT",
-      "net_score": 15.7,
-      "long_score": 15.7,
-      "short_score": 0
-    },
-    {
       "symbol": "RSRUSDT",
-      "net_score": 15.8,
-      "long_score": 15.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "ZRXUSDT",
-      "net_score": 19.9,
-      "long_score": 19.9,
+      "net_score": 15.6,
+      "long_score": 15.6,
       "short_score": 0
     },
     {
       "symbol": "KAVAUSDT",
-      "net_score": 26.8,
-      "long_score": 26.8,
+      "net_score": 22.8,
+      "long_score": 22.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "KAVAUSDT",
-      26.8,
-      0.08154
-    ],
-    [
-      "ZRXUSDT",
-      19.9,
-      0.117157
+      22.8,
+      0.08149
     ],
     [
       "RSRUSDT",
-      15.8,
-      0.00149604
-    ],
-    [
-      "NOTUSDT",
-      15.7,
-      0.00044292
-    ],
-    [
-      "USUALUSDT",
-      11.8,
-      0.011986
-    ],
-    [
-      "TRXUSDT",
-      11.3,
-      0.34013255
-    ],
-    [
-      "AAVEUSDC",
-      10.4,
-      126.60075686
+      15.6,
+      0.0015
     ]
   ],
   "top_shorts": [],

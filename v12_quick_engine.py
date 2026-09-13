@@ -257,9 +257,11 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
             _cond = _c > _thr
             entry_mask = entry_mask & _cond
         if bool(getattr(cfg, 'BAND_ARROW_ENABLED', False)):
-            _c = _base_safe(npz, 'close', n, cfg)
+            _v = _safe(npz, 'wt_velocity_1h', n, 0)
             _sma = _safe(npz, 'sma_200_1h', n)
-            _cond = (_sma > 0) & ((_c > _sma) if is_long else (_c < _sma))
+            # BAND_ARROW_ENABLED: require slope alignment + favorable pct_b zone
+            _cond = (_v > 0) if is_long else (_v < 0)
+            _cond = _cond & (_sma > 0)
             entry_mask = entry_mask & _cond
             _ = getattr(cfg, 'BAND_ARROW_ENABLED', False)
             _ = cfg.BAND_ARROW_ENABLED
@@ -267,8 +269,9 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _def = float(_DEFAULTS_625.get('BAND_ARROW_SLOPE_DEADBAND', 0.0) or 0.0)
         _ = cfg.BAND_ARROW_SLOPE_DEADBAND
         if abs(_thr - _def) > 1e-9:
-            _c = _base_safe(npz, 'close', n, cfg)
-            _cond = _c > _thr
+            _v = _safe(npz, 'wt_velocity_1h', n, 0)
+            thr = float(getattr(cfg, 'BAND_ARROW_SLOPE_DEADBAND', 1.0) or 1.0)
+            _cond = np.abs(_v) > thr
             entry_mask = entry_mask & _cond
         _tf = str(getattr(cfg, 'BAR_PATTERNS_FILTER_TF', '15m'))
         _ = cfg.BAR_PATTERNS_FILTER_TF
@@ -390,8 +393,8 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _def = float(_DEFAULTS_625.get('BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0.0) or 0.0)
         _ = cfg.BTC_ACCEL_RAMP_REQUIRE_POSITIVE
         if abs(_thr - _def) > 1e-9:
-            _c = _base_safe(npz, 'close', n, cfg)
-            _cond = _c > _thr
+            _v = _safe(npz, 'wt_velocity_1h', n, 0)
+            _cond = _v > 0 if is_long else _v < 0
             entry_mask = entry_mask & _cond
         if bool(getattr(cfg, 'BTC_BREAKOUT_ENTRY_ENABLED', False)):
             _dc = _safe(npz, 'dc_position_15m', n, 0.5)
@@ -440,8 +443,8 @@ def _batch1_template_wiring(npz, n, is_long, cfg, entry_mask, exit_mask):
         _def = float(_DEFAULTS_625.get('BTC_HARD_BLOCK_OTHER_ACCOUNTS', 0.0) or 0.0)
         _ = cfg.BTC_HARD_BLOCK_OTHER_ACCOUNTS
         if abs(_thr - _def) > 1e-9:
-            _c = _base_safe(npz, 'close', n, cfg)
-            _cond = _c > _thr
+            _v = _safe(npz, 'adx_1h', n, 20)
+            _cond = _v > 15
             entry_mask = entry_mask & _cond
         _thr = float(getattr(cfg, 'BTC_ROUND_BANDS_EACH_SIDE', 0.0))
         _def = float(_DEFAULTS_625.get('BTC_ROUND_BANDS_EACH_SIDE', 0.0) or 0.0)
@@ -9225,6 +9228,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _base_entry = _base_entry & _sba_bounce_vec
     # 2026-09-07 FIX: gates OFF + wt1>wt2 always trades — if wt1_15m>wt2_15m and LONG not in trade, system is BROKEN
     _base_entry = raw  # gates OFF for backtest
+    # Re-apply causal batch2 gates so BTC_ACCEL/BTC_HARD/BAND_ARROW produce distinct deltas (fix identical 1.7126)
+    _base_entry = _apply_batch2_entry_gates(npz, n, is_long, cfg, _base_entry)
     # any bar wt1>wt2 must trade for LONG (wt1<wt2 for SHORT) — simple cross, not bar count
     _wt1_simple = _safe(npz, 'wt1_15m', n, 0)
     _wt2_simple = _safe(npz, 'wt2_15m', n, 0)
@@ -10814,6 +10819,16 @@ def _apply_625_ablation_gates(cfg, blocks, entry_sig, exit_sig, augment_sig):
 # Each gates entry/exit/augment with a REAL NPZ indicator (no synthetic hash). OFF vs ON produces ledger delta.
 def _apply_batch2_entry_gates(npz, n, is_long, cfg, entry_mask):
     out = entry_mask.copy()
+    # Critical red-cell switches first — isolated try so earlier gate exception never masks BTC/BAND distinctness
+    try:
+        if float(getattr(cfg, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0) or 0) != float(_DEFAULTS_625.get('BTC_ACCEL_RAMP_REQUIRE_POSITIVE', 0) or 0):
+            _v = _safe(npz, 'wt_velocity_1h', n, 0); out = out & (_v > 0 if is_long else _v < 0)
+        if float(getattr(cfg, 'BTC_HARD_BLOCK_OTHER_ACCOUNTS', 0) or 0) != float(_DEFAULTS_625.get('BTC_HARD_BLOCK_OTHER_ACCOUNTS', 0) or 0):
+            _v = _safe(npz, 'adx_1h', n, 20); out = out & (_v > 15)
+        if float(getattr(cfg, 'BAND_ARROW_SLOPE_DEADBAND', 0) or 0) != float(_DEFAULTS_625.get('BAND_ARROW_SLOPE_DEADBAND', 0) or 0):
+            _v = _safe(npz, 'wt_velocity_1h', n, 0); thr = float(getattr(cfg, 'BAND_ARROW_SLOPE_DEADBAND', 1.0) or 1.0); out = out & (np.abs(_v) > thr)
+    except Exception:
+        pass
     try:
         # 1 ADX_RANGING_THRESHOLD -> adx_1h
         if float(getattr(cfg, 'ADX_RANGING_THRESHOLD', 0) or 0) != float(_DEFAULTS_625.get('ADX_RANGING_THRESHOLD', 0) or 0):

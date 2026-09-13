@@ -1093,9 +1093,9 @@ def main():
                     before_len = len(single_filters)
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
                     _is_fast_window = args.window_days in (1, 7)
-                    # 10min target for 7d (900 rows *0.66s), 40min for 30d: fast 7d limit 2 yellows (3 cands 0.45s/row), heavy 30d limit 2, non-heavy 30d limit 10
+                    # 180 per 3min = 1s/cell: fast 7d limit 0 (1 cand 0.07s/row -> 180*0.07=12.6s), heavy 30d limit 2, non-heavy 30d limit 10
                     if _is_fast_window:
-                        limit = 2
+                        limit = 0
                     else:
                         limit = 2 if is_heavy else (10 if "WT_15M_BOUNCE" in switch else 5)
                     if is_heavy and len(single_filters) > limit:
@@ -1391,7 +1391,12 @@ def main():
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
                     progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best}
                     try:
-                        _atomic_write_json(progress_path, progress)
+                        # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
+                        if r % 10 == 0 or args.window_days not in (1,7):
+                            _atomic_write_json(progress_path, progress)
+                        else:
+                            # still update in-memory, will flush at 10
+                            pass
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
                     if delta_best <= 0:
@@ -1410,6 +1415,11 @@ def main():
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NEG delta<=0 blocks", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
                         print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} NEG")
+                        # flush every 10 rows for minute-by-minute visibility (no per-row read, only per-cell writes + batched save)
+                        try:
+                            if r % 10 == 0:
+                                _atomic_save(wb_keep, wb_path)
+                        except: pass
                         continue
                     print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> POSITIVE candidate", flush=True)
                     if args.vector_only:
