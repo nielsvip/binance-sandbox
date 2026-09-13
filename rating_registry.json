@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T22:41:52.825579+00:00",
+  "timestamp": "2026-09-13T22:59:29.673136+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -14,15 +14,33 @@
     },
     {
       "symbol": "SANDUSDT",
-      "net_score": -15.4,
+      "net_score": -16.3,
       "long_score": 0,
-      "short_score": 15.4
+      "short_score": 16.3
     },
     {
       "symbol": "1000LUNCUSDT",
-      "net_score": -15.3,
+      "net_score": -14.7,
       "long_score": 0,
-      "short_score": 15.3
+      "short_score": 14.7
+    },
+    {
+      "symbol": "VIRTUALUSDT",
+      "net_score": -14.1,
+      "long_score": 0,
+      "short_score": 14.1
+    },
+    {
+      "symbol": "STRKUSDT",
+      "net_score": -14.0,
+      "long_score": 0,
+      "short_score": 14.0
+    },
+    {
+      "symbol": "MOVEUSDT",
+      "net_score": -12.7,
+      "long_score": 0,
+      "short_score": 12.7
     },
     {
       "symbol": "ALABUSDT",
@@ -31,16 +49,22 @@
       "short_score": 12.3
     },
     {
-      "symbol": "RLCUSDT",
-      "net_score": -12.2,
+      "symbol": "MANAUSDT",
+      "net_score": -12.3,
       "long_score": 0,
-      "short_score": 12.2
+      "short_score": 12.3
     },
     {
-      "symbol": "MOVEUSDT",
-      "net_score": -11.7,
+      "symbol": "RLCUSDT",
+      "net_score": -11.9,
       "long_score": 0,
-      "short_score": 11.7
+      "short_score": 11.9
+    },
+    {
+      "symbol": "IOTAUSDT",
+      "net_score": -11.5,
+      "long_score": 0,
+      "short_score": 11.5
     },
     {
       "symbol": "BEUSDT",
@@ -49,22 +73,10 @@
       "short_score": 11.3
     },
     {
-      "symbol": "IOTAUSDT",
-      "net_score": -11.0,
+      "symbol": "PTBUSDT",
+      "net_score": -10.6,
       "long_score": 0,
-      "short_score": 11.0
-    },
-    {
-      "symbol": "GRTUSDT",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
-    },
-    {
-      "symbol": "VIRTUALUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
+      "short_score": 10.6
     },
     {
       "symbol": "1INCHUSDT",
@@ -313,12 +325,6 @@
       "short_score": 0
     },
     {
-      "symbol": "STRKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -499,12 +505,6 @@
       "short_score": 0
     },
     {
-      "symbol": "MANAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -542,6 +542,12 @@
     },
     {
       "symbol": "AXTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GRTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -985,12 +991,6 @@
       "short_score": 0
     },
     {
-      "symbol": "PTBUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "COINUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1026,37 +1026,52 @@
     [
       "STORJUSDT",
       30,
-      0.03647694
+      0.03683547
     ],
     [
       "SANDUSDT",
-      15.4,
-      0.03494
+      16.3,
+      0.0349
     ],
     [
       "1000LUNCUSDT",
-      15.3,
-      0.04968478
+      14.7,
+      0.04965098
     ],
     [
-      "RLCUSDT",
-      12.2,
-      0.2764
+      "VIRTUALUSDT",
+      14.1,
+      0.6037968
+    ],
+    [
+      "STRKUSDT",
+      14.0,
+      0.02781598
     ],
     [
       "MOVEUSDT",
-      11.7,
-      0.00798848
+      12.7,
+      0.00797786
+    ],
+    [
+      "MANAUSDT",
+      12.3,
+      0.07464085
+    ],
+    [
+      "RLCUSDT",
+      11.9,
+      0.27625644
     ],
     [
       "IOTAUSDT",
-      11.0,
-      0.04033633
+      11.5,
+      0.04041857
     ],
     [
-      "GRTUSDT",
-      10.5,
-      0.01813
+      "PTBUSDT",
+      10.6,
+      0.00064319
     ]
   ],
   "hedge_usage": {

@@ -1998,5 +1998,68 @@
     ],
     "timestamp": "2026-09-13T22:39:05.340383+00:00",
     "price": 0.0051426
+  },
+  {
+    "symbol": "DISUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.2x normal"
+    ],
+    "timestamp": "2026-09-13T22:42:55.595237+00:00",
+    "price": 106.21
+  },
+  {
+    "symbol": "ALABUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T22:51:39.548711+00:00",
+    "price": 279.45473471
+  },
+  {
+    "symbol": "SOFIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 16.4x normal"
+    ],
+    "timestamp": "2026-09-13T22:51:39.548711+00:00",
+    "price": 17.26
+  },
+  {
+    "symbol": "AAPLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T22:52:32.553931+00:00",
+    "price": 331.17337064
+  },
+  {
+    "symbol": "TERUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T22:54:03.242066+00:00",
+    "price": 372.45973153
+  },
+  {
+    "symbol": "NFLXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.8x normal"
+    ],
+    "timestamp": "2026-09-13T22:57:05.103688+00:00",
+    "price": 77.73727014
+  },
+  {
+    "symbol": "QCOMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.3x normal"
+    ],
+    "timestamp": "2026-09-13T22:57:05.103688+00:00",
+    "price": 177.14846048
   }
 ]
