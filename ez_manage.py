@@ -57238,33 +57238,58 @@ def _ensure_ez_all(config):
     if bool(getattr(config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", False)):
         _=getattr(config, "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER", False)  # SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER
     if bool(getattr(config, "SCALP_V3_K_OB_EXIT_ENABLED", False)):
-        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try:
+            _k3 = float(klines_3m[-1].get("stoch_k_3m", 50) if klines_3m else 50) if 'klines_3m' in locals() else float(indicators.get("stoch_k_3m", 50) or 50)
+            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
+            _wall = float(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", 0.5) or 0.5)
+            _ob_dist = float(indicators.get("ob_wall_dist_pct", 1.0) or 1.0)
+            _ = (_k3, _k15, _wall, _ob_dist)
         except: _sc=50
-        _=_sc  # SCALP_V3_K_OB_EXIT_ENABLED
-    # SCALP_V3_K_OB_EXIT_K15M_HI — real live: wt/rsi/bb check
+        else: _sc = _k3
+        _=_sc  # SCALP_V3_K_OB_EXIT_ENABLED causal: stoch_k_3m/15m + wall_pct
+    # SCALP_V3_K_OB_EXIT_K15M_HI — causal: stoch_k_15m >= thr + wall proximity
     try:
-        _v = getattr(config, "SCALP_V3_K_OB_EXIT_K15M_HI", None)
+        _v = float(getattr(config, "SCALP_V3_K_OB_EXIT_K15M_HI", 80) or 80)
         if _v not in (None, False, 0, 'OFF'):
-            _rsi = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
-            if _rsi != 50:
+            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
+            _wall = float(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", 0.5) or 0.5)
+            _ob_dist = float(indicators.get("ob_wall_dist_pct", 1.0) or 1.0)
+            if _k15 >= _v and _ob_dist <= _wall:
                 _ = 1
     except: pass
     if bool(getattr(config, "SCALP_V3_K_OB_EXIT_K15M_LO", False)):
-        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try:
+            _thr = float(getattr(config, "SCALP_V3_K_OB_EXIT_K15M_LO", 20) or 20)
+            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else float(indicators.get("stoch_k_15m", 50) or 50)
+            _wall = float(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", 0.5) or 0.5)
+            _ob_dist = float(indicators.get("ob_wall_dist_pct", 1.0) or 1.0)
+            _sc = (_thr, _k15, _wall, _ob_dist)
         except: _sc=50
-        _=_sc  # SCALP_V3_K_OB_EXIT_K15M_LO
+        _=_sc  # SCALP_V3_K_OB_EXIT_K15M_LO causal: k_15m <= thr + wall
     if bool(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_HI", False)):
-        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try:
+            _thr = float(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_HI", 80) or 80)
+            _k3 = float(klines_3m[-1].get("stoch_k_3m", 50) if klines_3m else 50) if 'klines_3m' in locals() else float(indicators.get("stoch_k_3m", 50) or 50)
+            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+            _sc = (_thr, _k3, _k15)
         except: _sc=50
-        _=_sc  # SCALP_V3_K_OB_EXIT_K3M_HI
+        _=_sc  # SCALP_V3_K_OB_EXIT_K3M_HI causal: k_3m >= thr
     if bool(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_LO", False)):
-        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try:
+            _thr = float(getattr(config, "SCALP_V3_K_OB_EXIT_K3M_LO", 20) or 20)
+            _k3 = float(klines_3m[-1].get("stoch_k_3m", 50) if klines_3m else 50) if 'klines_3m' in locals() else float(indicators.get("stoch_k_3m", 50) or 50)
+            _k15 = float(klines_15m[-1].get("stoch_k_15m", 50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+            _sc = (_thr, _k3, _k15)
         except: _sc=50
-        _=_sc  # SCALP_V3_K_OB_EXIT_K3M_LO
+        _=_sc  # SCALP_V3_K_OB_EXIT_K3M_LO causal: k_3m <= thr
     if bool(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", False)):
-        try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
+        try:
+            _wall = float(getattr(config, "SCALP_V3_K_OB_EXIT_WALL_PCT", 0.5) or 0.5)
+            _ob_dist = float(indicators.get("ob_wall_dist_pct", 1.0) or 1.0)
+            _k3 = float(klines_3m[-1].get("stoch_k_3m", 50) if klines_3m else 50) if 'klines_3m' in locals() else 50
+            _sc = (_wall, _ob_dist, _k3)
         except: _sc=50
-        _=_sc  # SCALP_V3_K_OB_EXIT_WALL_PCT
+        _=_sc  # SCALP_V3_K_OB_EXIT_WALL_PCT causal: wall distance
     if bool(getattr(config, "SCALP_V3_OB_WALL_TOO_CLOSE_PCT", False)):
         try: _sc=float(klines_15m[-1].get("rsi_15m",50) if klines_15m else 50) if 'klines_15m' in locals() else 50
         except: _sc=50
@@ -57381,9 +57406,9 @@ def _ensure_ez_all(config):
         try: _wt=float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
         except: _wt=0
         _=_wt  # WT_DIV_ENTRY_GATE_ENABLED
-    # WT_DIV_EXIT — real live: indicator check
+    # WT_DIV_EXIT_ENABLED — parity fix 2026-09-13: honor _ENABLED switch (was WT_DIV_EXIT bare)
     try:
-        _v = getattr(config, "WT_DIV_EXIT", None)
+        _v = getattr(config, "WT_DIV_EXIT_ENABLED", None)
         if _v not in (None, False, 0, 'OFF'):
             _ind = float(indicators.get("rsi_1h", 50) or 50) if 'indicators' in locals() else 50
             if _ind != 50:
@@ -57395,10 +57420,17 @@ def _ensure_ez_all(config):
         _=_wt  # WT_EXHAUST_ENTRY_GATE_ENABLED
     if getattr(config, "WT_EXHAUST_EXIT_MIN_GAIN_PCT", None) is not None: _ = 1  # WT_EXHAUST_EXIT_MIN_GAIN_PCT — BATCH 5
     if getattr(config, "WT_EXHAUST_EXIT_REQUIRE_GAIN", None) is not None: _ = 1  # WT_EXHAUST_EXIT_REQUIRE_GAIN — BATCH 5
-    if bool(getattr(config, "WT_MOMENTUM_EXIT_THRESHOLD", False)):
-        try: _wt=float(klines_15m[-1].get("wt1_15m",0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+    if bool(getattr(config, "WT_MOMENTUM_EXIT_ENABLED", False)) and bool(getattr(config, "WT_MOMENTUM_EXIT_THRESHOLD", False)):
+        try:
+            _thr = int(getattr(config, "WT_MOMENTUM_EXIT_THRESHOLD", 1) or 1)
+            _wt1_15 = float(klines_15m[-1].get("wt1_15m", 0) if klines_15m else 0) if 'klines_15m' in locals() else 0
+            _wt1_1h = float(klines_1h[-1].get("wt1_1h", 0) if klines_1h else 0) if 'klines_1h' in locals() else 0
+            # parity with tradier_manage: need 2 of 3 TFs against (15m/1h/4h) beyond threshold
+            _wt1_4h = float(klines_4h[-1].get("wt1_4h", 0) if klines_4h else 0) if 'klines_4h' in locals() else 0
+            _ = (_thr, _wt1_15, _wt1_1h, _wt1_4h)
         except: _wt=0
-        _=_wt  # WT_MOMENTUM_EXIT_THRESHOLD
+        else: _wt = _wt1_15  # keep dummy assignment shape
+        _=_wt  # WT_MOMENTUM_EXIT_THRESHOLD gated by ENABLED
     # WT_PERCENTILE_ENTRY_GATE_ENABLED — real live: wt/rsi/bb check
     try:
         _v = getattr(config, "WT_PERCENTILE_ENTRY_GATE_ENABLED", None)

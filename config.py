@@ -4121,6 +4121,7 @@ class Config:
     RZ_CASCADE_MIN_TF_ALIGN: int = 2                                     # TEST REQUIRED — S2 BEST 2; RZ cascade min TF align
     V8_ENTRY_ENGINE_DC_ENABLED: bool = True                              # TEST REQUIRED — S2 BEST true; V8 entry engine DC
     V8_ENTRY_ENGINE_WT_ENABLED: bool = True                              # TEST REQUIRED — S2 BEST true; V8 entry engine WT
+    WT_MOMENTUM_EXIT_ENABLED: bool = False                             # FIX 2026-09-13: parity — live ez_manage/tradier check ENABLED gate; threshold alone caused unconditional fires
     WT_MOMENTUM_EXIT_THRESHOLD: int = 1                                  # TEST REQUIRED — S2 BEST 1; WT momentum exit threshold
     BTC_HEDGE_SAMESYM_TRIGGER_LOSS_PCT: float = -0.3                      # primary pnl ≤ this triggers hedge eligibility
     BTC_HEDGE_SAMESYM_REQUIRE_WT_3M: bool = True                          # wt1_3m against primary side required

@@ -743,6 +743,7 @@ class TradierConfig:
     WT_15M_BOUNCE_REL_VOL_GT_1: bool = False  # alias for VOLUME_FILTER
     WT_ACCEL_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard
     WT_DIV_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard
+    WT_MOMENTUM_EXIT_ENABLED: bool = False  # FIX 2026-09-13: parity — tradier_manage gates threshold by ENABLED
     SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
     # 2026-05-09 USER MANDATE — R3 HEDGE_INVARIANT (mirror of crypto). Stocks
     # don't have the same hedge engine but the rule still applies: position with

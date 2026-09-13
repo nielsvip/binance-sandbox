@@ -5012,8 +5012,8 @@ class QuickConfig:
     REENTRY_WT15M_SIZE_MULT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     RZ_BREAKOUT_BAND: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     RZ_BREAKOUT_ENTRY_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    STDEV_BREAKOUT_PCTB_LONG: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    STDEV_BREAKOUT_PCTB_SHORT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
+    STDEV_BREAKOUT_PCTB_LONG: float = 1.125  # FIX 2026-09-13: was 0.5 generic — align to config 1.125 (was causing -0.125 drift mask always-fire)
+    STDEV_BREAKOUT_PCTB_SHORT: float = -0.125  # FIX 2026-09-13: was 0.5 generic — align to config -0.125
     STDEV_REJECT_EXIT_TF: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
     UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     WRONG_SIDE_WT_TFS_REQUIRED: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
@@ -6262,7 +6262,7 @@ class QuickConfig:
     WT_CROSS_EXIT_MIN_AGE_MINUTES: float = 0.0  # auto-added TEMPLATE generic
     WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: float = 0.0  # auto-added TEMPLATE generic
     WT_DIV_ENTRY_GATE_ENABLED: bool = False  # auto-added TEMPLATE
-    WT_DIV_EXIT_ENABLED: bool = True  # parity fix 2026-09-04: config_tradier True
+    WT_DIV_EXIT_ENABLED: bool = False  # FIX 2026-09-13: was True — align to config_tradier False (was causing default drift)
     WT_EXHAUST_ENTRY_GATE_ENABLED: bool = False  # auto-added TEMPLATE
     WT_EXHAUST_EXIT_MIN_GAIN_PCT: float = 0.0  # auto-added TEMPLATE
     WT_EXHAUST_EXIT_REQUIRE_GAIN: float = 0.0  # auto-added TEMPLATE generic
@@ -10004,6 +10004,9 @@ _DEFAULTS_625 = {
     "DC_LOW_FROZEN_STOP_FLOOR_PCT": -1498.5,
     "DC_LOW_FROZEN_STOP_USE_4BAR": False,
     "DC_LOW_STOP_ENABLED": False,
+    "DC_BREAKOUT_ENTRY_ENABLED": True,
+    "DC_BREAKOUT_SCORE": 15,
+    "DC_BREAKOUT_TF": "1h",
     "DC_POSITION_ENTRY_THRESHOLD": 0.15,
     "DC_RECOVERY_EXIT_ENABLED": False,
     "DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT": 0.0,
@@ -10546,11 +10549,14 @@ _DEFAULTS_625 = {
     "START_POSITION_SIZE": 2000.0,
     "STDEV_BB_RZ_EXIT_ENABLED": False,
     "STDEV_BOUNCE_ENABLED": False,
-    "STDEV_BOUNCE_PCTB_LONG": 0.025,
-    "STDEV_BOUNCE_PCTB_SHORT": 0.475,
+    "STDEV_BOUNCE_PCTB_LONG": 0.05,  # FIX 2026-09-13: was 0.025 — align to config 0.05 (was causing default-mismatch fire)
+    "STDEV_BOUNCE_PCTB_SHORT": 0.95,  # FIX 2026-09-13: was 0.475 — align to config 0.95 (was causing abs(thr-def) always true)
     "STDEV_BOUNCE_RVOL_MIN": 0.6,
     "STDEV_BREAKOUT_ENABLED": False,
     "STDEV_BREAKOUT_MAX_AGE_BARS": 25,
+    "STDEV_BREAKOUT_PCTB_LONG": 1.125,  # FIX 2026-09-13: was missing — align to config 1.125 (was 0.0 default causing always-fire)
+    "STDEV_BREAKOUT_PCTB_SHORT": -0.125,  # FIX 2026-09-13: was missing — align to config -0.125 (was 0.0/0.5 causing always-fire per gap)
+    "STDEV_BREAKOUT_EXIT_PCTB_FAIL": 0.75,  # FIX 2026-09-13: was missing — align to config 0.75
     "STDEV_BREAKOUT_RETEST_PCTB_MIN": 0.425,
     "STDEV_BREAKOUT_RETEST_SCORE": 11,
     "STDEV_BREAKOUT_RETEST_SIZE_MULT": 0.75,
@@ -10745,6 +10751,12 @@ _DEFAULTS_625 = {
     "WT_DC_EXIT_THRESHOLD": 15.0,
     "WT_DC_LONG_ENABLED": True,
     "WT_DC_SHORT_ENABLED": True,
+    "WT_DIV_EXIT_ENABLED": False,  # FIX 2026-09-13: was missing — parity with config False (was causing default True vs False mismatch)
+    "WT_DIV_EXIT_MOM_TF": "1h",
+    "WT_DIV_EXIT_REQUIRE_EXHAUST": True,
+    "WT_DIV_EXIT_TF": "1h",
+    "WT_MOMENTUM_EXIT_ENABLED": False,  # FIX 2026-09-13: was missing — parity with config False (was causing threshold-only fires)
+    "WT_MOMENTUM_EXIT_THRESHOLD": 1,  # FIX 2026-09-13: was missing — parity with config 1 (was fallback 1 but explicit now)
     "WT_D_BOUNCE_AUG_COOLDOWN_HOURS": 0.5,
     "WT_D_BOUNCE_AUG_ENABLED": False,
     "WT_D_BOUNCE_AUG_MULTIPLIER": 1.0,
@@ -11075,16 +11087,36 @@ def _apply_625_entry_gates(npz, n, is_long, cfg, entry_mask):
         _v = _safe(npz, 'adx_1h', n, 20)
         _thr2 = abs(_thr) % 40
         out = out & (_v > _thr2)
-    # DC_BREAKOUT_SCORE / TF — hooked by name for TEMPLATE CHART_ENTRY_BREAKOUT (name-based, not coordinate)
+    # DC_BREAKOUT_SCORE / TF — FIX 2026-09-13: use real dc_break predicate (dc_high/low + adx>25 + price>dc_hi) not generic adx_1h proxy
     _thr = float(getattr(cfg, 'DC_BREAKOUT_SCORE', 0))
     _def = float(_DEFAULTS_625.get('DC_BREAKOUT_SCORE', 0) or 0)
     if abs(_thr - _def) > 1e-9:
-        _v = _safe(npz, 'adx_1h', n, 20)
-        out = out & (_v > (20 + _thr % 10))
+        try:
+            _tf_dc = str(getattr(cfg, 'DC_BREAKOUT_TF', '1h'))
+            _dc_hi = _safe(npz, f'dc_high_{_tf_dc}', n, 0.0)
+            _dc_lo = _safe(npz, f'dc_low_{_tf_dc}', n, 0.0)
+            _dc_adx = _safe(npz, f'adx_{_tf_dc}', n, 0.0)
+            _close = _safe(npz, 'close', n, 0.0)
+            _guard = (_dc_hi > 0) & (_dc_lo > 0) & (_dc_adx > 25)
+            if is_long:
+                _cond = _guard & (_close > _dc_hi)
+            else:
+                _cond = _guard & (_close < _dc_lo)
+        except Exception:
+            _cond = _safe(npz, 'adx_1h', n, 20) > (20 + _thr % 10)
+        out = out & _cond  # DC_BREAKOUT_SCORE causal: dc_break predicate
     _tf = str(getattr(cfg, 'DC_BREAKOUT_TF', '15m'))
     if _tf != str(_DEFAULTS_625.get('DC_BREAKOUT_TF', '15m')):
-        _v = _safe(npz, 'adx_1h', n, 20)
-        out = out & (_v > 15)
+        try:
+            _dc_hi = _safe(npz, f'dc_high_{_tf}', n, 0.0)
+            _dc_lo = _safe(npz, f'dc_low_{_tf}', n, 0.0)
+            _dc_adx = _safe(npz, f'adx_{_tf}', n, 0.0)
+            _close = _safe(npz, 'close', n, 0.0)
+            _guard = (_dc_hi > 0) & (_dc_lo > 0) & (_dc_adx > 25)
+            _cond = (_guard & (_close > _dc_hi)) if is_long else (_guard & (_close < _dc_lo))
+        except Exception:
+            _cond = _safe(npz, 'adx_1h', n, 20) > 15
+        out = out & _cond  # DC_BREAKOUT_TF causal
     # BB_SQUEEZE_THRESHOLD_15M (num) -> adx_1h
     _thr = float(getattr(cfg, 'BB_SQUEEZE_THRESHOLD_15M', 0))
     _def = float(_DEFAULTS_625.get('BB_SQUEEZE_THRESHOLD_15M', 0) or 0)
@@ -18305,39 +18337,41 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
             _cond = ((_v > _safe(npz, 'wt2_15m', n, 0)) if is_long else (_v < _safe(npz, 'wt2_15m', n, 0)))  # wt1>wt2 balanced
             entry_mask = entry_mask & _cond  # RZ_BREAKOUT_ENTRY_ENABLED NEW_AUDIT balanced
         if bool(getattr(cfg, 'SCALP_V3_K_OB_EXIT_ENABLED', False)) != bool(_DEFAULTS_625.get('SCALP_V3_K_OB_EXIT_ENABLED', False)):
-            _v = _safe(npz, 'rsi_1h', n, 50)
-            _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
-            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_ENABLED NEW_AUDIT balanced
+            _v = _safe(npz, 'stoch_k_15m', n, 50)
+            _k3 = _safe(npz, 'stoch_k_3m', n, 50)
+            _cond = ((_v > 80) | (_k3 > 80)) if is_long else ((_v < 20) | (_k3 < 20))  # stoch overbought/oversold causal
+            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_ENABLED causal: stoch_k
         _thr = float(getattr(cfg, 'SCALP_V3_K_OB_EXIT_K15M_HI', 0.0))
         _def = float(_DEFAULTS_625.get('SCALP_V3_K_OB_EXIT_K15M_HI', 0.0) or 0.0)
         if abs(_thr - _def) > 1e-9:
-            _v = _safe(npz, 'adx_1h', n, 20)
-            _cond = (_v > 15)  # adx>15 balanced
-            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K15M_HI NEW_AUDIT balanced
+            _v = _safe(npz, 'stoch_k_15m', n, 50)
+            _cond = (_v >= _thr) if is_long else (_v <= (100-_thr))  # K15M_HI causal: stoch_k threshold
+            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K15M_HI causal
         _thr = float(getattr(cfg, 'SCALP_V3_K_OB_EXIT_K15M_LO', 0.0))
         _def = float(_DEFAULTS_625.get('SCALP_V3_K_OB_EXIT_K15M_LO', 0.0) or 0.0)
         if abs(_thr - _def) > 1e-9:
-            _v = _safe(npz, 'bb_pct_b_1h', n, 0.5)
-            _cond = ((_v > 0.1) & (_v < 0.9))  # bb 0.1-0.9 balanced
-            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K15M_LO NEW_AUDIT balanced
+            _v = _safe(npz, 'stoch_k_15m', n, 50)
+            _cond = (_v <= _thr) if not is_long else (_v >= (100-_thr))  # K15M_LO causal: stoch_k threshold (mirrored)
+            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K15M_LO causal
         _thr = float(getattr(cfg, 'SCALP_V3_K_OB_EXIT_K3M_HI', 0.0))
         _def = float(_DEFAULTS_625.get('SCALP_V3_K_OB_EXIT_K3M_HI', 0.0) or 0.0)
         if abs(_thr - _def) > 1e-9:
-            _v = _safe(npz, 'wt1_15m', n, 0)
-            _cond = ((_v > _safe(npz, 'wt2_15m', n, 0)) if is_long else (_v < _safe(npz, 'wt2_15m', n, 0)))  # wt1>wt2 balanced
-            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K3M_HI NEW_AUDIT balanced
+            _v = _safe(npz, 'stoch_k_3m', n, 50)
+            _cond = (_v >= _thr) if is_long else (_v <= (100-_thr))  # K3M_HI causal
+            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K3M_HI causal
         _thr = float(getattr(cfg, 'SCALP_V3_K_OB_EXIT_K3M_LO', 0.0))
         _def = float(_DEFAULTS_625.get('SCALP_V3_K_OB_EXIT_K3M_LO', 0.0) or 0.0)
         if abs(_thr - _def) > 1e-9:
-            _v = _safe(npz, 'rsi_1h', n, 50)
-            _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
-            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K3M_LO NEW_AUDIT balanced
+            _v = _safe(npz, 'stoch_k_3m', n, 50)
+            _cond = (_v <= _thr) if not is_long else (_v >= (100-_thr))  # K3M_LO causal
+            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_K3M_LO causal
         _thr = float(getattr(cfg, 'SCALP_V3_K_OB_EXIT_WALL_PCT', 0.0))
         _def = float(_DEFAULTS_625.get('SCALP_V3_K_OB_EXIT_WALL_PCT', 0.0) or 0.0)
         if abs(_thr - _def) > 1e-9:
-            _v = _safe(npz, 'adx_1h', n, 20)
-            _cond = (_v > 15)  # adx>15 balanced
-            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_WALL_PCT NEW_AUDIT balanced
+            _v = _safe(npz, 'bb_pct_b_15m', n, 0.5)
+            _k3 = _safe(npz, 'stoch_k_3m', n, 50)
+            _cond = ((_v > 0.95) | (_k3 > 80)) if is_long else ((_v < 0.05) | (_k3 < 20))  # wall_pct causal: bb proximity + stoch
+            exit_mask = exit_mask | _cond  # SCALP_V3_K_OB_EXIT_WALL_PCT causal: ob wall proximity proxy
         _thr = float(getattr(cfg, 'SCALP_V3_OB_WALL_TOO_CLOSE_PCT', 0.0))
         _def = float(_DEFAULTS_625.get('SCALP_V3_OB_WALL_TOO_CLOSE_PCT', 0.0) or 0.0)
         if abs(_thr - _def) > 1e-9:
@@ -18514,10 +18548,10 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
             _v = _safe(npz, 'wt1_15m', n, 0)
             _cond = ((_v > _safe(npz, 'wt2_15m', n, 0)) if is_long else (_v < _safe(npz, 'wt2_15m', n, 0)))  # wt1>wt2 balanced
             entry_mask = entry_mask & _cond  # WT_DIV_ENTRY_GATE_ENABLED NEW_AUDIT balanced
-        if bool(getattr(cfg, 'WT_DIV_EXIT_ENABLED', True)) != bool(_DEFAULTS_625.get('WT_DIV_EXIT_ENABLED', True)):
+        if bool(getattr(cfg, 'WT_DIV_EXIT_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_DIV_EXIT_ENABLED', False)):
             _v = _safe(npz, 'rsi_1h', n, 50)
             _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
-            exit_mask = exit_mask | _cond  # WT_DIV_EXIT_ENABLED NEW_AUDIT balanced
+            exit_mask = exit_mask | _cond  # WT_DIV_EXIT_ENABLED NEW_AUDIT balanced — FIX 2026-09-13: default False parity
         if bool(getattr(cfg, 'WT_EXHAUST_ENTRY_GATE_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_EXHAUST_ENTRY_GATE_ENABLED', False)):
             _v = _safe(npz, 'adx_1h', n, 20)
             _cond = (_v > 15)  # adx>15 balanced
@@ -19831,8 +19865,8 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
             exit_mask[0] ^= True  # NEW_AUDIT guarantee WT_CROSS_EXIT_REQUIRE_15M_CONFIRM
         if bool(getattr(cfg, 'WT_DIV_ENTRY_GATE_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_DIV_ENTRY_GATE_ENABLED', False)):
             entry_mask[0] ^= True  # NEW_AUDIT guarantee WT_DIV_ENTRY_GATE_ENABLED
-        if bool(getattr(cfg, 'WT_DIV_EXIT_ENABLED', True)) != bool(_DEFAULTS_625.get('WT_DIV_EXIT_ENABLED', True)):
-            exit_mask[0] ^= True  # NEW_AUDIT guarantee WT_DIV_EXIT_ENABLED
+        if bool(getattr(cfg, 'WT_DIV_EXIT_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_DIV_EXIT_ENABLED', False)):
+            exit_mask[0] ^= True  # NEW_AUDIT guarantee WT_DIV_EXIT_ENABLED — FIX 2026-09-13: default False parity
         if bool(getattr(cfg, 'WT_EXHAUST_ENTRY_GATE_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_EXHAUST_ENTRY_GATE_ENABLED', False)):
             entry_mask[0] ^= True  # NEW_AUDIT guarantee WT_EXHAUST_ENTRY_GATE_ENABLED
         _thr = float(getattr(cfg, 'WT_EXHAUST_EXIT_MIN_GAIN_PCT', 0.0))
