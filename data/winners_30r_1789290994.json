@@ -12,12 +12,6 @@
     "gain_score": 20.016
   },
   {
-    "symbol": "VETUSDT",
-    "returns_15m": 4.499735309687666,
-    "returns_3m": 4.652087475149114,
-    "gain_score": 18.608
-  },
-  {
     "symbol": "COTIUSDT",
     "returns_15m": 4.1697102507913195,
     "returns_3m": 4.532404862256426,
@@ -36,10 +30,16 @@
     "gain_score": 17.68
   },
   {
+    "symbol": "VETUSDT",
+    "returns_15m": 4.223864836325237,
+    "returns_3m": 4.334038054968289,
+    "gain_score": 17.336
+  },
+  {
     "symbol": "BNCUSDT",
-    "returns_15m": 4.300856094578074,
-    "returns_3m": 4.237115502138932,
-    "gain_score": 16.948
+    "returns_15m": 4.194665037670544,
+    "returns_3m": 4.258353708231451,
+    "gain_score": 17.033
   },
   {
     "symbol": "SNXXUSDT",
@@ -67,9 +67,9 @@
   },
   {
     "symbol": "ZECUSDC",
-    "returns_15m": 3.58359115027721,
-    "returns_3m": 3.6149142269603267,
-    "gain_score": 14.46
+    "returns_15m": 3.1145657559329383,
+    "returns_3m": 3.6373477672530385,
+    "gain_score": 14.549
   },
   {
     "symbol": "DASHUSDT",
@@ -132,6 +132,12 @@
     "gain_score": 10.931
   },
   {
+    "symbol": "1000PEPEUSDC",
+    "returns_15m": 2.5224959433544663,
+    "returns_3m": 2.7043002807743464,
+    "gain_score": 10.817
+  },
+  {
     "symbol": "AAVEUSDC",
     "returns_15m": 2.1688675470188024,
     "returns_3m": 2.6783559880961945,
@@ -172,11 +178,5 @@
     "returns_15m": 2.527600232423018,
     "returns_3m": 2.408589669181673,
     "gain_score": 9.634
-  },
-  {
-    "symbol": "MOVEUSDT",
-    "returns_15m": 2.5701514775266805,
-    "returns_3m": 2.40485930333457,
-    "gain_score": 9.619
   }
 ]

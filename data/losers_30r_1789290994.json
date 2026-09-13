@@ -31,9 +31,9 @@
   },
   {
     "symbol": "XMRUSDT",
-    "returns_15m": -1.4118648458606262,
-    "returns_3m": -1.2474051008303713,
-    "gain_score": -1.412
+    "returns_15m": -1.420985438599749,
+    "returns_3m": -1.3753655917959466,
+    "gain_score": -1.421
   },
   {
     "symbol": "HIVEUSDT",
@@ -48,12 +48,6 @@
     "gain_score": -1.201
   },
   {
-    "symbol": "BIGTIMEUSDT",
-    "returns_15m": -0.8896560881689047,
-    "returns_3m": -0.9948269001193731,
-    "gain_score": -0.89
-  },
-  {
     "symbol": "SQQQUSDT",
     "returns_15m": -0.8095117632178098,
     "returns_3m": -1.1346444780635294,
@@ -66,6 +60,12 @@
     "gain_score": -0.71
   },
   {
+    "symbol": "BIGTIMEUSDT",
+    "returns_15m": -0.69185737094199,
+    "returns_3m": -0.7050685113742197,
+    "gain_score": -0.692
+  },
+  {
     "symbol": "MANAUSDT",
     "returns_15m": -0.4795852235904023,
     "returns_3m": -0.5698005698005646,
@@ -73,9 +73,9 @@
   },
   {
     "symbol": "ZRXUSDT",
-    "returns_15m": -0.17730496453899985,
-    "returns_3m": -0.7054673721340345,
-    "gain_score": -0.177
+    "returns_15m": -0.3539823008849536,
+    "returns_3m": -0.44208664898320105,
+    "gain_score": -0.354
   },
   {
     "symbol": "TRXUSDT",
@@ -85,9 +85,9 @@
   },
   {
     "symbol": "WLFIUSDC",
-    "returns_15m": -0.2782608695652181,
-    "returns_3m": 0.05234688536032499,
-    "gain_score": 0.209
+    "returns_15m": 0.1222280426052045,
+    "returns_3m": -0.31293463143254446,
+    "gain_score": 0.122
   },
   {
     "symbol": "NOKUSDT",
@@ -162,6 +162,12 @@
     "gain_score": 1.524
   },
   {
+    "symbol": "TSLAUSDT",
+    "returns_15m": 0.44368974583698634,
+    "returns_3m": 0.39694489309863085,
+    "gain_score": 1.588
+  },
+  {
     "symbol": "QQQUSDT",
     "returns_15m": 0.3023442224128443,
     "returns_3m": 0.4153116245019845,
@@ -172,11 +178,5 @@
     "returns_15m": 0.30142830643666074,
     "returns_3m": 0.42095488663623426,
     "gain_score": 1.684
-  },
-  {
-    "symbol": "AMZNUSDT",
-    "returns_15m": 0.5366656220620402,
-    "returns_3m": 0.4265143214900512,
-    "gain_score": 1.706
   }
 ]
