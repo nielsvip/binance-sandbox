@@ -744,6 +744,7 @@ class TradierConfig:
     WT_ACCEL_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard
     WT_DIV_EXIT_ENABLED: bool = False  # FIX 2026-09-08: parity guard
     WT_MOMENTUM_EXIT_ENABLED: bool = False  # FIX 2026-09-13: parity — tradier_manage gates threshold by ENABLED
+    WT_MOMENTUM_EXIT_THRESHOLD: int = 1  # TEST REQUIRED — parity with config.py 4125, QuickConfig 1
     SIMPLE_PRICE_GT0_ENABLED: bool = False  # SIMPLE price>0 test — ridiculously simple, always trades when enabled (added 2026-09-06 alongside WT15, never fails)
     # 2026-05-09 USER MANDATE — R3 HEDGE_INVARIANT (mirror of crypto). Stocks
     # don't have the same hedge engine but the rule still applies: position with
@@ -2336,6 +2337,7 @@ class TradierConfig:
     BB_SQUEEZE_ENABLED: bool = True  # Master toggle for BB squeeze breakout entries
     BB_SQUEEZE_ENTRY_ENABLED: bool = False  # Enter when Bollinger bands compress (< threshold) ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     BB_SQUEEZE_EXIT_ENABLED: bool = False  # Exit squeeze release - split from master to avoid double count 2026-09-04
+    BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze — parity with config.py 2382
     # === PER-ROW FILTERS (2026-09-07) -- per-switch filter settings from TEMPLATE.xlsx L:BI ===
     # Maps switch name -> {filter_name: value, ...} for filters that are opportune for that switch.
     # Filled from TEMPLATE.xlsx per-row L:BI delta columns and FILTER_DICTIONARY_V8 gated logic.

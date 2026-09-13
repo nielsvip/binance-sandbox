@@ -5959,7 +5959,7 @@ class QuickConfig:
     V8Q_STRENGTH_FILTER_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
     VOL_SPIKE_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
     WT_15M_SAME_HEDGE_ENABLED: bool = False  # live parity: config_tradier True (added batch 2)
-    ADX_RANGING_THRESHOLD: float = 0.0  # auto-added TEMPLATE
+    ADX_RANGING_THRESHOLD: float = 20.0  # parity fix 2026-09-13: config_tradier 20 (was 0 drift)
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 0.0  # auto-added TEMPLATE
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: all TFs (3m/15m/1h/4h/D) against → close primary
     ALL_TF_AGAINST_CLOSE_MIN_TFS: float = 3.0  # 2026-09-10 FIX: 3 TFs against → exit (was 0 — never fired)
@@ -6251,7 +6251,7 @@ class QuickConfig:
     WT_4H_VEL_EXIT_K_EXTREME_LOW: float = 0.0  # auto-added TEMPLATE generic
     WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: float = 0.0  # auto-added TEMPLATE generic
     WT_4H_VEL_EXIT_REQUIRE_PROFIT: float = 0.0  # auto-added TEMPLATE generic
-    WT_ACCEL_EXIT_ENABLED: bool = True  # parity fix 2026-09-04: config_tradier True
+    WT_ACCEL_EXIT_ENABLED: bool = False  # parity fix 2026-09-13: config_tradier False (was True causing default drift)
     WT_AGAINST_FILTER_ENABLED: bool = False  # auto-added TEMPLATE
     WT_COMPOSITE_ENTRY_BLOCK: float = -20.0  # parity fix 2026-09-04: config.py -20.0
     WT_COMPOSITE_ENTRY_GOOD: float = 30.0  # parity fix 2026-09-04: config.py 30.0
@@ -9846,6 +9846,7 @@ _DEFAULTS_625 = {
     "ABLATION_DISABLE_REENTRY": False,
     "ABLATION_DISABLE_REENTRY_ENFORCE": False,
     "ABLATION_DISABLE_SPIKE_FADE_EXIT": False,
+    "ADX_RANGING_THRESHOLD": 20.0,  # FIX 2026-09-13: was missing — parity with config_tradier 20
     "ADX_TRENDING_THRESHOLD": 25.0,
     "ALIGNMENT_GATE_MIN": 2,
     "ALIGNMENT_GATE_TOTAL": 12,
@@ -10751,6 +10752,7 @@ _DEFAULTS_625 = {
     "WT_DC_EXIT_THRESHOLD": 15.0,
     "WT_DC_LONG_ENABLED": True,
     "WT_DC_SHORT_ENABLED": True,
+    "WT_ACCEL_EXIT_ENABLED": False,  # FIX 2026-09-13: was missing — parity with config_tradier False (was True fallback causing drift)
     "WT_DIV_EXIT_ENABLED": False,  # FIX 2026-09-13: was missing — parity with config False (was causing default True vs False mismatch)
     "WT_DIV_EXIT_MOM_TF": "1h",
     "WT_DIV_EXIT_REQUIRE_EXHAUST": True,
@@ -11133,13 +11135,29 @@ def _apply_625_entry_gates(npz, n, is_long, cfg, entry_mask):
         _v = _safe(npz, 'adx_1h', n, 20)
         _thr2 = abs(_thr) % 40
         out = out & (_v > _thr2)
-    # BB_SQUEEZE_WIDTH_PERCENTILE (num) -> mfi_1h
+    # BB_SQUEEZE_WIDTH_PERCENTILE (num) -> bb_width_1h percentile — CAUSAL 2026-09-13: was mfi_1h proxy (fake distinctness), now real width percentile
     _thr = float(getattr(cfg, 'BB_SQUEEZE_WIDTH_PERCENTILE', 0))
     _def = float(_DEFAULTS_625.get('BB_SQUEEZE_WIDTH_PERCENTILE', 0) or 0)
     if abs(_thr - _def) > 1e-9:
-        _v = _safe(npz, 'mfi_1h', n, 50)
-        _bound = 50 + (_thr % 20) - 10
-        out = out & (_v < _bound if is_long else _v > _bound)
+        _v = _safe(npz, 'bb_width_1h', n, 0)
+        if np.all(_v == 0):
+            _v = _safe(npz, 'bb_width_4h', n, 0)
+        # percentile threshold: squeeze when width in bottom _thr*100% of 50-bar rolling window
+        try:
+            _pct = float(_thr) if 0 < float(_thr) <= 1 else 0.2
+            _window = 50
+            _width_pct = np.ones(n, dtype=bool)
+            for i in range(n):
+                lo = max(0, i - _window + 1)
+                w = _v[lo:i+1]
+                if len(w) < 10:
+                    continue
+                thresh = np.percentile(w, _pct * 100)
+                _width_pct[i] = _v[i] <= thresh
+            out = out & _width_pct
+        except Exception:
+            _bound = float(np.percentile(_v[_v > 0], _thr * 100)) if np.any(_v > 0) else 0
+            out = out & (_v <= _bound)
     # BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE (num) -> rsi_1h
     _thr = float(getattr(cfg, 'BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE', 0))
     _def = float(_DEFAULTS_625.get('BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE', 0) or 0)
