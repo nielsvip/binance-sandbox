@@ -4133,5 +4133,23 @@
     ],
     "timestamp": "2026-09-13T15:35:40.456642+00:00",
     "price": 288.44
+  },
+  {
+    "symbol": "APEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T15:45:16.458274+00:00",
+    "price": 0.1355356
+  },
+  {
+    "symbol": "ASMLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T15:56:54.546998+00:00",
+    "price": 1688.78391676
   }
 ]
