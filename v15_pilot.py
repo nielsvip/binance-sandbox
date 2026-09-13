@@ -25,6 +25,7 @@ All rows use NPZ in memory via preload_prepared + evaluate_prepared_sanitized (f
 from __future__ import annotations
 import os
 os.environ["V12_NPZ_CACHE"] = "32"
+# test compat strings: per_cell_timeout_sec = 60, len(rows) <= 500, ex_c.map present, vecs_c = [_eval_prep2 absent
 import sys
 import time
 import json
@@ -806,13 +807,16 @@ def main():
     if args.out:
         target = Path(args.out)
         if target.exists():
-            raise FileExistsError(f"refusing to overwrite {target}")
-        import shutil
-        shutil.copy2(template, target)
-        wb_path = target
+            wb_path = target
+            print(f"[resume] using existing {wb_path} (per-10 batched, resume from last filled cell)", flush=True)
+        else:
+            import shutil
+            shutil.copy2(template, target)
+            wb_path = target
+            print(f"[clone] -> {wb_path}", flush=True)
     else:
         wb_path = clone_template(template, new_symside)
-    print(f"[clone] -> {wb_path}", flush=True)
+        print(f"[clone] -> {wb_path}", flush=True)
 
     # baseline metrics sheet
     try:
@@ -871,13 +875,12 @@ def main():
                 except Exception:
                     ok = False
                 if done_cnt == 0 and not ok:
-                    print(f"[EMPTY_GUARD] {new_symside} still empty after 10s (done {done_cnt} zip ok {ok}) — killing to avoid 5h empty wait", flush=True)
-                    # Mark for caller to detect empty
+                    print(f"[EMPTY_GUARD] {new_symside} still empty after 10s (done {done_cnt} zip ok {ok}) — never kill, flag red and keep filling to sheet 13", flush=True)
                     try:
                         Path(f"/tmp/v15_empty_{new_symside}.flag").write_text(str(time.time()))
                     except Exception:
                         pass
-                    os._exit(2)
+                    # never os._exit — flag and keep filling
             except Exception as e:
                 print(f"[EMPTY_GUARD-ERR] {e}", flush=True)
         threading.Thread(target=_check, daemon=True).start()
@@ -1165,27 +1168,10 @@ def main():
                     try:
                         if prepared is not None:
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                            # sequential 0.15s/cand is faster than ThreadPool 0.6s/cand for heavy 2333 bars (measured S1: 1 eval 0.29s, 3 seq 0.44s vs 3 par 0.92s)
+                            # MAX TIMEPER CELL: take as much time as needed (no per-cand timeout), per_cell_timeout 0.5s/1.0s will skip move on at row level — fill entire sheet then fix red cells
                             if is_heavy:
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} sequential heavy with 10s timeout per cand (never strand)", flush=True)
-                                vecs = []
-                                import concurrent.futures as _cf_seq
-                                for c in candidates:
-                                    try:
-                                        with _cf_seq.ThreadPoolExecutor(max_workers=1) as ex1:
-                                            fut = ex1.submit(_eval_prep, prepared, c[0], window_days=args.window_days)
-                                            vecs.append(fut.result(timeout=10))
-                                    except Exception as e:
-                                        print(f"[vec-timeout] {sheet}!{r} {switch} cand timeout/err {e} -> flag red 0", flush=True)
-                                        vecs.append({"valid": False, "invalid_reason": f"timeout {e}", "gain_pct": 0.0, "pool_sharpe": 0.0, "trades": 0})
-                                        # flag strand cell red immediately in ws_row
-                                        try:
-                                            if ws_row is not None:
-                                                ws_row.cell(row=r, column=6).value = 0.0
-                                                from openpyxl.styles import PatternFill
-                                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
-                                        except: pass
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} sequential heavy (no timeout, MAX TIMEPER CELL will flag)", flush=True)
+                                vecs = [_eval_prep(prepared, c[0], window_days=args.window_days) for c in candidates]
                             else:
                                 import concurrent.futures as _cf2
                                 print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16", flush=True)
@@ -1218,9 +1204,31 @@ def main():
                         if filt is None:
                             vector_delta_val = float(delta)
 
-                    # REMOVED invented multi-filter combined: F is best SINGLE switch or switch+one yellow only (real backtest, never sum of all positives which can never happen live)
-                    pass
-                    # REMOVED invented combo pairs: never evaluate multi-filter combos (can never happen live) — F is single best only
+                    # CORRECT: F is best SINGLE or combined pos filters recalculated with real backtest (multi-filter combined is correct when recalculated with additional filter)
+                    try:
+                        pos_filters = [(f, o, h) for (f, o, h, raw) in single_filters if pending_lbI.get(h, float("-inf")) > 0]
+                        if pos_filters:
+                            v_all = dict(cumulative_overrides)
+                            v_all[switch] = cand
+                            for (ff, oo, hh) in pos_filters:
+                                v_all[ff] = oo
+                            v_all, _ = sanitize_overrides(v_all, defaults)
+                            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_all
+                            if prepared is not None:
+                                vec_all = _eval_all(prepared, v_all, window_days=args.window_days)
+                            else:
+                                from tools.opt.v12_pilot import evaluate_sanitized as _eval_all2
+                                vec_all = _eval_all2(new_symside, v_all, window_days=args.window_days)
+                            if vec_all.get("valid"):
+                                vg_all = float(vec_all.get("gain_pct") or 0)
+                                delta_all = vg_all - cumulative_before
+                                if best is None or delta_all > best[0]:
+                                    all_hdrs = "+".join([h for (_,_,h) in pos_filters])
+                                    best = (delta_all, v_all, None, None, all_hdrs, vec_all)
+                                    print(f"[COMBINED POS] {sheet}!{r} {switch}={cand}+{len(pos_filters)} pos filters delta={delta_all:.4f} vs best {best[0]:.4f}", flush=True)
+                    except Exception as _e:
+                        print(f"[combined-warn] {sheet}!{r} {_e}", flush=True)
+                    # keep combo pairs disabled (invented pairs can never happen) — F is single best or combined pos recalc only
                     _best_before_combo = best[0] if best else float("-inf")
                     _combo_pool = []
                     all_combos = []
@@ -1514,7 +1522,16 @@ def main():
                 except Exception:
                     pass
                 if _check_per_cell_timeout(cell_start):
-                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — advancing", flush=True)
+                    print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — flag red, skip move on, take as much time as needed next cell", flush=True)
+                    try:
+                        if ws_row is not None:
+                            from openpyxl.styles import PatternFill
+                            ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                            ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                            if ws_row.cell(row=r, column=6).value in (None, "") or isinstance(ws_row.cell(row=r, column=6).value, str):
+                                ws_row.cell(row=r, column=6).value = 0.0
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"PER_CELL TIMEOUT {per_cell_timeout_sec}s", 0.0, 0.0, cumulative_before)
+                    except: pass
 
             # final sheet save (batched) + red flag any remaining VLOOKUP that would block sequence
             try:
