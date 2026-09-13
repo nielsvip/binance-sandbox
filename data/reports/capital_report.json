@@ -1,30 +1,32 @@
 {
- "generated_at": "2026-09-13 13:27 UTC",
- "total_capital_usd": 39.43,
+ "generated_at": "2026-09-13 21:32 UTC",
+ "total_capital_usd": 11.94,
  "tier_capital": {
   "A": 0.0,
-  "B": 39.43,
-  "C": 0.0
+  "B": 0.0,
+  "C": 11.94
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "men:1INCHUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:ETHUSDC_SHORT",
-   "symbol": "ETHUSDC",
-   "account": "flz",
-   "value_usd": 39.43,
-   "gain_pct": -0.021,
-   "tier": "B",
-   "perf_mult": 2.81,
-   "amt": 0.016,
-   "mark": 2464.35
+   "pk": "men:1INCHUSDT_LONG",
+   "symbol": "1INCHUSDT",
+   "account": "men",
+   "value_usd": 11.94,
+   "gain_pct": 0.022,
+   "tier": "C",
+   "perf_mult": 0.35,
+   "amt": 129.0,
+   "mark": 0.09257
   }
  ]
 }
