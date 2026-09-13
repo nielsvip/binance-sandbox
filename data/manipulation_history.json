@@ -1366,5 +1366,14 @@
     ],
     "timestamp": "2026-09-13T07:23:46.695950+00:00",
     "price": 915.19810123
+  },
+  {
+    "symbol": "AMDUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T07:40:25.996832+00:00",
+    "price": 508.76975436
   }
 ]
