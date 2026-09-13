@@ -1051,5 +1051,14 @@
     ],
     "timestamp": "2026-09-13T02:15:16.720251+00:00",
     "price": 341.20223683
+  },
+  {
+    "symbol": "WLFIUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T02:28:20.858289+00:00",
+    "price": 0.05711674
   }
 ]

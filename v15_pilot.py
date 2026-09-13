@@ -45,6 +45,7 @@ import numpy as np
 TEMPLATE = ROOT / "SPREADSHEETS" / "TEMPLATE.xlsx"
 OUT_DIR = ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
 PROGRESS_DIR = ROOT / "data" / "reports" / "lifecycle_pilot"
+FLAGS_DIR = ROOT / "data" / "reports" / "v15_flags"
 SWITCH_SHEETS = [
     "ENTRY_REVERSAL_BOUNCE", "STDEV_SLOPE_SIZING", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES",
     "EXIT_STRUCTURAL", "EXIT_VELOCITY",
@@ -294,6 +295,18 @@ def get_defaults_for_symside(symside: str) -> dict:
             except Exception:
                 pass
     return defaults
+
+def _flag_to_md(flags_md: Path, sheet: str, r: int, switch: str, cand, reason: str, delta, vec_gain, cumulative_before):
+    """Append flagged blocking cell to MD for dedicated fix agent — never interrupts workbook/chart production."""
+    try:
+        flags_md.parent.mkdir(parents=True, exist_ok=True)
+        # create header if new
+        if not flags_md.exists():
+            flags_md.write_text(f"# V15 Flags — {flags_md.stem}\n\n| Sheet | Row | Switch | Cand | Reason | Delta | VecGain | CumBefore |\n|---|---|---|---|---|---|---|---|\n")
+        with flags_md.open("a") as f:
+            f.write(f"| {sheet} | {r} | {switch} | {cand} | {reason} | {delta} | {vec_gain} | {cumulative_before} |\n")
+    except Exception:
+        pass
 
 def _atomic_save(wb, wb_path: Path):
     import os as _os
@@ -858,10 +871,22 @@ def main():
     _empty_guard()
 
     PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
+    FLAGS_DIR.mkdir(parents=True, exist_ok=True)
     if args.window_days != 30:
         progress_path = PROGRESS_DIR / f"{new_symside}_{args.window_days}d_progress.json"
+        flags_md = FLAGS_DIR / f"{new_symside}_{args.window_days}d_flags.md"
     else:
         progress_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+        flags_md = FLAGS_DIR / f"{new_symside}_30d_flags.md"
+    # fresh flags MD per run (truncate if exists, header will be recreated on first flag)
+    try:
+        if flags_md.exists():
+            # keep previous run's flags for agent, but start fresh for this run — move to .bak
+            import shutil
+            shutil.copy2(flags_md, str(flags_md) + ".bak")
+            flags_md.unlink()
+    except Exception:
+        pass
     try:
         progress = json.loads(progress_path.read_text())
     except Exception:
@@ -921,7 +946,8 @@ def main():
         print(f"[refill-warn] {_e}", flush=True)
 
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 60
+    per_cell_timeout_sec = 0.5 if args.window_days in (1, 7) else 1.0
+    # NEVER WAIT — per-cell budget is hard 0.5s for 7d / 1.0s for 30d, then flag red and MOVE ON (repair via MD later)
     def _touch_heartbeat(msg: str):
         try:
             heartbeat_path.write_text(f"{time.time():.0f} {msg}")
@@ -1066,9 +1092,12 @@ def main():
                     # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
                     before_len = len(single_filters)
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
-                    # 40min target: heavy 2333 bars 0.29s/eval sequential 0.15s amortized -> 11 evals=1.7s/row=5.5min/sheet 13=71min too slow
-                    # limit heavy to 2 yellows (3 cands) => 0.45s/row=90s/sheet=19min total within 40min; non-heavy keeps 10
-                    limit = 2 if is_heavy else (10 if "WT_15M_BOUNCE" in switch else 5)
+                    _is_fast_window = args.window_days in (1, 7)
+                    # 10min target for 7d (900 rows *0.66s), 40min for 30d: fast 7d limit 2 yellows (3 cands 0.45s/row), heavy 30d limit 2, non-heavy 30d limit 10
+                    if _is_fast_window:
+                        limit = 2
+                    else:
+                        limit = 2 if is_heavy else (10 if "WT_15M_BOUNCE" in switch else 5)
                     if is_heavy and len(single_filters) > limit:
                         def _rank(t):
                             hdr = t[2]
@@ -1106,8 +1135,25 @@ def main():
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
                             # sequential 0.15s/cand is faster than ThreadPool 0.6s/cand for heavy 2333 bars (measured S1: 1 eval 0.29s, 3 seq 0.44s vs 3 par 0.92s)
                             if is_heavy:
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} sequential heavy", flush=True)
-                                vecs = [_eval_prep(prepared, c[0], window_days=args.window_days) for c in candidates]
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} sequential heavy with 10s timeout per cand (never strand)", flush=True)
+                                vecs = []
+                                import concurrent.futures as _cf_seq
+                                for c in candidates:
+                                    try:
+                                        with _cf_seq.ThreadPoolExecutor(max_workers=1) as ex1:
+                                            fut = ex1.submit(_eval_prep, prepared, c[0], window_days=args.window_days)
+                                            vecs.append(fut.result(timeout=10))
+                                    except Exception as e:
+                                        print(f"[vec-timeout] {sheet}!{r} {switch} cand timeout/err {e} -> flag red 0", flush=True)
+                                        vecs.append({"valid": False, "invalid_reason": f"timeout {e}", "gain_pct": 0.0, "pool_sharpe": 0.0, "trades": 0})
+                                        # flag strand cell red immediately in ws_row
+                                        try:
+                                            if ws_row is not None:
+                                                ws_row.cell(row=r, column=6).value = 0.0
+                                                from openpyxl.styles import PatternFill
+                                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                        except: pass
                             else:
                                 import concurrent.futures as _cf2
                                 print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16", flush=True)
@@ -1175,9 +1221,10 @@ def main():
                             if len(_combo_pool) > 8:
                                 _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
                                 _combo_pool = _ranked[:8]
-                            # EMERGENCY: heavy SNDK (2334 bars, 1029 arrays) — skip combos entirely for speed, fill EVERY single instead
-                            if len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False:
-                                all_combos = []  # skip combos for heavy 2334-bar SNDK to achieve hundreds/min
+                            # SPEED: skip combos for fast validation (7d = 0.3s/cell target, 30d heavy = 1s/cell) — need <10min for entire 900-row workbook
+                            _is_fast_window = args.window_days in (1, 7)
+                            if (len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False) or _is_fast_window:
+                                all_combos = []  # skip combos for heavy 2334-bar SNDK and for 7d/1d fast <10min validation
                             else:
                                 all_combos = []
                                 for combo_size in [2]:  # only pairs for speed (hundreds/min) — skip triples 56 to avoid 67s timeout
@@ -1236,15 +1283,18 @@ def main():
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
-                        # keep F as 0 delta, E blank, no kill — every row gets a delta even if NO VALID (0)
+                        # keep F as 0 delta, E blank, no kill — every row gets a delta even if NO VALID (0) — flag red for never-stop
                         try:
                             if ws_row is not None:
                                 ws_row.cell(row=r, column=6).value = 0.0
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="9C5700")
+                                from openpyxl.styles import PatternFill
+                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                         except: pass
+                        _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", 0.0, 0.0, cumulative_before)
                         continue
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -1345,14 +1395,19 @@ def main():
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
                     if delta_best <= 0:
-                        # E blank for neg/0, overrides blank (only when pos) — ensure next E is BLANK
+                        # E blank for neg/0, overrides blank — flag red for blocking but NEVER STOP
                         try:
                             if ws_row is not None:
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
+                                # red flag for never-stop (NEG blocks sequence)
+                                from openpyxl.styles import PatternFill
+                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                         except Exception:
                             pass
+                        _flag_to_md(flags_md, sheet, r, switch, cand, "NEG delta<=0 blocks", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
                         print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} NEG")
                         continue
@@ -1389,8 +1444,12 @@ def main():
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
+                                from openpyxl.styles import PatternFill
+                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                         except Exception:
                             pass
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"parity-fail {reason}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
                         _touch_heartbeat(f"cell {sheet}!{r} parity-fail")
                         continue
                     if live_delta is not None and live_delta <= 0:
@@ -1400,8 +1459,12 @@ def main():
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
+                                from openpyxl.styles import PatternFill
+                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                         except Exception:
                             pass
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"live-neg {live_delta}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
                         _touch_heartbeat(f"cell {sheet}!{r} live-neg")
                         continue
                     # E-bland guard: never allow cumulative to drop on a pos delta (stale delta from old cum)
@@ -1411,16 +1474,19 @@ def main():
                         # mark as not promoted but keep yellow/orange with correct delta vs current cum
                         # recompute delta vs current cum for correct F
                         delta_best = new_cum - cumulative_gain
-                        # write F as negative (bland) and blank E next + overrides
+                        # write F as negative (bland) and blank E next + overrides — flag red
                         try:
                             if ws_row is not None:
                                 ws_row.cell(row=r, column=6).value = float(delta_best)
-                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                                from openpyxl.styles import PatternFill
+                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="FFFFFF")
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                         except Exception:
                             pass
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"E-BLAND drop {new_cum:.4f} < {cumulative_gain:.4f}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
                         progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "reason": "E-bland drop blocked"}
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} E-bland")
@@ -1468,6 +1534,18 @@ def main():
                     try:
                         progress.setdefault("done", {})[key] = {"delta": 0, "reason": f"row err {e}"}
                         _atomic_write_json(progress_path, progress)
+                        # flag red for never-stop
+                        try:
+                            if ws_row is not None:
+                                from openpyxl.styles import PatternFill
+                                ws_row.cell(row=r, column=6).value = 0.0
+                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                if r + 1 <= ws_row.max_row:
+                                    ws_row.cell(row=r+1, column=5).value = None
+                                ws_row.cell(row=r, column=3).value = None
+                        except: pass
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"ROW-ERR {e}", 0.0, 0.0, cumulative_before)
                     except: pass
                     _touch_heartbeat(f"cell {sheet}!{r} ERR")
                     continue
@@ -1480,8 +1558,18 @@ def main():
                 if _check_per_cell_timeout(cell_start):
                     print(f"[PER_CELL TIMEOUT] {sheet}!{r} {switch}={cand} >{per_cell_timeout_sec}s — advancing", flush=True)
 
-            # final sheet save (batched)
+            # final sheet save (batched) + red flag any remaining VLOOKUP that would block sequence
             try:
+                # flag any remaining VLOOKUP (strand) in red before final save — never stop, just flag + MD
+                for _r in range(3, ws_keep.max_row+1) if ws_keep else []:
+                    try:
+                        _v = ws_keep.cell(row=_r, column=6).value
+                        if isinstance(_v, str) and "VLOOKUP" in _v:
+                            from openpyxl.styles import PatternFill
+                            ws_keep.cell(row=_r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                            ws_keep.cell(row=_r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                            _flag_to_md(flags_md, sheet, _r, ws_keep.cell(row=_r, column=1).value, ws_keep.cell(row=_r, column=2).value, "VLOOKUP strand not calculated", _v, "", "")
+                    except: pass
                 print(f"[SHEET FLUSH] {sheet} final save", flush=True)
                 _atomic_save(wb_keep, wb_path)
             except Exception:

@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-13 01:39 UTC",
- "total_capital_usd": 7.64,
+ "generated_at": "2026-09-13 02:19 UTC",
+ "total_capital_usd": 11.93,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.64,
+  "B": 11.93,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:TIAUSDC_SHORT",
-   "symbol": "TIAUSDC",
-   "account": "fin",
-   "value_usd": 7.64,
-   "gain_pct": 0.06,
+   "pk": "inf:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "inf",
+   "value_usd": 11.93,
+   "gain_pct": -0.06,
    "tier": "B",
-   "perf_mult": 1.69,
-   "amt": 22.0,
-   "mark": 0.3472
+   "perf_mult": 3.1,
+   "amt": 129.7,
+   "mark": 0.09197072
   }
  ]
 }
