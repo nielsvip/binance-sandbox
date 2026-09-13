@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-13 09:24 UTC
+PERFORMANCE REPORT — 2026-09-13 09:55 UTC
 ================================================================================
 Total: 158 symbols | A=2 B=120 C=36
 Window: 14 days | Min trades: 5
@@ -67,6 +67,7 @@ Window: 14 days | Min trades: 5
          DELLUSDT  WR=62%  avg=+0.03%  total=+0.2%  trades=  8  mult=1.97
           KSMUSDT  WR=45%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.85
           ENSUSDT  WR=36%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.64
+          ETHUSDC  WR=61%  avg=+0.01%  total=+0.2%  trades= 18  mult=2.87
               MPC  WR=100%  avg=+0.08%  total=+0.2%  trades=  2  mult=1.00
      1000PEPEUSDC  WR=44%  avg=+0.01%  total=+0.1%  trades= 18  mult=0.73
           CRVUSDC  WR=57%  avg=+0.02%  total=+0.1%  trades=  7  mult=1.49
@@ -99,7 +100,6 @@ Window: 14 days | Min trades: 5
           FILUSDC  WR=58%  avg=-0.02%  total=-0.3%  trades= 12  mult=1.80
          AXTIUSDT  WR=67%  avg=-0.11%  total=-0.3%  trades=  3  mult=1.00
                VT  WR=0%  avg=-0.35%  total=-0.3%  trades=  1  mult=1.00
-          ETHUSDC  WR=56%  avg=-0.02%  total=-0.4%  trades= 16  mult=1.77
          CRWVUSDT  WR=25%  avg=-0.10%  total=-0.4%  trades=  4  mult=1.00
              META  WR=33%  avg=-0.15%  total=-0.5%  trades=  3  mult=1.00
              CIEN  WR=0%  avg=-0.24%  total=-0.5%  trades=  2  mult=1.00
@@ -168,7 +168,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -46.8%
+  Total PnL (all symbols): -46.2%
   Avg win rate: 47%
   A-tier avg mult: 8.79
   C-tier avg mult: 0.44

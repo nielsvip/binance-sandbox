@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-13 09:39 UTC",
- "total_capital_usd": 12.03,
+ "generated_at": "2026-09-13 09:42 UTC",
+ "total_capital_usd": 22.31,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.03,
+  "B": 22.31,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ALGOUSDT_SHORT",
-   "symbol": "ALGOUSDT",
-   "account": "inf",
-   "value_usd": 12.03,
-   "gain_pct": -0.303,
+   "pk": "flz:ETHUSDC_SHORT",
+   "symbol": "ETHUSDC",
+   "account": "flz",
+   "value_usd": 22.31,
+   "gain_pct": -0.125,
    "tier": "B",
-   "perf_mult": 3.18,
-   "amt": 129.6,
-   "mark": 0.09282
+   "perf_mult": 1.74,
+   "amt": 0.009,
+   "mark": 2478.72
   }
  ]
 }
