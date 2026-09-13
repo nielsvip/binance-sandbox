@@ -3944,5 +3944,86 @@
     ],
     "timestamp": "2026-09-13T13:20:13.896637+00:00",
     "price": 9.418
+  },
+  {
+    "symbol": "IDUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 23.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:32:48.622557+00:00",
+    "price": 0.03393
+  },
+  {
+    "symbol": "YFIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:35:39.125903+00:00",
+    "price": 2204.55172414
+  },
+  {
+    "symbol": "SMHUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.4x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:36:07.388943+00:00",
+    "price": 557.87509642
+  },
+  {
+    "symbol": "1MBABYDOGEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 37.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:37:02.719757+00:00",
+    "price": 0.00037604
+  },
+  {
+    "symbol": "STXXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 16.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:37:38.481789+00:00",
+    "price": 805.51
+  },
+  {
+    "symbol": "BNCUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 14.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:38:51.383611+00:00",
+    "price": 4.88839341
+  },
+  {
+    "symbol": "AAOIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 23.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:41:04.803116+00:00",
+    "price": 101.94
+  },
+  {
+    "symbol": "XAIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 26.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:45:30.157327+00:00",
+    "price": 0.00731213
+  },
+  {
+    "symbol": "ASTSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:47:39.410088+00:00",
+    "price": 59.06
   }
 ]
