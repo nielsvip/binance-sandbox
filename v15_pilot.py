@@ -1088,7 +1088,9 @@ def main():
                     expected_before = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
                     is_stale = abs(expected_before - cumulative_gain) >= 1e-6
                     # Skip recalc if not stale: pre-fill from json instead of wasting 1s/cell
-                    if not is_stale:
+                    # But if yellows missing for this row, must re-eval to populate L:BI (previous json had no yellows)
+                    _y_missing = not prev.get("yellows") and not prev.get("pending_lbI")
+                    if not is_stale and not _y_missing:
                         if prev.get("delta") and prev["delta"] > 0:
                             cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
                             cumulative_overrides[switch] = cand
@@ -1100,6 +1102,8 @@ def main():
                             # NEG/0 with same cum will stay NEG — no need to recalc, just ensure F/yellows already refilled
                             print(f"[DEBUG] skip cached NEG {key} delta {prev.get('delta')} cum {cumulative_gain:.4f}", flush=True)
                             continue
+                    elif _y_missing and not is_stale:
+                        print(f"[DEBUG] re-eval NEG missing yellows {key} delta {prev.get('delta')}", flush=True)
                     else:
                         print(f"[DEBUG] re-eval stale {key} prev_cum {expected_before:.4f} != cur {cumulative_gain:.4f} delta {prev.get('delta')}", flush=True)
                 print(f"[DEBUG] sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
