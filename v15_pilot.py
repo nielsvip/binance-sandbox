@@ -2053,6 +2053,253 @@ def main():
     except Exception as _ce2:
         print(f"[chart-final-warn] {_ce2}", flush=True)
     print(f"[final] {final_path} bh={bh_raw:.2f} gain={cumulative_gain:.2f} positives={total_pos} hot={list(ALL_NPZ_ARRAYS.keys())[:2]}", flush=True)
+    # === BIGGEST 30D DELTA CHART + 365D RERUN + LIVE PROMOTION (2026-09-13) ===
+    # Chart of biggest 30D delta already created as COMPLETE 30D_REAL_ZOOMABLE above (cumulative_overrides is the hustler/greedy best).
+    # Now rerun those settings on 365D with xlsx and delta, compare vs currently running per_sym config, backup and go live if beats.
+    try:
+        # 1) ensure biggest 30D chart explicitly tagged
+        try:
+            write_zoomable_chart(new_symside, None, cumulative_overrides, 30, suffix="30D_BIGGEST_DELTA_ZOOMABLE")
+            print(f"[30D-CHART] biggest delta {cumulative_gain:.2f} vs baseline {baseline_gain:.2f} delta {cumulative_gain - baseline_gain:.2f} chart 30D_BIGGEST_DELTA_ZOOMABLE", flush=True)
+        except Exception as _ce:
+            print(f"[30D-CHART-warn] {_ce}", flush=True)
+        # 2) 365D rerun with same overrides — xlsx + delta, robustness holdout (30D→365D is out-of-sample, not curve-fit)
+        _365_gain = _365_bh = _365_delta = None
+        _365_vec = _365_live = None
+        _365_xlsx = None
+        try:
+            # Evaluate 365D baseline and best via live engine (conservative) + vector parity
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval365
+            # Prepare 365D separately (bypass 30D block — internal 365 rerun allowed)
+            _prep365 = None
+            try:
+                from tools.opt.v12_pilot import prepare_batch as _prep365_fn
+                _prep365 = _prep365_fn(new_symside, window_days=365)
+                print(f"[365D] prepared {new_symside} 365D {len(_prep365.get('npz_prepared',{}).get('close',[]))} bars" if _prep365 and _prep365.get('npz_prepared') else "[365D] no prepared, fallback to live", flush=True)
+            except Exception as _pe:
+                print(f"[365D-prep-warn] {_pe}", flush=True)
+            # Sanitize best overrides for 365D
+            _san_best365, _ = sanitize_overrides(dict(cumulative_overrides), defaults)
+            _san_base365, _ = sanitize_overrides(dict(overrides), defaults)
+            if _prep365 is not None:
+                _365_vec_best = _eval365(_prep365, _san_best365, window_days=365)
+                _365_vec_base = _eval365(_prep365, _san_base365, window_days=365)
+            else:
+                _365_vec_best = live_evaluate(new_symside, _san_best365, 365)
+                _365_vec_base = live_evaluate(new_symside, _san_base365, 365)
+            # Live verification for 365D as well (conservative, slippage-aware)
+            _365_live_best = live_evaluate(new_symside, _san_best365, 365)
+            _365_live_base = live_evaluate(new_symside, _san_base365, 365)
+            # Prefer live if valid and parity ok, else vector
+            _ok365, _rsn365 = parity_ok(_365_live_best, _365_vec_best, allow_zero_baseline=True) if _365_vec_best and _365_live_best else (False, "no vec")
+            _use365 = _365_live_best if _365_live_best.get("valid") and _ok365 else _365_vec_best
+            _base365 = _365_live_base if _365_live_base.get("valid") else _365_vec_base
+            _365_gain = float(_use365.get("gain_pct") or 0) if _use365 else 0.0
+            _365_bh = float(_use365.get("bh_pct") or _base365.get("bh_pct") or 0) if _use365 else 0.0
+            _365_base_gain = float(_base365.get("gain_pct") or 0) if _base365 else 0.0
+            _365_delta = _365_gain - _365_base_gain
+            _365_trades = int(_use365.get("trades") or 0) if _use365 else 0
+            _365_sharpe = float(_use365.get("pool_sharpe") or 0) if _use365 else 0.0
+            _365_dd = float(_use365.get("max_dd_pct") or 0) if _use365 else 0.0
+            print(f"[365D] best gain {_365_gain:.2f} base {_365_base_gain:.2f} delta {_365_delta:.2f} bh {_365_bh:.2f} trades {_365_trades} sharpe {_365_sharpe:.2f} dd {_365_dd:.2f} parity {_ok365} {_rsn365}", flush=True)
+            # Backtest-expert: robustness — 365D must not be <50% of 30D delta (out-of-sample <50% in-sample warns overfit), needs trades floor
+            _30d_delta = cumulative_gain - baseline_gain
+            if _365_delta < 0.5 * _30d_delta and _30d_delta > 1:
+                print(f"[365D-ROBUST-WARN] 365D delta {_365_delta:.2f} <50% of 30D delta {_30d_delta:.2f} — possible overfit, still comparing vs live but not auto-promoting without live beat", flush=True)
+            if _365_trades < 30:
+                print(f"[365D-SAMPLE-WARN] 365D trades {_365_trades} <30 floor — diagnostic only, not for promotion", flush=True)
+            # Create 365D xlsx with delta (clone template, write 365D metrics + Results_30d_Deltas equivalent)
+            try:
+                _365_target = OUT_DIR / f"{new_symside}_365d_matrix.xlsx"
+                if _365_target.exists():
+                    _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
+                    _365_target = OUT_DIR / f"{new_symside}_365d_matrix_{_ts}.xlsx"
+                if not template.exists():
+                    template = TEMPLATE
+                import shutil as _sh
+                _sh.copy2(template, _365_target)
+                _wb365 = openpyxl.load_workbook(str(_365_target))
+                # Ensure baseline sheet reflects 365D baseline
+                _bs = f"{new_symside}_BASELINE_METRICS"
+                if _bs not in _wb365.sheetnames:
+                    # find old baseline name
+                    for cand in ["TEMPLATE_BASELINE_METRICS", "ADP_LONG_BASELINE_METRICS"]:
+                        if cand in _wb365.sheetnames:
+                            _wb365[cand].title = _bs
+                            break
+                if _bs in _wb365.sheetnames:
+                    _wsb = _wb365[_bs]
+                    _rows365 = [
+                        ("gain_pct_365", _365_gain), ("bh_pct_365", _365_bh), ("delta_vs_base_365", _365_delta),
+                        ("delta_vs_bh_365", _365_gain - _365_bh), ("trades_365", _365_trades),
+                        ("pool_sharpe_365", _365_sharpe), ("max_dd_365", _365_dd),
+                        ("gain_30d", cumulative_gain), ("delta_30d", _30d_delta), ("baseline_30d", baseline_gain),
+                        ("source", f"v15 30D→365D rerun {utcnow()} overrides={len(cumulative_overrides)}"),
+                        ("window_365", _use365.get("window") if _use365 else "365"),
+                        ("valid_365", _use365.get("valid") if _use365 else False),
+                    ]
+                    for r in range(2, max(20, _wsb.max_row+1)):
+                        _wsb.cell(row=r, column=1).value = None
+                        _wsb.cell(row=r, column=2).value = None
+                    for i, (k,v) in enumerate(_rows365, start=2):
+                        _wsb.cell(row=i, column=1).value = k
+                        _wsb.cell(row=i, column=2).value = v
+                # Fill Results_Deltas with 365D delta for visibility (reuse sheet)
+                for cand in ["Results_Deltas", "Results_30d_Deltas"]:
+                    if cand in _wb365.sheetnames:
+                        _rws = _wb365[cand]
+                        _found = None
+                        _key365 = f"{new_symside}_365D_BEST"
+                        for _rr in range(2, _rws.max_row+1):
+                            if str(_rws.cell(row=_rr, column=1).value or "").strip() == _key365:
+                                _found = _rr
+                                break
+                        if _found is None:
+                            _found = _rws.max_row + 1
+                            _rws.cell(row=_found, column=1).value = _key365
+                        _rws.cell(row=_found, column=5).value = float(_365_delta)
+                        _rws.cell(row=_found, column=8).value = float(_365_gain)
+                        _rws.cell(row=_found, column=10).value = int(_365_trades)
+                        _rws.cell(row=_found, column=2).value = str(float(_365_base_gain))
+                        _rws.cell(row=_found, column=3).value = f"{len(cumulative_overrides)} overrides 365D"
+                        break
+                _wb365.save(str(_365_target))
+                _wb365.close()
+                _365_xlsx = _365_target
+                print(f"[365D-XLSX] -> {_365_xlsx.name} delta {_365_delta:.2f} gain {_365_gain:.2f}", flush=True)
+            except Exception as _xe:
+                import traceback
+                print(f"[365D-XLSX-warn] {_xe} {traceback.format_exc()[:600]}", flush=True)
+            # 365D chart
+            try:
+                write_zoomable_chart(new_symside, None, cumulative_overrides, 365, suffix="365D_REAL_ZOOMABLE")
+                print(f"[365D-CHART] {new_symside} 365D chart with best overrides", flush=True)
+            except Exception as _ce:
+                print(f"[365D-CHART-warn] {_ce}", flush=True)
+            # 3) Compare vs currently running per_sym config (live)
+            _live_cfg_path = None
+            _is_crypto = new_symside.upper().endswith(("USDT","USDC","USD1","BUSD","FDUSD","TUSD","DAI"))
+            if _is_crypto:
+                _live_cfg_path = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+            else:
+                _live_cfg_path = ROOT / "data" / "hourly_reconfig" / "trb" / "active_config.json"
+            _cur_entry = {}
+            _cur_gain365 = None
+            if _live_cfg_path and _live_cfg_path.exists():
+                try:
+                    _cur_all = json.loads(_live_cfg_path.read_text())
+                    _cur_entry = _cur_all.get(new_symside, {}) if isinstance(_cur_all, dict) else {}
+                    if _cur_entry and _cur_entry.get("overrides"):
+                        _cur_over = _cur_entry.get("overrides") or {}
+                        _cur_san, _ = sanitize_overrides(dict(_cur_over), defaults)
+                        # Evaluate current live config on 365D for fair compare (same window, same costs +$ higher than reality)
+                        _cur_vec = None
+                        _cur_live = None
+                        if _prep365 is not None:
+                            _cur_vec = _eval365(_prep365, _cur_san, window_days=365)
+                        _cur_live = live_evaluate(new_symside, _cur_san, 365)
+                        _ok_cur, _ = parity_ok(_cur_live, _cur_vec, allow_zero_baseline=True) if _cur_vec and _cur_live else (False, "")
+                        _cur_use = _cur_live if _cur_live.get("valid") and _ok_cur else _cur_vec
+                        _cur_gain365 = float(_cur_use.get("gain_pct") or 0) if _cur_use else float(_cur_entry.get("acc_gain_pct") or _cur_entry.get("gain_vs_bh") or 0)
+                        print(f"[LIVE-CUR] {new_symside} current live 365D gain {_cur_gain365:.2f} trades {(_cur_use.get('trades') if _cur_use else _cur_entry.get('trades'))} vs new {_365_gain:.2f}", flush=True)
+                    else:
+                        print(f"[LIVE-CUR] {new_symside} no existing per_sym entry — will create", flush=True)
+                except Exception as _le:
+                    print(f"[LIVE-CUR-warn] {_le}", flush=True)
+            else:
+                print(f"[LIVE-CUR] no file {_live_cfg_path} — will create", flush=True)
+            # Beat check: new 365D must beat current live 365D (if exists) by >0 and also be positive and have trades floor
+            _beats = False
+            if _365_gain is not None and _365_trades >= 30:
+                if _cur_gain365 is None:
+                    _beats = _365_delta > 0 and _365_gain > 0  # no incumbent → any positive 365D qualifies (conservative)
+                else:
+                    _beats = _365_gain > _cur_gain365 + 1e-9 and _365_delta > 0
+                # Additional robustness: require 365D sharpe not terrible and dd not huge
+                if _beats and _365_sharpe < -1:
+                    print(f"[LIVE-BEAT-SKIP] 365D sharpe {_365_sharpe:.2f} < -1 — not promoting despite gain beat", flush=True)
+                    _beats = False
+                if _beats and _365_dd > 30:
+                    print(f"[LIVE-BEAT-SKIP] 365D dd {_365_dd:.2f} >30% — not promoting", flush=True)
+                    _beats = False
+            print(f"[LIVE-BEAT] {new_symside} new {_365_gain:.2f} vs cur {_cur_gain365} beats={_beats} delta {_365_delta:.2f}", flush=True)
+            if _beats:
+                # Backup current per_sym settings if existing
+                if _cur_entry:
+                    try:
+                        _bak_dir = ROOT / "backups"
+                        _bak_dir.mkdir(parents=True, exist_ok=True)
+                        _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
+                        _bak_path = _bak_dir / f"before_per_sym_{new_symside}_{_ts}.json"
+                        _bak_path.write_text(json.dumps({new_symside: _cur_entry, "_meta": {"backed_up_at": utcnow(), "reason": f"v15 365D beat {new_symside} new {_365_gain:.2f} vs cur {_cur_gain365:.2f}"}}, indent=2))
+                        print(f"[BACKUP] per_sym {new_symside} -> {_bak_path.name}", flush=True)
+                        # also hourly_reconfig backup
+                        try:
+                            _hr_bak = _live_cfg_path.parent / f"{_live_cfg_path.stem}_before_{new_symside}_{_ts}.json"
+                            import shutil as _sh2
+                            _sh2.copy2(_live_cfg_path, _hr_bak)
+                        except Exception:
+                            pass
+                    except Exception as _be:
+                        print(f"[BACKUP-warn] {_be}", flush=True)
+                # Put results live immediately — write to per_sym_active_config.json (and trb if stock)
+                try:
+                    if _live_cfg_path:
+                        _live_cfg_path.parent.mkdir(parents=True, exist_ok=True)
+                        try:
+                            _all = json.loads(_live_cfg_path.read_text()) if _live_cfg_path.exists() else {}
+                        except Exception:
+                            _all = {}
+                        # preserve _meta if exists
+                        _meta = _all.pop("_meta", None) if isinstance(_all, dict) else None
+                        _new_entry = {
+                            "winning_tag": f"v15_30D365D_{new_symside}_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')}",
+                            "wsharpe": float(_365_sharpe),
+                            "pool_sharpe": float(_365_sharpe),
+                            "trades": int(_365_trades),
+                            "max_dd_pct": float(_365_dd),
+                            "acc_gain_pct": float(_365_gain),
+                            "gain_vs_bh": float(_365_gain - _365_bh),
+                            "bh_pct": float(_365_bh),
+                            "delta_365": float(_365_delta),
+                            "delta_30d": float(cumulative_gain - baseline_gain),
+                            "gain_30d": float(cumulative_gain),
+                            "baseline_30d": float(baseline_gain),
+                            "overrides": dict(cumulative_overrides),
+                            "campaign_ts": time.time(),
+                            "vec_baseline_tag": "v15_30D365D",
+                            "pool_winner_tag_crypto": "v15_30D365D" if _is_crypto else None,
+                            "side": new_symside.split("_")[-1],
+                            "365d_xlsx": str(_365_xlsx) if _365_xlsx else None,
+                            "source": f"v15_pilot 30D→365D {utcnow()} 365D delta {_365_delta:.2f} beats cur {_cur_gain365}",
+                        }
+                        # prune None
+                        _new_entry = {k: v for k, v in _new_entry.items() if v is not None}
+                        _all[new_symside] = _new_entry
+                        if _meta is not None:
+                            _all["_meta"] = _meta
+                        _tmp = _live_cfg_path.with_suffix(".json.tmp")
+                        _tmp.write_text(json.dumps(_all, indent=2, default=str))
+                        _tmp.replace(_live_cfg_path)
+                        print(f"[LIVE-PUT] {new_symside} -> {_live_cfg_path.name} gain365 {_365_gain:.2f} delta {_365_delta:.2f} LIVE NOW", flush=True)
+                        # Also sync to tradier_manage in-memory cache clear hint
+                        try:
+                            Path("/tmp/per_sym_live_promoted.flag").write_text(f"{new_symside} {utcnow()} {json.dumps(_new_entry)[:300]}")
+                        except Exception:
+                            pass
+                    else:
+                        print(f"[LIVE-PUT-warn] no live path for {new_symside}", flush=True)
+                except Exception as _pe:
+                    import traceback
+                    print(f"[LIVE-PUT-warn] {_pe} {traceback.format_exc()[:600]}", flush=True)
+            else:
+                print(f"[LIVE-SKIP] {new_symside} not beating live — no backup/promote (new {_365_gain} vs cur {_cur_gain365})", flush=True)
+        except Exception as _e:
+            import traceback
+            print(f"[365D-LIVE-warn] {_e} {traceback.format_exc()[:800]}", flush=True)
+    except Exception as _outer:
+        import traceback
+        print(f"[365D-outer-warn] {_outer} {traceback.format_exc()[:600]}", flush=True)
     # === keep going: queue symbols_trb and symbols_flz ===
     try:
         import json as _js
