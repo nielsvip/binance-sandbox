@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T00:57:18.721130+00:00",
+  "timestamp": "2026-09-13T01:16:45.325933+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "GOOGLUSDT",
-      "net_score": -11.9,
+      "net_score": -10.7,
       "long_score": 0,
-      "short_score": 11.9
+      "short_score": 10.7
     },
     {
       "symbol": "ARMUSDT",
@@ -649,12 +649,6 @@
       "short_score": 0
     },
     {
-      "symbol": "THETAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZILUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -782,12 +776,6 @@
     },
     {
       "symbol": "COMPUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "USUALUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1003,24 +991,46 @@
       "short_score": 0
     },
     {
+      "symbol": "THETAUSDT",
+      "net_score": 10.0,
+      "long_score": 10.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "USUALUSDT",
+      "net_score": 11.2,
+      "long_score": 11.2,
+      "short_score": 0
+    },
+    {
       "symbol": "QTUMUSDT",
-      "net_score": 15.3,
-      "long_score": 15.3,
+      "net_score": 13.8,
+      "long_score": 13.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "QTUMUSDT",
-      15.3,
-      0.9431
+      13.8,
+      0.94836972
+    ],
+    [
+      "USUALUSDT",
+      11.2,
+      0.01198833
+    ],
+    [
+      "THETAUSDT",
+      10.0,
+      0.19841336
     ]
   ],
   "top_shorts": [
     [
       "GOOGLUSDT",
-      11.9,
-      340.25500027
+      10.7,
+      340.4131218
     ]
   ],
   "hedge_usage": {

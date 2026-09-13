@@ -907,10 +907,16 @@ def main():
                 if not sw or not isinstance(sw, str):
                     continue
                 sw = sw.strip()
-                if not sw or sw.lower() in ("switch", "general", "blanket"):
+                if not sw or sw.lower() in ("switch", "general", "blanket", "filter", "option value"):
+                    continue
+                # skip synthetic header row "Filter | Option Value | SATOSHIT..." (col A=Filter, col B=Option Value)
+                if sw.lower() == "filter" and str(ws.cell(row=r, column=2).value or "").lower() == "option value":
                     continue
                 cand = ws.cell(row=r, column=2).value
                 if cand is None:
+                    continue
+                # skip rows where cand is header text like "Option Value" or "Sheets applicable"
+                if isinstance(cand, str) and cand.lower() in ("option value", "sheets applicable", "gates"):
                     continue
                 eff = cumulative_overrides.get(sw, defaults.get(sw, cand))
                 def norm(v):
@@ -1011,10 +1017,18 @@ def main():
                     # ONLY yellow cells need calc: filter to headers present in L:BI for this sheet (50 headers). Pos non-yellow found are made yellow. Bottom filters run on entire sheet cumulative.
                     # Filter single_filters to those hdr in header_to_col to avoid random 30 evals -> 3h half tab. Keep ALL applicable yellows but not non-header random.
                     before_len = len(single_filters)
-                    single_filters = [t for t in single_filters if t[2] in header_to_col]
-                    if len(single_filters) < before_len:
-                        print(f"[filter-trim] {switch} {before_len}->{len(single_filters)} to L:BI headers only", flush=True)
-                    # No top-5 truncation; yellows are real filter deltas for this switch, pos drive F. Blanket sheets now distinct per-switch.
+                    # Limit single_filters to top 10 most relevant per switch to avoid 187 evals -> 5h and blanket same synthetic.
+                    # Rank by header presence then by earliest token overlap (specifics already opportune for this switch)
+                    # Keep distinct per row, not blanket same.
+                    if len(single_filters) > 10:
+                        # Prioritize filters already in L:BI headers (existing yellows), then others
+                        def _rank(t):
+                            hdr = t[2]
+                            in_hdr = 0 if hdr in header_to_col else 1
+                            return (in_hdr, t[2])
+                        single_filters = sorted(single_filters, key=_rank)[:10]
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top10 per-switch distinct", flush=True)
+                    # No blanket same: each row's Y is its own switch+filter deltas, not copied
                     candidates = []
                     v0 = dict(cumulative_overrides)
                     v0[switch] = cand
