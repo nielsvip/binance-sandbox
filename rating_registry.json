@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-13T12:49:04.201631+00:00",
+  "timestamp": "2026-09-13T13:07:49.868441+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 167
+    "total_ranked": 169
   },
   "unified_ranking": [
     {
@@ -139,7 +139,19 @@
       "short_score": 0
     },
     {
+      "symbol": "MUUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RIFUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TRUMPUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -151,7 +163,7 @@
       "short_score": 0
     },
     {
-      "symbol": "TRUMPUSDC",
+      "symbol": "AGLDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -505,6 +517,12 @@
       "short_score": 0
     },
     {
+      "symbol": "API3USDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BABAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -512,12 +530,6 @@
     },
     {
       "symbol": "BSVUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -943,6 +955,12 @@
       "short_score": 0
     },
     {
+      "symbol": "TRXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "FILUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -997,25 +1015,13 @@
       "short_score": 0
     },
     {
-      "symbol": "MUUSDT",
+      "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "TRXUSDT",
-      "net_score": 10.9,
-      "long_score": 10.9,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "TRXUSDT",
-      10.9,
-      0.34062484
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

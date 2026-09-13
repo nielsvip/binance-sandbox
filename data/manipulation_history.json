@@ -3908,5 +3908,23 @@
     ],
     "timestamp": "2026-09-13T12:48:58.836006+00:00",
     "price": 77.27
+  },
+  {
+    "symbol": "TSLAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 12.8x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T12:49:05.104416+00:00",
+    "price": 363.5
+  },
+  {
+    "symbol": "1000SATSUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:06:07.785544+00:00",
+    "price": 1.056e-05
   }
 ]
