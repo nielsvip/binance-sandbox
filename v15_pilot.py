@@ -1121,20 +1121,25 @@ def main():
                     before_len = len(single_filters)
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
                     _is_fast_window = args.window_days in (1, 7)
-                    # USER: fill ALL yellows per row so delta can turn positive - no FAST limit, take as much time as needed
-                    # Keep per-cell max skip (10s per cand) but evaluate every yellow (no 2-limit) so first yellow onward changes all numbers instantly
+                    # 7D must fill in MINUTES then 30D - 7D fast 7 yellows/row ~0.6s (8 cands) finds positives quickly, not 22 cands 5s which stalls
                     if _is_fast_window:
-                        # 7D: evaluate ALL yellows (no limit) - 21 cands ~1.5s/row, still fills entire sheet, then fix reds
-                        if len(single_filters) > 0:
-                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} ALL yellows (no FAST limit, per-cell max skip only)", flush=True)
-                    elif is_heavy and len(single_filters) > 2:
-                        limit = 2
+                        if len(single_filters) > 7:
+                            def _rank_fast(t):
+                                hdr = t[2]
+                                in_hdr = 0 if hdr in header_to_col else 1
+                                return (in_hdr, t[2])
+                            single_filters = sorted(single_filters, key=_rank_fast)[:7]
+                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top7 FAST 7D minutes (was ALL {before_len})", flush=True)
+                        elif len(single_filters) > 0:
+                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{len(single_filters)} FAST 7D", flush=True)
+                    elif is_heavy and len(single_filters) > 10:
+                        limit = 10
                         def _rank(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1
                             return (in_hdr, t[2])
                         single_filters = sorted(single_filters, key=_rank)[:limit]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy 40min target", flush=True)
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy 1s/cell yellows only", flush=True)
                     elif len(single_filters) > 10:
                         def _rank2(t):
                             hdr = t[2]
