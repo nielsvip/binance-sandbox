@@ -207,6 +207,10 @@ def _load_filter_dictionary() -> list[dict]:
             gc = ci
         if hv.strip() == "Recommendation":
             rc = ci
+    # also load Options (col12) and Default for global per-sheet iteration
+    oc2 = hdr.get("Options (all settings)", oc)
+    dc = hdr.get("Default (config)", None)
+    tc = hdr.get("TC (Timeframes Count)", None)
     rows = []
     for r in range(2, ws.max_row + 1):
         f = ws.cell(r, fc).value
@@ -219,7 +223,19 @@ def _load_filter_dictionary() -> list[dict]:
         sheets_app = str(ws.cell(r, sc).value or "") if sc else ""
         gates = str(ws.cell(r, gc).value or "") if gc else ""
         rec = str(ws.cell(r, rc).value or "") if rc else ""
-        rows.append({"filter": f, "opt": opt, "sheets_app": sheets_app, "gates": gates, "rec": rec})
+        opts = str(ws.cell(r, oc2).value or "") if oc2 else ""
+        default = ws.cell(r, dc).value if dc else None
+        # parse Options into list for global per-sheet iteration
+        vals = []
+        if opts:
+            # Options like "20.0, ±25%, ±50% (4)" or "OFF, 15m, 1h, 4h, D (5 options)"
+            import re
+            # split by comma, strip, remove parenthetical
+            parts = [p.strip().split("(")[0].strip() for p in opts.split(",")]
+            for p in parts:
+                if p and p not in vals:
+                    vals.append(p)
+        rows.append({"filter": f, "opt": opt, "sheets_app": sheets_app, "gates": gates, "rec": rec, "opts": opts, "vals": vals, "default": default})
     _FILTER_DICT_CACHE = rows
     try:
         wb.close()
@@ -239,8 +255,13 @@ def _token_overlap(gates: str, switch: str) -> bool:
     if gates in switch or switch in gates:
         return True
     import re
-    def toks(s): return [t for t in re.split(r"[ _\-\/]+", s.lower()) if len(t) > 2]
-    if set(toks(gates)) & set(toks(switch)):
+    _STOP = {"filter","enabled","threshold","tf","gate","gates","switch","switches","exactly","it","the","and","for","with","only","gated"}
+    def toks(s): return [t for t in re.split(r"[ _\-\/]+", s.lower()) if len(t) > 3 and t not in _STOP]
+    gt = set(toks(gates))
+    st = set(toks(switch))
+    # require at least one non-generic token overlap, not just FILTER
+    if gt & st:
+        # also require overlap token length >=4 or specific like ATR, EMA, ADX
         return True
     return False
 
@@ -257,6 +278,10 @@ def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
         rec = (e["rec"] or "").strip().upper()
         if rec == "UNLIKELY" or "UNLIKELY" in rec:
             continue
+        # THOROUGH REVISION: Yellow = all filters that can give pos delta to current switch = SPECIFIC only per legacy SPECIFIC/GENERAL mapping
+        # GENERAL is orange per-sheet, not yellow per-switch — exclude from yellow
+        if _is_general(e["rec"]):
+            continue
         sa = e["sheets_app"] or ""
         if sa.strip() == "ALL":
             applicable = True
@@ -264,9 +289,9 @@ def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
             applicable = (lifecycle in sa) or ("GLOBAL_CHECK" in sa)
         if not applicable:
             continue
-        if sa.strip() == "ALL" and _is_general(e["rec"]):
-            out.append(e)
-        elif _is_general(e["rec"]) or _token_overlap(e["gates"], switch) or (lifecycle.upper() in (e["gates"] or "").upper()):
+        # yellow per-switch: only filters that can give pos delta to current switch = gated switches exactly
+        # lifecycle generic caused 47 vs 5 (EXIT matches 100+); use strict token_overlap only
+        if _token_overlap(e["gates"], switch):
             out.append(e)
     return out
 
@@ -1625,34 +1650,46 @@ def main():
             except Exception:
                 pass
             print(f"[sheet DONE] {sheet} cum={cumulative_gain:.4f} positives={total_pos}", flush=True)
-            # GLOBAL per-sheet: global filters apply to entire workbook but must be calculated after every sheet as well (currently not happening) — try if pos deltas
+            # GLOBAL per-sheet: thorough revision — orange = entire sheet, prune to only important for sheet (0/neg stall workbook)
+            # GENERAL 65 distinct -> 26 kept important (not the 39 that only produce 0/neg); use S1 ledger: SNDK all pos 4/neg 1613, GLOBAL pos 0/neg 62
+            # Prune list derived from workflow: 39 distinct that stall (only 0/neg) — keep the other 26
+            _PRUNED_ORANGE = {"EZ_MANAGE_THROTTLER_RATE","HA_WICK_QUALITY_ENABLED","HA_WICK_QUALITY_SCORE","HA_WICK_QUALITY_TF","HLR_SMA_BAND_PCT","HLR_TOP_MIN_TFS","HTF4_CONF","HTF_DIRECTION_GATE_ENABLED","HTF_GATE_BYPASS_RZ","HTF_GATE_D_MANDATORY","HTF_GATE_MIN_CONFIRMATIONS","HTF_TREND_VETO_BYPASS_ENABLED","HTF_TREND_VETO_BYPASS_REASONS","LEADERBOARD_FILTER","LH_HL_FILTER_ENABLED","LH_HL_FILTER_MODE","LH_HL_FILTER_REQUIRE_BOTH","LIVE_VEC_EMERGENCY_BRAKE_ENABLED","LR_BAND_LADDER_STOCH_EXTREME","LR_BAND_LADDER_TF_BOTTOM","LR_BAND_LADDER_TF_TOP","MANDATORY_REENTRY_WT_FILTER_MIN_TFS","MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY","MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP","MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO","MARKET_QUALITY_SCORE_ENABLED","MI_TF_AGREE_MIN","MOVER_THRESHOLD","MTF_FILTER_STRONG_BUY_QUICK_BYPASS","MTF_GR_MIN_IND","MTS_BOTTOM_BONUS_THRESHOLD","MTS_BOTTOM_STRONG_THRESHOLD","MTS_GATE_ENABLED","NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT","NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST","NEW_POSITION_MAX_LOSS_THRESHOLD","OI_CONFIRM_ENABLED","OI_CONFIRM_MIN_CHANGE_PCT","OI_CONFIRM_MIN_PRICE_PCT"}
             try:
                 _global_cands = []
                 for _e in _load_filter_dictionary():
+                    # orange per-sheet = GENERAL only (SPECIFIC is yellow per-switch above)
+                    if not _is_general(_e.get("rec") or ""):
+                        continue
                     _sa = (_e.get("sheets_app") or "").strip().upper()
-                    if _sa == "ALL" or "GLOBAL" in _sa:
-                        _sw = _e.get("filter") or _e.get("key") or ""
-                        if not _sw:
-                            continue
-                        # skip if already at non-default and already promoted
-                        _cur = cumulative_overrides.get(_sw, defaults.get(_sw))
-                        _def = defaults.get(_sw)
-                        # only try if not already at optimum (allow trying alternative values)
-                        _vals = _e.get("values") or _e.get("options") or []
-                        for _v in _vals[:2]:  # try up to 2 values per global filter per sheet to find pos delta
-                            try:
-                                _cand = _v
-                                # normalize bool
-                                if isinstance(_def, bool) and isinstance(_v, str):
-                                    _cand = _v.lower() == "true"
-                                _key_g = f"{sheet}!GLOBAL:{_sw}={_cand}"
-                                if _key_g in progress.get("done", {}):
-                                    continue
-                                _global_cands.append((_sw, _cand, _e))
-                                break
-                            except: pass
-                        if len(_global_cands) >= 6:
+                    if not (_sa == "ALL" or "GLOBAL" in _sa or lifecycle in _sa):
+                        continue
+                    _sw = _e.get("filter") or _e.get("key") or ""
+                    if not _sw or _sw in _PRUNED_ORANGE:
+                        continue
+                    _cur = cumulative_overrides.get(_sw, defaults.get(_sw))
+                    _def = defaults.get(_sw)
+                    # use parsed vals from Options (col12), fallback to opt
+                    _vals = _e.get("vals") or ([_e.get("opt")] if _e.get("opt") else [])
+                    # filter out UNLIKELY and empty
+                    _vals = [v for v in _vals if v and str(v).strip().upper() != "UNLIKELY"]
+                    if not _vals:
+                        continue
+                    for _v in _vals[:2]:
+                        try:
+                            _cand = _v
+                            if isinstance(_def, bool) and isinstance(_v, str):
+                                _cand = _v.lower() == "true"
+                            _key_g = f"{sheet}!GLOBAL:{_sw}={_cand}"
+                            if _key_g in progress.get("done", {}):
+                                continue
+                            # skip if already at this value (no delta)
+                            if str(_cur) == str(_cand):
+                                continue
+                            _global_cands.append((_sw, _cand, _e))
                             break
+                        except: pass
+                    if len(_global_cands) >= 4:
+                        break
                 if _global_cands:
                     print(f"[GLOBAL per-sheet] {sheet} trying {len(_global_cands)} global filters after sheet", flush=True)
                     for (_gsw, _gcand, _ge) in _global_cands[:3]:

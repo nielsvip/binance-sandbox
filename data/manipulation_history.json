@@ -2061,5 +2061,14 @@
     ],
     "timestamp": "2026-09-13T22:57:05.103688+00:00",
     "price": 177.14846048
+  },
+  {
+    "symbol": "XLMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T23:14:48.734939+00:00",
+    "price": 0.1769
   }
 ]
