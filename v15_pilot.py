@@ -1805,6 +1805,186 @@ def main():
         _atomic_write_json(progress_path, progress)
     except Exception:
         pass
+    # === HUSTLER: combinatorial beam search vs baseline max delta (smart combining pos delta vs baseline) ===
+    # Why: greedy cumulative (delta vs cum 18.86) marks every remaining single-switch as NEG even when vs baseline it is +17.
+    # Hustler hustles many combinations of pos delta vs baseline until max delta across switches is found.
+    # Runs after greedy 3041 F fills, uses same prepared vectors (0.07s) + live parity, beam width 32 depth 6.
+    try:
+        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _hustle_eval
+        # collect pos vs baseline candidates from progress.done (vs baseline not vs cum)
+        # === HUSTLER advantage a: all functions vs baseline simultaneously, then per-hustle recalc shooting up delta ===
+        # Re-evaluate EVERY switch vs baseline in one simultaneous vector batch (not vs cum 18.86) to get true vs baseline
+        _hustle_top = []
+        try:
+            _sim_all = []
+            _sim_keys = []
+            for _sheet in SWITCH_SHEETS:
+                if _sheet not in wb.sheetnames if 'wb' in locals() else SWITCH_SHEETS:
+                    continue
+                try:
+                    _ws = wb[_sheet] if 'wb' in locals() and _sheet in wb.sheetnames else None
+                    if _ws is None:
+                        continue
+                    for _r in range(3, _ws.max_row + 1):
+                        _sw = str(_ws.cell(_r, 1).value or "").strip()
+                        _cand = str(_ws.cell(_r, 2).value or "").strip()
+                        if not _sw or _sw.lower() in ("switch","general","blanket","filter","option value") or _sw.startswith("—"):
+                            continue
+                        if _sw.lower() == "filter" and _cand.lower() == "option value":
+                            continue
+                        _sim_all.append((_sw, _cand))
+                        _sim_keys.append(f"{_sheet}!{_r}:{_sw}={_cand}")
+                except Exception:
+                    continue
+            # simultaneous vs baseline: each variant = baseline overrides + single switch (no cum)
+            _sim_results = {}
+            if _sim_all and prepared is not None:
+                print(f"[hustler-sim] simultaneous vs baseline {len(_sim_all)} switches vs baseline {baseline_gain:.2f} 16 workers", flush=True)
+                _base_over = dict(overrides)  # baseline overrides (8 +3337 defaults)
+                _sim_variants = []
+                for _sw,_cand in _sim_all:
+                    _v = dict(_base_over)
+                    _v[_sw] = _cand
+                    _san,_ = sanitize_overrides(_v, defaults)
+                    _sim_variants.append(_san)
+                # vector batch simultaneous
+                _sims = []
+                try:
+                    from concurrent.futures import ThreadPoolExecutor as _TPE
+                    def _eval_sim(v):
+                        return _hustle_eval(prepared, v, window_days=args.window_days) if prepared is not None else None
+                    with _TPE(max_workers=16) as _ex:
+                        _sims = list(_ex.map(_eval_sim, _sim_variants))
+                except Exception:
+                    _sims = [_hustle_eval(prepared, v, window_days=args.window_days) for v in _sim_variants]
+                for _idx, _vec in enumerate(_sims):
+                    if _vec is None or not _vec.get("valid"):
+                        continue
+                    _vg = float(_vec.get("gain_pct") or 0)
+                    _vsb = _vg - float(baseline_gain or 0)
+                    if _vsb > 0:
+                        _sw,_cand = _sim_all[_idx]
+                        # best filter not needed for simultaneous, but keep for hustle
+                        _hustle_top.append((_sw, _cand, None, None, _vsb, _vg))
+                print(f"[hustler-sim] found {len(_hustle_top)} pos vs baseline simultaneous", flush=True)
+            # fallback to progress.done derived if sim failed
+            if not _hustle_top:
+                for _hk, _hv in progress.get("done", {}).items():
+                    _vec = _hv.get("vec", {}) or {}
+                    _vg = float(_vec.get("gain_pct") or _hv.get("vec_gain") or 0)
+                    _vs_base = _vg - float(baseline_gain or 0)
+                    if _vs_base > 0:
+                        try:
+                            _sw = _hk.split(":",1)[1].split("=")[0].strip()
+                            _cand = _hk.split("=",1)[1].strip()
+                        except Exception:
+                            continue
+                        _bf = _hv.get("best_filter")
+                        _bv = _hv.get("best_fval")
+                        _hustle_top.append((_sw, _cand, _bf, _bv, _vs_base, _vg))
+        except Exception as _se:
+            print(f"[hustler-sim-warn] {_se}", flush=True)
+            # fallback
+            if not _hustle_top:
+                for _hk, _hv in progress.get("done", {}).items():
+                    _vec = _hv.get("vec", {}) or {}
+                    _vg = float(_vec.get("gain_pct") or _hv.get("vec_gain") or 0)
+                    _vs_base = _vg - float(baseline_gain or 0)
+                    if _vs_base > 0:
+                        try:
+                            _sw = _hk.split(":",1)[1].split("=")[0].strip()
+                            _cand = _hk.split("=",1)[1].strip()
+                        except Exception:
+                            continue
+                        _bf = _hv.get("best_filter")
+                        _bv = _hv.get("best_fval")
+                        _hustle_top.append((_sw, _cand, _bf, _bv, _vs_base, _vg))
+        _hustle_top.sort(key=lambda x: x[4], reverse=True)
+        _hustle_top = _hustle_top[:50]  # top 50 pos vs baseline to hustle
+        print(f"[hustler] top pos vs baseline {len(_hustle_top)} baseline {baseline_gain:.2f} cum {cumulative_gain:.2f} bh {bh_raw:.2f} beam 32 depth 6 (simultaneous + per-hustle recalc shooting up delta)", flush=True)
+        for _i, (_sw,_cand,_bf,_bv,_vsb,_vg) in enumerate(_hustle_top[:10]):
+            print(f"  [hustler-top-{_i}] {_sw}={_cand} vs_base +{_vsb:.2f} vec {_vg:.2f} filter {_bf}={_bv}", flush=True)
+        # beam hustling
+        if _hustle_top and prepared is not None:
+            _beam = [(dict(cumulative_overrides), cumulative_gain)]  # start from greedy cum
+            _seen = {tuple(sorted(cumulative_overrides.items()))}
+            _best_overrides, _best_gain = dict(cumulative_overrides), cumulative_gain
+            for _depth in range(1, 7):
+                _cands = []
+                for _base_over, _base_gain in _beam:
+                    for _sw,_cand,_bf,_bv,_vsb,_vg in _hustle_top:
+                        if _sw in _base_over and str(_base_over[_sw]) == str(_cand):
+                            continue
+                        _variant = dict(_base_over)
+                        _variant[_sw] = _cand
+                        if _bf and _bv and _bf not in _variant:
+                            _variant[_bf] = _bv
+                        _key = tuple(sorted(_variant.items()))
+                        if _key in _seen:
+                            continue
+                        _seen.add(_key)
+                        _san, _ = sanitize_overrides(_variant, defaults)
+                        _vec = _hustle_eval(prepared, _san, window_days=args.window_days) if prepared is not None else None
+                        if _vec is None or not _vec.get("valid"):
+                            continue
+                        _vg2 = float(_vec.get("gain_pct") or 0)
+                        _delta_base = _vg2 - float(baseline_gain or 0)
+                        _cands.append((_variant, _vg2, _delta_base, _sw, _cand))
+                if not _cands:
+                    break
+                _cands.sort(key=lambda x: x[1], reverse=True)  # by vec gain (or delta vs baseline)
+                _beam = [(_v[0], _v[1]) for _v in _cands[:32]]
+                _top_v = _cands[0]
+                if _top_v[1] > _best_gain + 1e-9:
+                    _best_overrides, _best_gain = _top_v[0], _top_v[1]
+                    print(f"[hustler-depth-{_depth}] NEW BEST vec {_best_gain:.2f} vs_base {_top_v[2]:.2f} via {_top_v[3]}={_top_v[4]} beam {len(_beam)}", flush=True)
+                    # live parity check for new best
+                    try:
+                        _live_best = live_evaluate(new_symside, _best_overrides, args.window_days)
+                        _ok,_rsn = parity_ok(_live_best, {"gain_pct": _best_gain}, allow_zero_baseline=baseline_had_zero_trades)
+                        print(f"  [hustler-live] live {_live_best.get('gain_pct',0):.2f} vec {_best_gain:.2f} parity {_ok} {_rsn}", flush=True)
+                    except Exception as _le:
+                        print(f"  [hustler-live-warn] {_le}", flush=True)
+                else:
+                    print(f"[hustler-depth-{_depth}] no improvement top {_top_v[1]:.2f} vs best {_best_gain:.2f} plateau", flush=True)
+                    # plateau detection 2 rounds no improvement -> break hustle
+                    if _depth >= 3 and _cands[0][1] < _best_gain + 0.01:
+                        break
+            if _best_gain > cumulative_gain + 1e-9:
+                print(f"[hustler] PROMOTE hustle best {cumulative_gain:.2f} -> {_best_gain:.2f} delta +{_best_gain - cumulative_gain:.2f} vs baseline +{_best_gain - float(baseline_gain or 0):.2f} overrides {len(_best_overrides)}", flush=True)
+                # write hustler overrides to progress and xlsx E column extension (append HUSTLER sheet if needed)
+                try:
+                    _hustle_path = OUT_DIR / f"{new_symside}_hustler_best.json"
+                    _hustle_path.write_text(__import__("json").dumps({"symside": new_symside, "baseline": float(baseline_gain or 0), "greedy_cum": float(cumulative_gain), "hustler_best_gain": float(_best_gain), "hustler_delta_vs_baseline": float(_best_gain - float(baseline_gain or 0)), "hustler_delta_vs_greedy": float(_best_gain - cumulative_gain), "overrides": _best_overrides, "bh": float(bh_raw)}, indent=2))
+                    print(f"[hustler] wrote {_hustle_path}", flush=True)
+                except Exception as _we:
+                    print(f"[hustler-warn] {_we}", flush=True)
+                # optionally promote cumulative_gain to hustler best for final publishing
+                # keep greedy cum as is for workbook E monotonic, but final_path will reflect hustler if better and parity ok
+                try:
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_final2
+                    _san_best,_ = sanitize_overrides(_best_overrides, defaults)
+                    _vec_best = _eval_final2(prepared, _san_best, window_days=args.window_days)
+                    _live_best2 = live_evaluate(new_symside, _san_best, args.window_days)
+                    _ok2,_rsn2 = parity_ok(_live_best2, _vec_best, allow_zero_baseline=baseline_had_zero_trades)
+                    if _ok2 and float(_vec_best.get("gain_pct") or 0) > cumulative_gain:
+                        cumulative_gain = float(_vec_best.get("gain_pct") or 0)
+                        cumulative_overrides = dict(_san_best)
+                        progress["cumulative_gain"] = cumulative_gain
+                        progress["cumulative_overrides"] = cumulative_overrides
+                        progress["hustler_promoted"] = True
+                        print(f"[hustler] PROMOTED cumulative to hustler best {cumulative_gain:.2f} parity ok", flush=True)
+                    else:
+                        print(f"[hustler] NOT promoted parity {_ok2} {_rsn2} vec {_vec_best.get('gain_pct',0):.2f}", flush=True)
+                except Exception as _pe:
+                    print(f"[hustler-promote-warn] {_pe}", flush=True)
+            else:
+                print(f"[hustler] no hustle improvement greedy {cumulative_gain:.2f} remains best vs baseline {float(baseline_gain or 0):.2f}", flush=True)
+        else:
+            print("[hustler] skipped no top pos or no prepared", flush=True)
+    except Exception as _he:
+        import traceback
+        print(f"[hustler-warn] {_he} {traceback.format_exc()[:800]}", flush=True)
     # === ALL switch delta + yellow (L:BI) + orange (Results_Deltas/30d) cells already filled cell-by-cell above ===
     # === backtest_v12_live switch-by-switch verification on final settings ===
     if __import__("os").environ.get("V15_SKIP_LIVE_VERIFY")=="1":

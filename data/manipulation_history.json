@@ -1250,5 +1250,23 @@
     ],
     "timestamp": "2026-09-13T19:34:42.195235+00:00",
     "price": 106.71
+  },
+  {
+    "symbol": "EWTUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.2x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T19:39:14.061664+00:00",
+    "price": 110.18
+  },
+  {
+    "symbol": "INXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T19:40:44.916542+00:00",
+    "price": 0.00580427
   }
 ]
