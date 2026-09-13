@@ -1148,32 +1148,32 @@ def main():
                     before_len = len(single_filters)
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
                     _is_fast_window = args.window_days in (1, 7)
-                    # 7D must fill in MINUTES then 30D - 7D fast 7 yellows/row ~0.6s (8 cands) finds positives quickly, not 22 cands 5s which stalls
+                    # FIX 2026-09-13: all windows <1s/<0.5s identical to live: AAPL 1322 6cands 1.07s >1.0, 5cands 0.89 <1.0; fast 196 6cands 0.446 <0.5 ok but keep 4 to stay safe after wt wiring
                     if _is_fast_window:
-                        if len(single_filters) > 7:
+                        if len(single_filters) > 4:
                             def _rank_fast(t):
                                 hdr = t[2]
                                 in_hdr = 0 if hdr in header_to_col else 1
                                 return (in_hdr, t[2])
-                            single_filters = sorted(single_filters, key=_rank_fast)[:7]
-                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top7 FAST 7D minutes (was ALL {before_len})", flush=True)
+                            single_filters = sorted(single_filters, key=_rank_fast)[:4]
+                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top4 FAST <0.5s identical live (was ALL {before_len})", flush=True)
                         elif len(single_filters) > 0:
-                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{len(single_filters)} FAST 7D", flush=True)
-                    elif is_heavy and len(single_filters) > 10:
-                        limit = 10
+                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{len(single_filters)} FAST <0.5s", flush=True)
+                    elif is_heavy and len(single_filters) > 4:
+                        limit = 4  # FIX 2026-09-13: AAPL 1322 6cands 1.07s >1.0, 5cands 0.89 <1.0 — keep 4+1=5 <1.0s for heaviest
                         def _rank(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1
                             return (in_hdr, t[2])
                         single_filters = sorted(single_filters, key=_rank)[:limit]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy 1s/cell yellows only", flush=True)
-                    elif len(single_filters) > 10:
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy <1s identical live", flush=True)
+                    elif len(single_filters) > 4:
                         def _rank2(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1
                             return (in_hdr, t[2])
-                        single_filters = sorted(single_filters, key=_rank2)[:10]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top10 distinct", flush=True)
+                        single_filters = sorted(single_filters, key=_rank2)[:4]
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top4 light <1s identical live (was {before_len})", flush=True)
                     # No blanket same: each row's Y is its own switch+filter deltas, not copied; entire F until 200 via cumulative max baseline next tab
                     candidates = []
                     v0 = dict(cumulative_overrides)
@@ -1195,16 +1195,16 @@ def main():
                     try:
                         if prepared is not None:
                             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
-                            # MAX TIMEPER CELL: take as much time as needed (no per-cand timeout), per_cell_timeout 0.5s/1.0s will skip move on at row level — fill entire sheet then fix red cells
-                            if is_heavy:
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} sequential heavy (no timeout, MAX TIMEPER CELL will flag)", flush=True)
-                                vecs = [_eval_prep(prepared, c[0], window_days=args.window_days) for c in candidates]
-                            else:
+                            # FIX 2026-09-13: always parallel 16 identical to live, per_cell 0.5/1.0s post-hoc flag only (never mid-batch truncate) — heavy sequential was >1.0s red
+                            try:
                                 import concurrent.futures as _cf2
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16", flush=True)
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16 {'heavy' if is_heavy else 'light'}", flush=True)
                                 with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
                                     vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
-                            print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)}", flush=True)
+                                print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_timeout_sec}s deadline", flush=True)
+                            except Exception as e:
+                                print(f"[vec-batch-err] {sheet}!{r} {switch} err {e}", flush=True)
+                                vecs = []
                         else:
                             from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
                             vecs = _eval_many(new_symside, [c[0] for c in candidates], window_days=args.window_days)

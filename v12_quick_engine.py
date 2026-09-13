@@ -18407,9 +18407,25 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
         _thr = float(getattr(cfg, 'STDEV_BREAKOUT_PCTB_SHORT', 0.0))
         _def = float(_DEFAULTS_625.get('STDEV_BREAKOUT_PCTB_SHORT', 0.0) or 0.0)
         if abs(_thr - _def) > 1e-9:
-            _v = _safe(npz, 'rsi_1h', n, 50)
-            _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
-            entry_mask = entry_mask & _cond  # STDEV_BREAKOUT_PCTB_SHORT NEW_AUDIT balanced
+            # Identical to backtest_v12_engine STDEV_BREAKOUT: bb_pct_b + rvol >= threshold
+            try:
+                _htfs = list(getattr(cfg, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
+                _rvol_min = float(getattr(cfg, 'STDEV_BREAKOUT_RVOL_MIN', 1.2))
+                _any = np.zeros(n, dtype=bool)
+                for _htf in _htfs:
+                    _pv = _safe(npz, f'bb_pct_b_{_htf}', n, 0.5)
+                    _rv = _safe(npz, f'relative_volume_{_htf}', n, 1.0)
+                    if is_long:
+                        _c = (_pv >= float(getattr(cfg, 'STDEV_BREAKOUT_PCTB_LONG', 1.0))) & (_rv >= _rvol_min)
+                    else:
+                        _c = (_pv <= _thr) & (_rv >= _rvol_min)
+                    _any = _any | _c
+                # for short, STDEV_PCTB_SHORT triggers entry; keep entry_mask AND _any to match live gate widening
+                entry_mask = entry_mask & _any if np.any(_any) else entry_mask & _any  # STDEV_BREAKOUT_PCTB_SHORT causal
+            except Exception:
+                _v = _safe(npz, 'rsi_1h', n, 50)
+                _cond = (_v > 55 if is_long else _v < 45)
+                entry_mask = entry_mask & _cond
         if str(getattr(cfg, 'STDEV_REJECT_EXIT_TF', '15m')) != str(_DEFAULTS_625.get('STDEV_REJECT_EXIT_TF', '15m') if 'STDEV_REJECT_EXIT_TF' in _DEFAULTS_625 else '15m'):
             _v = _safe(npz, 'adx_1h', n, 20)
             _cond = (_v > 15)  # adx>15 balanced
@@ -18549,9 +18565,25 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
             _cond = ((_v > _safe(npz, 'wt2_15m', n, 0)) if is_long else (_v < _safe(npz, 'wt2_15m', n, 0)))  # wt1>wt2 balanced
             entry_mask = entry_mask & _cond  # WT_DIV_ENTRY_GATE_ENABLED NEW_AUDIT balanced
         if bool(getattr(cfg, 'WT_DIV_EXIT_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_DIV_EXIT_ENABLED', False)):
-            _v = _safe(npz, 'rsi_1h', n, 50)
-            _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
-            exit_mask = exit_mask | _cond  # WT_DIV_EXIT_ENABLED NEW_AUDIT balanced — FIX 2026-09-13: default False parity
+            # Identical to tradier_manage MULTI_TF_EXIT wt divergence: wt1 vs peak/trough + close momentum
+            try:
+                _any = np.zeros(n, dtype=bool)
+                for _tf in ('1h', '4h', 'D'):
+                    _wt1 = _safe(npz, f'wt1_{_tf}', n, 0.0)
+                    _pk = _safe(npz, f'wt_peak_value_{_tf}', n, 0.0)
+                    _tr = _safe(npz, f'wt_trough_value_{_tf}', n, 0.0)
+                    _cn = _safe(npz, f'close_{_tf}', n, 0.0)
+                    _cp = _safe(npz, f'close_{_tf}_prev', n, 0.0)
+                    if is_long:
+                        _c = (_pk != 0) & (_cp > 0) & (_wt1 < _pk * 0.85) & (_cn >= _cp)
+                    else:
+                        _c = (_tr != 0) & (_cp > 0) & (_wt1 > _tr * 0.85) & (_cn <= _cp)
+                    _any = _any | _c
+                exit_mask = exit_mask | _any  # WT_DIV_EXIT_ENABLED causal: wt divergence
+            except Exception:
+                _v = _safe(npz, 'rsi_1h', n, 50)
+                _cond = (_v > 55 if is_long else _v < 45)
+                exit_mask = exit_mask | _cond
         if bool(getattr(cfg, 'WT_EXHAUST_ENTRY_GATE_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_EXHAUST_ENTRY_GATE_ENABLED', False)):
             _v = _safe(npz, 'adx_1h', n, 20)
             _cond = (_v > 15)  # adx>15 balanced
@@ -18571,9 +18603,19 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
         _thr = float(getattr(cfg, 'WT_MOMENTUM_EXIT_THRESHOLD', 1))
         _def = float(_DEFAULTS_625.get('WT_MOMENTUM_EXIT_THRESHOLD', 1) or 1)
         if abs(_thr - _def) > 1e-9:
-            _v = _safe(npz, 'rsi_1h', n, 50)
-            _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
-            exit_mask = exit_mask | _cond  # WT_MOMENTUM_EXIT_THRESHOLD NEW_AUDIT balanced
+            # Identical to tradier_manage WT_MOMENTUM: wt1_15m/1h/4h < -thr (long) or > thr (short), >=2 TFs triggers
+            try:
+                _cnt = np.zeros(n, dtype=int)
+                for _tf in ('15m', '1h', '4h'):
+                    _w = _safe(npz, f'wt1_{_tf}', n, 0.0)
+                    _c = (_w < -_thr) if is_long else (_w > _thr)
+                    _cnt = _cnt + _c.astype(int)
+                _cond = _cnt >= 2
+                exit_mask = exit_mask | _cond  # WT_MOMENTUM_EXIT_THRESHOLD causal
+            except Exception:
+                _v = _safe(npz, 'rsi_1h', n, 50)
+                _cond = (_v > 55 if is_long else _v < 45)
+                exit_mask = exit_mask | _cond
         if bool(getattr(cfg, 'WT_PERCENTILE_ENTRY_GATE_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_PERCENTILE_ENTRY_GATE_ENABLED', False)):
             _v = _safe(npz, 'adx_1h', n, 20)
             _cond = (_v > 15)  # adx>15 balanced

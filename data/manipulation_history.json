@@ -1258,5 +1258,23 @@
     ],
     "timestamp": "2026-09-13T04:34:26.023687+00:00",
     "price": 0.2464
+  },
+  {
+    "symbol": "NFLXUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.7x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T05:33:56.451456+00:00",
+    "price": 77.17
+  },
+  {
+    "symbol": "PYPLUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 18.4x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T05:35:14.882203+00:00",
+    "price": 54.01132356
   }
 ]

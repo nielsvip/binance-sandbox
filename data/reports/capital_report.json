@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-13 04:56 UTC",
- "total_capital_usd": 11.99,
+ "generated_at": "2026-09-13 05:34 UTC",
+ "total_capital_usd": 11.95,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.99,
+  "B": 11.95,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:QTUMUSDT_LONG",
-   "symbol": "QTUMUSDT",
-   "account": "men",
-   "value_usd": 11.99,
-   "gain_pct": 0.18,
+   "pk": "inf:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "inf",
+   "value_usd": 11.95,
+   "gain_pct": 0.165,
    "tier": "B",
-   "perf_mult": 1.33,
-   "amt": 12.2,
-   "mark": 0.98268333
+   "perf_mult": 7.13,
+   "amt": 706.0,
+   "mark": 0.016924
   }
  ]
 }
