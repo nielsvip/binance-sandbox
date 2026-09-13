@@ -1,32 +1,30 @@
 {
- "generated_at": "2026-09-12 23:39 UTC",
- "total_capital_usd": 11.94,
+ "generated_at": "2026-09-13 00:39 UTC",
+ "total_capital_usd": 0.24,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 11.94
+  "B": 0.24,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:PENGUUSDC_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:PENGUUSDC_SHORT",
-   "symbol": "PENGUUSDC",
+   "pk": "fin:XTZUSDT_LONG",
+   "symbol": "XTZUSDT",
    "account": "fin",
-   "value_usd": 11.94,
-   "gain_pct": 0.575,
-   "tier": "C",
-   "perf_mult": 0.65,
-   "amt": 1650.0,
-   "mark": 0.00723539
+   "value_usd": 0.24,
+   "gain_pct": 0.151,
+   "tier": "B",
+   "perf_mult": 1.54,
+   "amt": 0.9,
+   "mark": 0.2645
   }
  ]
 }

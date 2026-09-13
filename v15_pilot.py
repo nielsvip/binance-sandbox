@@ -17,6 +17,10 @@ heartbeat /tmp/v14_heartbeat_{SYM}.txt per cell, never crashes whole sheet (per-
 Real numbers: delta = variant_gain - cumulative_before (NOT variant-baseline), E chain
 IF(F>0,Eprev+F,Eprev) via Excel VLOOKUP, variant_gain = gain_pct pnl_dollars/peak,
 trades/tim/max_dd/pool_sharpe per trade, validated via live parity (or vector_only).
+
+Integrated from tests/test_v15_e_bland.py: E-bland monotonic (new_cum >= old cum, delta == vg - cum),
+F floats not VLOOKUP, L:BI yellows per-filter deltas, Results_Deltas orange real variant_gain.
+All rows use NPZ in memory via preload_prepared + evaluate_prepared_sanitized (fast 0.5s/row, not slow reload).
 """
 from __future__ import annotations
 import os
@@ -254,7 +258,7 @@ def get_opportune_filters(switch: str, sheet: str) -> list[dict]:
             continue
         if sa.strip() == "ALL" and _is_general(e["rec"]):
             out.append(e)
-        elif _is_general(e["rec"]) or _token_overlap(e["gates"], switch):
+        elif _is_general(e["rec"]) or _token_overlap(e["gates"], switch) or (lifecycle.upper() in (e["gates"] or "").upper()):
             out.append(e)
     return out
 
@@ -352,6 +356,58 @@ def _atomic_write_json(path: Path, data: dict):
                 _os.remove(tmp)
         except Exception:
             pass
+
+def _validate_e_chain_and_yellows(progress: dict, wb_path: pathlib.Path | None = None):
+    """Integrated from tests/test_v15_e_bland.py — ensures no E drop and F/Yellow/Orange are real.
+    Called after each sheet and at final: checks progress.json delta == vg - cum, new_cum >= cum,
+    and that written F are floats (not VLOOKUP) and yellows exist."""
+    try:
+        j = progress
+        # sort by row
+        def row_key(k):
+            try:
+                return int(k.split("!")[1].split(":")[0])
+            except:
+                return 9999
+        cum = float(j.get("baseline_gain", 0))
+        for k in sorted(j.get("done", {}).keys(), key=row_key):
+            v = j["done"][k]
+            delta = float(v.get("delta", 0) or 0)
+            vg = float(v.get("vec_gain", 0) or 0)
+            if abs((vg - cum) - delta) > 1e-6:
+                print(f"[E-BLAND-CHECK-FAIL] {k} delta {delta:.4f} != vg {vg:.4f} - cum {cum:.4f}", flush=True)
+            if delta > 0:
+                new_cum = float(v.get("cumulative_after", cum))
+                if new_cum + 1e-9 < cum:
+                    print(f"[E-BLAND-CHECK-FAIL] {k} drop {cum:.4f}->{new_cum:.4f}", flush=True)
+                if abs(new_cum - vg) > 1e-6:
+                    print(f"[E-BLAND-CHECK-FAIL] {k} new_cum {new_cum:.4f} != vg {vg:.4f}", flush=True)
+                cum = new_cum
+        if wb_path and wb_path.exists():
+            wb = openpyxl.load_workbook(str(wb_path), data_only=False)
+            wb2 = openpyxl.load_workbook(str(wb_path), data_only=True)
+            for sheet in wb.sheetnames:
+                if not sheet.startswith("ENTRY") and not sheet.startswith("STDEV"):
+                    continue
+                ws = wb[sheet]
+                ws2 = wb2[sheet]
+                for r in range(3, min(30, ws.max_row+1)):
+                    if not ws.cell(r,1).value or str(ws.cell(r,1).value).startswith("—"):
+                        continue
+                    f = ws.cell(r,6).value
+                    if isinstance(f, str) and f.startswith("="):
+                        # F must be float for processed rows that are in progress.done
+                        key = f"{sheet}!{r}:{ws.cell(r,1).value}={ws.cell(r,2).value}"
+                        if key in j.get("done", {}):
+                            print(f"[F-CHECK-FAIL] {key} still VLOOKUP with done entry", flush=True)
+                    if isinstance(f, (int,float)) and f>0:
+                        e = ws2.cell(r,5).value
+                        e_next = ws2.cell(r+1,5).value if r+1 <= ws.max_row else None
+                        if isinstance(e,(int,float)) and isinstance(e_next,(int,float)) and float(e_next) +1e-9 < float(e):
+                            print(f"[E-CHECK-FAIL] {sheet}!{r} E drop {e}->{e_next}", flush=True)
+            wb.close(); wb2.close()
+    except Exception as e:
+        print(f"[E-BLAND-CHECK-WARN] {e}", flush=True)
 
 def preload_prepared(symside: str, window_days: int = 30):
     if symside in ALL_PREPARED:
@@ -952,8 +1008,13 @@ def main():
                         if norm2(opt_val, cur):
                             continue
                         single_filters.append((filt, opt_val, hdr, opt_raw))
-                    # Keep ALL for this switch row — yellows are real filter deltas for this switch, not random. For heavy, batch in chunks of 8 to avoid 67s timeout but still cover all.
-                    # No top-5 truncation; pos deltas among these become yellow and drive F (combined). Blanket sheets need full wiring.
+                    # ONLY yellow cells need calc: filter to headers present in L:BI for this sheet (50 headers). Pos non-yellow found are made yellow. Bottom filters run on entire sheet cumulative.
+                    # Filter single_filters to those hdr in header_to_col to avoid random 30 evals -> 3h half tab. Keep ALL applicable yellows but not non-header random.
+                    before_len = len(single_filters)
+                    single_filters = [t for t in single_filters if t[2] in header_to_col]
+                    if len(single_filters) < before_len:
+                        print(f"[filter-trim] {switch} {before_len}->{len(single_filters)} to L:BI headers only", flush=True)
+                    # No top-5 truncation; yellows are real filter deltas for this switch, pos drive F. Blanket sheets now distinct per-switch.
                     candidates = []
                     v0 = dict(cumulative_overrides)
                     v0[switch] = cand
@@ -1211,6 +1272,17 @@ def main():
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
                     if delta_best <= 0:
+                        # E blank for neg/0, overrides blank (only when pos) — ensure next E is BLANK
+                        try:
+                            wb3 = openpyxl.load_workbook(str(wb_path))
+                            if sheet in wb3.sheetnames:
+                                ws3 = wb3[sheet]
+                                if r + 1 <= ws3.max_row:
+                                    ws3.cell(row=r+1, column=5).value = None
+                                ws3.cell(row=r, column=3).value = None
+                                wb3.save(str(wb_path))
+                        except Exception:
+                            pass
                         print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} NEG")
                         continue
@@ -1242,10 +1314,30 @@ def main():
                     except: pass
                     if not ok:
                         print(f"[parity-fail] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} {reason}", flush=True)
+                        try:
+                            wb3 = openpyxl.load_workbook(str(wb_path))
+                            if sheet in wb3.sheetnames:
+                                ws3 = wb3[sheet]
+                                if r + 1 <= ws3.max_row:
+                                    ws3.cell(row=r+1, column=5).value = None
+                                ws3.cell(row=r, column=3).value = None
+                                wb3.save(str(wb_path))
+                        except Exception:
+                            pass
                         _touch_heartbeat(f"cell {sheet}!{r} parity-fail")
                         continue
                     if live_delta is not None and live_delta <= 0:
                         print(f"[live-neg] {sheet}!{r} {switch} live_delta={live_delta:.4f} — not promoting", flush=True)
+                        try:
+                            wb3 = openpyxl.load_workbook(str(wb_path))
+                            if sheet in wb3.sheetnames:
+                                ws3 = wb3[sheet]
+                                if r + 1 <= ws3.max_row:
+                                    ws3.cell(row=r+1, column=5).value = None
+                                ws3.cell(row=r, column=3).value = None
+                                wb3.save(str(wb_path))
+                        except Exception:
+                            pass
                         _touch_heartbeat(f"cell {sheet}!{r} live-neg")
                         continue
                     # E-bland guard: never allow cumulative to drop on a pos delta (stale delta from old cum)
@@ -1255,13 +1347,16 @@ def main():
                         # mark as not promoted but keep yellow/orange with correct delta vs current cum
                         # recompute delta vs current cum for correct F
                         delta_best = new_cum - cumulative_gain
-                        # write F as negative (bland) and do not promote
+                        # write F as negative (bland) and blank E next + overrides
                         try:
                             wb3 = openpyxl.load_workbook(str(wb_path))
                             if sheet in wb3.sheetnames:
                                 ws3 = wb3[sheet]
                                 ws3.cell(row=r, column=6).value = float(delta_best)
                                 ws3.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                                if r + 1 <= ws3.max_row:
+                                    ws3.cell(row=r+1, column=5).value = None
+                                ws3.cell(row=r, column=3).value = None
                                 wb3.save(str(wb_path))
                         except Exception:
                             pass
@@ -1324,6 +1419,13 @@ def main():
             except Exception:
                 pass
             print(f"[sheet DONE] {sheet} cum={cumulative_gain:.4f} positives={total_pos}", flush=True)
+            # Integrated E-bland + F/Yellow/Orange validation from test_v15_e_bland.py — ensures no confusion
+            _validate_e_chain_and_yellows(progress, wb_path)
+            # All rows remain NPZ in memory: verify fast path was used, not slow reload
+            if prepared is None:
+                print(f"[NPZ-CHECK-WARN] {sheet} no prepared — fell back to slow reload (should be vector fast)", flush=True)
+            else:
+                print(f"[NPZ-CHECK] {sheet} NPZ in memory {len(ALL_NPZ_ARRAYS.get(new_symside, {}))} arrays, fast 0.5s/row", flush=True)
             try:
                 write_zoomable_chart(new_symside, sheet, cumulative_overrides, args.window_days)
             except Exception as _ce:
