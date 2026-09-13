@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T17:59:38.501465+00:00",
+  "timestamp": "2026-09-13T18:19:54.807308+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "STORJUSDT",
-      "net_score": -23.7,
+      "net_score": -30,
       "long_score": 0,
-      "short_score": 23.7
+      "short_score": 30
+    },
+    {
+      "symbol": "DELLUSDT",
+      "net_score": -13.3,
+      "long_score": 0,
+      "short_score": 13.3
     },
     {
       "symbol": "ALABUSDT",
@@ -23,12 +29,6 @@
       "net_score": -11.7,
       "long_score": 0,
       "short_score": 11.7
-    },
-    {
-      "symbol": "DELLUSDT",
-      "net_score": -10.7,
-      "long_score": 0,
-      "short_score": 10.7
     },
     {
       "symbol": "ATOMUSDT",
@@ -265,6 +265,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "HDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -463,12 +469,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ZENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "HBARUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -500,12 +500,6 @@
     },
     {
       "symbol": "SANDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1021,29 +1015,40 @@
       "short_score": 0
     },
     {
-      "symbol": "ARUSDT",
-      "net_score": 16.1,
-      "long_score": 16.1,
+      "symbol": "NEARUSDC",
+      "net_score": 11.6,
+      "long_score": 11.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZENUSDT",
+      "net_score": 14.4,
+      "long_score": 14.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ARUSDT",
-      16.1,
-      2.833
+      "ZENUSDT",
+      14.4,
+      6.47
+    ],
+    [
+      "NEARUSDC",
+      11.6,
+      2.34653469
     ]
   ],
   "top_shorts": [
     [
       "STORJUSDT",
-      23.7,
-      0.03654617
+      30,
+      0.0364951
     ],
     [
       "DELLUSDT",
-      10.7,
-      548.87
+      13.3,
+      548.25400573
     ]
   ],
   "hedge_usage": {
