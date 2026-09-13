@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T23:37:51.787048+00:00",
+  "timestamp": "2026-09-13T23:58:24.188049+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,27 +8,27 @@
   "unified_ranking": [
     {
       "symbol": "MOVEUSDT",
-      "net_score": -15.6,
+      "net_score": -14.9,
       "long_score": 0,
-      "short_score": 15.6
+      "short_score": 14.9
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "net_score": -13.9,
+      "long_score": 0,
+      "short_score": 13.9
     },
     {
       "symbol": "SANDUSDT",
-      "net_score": -13.2,
+      "net_score": -12.4,
       "long_score": 0,
-      "short_score": 13.2
+      "short_score": 12.4
     },
     {
       "symbol": "ALABUSDT",
       "net_score": -12.3,
       "long_score": 0,
       "short_score": 12.3
-    },
-    {
-      "symbol": "STRKUSDT",
-      "net_score": -11.8,
-      "long_score": 0,
-      "short_score": 11.8
     },
     {
       "symbol": "BEUSDT",
@@ -44,12 +44,6 @@
     },
     {
       "symbol": "1INCHUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "1000LUNCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -302,6 +296,12 @@
     },
     {
       "symbol": "AMZNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "STRKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1025,18 +1025,18 @@
   "top_shorts": [
     [
       "MOVEUSDT",
-      15.6,
-      0.0079843
+      14.9,
+      0.00797563
+    ],
+    [
+      "1000LUNCUSDT",
+      13.9,
+      0.04966727
     ],
     [
       "SANDUSDT",
-      13.2,
-      0.03510202
-    ],
-    [
-      "STRKUSDT",
-      11.8,
-      0.02792
+      12.4,
+      0.03510663
     ]
   ],
   "hedge_usage": {

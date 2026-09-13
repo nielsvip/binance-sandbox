@@ -1,339 +1,347 @@
-# HETZNER 4-BOX V15 CELL-BY-CELL SETUP — AGENT RUNBOOK
+# HETZNER 4-BOX V15 — 40 SYMS IN 2 HOURS — AGENT RUNBOOK
 
-> Sequential bring-up: Box1 fully verified → clone to Box2-4. One box producing while NPZs copy in background. All results land on S1 and sync to MacBook. No overwrites. No empty workbooks.
+> Sequential bring-up: S2 verified producing → snapshot → clone S3/S4 in <60s. S1 = box1. First NPZ starts S2 instantly while rest rsync in background. All results atomically to S1, then MacBook. Delete boxes when done, keep replica.
 
-## 0. Naming & IPs
+## 0. What you are building
 
-| Role | Host alias | Suggested Hetzner name | SSH alias (Mac + S1) |
-|------|------------|------------------------|-----------------------|
-| S1 (existing) | `s1` = 157.180.125.52 / s1-int 127.0.0.1:2201 | htz-s1 | `s1-int`, `s1-pub` |
-| Box2 | s2 | htz-v15-s2 | `s2` (10.0.0.4 via gw) — KEEP but do NOT reuse; new = `htz-s2` |
-| Box3 | s3 | htz-v15-s3 | `s3` |
-| Box4 | s4 | htz-v15-s4 | `s4` |
-| Box5 | s5 | htz-v15-s5 | `s5` |
+| Role | Host alias | Hetzner name | Runs | SSH from Mac + S1 |
+|------|------------|--------------|------|-------------------|
+| S1 (existing) | `s1` 157.180.125.52 / s1-int 127.0.0.1:2201 | htz-s1 | 10 of 40 | `s1-int` |
+| S2 (first new) | `s2` 10.0.0.x via gw | `htz-v15-s2` | 10 of 40 | `s2` |
+| S3 | `s3` | `htz-v15-s3` | 10 of 40 | `s3` |
+| S4 | `s4` | `htz-v15-s4` | 10 of 40 | `s4` |
 
-> User asked: `s_2/3/4/5/` with direct SSH from S1 and MacBook. After bring-up each box must be reachable as `ssh niels@<public-ip>` from both hosts via `~/.ssh/id_ed25519` (pubkey below).
+*Total 4 boxes = S1 + 3 new (S2/S3/S4) = 40 sym_sides in ~2h (3041 rows × 0.5s /16 workers ≈7-10 min/sym, 10 syms ≈100 min/box). If you make a 5th (S5) do shard 5 — same pattern.*
 
-**Public key to install on ALL boxes (MacBook):**
+**The 40:**
+```
+BTCUSDC_LONG CRWV_SHORT BTCUSDC_SHORT MSTR_LONG BTCDOMUSDT_LONG AMAT_SHORT BTCDOMUSDT_SHORT VLO_LONG ETHUSDC_LONG BWXT_SHORT
+ETHUSDC_SHORT GLD_LONG BNBUSDC_LONG NKE_SHORT BNBUSDC_SHORT SNDK_LONG SOLUSDC_LONG BABA_SHORT SOLUSDC_SHORT MU_LONG
+XRPUSDC_LONG ETN_SHORT XRPUSDC_SHORT BMNR_LONG HYPEUSDT_LONG GME_SHORT HYPEUSDT_SHORT AMD_LONG DOGEUSDC_LONG LOW_SHORT
+DOGEUSDC_SHORT SLV_LONG ZECUSDC_LONG AXTI_SHORT ZECUSDC_SHORT NVDA_LONG WLDUSDC_LONG AMZN_SHORT WLDUSDC_SHORT MRVL_LONG
+```
+
+**Public key on ALL boxes (MacBook):**
 ```
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOoHTe2eVQYQxsnZviTVmbCXnnNZ4HqWvFKZBx8EhcRc niels@MacBook-Pro.local
 ```
 
 ---
 
-## 1. Workload — 1/5 each (after union, round-robin)
-
-Union = `symbols_trb_long (63)` + `symbols_trb_short (62)` + `symbols_tradier_recommended 137 (obligatory TRB universe)` + `symbols_men (36)` + `symbols_fin (38)` + `symbols_ang_long (23)` + `symbols_ang_short (12)` — deduped, then LONG/SHORT expanded where the source is side-agnostic, alternating crypt/stock/long/short per `V15_RUNNING_ORDER_*`.
-
-**Canonical generator (run on Mac or S1, single source of truth):**
+## 1. Divide the 40 — single source of truth
 
 ```bash
-python3 -c "
-import json, pathlib, itertools
-trb_l=json.loads(open('symbols_trb_long.json').read())
-trb_s=json.loads(open('symbols_trb_short.json').read())
-rec=json.loads(open('symbols_tradier_recommended.json').read())  # obligatory TRB
-men=json.loads(open('symbols_men.json').read())
-fin=json.loads(open('symbols_fin.json').read())
-ang_l=json.loads(open('symbols_ang_long.json').read())
-ang_s=json.loads(open('symbols_ang_short.json').read())
-# expand men/fin (side-agnostic) to LONG+SHORT
-men_sides=[f'{s}_LONG' for s in men]+[f'{s}_SHORT' for s in men]
-fin_sides=[f'{s}_LONG' for s in fin]+[f'{s}_SHORT' for s in fin]
-trb_sides=[f'{s}_LONG' for s in trb_l]+[f'{s}_SHORT' for s in trb_s]
-ang_sides=[f'{s}_LONG' for s in ang_l]+[f'{s}_SHORT' for s in ang_s]
-rec_sides=[f'{s}_LONG' for s in rec]+[f'{s}_SHORT' for s in rec]  # if rec is bare tickers; if already sided keep as-is
-# prefer rec as bare — dedup later
-raw=trb_sides+rec_sides+men_sides+fin_sides+ang_sides
-# dedup preserve order
-seen=set(); union=[]
-for x in raw:
-    if x not in seen:
-        seen.add(x); union.append(x)
-# alternate crypt/stock/long/short: sort key = (is_crypto, side) interleaved
-def is_crypto(s): return s.endswith('USDT') or s.endswith('USDC')
-# stable round-robin: crypt LONG, stock LONG, crypt SHORT, stock SHORT, repeat
-buckets={('C','LONG'):[],('S','LONG'):[],('C','SHORT'):[],('S','SHORT'):[]}
-for s in union:
-    side='LONG' if s.endswith('_LONG') else 'SHORT'
-    typ='C' if is_crypto(s) else 'S'
-    buckets[(typ,side)].append(s)
-order=[]
-for tup in itertools.islice(itertools.cycle([('C','LONG'),('S','LONG'),('C','SHORT'),('S','SHORT')]), len(union)):
-    if buckets[tup]:
-        order.append(buckets[tup].pop(0))
-open('V15_RUNNING_ORDER_TRB_FLZ.txt','w').write('\n'.join(order))
-print(f'union {len(union)} -> ordered {len(order)}')
-print(order[:20])
-"
-# then shard 1/5:
-python3 -c "
-order=open('V15_RUNNING_ORDER_TRB_FLZ.txt').read().splitlines()
-for i in range(5):
-    shard=order[i::5]
-    open(f'V15_SHARD_{i+1}of5.txt','w').write('\n'.join(shard))
-    print(f'shard {i+1}: {len(shard)}')
-"
+cat > /tmp/split40.sh << 'EOS'
+cat << 'LIST' > /tmp/40.txt
+BTCUSDC_LONG
+CRWV_SHORT
+BTCUSDC_SHORT
+MSTR_LONG
+BTCDOMUSDT_LONG
+AMAT_SHORT
+BTCDOMUSDT_SHORT
+VLO_LONG
+ETHUSDC_LONG
+BWXT_SHORT
+ETHUSDC_SHORT
+GLD_LONG
+BNBUSDC_LONG
+NKE_SHORT
+BNBUSDC_SHORT
+SNDK_LONG
+SOLUSDC_LONG
+BABA_SHORT
+SOLUSDC_SHORT
+MU_LONG
+XRPUSDC_LONG
+ETN_SHORT
+XRPUSDC_SHORT
+BMNR_LONG
+HYPEUSDT_LONG
+GME_SHORT
+HYPEUSDT_SHORT
+AMD_LONG
+DOGEUSDC_LONG
+LOW_SHORT
+DOGEUSDC_SHORT
+SLV_LONG
+ZECUSDC_LONG
+AXTI_SHORT
+ZECUSDC_SHORT
+NVDA_LONG
+WLDUSDC_LONG
+AMZN_SHORT
+WLDUSDC_SHORT
+MRVL_LONG
+LIST
+# interleave crypt/stock/long/short for even load — already interleaved above, just round-robin 4
+for i in 0 1 2 3; do awk "NR%4==$((i+1))" /tmp/40.txt > "V15_SHARD_$((i+1))of4.txt" && echo "shard $((i+1)): $(wc -l < V15_SHARD_$((i+1))of4.txt)"; done
+# assign: S1=shard1, S2=shard2, S3=shard3, S4=shard4
+EOS
+bash /tmp/split40.sh
+# commit to repo + S1
+rsync -avz V15_SHARD_*of4.txt /tmp/40.txt s1-int:~/binance-sandbox/
 ```
 
-- Commit `V15_RUNNING_ORDER_TRB_FLZ.txt` + `V15_SHARD_*` to repo and S1.
-- **Box assignment:** S1=shard1, htz-s2=shard2, htz-s3=shard3, htz-s4=shard4, htz-s5=shard5. Each box runs ONLY its shard (passed as `--shard V15_SHARD_Xof5.txt` or enumerated `--sym-side` loop).
+*Result: 10 sym_sides/box, no overlap, no SNDK/NVDA special-case unless you mark them reliable — keep them in shards.*
 
 ---
 
-## 2. Hetzner Box Spec
+## 2. Hetzner — create S2 ONLY first
 
-- **Type:** `cx33` (2 vCPU, 4 GB RAM, 80 GB SSD) — user asked 4x cx33. If OOM with `V12_NPZ_CACHE=32` (880 prepared), bump to `cpx31` (4 vCPU, 8 GB) — agent must note and ask.
-- **Image:** Ubuntu 22.04
-- **Location:** `nbg1` or `fsn1` (same as S1 region for fast rsync)
-- **SSH key:** add MacBook `id_ed25519.pub` at create time via `hcloud ssh-key` or console.
-- **Firewall:** open 22 only; no other ports.
-
-**Create via hcloud CLI (MacBook):**
 ```bash
-hcloud ssh-key create --name macbook-niels --public-key-from-file ~/.ssh/id_ed25519.pub  # once
+# once
+hcloud ssh-key create --name macbook-niels --public-key-from-file ~/.ssh/id_ed25519.pub
+
+# S2 only — verify before cloning
 hcloud server create --name htz-v15-s2 --type cx33 --image ubuntu-22.04 --ssh-key macbook-niels --location nbg1
-hcloud server create --name htz-v15-s3 --type cx33 --image ubuntu-22.04 --ssh-key macbook-niels --location nbg1
-# ... but SEQUENTIAL: create s2 first, verify (section 6), then create s3/s4/s5
+# wait 30s, get IP
+hcloud server list | grep htz-v15-s2
+# add to ~/.ssh/config on BOTH Mac and S1 (see §7)
 ```
+
+**Spec:** `cx33` (2 vCPU, 4GB, 80GB) — `V12_NPZ_CACHE=32` (1.2GB RAM) fits 3 concurrent pilots; if OOM bump to `cpx31` (4 vCPU, 8GB). Image `ubuntu-22.04`, region `nbg1` (same as S1), firewall 22 only.
 
 ---
 
-## 3. Per-Box Bootstrap (run on EACH box via ssh niels@<ip>)
+## 3. Bootstrap S2 — record-time path (<4 min)
 
-### 3.1 User & SSH
+**On S2 as root → niels (run via `ssh niels@<s2-ip>`):**
 
 ```bash
-# as root on fresh box:
-useradd -m -s /bin/bash niels
-usermod -aG sudo niels
-mkdir -p /home/niels/.ssh && chmod 700 /home/niels/.ssh
+useradd -m -s /bin/bash niels; usermod -aG sudo niels
+mkdir -p /home/niels/.ssh; chmod 700 /home/niels/.ssh
 echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOoHTe2eVQYQxsnZviTVmbCXnnNZ4HqWvFKZBx8EhcRc niels@MacBook-Pro.local' >> /home/niels/.ssh/authorized_keys
-# also allow S1 to ssh in: copy S1's /home/niels/.ssh/id_ed25519.pub to authorized_keys
+# S1 pubkey so S1 can rsync directly (no Mac hop)
+ssh s1-int "cat ~/.ssh/id_ed25519.pub" >> /home/niels/.ssh/authorized_keys
 chmod 600 /home/niels/.ssh/authorized_keys; chown -R niels:niels /home/niels/.ssh
 echo 'niels ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/niels
-# disable root password ssh if needed
+apt update && apt install -y git rsync htop tmux python3-pip python3-venv build-essential
 ```
 
-Variant: if box was created with niels key already, just ensure `niels` exists and S1 key is appended.
-
-Pull S1 pubkey:
-```bash
-# on Mac: ssh s1-int "cat ~/.ssh/id_ed25519.pub" >> /tmp/s1.pub && cat /tmp/s1.pub
-# on box: append that line to /home/niels/.ssh/authorized_keys
-```
-
-### 3.2 Base packages
+**Checkout — no NPZ yet (keep image small):**
 
 ```bash
-sudo apt update && sudo apt install -y git rsync htop tmux python3-pip python3-venv build-essential libssl-dev
-# conda/mamba not required — use system python + venv matching S1: python3.11
-python3 --version
-```
-
-### 3.3 Project checkout
-
-```bash
-# S1 is sandbox only — do NOT clone from GitHub if repo has no remote. Use rsync from S1 (canonical).
-# On box as niels:
+# as niels on S2
 mkdir -p ~/binance-sandbox
-# From Mac (or S1) push canonical files:
-rsync -avz -e "ssh -i ~/.ssh/id_ed25519" \
-  --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-  --exclude='data/cache' --exclude='backtest_v8/indicators/*.npz' \
-  /Users/niels/Documents/binance/ niels@<box-ip>:~/binance-sandbox/
-# S1 equivalent:
-rsync -avz --exclude='*.npz' /home/niels/binance-sandbox/ niels@<box-ip>:~/binance-sandbox/
-```
+# S1 is canonical — exclude heavy
+rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='*.npz' --exclude='data/cache' \
+  s1-int:~/binance-sandbox/ ~/binance-sandbox/
+# S1 equivalent if you are on S1: rsync -avz --exclude='*.npz' ~/binance-sandbox/ niels@s2:~/binance-sandbox/
 
-**Required files on box (verify after rsync):**
-```
-binance-sandbox/
-  v15_pilot.py
-  tools/v15_pilot_sheet_runner.py
-  SPREADSHEETS/TEMPLATE.xlsx   # 776K, 23 sheets, 13 switch sheets + INSTRUCTIONS — NEVER overwrite; RESTORE=DEATH PENALTY
-  backtest_v11_engine.py / backtest_v12_engine.py / tools/opt/evaluate_v12.py
-  config.py / config_tradier.py
-  symbols_*.json (all)
-  data/reports/lifecycle_pilot/   # progress dir
-  SPREADSHEETS/V15_V16_CELL_BY_CELL/  # output dir
-```
+# verify
+ls ~/binance-sandbox/v15_pilot.py ~/binance-sandbox/SPREADSHEETS/TEMPLATE.xlsx
+# TEMPLATE.xlsx 776K 23 sheets — NEVER overwrite; RESTORE=DEATH PENALTY
 
-### 3.4 Python env
-
-```bash
-cd ~/binance-sandbox
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install openpyxl numpy pandas pyarrow fastparquet python-dotenv
-# verify engines import:
-python3 -c "import openpyxl, numpy; print(openpyxl.__version__, numpy.__version__)"
+# venv
+cd ~/binance-sandbox && python3 -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip && pip install openpyxl numpy pandas pyarrow fastparquet python-dotenv psutil
+python3 -c "import openpyxl,numpy; print(openpyxl.__version__)"
 python3 -c "import backtest_v12_engine; print('engine ok')"
+
+# dirs + env
+mkdir -p ~/binance-sandbox/backtest_v8/indicators ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL ~/binance-sandbox/data/reports/lifecycle_pilot
+echo 'export V12_NPZ_CACHE=32' >> ~/.bashrc; echo 'export PYTHONPATH=/home/niels/binance-sandbox:$PYTHONPATH' >> ~/.bashrc
+sudo ln -sfn /home/niels /niels 2>/dev/null || true; ln -sfn /home/niels ~/niels 2>/dev/null || true
 ```
 
-Add to `~/.bashrc`:
+**STOP — snapshot before any NPZ (this is your replica):**
+
 ```bash
-export V12_NPZ_CACHE=32
-export PYTHONPATH=/home/niels/binance-sandbox:$PYTHONPATH
+# on MacBook, after S2 bootstrap verified (no NPZ yet, ~1.2GB disk)
+hcloud server poweroff htz-v15-s2
+hcloud image create --type snapshot --server htz-v15-s2 --description "v15-clean-s2-before-npz-$(date +%Y%m%d)"
+hcloud server poweron htz-v15-s2
+# note image ID: hcloud image list | grep v15-clean
 ```
 
-### 3.5 Directories
+*Why:* S3/S4 from snapshot boot in 45s with venv+code ready — no 4-min bootstrap per box. This is how you go from 1 to 4 boxes in record time.
+
+---
+
+## 4. First NPZ → S2 produces instantly, rest in background
 
 ```bash
-mkdir -p ~/binance-sandbox/backtest_v8/indicators
-mkdir -p ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL
-mkdir -p ~/binance-sandbox/data/reports/lifecycle_pilot
-mkdir -p ~/niels  # user asked /niels/ account and folder — keep as symlink for convenience
-ln -sfn /home/niels ~/niels 2>/dev/null; sudo ln -sfn /home/niels /niels 2>/dev/null || true
+# on S1 — first symbol of S2's shard
+SHARD2_SYM=$(head -1 ~/binance-sandbox/V15_SHARD_2of4.txt | sed 's/_.*//')
+# ensure 15m-only stripped NPZ exists (S1 has 880 files)
+ls -lh ~/binance-sandbox/backtest_v8/indicators/${SHARD2_SYM}.npz
+# push ONE
+rsync -avz --progress ~/binance-sandbox/backtest_v8/indicators/${SHARD2_SYM}.npz niels@s2:~/binance-sandbox/backtest_v8/indicators/
+ssh niels@s2 "ls -lh ~/binance-sandbox/backtest_v8/indicators/${SHARD2_SYM}.npz"
+
+# launch S2 on that ONE symbol immediately (while rest copies)
+ssh niels@s2 "source ~/binance-sandbox/.venv/bin/activate; export V12_NPZ_CACHE=32; nohup python3 -u ~/binance-sandbox/v15_pilot.py --sym-side $(head -1 ~/binance-sandbox/V15_SHARD_2of4.txt) --window-days 30 --vector-only > /tmp/v15_\$(head -1 ~/binance-sandbox/V15_SHARD_2of4.txt).log 2>&1 & echo \$!; sleep 2; tail -n 20 /tmp/v15_*.log"
+
+# background copy remaining NPZs — bwlimit so production not starved, tmux so survives
+ssh s1-int "tmux new -d -s npz_s2 'rsync -avz --progress --bwlimit=8000 --partial --inplace ~/binance-sandbox/backtest_v8/indicators/*.npz niels@s2:~/binance-sandbox/backtest_v8/indicators/'"
+# monitor: ssh s1-int "tmux attach -t npz_s2"  then Ctrl-b d
+# also:
+ssh niels@s2 "watch -n 2 'ls ~/binance-sandbox/backtest_v8/indicators/*.npz | wc -l; ls -lh ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>&1 | tail'"
 ```
 
 ---
 
-## 4. NPZ Strategy — Start Producing While Copying
+## 5. Gate: S2 must produce ONE correct xlsx before you clone
 
-> MacBook has NO NPZ. Source of truth is S1 `/home/niels/binance-sandbox/backtest_v8/indicators/*.npz` (and fallback `/home/niels/binance-sandbox/backtest_v8/indicators`) plus `/Volumes/TOSHIBA_EXT/backtest_npz_master/v4_indicators/` for cold fill. Do NOT bulk-copy from TOSHIBA_EXT over WAN.
-
-### 4.1 First NPZ only → start Box2 immediately
+**Do NOT create S3 until S2 passes — 3 min check:**
 
 ```bash
-# On S1, pick first shard symbol's base (e.g. first line of V15_SHARD_2of5.txt strip _LONG/_SHORT)
-SYM=$(head -1 ~/binance-sandbox/V15_SHARD_2of5.txt | sed 's/_.*//')
-# Ensure that NPZ is 15m-only stripped (no _3m keys, 880 files target). If not, strip on S1 first.
-# Then push ONLY that one:
-rsync -avz --progress /home/niels/binance-sandbox/backtest_v8/indicators/${SYM}.npz niels@<box-ip>:~/binance-sandbox/backtest_v8/indicators/
-# Verify size >100K and mtime fresh:
-ssh niels@<box-ip> "ls -lh ~/binance-sandbox/backtest_v8/indicators/${SYM}.npz"
+ssh niels@s2 "ls -lh ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*_30d_matrix*.xlsx 2>&1 | tail"
+ssh niels@s2 "ls -lh ~/binance-sandbox/data/reports/lifecycle_pilot/*_progress.json 2>&1 | tail"
+# strict checker (agent must run, not claim)
+ssh niels@s2 "python3 -c \"
+import openpyxl, pathlib, json
+p = sorted(pathlib.Path('~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL').expanduser().glob('*_30d_matrix*.xlsx'))[-1]
+wb = openpyxl.load_workbook(str(p), data_only=True)
+print('sheets', len(wb.sheetnames), wb.sheetnames[:3])
+# Results_Deltas col5 not empty/repeated
+ws = wb['Results_Deltas']
+vals = [ws.cell(r,5).value for r in range(2,12) if ws.cell(r,5).value not in (None,'')]
+print('Results_Deltas col5', vals[:5], 'repeated?', len(set(vals))==1 and len(vals)>=5)
+# L:BI yellows
+sh='ENTRY_REVERSAL_BOUNCE'
+if sh in wb.sheetnames:
+    ws=wb[sh]
+    yellows = any(ws.cell(3,c).value not in (None,'') for c in range(12,18))
+    print('L:BI yellows', yellows)
+wb.close()
+# progress
+import json
+q = sorted(pathlib.Path('~/binance-sandbox/data/reports/lifecycle_pilot').expanduser().glob('*_progress.json'))[-1]
+j=json.loads(q.read_text())
+print('progress done', len(j.get('done',{})), 'cum', round(j.get('cumulative_gain',0),2))
+\""
+# if strict fails → STOP, repair, rm bad xlsx, do NOT promote to S1
+# on pass: rsync that ONE verified xlsx back to S1 immediately
+rsync -avz --progress niels@s2:~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx s1-int:~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/
+rsync -avz --progress niels@s2:~/binance-sandbox/data/reports/lifecycle_pilot/*.json s1-int:~/binance-sandbox/data/reports/lifecycle_pilot/
 ```
-
-### 4.2 Launch Box2 on that single symbol while rest copies
-
-```bash
-# On Box2 as niels, venv active:
-nohup python3 -u v15_pilot.py --sym-side ${SYM}_LONG --window-days 30 --vector-only > /tmp/v15_${SYM}.log 2>&1 &
-# heartbeat: tail -f /tmp/v15_*.log ; watch /tmp/v14_heartbeat_${SYM}.txt
-```
-
-### 4.3 Background copy remaining NPZs (bw-limited, resumable)
-
-```bash
-# From S1, in tmux, bwlimit so production not starved:
-tmux new -s npz_copy_htz-s2
-rsync -avz --progress --bwlimit=8000 --partial --inplace \
-  /home/niels/binance-sandbox/backtest_v8/indicators/*.npz niels@<box-ip>:~/binance-sandbox/backtest_v8/indicators/
-# Ctrl-b d to detach; monitor with: tmux attach -t npz_copy_htz-s2
-```
-
-Repeat for each new box (s3/s4/s5) after Box2 is verified.
 
 ---
 
-## 5. Run Contract (per box)
+## 6. Clone S3/S4 from snapshot — <60s each
 
-- **Env:** `V12_NPZ_CACHE=32`, `ALL_PREPARED` in RAM (880 arrays), workers 16, per_cell_timeout 60, MAX_ROWS 50000, `wb_keep` open per sheet.
-- **Never overwrite TEMPLATE.xlsx** — clone per symbol: `SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM}_30d_matrix_pilot_*.xlsx` via `_atomic_save` tmp+fsync+rename+.bak, progress `data/reports/lifecycle_pilot/{SYM}_v14_progress.json` via `_atomic_write_json`.
-- **Cell-by-cell fills:** L:BI yellows (ALL 15 yellows when WT_15M_BOUNCE_OPEN_ENABLED, else top-5), `Results_Deltas` col5/col8, E BASELINE (empty until POS delta), F VECTOR_DELTA (combined switch+ALL pos yellows), C override (ALL pos). BASELINE STAYS EMPTY only fills when POS DELTA appears and overrides C populated only on POS.
-- **Sizing:** NPZ 15m-only >=365D (9490 stock 365*26, 35040 crypto 365*96); 30D via slice.
-- **Offline chart:** single-file `file://` zoomable `height:62vh` per sheet.
-
-Example shard loop:
 ```bash
-source ~/binance-sandbox/.venv/bin/activate
-export V12_NPZ_CACHE=32
-for symside in $(cat ~/binance-sandbox/V15_SHARD_2of5.txt); do
-  python3 -u v15_pilot.py --sym-side $symside --window-days 30 --vector-only
+# use snapshot from §3 — no re-bootstrap
+SNAP=$(hcloud image list | grep v15-clean | head -1 | awk '{print $1}')
+
+hcloud server create --name htz-v15-s3 --type cx33 --image $SNAP --ssh-key macbook-niels --location nbg1 &
+hcloud server create --name htz-v15-s4 --type cx33 --image $SNAP --ssh-key macbook-niels --location nbg1 &
+wait
+hcloud server list | grep htz-v15
+
+# add S3/S4 to ~/.ssh/config on BOTH Mac + S1 (see §7), then:
+for h in s3 s4; do ssh niels@$h "hostname; ls ~/binance-sandbox/v15_pilot.py && echo ok"; done
+
+# push ONE first NPZ per box + launch, same as §4 but for S3/S4 shards
+for i in 3 4; do
+  SYM=$(head -1 ~/binance-sandbox/V15_SHARD_${i}of4.txt | sed 's/_.*//')
+  rsync -avz --progress ~/binance-sandbox/backtest_v8/indicators/${SYM}.npz niels@s${i}:~/binance-sandbox/backtest_v8/indicators/
+  ssh niels@s${i} "source ~/binance-sandbox/.venv/bin/activate; export V12_NPZ_CACHE=32; nohup python3 -u ~/binance-sandbox/v15_pilot.py --sym-side $(head -1 ~/binance-sandbox/V15_SHARD_${i}of4.txt) --window-days 30 --vector-only > /tmp/v15_\$(head -1 ~/binance-sandbox/V15_SHARD_${i}of4.txt).log 2>&1 &"
+  ssh s1-int "tmux new -d -s npz_s${i} 'rsync -avz --bwlimit=8000 --partial --inplace ~/binance-sandbox/backtest_v8/indicators/*.npz niels@s${i}:~/binance-sandbox/backtest_v8/indicators/'"
 done
 ```
 
 ---
 
-## 6. Gate: One Box Fully Verified Before Cloning
+## 7. Run contract — 40 syms, 2 hours
 
-**Do NOT create Box3 until Box2 has produced ONE correct xlsx.**
-
-Verification checklist (agent must run, not just claim):
-
-1. `ls -lh ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*_30d_matrix_pilot_*.xlsx` — size ~750-850K, not empty (check `python3 -c "import openpyxl; wb=openpyxl.load_workbook(p); print(len(wb.sheetnames), wb.sheetnames[:3])"` → 23 sheets, 13 switch sheets).
-2. Strict checker: `Results_Deltas` col5 not empty/repeated/0.0 across synced sheets, L:BI yellows filled, E blank unless F>0 then higher, F combined switch+ALL pos, C ALL pos.
-3. `data/reports/lifecycle_pilot/*_progress.json` shows `done 200/200` (or `MAX_ROWS` variant) no pkill residue.
-4. If ANY sheet fails strict check → STOP, repair, unlink bad xlsx (10s startup guard), do NOT promote to S1.
-5. Only on pass: rsync that verified xlsx back to S1 (section 7), then proceed to provision next box.
-
----
-
-## 7. Results — Keep on S1, Sync to MacBook
-
-**Boxes NEVER keep final results — S1 is canonical.**
-
-After each symbol completes (or batch daily):
+**Per box (S1 + S2/S3/S4):**
 
 ```bash
-# Box -> S1 (from box):
-rsync -avz --progress ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/
-rsync -avz --progress ~/binance-sandbox/data/reports/lifecycle_pilot/*.json niels@157.180.125.52:~/binance-sandbox/data/reports/lifecycle_pilot/
-# S1 -> MacBook (from Mac, via s1-int tunnel; ensure ssh -fNT s1-sftp running):
-rsync -avz -e "ssh -p 2201 -i ~/.ssh/id_ed25519" niels@127.0.0.1:~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx /Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/
-rsync -avz -e "ssh -p 2201 -i ~/.ssh/id_ed25519" niels@127.0.0.1:~/binance-sandbox/data/reports/lifecycle_pilot/*.json /Users/niels/Documents/binance/data/reports/lifecycle_pilot/
-# Also mirror to regular SPREADSHEETS (pilot xlsx):
-rsync -avz -e "ssh -p 2201 -i ~/.ssh/id_ed25519" niels@127.0.0.1:~/binance-sandbox/SPREADSHEETS/*.xlsx /Users/niels/Documents/binance/SPREADSHEETS/
+source ~/binance-sandbox/.venv/bin/activate; export V12_NPZ_CACHE=32
+# shard loop — each box ONLY its shard
+for symside in $(cat ~/binance-sandbox/V15_SHARD_1of4.txt); do  # 2of4 on S2, etc.
+  python3 -u v15_pilot.py --sym-side $symside --window-days 30 --vector-only
+done
+# logs: /tmp/v15_*.log  heartbeats: /tmp/v14_heartbeat_*.txt  progress: data/reports/lifecycle_pilot/*_progress.json
 ```
 
-Automate with `box_sync_all.sh` style cron on S1 every 15 min (see `INFRASTRUCTURE.md` BOX 135 pattern).
+**Cell-by-cell fills:** `L:BI` yellows + `Results_Deltas` col5/col8, `E` blank until `F>0`, `F` combined switch+ALL pos yellows, `C` ALL pos — `BASELINE` stays empty until POS, `wb_keep` open per sheet, `_atomic_save` tmp+fsync+rename+.bak, `MAX_ROWS 50000`, `workers 16`, `per_cell 1.0s` (30D) / `0.5s` (7D).
+
+**Monitor (any host):**
+```bash
+watch -n 5 'for h in s1 s2 s3 s4; do echo "== $h =="; ssh niels@$h "ls ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>&1 | wc -l; cat ~/binance-sandbox/data/reports/lifecycle_pilot/*_progress.json 2>&1 | python3 -c \"import json,glob; print([(p, len(json.loads(open(p).read()).get(\"done\",{}))) for p in glob.glob(\"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/*_progress.json\")][:2])" 2>&1 | head; done'
+```
 
 ---
 
-## 8. SSH Access Matrix
+## 8. Results — keep on S1, sync to MacBook (boxes ephemeral)
 
-On **MacBook** `~/.ssh/config` add:
+**Every 15 min or per-symbol, box → S1 → Mac:**
 
-```
-Host htz-s2
-  HostName <htz-s2 public IP>
-  User niels
-  IdentityFile ~/.ssh/id_ed25519
-  IdentitiesOnly yes
+```bash
+# box → S1 (from box, or from S1 pulling)
+rsync -avz --progress ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx s1-int:~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/
+rsync -avz --progress ~/binance-sandbox/data/reports/lifecycle_pilot/*.json s1-int:~/binance-sandbox/data/reports/lifecycle_pilot/
 
-Host htz-s3
-  HostName <htz-s3 public IP>
-  User niels
-  IdentityFile ~/.ssh/id_ed25519
-  IdentitiesOnly yes
-
-Host htz-s4
-  HostName <htz-s4 public IP>
-  User niels
-  IdentityFile ~/.ssh/id_ed25519
-  IdentitiesOnly yes
-
-Host htz-s5
-  HostName <htz-s5 public IP>
-  User niels
-  IdentityFile ~/.ssh/id_ed25519
-  IdentitiesOnly yes
+# S1 → MacBook (from Mac, via s1-int tunnel; ensure ssh -fNT s1-sftp running)
+rsync -avz -e "ssh -p 2201 -i ~/.ssh/id_ed25519" s1-int:~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx /Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL/
+rsync -avz -e "ssh -p 2201 -i ~/.ssh/id_ed25519" s1-int:~/binance-sandbox/data/reports/lifecycle_pilot/*.json /Users/niels/Documents/binance/data/reports/lifecycle_pilot/
+rsync -avz -e "ssh -p 2201 -i ~/.ssh/id_ed25519" s1-int:~/binance-sandbox/SPREADSHEETS/*.xlsx /Users/niels/Documents/binance/SPREADSHEETS/
 ```
 
-On **S1** `~/.ssh/config` add identical `htz-s2`..`htz-s5` entries (so `ssh htz-s2` works from S1). Test: `ssh htz-s2 "hostname; ls ~/binance-sandbox/v15_pilot.py"` from both Mac and S1.
+Automate on S1 via cron every 15 min (see `INFRASTRUCTURE.md` BOX 135 pattern) or `box_sync_all.sh`.
 
 ---
 
-## 9. Teardown & Cost Control
+## 9. SSH matrix — complete connectivity
 
-- Boxes are ephemeral. When shard done, rsync final, verify on S1/Mac, then `hcloud server delete htz-v15-sX`.
-- Keep S1 as permanent canonical. Do NOT delete S1.
-- Tag Hetzner project `v15-cell-by-cell` for billing.
+**On MacBook `~/.ssh/config`:**
+```
+Host s1-int
+  HostName 127.0.0.1
+  Port 2201
+  User niels
+  IdentityFile ~/.ssh/id_ed25519
+
+Host s2
+  HostName <s2 public IP>
+  User niels
+  IdentityFile ~/.ssh/id_ed25519
+Host s3
+  HostName <s3 public IP>
+  User niels
+  IdentityFile ~/.ssh/id_ed25519
+Host s4
+  HostName <s4 public IP>
+  User niels
+  IdentityFile ~/.ssh/id_ed25519
+```
+
+**On S1 `~/.ssh/config` — identical `s2`/`s3`/`s4` entries** (so `ssh s2` works from S1). Test: `ssh s2 "hostname; ls ~/binance-sandbox/v15_pilot.py"` from both Mac and S1.
+
+**Ensure `~/.ssh/id_ed25519` exists on Mac and S1 pubkey is in every box's `authorized_keys` (done §3).**
 
 ---
 
-## 10. Agent Step Order (copy-paste)
+## 10. Teardown — keep replica, delete boxes, keep results
 
-1. Ensure `V15_RUNNING_ORDER_TRB_FLZ.txt` + 5 shards exist on S1 and Mac.
-2. `hcloud server create htz-v15-s2` (cx33, nbg1).
-3. Bootstrap s2 §3 (user, packages, rsync without NPZ, venv).
-4. Push single first NPZ §4.1, launch s2 on that symbol §4.2.
-5. Background rsync remaining NPZs §4.3 while s2 produces.
-6. Gate §6 — verify s2's first xlsx strictly. If fail → fix, no next box.
-7. On pass: pull results to S1+Mac §7.
-8. Repeat 2-7 for htz-v15-s3, s4, s5.
-9. Monitor via `tmux` + `/tmp/v14_heartbeat_*.txt` + `data/reports/lifecycle_pilot/*.json`.
+```bash
+# after all 40 done and verified on S1+Mac (ls counts match, strict checker passes on S1)
+hcloud server delete htz-v15-s2
+hcloud server delete htz-v15-s3
+hcloud server delete htz-v15-s4
+# KEEP snapshot v15-clean-s2-before-npz for next run — do NOT delete image
+hcloud image list | grep v15-clean
+# KEEP S1 forever — canonical
+# Tag project v15-cell-by-cell for billing, delete project if empty
+```
 
-> RESTORE=DEATH PENALTY: never restore TEMPLATE.xlsx from backup over newer without diff. DEAT PENALTY on empty/repeated/0.0 — checker must STOP script and repair. BTFS remount for TOSHIBA_EXT if needed — not relevant to boxes (S1 source).
+---
+
+## 11. Agent step order (copy-paste, 1 box at a time)
+
+1. Split 40 → `V15_SHARD_*of4.txt` (§1) commit to S1+Mac.
+2. `hcloud server create htz-v15-s2` only.
+3. Bootstrap S2 §3 (no NPZ), snapshot §3 before NPZ.
+4. Push ONE first NPZ §4, launch S2 on that ONE, background rsync rest.
+5. **Gate §5** — verify S2 ONE xlsx strictly, rsync to S1. **Do NOT proceed if fail.**
+6. Clone S3/S4 from snapshot §6 (<60s).
+7. Push ONE NPZ + launch per box, background rest.
+8. Run shard loops §7 — 10 syms/box → ~2h total.
+9. Sync §8 every 15 min to S1 then Mac.
+10. Teardown §10 — delete boxes, keep snapshot + all results on S1/Mac.
+
+> RESTORE=DEATH PENALTY: never restore `TEMPLATE.xlsx` without diff. DEAT PENALTY on empty/repeated/0.0 — checker must STOP and repair. Keep `hcloud image` replica before data files to make next 4-box spin-up <2 min.
