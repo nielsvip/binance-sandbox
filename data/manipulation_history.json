@@ -754,5 +754,104 @@
     ],
     "timestamp": "2026-09-12T23:56:04.612278+00:00",
     "price": 44.2769318
+  },
+  {
+    "symbol": "XLMUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T00:03:34.006834+00:00",
+    "price": 0.1798
+  },
+  {
+    "symbol": "INXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T00:03:34.006834+00:00",
+    "price": 0.005923
+  },
+  {
+    "symbol": "MOVRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T00:05:05.067649+00:00",
+    "price": 0.7701
+  },
+  {
+    "symbol": "KLACUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.7x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T00:06:36.603496+00:00",
+    "price": 180.78
+  },
+  {
+    "symbol": "PLTRUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T00:06:36.603496+00:00",
+    "price": 167.86
+  },
+  {
+    "symbol": "STORJUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_1H: 76.2% range"
+    ],
+    "timestamp": "2026-09-13T00:06:36.603496+00:00",
+    "price": 0.04168481
+  },
+  {
+    "symbol": "RKLBUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 18.0x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T00:08:07.453747+00:00",
+    "price": 63.1796351
+  },
+  {
+    "symbol": "TZAUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.3x normal"
+    ],
+    "timestamp": "2026-09-13T00:08:07.453747+00:00",
+    "price": 42.86
+  },
+  {
+    "symbol": "BITOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 10.9x normal"
+    ],
+    "timestamp": "2026-09-13T00:11:42.508482+00:00",
+    "price": 10.43505465
+  },
+  {
+    "symbol": "FLNCUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T00:14:49.548905+00:00",
+    "price": 9.94544312
+  },
+  {
+    "symbol": "1MBABYDOGEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T00:20:30.489416+00:00",
+    "price": 0.0003815
   }
 ]

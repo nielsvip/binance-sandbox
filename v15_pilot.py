@@ -531,6 +531,7 @@ def clone_template(template: Path, new_symside: str) -> Path:
                 for c in row:
                     if isinstance(c.value, str) and old_baseline in c.value:
                         c.value = c.value.replace(old_baseline, new_baseline).replace("TEMPLATE", new_symside.split("_")[0]).replace("ADP_LONG", new_symside)
+    # E2 chain: first sheet = B2 from baseline metrics, subsequent sheets = MAX(prev!E) for cumulative; will be overwritten per-row with blank-if-neg logic
     for idx, name in enumerate(SWITCH_SHEETS):
         if name not in wb.sheetnames:
             continue
@@ -542,6 +543,21 @@ def clone_template(template: Path, new_symside: str) -> Path:
                 if isinstance(c.value, str) and "MAX" in c.value:
                     c.value = f"=MAX('{prev}'!E$2:E$5000)"
                     c.font = Font(name="Arial", bold=True, color="006100")
+        # Fix E column formulas per spec: BLANK when F<=0, not Eprev. Template had =IF(F4="",E3,IF(F4>0,E3+F4,E3)) which propagates 10.93.
+        for r in range(3, ws.max_row + 1):
+            e_val = ws.cell(row=r, column=5).value
+            if isinstance(e_val, str) and e_val.startswith("=IF(F"):
+                # replace trailing ,Eprev) with ,"") to keep blank on NEG
+                # =IF(F4="",E3,IF(F4>0,E3+F4,E3)) -> =IF(F4="", "",IF(F4>0,E3+F4,""))
+                try:
+                    # find last comma before closing
+                    if e_val.endswith(",E3)") or ",E" in e_val:
+                        # generic: replace last ,E<number>) with ,"")
+                        import re
+                        e_val = re.sub(r",E\d+\)$", ',"")', e_val)
+                        ws.cell(row=r, column=5).value = e_val
+                except Exception:
+                    pass
         c2 = ws.cell(row=2, column=6)
         if isinstance(c2.value, str) and "-E1" in c2.value:
             c2.value = c2.value.replace("-E1", "-E2")
@@ -878,13 +894,23 @@ def main():
                 key = f"{sheet}!{r}:{switch}={cand}"
                 if key in progress.get("done", {}):
                     prev = progress["done"][key]
+                    # For positive deltas, the cumulative was promoted — restore it, but do NOT skip re-validation if cumulative has moved.
+                    # For neg/0 deltas we must re-evaluate with current cumulative (otherwise stale delta from old cum causes E drop and blanket same-value bug).
                     if prev.get("delta") and prev["delta"] > 0:
-                        cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
-                        cumulative_overrides[switch] = cand
-                        if prev.get("best_filter"):
-                            cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
-                    print(f"[DEBUG] skip cached {key}", flush=True)
-                    continue
+                        expected_before = float(prev.get("vec_gain", 0) or 0) - float(prev["delta"])
+                        # only skip if this row's previous evaluation used the same cumulative as current (otherwise stale)
+                        if abs(expected_before - cumulative_gain) < 1e-6:
+                            cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
+                            cumulative_overrides[switch] = cand
+                            if prev.get("best_filter"):
+                                cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
+                            print(f"[DEBUG] skip cached {key} cum {cumulative_gain:.4f}", flush=True)
+                            continue
+                        else:
+                            print(f"[DEBUG] re-eval stale {key} prev_cum {expected_before:.4f} != cur {cumulative_gain:.4f}", flush=True)
+                    else:
+                        # neg/0 delta — never skip, re-evaluate with current cum to get correct F/E and blanket handling
+                        print(f"[DEBUG] re-eval neg {key} prev_delta {prev.get('delta')}", flush=True)
                 print(f"[DEBUG] sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
                 _touch_heartbeat(f"cell {sheet}!{r}")
                 try:
@@ -913,7 +939,8 @@ def main():
                         if isinstance(b, str) and b.lower() in ("true", "false"):
                             b = b.lower() == "true"
                         return a == b
-                    # heavy SNDK/ZEC: limit to top 5 most relevant to achieve hundreds/min (was 15)
+                    # Fix: evaluate ALL applicable filters for this switch row (not random top-5). Heavy SNDK still needs batching but not dropping.
+                    # Previous bug: blanket rows got same 5 filters -> same yellow value. Now evaluate full opportune set per-switch.
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False
                     single_filters = []
                     for e in specifics:
@@ -925,11 +952,8 @@ def main():
                         if norm2(opt_val, cur):
                             continue
                         single_filters.append((filt, opt_val, hdr, opt_raw))
-                    # USER CORRECTION 2026-09-12: WT_15M_BOUNCE needs ALL yellows, others can use top-5 for speed — heavy 2333 bars still heavy
-                    if is_heavy and len(single_filters) > 5:
-                        # keep ALL for WT_15M_BOUNCE, top-5 for others to achieve AAPL-like <2h
-                        if switch != "WT_15M_BOUNCE_OPEN_ENABLED":
-                            single_filters = single_filters[:5]
+                    # Keep ALL for this switch row — yellows are real filter deltas for this switch, not random. For heavy, batch in chunks of 8 to avoid 67s timeout but still cover all.
+                    # No top-5 truncation; pos deltas among these become yellow and drive F (combined). Blanket sheets need full wiring.
                     candidates = []
                     v0 = dict(cumulative_overrides)
                     v0[switch] = cand
@@ -1224,8 +1248,27 @@ def main():
                         print(f"[live-neg] {sheet}!{r} {switch} live_delta={live_delta:.4f} — not promoting", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} live-neg")
                         continue
-                    # new total result of all applied switches (only if pos delta)
+                    # E-bland guard: never allow cumulative to drop on a pos delta (stale delta from old cum)
                     new_cum = float(vec_best.get("gain_pct") or 0)
+                    if delta_best is not None and delta_best > 0 and new_cum + 1e-9 < cumulative_gain:
+                        print(f"[E-BLAND] {sheet}!{r} {switch}={cand} new {new_cum:.4f} < cum {cumulative_gain:.4f} drop blocked (delta {delta_best:.4f} stale)", flush=True)
+                        # mark as not promoted but keep yellow/orange with correct delta vs current cum
+                        # recompute delta vs current cum for correct F
+                        delta_best = new_cum - cumulative_gain
+                        # write F as negative (bland) and do not promote
+                        try:
+                            wb3 = openpyxl.load_workbook(str(wb_path))
+                            if sheet in wb3.sheetnames:
+                                ws3 = wb3[sheet]
+                                ws3.cell(row=r, column=6).value = float(delta_best)
+                                ws3.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                                wb3.save(str(wb_path))
+                        except Exception:
+                            pass
+                        progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "reason": "E-bland drop blocked"}
+                        _atomic_write_json(progress_path, progress)
+                        _touch_heartbeat(f"cell {sheet}!{r} E-bland")
+                        continue
                     # build overrides string with all overrides used for this pos delta
                     try:
                         wb3 = openpyxl.load_workbook(str(wb_path))
