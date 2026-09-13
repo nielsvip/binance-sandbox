@@ -309,9 +309,11 @@ def _flag_to_md(flags_md: Path, sheet: str, r: int, switch: str, cand, reason: s
         pass
 
 def _atomic_save(wb, wb_path: Path):
-    import os as _os
+    import os as _os, time as _tm
     tmp = str(wb_path) + ".tmp"
     bak = str(wb_path) + ".bak"
+    # versioned save: new filename every save, keep last 13 sheets in 3min, never recalc old cells
+    versioned = str(wb_path).replace(".xlsx", f"_{_tm.strftime('%Y%m%d%H%M%S', _tm.gmtime())}.xlsx") if "MATRIX" in str(wb_path).upper() else None
     try:
         wb.save(tmp)
         # fsync to ensure zip not damaged on OOM/pkill/reboot
@@ -326,9 +328,20 @@ def _atomic_save(wb, wb_path: Path):
             if _os.path.exists(str(wb_path)):
                 import shutil
                 shutil.copy2(str(wb_path), bak)
+                # also keep versioned copy for every new save (3min for 13 sheets)
+                if versioned:
+                    shutil.copy2(tmp, versioned)
         except Exception:
             pass
         _os.replace(tmp, str(wb_path))
+        # also ensure versioned exists as separate file for Mac sync every 3min
+        try:
+            if versioned and _os.path.exists(str(wb_path)):
+                import shutil
+                if not _os.path.exists(versioned):
+                    shutil.copy2(str(wb_path), versioned)
+        except Exception:
+            pass
         try:
             fd = _os.open(str(wb_path), _os.O_RDONLY)
             _os.fsync(fd)
@@ -1002,7 +1015,19 @@ def main():
                 _key_skip = f"{sheet}!{r}:{sw}={cand}"
                 if norm(cand) == norm(eff) and _key_skip in progress.get("done", {}):
                     continue
+                # blanket / separator rows: GENERAL in F (col6) or yellow FFE699 fill — never calculate, just skip
+                f_val = ws.cell(row=r, column=6).value
+                if isinstance(f_val, str) and f_val.strip().upper() == "GENERAL":
+                    continue
+                try:
+                    fill_rgb = ws.cell(row=r, column=6).fill.start_color.rgb if ws.cell(row=r, column=6).fill.start_color.rgb not in (None, "00000000") else None
+                    if fill_rgb == "00FFE699":
+                        continue
+                except Exception:
+                    pass
                 if str(ws.cell(row=r, column=4).value or "") == "GLOBAL_CHECK":
+                    continue
+                if str(ws.cell(row=r, column=9).value or "").strip().lower() == "blanket (page end)":
                     continue
                 rows.append((r, sw, cand))
             wb.close()
@@ -1095,10 +1120,17 @@ def main():
                     _is_fast_window = args.window_days in (1, 7)
                     # 180 per 3min = 1s/cell: fast 7d limit 0 (1 cand 0.07s/row -> 180*0.07=12.6s), heavy 30d limit 2, non-heavy 30d limit 10
                     if _is_fast_window:
-                        limit = 0
+                        limit = 2
                     else:
                         limit = 2 if is_heavy else (10 if "WT_15M_BOUNCE" in switch else 5)
-                    if is_heavy and len(single_filters) > limit:
+                    if _is_fast_window and len(single_filters) > limit:
+                        def _rank_fast(t):
+                            hdr = t[2]
+                            in_hdr = 0 if hdr in header_to_col else 1
+                            return (in_hdr, t[2])
+                        single_filters = sorted(single_filters, key=_rank_fast)[:limit]
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} FAST 0.5s", flush=True)
+                    elif is_heavy and len(single_filters) > limit:
                         def _rank(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1
@@ -1186,97 +1218,13 @@ def main():
                         if filt is None:
                             vector_delta_val = float(delta)
 
-                    # CORRECT per 2026-09-12 rewrite: F must be sum of ALL positive yellows for this row, not just best single
-                    # Build combined variant with switch + ALL positive single filters, evaluate it as total delta for this row
-                    try:
-                        pos_filters = [(f, o, h) for (f, o, h, raw) in single_filters if pending_lbI.get(h, float("-inf")) > 0]
-                        if pos_filters:
-                            v_all = dict(cumulative_overrides)
-                            v_all[switch] = cand
-                            for (ff, oo, hh) in pos_filters:
-                                v_all[ff] = oo
-                            v_all, _ = sanitize_overrides(v_all, defaults)
-                            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_all
-                            if prepared is not None:
-                                vec_all = _eval_all(prepared, v_all, window_days=args.window_days)
-                            else:
-                                from tools.opt.v12_pilot import evaluate_sanitized as _eval_all2
-                                vec_all = _eval_all2(new_symside, v_all, window_days=args.window_days)
-                            if vec_all.get("valid"):
-                                vg_all = float(vec_all.get("gain_pct") or 0)
-                                delta_all = vg_all - cumulative_before
-                                # store combined as best if better than single best, and record overrides as switch + all pos filters
-                                if best is None or delta_all > best[0]:
-                                    # build overrides string for combined
-                                    all_hdrs = "+".join([h for (_,_,h) in pos_filters])
-                                    best = (delta_all, v_all, None, None, all_hdrs, vec_all)
-                                    # also update pending total for logging
-                                    print(f"[COMBINED POS] {sheet}!{r} {switch}={cand}+{len(pos_filters)} pos filters delta={delta_all:.4f} vs best {best[0]:.4f}", flush=True)
-                    except Exception as _e:
-                        print(f"[combined-warn] {sheet}!{r} {_e}", flush=True)
-                    if best is None or (best[0] <= 0 and len(rows) <= 500):
-                        _best_before_combo = best[0] if best else float("-inf")
-                        if (best is None or _best_before_combo <= 0) and len(rows) <= 500:
-                            _combo_pool = _single_filters_for_combo
-                            if len(_combo_pool) > 8:
-                                _ranked = sorted(_combo_pool, key=lambda x: pending_lbI.get(f"{x[0]}={x[3]}", float("-inf")), reverse=True)
-                                _combo_pool = _ranked[:8]
-                            # SPEED: skip combos for fast validation (7d = 0.3s/cell target, 30d heavy = 1s/cell) — need <10min for entire 900-row workbook
-                            _is_fast_window = args.window_days in (1, 7)
-                            if (len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False) or _is_fast_window:
-                                all_combos = []  # skip combos for heavy 2334-bar SNDK and for 7d/1d fast <10min validation
-                            else:
-                                all_combos = []
-                                for combo_size in [2]:  # only pairs for speed (hundreds/min) — skip triples 56 to avoid 67s timeout
-                                    if len(_combo_pool) < combo_size:
-                                        continue
-                                    for combo in itertools.combinations(_combo_pool, combo_size):
-                                        v_combo = dict(cumulative_overrides)
-                                        v_combo[switch] = cand
-                                        combo_label_parts = []
-                                        combo_hdr_parts = []
-                                        for (filt_c, opt_val_c, hdr_c, opt_raw_c) in combo:
-                                            v_combo[filt_c] = opt_val_c
-                                            combo_label_parts.append(f"{filt_c}={opt_val_c}")
-                                            combo_hdr_parts.append(hdr_c)
-                                        v_combo, _ = sanitize_overrides(v_combo, defaults)
-                                        all_combos.append((v_combo, "+".join(combo_label_parts), "+".join(combo_hdr_parts), combo_label_parts, combo_hdr_parts))
-                            if all_combos:
-                                print(f"[LOG {time.time():.1f}] combo start {len(all_combos)}", flush=True)
-                                try:
-                                    if prepared is not None:
-                                        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep2
-                                        import concurrent.futures as _cf2c
-                                        print(f"[LOG {time.time():.1f}] combo batch {len(all_combos)} workers=16", flush=True)
-                                        with _cf2c.ThreadPoolExecutor(max_workers=16) as ex_c:
-                                            vecs_c = list(ex_c.map(lambda vc: _eval_prep2(prepared, vc[0], window_days=args.window_days), all_combos))
-                                        print(f"[LOG {time.time():.1f}] combo batch done", flush=True)
-                                    else:
-                                        from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many2
-                                        vecs_c = _eval_many2(new_symside, [vc[0] for vc in all_combos], window_days=args.window_days)
-                                except Exception as e:
-                                    print(f"[vec-batch-combo-err] {sheet}!{r} {switch} err {e}", flush=True)
-                                    vecs_c = []
-                            else:
-                                # heavy SNDK: no combos, but still need to ensure EVERY yellow/orange/delta written via singles
-                                print(f"[LOG {time.time():.1f}] heavy 2334 bars → skip combos, singles only", flush=True)
-                                vecs_c = []
-                                for idx, (v_combo, combo_label, combo_hdr, combo_label_parts, combo_hdr_parts) in enumerate(all_combos):
-                                    if idx >= len(vecs_c):
-                                        break
-                                    vec_c = vecs_c[idx]
-                                    if not vec_c.get("valid"):
-                                        continue
-                                    if _check_per_cell_timeout(cell_start):
-                                        print(f"[PER_CELL TIMEOUT] {sheet}!{r} stalled during combo", flush=True)
-                                        break
-                                    vg_c = float(vec_c.get("gain_pct") or 0)
-                                    delta_c = vg_c - cumulative_before
-                                    print(f"[CANDIDATE-COMBO] {sheet}!{r} {switch}={cand}+{'+'.join(combo_label_parts)} vec_gain={vg_c:.4f} delta={delta_c:.4f} vs cum {cumulative_before:.4f}", flush=True)
-                                    if best is None or delta_c > best[0]:
-                                        best = (delta_c, v_combo, combo_label, combo_label, "+".join(combo_hdr_parts), vec_c)
-                                        for hdr_c in combo_hdr_parts:
-                                            pending_lbI[hdr_c] = float(delta_c)
+                    # REMOVED invented multi-filter combined: F is best SINGLE switch or switch+one yellow only (real backtest, never sum of all positives which can never happen live)
+                    pass
+                    # REMOVED invented combo pairs: never evaluate multi-filter combos (can never happen live) — F is single best only
+                    _best_before_combo = best[0] if best else float("-inf")
+                    _combo_pool = []
+                    all_combos = []
+                    vecs_c = []
 
                     if best is None:
                         progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid"}
@@ -1400,16 +1348,16 @@ def main():
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
                     if delta_best <= 0:
-                        # E blank for neg/0, overrides blank — flag red for blocking but NEVER STOP
+                        # E blank for neg/0, overrides blank — NEG is valid calc (orange), not true failure (red)
                         try:
                             if ws_row is not None:
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
-                                # red flag for never-stop (NEG blocks sequence)
+                                # orange for NEG (valid calc but blocks), red only for true failures
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="000000")
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NEG delta<=0 blocks", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
