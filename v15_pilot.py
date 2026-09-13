@@ -1524,14 +1524,26 @@ def main():
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
                             ws_row.cell(row=r, column=3).value = overrides_str
                             ws_row.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
-                            # baseline next row down: total result if pos delta else blank — also write F VECTOR_DELTA for this row
+                            # baseline for this row: E_r = IF(F_r>0, cum_before+F_r, "") per spec E=IF(F4="","",IF(F4>0,E3+F4,"")) — write F and E for this row
                             ws_row.cell(row=r, column=6).value = float(delta_best) if delta_best is not None else None
                             ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
-                            if r + 1 <= ws_row.max_row:
-                                # column E is 5 (BASELINE), per template =IF(F>0,E+F,E) but we explicitly set per user spec
-                                ws_row.cell(row=r+1, column=5).value = new_cum if delta_best > 0 else None
-                                if delta_best > 0:
-                                    ws_row.cell(row=r+1, column=5).font = Font(name="Arial", bold=True, color="006100")
+                            # E for this row (col 5) is cum_before+delta if delta>0 else blank, not next row
+                            ws_row.cell(row=r, column=5).value = new_cum if delta_best > 0 else None
+                            if delta_best > 0:
+                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100")
+                            else:
+                                ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="000000")
+                            # next row's E will be set when that row is evaluated, not now
+                            # keep old next-row blank for NEG to avoid carry-over, but not needed as E for next row will be overwritten when that row is processed
+                            if r + 1 <= ws_row.max_row and delta_best <= 0:
+                                # ensure next row's E is blank until its own delta evaluated (avoid stale carry)
+                                try:
+                                    nxt = ws_row.cell(row=r+1, column=5).value
+                                    # only clear if it was previously set to old cum (stale)
+                                    if nxt is not None and nxt != "":
+                                        ws_row.cell(row=r+1, column=5).value = None
+                                except Exception:
+                                    pass
                     except Exception:
                         pass
                     cumulative_gain = new_cum
