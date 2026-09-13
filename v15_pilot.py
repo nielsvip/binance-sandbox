@@ -1072,7 +1072,14 @@ def main():
                     continue
                 # blanket / separator rows: GENERAL in F (col6) or yellow FFE699 fill — never calculate, just skip
                 f_val = ws.cell(row=r, column=6).value
-                if isinstance(f_val, str) and f_val.strip().upper() == "GENERAL":
+                is_general_f = isinstance(f_val, str) and f_val.strip().upper().startswith("GENERAL")
+                is_orange_global = str(ws.cell(row=r, column=4).value or "") == "GLOBAL_CHECK"
+                is_blanket_end = str(ws.cell(row=r, column=9).value or "").strip().lower() == "blanket (page end)"
+                # ORANGE FIX: GLOBAL_CHECK rows apply to ALL rows of that sheet alone — must be calculated per sheet, not skipped (both live and vectorized)
+                if is_orange_global:
+                    rows.append((r, sw, cand))
+                    continue
+                if is_general_f or is_blanket_end:
                     continue
                 try:
                     fill_rgb = ws.cell(row=r, column=6).fill.start_color.rgb if ws.cell(row=r, column=6).fill.start_color.rgb not in (None, "00000000") else None
@@ -1080,10 +1087,6 @@ def main():
                         continue
                 except Exception:
                     pass
-                if str(ws.cell(row=r, column=4).value or "") == "GLOBAL_CHECK":
-                    continue
-                if str(ws.cell(row=r, column=9).value or "").strip().lower() == "blanket (page end)":
-                    continue
                 rows.append((r, sw, cand))
             wb.close()
             print(f"[LOG {time.time():.1f}] [sheet] {sheet} {len(rows)} variants", flush=True)
@@ -1622,6 +1625,88 @@ def main():
             except Exception:
                 pass
             print(f"[sheet DONE] {sheet} cum={cumulative_gain:.4f} positives={total_pos}", flush=True)
+            # GLOBAL per-sheet: global filters apply to entire workbook but must be calculated after every sheet as well (currently not happening) — try if pos deltas
+            try:
+                _global_cands = []
+                for _e in _load_filter_dictionary():
+                    _sa = (_e.get("sheets_app") or "").strip().upper()
+                    if _sa == "ALL" or "GLOBAL" in _sa:
+                        _sw = _e.get("filter") or _e.get("key") or ""
+                        if not _sw:
+                            continue
+                        # skip if already at non-default and already promoted
+                        _cur = cumulative_overrides.get(_sw, defaults.get(_sw))
+                        _def = defaults.get(_sw)
+                        # only try if not already at optimum (allow trying alternative values)
+                        _vals = _e.get("values") or _e.get("options") or []
+                        for _v in _vals[:2]:  # try up to 2 values per global filter per sheet to find pos delta
+                            try:
+                                _cand = _v
+                                # normalize bool
+                                if isinstance(_def, bool) and isinstance(_v, str):
+                                    _cand = _v.lower() == "true"
+                                _key_g = f"{sheet}!GLOBAL:{_sw}={_cand}"
+                                if _key_g in progress.get("done", {}):
+                                    continue
+                                _global_cands.append((_sw, _cand, _e))
+                                break
+                            except: pass
+                        if len(_global_cands) >= 6:
+                            break
+                if _global_cands:
+                    print(f"[GLOBAL per-sheet] {sheet} trying {len(_global_cands)} global filters after sheet", flush=True)
+                    for (_gsw, _gcand, _ge) in _global_cands[:3]:
+                        try:
+                            _g_before = cumulative_gain
+                            _g_variant = dict(cumulative_overrides)
+                            _g_variant[_gsw] = _gcand
+                            _g_variant, _ = sanitize_overrides(_g_variant, defaults)
+                            if prepared is not None:
+                                from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_g
+                                _g_vec = _eval_g(prepared, _g_variant, window_days=args.window_days)
+                            else:
+                                from tools.opt.v12_pilot import evaluate_sanitized as _eval_g2
+                                _g_vec = _eval_g2(new_symside, _g_variant, window_days=args.window_days)
+                            if not _g_vec.get("valid"):
+                                continue
+                            _g_gain = float(_g_vec.get("gain_pct") or 0)
+                            _g_delta = _g_gain - _g_before
+                            print(f"[GLOBAL per-sheet] {sheet} {_gsw}={_gcand} delta={_g_delta:.4f} vs cum {_g_before:.4f} vec_gain={_g_gain:.4f}", flush=True)
+                            if _g_delta > 0 and _g_gain > cumulative_gain:
+                                cumulative_gain = _g_gain
+                                cumulative_overrides = dict(_g_variant)
+                                _gk = f"{sheet}!GLOBAL:{_gsw}={_gcand}"
+                                progress.setdefault("done", {})[_gk] = {"delta": float(_g_delta), "vec_gain": float(_g_gain), "vec": {k: _g_vec.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": _gsw, "best_fval": _gcand, "yellows": {}, "global_sheet": sheet}
+                                progress["cumulative_gain"] = cumulative_gain
+                                progress["cumulative_overrides"] = cumulative_overrides
+                                _atomic_write_json(progress_path, progress)
+                                # also write to Results_Deltas orange for visibility
+                                try:
+                                    wb_g = openpyxl.load_workbook(str(wb_path), data_only=False)
+                                    for _cn in ["Results_Deltas","Results_30d_Deltas"]:
+                                        if _cn in wb_g.sheetnames:
+                                            _rws = wb_g[_cn]
+                                            _found = None
+                                            for _rr in range(2, _rws.max_row+1):
+                                                if str(_rws.cell(row=_rr, column=1).value or "").strip() == f"{_gsw}={_gcand}":
+                                                    _found = _rr
+                                                    break
+                                            if _found is None:
+                                                _found = _rws.max_row+1
+                                                _rws.cell(row=_found, column=1).value = f"{_gsw}={_gcand}"
+                                            _rws.cell(row=_found, column=5).value = float(_g_delta)
+                                            _rws.cell(row=_found, column=8).value = float(_g_gain)
+                                            break
+                                    _atomic_save(wb_g, wb_path)
+                                    wb_g.close()
+                                except Exception as _ge:
+                                    print(f"[GLOBAL per-sheet warn] {sheet} {_gsw} write fail {_ge}", flush=True)
+                                total_pos += 1
+                                print(f"[GLOBAL PROMOTE] {sheet} {_gsw}={_gcand} delta={_g_delta:.4f} cum->{cumulative_gain:.4f}", flush=True)
+                        except Exception as _ge:
+                            print(f"[GLOBAL per-sheet err] {sheet} {_gsw} {_ge}", flush=True)
+            except Exception as _ge:
+                print(f"[GLOBAL per-sheet outer err] {sheet} {_ge}", flush=True)
             # Integrated E-bland + F/Yellow/Orange validation from test_v15_e_bland.py — ensures no confusion
             _validate_e_chain_and_yellows(progress, wb_path)
             # All rows remain NPZ in memory: verify fast path was used, not slow reload
