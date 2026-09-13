@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T16:42:36.804179+00:00",
+  "timestamp": "2026-09-13T17:01:52.063926+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,12 +13,6 @@
       "short_score": 23.7
     },
     {
-      "symbol": "DELLUSDT",
-      "net_score": -12.9,
-      "long_score": 0,
-      "short_score": 12.9
-    },
-    {
       "symbol": "ALABUSDT",
       "net_score": -12.3,
       "long_score": 0,
@@ -29,6 +23,12 @@
       "net_score": -11.3,
       "long_score": 0,
       "short_score": 11.3
+    },
+    {
+      "symbol": "ZILUSDT",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "VIRTUALUSDT",
@@ -236,12 +236,6 @@
     },
     {
       "symbol": "WLFIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ZILUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -512,6 +506,12 @@
     },
     {
       "symbol": "QCOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "DELLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1026,12 +1026,12 @@
     [
       "STORJUSDT",
       23.7,
-      0.0376201
+      0.03669163
     ],
     [
-      "DELLUSDT",
-      12.9,
-      549.73
+      "ZILUSDT",
+      10.3,
+      0.002964
     ]
   ],
   "hedge_usage": {
