@@ -1,32 +1,43 @@
 {
- "generated_at": "2026-09-13 02:39 UTC",
- "total_capital_usd": 11.81,
+ "generated_at": "2026-09-13 03:39 UTC",
+ "total_capital_usd": 19.63,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.81,
+  "B": 19.64,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
  "losers": [],
  "mediocre": [
-  "fin:ZRXUSDT_LONG"
+  "fin:RSRUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "fin:ZRXUSDT_LONG",
-   "symbol": "ZRXUSDT",
+   "pk": "fin:RSRUSDT_LONG",
+   "symbol": "RSRUSDT",
    "account": "fin",
-   "value_usd": 11.81,
-   "gain_pct": 0.024,
+   "value_usd": 12.02,
+   "gain_pct": 0.078,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 102.8,
-   "mark": 0.1149
+   "amt": 7960.0,
+   "mark": 0.00150968
+  },
+  {
+   "pk": "fin:TIAUSDC_SHORT",
+   "symbol": "TIAUSDC",
+   "account": "fin",
+   "value_usd": 7.62,
+   "gain_pct": 0.231,
+   "tier": "B",
+   "perf_mult": 2.17,
+   "amt": 22.0,
+   "mark": 0.3462
   }
  ]
 }

@@ -1121,19 +1121,14 @@ def main():
                     before_len = len(single_filters)
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
                     _is_fast_window = args.window_days in (1, 7)
-                    # 180 per 3min = 1s/cell: fast 7d limit 0 (1 cand 0.07s/row -> 180*0.07=12.6s), heavy 30d limit 2, non-heavy 30d limit 10
+                    # USER: fill ALL yellows per row so delta can turn positive - no FAST limit, take as much time as needed
+                    # Keep per-cell max skip (10s per cand) but evaluate every yellow (no 2-limit) so first yellow onward changes all numbers instantly
                     if _is_fast_window:
+                        # 7D: evaluate ALL yellows (no limit) - 21 cands ~1.5s/row, still fills entire sheet, then fix reds
+                        if len(single_filters) > 0:
+                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} ALL yellows (no FAST limit, per-cell max skip only)", flush=True)
+                    elif is_heavy and len(single_filters) > 2:
                         limit = 2
-                    else:
-                        limit = 2 if is_heavy else (10 if "WT_15M_BOUNCE" in switch else 5)
-                    if _is_fast_window and len(single_filters) > limit:
-                        def _rank_fast(t):
-                            hdr = t[2]
-                            in_hdr = 0 if hdr in header_to_col else 1
-                            return (in_hdr, t[2])
-                        single_filters = sorted(single_filters, key=_rank_fast)[:limit]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} FAST 0.5s", flush=True)
-                    elif is_heavy and len(single_filters) > limit:
                         def _rank(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1

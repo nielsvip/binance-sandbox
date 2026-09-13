@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T03:32:12.059743+00:00",
+  "timestamp": "2026-09-13T03:52:01.533001+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "STRKUSDT",
-      "net_score": -11.4,
+      "net_score": -10.4,
       "long_score": 0,
-      "short_score": 11.4
+      "short_score": 10.4
     },
     {
       "symbol": "ARMUSDT",
@@ -355,6 +355,12 @@
       "short_score": 0
     },
     {
+      "symbol": "KAVAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -458,6 +464,12 @@
     },
     {
       "symbol": "MEMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RSRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -961,12 +973,6 @@
       "short_score": 0
     },
     {
-      "symbol": "MASKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1003,35 +1009,24 @@
       "short_score": 0
     },
     {
-      "symbol": "RSRUSDT",
-      "net_score": 11.8,
-      "long_score": 11.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "KAVAUSDT",
-      "net_score": 18.9,
-      "long_score": 18.9,
+      "symbol": "MASKUSDT",
+      "net_score": 12.2,
+      "long_score": 12.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "KAVAUSDT",
-      18.9,
-      0.08050669
-    ],
-    [
-      "RSRUSDT",
-      11.8,
-      0.00150876
+      "MASKUSDT",
+      12.2,
+      0.4784
     ]
   ],
   "top_shorts": [
     [
       "STRKUSDT",
-      11.4,
-      0.02859
+      10.4,
+      0.02852144
     ]
   ],
   "hedge_usage": {
