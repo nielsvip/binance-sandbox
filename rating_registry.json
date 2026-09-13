@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-09-13T20:47:10.825136+00:00",
+  "timestamp": "2026-09-13T21:05:24.428953+00:00",
   "market_state": {
-    "panic": true,
+    "panic": false,
     "euphoria": false,
     "total_ranked": 169
   },
@@ -23,6 +23,12 @@
       "net_score": -11.3,
       "long_score": 0,
       "short_score": 11.3
+    },
+    {
+      "symbol": "BATUSDT",
+      "net_score": -10.2,
+      "long_score": 0,
+      "short_score": 10.2
     },
     {
       "symbol": "OPUSDT",
@@ -319,6 +325,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ALGOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MASKUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -428,12 +440,6 @@
     },
     {
       "symbol": "MEMEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1013,26 +1019,19 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ALGOUSDT",
-      "net_score": 12.1,
-      "long_score": 12.1,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "ALGOUSDT",
-      12.1,
-      0.09852
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "STORJUSDT",
       30,
-      0.03583559
+      0.03598472
+    ],
+    [
+      "BATUSDT",
+      10.2,
+      0.07914625
     ]
   ],
   "hedge_usage": {
