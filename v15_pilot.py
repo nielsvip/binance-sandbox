@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """v15_pilot — SERIOUS cell-by-cell TEMPLATE filler with numpy live calculations and in-memory NPZ.
 
+LAW: YELLOW-ONLY — ONLY calculate the YELLOW cells (L:BI) for that row = the filters listed
+in FILTERS_EXPLAINED for that Switch's sheet. If you are color-blind, use FILTERS_EXPLAINED
+(and LEGEND_FILTERS / FILTER_DICTIONARY_V2) to find which filters belong to which sheet/switch.
+NEVER calculate random filters that are not yellow for that row. Filling random filters wastes
+CPU, lies about provenance, and is FORBIDDEN.
+
 Spec: script request.md CLEAR_SERIOUS_600_LINES — Previous slow (1481L, 14s/row, reload per row,
 workers 8, 30s timeout, 75 days at 100x) vs New fast (1505L, 0.5s/row, wb_keep open per sheet,
 workers 16, 60s, MAX_ROWS 50000, 7h at 100x). Fills L:BI yellows + Results_Deltas col5/col8

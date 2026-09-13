@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-13 04:24 UTC
+PERFORMANCE REPORT — 2026-09-13 04:52 UTC
 ================================================================================
 Total: 158 symbols | A=2 B=120 C=36
 Window: 14 days | Min trades: 5
@@ -17,8 +17,8 @@ Window: 14 days | Min trades: 5
              DINO  WR=100%  avg=+0.69%  total=+4.9%  trades=  7  mult=5.78
           UNIUSDC  WR=55%  avg=+0.43%  total=+4.8%  trades= 11  mult=3.06
            ARUSDT  WR=62%  avg=+0.16%  total=+4.8%  trades= 29  mult=4.28
-         COTIUSDT  WR=76%  avg=+0.22%  total=+4.6%  trades= 21  mult=7.19 ** OPEN **
-          PTBUSDT  WR=50%  avg=+0.15%  total=+4.0%  trades= 26  mult=2.02
+         COTIUSDT  WR=76%  avg=+0.22%  total=+4.6%  trades= 21  mult=7.19
+          PTBUSDT  WR=52%  avg=+0.14%  total=+4.0%  trades= 29  mult=2.23
         ETHFIUSDC  WR=64%  avg=+0.09%  total=+3.6%  trades= 39  mult=4.16
              PYPL  WR=60%  avg=+0.58%  total=+2.9%  trades=  5  mult=2.43
          RKLBUSDT  WR=74%  avg=+0.14%  total=+2.7%  trades= 19  mult=5.94
@@ -49,7 +49,7 @@ Window: 14 days | Min trades: 5
          MASKUSDT  WR=43%  avg=+0.12%  total=+0.8%  trades=  7  mult=0.93
           ZRXUSDT  WR=44%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.93
          SMCIUSDT  WR=50%  avg=+0.05%  total=+0.7%  trades= 14  mult=1.25
-          RSRUSDT  WR=100%  avg=+0.46%  total=+0.5%  trades=  1  mult=1.00
+          RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
               MDT  WR=100%  avg=+0.22%  total=+0.5%  trades=  2  mult=1.00
          PYPLUSDT  WR=60%  avg=+0.04%  total=+0.4%  trades= 10  mult=2.04
          SPCXUSD1  WR=100%  avg=+0.20%  total=+0.4%  trades=  2  mult=1.00
@@ -109,7 +109,7 @@ Window: 14 days | Min trades: 5
               LLY  WR=0%  avg=-0.40%  total=-0.8%  trades=  2  mult=1.00
           XTZUSDT  WR=62%  avg=-0.07%  total=-0.9%  trades= 13  mult=2.06
              RDDT  WR=0%  avg=-0.46%  total=-0.9%  trades=  2  mult=1.00
-          WIFUSDC  WR=47%  avg=-0.03%  total=-1.0%  trades= 30  mult=0.73 ** OPEN **
+          WIFUSDC  WR=47%  avg=-0.03%  total=-1.0%  trades= 30  mult=0.73
              AMZN  WR=67%  avg=-0.35%  total=-1.1%  trades=  3  mult=1.00
           AIAUSDT  WR=33%  avg=-0.37%  total=-1.1%  trades=  3  mult=1.00
           ENAUSDC  WR=56%  avg=-0.14%  total=-1.2%  trades=  9  mult=1.03
@@ -168,7 +168,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -46.3%
+  Total PnL (all symbols): -46.2%
   Avg win rate: 47%
   A-tier avg mult: 8.79
   C-tier avg mult: 0.44

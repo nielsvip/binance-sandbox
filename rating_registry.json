@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T04:33:20.451116+00:00",
+  "timestamp": "2026-09-13T04:52:28.715181+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,28 +7,16 @@
   },
   "unified_ranking": [
     {
+      "symbol": "ALABUSDT",
+      "net_score": -12.3,
+      "long_score": 0,
+      "short_score": 12.3
+    },
+    {
       "symbol": "BEUSDT",
-      "net_score": -15.8,
+      "net_score": -11.3,
       "long_score": 0,
-      "short_score": 15.8
-    },
-    {
-      "symbol": "AMDUSDT",
-      "net_score": -11.5,
-      "long_score": 0,
-      "short_score": 11.5
-    },
-    {
-      "symbol": "BABAUSDT",
-      "net_score": -11.1,
-      "long_score": 0,
-      "short_score": 11.1
-    },
-    {
-      "symbol": "IBMUSDT",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
+      "short_score": 11.3
     },
     {
       "symbol": "VIRTUALUSDT",
@@ -152,6 +140,12 @@
     },
     {
       "symbol": "BNBUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BSVUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -415,13 +409,19 @@
       "short_score": 0
     },
     {
-      "symbol": "ALABUSDT",
+      "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
       "symbol": "LINKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -763,6 +763,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BABAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BLURUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -877,6 +883,18 @@
       "short_score": 0
     },
     {
+      "symbol": "THETAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "IBMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "POPCATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -914,12 +932,6 @@
     },
     {
       "symbol": "ASMLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "RSRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -985,63 +997,20 @@
       "short_score": 0
     },
     {
-      "symbol": "THETAUSDT",
-      "net_score": 11.3,
-      "long_score": 11.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "VETUSDT",
-      "net_score": 12.5,
-      "long_score": 12.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "BSVUSDT",
-      "net_score": 14.4,
-      "long_score": 14.4,
+      "symbol": "RSRUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "BSVUSDT",
-      14.4,
-      17.11466667
-    ],
-    [
-      "VETUSDT",
-      12.5,
-      0.00783651
-    ],
-    [
-      "THETAUSDT",
-      11.3,
-      0.1996
+      "RSRUSDT",
+      11.7,
+      0.00151178
     ]
   ],
-  "top_shorts": [
-    [
-      "BEUSDT",
-      15.8,
-      271.51915043
-    ],
-    [
-      "AMDUSDT",
-      11.5,
-      513.42903727
-    ],
-    [
-      "BABAUSDT",
-      11.1,
-      109.64705705
-    ],
-    [
-      "IBMUSDT",
-      10.2,
-      242.92474281
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
