@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T04:52:28.715181+00:00",
+  "timestamp": "2026-09-13T05:13:05.893681+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -937,6 +937,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RSRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MSTRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -995,21 +1001,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "RSRUSDT",
-      "net_score": 11.7,
-      "long_score": 11.7,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "RSRUSDT",
-      11.7,
-      0.00151178
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

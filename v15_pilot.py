@@ -934,11 +934,32 @@ def main():
                     if sheet_part not in wb_refill.sheetnames:
                         continue
                     ws_r = wb_refill[sheet_part]
-                    # refill F VECTOR_DELTA (col6) from rec delta if empty
-                    if ws_r.cell(row=r, column=6).value in (None, "") and rec.get("delta") is not None:
+                    # refill F VECTOR_DELTA (col6) from rec delta — overwrite VLOOKUP/empty, never waste recalc
+                    _rv = ws_r.cell(row=r, column=6).value
+                    _is_float = isinstance(_rv, (int, float)) and not isinstance(_rv, bool)
+                    _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
+                    if _need:
                         ws_r.cell(row=r, column=6).value = float(rec["delta"])
                         ws_r.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
                         refilled += 1
+                    # refill yellows L:BI from rec.get yellows if stored
+                    _y = rec.get("yellows") or rec.get("pending_lbI") or {}
+                    if _y:
+                        # build header_to_col for this sheet on demand
+                        _htc = {}
+                        for c in range(12, ws_r.max_column + 1):
+                            hv = ws_r.cell(row=2, column=c).value
+                            if hv and isinstance(hv, str) and "=" in hv and not hv.upper().startswith("WHAT SWITCH"):
+                                _htc[hv.strip()] = c
+                        for hdr, d in _y.items():
+                            col = _htc.get(hdr)
+                            _cv = ws_r.cell(row=r, column=col).value if col else None
+                            _c_is_float = isinstance(_cv, (int, float)) and not isinstance(_cv, bool)
+                            if col and (not _c_is_float or abs(float(_cv) - float(d)) > 1e-9):
+                                try:
+                                    ws_r.cell(row=r, column=col).value = float(d)
+                                    refilled += 1
+                                except: pass
                     # refill Results_Deltas from rec
                     target = None
                     for cand_name in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
@@ -1064,23 +1085,23 @@ def main():
                 key = f"{sheet}!{r}:{switch}={cand}"
                 if key in progress.get("done", {}):
                     prev = progress["done"][key]
-                    # For positive deltas, the cumulative was promoted — restore it, but do NOT skip re-validation if cumulative has moved.
-                    # For neg/0 deltas we must re-evaluate with current cumulative (otherwise stale delta from old cum causes E drop and blanket same-value bug).
-                    if prev.get("delta") and prev["delta"] > 0:
-                        expected_before = float(prev.get("vec_gain", 0) or 0) - float(prev["delta"])
-                        # only skip if this row's previous evaluation used the same cumulative as current (otherwise stale)
-                        if abs(expected_before - cumulative_gain) < 1e-6:
+                    expected_before = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
+                    is_stale = abs(expected_before - cumulative_gain) >= 1e-6
+                    # Skip recalc if not stale: pre-fill from json instead of wasting 1s/cell
+                    if not is_stale:
+                        if prev.get("delta") and prev["delta"] > 0:
                             cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
                             cumulative_overrides[switch] = cand
                             if prev.get("best_filter"):
                                 cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
-                            print(f"[DEBUG] skip cached {key} cum {cumulative_gain:.4f}", flush=True)
+                            print(f"[DEBUG] skip cached POS {key} cum {cumulative_gain:.4f}", flush=True)
                             continue
                         else:
-                            print(f"[DEBUG] re-eval stale {key} prev_cum {expected_before:.4f} != cur {cumulative_gain:.4f}", flush=True)
+                            # NEG/0 with same cum will stay NEG — no need to recalc, just ensure F/yellows already refilled
+                            print(f"[DEBUG] skip cached NEG {key} delta {prev.get('delta')} cum {cumulative_gain:.4f}", flush=True)
+                            continue
                     else:
-                        # neg/0 delta — never skip, re-evaluate with current cum to get correct F/E and blanket handling
-                        print(f"[DEBUG] re-eval neg {key} prev_delta {prev.get('delta')}", flush=True)
+                        print(f"[DEBUG] re-eval stale {key} prev_cum {expected_before:.4f} != cur {cumulative_gain:.4f} delta {prev.get('delta')}", flush=True)
                 print(f"[DEBUG] sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
                 _touch_heartbeat(f"cell {sheet}!{r}")
                 try:
@@ -1351,7 +1372,7 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best}
+                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
                         if r % 10 == 0 or args.window_days not in (1,7):
