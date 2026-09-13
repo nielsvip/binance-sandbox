@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-13 12:09 UTC",
- "total_capital_usd": 11.86,
+ "generated_at": "2026-09-13 13:27 UTC",
+ "total_capital_usd": 39.43,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.86,
+  "B": 39.43,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "inf",
-   "value_usd": 11.86,
-   "gain_pct": 0.873,
+   "pk": "flz:ETHUSDC_SHORT",
+   "symbol": "ETHUSDC",
+   "account": "flz",
+   "value_usd": 39.43,
+   "gain_pct": -0.021,
    "tier": "B",
-   "perf_mult": 6.93,
-   "amt": 736.0,
-   "mark": 0.01611997
+   "perf_mult": 2.81,
+   "amt": 0.016,
+   "mark": 2464.35
   }
  ]
 }

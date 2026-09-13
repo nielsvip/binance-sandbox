@@ -3926,5 +3926,23 @@
     ],
     "timestamp": "2026-09-13T13:06:07.785544+00:00",
     "price": 1.056e-05
+  },
+  {
+    "symbol": "DELLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.2x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:18:43.104545+00:00",
+    "price": 557.36658734
+  },
+  {
+    "symbol": "NMRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T13:20:13.896637+00:00",
+    "price": 9.418
   }
 ]
