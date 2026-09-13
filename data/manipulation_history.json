@@ -4115,5 +4115,23 @@
     ],
     "timestamp": "2026-09-13T14:46:22.251685+00:00",
     "price": 0.53888771
+  },
+  {
+    "symbol": "LTCUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-13T15:32:17.327572+00:00",
+    "price": 54.15
+  },
+  {
+    "symbol": "IWMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 14.5x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-13T15:35:40.456642+00:00",
+    "price": 288.44
   }
 ]
