@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T14:47:19.888599+00:00",
+  "timestamp": "2026-09-13T15:06:56.381665+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -80,6 +80,12 @@
     },
     {
       "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -301,6 +307,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RSRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -308,6 +320,12 @@
     },
     {
       "symbol": "MASKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ARUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -1001,43 +1019,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ASTERUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "RSRUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARUSDT",
-      "net_score": 18.1,
-      "long_score": 18.1,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "ARUSDT",
-      18.1,
-      2.69620567
-    ],
-    [
-      "RSRUSDT",
-      11.5,
-      0.00154797
-    ],
-    [
-      "ASTERUSDT",
-      11.2,
-      0.6999
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
