@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-14T07:36:10.075481+00:00",
+  "timestamp": "2026-09-14T07:55:09.261782+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,10 +13,10 @@
       "short_score": 30
     },
     {
-      "symbol": "MRVLUSDT",
-      "net_score": -10.5,
+      "symbol": "AMATUSDT",
+      "net_score": -13.9,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 13.9
     },
     {
       "symbol": "1INCHUSDT",
@@ -277,12 +277,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AMATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -320,6 +314,12 @@
     },
     {
       "symbol": "RVNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MRVLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -618,12 +618,12 @@
     [
       "STORJUSDT",
       30,
-      0.03118084
+      0.03117514
     ],
     [
-      "MRVLUSDT",
-      10.5,
-      223.81
+      "AMATUSDT",
+      13.9,
+      435.92
     ]
   ],
   "hedge_usage": {
