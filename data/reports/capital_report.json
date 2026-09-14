@@ -1,43 +1,30 @@
 {
- "generated_at": "2026-09-14 02:33 UTC",
- "total_capital_usd": 44.88,
+ "generated_at": "2026-09-14 03:05 UTC",
+ "total_capital_usd": 35.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 44.89,
+  "B": 35.98,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 1,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:XTZUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ALGOUSDT_LONG",
-   "symbol": "ALGOUSDT",
-   "account": "fin",
-   "value_usd": 36.3,
-   "gain_pct": 0.972,
+   "pk": "inf:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "inf",
+   "value_usd": 35.98,
+   "gain_pct": 0.131,
    "tier": "B",
-   "perf_mult": 3.08,
-   "amt": 368.6,
-   "mark": 0.09847703
-  },
-  {
-   "pk": "fin:XTZUSDT_LONG",
-   "symbol": "XTZUSDT",
-   "account": "fin",
-   "value_usd": 8.59,
-   "gain_pct": -1.135,
-   "tier": "B",
-   "perf_mult": 2.52,
-   "amt": 30.6,
-   "mark": 0.2806
+   "perf_mult": 7.19,
+   "amt": 2243.0,
+   "mark": 0.016039
   }
  ]
 }
