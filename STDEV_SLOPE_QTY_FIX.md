@@ -84,3 +84,38 @@ python -c "import config; assert config.MAX_POSITION_SIZE >= 10*config.START_POS
 - [ ] No bare `sharpe` label, no annualization, `metrics_guard` used.
 
 If fix proven to work and produce pos delta sync all script changes btw s2 s1 and macbook
+
+---
+
+# ADDENDUM 2026-09-14 — root-cause verdict (S1 probe, MSFT_LONG 30d, quick engine)
+
+Probe (`/tmp/stdev_probe.py` on S1, real `v12_quick_engine`): `lrL_*` present (D pb mean 0.97),
+regime_mult mean 11.3. A(default,STDEV on) gain −0.80 / B(STDEV off) −1.86 → **ladder alive: −1.06
+without it**. MODE bottom_to_top +0.72. Cap 2500→5000 +0.73. So the MSFT sheet zeros were NOT a
+dead ladder — they were four distinct defects:
+
+1. **Quick-engine order cap clipped the ladder (FIXED).** Live (`tradier_manage.calculate_position_size`)
+   does `max_value = min(START, MAX_ORDER)` THEN `max_value *= ladder` → full 10x expresses.
+   Quick (`v12_quick_engine.py` entries) did `min(START*mult, MAX_ORDER_VALUE=2500)` → 10x D ladder
+   clipped at 5x. Fix: floor the entry cap at `START*10` (2 sites, seed + entry). Deliberately did
+   NOT change QuickConfig field defaults — the `_DEFAULTS_625` audit blocks key off cfg-vs-default
+   differences, so a default change would silently rewire entries everywhere.
+2. **Sheet tested defaults against themselves.** Every STDEV row's cand == cumulative value
+   (QuickConfig STDEV defaults == TEMPLATE == recipes) → delta 0 by construction. BAND rows moved
+   only because QuickConfig BAND defaults (TF 4h, MAX 1.25, MIN 0.25, DEPTH/NORM 0.5) ≠ TEMPLATE/live
+   (TF D, MAX 2.5, MIN 0.5, DEPTH/NORM 1.0). To measure the ladder's contribution, ablate:
+   set col B `STDEV_SLOPE_SIZING_ENABLED=FALSE` on a scratch copy — the recorded NEG delta magnitude
+   IS the contribution (pilot records F/G floats even when it blocks promotion).
+3. **Dead knobs (all paths, by design).** `STDEV_BAND_MULTIPLIER` + 4 `STDEV_SLOPE_LOOKBACK_*` are read
+   NOWHERE — precompute hardcodes 2.5σ and fixed windows (`backtest_v8_precompute.py` lrL block).
+   They are precompute-locked constants, not switches. Left in sheet as documentation; expect 0.
+4. **Missing MODE row (FIXED in TEMPLATE).** `STDEV_SLOPE_SIZING_MODE` moves +0.72 on MSFT but had no
+   sheet row and no dictionary entry — appended as row 18 (`slope_to_top`, append-only, no row shift).
+
+Also fixed (live parity, same files): crypto venue slope factors were stock-session based
+(4h 1.625x instead of 6x → slope_mult understated ~3.7x on all crypto quick sims); now branches on
+`cfg.MODE` to match `ez_positions_quick` (24/6/96) vs `tradier_manage` (6.5/1.625/26). Missing
+`lrL_*` channel keys now skip the ladder (live fails closed; quick used to fail open at ~10x).
+
+Files touched: `v12_quick_engine.py` (STDEV block + 2 cap sites), `v12_quick_engine_fast_v2.py`
+(STDEV block), `SPREADSHEETS/TEMPLATE.xlsx` (MODE row 18). No live-trading file touched.

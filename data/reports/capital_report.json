@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 04:09 UTC",
- "total_capital_usd": 12.01,
+ "generated_at": "2026-09-14 04:24 UTC",
+ "total_capital_usd": 9.68,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.01,
+  "B": 9.68,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "inf",
-   "value_usd": 12.01,
-   "gain_pct": -0.316,
+   "pk": "fin:XTZUSDT_LONG",
+   "symbol": "XTZUSDT",
+   "account": "fin",
+   "value_usd": 9.68,
+   "gain_pct": 0.0,
    "tier": "B",
-   "perf_mult": 7.16,
-   "amt": 741.0,
-   "mark": 0.01620771
+   "perf_mult": 2.97,
+   "amt": 34.8,
+   "mark": 0.27822095
   }
  ]
 }

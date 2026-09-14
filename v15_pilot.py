@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """v15_pilot — SERIOUS cell-by-cell TEMPLATE filler with numpy live calculations and in-memory NPZ.
 
-LAW: YELLOW-ONLY (yellows only) — ONLY calculate the YELLOW cells (L:BI) for that row,
-and calculate ALL of them: every L:BI header in that sheet gets a real delta for A SINGLE
-SWITCH (this row's switch=cand plus that one header filter, vs cumulative_before).
-Filters come from FILTERS_EXPLAINED / LEGEND_FILTERS / FILTER_DICTIONARY_V2.
+LAW: YELLOW-ONLY (yellows only) — ONLY calculate the YELLOW cells for that row: the
+SPECIFIC filters gated to A SINGLE SWITCH (this row's switch=cand plus that one filter,
+vs cumulative_before), per FILTERS_EXPLAINED / FILTER_DICTIONARY_V2 mapping.
+Other switches' headers are non-yellow for this row: never evaluated, never written.
 ORANGE Results_Deltas are the across-switch rollup (whole tab); YELLOW is never overall.
 NEVER calculate random filters that are not yellow for that row. Filling random filters wastes
 CPU, lies about provenance, and is FORBIDDEN.
@@ -591,9 +591,32 @@ def ensure_lbI_headers(wb_path: Path):
         headers = []
         seen = set()
         lifecycle = sheet.split("_")[0]
-        sheet_switches = [str(ws.cell(r, 1).value or "").strip() for r in range(2, min(50, ws.max_row+1)) if ws.cell(r, 1).value]
-        scored = []
-        for idx_e, e in enumerate(fd_rows):
+        # union of every row's relevant (should-be-yellow) set: all of these must
+        # exist as L:BI columns or relevant deltas have nowhere to land (header gap)
+        sheet_switches = []
+        for _r in range(2, ws.max_row + 1):
+            _sw = ws.cell(row=_r, column=1).value
+            if not _sw or not isinstance(_sw, str):
+                continue
+            _sw = _sw.strip()
+            if _sw.lower() in ("switch", "general", "blanket", "filter", "option value") or _sw.startswith("—"):
+                continue
+            if ws.cell(row=_r, column=2).value is None:
+                continue
+            sheet_switches.append(_sw)
+        union = set()
+        for sw in sheet_switches:
+            for e in get_opportune_filters(sw, sheet):
+                if _is_general(e["rec"]):
+                    continue
+                union.add(f"{e['filter']}={e['opt']}")
+        for hdr in sorted(union):
+            if hdr in seen or hdr in existing:
+                continue
+            seen.add(hdr)
+            headers.append(hdr)
+        # GENERAL (orange-family) headers fill remaining L:BI slots up to budget
+        for e in fd_rows:
             sa = (e["sheets_app"] or "").strip()
             if sa == "ALL":
                 applicable = True
@@ -602,27 +625,13 @@ def ensure_lbI_headers(wb_path: Path):
             if not applicable:
                 continue
             if not _is_general(e["rec"]):
-                gates = e["gates"] or ""
-                hits = 0
-                earliest = 999
-                for r_idx, sw in enumerate(sheet_switches):
-                    if _token_overlap(gates, sw):
-                        hits += 1
-                        if r_idx < earliest:
-                            earliest = r_idx
-                if hits == 0:
-                    continue
-                scored.append((earliest, -hits, idx_e, e))
-            else:
-                scored.append((999, 0, idx_e, e))
-        scored.sort(key=lambda x: (x[0], x[1], x[2]))
-        for earliest, neg_hits, idx_e, e in scored:
+                continue
             hdr = f"{e['filter']}={e['opt']}"
             if hdr in seen or hdr in existing:
                 continue
             seen.add(hdr)
             headers.append(hdr)
-            if len(headers) >= 50:
+            if len(headers) >= 220:
                 break
         col = 12
         for hdr in headers:
@@ -1159,14 +1168,57 @@ def main():
             for (r, switch, cand) in rows:
                 cell_start = time.time()
                 key = f"{sheet}!{r}:{switch}={cand}"
+                # YELLOW SET FOR A SINGLE SWITCH (this row): SPECIFIC filters gated
+                # to this switch = the cells that should be yellow (pos-delta-capable).
+                # Other switches' headers are non-yellow for this row: never evaluated,
+                # never written — that is the compute saving. Cheap to build (no evals).
+                opportune = get_opportune_filters(switch, sheet)
+                specifics = [e for e in opportune if not _is_general(e["rec"])]
+                def parse_opt(v, default):
+                    if isinstance(default, bool):
+                        return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)
+                    if isinstance(default, int) and not isinstance(default, bool):
+                        try: return int(float(str(v)))
+                        except: return v
+                    if isinstance(default, float):
+                        try: return float(str(v))
+                        except: return v
+                    if isinstance(v, str) and v.lower() in ("true", "false"):
+                        return v.lower() == "true"
+                    try:
+                        if "." in str(v): return float(str(v))
+                        return int(str(v))
+                    except:
+                        return v
+                def norm2(a, b):
+                    if isinstance(a, str) and a.lower() in ("true", "false"):
+                        a = a.lower() == "true"
+                    if isinstance(b, str) and b.lower() in ("true", "false"):
+                        b = b.lower() == "true"
+                    return a == b
+                # relevant_hdrs: full per-switch yellow set (mapped + identical-value),
+                # unmapped_hdrs: relevant but no L:BI column (header gap, flagged not evaluated)
+                _rel_eval, _rel_ident, _rel_unmapped = [], [], []
+                for e in specifics:
+                    _hdr = f"{e['filter']}={e['opt']}"
+                    if _hdr not in header_to_col:
+                        _rel_unmapped.append(_hdr)
+                        continue
+                    _ov = parse_opt(e["opt"], defaults.get(e["filter"]))
+                    _cur = cand if e["filter"] == switch else cumulative_overrides.get(e["filter"], defaults.get(e["filter"]))
+                    if norm2(_ov, _cur):
+                        _rel_ident.append(_hdr)
+                    else:
+                        _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
+                _rel_total = len(_rel_eval) + len(_rel_ident)
                 if key in progress.get("done", {}):
                     prev = progress["done"][key]
                     expected_before = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
                     is_stale = abs(expected_before - cumulative_gain) >= 1e-6
                     # Skip recalc if not stale: pre-fill from json instead of wasting 1s/cell
-                    # But if yellows are partial for this row, must re-eval to populate ALL L:BI (old json had opportune-subset yellows only)
+                    # But if this row's yellow set is incomplete, must re-eval to populate it
                     _prev_y = prev.get("yellows") or prev.get("pending_lbI") or {}
-                    _y_missing = len(_prev_y) < len(header_to_col)
+                    _y_missing = len(_prev_y) < _rel_total
                     if not is_stale and not _y_missing:
                         if prev.get("delta") and prev["delta"] > 0:
                             cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
@@ -1187,60 +1239,20 @@ def main():
                 _touch_heartbeat(f"cell {sheet}!{r}")
                 try:
                     cumulative_before = cumulative_gain
-                    opportune = get_opportune_filters(switch, sheet)
-                    specifics = [e for e in opportune if not _is_general(e["rec"])]
-                    def parse_opt(v, default):
-                        if isinstance(default, bool):
-                            return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)
-                        if isinstance(default, int) and not isinstance(default, bool):
-                            try: return int(float(str(v)))
-                            except: return v
-                        if isinstance(default, float):
-                            try: return float(str(v))
-                            except: return v
-                        if isinstance(v, str) and v.lower() in ("true", "false"):
-                            return v.lower() == "true"
-                        try:
-                            if "." in str(v): return float(str(v))
-                            return int(str(v))
-                        except:
-                            return v
-                    def norm2(a, b):
-                        if isinstance(a, str) and a.lower() in ("true", "false"):
-                            a = a.lower() == "true"
-                        if isinstance(b, str) and b.lower() in ("true", "false"):
-                            b = b.lower() == "true"
-                        return a == b
-                    # YELLOW = ALL L:BI headers for A SINGLE SWITCH (this row). Every
-                    # header_to_col header is evaluated as switch=cand + that one
-                    # header filter vs cumulative_before. Headers already at their
-                    # current value reuse the naked delta (identical variant).
+                    # YELLOW = this row's relevant set only (precomputed above): each
+                    # evaluated as switch=cand + that one filter vs cumulative_before.
+                    # Identical-value headers reuse the naked delta (no eval = saving).
+                    # Unmapped relevant headers are a header gap: flagged, not evaluated.
                     # sequential heavy (no timeout, MAX TIMEPER CELL 1.0s/0.5s) was the
                     # pre-2026-09-13 approach; now parallel-16 batches under the same
                     # per-cell budget (post-hoc flag, never mid-batch truncate).
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False
-                    single_filters = []
-                    identical_hdrs = []
+                    single_filters = list(_rel_eval)
+                    identical_hdrs = list(_rel_ident)
                     invalid_hdrs = []
-                    for hdr in header_to_col:
-                        if "=" not in hdr:
-                            continue
-                        filt, opt_raw = hdr.split("=", 1)
-                        filt = filt.strip()
-                        opt_raw = opt_raw.strip()
-                        if not filt:
-                            continue
-                        opt_val = parse_opt(opt_raw, defaults.get(filt))
-                        if filt == switch:
-                            if norm2(opt_val, cand):
-                                identical_hdrs.append(hdr)
-                                continue
-                        else:
-                            cur = cumulative_overrides.get(filt, defaults.get(filt))
-                            if norm2(opt_val, cur):
-                                identical_hdrs.append(hdr)
-                                continue
-                        single_filters.append((filt, opt_val, hdr, opt_raw))
+                    relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
+                    if _rel_unmapped:
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"header gap {len(_rel_unmapped)} relevant w/o L:BI col", 0.0, 0.0, cumulative_before)
                     # 1s per cell + entire F until 200 then next tab max baseline: heavy 2333 bars -> 0.6s/candidate
                     # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
                     before_len = len(single_filters)
@@ -1363,7 +1375,19 @@ def main():
                     wb_row = wb_keep
                     ws_row = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
                     if best is None:
-                        progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid"}
+                        # NO VALID: still fill this row's relevant yellows as flagged 0.0 (same convention as F/G=0.0 red) so no formula survives
+                        try:
+                            if ws_row is not None:
+                                for _hdr in relevant_hdrs:
+                                    _col = header_to_col.get(_hdr)
+                                    if not _col:
+                                        continue
+                                    try:
+                                        ws_row.cell(row=r, column=_col).value = 0.0
+                                    except Exception:
+                                        pass
+                        except: pass
+                        progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid", "yellows": {h: 0.0 for h in relevant_hdrs}, "invalid_yellows": list(relevant_hdrs)}
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
@@ -1392,10 +1416,13 @@ def main():
                                         ws_row.cell(row=r, column=col).value = float(d)
                                     except Exception:
                                         pass
-                        # backstop: no L:BI cell for a processed row may stay a template formula or empty — write pending or flagged 0.0
+                        # backstop: this row's relevant yellow cells may not stay formula/empty — write pending or flagged 0.0 (other columns untouched: non-yellow for this row)
                         if ws_row is not None:
                             _missing = []
-                            for _hdr, _col in header_to_col.items():
+                            for _hdr in relevant_hdrs:
+                                _col = header_to_col.get(_hdr)
+                                if not _col:
+                                    continue
                                 try:
                                     _cv = ws_row.cell(row=r, column=_col).value
                                 except Exception:

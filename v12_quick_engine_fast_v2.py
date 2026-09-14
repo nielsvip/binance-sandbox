@@ -9747,16 +9747,23 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
         mult = mult * (lo + (1 - edge) * (hi - lo))
     # STDEV_SLOPE_SIZING 2.5 ladder — REAL position sizing (quantity influences gain)
     # Mirrors tradier_manage.get_position_size bands: per-TF max 10x D /4x 4h /2x 1h /1.5x 15m, slope_to_top vs bottom_to_top — propagated 2026-09-14
+    # 2026-09-14 parity: venue slope factors (crypto 24h vs stocks 6.5h session) + skip when channel keys absent (live fails closed)
     if bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)):
         try:
             _stdev_max_map = {'D': float(getattr(cfg, 'STDEV_SLOPE_SIZING_D_MAX', 10.0)), '4h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_4H_MAX', 4.0)), '1h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_1H_MAX', 2.0)), '15m': float(getattr(cfg, 'STDEV_SLOPE_SIZING_15M_MAX', 1.5))}
             _stdev_tf = str(getattr(cfg, 'BAND_SLOPE_SIZING_V2_TF', 'D'))
+            _stdev_pb_key = f'lrL_pct_b_{_stdev_tf}'
+            _stdev_sl_key = f'lrL_slope_{_stdev_tf}'
+            if _stdev_pb_key not in npz or _stdev_sl_key not in npz:
+                raise KeyError(f'STDEV_SLOPE no channel {_stdev_tf} (live parity: skip)')
             _stdev_max = float(_stdev_max_map.get(_stdev_tf, 10.0))
             _stdev_min = float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_MIN', 0.5))
             _stdev_mode = str(getattr(cfg, 'STDEV_SLOPE_SIZING_MODE', 'slope_to_top'))
-            _stdev_pb = _safe(npz, f'lrL_pct_b_{_stdev_tf}', n, 0.5)
-            _stdev_sl = _safe(npz, f'lrL_slope_{_stdev_tf}', n, 0.0)
-            _slope_factor = {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}.get(_stdev_tf, 1.0)
+            _stdev_pb = _safe(npz, _stdev_pb_key, n, 0.5)
+            _stdev_sl = _safe(npz, _stdev_sl_key, n, 0.0)
+            _is_crypto_venue = str(getattr(cfg, 'MODE', 'tradier')).lower() == 'crypto'
+            _slope_map = {'1h': 24.0, '4h': 6.0, 'D': 1.0, '15m': 96.0} if _is_crypto_venue else {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}
+            _slope_factor = _slope_map.get(_stdev_tf, 1.0)
             _slope_day = _stdev_sl * _slope_factor
             _edge = (1.0 - _stdev_pb) if is_long else _stdev_pb
             _edge = np.clip(_edge, 0.0, 1.0)
