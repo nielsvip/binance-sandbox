@@ -1,21 +1,21 @@
-# Copilot Status — 2026-09-14 19:57:51 UTC
+# Copilot Status — 2026-09-14 21:08:14 UTC
 
-**Market Hours:** YES | **Tradier Priority:** YES
+**Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T19:56:42
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T19:57:12
-- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T19:57:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T19:57:12
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T19:57:12
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T19:57:18
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T19:57:51
-- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T19:57:51
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T19:57:51
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T19:57:51
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T21:05:29
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T21:05:29
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T21:05:29
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T21:05:40
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T21:06:41
+- **STALE_INDICATORS** [tradier]  — 2026-09-14T21:07:32
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T21:07:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T21:07:32
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T21:07:32
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T21:07:43
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +29,15 @@ _None_
 
 **Held:** 0 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- WATCHING: **SNDK** LONG (tradier) peaked +7.5%, exited 1m ago
+- WATCHING: **SNDK** LONG (tradier) peaked +7.5%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] ez_rankings.py is NOT running
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_rankings.py is NOT running
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running
