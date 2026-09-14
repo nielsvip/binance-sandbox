@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-14 06:32:20 UTC
+# Copilot Status — 2026-09-14 06:52:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:22:26
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:22:26
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:24:27
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:24:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:26:30
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:26:30
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:28:33
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:28:33
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:30:37
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:30:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:43:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:43:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:45:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:45:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:47:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:47:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:49:09
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:49:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T06:51:13
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T06:51:13
 
 ## Missed Trades (trader comparison)
 
