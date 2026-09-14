@@ -1,86 +1,78 @@
 {
-  "generated_at": "2026-09-14T16:20:12.306411+00:00",
-  "count": 10,
+  "generated_at": "2026-09-14T17:05:51.952746+00:00",
+  "count": 9,
   "advisories": [
     {
-      "symbol": "SNOW",
+      "symbol": "OLED",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.59 threshold=0.45",
-      "score": 0.588,
-      "ts": "2026-09-14T16:20:12.306355+00:00"
+      "reason": "bullish_news_score=0.84 threshold=0.45",
+      "score": 0.836,
+      "ts": "2026-09-14T17:05:51.951973+00:00"
     },
     {
-      "symbol": "SPOT",
+      "symbol": "PATH",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.55 threshold=0.45",
-      "score": 0.551,
-      "ts": "2026-09-14T16:20:12.306362+00:00"
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.531,
+      "ts": "2026-09-14T17:05:51.952578+00:00"
     },
     {
-      "symbol": "STLD",
+      "symbol": "PBF",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.64 threshold=0.45",
-      "score": 0.636,
-      "ts": "2026-09-14T16:20:12.306365+00:00"
+      "reason": "bullish_news_score=0.56 threshold=0.45",
+      "score": 0.559,
+      "ts": "2026-09-14T17:05:51.952584+00:00"
     },
     {
-      "symbol": "TMO",
+      "symbol": "PRI",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.85 threshold=0.45",
-      "score": 0.849,
-      "ts": "2026-09-14T16:20:12.306367+00:00"
+      "reason": "bullish_news_score=0.78 threshold=0.45",
+      "score": 0.776,
+      "ts": "2026-09-14T17:05:51.952589+00:00"
     },
     {
-      "symbol": "UAN",
+      "symbol": "PSX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.93 threshold=0.45",
-      "score": 0.927,
-      "ts": "2026-09-14T16:20:12.306369+00:00"
+      "reason": "bullish_news_score=0.51 threshold=0.45",
+      "score": 0.511,
+      "ts": "2026-09-14T17:05:51.952600+00:00"
     },
     {
-      "symbol": "ULTA",
+      "symbol": "PWR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.48 threshold=0.45",
-      "score": 0.482,
-      "ts": "2026-09-14T16:20:12.306371+00:00"
+      "reason": "bullish_news_score=0.71 threshold=0.45",
+      "score": 0.712,
+      "ts": "2026-09-14T17:05:51.952602+00:00"
     },
     {
-      "symbol": "UPS",
+      "symbol": "QRVO",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.60 threshold=0.45",
-      "score": 0.6,
-      "ts": "2026-09-14T16:20:12.306373+00:00"
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.501,
+      "ts": "2026-09-14T17:05:51.952605+00:00"
     },
     {
-      "symbol": "VZ",
+      "symbol": "RGLD",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.46 threshold=0.45",
-      "score": 0.456,
-      "ts": "2026-09-14T16:20:12.306375+00:00"
+      "reason": "bullish_news_score=0.65 threshold=0.45",
+      "score": 0.645,
+      "ts": "2026-09-14T17:05:51.952674+00:00"
     },
     {
-      "symbol": "WDAY",
+      "symbol": "ROKU",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.72 threshold=0.45",
-      "score": 0.721,
-      "ts": "2026-09-14T16:20:12.306377+00:00"
-    },
-    {
-      "symbol": "WPM",
-      "side": "SHORT",
-      "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.77 threshold=0.45",
-      "score": 0.77,
-      "ts": "2026-09-14T16:20:12.306379+00:00"
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.533,
+      "ts": "2026-09-14T17:05:51.952676+00:00"
     }
   ]
 }

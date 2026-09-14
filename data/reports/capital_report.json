@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 16:28 UTC",
- "total_capital_usd": 11.98,
+ "generated_at": "2026-09-14 16:35 UTC",
+ "total_capital_usd": 80.09,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.98,
+  "B": 80.09,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "flz:XRPUSDC_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:ALGOUSDT_LONG",
-   "symbol": "ALGOUSDT",
-   "account": "men",
-   "value_usd": 11.98,
-   "gain_pct": -0.365,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 80.09,
+   "gain_pct": -0.555,
    "tier": "B",
-   "perf_mult": 2.57,
-   "amt": 125.2,
-   "mark": 0.09567
+   "perf_mult": 0.53,
+   "amt": 56.7,
+   "mark": 1.41256475
   }
  ]
 }
