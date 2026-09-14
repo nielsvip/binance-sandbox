@@ -1323,13 +1323,14 @@ def main():
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
                         _atomic_write_json(progress_path, progress)
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
-                        # keep F as 0 delta, E blank, no kill — every row gets a delta even if NO VALID (0) — flag red for never-stop
+                        # keep G as 0 delta greedy, F as hustle 0, E blank, no kill — every row gets a delta even if NO VALID (0) — flag red for never-stop
                         try:
                             if ws_row is not None:
-                                ws_row.cell(row=r, column=6).value = 0.0
+                                ws_row.cell(row=r, column=6).value = 0.0  # F hustle vs baseline 0
+                                ws_row.cell(row=r, column=7).value = 0.0  # G greedy vs cum 0
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
@@ -1423,8 +1424,12 @@ def main():
                                 if r == _atomic_save._first_r_cache[sheet]:
                                     ws_row.cell(row=r, column=5).value = float(cumulative_before)
                                     ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=False, color="006100")
-                                ws_row.cell(row=r, column=6).value = float(delta_best)
-                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                                # Dual: F (6) is hustle vs baseline, G (7) is greedy vs cum
+                                _h_for_row = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                ws_row.cell(row=r, column=6).value = float(_h_for_row)
+                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=7).value = float(delta_best)
+                                ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="9C5700")
                         except Exception:
                             pass
                     except Exception as _e:
@@ -1446,10 +1451,13 @@ def main():
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
-                                # orange for NEG (valid calc but blocks), red only for true failures
+                                # Dual: F is hustle vs baseline, G is greedy vs cum — orange on G for NEG greedy, F still written
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="000000")
+                                _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                ws_row.cell(row=r, column=6).value = float(_hustle_neg) if _hustle_neg is not None else None
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="000000")
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NEG delta<=0 blocks", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -1495,8 +1503,11 @@ def main():
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                # Dual: F is hustle vs baseline, G is greedy vs cum — red on G (greedy)
+                                _h_delta = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                ws_row.cell(row=r, column=6).value = float(_h_delta) if _h_delta is not None else None
+                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"parity-fail {reason}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -1510,8 +1521,10 @@ def main():
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                _h_delta2 = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                ws_row.cell(row=r, column=6).value = float(_h_delta2) if _h_delta2 is not None else None
+                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                         except Exception:
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"live-neg {live_delta}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
@@ -1524,13 +1537,15 @@ def main():
                         # mark as not promoted but keep yellow/orange with correct delta vs current cum
                         # recompute delta vs current cum for correct F
                         delta_best = new_cum - cumulative_gain
-                        # write F as negative (bland) and blank E next + overrides — flag red
+                        # write G as negative greedy (bland) and F as hustle vs baseline + blank E next + overrides — flag red on G
                         try:
                             if ws_row is not None:
-                                ws_row.cell(row=r, column=6).value = float(delta_best)
+                                _h_bland = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                                ws_row.cell(row=r, column=6).value = float(_h_bland)
+                                ws_row.cell(row=r, column=7).value = float(delta_best)
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="FFFFFF")
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
@@ -1552,11 +1567,15 @@ def main():
                             overrides_str = " + ".join(all_over) if all_over else str(cand)
                             ws_row.cell(row=r, column=3).value = overrides_str
                             ws_row.cell(row=r, column=3).font = Font(name="Arial", bold=True, color="006100")
-                            # baseline for this row: E_r = IF(F_r>0, cum_before+F_r, "") per spec E=IF(F4="","",IF(F4>0,E3+F4,"")) — write F and E for this row
-                            ws_row.cell(row=r, column=6).value = float(delta_best) if delta_best is not None else None
-                            ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
-                            # E for this row (col 5) is cum_before+delta if delta>0 else blank, not next row
-                            ws_row.cell(row=r, column=5).value = new_cum if delta_best > 0 else None
+                            # baseline for this row: E_r = cumulative_before (spec: E is previous winning cum), F is HUSTLE_DELTA vs baseline, G is VECTOR_DELTA greedy vs cum
+                            # Dual system: E stays greedy (cumulative_before), F is hustle vs baseline, G is greedy delta
+                            _hustle_delta_vs_baseline = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                            ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None  # G = greedy VECTOR_DELTA vs cum
+                            ws_row.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="9C5700")
+                            ws_row.cell(row=r, column=6).value = float(_hustle_delta_vs_baseline) if _hustle_delta_vs_baseline is not None else None  # F = HUSTLE_DELTA vs baseline
+                            ws_row.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="006100")
+                            # E for this row (col 5) is cumulative_before (spec: E is previous winning cum, not vec_gain), not new_cum
+                            ws_row.cell(row=r, column=5).value = float(cumulative_before) if delta_best > 0 else None
                             if delta_best > 0:
                                 ws_row.cell(row=r, column=5).font = Font(name="Arial", bold=True, color="006100")
                             else:
@@ -1581,6 +1600,15 @@ def main():
                     progress["cumulative_gain"] = cumulative_gain
                     progress["cumulative_overrides"] = cumulative_overrides
                     _atomic_write_json(progress_path, progress)
+                    # Update BASELINE_METRICS B2 to winning cumulative_gain (spec: baseline with final test gain result of winning combination so far)
+                    try:
+                        _bname = f"{new_symside}_BASELINE_METRICS"
+                        if _bname in wb_keep.sheetnames:
+                            _bws = wb_keep[_bname]
+                            _bws.cell(row=2, column=2).value = float(cumulative_gain)
+                            _bws.cell(row=2, column=2).font = Font(name="Arial", bold=True, color="006100")
+                    except Exception:
+                        pass
                     print(f"[PROMOTE] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} cum->{cumulative_gain:.4f}", flush=True)
                     _touch_heartbeat(f"cell {sheet}!{r} PROMOTE")
                     # BATCHED FLUSH every 10 rows to keep 40min target (was per-row save -> strand at 21)
@@ -1600,9 +1628,10 @@ def main():
                         try:
                             if ws_row is not None:
                                 from openpyxl.styles import PatternFill
-                                ws_row.cell(row=r, column=6).value = 0.0
-                                ws_row.cell(row=r, column=6).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
+                                ws_row.cell(row=r, column=6).value = 0.0  # F hustle
+                                ws_row.cell(row=r, column=7).value = 0.0  # G greedy
+                                ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                                ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
@@ -2044,23 +2073,29 @@ def main():
                     print(f"[hustler-warn] {_we}", flush=True)
                 # optionally promote cumulative_gain to hustler best for final publishing
                 # keep greedy cum as is for workbook E monotonic, but final_path will reflect hustler if better and parity ok
-                try:
-                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_final2
-                    _san_best,_ = sanitize_overrides(_best_overrides, defaults)
-                    _vec_best = _eval_final2(prepared, _san_best, window_days=args.window_days)
-                    _live_best2 = live_evaluate(new_symside, _san_best, args.window_days)
-                    _ok2,_rsn2 = parity_ok(_live_best2, _vec_best, allow_zero_baseline=baseline_had_zero_trades)
-                    if _ok2 and float(_vec_best.get("gain_pct") or 0) > cumulative_gain:
-                        cumulative_gain = float(_vec_best.get("gain_pct") or 0)
-                        cumulative_overrides = dict(_san_best)
-                        progress["cumulative_gain"] = cumulative_gain
-                        progress["cumulative_overrides"] = cumulative_overrides
-                        progress["hustler_promoted"] = True
-                        print(f"[hustler] PROMOTED cumulative to hustler best {cumulative_gain:.2f} parity ok", flush=True)
-                    else:
-                        print(f"[hustler] NOT promoted parity {_ok2} {_rsn2} vec {_vec_best.get('gain_pct',0):.2f}", flush=True)
-                except Exception as _pe:
-                    print(f"[hustler-promote-warn] {_pe}", flush=True)
+                # Dual system: keep baseline as greedy, hustle stays in F column and hustler_best.json, no promotion yet (no winner defined)
+                # To enable hustle promotion later, set DUAL_HUSTLE_PROMOTE = True
+                DUAL_HUSTLE_PROMOTE = False
+                if DUAL_HUSTLE_PROMOTE:
+                    try:
+                        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_final2
+                        _san_best,_ = sanitize_overrides(_best_overrides, defaults)
+                        _vec_best = _eval_final2(prepared, _san_best, window_days=args.window_days)
+                        _live_best2 = live_evaluate(new_symside, _san_best, args.window_days)
+                        _ok2,_rsn2 = parity_ok(_live_best2, _vec_best, allow_zero_baseline=baseline_had_zero_trades)
+                        if _ok2 and float(_vec_best.get("gain_pct") or 0) > cumulative_gain:
+                            cumulative_gain = float(_vec_best.get("gain_pct") or 0)
+                            cumulative_overrides = dict(_san_best)
+                            progress["cumulative_gain"] = cumulative_gain
+                            progress["cumulative_overrides"] = cumulative_overrides
+                            progress["hustler_promoted"] = True
+                            print(f"[hustler] PROMOTED cumulative to hustler best {cumulative_gain:.2f} parity ok", flush=True)
+                        else:
+                            print(f"[hustler] NOT promoted parity {_ok2} {_rsn2} vec {_vec_best.get('gain_pct',0):.2f}", flush=True)
+                    except Exception as _pe:
+                        print(f"[hustler-promote-warn] {_pe}", flush=True)
+                else:
+                    print(f"[hustler-dual] hustle best {float(_best_gain):.2f} vs greedy {cumulative_gain:.2f} baseline {float(baseline_gain or 0):.2f} — dual F=HUSTLE G=GREEDY, baseline stays greedy (no winner yet)", flush=True)
             else:
                 print(f"[hustler] no hustle improvement greedy {cumulative_gain:.2f} remains best vs baseline {float(baseline_gain or 0):.2f}", flush=True)
         else:

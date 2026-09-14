@@ -2296,5 +2296,14 @@
     ],
     "timestamp": "2026-09-14T00:35:32.310252+00:00",
     "price": 0.005312
+  },
+  {
+    "symbol": "STORJUSDT",
+    "severity": 2,
+    "reasons": [
+      "PRICE_RANGE_3M: 20.0% range (spike detected)"
+    ],
+    "timestamp": "2026-09-14T00:44:50.559010+00:00",
+    "price": 0.03268599
   }
 ]
