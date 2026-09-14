@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 11:01 UTC",
- "total_capital_usd": 11.96,
+ "generated_at": "2026-09-14 11:08 UTC",
+ "total_capital_usd": 11.87,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.96,
+  "B": 11.87,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "inf",
-   "value_usd": 11.96,
-   "gain_pct": 0.019,
+   "pk": "men:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "men",
+   "value_usd": 11.87,
+   "gain_pct": -0.344,
    "tier": "B",
-   "perf_mult": 7.19,
-   "amt": 743.0,
-   "mark": 0.016094
+   "perf_mult": 0.51,
+   "amt": 8.5,
+   "mark": 1.3968
   }
  ]
 }
