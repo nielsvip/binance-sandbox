@@ -773,6 +773,9 @@ def clone_template(template: Path, new_symside: str) -> Path:
 def main():
     _cycle_deque = None
     _cycle_indices = None
+    # Ensure _cycle_deque defined for sequential mode to avoid NameError
+    _cycle_deque = None
+    _cycle_indices = None
     ap = argparse.ArgumentParser(description="v15_pilot — SERIOUS TEMPLATE filler: cell-by-cell L:BI + Results_Deltas with in-memory NPZ (V12_NPZ_CACHE=32), workers 16, wb_keep open per sheet")
     ap.add_argument("--sym-side", dest="sym_side", default=None)
     ap.add_argument("--template", default=str(TEMPLATE))

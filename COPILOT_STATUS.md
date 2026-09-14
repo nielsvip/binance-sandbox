@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-14 22:34:17 UTC
+# Copilot Status — 2026-09-14 22:55:08 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T22:32:13
-- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T22:32:13
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T22:32:13
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T22:32:13
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T22:32:53
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T22:33:55
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T22:34:17
-- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T22:34:17
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T22:34:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T22:34:17
+- **STALE_INDICATORS** [tradier]  — 2026-09-14T22:53:03
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T22:53:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T22:53:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T22:53:03
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T22:53:45
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T22:54:47
+- **STALE_INDICATORS** [tradier]  — 2026-09-14T22:55:08
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T22:55:08
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T22:55:08
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T22:55:08
 
 ## Missed Trades (trader comparison)
 

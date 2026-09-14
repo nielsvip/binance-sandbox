@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-14T22:37:09.524801+00:00",
+  "timestamp": "2026-09-14T22:57:27.536419+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
-    {
-      "symbol": "CHRUSDT",
-      "net_score": -13.8,
-      "long_score": 0,
-      "short_score": 13.8
-    },
     {
       "symbol": "MRVLUSDT",
       "net_score": 0,
@@ -188,6 +182,12 @@
     },
     {
       "symbol": "AMATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CHRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -476,13 +476,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "CHRUSDT",
-      13.8,
-      0.01607304
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
