@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-14T12:24:21.927308+00:00",
+  "timestamp": "2026-09-14T12:44:45.062151+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,22 @@
   },
   "unified_ranking": [
     {
-      "symbol": "AMATUSDT",
-      "net_score": -11.4,
+      "symbol": "STORJUSDT",
+      "net_score": -22.8,
       "long_score": 0,
-      "short_score": 11.4
+      "short_score": 22.8
+    },
+    {
+      "symbol": "AMATUSDT",
+      "net_score": -13.2,
+      "long_score": 0,
+      "short_score": 13.2
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "net_score": -10.2,
+      "long_score": 0,
+      "short_score": 10.2
     },
     {
       "symbol": "AAVEUSDC",
@@ -205,6 +217,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -290,12 +308,6 @@
     },
     {
       "symbol": "TRXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "STORJUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -398,12 +410,6 @@
     },
     {
       "symbol": "SOLUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -569,26 +575,24 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "MSFTUSDT",
-      "net_score": 19.4,
-      "long_score": 19.4,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "MSFTUSDT",
-      19.4,
-      499.31543773
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
+      "STORJUSDT",
+      22.8,
+      0.03019826
+    ],
+    [
       "AMATUSDT",
-      11.4,
-      424.56
+      13.2,
+      422.61459538
+    ],
+    [
+      "ATOMUSDT",
+      10.2,
+      1.556
     ]
   ],
   "hedge_usage": {
