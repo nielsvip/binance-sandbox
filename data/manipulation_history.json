@@ -4638,5 +4638,68 @@
     ],
     "timestamp": "2026-09-14T08:14:39.514635+00:00",
     "price": 20.43174328
+  },
+  {
+    "symbol": "BTCUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.6x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T08:17:40.669381+00:00",
+    "price": 77720.4
+  },
+  {
+    "symbol": "DKNGUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.6x normal"
+    ],
+    "timestamp": "2026-09-14T08:17:40.669381+00:00",
+    "price": 24.75995935
+  },
+  {
+    "symbol": "AAOIUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 9.2x normal"
+    ],
+    "timestamp": "2026-09-14T08:19:16.865173+00:00",
+    "price": 98.66918062
+  },
+  {
+    "symbol": "SMHUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_15M: 8.2x normal"
+    ],
+    "timestamp": "2026-09-14T08:19:16.865173+00:00",
+    "price": 548.93857913
+  },
+  {
+    "symbol": "BIGTIMEUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T08:22:12.141534+00:00",
+    "price": 0.00740179
+  },
+  {
+    "symbol": "LUNA2USDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T08:22:12.141534+00:00",
+    "price": 0.04625293
+  },
+  {
+    "symbol": "STXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 23.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T08:32:39.352848+00:00",
+    "price": 0.2666
   }
 ]
