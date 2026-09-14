@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 07:50 UTC",
- "total_capital_usd": 5.63,
+ "generated_at": "2026-09-14 08:08 UTC",
+ "total_capital_usd": 35.8,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.63,
+  "B": 35.8,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "men:KSMUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:KSMUSDT_LONG",
-   "symbol": "KSMUSDT",
-   "account": "men",
-   "value_usd": 5.63,
-   "gain_pct": 0.0,
+   "pk": "inf:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "inf",
+   "value_usd": 35.8,
+   "gain_pct": 0.634,
    "tier": "B",
-   "perf_mult": 0.86,
-   "amt": 1.4,
-   "mark": 4.022
+   "perf_mult": 7.19,
+   "amt": 2214.0,
+   "mark": 0.01616869
   }
  ]
 }
