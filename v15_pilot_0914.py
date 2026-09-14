@@ -1305,27 +1305,146 @@ def main():
         # Note: the sequential `for sheet in sheets:` loop below is SKIPPED when cycle is active — we handle all rows here
         _cycle_active = True
         # We need to define _process_one_row helper before loop — define inline
-        def _process_cycle_row(sheet: str, r: int, switch: str, cand):
-            nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, baseline_vec, baseline_had_zero_trades, args
-            # === BEGIN per-row evaluation (mirrors sequential body, abbreviated to capture delta) ===
-            # This delegates to the same logic as sequential: get opportune filters, evaluate candidates, compute delta_best = vg - cumulative_before, write yellows, update progress
-            # For maintainability we call the extracted helper if available, otherwise fallback to inline
-            # We capture delta via the shared helper _eval_row (defined below) — here we just call it
-            # Use the real helper defined above (which evaluates naked + yellows)
-            try:
-                return _process_0914_row_helper(sheet, r, switch, cand)
-            except NameError:
-                # Fallback inline: evaluate naked variant
+        def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
+            """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
+            nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
+            # Build header map for this sheet
+            wb_h, htc = _get_wb_keep(sheet)
+            ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
+            opportune = get_opportune_filters(switch, sheet)
+            specifics = [e for e in opportune if not _is_general(e["rec"])]
+            def parse_opt(v, default):
+                if isinstance(default, bool):
+                    return str(v).lower() == "true" if str(v).lower() in ("true", "false") else bool(v)
+                if isinstance(default, int) and not isinstance(default, bool):
+                    try: return int(float(str(v)))
+                    except: return v
+                if isinstance(default, float):
+                    try: return float(str(v))
+                    except: return v
+                if isinstance(v, str) and v.lower() in ("true", "false"):
+                    return v.lower() == "true"
                 try:
-                    v0 = dict(cumulative_overrides)
-                    v0[switch] = cand
-                    v0, _ = sanitize_overrides(v0, defaults)
-                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_h2
-                    vec = _eval_h2(prepared, v0, window_days=args.window_days) if prepared is not None else None
-                    if vec and vec.get("valid"):
-                        return float(vec.get("gain_pct") or 0) - cumulative_gain
+                    if "." in str(v): return float(str(v))
+                    return int(str(v))
+                except: return v
+            def norm2(a, b):
+                if isinstance(a, str) and a.lower() in ("true", "false"): a = a.lower() == "true"
+                if isinstance(b, str) and b.lower() in ("true", "false"): b = b.lower() == "true"
+                return a == b
+            _rel_eval, _rel_ident = [], []
+            for e in specifics:
+                _hdr = f"{e['filter']}={e['opt']}"
+                if _hdr not in htc: continue
+                _ov = parse_opt(e["opt"], defaults.get(e["filter"]))
+                _cur = cand if e["filter"] == switch else cumulative_overrides.get(e["filter"], defaults.get(e["filter"]))
+                if norm2(_ov, _cur): _rel_ident.append(_hdr)
+                else: _rel_eval.append((e["filter"], _ov, _hdr, e["opt"]))
+            single_filters = list(_rel_eval)
+            if len(single_filters) > 50:
+                single_filters = sorted(single_filters, key=lambda t: (0 if t[2] in htc else 1, t[2]))[:50]
+            identical_hdrs = list(_rel_ident)
+            relevant_hdrs = [t[2] for t in single_filters] + list(identical_hdrs)
+            candidates = []
+            v0 = dict(cumulative_overrides); v0[switch] = cand; v0, _ = sanitize_overrides(v0, defaults)
+            candidates.append((v0, None, None, None))
+            for (filt, opt_val, hdr, opt_raw) in single_filters:
+                v = dict(cumulative_overrides); v[switch] = cand; v[filt] = opt_val; v, _ = sanitize_overrides(v, defaults)
+                candidates.append((v, filt, opt_val, hdr))
+            # batch evaluate
+            vecs = []
+            try:
+                if prepared is not None:
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_prep
+                    import concurrent.futures as _cf2
+                    with _cf2.ThreadPoolExecutor(max_workers=args.workers) as ex:
+                        vecs = list(ex.map(lambda vv: _eval_prep(prepared, vv, window_days=args.window_days), [c[0] for c in candidates]))
+                else:
+                    from tools.opt.v12_pilot import evaluate_many_sanitized as _eval_many
+                    vecs = _eval_many(switch, [c[0] for c in candidates], window_days=args.window_days)
+            except Exception: vecs = []
+            cumulative_before = cumulative_gain
+            pending_lbI = {}
+            invalid_hdrs = []
+            best = None
+            vector_delta_val = None
+            for idx, (variant, filt, fval, hdr) in enumerate(candidates):
+                if idx >= len(vecs): break
+                vec = vecs[idx]
+                if not vec.get("valid"):
+                    if filt is not None and hdr in htc: invalid_hdrs.append(hdr)
+                    continue
+                vg = float(vec.get("gain_pct") or 0); delta = vg - cumulative_before
+                if filt is not None and hdr in htc: pending_lbI[hdr] = float(delta)
+                if best is None or delta > best[0]: best = (delta, variant, filt, fval, hdr, vec)
+                if filt is None: vector_delta_val = float(delta)
+            if vector_delta_val is not None:
+                for _h in identical_hdrs:
+                    if _h not in pending_lbI: pending_lbI[_h] = float(vector_delta_val)
+            else:
+                for _h in identical_hdrs:
+                    if _h not in pending_lbI: pending_lbI[_h] = 0.0; invalid_hdrs.append(_h)
+            for _h in invalid_hdrs:
+                if _h not in pending_lbI: pending_lbI[_h] = 0.0
+            # combined pos
+            try:
+                pos_filters = [(f, o, h) for (f, o, h, raw) in single_filters if pending_lbI.get(h, float("-inf")) > 0]
+                if pos_filters:
+                    v_all = dict(cumulative_overrides); v_all[switch] = cand
+                    for (ff, oo, hh) in pos_filters: v_all[ff] = oo
+                    v_all, _ = sanitize_overrides(v_all, defaults)
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_all
+                    vec_all = _eval_all(prepared, v_all, window_days=args.window_days) if prepared is not None else None
+                    if vec_all and vec_all.get("valid"):
+                        vg_all = float(vec_all.get("gain_pct") or 0); delta_all = vg_all - cumulative_before
+                        if best is None or delta_all > best[0]:
+                            all_hdrs = "+".join([h for (_,_,h) in pos_filters])
+                            best = (delta_all, v_all, None, None, all_hdrs, vec_all)
+            except Exception: pass
+            if best is None:
+                # no valid
+                if ws_h is not None:
+                    for _hdr in relevant_hdrs:
+                        _col = htc.get(_hdr)
+                        if _col: 
+                            try: ws_h.cell(row=r, column=_col).value = 0.0
+                            except: pass
+                    try: ws_h.cell(row=r, column=6).value = 0.0; ws_h.cell(row=r, column=7).value = 0.0
+                    except: pass
+                key = f"{sheet}!{r}:{switch}={cand}"
+                progress.setdefault("done", {})[key] = {"delta": 0, "vec_gain": 0, "yellows": {h: 0.0 for h in relevant_hdrs}, "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before)}
+                return 0.0
+            delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
+            # write yellows
+            if ws_h is not None:
+                for hdr, d in pending_lbI.items():
+                    col = htc.get(hdr)
+                    if col:
+                        try: ws_h.cell(row=r, column=col).value = float(d)
+                        except: pass
+                for _hdr in relevant_hdrs:
+                    _col = htc.get(_hdr)
+                    if _col and ws_h.cell(row=r, column=_col).value is None:
+                        try: ws_h.cell(row=r, column=_col).value = 0.0
+                        except: pass
+                try:
+                    ws_h.cell(row=r, column=6).value = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
+                    ws_h.cell(row=r, column=7).value = float(delta_best)
                 except: pass
-                return 0
+            key = f"{sheet}!{r}:{switch}={cand}"
+            progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "yellows": dict(pending_lbI), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "best_filter": filt_best, "best_fval": fval_best}
+            if delta_best > 1e-9:
+                cumulative_gain = float(cumulative_before + delta_best)
+                cumulative_overrides[switch] = cand
+                if filt_best: cumulative_overrides[filt_best] = fval_best
+                # also apply all pos filters if combined
+                if hdr_best and "+" in str(hdr_best):
+                    for (ff, oo, hh) in pos_filters:
+                        cumulative_overrides[ff] = oo
+            return float(delta_best)
+
+        def _process_cycle_row(sheet: str, r: int, switch: str, cand):
+            return _process_0914_row_helper(sheet, r, switch, cand)
         # Iterate with POS-stay / NEG-advance
         while _deque_sheets and _processed_cycle < _remaining_cycle:
             sheet = _deque_sheets[0]
@@ -1662,8 +1781,8 @@ def main():
                             # FIX 2026-09-13: always parallel 16 identical to live, per_cell 0.5/1.0s post-hoc flag only (never mid-batch truncate) — heavy sequential was >1.0s red
                             try:
                                 import concurrent.futures as _cf2
-                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers=16 {'heavy' if is_heavy else 'light'}", flush=True)
-                                with _cf2.ThreadPoolExecutor(max_workers=16) as ex:
+                                print(f"[LOG {time.time():.1f}] vec batch {len(candidates)} workers={args.workers} {'heavy' if is_heavy else 'light'}", flush=True)
+                                with _cf2.ThreadPoolExecutor(max_workers=args.workers) as ex:
                                     vecs = list(ex.map(lambda v: _eval_prep(prepared, v, window_days=args.window_days), [c[0] for c in candidates]))
                                 print(f"[LOG {time.time():.1f}] vec batch done {len(vecs)} {'heavy' if is_heavy else 'light'} <{per_cell_timeout_sec}s deadline", flush=True)
                             except Exception as e:
@@ -2426,7 +2545,7 @@ def main():
                     from concurrent.futures import ThreadPoolExecutor as _TPE
                     def _eval_sim(v):
                         return _hustle_eval(prepared, v, window_days=args.window_days) if prepared is not None else None
-                    with _TPE(max_workers=16) as _ex:
+                    with _TPE(max_workers=args.workers) as _ex:
                         _sims = list(_ex.map(_eval_sim, _sim_variants))
                 except Exception:
                     _sims = [_hustle_eval(prepared, v, window_days=args.window_days) for v in _sim_variants]
@@ -2491,7 +2610,7 @@ def main():
                         return _hustle_eval(prepared, _san, window_days=args.window_days)
                     try:
                         from concurrent.futures import ThreadPoolExecutor as _TPE2
-                        with _TPE2(max_workers=16) as _ex2:
+                        with _TPE2(max_workers=args.workers) as _ex2:
                             _cum_sims = list(_ex2.map(lambda t: _eval_cum(t), _cum_variants))
                     except Exception:
                         _cum_sims = [_eval_cum(t) for t in _cum_variants]
