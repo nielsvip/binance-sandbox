@@ -771,6 +771,8 @@ def clone_template(template: Path, new_symside: str) -> Path:
     return target
 
 def main():
+    _cycle_deque = None
+    _cycle_indices = None
     ap = argparse.ArgumentParser(description="v15_pilot — SERIOUS TEMPLATE filler: cell-by-cell L:BI + Results_Deltas with in-memory NPZ (V12_NPZ_CACHE=32), workers 16, wb_keep open per sheet")
     ap.add_argument("--sym-side", dest="sym_side", default=None)
     ap.add_argument("--template", default=str(TEMPLATE))
@@ -1379,8 +1381,10 @@ def main():
     # Ensure _cycle_deque defined for sequential mode (was only primed for cycle)
     if '_cycle_deque' not in locals():
         _cycle_deque = None
-    # Sequential vs cycle deque: cycle stays on same tab with POS, next tab with NEG only
-    if _cycle_deque is not None:
+    # Ensure _cycle_deque defined for sequential (fix NameError when not cycle)
+    if '_cycle_deque' not in locals():
+        _cycle_deque = None
+    if '_cycle_deque' in locals() and _cycle_deque is not None:
         # Cycle deque already primed above — drive sheets via deque, processing one sheet's rows with POS/NEG logic
         # For true POS-stay/NEG-advance we need per-row deque, but per-row body already logs POS/NEG and will drive next sheet selection via _cycle_deque
         # Here we keep outer sheet loop as deque-driven: pop sheet, process its next row, then decide stay/rotate
