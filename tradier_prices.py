@@ -166,11 +166,24 @@ class TradierPriceFetcher:
             except Exception as e:
                 logger.error(f"[{self.fetcher_id}] Redis Broadcast Failed: {e}")
 
-        # 2. Update Disk Fallback
+        # 2. Update Disk Fallback (2026-09-14 ATOMIC: direct 'w' writes let
+        # concurrent readers catch half-written JSON -> "Extra data" errors that
+        # blanked every symbol's mark price. tmp + os.replace is atomic.)
         try:
+            import os as _os
+            import tempfile as _tf
             latest_file = self.config.DATA_DIR / "tradier_prices_latest.json"
-            async with aiofiles.open(latest_file, 'w') as f:
-                await f.write(json.dumps(payload, default=str))
+            _fd, _tmp = _tf.mkstemp(dir=str(latest_file.parent), prefix=".prices_", suffix=".tmp")
+            try:
+                with _os.fdopen(_fd, "w") as f:
+                    f.write(json.dumps(payload, default=str))
+                _os.replace(_tmp, latest_file)
+            except Exception:
+                try:
+                    _os.unlink(_tmp)
+                except Exception:
+                    pass
+                raise
         except Exception as e:
             logger.error(f"[{self.fetcher_id}] Disk Save Failed: {e}")
 

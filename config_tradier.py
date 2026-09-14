@@ -1329,6 +1329,7 @@ class TradierConfig:
     TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False   # Block RATIO_BOOST on positions with gain < min
     TRADIER_RATIO_BOOST_MIN_GAIN_PCT: float = 1.0  # Min gain for ratio boost to fire
     TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED: bool = False  # True=legacy (bypass after 48h); False=always enforce stoch
+    REENTRY_RECLAIM_STALE_BYPASS_ENABLED: bool = True  # 2026-09-14: price reclaimed exit while small-tf indicators stale -> stoch tier gates unjudgeable, bypass them (exit-score + tradeable gates still apply). Kill switch for this fail-open.
     TRADIER_NOLOSS_SRS_BYPASS: bool = True          # True=SRS reason bypasses NOLOSS; False=no reason bypass
     # === TWO-TIER MANDATORY REENTRY — STOCKS (BC_155) ===
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5  # 2026-04-26 WIRED — tradier_manage.py:5561 applies this mult to base_qty cap (was hardcoded 1.5). Tier 1: % of closed qty. Default 1.5 preserves prior behavior. Previously DEAD_CONFIRMED (priority 70).

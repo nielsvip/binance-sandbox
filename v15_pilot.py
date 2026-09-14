@@ -1248,6 +1248,18 @@ def main():
                                             _wsk.cell(row=r, column=_yc).value = float(_yd)
                                         except Exception:
                                             pass
+                                # orphans: floats under current headers that are NOT in this
+                                # row's record (stale writes orphaned by header-layout churn)
+                                # — clear so a skipped row can never show wrong numbers
+                                try:
+                                    _rec_hdrs = set((prev.get("yellows") or {}).keys())
+                                    for _hc, _cc in header_to_col.items():
+                                        if _hc in _rec_hdrs:
+                                            continue
+                                        if isinstance(_wsk.cell(row=r, column=_cc).value, float):
+                                            _wsk.cell(row=r, column=_cc).value = None
+                                except Exception:
+                                    pass
                         except Exception:
                             pass
                         if prev.get("delta") and prev["delta"] > 0:

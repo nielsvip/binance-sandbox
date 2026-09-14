@@ -178,6 +178,32 @@ _GAP_RISK_STATE: Dict[str, Dict[str, Any]] = {}  # key = position_key, val = {ga
 _GAP_INVENTORY: Dict[str, Any] = {"sum_pos_pct": 0.0, "sum_neg_pct": 0.0, "days": []}  # days: [{date, open, close, gap_pct}]
 _GAP_INVENTORY_LAST_SAVE: float = 0.0
 _GAP_MOC_PENDING_REENTRY: Dict[str, Dict[str, Any]] = {}  # position_key -> {amount, exit_price, gap_pct, ts}
+_GAP_MOC_PENDING_FILE = Path("data/tradier_gap_moc_pending.json")
+
+
+def _gap_moc_save_pending() -> None:
+    # 2026-09-14: persist the morning-rebuy list (a restart used to wipe it, so
+    # Friday gap exits never got their Monday rebuy). Best-effort, never raises.
+    try:
+        _GAP_MOC_PENDING_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _tmp = _GAP_MOC_PENDING_FILE.with_suffix(".tmp")
+        _tmp.write_text(json.dumps(_GAP_MOC_PENDING_REENTRY))
+        os.replace(_tmp, _GAP_MOC_PENDING_FILE)
+    except Exception:
+        pass
+
+
+def _gap_moc_load_pending() -> None:
+    # 2026-09-14: reload the morning-rebuy list at loop start. Best-effort.
+    try:
+        if _GAP_MOC_PENDING_FILE.exists() and _GAP_MOC_PENDING_FILE.stat().st_size > 2:
+            _loaded = json.loads(_GAP_MOC_PENDING_FILE.read_text())
+            if isinstance(_loaded, dict):
+                for _k, _v in _loaded.items():
+                    if isinstance(_v, dict):
+                        _GAP_MOC_PENDING_REENTRY.setdefault(_k, _v)
+    except Exception:
+        pass
 # PER-SYMBOL GAP INVENTORY (ONLY source for 90m sentinel since 2026-09-11 per user: avg gap per symbol decides)
 _GAP_PER_SYMBOL_INVENTORY: Dict[str, Dict[str, Any]] = {}  # {SYM: {days, sum_gap_pct, last5/last_gaps}}
 _GAP_PER_SYMBOL_LAST_LOAD: float = 0.0
@@ -9202,6 +9228,9 @@ async def gap_moc_and_morning_loop(trade_manager):
     """
     _gap_inventory_load()
     _gap_per_symbol_load(force=True)
+    _gap_moc_load_pending()  # 2026-09-14: survive restarts (Friday exits -> Monday rebuys)
+    if _GAP_MOC_PENDING_REENTRY:
+        logger.warning(f"[GAP_MOC] restored {len(_GAP_MOC_PENDING_REENTRY)} pending morning rebuys from disk")
     _morning_done_today = False
     _gap_recorded_today = False
     _gap_exit_done: set = set()  # pks already exited this window
@@ -9233,24 +9262,33 @@ async def gap_moc_and_morning_loop(trade_manager):
                 except Exception as _re:
                     logger.debug(f"[GAP_MOC] gap record skip: {_re}")
             # --- Morning reentry window 09:30-11:00 ET (PER-SYMBOL, any dip) ---
+            # 2026-09-14: pending list persists on disk (survives restarts); the pass
+            # retries every minute until at least one candidate evaluates with real
+            # indicators (old one-shot + silent skips wasted the whole window).
             if 0 <= mins_since_open <= float(_cfg_auto('GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN', 90)) and not _morning_done_today:
                 if bool(_cfg_auto('GAP_MORNING_REENTRY_ENABLED', True)) and _GAP_MOC_PENDING_REENTRY:
                     _gap_per_symbol_load()
+                    _morning_evaluated = 0
                     for pk, info in list(_GAP_MOC_PENDING_REENTRY.items()):
                         try:
                             poss = trade_manager.position_manager.get_positions_by_account('trb') or {}
                             cur = poss.get(pk)
                             if cur and abs(safe_fetch_float(getattr(cur, 'positionAmt', 0), 0)) > 0:
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
+                                _gap_moc_save_pending()
                                 continue
                             is_long = pk.endswith('_LONG')
                             sym = pk.split(':')[1].replace('_LONG','').replace('_SHORT','')
                             ind = (trade_manager.indicators_cache or {}).get(sym, {}) if hasattr(trade_manager, 'indicators_cache') else {}
-                            if not ind: continue
+                            if not ind:
+                                logger.info(f"[GAP_MOC] defer morning rebuy {pk}: no indicators yet — retry next minute")
+                                continue
+                            _morning_evaluated += 1
                             # "if trade still attractive" = not near dc_4h edge with WT against (same gate as pre-close VV)
                             if _is_near_dc4_high_with_wt_down(ind, is_long):
                                 logger.info(f"[GAP_MOC] skip morning rebuy {pk}: dc_4h vv danger + wt {'down' if is_long else 'up'} (not attractive)")
                                 _GAP_MOC_PENDING_REENTRY.pop(pk, None)
+                                _gap_moc_save_pending()
                                 continue
                             wt_ok = float(ind.get('wt1_15m', 0) or 0) > float(ind.get('wt2_15m', 0) or 0) if is_long else float(ind.get('wt1_15m', 0) or 0) < float(ind.get('wt2_15m', 0) or 0)
                             ha_ok = (ind.get('ha_15m') == 'green') if is_long else (ind.get('ha_15m') == 'red')
@@ -9261,10 +9299,19 @@ async def gap_moc_and_morning_loop(trade_manager):
                                 if float(info.get('exit_gain', 0) or 0) > 0: amt *= mult
                                 await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "OPEN", f"GAP_MORNING_REENTRY_{pk}_dip{int(dip_ok)}_trend{int(wt_ok or ha_ok)}", amt, override_qty=999999)
                                 logger.warning(f"[GAP_MOC] morning rebuy {pk} amt={amt:.2f} dip={dip_ok} wt={wt_ok} ha={ha_ok} sym_avg={_gap_per_symbol_avg_gap(sym)}")
-                            _GAP_MOC_PENDING_REENTRY.pop(pk, None)
+                                _GAP_MOC_PENDING_REENTRY.pop(pk, None)
+                                _gap_moc_save_pending()
+                            else:
+                                logger.info(f"[GAP_MOC] hold morning rebuy {pk}: no dip/trend yet wt={wt_ok} ha={ha_ok} dip={dip_ok} — kept for retry")
                         except Exception as _me:
                             logger.error(f"[GAP_MOC_MORNING_ERR] {pk}: {_me}", exc_info=True)
-                    _morning_done_today = True
+                    # Done only when every pending candidate resolved (rebuy/skip);
+                    # no-trigger holds stay for next minute; no-indicator defers retry.
+                    if not _GAP_MOC_PENDING_REENTRY:
+                        _gap_moc_save_pending()
+                        _morning_done_today = True
+                    elif _morning_evaluated == 0:
+                        logger.info(f"[GAP_MOC] morning pass: 0 evaluated (no indicators) — retry next minute")
                 # don't continue — allow gap window to also be evaluated if overlapping
             # --- Pre-close window 90m → 0m before close (14:30-16:00 ET) — OPEN-GAP + CLOSE-GAP (stocks-only) ---
             # Close-gap sentinel (2026-09-14): separate inventory (close_D - open_D)/open_D, stocks-only, defaults to SHORTS >0.10
@@ -9361,6 +9408,7 @@ async def gap_moc_and_morning_loop(trade_manager):
                         continue
                     gain = safe_fetch_float(getattr(pos, 'gain', 0), 0)
                     _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': float(ind.get('current_price', 0)), 'exit_gain': gain, 'ts': time.time(), 'avg_gap': _avg_for_log, 'which': _which}
+                    _gap_moc_save_pending()  # 2026-09-14: persist immediately (restart-proof)
                     reason = f"GAP_MOC_EXIT_{_which}_{pk}_avg{_avg_for_log:+.2f}_thr{_thr_for_log:.2f}_top{is_top}_vv{vv_danger}_m{mins_to_close:.0f}" if _avg_for_log is not None else f"GAP_MOC_EXIT_{_which}_{pk}_vv{vv_danger}_m{mins_to_close:.0f}"
                     await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "CLOSE", reason, amt, override_qty=999999)
                     _gap_exit_done.add(pk)
@@ -24881,6 +24929,22 @@ class TradierTradeManager:
         except Exception as e:
             logger.error(f"[REENTRY_SEED] Error: {e}", exc_info=True)
 
+    def _reentry_ind_is_stale(self, ind):
+        # 2026-09-14: small-tf freshness for reentry gating. Stale when NO 1m/5m/15m
+        # timestamp is fresh within 20min (frozen-indicators sessions).
+        try:
+            now_utc = datetime.now(timezone.utc)
+            for _k in ("1m_updated_at", "timestamp_1m", "timestamp_5m", "timestamp_15m"):
+                _v = (ind or {}).get(_k)
+                if not _v:
+                    continue
+                _dt = datetime.fromisoformat(str(_v).replace("Z", "+00:00"))
+                if (now_utc - _dt).total_seconds() < 1200.0:
+                    return False
+            return True
+        except Exception:
+            return True
+
     def would_exit_trigger_now(self, symbol, indicators, side, *, current_price=None):
         # Symmetric gate: returns (blocked: bool, reason: str).
         # Blocks an entry/reentry whenever the mirror exit rubric would fire for `side`.
@@ -24910,10 +24974,18 @@ class TradierTradeManager:
                     _speed_min = float(_cfg_auto('REENTRY_SYMGATE_SPEED_MIN', 1.0))
                     _bs = float(getattr(_sig, 'bull_speed', 0.0) or 0.0)
                     _es = float(getattr(_sig, 'bear_speed', 0.0) or 0.0)
-                    if is_long and _bs < _speed_min:
-                        return True, f"DELTA_SPEED_SLOW_LONG_bs={_bs:.1f}<{_speed_min:.1f}"
-                    if (not is_long) and _es < _speed_min:
-                        return True, f"DELTA_SPEED_SLOW_SHORT_es={_es:.1f}<{_speed_min:.1f}"
+                    # 2026-09-14 STALE FAIL-OPEN: with no small-tf WT data at all
+                    # (frozen indicators), both speeds read exactly 0.0 and EVERY
+                    # reentry blocks forever. A zero-data speed floor judges nothing,
+                    # so allow and log loudly. Score/DELTA/zone blocks above stay.
+                    _no_stf = (not i.get('wt1_5m')) and (not i.get('wt1_15m')) and (not i.get('wt2_5m')) and (not i.get('wt2_15m'))
+                    if _no_stf and _bs == 0.0 and _es == 0.0:
+                        logger.warning(f"[SYMGATE_STALE_FAILOPEN] {symbol} {side}: no 5m/15m WT data, speeds 0.0 — speed floor waived (score/zone gates still apply)")
+                    else:
+                        if is_long and _bs < _speed_min:
+                            return True, f"DELTA_SPEED_SLOW_LONG_bs={_bs:.1f}<{_speed_min:.1f}"
+                        if (not is_long) and _es < _speed_min:
+                            return True, f"DELTA_SPEED_SLOW_SHORT_es={_es:.1f}<{_speed_min:.1f}"
             return False, "ok"
         except Exception as e:
             logger.warning(f"[SYMGATE] {symbol} {side}: error {e} — failing OPEN (allow)")
@@ -25025,15 +25097,22 @@ class TradierTradeManager:
                         if _rm_exit_score >= _rm_threshold:
                             logger.info(f"[REENTRY_MONITOR] {pk}: exit score {_rm_exit_score:.0f}>={_rm_threshold} — signal still says EXIT, waiting for reversal")
                             continue
+                        # 2026-09-14 RECLAIM+STALE: price reclaimed exit while small-tf
+                        # indicators are stale -> stoch tier gates below are unjudgeable
+                        # (k/wt all defaults). Bypass them; exit-score above + WT
+                        # alignment/tradeable below still apply. Kill: knob False.
+                        try:
+                            _sg_cur = float(i.get("current_price", 0) or current_price or 0)
+                            _sg_exit = float(cand.get("exit_price", 0) or 0)
+                            _sg_crossed = (side == "LONG" and _sg_cur >= _sg_exit > 0) or (side == "SHORT" and 0 < _sg_cur <= _sg_exit)
+                        except Exception:
+                            _sg_crossed = False
+                            _sg_cur = 0.0
+                            _sg_exit = 0.0
+                        _reclaim_stale_bypass = bool(_sg_crossed) and bool(_cfg_auto('REENTRY_RECLAIM_STALE_BYPASS_ENABLED', True)) and bool(self._reentry_ind_is_stale(i))
                         if _cfg_auto('REENTRY_SYMGATE_ENABLED', True):
                             # USER 2026-09-10 MANDATE: price reclaim REENTERS 100% — SYMGATE must not veto
                             # a direct price cross back (cur beyond exit). Check reclaim before WT gate.
-                            try:
-                                _sg_cur = float(i.get("current_price", 0) or current_price or 0)
-                                _sg_exit = float(cand.get("exit_price", 0) or 0)
-                                _sg_crossed = (side == "LONG" and _sg_cur >= _sg_exit > 0) or (side == "SHORT" and 0 < _sg_cur <= _sg_exit)
-                            except Exception:
-                                _sg_crossed = False
                             if _sg_crossed:
                                 logger.warning(f"[REENTRY_MONITOR] {pk}: SYMGATE bypassed for price reclaim cur={_sg_cur:.2f} vs exit={_sg_exit:.2f} [GUARANTEED]")
                             else:
@@ -25041,6 +25120,8 @@ class TradierTradeManager:
                                 if _sg_blocked:
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SYMGATE block — {_sg_reason}")
                                     continue
+                        if _reclaim_stale_bypass:
+                            logger.warning(f"[REENTRY_RECLAIM_STALE] {pk}: price reclaimed exit@{_sg_exit:.2f} now@{_sg_cur:.2f} with STALE small-tf — stoch tier gates waived")
                         # ═══ PATHWAY 0: 5m-exit rescue (user directive 2026-04-16) ═══
                         _er_str = str(cand.get("exit_reason", "")).upper()
                         _was_5m_exit = any(t in _er_str for t in ('5M', '_5M_', 'DELTA_EXIT', 'STOCH_CROSS', 'WT_CROSSUNDER', 'WT_CROSSOVER', 'MANDATORY_REENTRY', 'WT_DC_EXIT'))
@@ -25124,7 +25205,7 @@ class TradierTradeManager:
                         # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
                         # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering (whipsaw zone)
                         # Tier 3 (48h+): bypass stoch gate entirely, rely on exit score + WT alignment only
-                        if not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 1.0:
+                        if not _reclaim_stale_bypass and not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 1.0:
                             _k5m_rising = k_5m > k_5m_prev
                             _k15m_rising = k_15m > k_15m_prev
                             _htf_wt_fav = sum(1 for w1, w2 in [(wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D)] if (w1 > w2 if side == "LONG" else w1 < w2))
@@ -25140,7 +25221,7 @@ class TradierTradeManager:
                                 if not (k_5m < k_5m_prev and k_15m < k_15m_prev and _k15m_lvl_ok and _htf_wt_fav >= _rally_htf_min):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<1h)")
                                     continue
-                        elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 2.0:
+                        elif not _reclaim_stale_bypass and not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 2.0:
                             # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16, hardcoded 50/50 → config 2026-04-26) — reduced 48h→2h per user 2026-08-17 manual-reentry complaint ═══
                             _bounce_enabled = _cfg_auto('BOUNCE_REENTRY_ENABLED_TRADIER', True)
                             if _bounce_enabled:
@@ -25167,7 +25248,7 @@ class TradierTradeManager:
                                     else:
                                         logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
                                         continue
-                        elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired:
+                        elif not _reclaim_stale_bypass and not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired:
                             # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) — 2h per user 2026-08-17, now conditional on dc_15m breakout OR GR HL/HH (higher high OR higher low) — bigger 1h/4h/D corrections need HTF structure, not guaranteed 2h ═══
                             if not _cfg_auto('TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED', True):
                                 logger.info(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue BUT TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED=False — stoch gate still applies")
@@ -25200,7 +25281,8 @@ class TradierTradeManager:
                             reenter = True
                             _p0_rescue = True
                         # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned (or a fast-path fired)
-                        if _p0_rescue or _aggr_fired or _fav_fired or _g60_fired:
+                        # 2026-09-14: reclaim+stale counts as a fast-path (price IS the signal; stoch/WT unjudgeable).
+                        if _p0_rescue or _aggr_fired or _fav_fired or _g60_fired or _reclaim_stale_bypass:
                             wt_support = 3  # for logging
                             reenter = True
                         else:

@@ -351,6 +351,53 @@ def adx_value(df: pd.DataFrame, length: int = 14) -> Optional[float]:
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
+def _is_regular_trading_hours() -> bool:
+    # 2026-09-14 local mirror of tradier_manage.is_regular_trading_hours (Mon-Fri 9:30-16:00 ET).
+    try:
+        now_et = datetime.now(ZoneInfo("America/New_York"))
+    except Exception:
+        return False
+    if now_et.weekday() >= 5:
+        return False
+    return dt_time(9, 30) <= now_et.time() <= dt_time(16, 0)
+
+def _tolerant_json_loads(content) -> Optional[Any]:
+    # 2026-09-14: tradier_prices_latest.json is rewritten every ~1s; readers can
+    # catch a half-written file ("Extra data"). Take the first complete doc
+    # instead of failing the whole symbol batch.
+    if isinstance(content, (bytes, bytearray)):
+        try:
+            content = bytes(content).decode("utf-8")
+        except Exception:
+            return None
+    try:
+        return safe_json_loads(content)
+    except Exception:
+        pass
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(content.strip())
+        return obj
+    except Exception:
+        return None
+
+
+_SILENT_SKIP_LAST_LOG: Dict[str, float] = {}
+
+
+def _loud_skip(symbol: str, timeframe: str, why: str) -> None:
+    # 2026-09-14: the silent `return` here froze the snapshot for a full session
+    # with zero log evidence. Throttled ERROR during market hours, debug otherwise.
+    import time as _t
+    key = f"{symbol}:{timeframe}:{why}"
+    now = _t.time()
+    if now - _SILENT_SKIP_LAST_LOG.get(key, 0) < 900.0:
+        return
+    _SILENT_SKIP_LAST_LOG[key] = now
+    if _is_regular_trading_hours():
+        logger.error(f"🚨 INDICATORS NO-BARS {symbol} {timeframe}: {why} (market hours)")
+    else:
+        logger.debug(f"indicators no-bars {symbol} {timeframe}: {why}")
+
 def isoformat(ts) -> str:
     if ts is None: return ""
     if isinstance(ts, str):
@@ -1821,7 +1868,7 @@ class TradierPriceCacheManager:
                         async with aiofiles.open(latest_file, 'r') as f:
                             content = await f.read()
                             if content.strip():
-                                prices = json.loads(content)
+                                prices = _tolerant_json_loads(content)
 
             # 3. Extract and Validate
             if prices:
@@ -1867,7 +1914,7 @@ class TradierPriceCacheManager:
                     async with aiofiles.open(path, "rb") as f:
                         content = await f.read()
                         if content.strip():
-                            prices = safe_json_loads(content)
+                            prices = _tolerant_json_loads(content)
                             
             if prices:
                 if "data" in prices: prices = prices["data"]
@@ -1893,10 +1940,17 @@ class TradierBarManager:
     
     async def get_latest(self, symbol: str, timeframe: str) -> Tuple[Optional[pd.DataFrame], Optional[datetime], Optional[str]]:
         path = self.cache_dir / f"{symbol}_{timeframe}.json"
-        
         if not path.exists() or path.stat().st_size == 0:
             await self.get_bundle(symbol)
-        
+        # 2026-09-14 MARKET-HOURS REFRESH: disk files can be missing/stale after a
+        # weekend or kline outage; one force_api attempt beats a silent freeze.
+        # Gated to 1m/5m in market hours so the 39s loop can't hammer the API.
+        if (not path.exists() or path.stat().st_size == 0) and timeframe in ("1m", "5m") and _is_regular_trading_hours():
+            try:
+                await self.get_bundle(symbol, force_api=True)
+            except Exception as _fe:
+                _loud_skip(symbol, timeframe, f"force_api refresh failed: {_fe}")
+
         if path.exists() and path.stat().st_size > 0:
             async with aiofiles.open(path, "rb") as f:
                 content = await f.read()
@@ -2506,6 +2560,7 @@ class TradierIndicatorOrchestrator:
                             reuse_previous = True
                         else:
                             state.full_done = False
+                            _loud_skip(symbol, timeframe, "no bars on disk and no prior df")
                             return
                     
                     required_keys = self._required_by_timeframe(timeframe)
@@ -3218,10 +3273,10 @@ class TradierIndicatorOrchestrator:
             for symbol, values in self.data.items():
                 if symbol not in self.symbol_set: continue
                 if not isinstance(values, dict): continue
-                 
-                dt_upd = safe_datetime(values.get('1m_updated_at'))
-                if not dt_upd or (now_utc - dt_upd).total_seconds() > 1200.0:
-                    continue
+                # 2026-09-14 FAIL-SOFT: the old hard gate dropped EVERY symbol when
+                # 1m_updated_at aged past 1200s (frozen snapshot {} -> all entries/
+                # reentries blocked). Per-TF filtering below already strips stale TF
+                # fields, so keep last-good data and let consumers judge freshness.
                 _TF_MAX_AGE = {"1m": 90.0, "5m": 540.0, "15m": 1200.0, "1h": 1200.0, "4h": 1200.0, "D": 1200.0}
                 stale_tfs = {tf for tf, max_age in _TF_MAX_AGE.items() if (lambda d: not d or (now_utc - d).total_seconds() > max_age)(safe_datetime(values.get(f"timestamp_{tf}")))}
                 filtered: Dict[str, Any] = {}
@@ -3239,7 +3294,17 @@ class TradierIndicatorOrchestrator:
             incomplete_count = len(self.symbols) - symbols_with_data
             if incomplete_count > 0:
                 logger.info(f"💾 Saving {symbols_with_data} symbols (stale/incomplete: {incomplete_count})")
-            
+            # 2026-09-14 NEVER-CLOBBER: an empty/degenerate payload must never wipe
+            # the last-good snapshot (frozen {} file blocked all trading 2026-09-14).
+            if symbols_with_data == 0:
+                if _is_regular_trading_hours():
+                    logger.error("🚨 INDICATORS SAVE 0/0 during market hours — keeping last-good snapshot (no clobber)")
+                else:
+                    logger.warning("INDICATORS SAVE 0/0 premarket — keeping last-good snapshot (no clobber)")
+                self._dirty = False
+                self._save_due = False
+                return
+
             try:
                 json_bytes = json_dumps(safe)
             except Exception as e:
@@ -3305,8 +3370,16 @@ class TradierIndicatorOrchestrator:
             self.cleanup_old_indicator_files()
         
         # 2026-08-14 FIX: initial <40s like ez — per-TF not bundle clip 30min. Was await run_cycle() (106 bundles ~30min)
-        for tf in self._schedule_order:
+        # 2026-09-14 FAST-INIT: small TFs first + save after EACH TF, so a restart
+        # publishes tradeable 1m/5m inside ~2min instead of after the 30-60min full
+        # pass (2026-09-14: snapshot stayed {} for 50+ min post-restart, zero entries).
+        for tf in ["1m", "5m", "15m", "1h", "4h", "D"]:
             await self._process_timeframe(tf, force=False)
+            self._save_due = True
+            try:
+                await self._save_data()
+            except Exception as _se:
+                logger.error(f"init-pass save failed after {tf}: {_se}")
         self._save_due = True
         await self._save_data()
         tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._save_loop())]
@@ -3316,6 +3389,12 @@ class TradierIndicatorOrchestrator:
             pass
         finally:
             self._shutdown.set()
+            # 2026-09-14: always release the HTTP session (unclean sessions
+            # surfaced as "Unclosed client session" noise during 1m fetches).
+            try:
+                await self.api_client.close()
+            except Exception:
+                pass
             for task in tasks:
                 if not task.done():
                     task.cancel()
