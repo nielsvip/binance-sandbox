@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-09-14 07:15 UTC",
- "total_capital_usd": 12.07,
+ "generated_at": "2026-09-14 07:27 UTC",
+ "total_capital_usd": 11.99,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 12.07
+  "C": 11.99
  },
  "tier_count": {
   "A": 0,
@@ -21,12 +21,12 @@
    "pk": "men:VETUSDT_LONG",
    "symbol": "VETUSDT",
    "account": "men",
-   "value_usd": 12.07,
-   "gain_pct": 0.07,
+   "value_usd": 11.99,
+   "gain_pct": -0.063,
    "tier": "C",
    "perf_mult": 0.47,
    "amt": 1490.0,
-   "mark": 0.008098
+   "mark": 0.008046
   }
  ]
 }
