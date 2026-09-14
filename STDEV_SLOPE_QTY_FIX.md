@@ -119,3 +119,23 @@ Also fixed (live parity, same files): crypto venue slope factors were stock-sess
 
 Files touched: `v12_quick_engine.py` (STDEV block + 2 cap sites), `v12_quick_engine_fast_v2.py`
 (STDEV block), `SPREADSHEETS/TEMPLATE.xlsx` (MODE row 18). No live-trading file touched.
+
+---
+
+# ADDENDUM II 2026-09-14 — QuickConfig BAND defaults aligned to backtest winner
+
+Vector path has NO standalone BAND sizing: BAND knobs act only via the STDEV ladder operating
+point (TF/MIN/MAX/NORM) + `_apply_new_audit_causal` synthetic gates. Shootout (real quick engine,
+STDEV on, diagnostic 30d): stocks Q=-12.98 vs venue-live D-set -11.16 (**+1.82**); crypto
+Q=+13.72 vs venue-live 4h-set +13.47 (tie); crypto D-set harmful everywhere (ETH 7.34 vs 9.91,
+BNB 4.88 vs 7.75, BTC -21.39 vs -12.22). 365d anchors: NVDA +3.47, BTC +3.15, SOL +0.23 for
+venue-live sets. Winner = venue-live sets on both venues.
+
+Fix (`tools/opt/evaluate_v12.py`, pilot path only): `_apply_venue_band_defaults` routes untouched
+knobs to the venue-live table (tradier D/2.5/0.5/1.0/1.0, crypto 4h/1.8/0.7/1.0/1.0) at both cfg
+build sites; explicit overrides always win (TF-row testability kept). Verified on S1:
+untouched==explicit-L exactly (MSFT -0.0238, SOL 7.7844), explicit TF=4h still honored (-0.2043).
+No QuickConfig field or `_DEFAULTS_625` change (audit-gate anchoring untouched); no live file
+touched. TEMPLATE: appended NORM row 19 (1.0, live both venues). Rollback holders for
+`evaluate_v12.py` (gitignored): S2/S3 pristine copies (md5 7832547e) — do not overwrite until
+verified (done 2026-09-14, verified, then synced).
