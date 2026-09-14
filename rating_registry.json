@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-14T11:43:26.951406+00:00",
+  "timestamp": "2026-09-14T12:03:34.038201+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,16 +7,16 @@
   },
   "unified_ranking": [
     {
-      "symbol": "AMATUSDT",
-      "net_score": -12.2,
+      "symbol": "STORJUSDT",
+      "net_score": -30,
       "long_score": 0,
-      "short_score": 12.2
+      "short_score": 30
     },
     {
-      "symbol": "MANAUSDT",
-      "net_score": -11.3,
+      "symbol": "AMATUSDT",
+      "net_score": -10.5,
       "long_score": 0,
-      "short_score": 11.3
+      "short_score": 10.5
     },
     {
       "symbol": "COMPUSDT",
@@ -307,12 +307,6 @@
       "short_score": 0
     },
     {
-      "symbol": "XLMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "RVNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -439,12 +433,6 @@
       "short_score": 0
     },
     {
-      "symbol": "STORJUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GRTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -452,6 +440,12 @@
     },
     {
       "symbol": "MUUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MANAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -572,28 +566,39 @@
     },
     {
       "symbol": "MSFTUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
+      "net_score": 12.6,
+      "long_score": 12.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "XLMUSDT",
+      "net_score": 13.6,
+      "long_score": 13.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
+      "XLMUSDT",
+      13.6,
+      0.18905
+    ],
+    [
       "MSFTUSDT",
-      11.1,
-      497.65
+      12.6,
+      497.94
     ]
   ],
   "top_shorts": [
     [
-      "AMATUSDT",
-      12.2,
-      426.37
+      "STORJUSDT",
+      30,
+      0.0303417
     ],
     [
-      "MANAUSDT",
-      11.3,
-      0.07478
+      "AMATUSDT",
+      10.5,
+      425.7483067
     ]
   ],
   "hedge_usage": {
