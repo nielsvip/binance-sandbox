@@ -81,8 +81,8 @@ class Config:
     HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented
 
     MAX_ORDER_VALUE: float = 200.0  # 2026-03-30: 1/50 rule. Was $280.
-    MAX_ORDER_VALUE_MEN: float =60.0  # Was $240.
-    MAX_ORDER_VALUE_FIN: float = 60.0  # Was $120.
+    MAX_ORDER_VALUE_MEN: float = 200.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
+    MAX_ORDER_VALUE_FIN: float = 200.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
     EMERGENCY_OVERSIZE_GUARD_ENABLED: bool = False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
     START_POSITION_SIZE: float = 14.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
 
@@ -3358,16 +3358,16 @@ class Config:
             # "MAX_POSITION_SIZE_MEN": 160.0,#emergency mode
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
             "START_POSITION_SIZE": 18.0,
-            "MAX_POSITION_SIZE": 20.0,  # 1/50 RULE: $1k / 50 = $20 max per position
-            "MAX_ORDER_VALUE": 20.0,  # 1/50 RULE
-            "MAX_ORDER_VALUE_MEN": 20.0,  # 1/50 RULE
-            "MAX_ORDER_VALUE_FIN": 20.0,  # 1/50 RULE
+            "MAX_POSITION_SIZE": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 (1.11x START) capped 10x D ladder; now 18*10=180
+            "MAX_ORDER_VALUE": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder parity
+            "MAX_ORDER_VALUE_MEN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
+            "MAX_ORDER_VALUE_FIN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 50,  # BACKTEST_CHANGE_25: was 100
             "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
             "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 20.0,  # 1/50 RULE
-            "MAX_POSITION_SIZE_FIN": 20.0,  # 1/50 RULE
+            "MAX_POSITION_SIZE_MEN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder
+            "MAX_POSITION_SIZE_FIN": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
         }
         extreme = {
             "START_POSITION_SIZE": 70.0,

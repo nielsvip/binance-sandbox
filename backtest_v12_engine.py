@@ -2807,6 +2807,54 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             ez_manage._psym_sps = lambda *_args, **_kwargs: _audit_capital
             ez_manage.get_max_position_size = lambda *_args, **_kwargs: _audit_capital
             ez_manage.get_max_order_value = lambda *_args, **_kwargs: _audit_capital
+    # STDEV_SLOPE_SIZING 10x ladder invariant (fix 2026-09-14: caps were 1-5x START, clipping 10x D ladder)
+    if _crypto_contract != "unlevered":
+        try:
+            _stdev_start = float(getattr(config, "START_POSITION_SIZE", 14.0) or 14.0)
+            for _k in ("MAX_POSITION_SIZE", "MAX_POSITION_SIZE_BTC", "MAX_POSITION_SIZE_MEN", "MAX_POSITION_SIZE_FIN", "MAX_ORDER_VALUE", "MAX_ORDER_VALUE_MEN", "MAX_ORDER_VALUE_FIN", "SCALP_MAX_POSITION_SIZE", "SWING_MAX_POSITION_SIZE"):
+                if hasattr(config, _k):
+                    try:
+                        _cur = float(getattr(config, _k) or _stdev_start)
+                    except Exception:
+                        _cur = _stdev_start
+                    setattr(config, _k, max(_cur, _stdev_start * 10.0))
+            if hasattr(config, "BAND_ARROW_MAX_POS_MULT"):
+                try:
+                    setattr(config, "BAND_ARROW_MAX_POS_MULT", max(float(getattr(config, "BAND_ARROW_MAX_POS_MULT") or 10.0), 10.0))
+                except Exception:
+                    setattr(config, "BAND_ARROW_MAX_POS_MULT", 10.0)
+            try:
+                import config_tradier as _ct
+                _ct_start = float(getattr(_ct, "START_POSITION_SIZE", _stdev_start) or _stdev_start)
+                for _k2 in ("MAX_POSITION_SIZE", "MAX_ORDER_VALUE", "SCALP_MAX_POSITION_SIZE", "SWING_MAX_POSITION_SIZE", "TRC_MAX_POSITION_SIZE", "TRC_MAX_ORDER_VALUE"):
+                    if hasattr(_ct, _k2):
+                        try:
+                            _cur2 = float(getattr(_ct, _k2) or _ct_start)
+                        except Exception:
+                            _cur2 = _ct_start
+                        setattr(_ct, _k2, max(_cur2, _ct_start * 10.0))
+                if hasattr(_ct, "BAND_ARROW_MAX_POS_MULT"):
+                    try:
+                        setattr(_ct, "BAND_ARROW_MAX_POS_MULT", max(float(getattr(_ct, "BAND_ARROW_MAX_POS_MULT") or 10.0), 10.0))
+                    except Exception:
+                        setattr(_ct, "BAND_ARROW_MAX_POS_MULT", 10.0)
+                _ct_cls = getattr(_ct, "TradierConfig", None)
+                if _ct_cls is not None:
+                    for _k2 in ("MAX_POSITION_SIZE", "MAX_ORDER_VALUE", "SCALP_MAX_POSITION_SIZE", "SWING_MAX_POSITION_SIZE"):
+                        if hasattr(_ct_cls, _k2):
+                            try:
+                                setattr(_ct_cls, _k2, max(float(getattr(_ct_cls, _k2) or _ct_start), _ct_start * 10.0))
+                            except Exception:
+                                pass
+                    if hasattr(_ct_cls, "BAND_ARROW_MAX_POS_MULT"):
+                        try:
+                            setattr(_ct_cls, "BAND_ARROW_MAX_POS_MULT", max(float(getattr(_ct_cls, "BAND_ARROW_MAX_POS_MULT") or 10.0), 10.0))
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+        except Exception as _stdev_e:
+            v8_logger.warning(f"STDEV_SLOPE invariant clamp failed: {_stdev_e}")
     v8_logger.info(f"Backtest sizing: START_POSITION_SIZE=${config.START_POSITION_SIZE:.0f} MAX_POSITION_SIZE=${config.MAX_POSITION_SIZE:.0f} (capital=${capital:.0f})")
 
     # --- REAL init sequence (from ez_manage.main lines 22555-22626) ---

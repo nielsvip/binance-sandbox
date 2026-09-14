@@ -79,7 +79,7 @@ class TradierConfig:
     # 2026-04-27 EMERGENCY SIZE CUT — user at -25% / 10d. Halve all caps until bleed stops.
     # Original values preserved in inline comment in case we need to revert.
     # 2026-04-27 SECOND CUT — user at -30%/week, headless-chicken MSTR loop. Now 1/4 of original.
-    MAX_POSITION_SIZE: float = 2250.0   # was 2500 / orig 5000
+    MAX_POSITION_SIZE: float = 5000.0   # STDEV_SLOPE fix 2026-09-14: was 2250 (4.5x START) capped 10x D ladder; now 500*10=5000
     START_POSITION_SIZE: float = 500.0  # was 150 (2026-04-27 emergency cut); 2026-06-14 raised: $150 can't buy 1 share of $300+ stocks
 
     # Hard account-risk ceiling.  Entries are refused at/above this measured
@@ -99,11 +99,11 @@ class TradierConfig:
     # === WING BUDGETS ===
     SWING_LONG_BUDGET: float = 40000.0     # 2026-08-20 USER: raised 2.5k->40k for >1k/share (NVDA/ASML etc) was 50000 / orig 100000
     SWING_SHORT_BUDGET: float = 40000.0    # 2026-08-20 USER: raised 2.5k->40k for >1k/share was 50000 / orig 100000
-    SWING_MAX_POSITION_SIZE: float = 1100.0   # was 1000 (DEAD)
+    SWING_MAX_POSITION_SIZE: float = 5000.0   # STDEV_SLOPE fix 2026-09-14: was 1100 (2.2x START) capped ladder; now 10x START
     SWING_START_SIZE: float = 200.0          # was 400 (DEAD)
     SCALP_LONG_BUDGET: float = 250.0         # was 500 / orig 1000
     SCALP_SHORT_BUDGET: float = 250.0        # was 500 / orig 1000
-    SCALP_MAX_POSITION_SIZE: float = 500.0   # was 1000 / orig 2000
+    SCALP_MAX_POSITION_SIZE: float = 5000.0   # STDEV_SLOPE fix 2026-09-14: was 500 (1x START) →5000 for 10x ladder
     SCALP_START_SIZE: float = 150.0          # was 300 / orig 600
     SCALP_MAX_HOLD_MINUTES: float = 180.0     # URGENT_FIX: shorter holds, take profits/losses faster (was 300)
     SCALP_STOP_PCT: float = 9.99             # BACKTEST_CHANGE_T12 was 1.5% → 999% effectively disabled NO_LOSS mode
@@ -112,7 +112,7 @@ class TradierConfig:
     SCALP_TOP_MOVERS_N: int = 14             # Candidate pool size
     SCALP_MIN_REL_VOL: float = 1.1           # Min relative volume to qualify
     SCALP_MIN_MOVE_PCT: float = 0.003      # Min 0.3% 5m deviation from ema_20_5m — 2026-07-08 GAINMO triage: 0.3→0.003 (consumer treats as FRACTION; 0.3 = 30% = scalps never qualify, unit bug)
-    MAX_ORDER_VALUE: float = 2500.0  # was 1000 / orig 2000 — 2026-04-27 second cut
+    MAX_ORDER_VALUE: float = 5000.0  # STDEV_SLOPE fix 2026-09-14: was 2500 (5x START) capped 10x D ladder; now 500*10=5000
     ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(default_factory=lambda: {"tra": ["LONG"]})  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # tra = SATOSHIT-only account. Block all other strategies (HODL, rotation, RSI2, gap fill, ORB, EP).
     TRA_SATOSHIT_ONLY: bool = True
