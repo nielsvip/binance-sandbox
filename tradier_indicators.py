@@ -2546,9 +2546,14 @@ class TradierIndicatorOrchestrator:
         
     async def _process_timeframe(self, timeframe: str, force: bool = False) -> None:
         async def process_symbol(symbol: str) -> None:
-            async with self._http_semaphore:
-                try:
-                    df, close_ts, source = await self.bar_manager.get_latest(symbol, timeframe)
+            # 2026-09-14: narrow semaphore to IO only and add per-symbol timeout
+            # so a single stuck Tradier API fetch cannot freeze the whole 1m
+            # gather (176 symbols hung 8+ min with CPU idle, snapshot stale).
+            try:
+                async with self._http_semaphore:
+                    df, close_ts, source = await asyncio.wait_for(
+                        self.bar_manager.get_latest(symbol, timeframe), timeout=30.0
+                    )
                     symbol_data = self.data.setdefault(symbol, {})
                     state = self.state[symbol][timeframe]
                     reuse_previous = False
@@ -2566,28 +2571,37 @@ class TradierIndicatorOrchestrator:
                     required_keys = self._required_by_timeframe(timeframe)
                     needs_refresh = any(symbol_data.get(key) is None for key in required_keys)
                     mark_price = None
+                    mark_ts = None
                     if required_keys or force or needs_refresh or reuse_previous:
-                        mark_price,mark_ts = await self.price_cacheman.get_price(symbol)
+                        mark_price,mark_ts = await asyncio.wait_for(
+                            self.price_cacheman.get_price(symbol), timeout=10.0
+                        )
 
                     new_bar = state.last_close is None or (close_ts is not None and close_ts > state.last_close)
-                    
-                    if new_bar or needs_refresh or (required_keys and force):
-                        await self._run_full(symbol, timeframe, df, close_ts, mark_price, state, mark_ts=mark_ts)
-                        state.last_close = close_ts
-                        state.full_done = True
-                        state.mid_done = False
-                        state.trivial_done = False
-                        duration = TIMEFRAMES.get(timeframe, {}).get("sec", 60)
-                        state.mid_due = close_ts + timedelta(seconds=duration + TIMEFRAMES.get(timeframe, {}).get("half", 30))
-                        
-                    elif df is not None and close_ts is not None:
-                        state.full_done = True
-                        if await self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price):
-                            pass
-                    elif state.last_df is not None and mark_price is not None:
-                        state.full_done = True
-                except Exception as e:
-                    logger.error(f"Error processing {symbol} {timeframe}: {e}")
+                # release semaphore before CPU-heavy compute
+                if new_bar or needs_refresh or (required_keys and force):
+                    await asyncio.wait_for(
+                        self._run_full(symbol, timeframe, df, close_ts, mark_price, state, mark_ts=mark_ts),
+                        timeout=30.0
+                    )
+                    state.last_close = close_ts
+                    state.full_done = True
+                    state.mid_done = False
+                    state.trivial_done = False
+                    duration = TIMEFRAMES.get(timeframe, {}).get("sec", 60)
+                    state.mid_due = close_ts + timedelta(seconds=duration + TIMEFRAMES.get(timeframe, {}).get("half", 30))
+                elif df is not None and close_ts is not None:
+                    state.full_done = True
+                    if await asyncio.wait_for(
+                        self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price), timeout=15.0
+                    ):
+                        pass
+                elif state.last_df is not None and mark_price is not None:
+                    state.full_done = True
+            except asyncio.TimeoutError:
+                logger.error(f"Timeout processing {symbol} {timeframe} (30s)")
+            except Exception as e:
+                logger.error(f"Error processing {symbol} {timeframe}: {e}")
 
         # QUICK OPEN FIX 2026-08-17 13:17 UTC 17m before open: skip D/4h/1h/15m unless at correct ET window, otherwise 115 symbols D/1h hangs 60s+ and blocks 1m/5m fresh needed for open. Market open needs 1m/5m <40s, not D.
         now_et = utc_now().astimezone(ET)
@@ -2606,7 +2620,10 @@ class TradierIndicatorOrchestrator:
         logger.info(f"[{timeframe}] Starting concurrent update for {len(self.symbols)} symbols...")
         tasks =[asyncio.create_task(process_symbol(sym)) for sym in self.symbols]
         if tasks:
-            await asyncio.gather(*tasks)
+            try:
+                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=180.0)
+            except asyncio.TimeoutError:
+                logger.error(f"Timeout gathering {timeframe} for {len(tasks)} symbols (180s) — continuing with partial results")
 
         if timeframe == self._schedule_order[-1]:
             self._save_due = True
@@ -3296,11 +3313,15 @@ class TradierIndicatorOrchestrator:
                 logger.info(f"💾 Saving {symbols_with_data} symbols (stale/incomplete: {incomplete_count})")
             # 2026-09-14 NEVER-CLOBBER: an empty/degenerate payload must never wipe
             # the last-good snapshot (frozen {} file blocked all trading 2026-09-14).
-            if symbols_with_data == 0:
+            # Also guard degenerate where file has symbols but no TF indicators.
+            _avg_tf = 0
+            if safe:
+                _avg_tf = sum(1 for v in safe.values() if any(k.startswith("k_") or k.startswith("wt1_") for k in v)) / max(len(safe),1)
+            if symbols_with_data == 0 or (safe and _avg_tf < 0.5):
                 if _is_regular_trading_hours():
-                    logger.error("🚨 INDICATORS SAVE 0/0 during market hours — keeping last-good snapshot (no clobber)")
+                    logger.error(f"🚨 INDICATORS SAVE degenerate {symbols_with_data}/{len(self.symbols)} avg_tf {_avg_tf:.2f} during market hours — keeping last-good snapshot (no clobber)")
                 else:
-                    logger.warning("INDICATORS SAVE 0/0 premarket — keeping last-good snapshot (no clobber)")
+                    logger.warning(f"INDICATORS SAVE degenerate {symbols_with_data}/{len(self.symbols)} avg_tf {_avg_tf:.2f} premarket — keeping last-good snapshot (no clobber)")
                 self._dirty = False
                 self._save_due = False
                 return

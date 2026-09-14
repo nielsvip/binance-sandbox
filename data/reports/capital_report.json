@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 14:07 UTC",
- "total_capital_usd": 36.01,
+ "generated_at": "2026-09-14 15:11 UTC",
+ "total_capital_usd": 7.97,
  "tier_capital": {
   "A": 0.0,
-  "B": 36.01,
+  "B": 7.97,
   "C": 0.0
  },
  "tier_count": {
@@ -13,18 +13,20 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "men:XRPUSDC_LONG"
+ ],
  "positions": [
   {
-   "pk": "inf:MANAUSDT_SHORT",
-   "symbol": "MANAUSDT",
-   "account": "inf",
-   "value_usd": 36.01,
-   "gain_pct": 0.351,
+   "pk": "men:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "men",
+   "value_usd": 7.97,
+   "gain_pct": 0.0,
    "tier": "B",
-   "perf_mult": 6.82,
-   "amt": 485.0,
-   "mark": 0.07425
+   "perf_mult": 0.52,
+   "amt": 5.7,
+   "mark": 1.39749382
   }
  ]
 }
