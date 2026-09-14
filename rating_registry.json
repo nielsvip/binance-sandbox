@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-14T03:30:53.851593+00:00",
+  "timestamp": "2026-09-14T03:51:22.839906+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 85
+    "total_ranked": 89
   },
   "unified_ranking": [
     {
@@ -32,6 +32,12 @@
     },
     {
       "symbol": "MANAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ROSEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -295,6 +301,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MORPHOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BNCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -463,6 +475,12 @@
       "short_score": 0
     },
     {
+      "symbol": "TRBUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "EGLDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -488,6 +506,12 @@
     },
     {
       "symbol": "AGLDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "DOTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0

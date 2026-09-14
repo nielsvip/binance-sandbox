@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """v15_pilot — SERIOUS cell-by-cell TEMPLATE filler with numpy live calculations and in-memory NPZ.
 
-LAW: YELLOW-ONLY — ONLY calculate the YELLOW cells (L:BI) for that row = the filters listed
-in FILTERS_EXPLAINED for that Switch's sheet. If you are color-blind, use FILTERS_EXPLAINED
-(and LEGEND_FILTERS / FILTER_DICTIONARY_V2) to find which filters belong to which sheet/switch.
+LAW: YELLOW-ONLY (yellows only) — ONLY calculate the YELLOW cells (L:BI) for that row,
+and calculate ALL of them: every L:BI header in that sheet gets a real delta for A SINGLE
+SWITCH (this row's switch=cand plus that one header filter, vs cumulative_before).
+Filters come from FILTERS_EXPLAINED / LEGEND_FILTERS / FILTER_DICTIONARY_V2.
+ORANGE Results_Deltas are the across-switch rollup (whole tab); YELLOW is never overall.
 NEVER calculate random filters that are not yellow for that row. Filling random filters wastes
 CPU, lies about provenance, and is FORBIDDEN.
 
@@ -1162,8 +1164,9 @@ def main():
                     expected_before = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
                     is_stale = abs(expected_before - cumulative_gain) >= 1e-6
                     # Skip recalc if not stale: pre-fill from json instead of wasting 1s/cell
-                    # But if yellows missing for this row, must re-eval to populate L:BI (previous json had no yellows)
-                    _y_missing = not prev.get("yellows") and not prev.get("pending_lbI")
+                    # But if yellows are partial for this row, must re-eval to populate ALL L:BI (old json had opportune-subset yellows only)
+                    _prev_y = prev.get("yellows") or prev.get("pending_lbI") or {}
+                    _y_missing = len(_prev_y) < len(header_to_col)
                     if not is_stale and not _y_missing:
                         if prev.get("delta") and prev["delta"] > 0:
                             cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
@@ -1208,18 +1211,35 @@ def main():
                         if isinstance(b, str) and b.lower() in ("true", "false"):
                             b = b.lower() == "true"
                         return a == b
-                    # Fix: evaluate ALL applicable filters for this switch row (not random top-5). Heavy SNDK still needs batching but not dropping.
-                    # Previous bug: blanket rows got same 5 filters -> same yellow value. Now evaluate full opportune set per-switch.
+                    # YELLOW = ALL L:BI headers for A SINGLE SWITCH (this row). Every
+                    # header_to_col header is evaluated as switch=cand + that one
+                    # header filter vs cumulative_before. Headers already at their
+                    # current value reuse the naked delta (identical variant).
+                    # sequential heavy (no timeout, MAX TIMEPER CELL 1.0s/0.5s) was the
+                    # pre-2026-09-13 approach; now parallel-16 batches under the same
+                    # per-cell budget (post-hoc flag, never mid-batch truncate).
                     is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared else False
                     single_filters = []
-                    for e in specifics:
-                        filt = e["filter"]
-                        opt_raw = e["opt"]
-                        opt_val = parse_opt(opt_raw, defaults.get(filt))
-                        hdr = f"{filt}={opt_raw}"
-                        cur = cumulative_overrides.get(filt, defaults.get(filt))
-                        if norm2(opt_val, cur):
+                    identical_hdrs = []
+                    invalid_hdrs = []
+                    for hdr in header_to_col:
+                        if "=" not in hdr:
                             continue
+                        filt, opt_raw = hdr.split("=", 1)
+                        filt = filt.strip()
+                        opt_raw = opt_raw.strip()
+                        if not filt:
+                            continue
+                        opt_val = parse_opt(opt_raw, defaults.get(filt))
+                        if filt == switch:
+                            if norm2(opt_val, cand):
+                                identical_hdrs.append(hdr)
+                                continue
+                        else:
+                            cur = cumulative_overrides.get(filt, defaults.get(filt))
+                            if norm2(opt_val, cur):
+                                identical_hdrs.append(hdr)
+                                continue
                         single_filters.append((filt, opt_val, hdr, opt_raw))
                     # 1s per cell + entire F until 200 then next tab max baseline: heavy 2333 bars -> 0.6s/candidate
                     # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
@@ -1280,6 +1300,8 @@ def main():
                             break
                         vec = vecs[idx]
                         if not vec.get("valid"):
+                            if filt is not None and hdr in header_to_col:
+                                invalid_hdrs.append(hdr)
                             continue
                         vg = float(vec.get("gain_pct") or 0)
                         delta = vg - cumulative_before
@@ -1293,6 +1315,20 @@ def main():
                             best = (delta, variant, filt, fval, hdr, vec)
                         if filt is None:
                             vector_delta_val = float(delta)
+
+                    # identical-variant headers reuse the naked delta; invalid vecs get flagged 0.0 — no yellow left as formula/empty
+                    if vector_delta_val is not None:
+                        for _h in identical_hdrs:
+                            if _h not in pending_lbI:
+                                pending_lbI[_h] = float(vector_delta_val)
+                    else:
+                        for _h in identical_hdrs:
+                            if _h not in pending_lbI:
+                                pending_lbI[_h] = 0.0
+                                invalid_hdrs.append(_h)
+                    for _h in invalid_hdrs:
+                        if _h not in pending_lbI:
+                            pending_lbI[_h] = 0.0
 
                     # CORRECT: F is best SINGLE or combined pos filters recalculated with real backtest (multi-filter combined is correct when recalculated with additional filter)
                     try:
@@ -1324,6 +1360,8 @@ def main():
                     all_combos = []
                     vecs_c = []
 
+                    wb_row = wb_keep
+                    ws_row = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
                     if best is None:
                         progress.setdefault("done", {})[key] = {"delta": 0, "reason": "all vectors invalid"}
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
@@ -1346,8 +1384,6 @@ def main():
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
                     try:
-                        wb_row = wb_keep
-                        ws_row = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
                         if pending_lbI and ws_row is not None:
                             for hdr, d in pending_lbI.items():
                                 col = header_to_col.get(hdr)
@@ -1356,6 +1392,28 @@ def main():
                                         ws_row.cell(row=r, column=col).value = float(d)
                                     except Exception:
                                         pass
+                        # backstop: no L:BI cell for a processed row may stay a template formula or empty — write pending or flagged 0.0
+                        if ws_row is not None:
+                            _missing = []
+                            for _hdr, _col in header_to_col.items():
+                                try:
+                                    _cv = ws_row.cell(row=r, column=_col).value
+                                except Exception:
+                                    _cv = None
+                                if isinstance(_cv, str) or _cv is None:
+                                    if _hdr in pending_lbI:
+                                        try:
+                                            ws_row.cell(row=r, column=_col).value = float(pending_lbI[_hdr])
+                                        except Exception:
+                                            pass
+                                    else:
+                                        try:
+                                            ws_row.cell(row=r, column=_col).value = 0.0
+                                        except Exception:
+                                            pass
+                                        _missing.append(_hdr)
+                            if _missing:
+                                _flag_to_md(flags_md, sheet, r, switch, cand, f"yellow backstop {len(_missing)} unevaluated", 0.0, 0.0, cumulative_before)
                         target = None
                         for cand_name in ["Results_Deltas", "Results_30d_Deltas", "Results_30d", "results"]:
                             if cand_name in wb_row.sheetnames:
@@ -1440,7 +1498,7 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}}
+                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs)}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
                         if r % 10 == 0 or args.window_days not in (1,7):
