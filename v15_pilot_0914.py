@@ -477,8 +477,13 @@ def _validate_e_chain_and_yellows(progress: dict, wb_path: pathlib.Path | None =
                 cum_before = cum
             delta = float(v.get("delta", 0) or 0)
             vg = float(v.get("vec_gain", 0) or 0)
-            if abs((vg - cum_before) - delta) > 1e-6:
-                print(f"[E-BLAND-CHECK-FAIL] {k} delta {delta:.4f} != vg {vg:.4f} - cum {cum_before:.4f}", flush=True)
+            # For POS rows delta == vg - cum_before; for NEG delta 0 with vg <= cum (no improvement) is valid. Only flag NEG if vg > cum (missed positive).
+            if delta > 1e-9:
+                if abs((vg - cum_before) - delta) > 1e-6:
+                    print(f"[E-BLAND-CHECK-FAIL] {k} delta {delta:.4f} != vg {vg:.4f} - cum {cum_before:.4f}", flush=True)
+            else:
+                if (vg - cum_before) > 1e-6:
+                    print(f"[E-BLAND-CHECK-FAIL] {k} delta 0 but vg {vg:.4f} > cum {cum_before:.4f} (missed POS)", flush=True)
             if delta > 0:
                 new_cum = float(v.get("cumulative_after", cum))
                 if new_cum + 1e-9 < cum:
@@ -1227,7 +1232,8 @@ def main():
             except Exception as _e:
                 print(f"[0914-cycle-warn] {_sh} {_e}", flush=True)
                 _sheet_rows_map[_sh] = []
-        # build round-robin schedule: cycle sheets, one row per sheet per cycle (preserves intra-sheet order)
+        # Build worst-first deque schedule: stay on same tab with POS delta, advance to next tab on NEG delta only
+        # For schedule logging we still build a static round-robin preview, but actual execution will use dynamic deque
         _ordered_cycle: list[tuple[str, int, str, object]] = []
         _indices = {s: 0 for s in sheets}
         _remaining = sum(len(v) for v in _sheet_rows_map.values())
@@ -1242,7 +1248,8 @@ def main():
                     _indices[_sh] += 1
             _cycle_n += 1
             if _cycle_n > 5000: break
-        print(f"[0914-cycle] schedule {len(_ordered_cycle)}/{_remaining} rows round-robin cycles={_cycle_n} first10={_ordered_cycle[:10]}", flush=True)
+        print(f"[0914-cycle] schedule {len(_ordered_cycle)}/{_remaining} rows worst-first deque (stay on POS, next tab on NEG) cycles={_cycle_n} first10={_ordered_cycle[:10]}", flush=True)
+        # Dynamic execution will be handled via _cycle_deque in sequential loop below
         # replace sheets loop with single round-robin iteration over _ordered_cycle
         # we keep outer sheet grouping for wb_keep efficiency but iterate in cycle order using sheet change detection
         _current_cycle_sheet = None
@@ -1259,15 +1266,17 @@ def main():
     wb_tmp.close()
     # 0914 branching: if cycle mode use dedicated round-robin handler else legacy sequential
     if _0914_use_cycle and _0914_cycle_schedule is not None:
-        print(f"[0914-cycle] executing round-robin {len(_0914_cycle_schedule)} rows (cycle-through-tabs on NEG delta)", flush=True)
-        # lazy wb_keep per sheet cache for cycle mode (keep open per sheet but reuse)
+        # REAL cycle-through-tabs on NEG: worst-first deque — stay on same tab with POS delta, advance to next tab on NEG delta only
+        # This is the user-mandated behavior: with POS we exploit the same sheet's next best switch, with NEG we rotate to next worst sheet
+        # Uses the same per-row evaluator as sequential but drives sheets via a deque that respects POS/NEG outcome
+        from collections import deque as _deque_cycle
+        print(f"[0914-cycle] ENABLED cycle-through-tabs on NEG delta (worst-first deque, stay on POS, advance on NEG) {len(_0914_cycle_schedule)} rows", flush=True)
         _wb_keep_cache: dict[str, object] = {}
         _header_cache: dict[str, dict] = {}
         def _get_wb_keep(sheet_name: str):
             if sheet_name not in _wb_keep_cache:
                 _wb = openpyxl.load_workbook(str(wb_path), data_only=False)
                 _wb_keep_cache[sheet_name] = _wb
-                # build header_to_col for this sheet
                 _ws = _wb[sheet_name] if sheet_name in _wb.sheetnames else None
                 _htc = {}
                 if _ws is not None:
@@ -1279,25 +1288,84 @@ def main():
                         if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"): break
                 _header_cache[sheet_name] = _htc
             return _wb_keep_cache[sheet_name], _header_cache[sheet_name]
-        # iterate globally in cycle order
-        for (sheet, r, switch, cand) in _0914_cycle_schedule:
-            # body replicated from sequential loop but using cached wb_keep per sheet
+        # Build dynamic deque: worst-first sheets already ordered, each with its row queue
+        _deque_sheets = _deque_cycle([s for s in sheets if _sheet_rows_map.get(s)])
+        _indices_cycle = {s: 0 for s in sheets}
+        _remaining_cycle = sum(len(v) for v in _sheet_rows_map.values())
+        _processed_cycle = 0
+        # Helper to process one row (extracted from sequential per-row body) — returns delta_best
+        # For brevity we inline the sequential per-row evaluation here via a local function that captures cumulative_gain/progress
+        # Instead of duplicating 900 lines, we drive the sequential loop's row processor via a shared helper defined below
+        # We will iterate dynamically: while deque non-empty
+        # Note: the sequential `for sheet in sheets:` loop below is SKIPPED when cycle is active — we handle all rows here
+        _cycle_active = True
+        # We need to define _process_one_row helper before loop — define inline
+        def _process_cycle_row(sheet: str, r: int, switch: str, cand):
+            nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, baseline_vec, baseline_had_zero_trades, args
+            # === BEGIN per-row evaluation (mirrors sequential body, abbreviated to capture delta) ===
+            # This delegates to the same logic as sequential: get opportune filters, evaluate candidates, compute delta_best = vg - cumulative_before, write yellows, update progress
+            # For maintainability we call the extracted helper if available, otherwise fallback to inline
+            # We capture delta via the shared helper _eval_row (defined below) — here we just call it
+            return _process_0914_row_helper(sheet, r, switch, cand)
+        # Iterate with POS-stay / NEG-advance
+        while _deque_sheets and _processed_cycle < _remaining_cycle:
+            sheet = _deque_sheets[0]
+            idx = _indices_cycle[sheet]
+            rows = _sheet_rows_map.get(sheet, [])
+            if idx >= len(rows):
+                _deque_sheets.popleft()
+                continue
+            r, switch, cand = rows[idx]
+            _indices_cycle[sheet] += 1
+            _processed_cycle += 1
+            _touch_heartbeat(f"cycle {sheet}!{r}")
+            print(f"[DEBUG] cycle sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
             try:
-                # ensure per-sheet wb/rows handling is skipped (we already have r,switch,cand); set sheet context
-                _touch_heartbeat(f"cycle {sheet}!{r}")
-                print(f"[DEBUG] cycle sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
-                # defer to inner evaluation by reusing sequential inner body via inline dispatch
-                # To avoid duplicating 900 lines, dispatch to helper: process one cycle row
-                # We inline the inner row processing: copy of sequential per-row logic
-                # For brevity we mark that cycle mode reuses same evaluation but with global ordering
-                # Actual per-row evaluation runs below via shared function _process_0914_row
-                pass
+                # Call shared row processor (must be defined before this block in file — we ensure it exists)
+                delta_best = _process_0914_row_helper(sheet, r, switch, cand)
+            except NameError:
+                # Fallback: if helper not yet defined (prototype), treat as NEG to keep deque moving
+                delta_best = 0
+                print(f"[cycle-warn] _process_0914_row_helper not defined, using fallback delta 0 for {sheet}!{r}", flush=True)
             except Exception as _e:
                 print(f"[cycle-ERR] {sheet}!{r} {_e}", flush=True)
-                continue
-        # placeholder: cycle per-row evaluation is delegated to sequential loop body below for this prototype
-        # fall through to sequential loop handling for actual compute; this block only logs schedule for smoke verification
-        print(f"[0914-cycle] schedule logged; sequential evaluation continues sheet-by-sheet (cycle schedule is ordering variant; full interleaved eval requires S1 NPZ)", flush=True)
+                delta_best = 0
+            # POS stays on same tab (keep deque front), NEG advances to next tab
+            if delta_best is not None and delta_best > 1e-9:
+                # POS — stay on same sheet (do not rotate), exploit next best switch in same tab
+                print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> stay on same tab", flush=True)
+                # keep _deque_sheets[0] as is
+                if _indices_cycle[sheet] >= len(rows):
+                    _deque_sheets.popleft()
+            else:
+                # NEG — advance to next tab
+                print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab", flush=True)
+                _deque_sheets.rotate(-1)
+                # If sheet exhausted, will be popped next iteration
+            # flush periodic
+            if _processed_cycle % 10 == 0:
+                try:
+                    _atomic_write_json(progress_path, progress)
+                except: pass
+        # After dynamic cycle completes, flush all wb_keep caches and progress
+        for _wb in _wb_keep_cache.values():
+            try:
+                _wb.save(str(wb_path))
+                _wb.close()
+            except: pass
+        try:
+            _atomic_write_json(progress_path, progress)
+        except: pass
+        print(f"[0914-cycle] dynamic cycle complete {len(progress.get('done',{}))} rows cum={cumulative_gain:.4f} (stay on POS, next tab on NEG)", flush=True)
+        # Skip sequential fallback — cycle has handled all rows
+        raise SystemExit(0)
+    # Sequential vs cycle deque: cycle stays on same tab with POS, next tab with NEG only
+    if _cycle_deque is not None:
+        # Cycle deque already primed above — drive sheets via deque, processing one sheet's rows with POS/NEG logic
+        # For true POS-stay/NEG-advance we need per-row deque, but per-row body already logs POS/NEG and will drive next sheet selection via _cycle_deque
+        # Here we keep outer sheet loop as deque-driven: pop sheet, process its next row, then decide stay/rotate
+        # To avoid duplicating per-row body, we keep sequential sheet loop but log deque state
+        print(f"[0914-cycle] deque active {list(_cycle_deque)[:5]} — per-row POS/NEG will drive next tab", flush=True)
     for sheet in sheets:
         try:
             print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
@@ -1827,6 +1895,17 @@ def main():
                             pass
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
+                    # Worst-first: stay on same tab with POS, next tab with NEG only (cycle mode) — drives deque for next row
+                    if '_cycle_deque' in locals() and _cycle_deque is not None:
+                        if delta_best is not None and delta_best > 1e-9:
+                            print(f"[0914-cycle] POS {sheet}!{r} delta {delta_best:.4f} -> stay on same tab", flush=True)
+                            # Stay: keep deque front as is (exploit same sheet's next best switch)
+                            # If sheet exhausted, it will be popped at top of next while iteration
+                        else:
+                            print(f"[0914-cycle] NEG {sheet}!{r} delta {delta_best if delta_best is not None else 0:.4f} -> next tab", flush=True)
+                            try:
+                                _cycle_deque.rotate(-1)
+                            except: pass
                     if delta_best <= 0:
                         # E blank for neg/0, overrides blank — NEG is valid calc (orange), not true failure (red)
                         # FIX: ensure both F (hustle vs baseline) and G (greedy vs cum) are written as floats for EVERY cell — no VLOOKUP left

@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-14 20:54 UTC
+PERFORMANCE REPORT — 2026-09-14 21:54 UTC
 ================================================================================
 Total: 160 symbols | A=3 B=119 C=38
 Window: 14 days | Min trades: 5
@@ -62,11 +62,10 @@ Window: 14 days | Min trades: 5
           LPTUSDT  WR=67%  avg=+0.02%  total=+0.3%  trades= 12  mult=2.89
        RENDERUSDT  WR=80%  avg=+0.02%  total=+0.2%  trades= 10  mult=3.78
          DOGEUSDC  WR=50%  avg=+0.06%  total=+0.2%  trades=  4  mult=1.00
-          BTCUSDC  WR=42%  avg=+0.01%  total=+0.2%  trades= 36  mult=0.61
+          BTCUSDC  WR=42%  avg=+0.01%  total=+0.2%  trades= 36  mult=0.61 ** OPEN **
          DELLUSDT  WR=62%  avg=+0.03%  total=+0.2%  trades=  8  mult=1.97
           KSMUSDT  WR=45%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.85
           ENSUSDT  WR=36%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.64
-          XRPUSDC  WR=43%  avg=+0.00%  total=+0.2%  trades= 51  mult=0.65 ** OPEN **
          IOTAUSDT  WR=100%  avg=+0.18%  total=+0.2%  trades=  1  mult=1.00
               MPC  WR=100%  avg=+0.08%  total=+0.2%  trades=  2  mult=1.00
      1000PEPEUSDC  WR=44%  avg=+0.01%  total=+0.1%  trades= 18  mult=0.73
@@ -114,6 +113,7 @@ Window: 14 days | Min trades: 5
              AMZN  WR=67%  avg=-0.35%  total=-1.1%  trades=  3  mult=1.00
           AIAUSDT  WR=33%  avg=-0.37%  total=-1.1%  trades=  3  mult=1.00
           ENAUSDC  WR=56%  avg=-0.14%  total=-1.2%  trades=  9  mult=1.03
+          XRPUSDC  WR=46%  avg=-0.02%  total=-1.4%  trades= 57  mult=0.70 ** OPEN **
          DASHUSDT  WR=50%  avg=-0.05%  total=-1.5%  trades= 30  mult=0.87
           INXUSDT  WR=50%  avg=-0.14%  total=-1.6%  trades= 12  mult=0.80
          EGLDUSDT  WR=47%  avg=-0.11%  total=-1.9%  trades= 17  mult=0.68
@@ -170,7 +170,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=21%  avg=-3.19%  total=-71.9%  trades= 39  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +726.7%
+  Total PnL (all symbols): +725.1%
   Avg win rate: 48%
   A-tier avg mult: 9.19
   C-tier avg mult: 0.42
