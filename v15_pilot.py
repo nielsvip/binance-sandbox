@@ -1220,6 +1220,26 @@ def main():
                     _prev_y = prev.get("yellows") or prev.get("pending_lbI") or {}
                     _y_missing = len(_prev_y) < _rel_total
                     if not is_stale and not _y_missing:
+                        # versioned-file fragmentation: json may be complete while THIS
+                        # file's cells are unwritten (VLOOKUP/empty/int) — rewrite F/G
+                        # + relevant yellows from the record (cum unchanged, so valid)
+                        try:
+                            _wsk = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
+                            if _wsk is not None:
+                                _pd = float(prev.get("delta") or 0)
+                                if not isinstance(_wsk.cell(row=r, column=6).value, float):
+                                    _wsk.cell(row=r, column=6).value = _pd
+                                if not isinstance(_wsk.cell(row=r, column=7).value, float):
+                                    _wsk.cell(row=r, column=7).value = _pd
+                                for _yh, _yd in ((prev.get("yellows") or {}).items()):
+                                    _yc = header_to_col.get(_yh)
+                                    if _yc and not isinstance(_wsk.cell(row=r, column=_yc).value, float):
+                                        try:
+                                            _wsk.cell(row=r, column=_yc).value = float(_yd)
+                                        except Exception:
+                                            pass
+                        except Exception:
+                            pass
                         if prev.get("delta") and prev["delta"] > 0:
                             cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
                             cumulative_overrides[switch] = cand
@@ -1228,7 +1248,7 @@ def main():
                             print(f"[DEBUG] skip cached POS {key} cum {cumulative_gain:.4f}", flush=True)
                             continue
                         else:
-                            # NEG/0 with same cum will stay NEG — no need to recalc, just ensure F/yellows already refilled
+                            # NEG/0 with same cum will stay NEG — no need to recalc, cells ensured above
                             print(f"[DEBUG] skip cached NEG {key} delta {prev.get('delta')} cum {cumulative_gain:.4f}", flush=True)
                             continue
                     elif _y_missing and not is_stale:

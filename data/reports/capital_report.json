@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-09-14 04:37 UTC",
- "total_capital_usd": 14.45,
+ "generated_at": "2026-09-14 05:24 UTC",
+ "total_capital_usd": 11.97,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.45,
-  "C": 0.0
+  "B": 0.0,
+  "C": 11.97
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "men:QTUMUSDT_LONG"
+ "losers": [
+  "fin:VETUSDT_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:QTUMUSDT_LONG",
-   "symbol": "QTUMUSDT",
-   "account": "men",
-   "value_usd": 14.45,
-   "gain_pct": -0.163,
-   "tier": "B",
-   "perf_mult": 0.97,
-   "amt": 15.2,
-   "mark": 0.9506
+   "pk": "fin:VETUSDT_LONG",
+   "symbol": "VETUSDT",
+   "account": "fin",
+   "value_usd": 11.97,
+   "gain_pct": -0.421,
+   "tier": "C",
+   "perf_mult": 0.48,
+   "amt": 1510.0,
+   "mark": 0.00792913
   }
  ]
 }
