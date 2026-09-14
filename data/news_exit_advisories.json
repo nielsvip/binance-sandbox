@@ -1,14 +1,94 @@
 {
-  "generated_at": "2026-09-14T14:22:41.127433+00:00",
-  "count": 1,
+  "generated_at": "2026-09-14T14:46:54.408829+00:00",
+  "count": 11,
   "advisories": [
     {
-      "symbol": "CRK",
+      "symbol": "DAR",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.51 threshold=0.45",
-      "score": 0.512,
-      "ts": "2026-09-14T14:22:41.127380+00:00"
+      "reason": "bullish_news_score=0.54 threshold=0.45",
+      "score": 0.535,
+      "ts": "2026-09-14T14:46:54.408688+00:00"
+    },
+    {
+      "symbol": "DVN",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.77 threshold=0.45",
+      "score": 0.766,
+      "ts": "2026-09-14T14:46:54.408733+00:00"
+    },
+    {
+      "symbol": "EOG",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.72 threshold=0.45",
+      "score": 0.723,
+      "ts": "2026-09-14T14:46:54.408736+00:00"
+    },
+    {
+      "symbol": "FIX",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.67 threshold=0.45",
+      "score": 0.673,
+      "ts": "2026-09-14T14:46:54.408739+00:00"
+    },
+    {
+      "symbol": "FNV",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.65 threshold=0.45",
+      "score": 0.649,
+      "ts": "2026-09-14T14:46:54.408740+00:00"
+    },
+    {
+      "symbol": "GILD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.71 threshold=0.45",
+      "score": 0.711,
+      "ts": "2026-09-14T14:46:54.408742+00:00"
+    },
+    {
+      "symbol": "HII",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.71 threshold=0.45",
+      "score": 0.705,
+      "ts": "2026-09-14T14:46:54.408745+00:00"
+    },
+    {
+      "symbol": "HOOD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.58 threshold=0.45",
+      "score": 0.581,
+      "ts": "2026-09-14T14:46:54.408746+00:00"
+    },
+    {
+      "symbol": "IBM",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.534,
+      "ts": "2026-09-14T14:46:54.408753+00:00"
+    },
+    {
+      "symbol": "LSCC",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.90 threshold=0.45",
+      "score": 0.896,
+      "ts": "2026-09-14T14:46:54.408758+00:00"
+    },
+    {
+      "symbol": "MA",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.47 threshold=0.45",
+      "score": 0.473,
+      "ts": "2026-09-14T14:46:54.408760+00:00"
     }
   ]
 }

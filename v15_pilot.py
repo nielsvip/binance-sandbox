@@ -333,6 +333,14 @@ def sanitize_overrides(overrides: dict, defaults: dict) -> tuple[dict, list]:
     return sanitized, warns
 
 def get_defaults_for_symside(symside: str) -> dict:
+    # Ensure sandbox root is on sys.path for vec_decisions imports even when
+    # launched via setsid/detached contexts where cwd/env may be stripped.
+    try:
+        _root = str(Path(__file__).resolve().parent)
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+    except Exception:
+        pass
     import v12_quick_engine as V
     import config, config_tradier
     is_crypto = symside.upper().endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
@@ -1258,6 +1266,20 @@ def main():
                                             continue
                                         if isinstance(_wsk.cell(row=r, column=_cc).value, float):
                                             _wsk.cell(row=r, column=_cc).value = None
+                                except Exception:
+                                    pass
+                                # E cumulative chain for this row (col5): POS rows carry
+                                # the cumulative-before float, NEG rows must be blank
+                                # (hustle vs baseline (F) stays; greedy vs cum (G) already
+                                # rewritten above as _pd)
+                                try:
+                                    _e_cell = _wsk.cell(row=r, column=5)
+                                    _is_pos = bool(prev.get("delta") and prev["delta"] > 0)
+                                    _exp = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
+                                    if _is_pos and not isinstance(_e_cell.value, float):
+                                        _e_cell.value = float(_exp)
+                                    elif not _is_pos and _e_cell.value not in (None, ""):
+                                        _e_cell.value = None
                                 except Exception:
                                     pass
                         except Exception:
