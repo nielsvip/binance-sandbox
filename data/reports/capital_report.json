@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 08:32 UTC",
- "total_capital_usd": 24.0,
+ "generated_at": "2026-09-14 08:55 UTC",
+ "total_capital_usd": 12.05,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.0,
+  "B": 12.05,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "inf:RLCUSDT_SHORT"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
+   "pk": "inf:RLCUSDT_SHORT",
+   "symbol": "RLCUSDT",
    "account": "inf",
-   "value_usd": 24.0,
-   "gain_pct": 0.711,
+   "value_usd": 12.05,
+   "gain_pct": -0.548,
    "tier": "B",
-   "perf_mult": 7.19,
-   "amt": 1476.0,
-   "mark": 0.01626
+   "perf_mult": 2.94,
+   "amt": 43.8,
+   "mark": 0.2752
   }
  ]
 }
