@@ -995,13 +995,23 @@ def main():
                     if sheet_part not in wb_refill.sheetnames:
                         continue
                     ws_r = wb_refill[sheet_part]
-                    # refill F VECTOR_DELTA (col6) from rec delta — overwrite VLOOKUP/empty, never waste recalc
+                    # refill F HUSTLE_DELTA (col6) + G VECTOR_DELTA (col7) from rec delta — overwrite VLOOKUP/empty, never waste recalc
+                    # F is hustle vs baseline, G is greedy vs cum; rec stores greedy delta (same for NEG, different for POS via E logic)
+                    # For refill we write both as float(rec delta) when not float; POS hustle needs recalc but greedy G is correct
                     _rv = ws_r.cell(row=r, column=6).value
                     _is_float = isinstance(_rv, (int, float)) and not isinstance(_rv, bool)
                     _need = rec.get("delta") is not None and (not _is_float or abs(float(_rv) - float(rec["delta"])) > 1e-9)
                     if _need:
                         ws_r.cell(row=r, column=6).value = float(rec["delta"])
                         ws_r.cell(row=r, column=6).font = Font(name="Arial", bold=True, color="9C5700")
+                        refilled += 1
+                    # also refill G VECTOR_DELTA (col7) greedy delta — was missing, left VLOOKUP strand
+                    _gv = ws_r.cell(row=r, column=7).value
+                    _g_is_float = isinstance(_gv, (int, float)) and not isinstance(_gv, bool)
+                    _g_need = rec.get("delta") is not None and (not _g_is_float or abs(float(_gv) - float(rec["delta"])) > 1e-9)
+                    if _g_need:
+                        ws_r.cell(row=r, column=7).value = float(rec["delta"])
+                        ws_r.cell(row=r, column=7).font = Font(name="Arial", bold=True, color="9C5700")
                         refilled += 1
                     # refill yellows L:BI from rec.get yellows if stored
                     _y = rec.get("yellows") or rec.get("pending_lbI") or {}

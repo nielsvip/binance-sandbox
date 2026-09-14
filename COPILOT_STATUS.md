@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-14 05:35:36 UTC
+# Copilot Status — 2026-09-14 05:51:13 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:26:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:26:39
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:28:43
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:28:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:30:48
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:30:48
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:32:51
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:32:51
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:34:54
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:34:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:41:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:41:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:43:08
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:43:08
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:45:12
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:45:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:47:15
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:47:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T05:49:19
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T05:49:19
 
 ## Missed Trades (trader comparison)
 
@@ -37,8 +37,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
