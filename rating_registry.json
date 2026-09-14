@@ -1,23 +1,11 @@
 {
-  "timestamp": "2026-09-14T04:55:19.935599+00:00",
+  "timestamp": "2026-09-14T05:15:33.612216+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 90
+    "total_ranked": 98
   },
   "unified_ranking": [
-    {
-      "symbol": "STORJUSDT",
-      "net_score": -30,
-      "long_score": 0,
-      "short_score": 30
-    },
-    {
-      "symbol": "AMATUSDT",
-      "net_score": -13.8,
-      "long_score": 0,
-      "short_score": 13.8
-    },
     {
       "symbol": "1INCHUSDT",
       "net_score": 0,
@@ -26,6 +14,12 @@
     },
     {
       "symbol": "GRTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "STORJUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -79,6 +73,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MASKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RKLBUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -92,6 +92,12 @@
     },
     {
       "symbol": "GALAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "KASUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -140,6 +146,12 @@
     },
     {
       "symbol": "OPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PENGUUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -229,6 +241,12 @@
       "short_score": 0
     },
     {
+      "symbol": "FILUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ARBUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -242,6 +260,12 @@
     },
     {
       "symbol": "KAVAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -307,6 +331,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MORPHOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BNCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -367,7 +397,19 @@
       "short_score": 0
     },
     {
+      "symbol": "SEIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "THETAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LTCUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -428,6 +470,12 @@
     },
     {
       "symbol": "COTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEIROUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -535,37 +583,20 @@
       "short_score": 0
     },
     {
-      "symbol": "MSFTUSDT",
+      "symbol": "TAOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "MORPHOUSDT",
-      "net_score": 14.9,
-      "long_score": 14.9,
+      "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "MORPHOUSDT",
-      14.9,
-      2.2012
-    ]
-  ],
-  "top_shorts": [
-    [
-      "STORJUSDT",
-      30,
-      0.03015145
-    ],
-    [
-      "AMATUSDT",
-      13.8,
-      441.51
-    ]
-  ],
+  "top_longs": [],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

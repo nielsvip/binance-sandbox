@@ -1774,6 +1774,20 @@ def main():
             except Exception:
                 pass
             print(f"[sheet DONE] {sheet} cum={cumulative_gain:.4f} positives={total_pos}", flush=True)
+            # SHEET-ZERO tripwire: a processed sheet whose rows are ALL exact-zero
+            # deltas+yellows is systematic failure (all-invalid engine/NPZ), never real
+            # backtest output (real gains always vary) — flag loud, never silently stand
+            try:
+                _sd = [(k, v) for k, v in progress.get("done", {}).items() if k.startswith(sheet + "!") and "!GLOBAL:" not in k]
+                if len(_sd) >= 5:
+                    _allzero = sum(1 for _, v in _sd if abs(float(v.get("delta") or 0)) < 1e-12 and all(abs(float(x) or 0) < 1e-12 for x in (v.get("yellows") or {}).values()))
+                    if _allzero >= 0.9 * len(_sd):
+                        print(f"[SHEET-ZERO-FAIL] {sheet} {_allzero}/{len(_sd)} rows all-zero — systematic invalid, NOT real numbers", flush=True)
+                        _flag_to_md(flags_md, sheet, 0, "SHEET-ZERO", str(wb_path), f"{_allzero}/{len(_sd)} rows all-zero deltas+yellows", 0.0, 0.0, cumulative_gain)
+                    else:
+                        print(f"[sheet-zero-ok] {sheet} {len(_sd)-_allzero}/{len(_sd)} rows carry real numbers", flush=True)
+            except Exception as _sze:
+                print(f"[sheet-zero-warn] {sheet} {_sze}", flush=True)
             # GLOBAL per-sheet: thorough revision — orange = entire sheet, prune to only important for sheet (0/neg stall workbook)
             # GENERAL 65 distinct -> 26 kept important (not the 39 that only produce 0/neg); use S1 ledger: SNDK all pos 4/neg 1613, GLOBAL pos 0/neg 62
             # Prune list derived from workflow: 39 distinct that stall (only 0/neg) — keep the other 26
