@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-14 15:11 UTC
+PERFORMANCE REPORT — 2026-09-14 16:28 UTC
 ================================================================================
 Total: 159 symbols | A=2 B=121 C=36
 Window: 14 days | Min trades: 5
@@ -9,12 +9,11 @@ Window: 14 days | Min trades: 5
 
 --- TIER B (121 symbols) ---
              CRWV  WR=86%  avg=+8.10%  total=+71.0%  trades=  7  mult=6.40
-             DELL  WR=86%  avg=+2.34%  total=+17.2%  trades=  7  mult=6.40
+             DELL  WR=88%  avg=+2.32%  total=+19.7%  trades=  8  mult=7.30
              COHR  WR=100%  avg=+7.91%  total=+16.4%  trades=  2  mult=1.00
              QBTS  WR=100%  avg=+4.61%  total=+14.3%  trades=  3  mult=1.00
               ETN  WR=33%  avg=+1.50%  total=+9.1%  trades=  6  mult=2.80
          RUNEUSDT  WR=46%  avg=+0.28%  total=+7.3%  trades= 26  mult=2.19
-             DINO  WR=100%  avg=+0.69%  total=+4.9%  trades=  7  mult=5.78
           UNIUSDC  WR=55%  avg=+0.43%  total=+4.8%  trades= 11  mult=3.06
            ARUSDT  WR=62%  avg=+0.16%  total=+4.8%  trades= 29  mult=4.28
          COTIUSDT  WR=76%  avg=+0.22%  total=+4.6%  trades= 21  mult=7.19
@@ -28,6 +27,7 @@ Window: 14 days | Min trades: 5
           RLCUSDT  WR=58%  avg=+0.07%  total=+2.2%  trades= 31  mult=2.92
               PBF  WR=100%  avg=+0.97%  total=+1.9%  trades=  2  mult=1.00
          NEARUSDC  WR=52%  avg=+0.08%  total=+1.9%  trades= 25  mult=1.87
+             DINO  WR=88%  avg=+0.22%  total=+1.7%  trades=  8  mult=4.30
               VLO  WR=86%  avg=+0.23%  total=+1.6%  trades=  7  mult=3.80
              LRCX  WR=67%  avg=+0.55%  total=+1.6%  trades=  3  mult=1.00
          HYPEUSDT  WR=53%  avg=+0.03%  total=+1.6%  trades= 60  mult=1.77
@@ -62,9 +62,9 @@ Window: 14 days | Min trades: 5
          AAVEUSDC  WR=75%  avg=+0.07%  total=+0.3%  trades=  4  mult=1.00
          MSTRUSDT  WR=67%  avg=+0.05%  total=+0.3%  trades=  6  mult=1.99
           LPTUSDT  WR=67%  avg=+0.02%  total=+0.3%  trades= 12  mult=2.89
-          XRPUSDC  WR=38%  avg=+0.01%  total=+0.2%  trades= 42  mult=0.52
        RENDERUSDT  WR=80%  avg=+0.02%  total=+0.2%  trades= 10  mult=3.78
          DOGEUSDC  WR=50%  avg=+0.06%  total=+0.2%  trades=  4  mult=1.00
+          XRPUSDC  WR=39%  avg=+0.01%  total=+0.2%  trades= 44  mult=0.53
          DELLUSDT  WR=62%  avg=+0.03%  total=+0.2%  trades=  8  mult=1.97
           KSMUSDT  WR=45%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.85
           ENSUSDT  WR=36%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.64
@@ -95,7 +95,7 @@ Window: 14 days | Min trades: 5
           INJUSDT  WR=46%  avg=-0.01%  total=-0.1%  trades= 13  mult=0.82
          USARUSDT  WR=75%  avg=-0.03%  total=-0.1%  trades=  4  mult=1.00
           WMTUSDT  WR=56%  avg=-0.01%  total=-0.2%  trades= 18  mult=1.84
-         ALGOUSDT  WR=59%  avg=-0.01%  total=-0.2%  trades= 22  mult=2.58
+         ALGOUSDT  WR=59%  avg=-0.01%  total=-0.2%  trades= 22  mult=2.58 ** OPEN **
           SNXUSDT  WR=50%  avg=-0.03%  total=-0.3%  trades=  8  mult=0.96
           XMRUSDT  WR=67%  avg=-0.05%  total=-0.3%  trades=  6  mult=1.80
           FILUSDC  WR=58%  avg=-0.02%  total=-0.3%  trades= 12  mult=1.80
@@ -169,7 +169,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -38.5%
+  Total PnL (all symbols): -39.2%
   Avg win rate: 48%
   A-tier avg mult: 8.79
   C-tier avg mult: 0.44

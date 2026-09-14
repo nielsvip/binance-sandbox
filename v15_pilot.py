@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """v15_pilot — SERIOUS cell-by-cell TEMPLATE filler with numpy live calculations and in-memory NPZ.
 
+⚠️  S1-ONLY — NEVER RUN ON MACBOOK (Darwin) except --dry-run or --allow-mac / V15_ALLOW_MAC=1 for code writing/testing.
+    Mac truncates NPZ 134×10G vs S1 473×31G → 0 trades DATA_ERROR. All real sweeps MUST run on S1 via ssh s1-int (157.180.125.52).
+    Any backtester that runs v15_pilot on Mac is wrong — kill it and move to S1. See BACKTEST_BIBLE § logistics.
+
 LAW: YELLOW-ONLY (yellows only) — ONLY calculate the YELLOW cells for that row: the
 SPECIFIC filters gated to A SINGLE SWITCH (this row's switch=cand plus that one filter,
 vs cumulative_before), per FILTERS_EXPLAINED / FILTER_DICTIONARY_V2 mapping.
@@ -766,6 +770,7 @@ def main():
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--vector-only", action="store_true", help="vector-only, no live parity (fast)")
     ap.add_argument("--no-lbI", action="store_true")
+    ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     args = ap.parse_args()
 
     import os as _os
@@ -792,12 +797,14 @@ def main():
     except Exception as _e:
         print(f"[TEMPLATE-VERIFY-WARN] {_e}", flush=True)
 
-    if sys.platform == "darwin" and not args.dry_run:
+    if sys.platform == "darwin" and not args.dry_run and not args.allow_mac and os.getenv("V15_ALLOW_MAC") != "1" and "PYTEST_CURRENT_TEST" not in os.environ:
+        print("[BLOCKED] v15_pilot is S1-ONLY — NEVER RUN ON MACBOOK except for code writing/testing.", file=sys.stderr, flush=True)
         print("[BLOCKED] Mac is live-only — NO backtests on MacBook ever. Filler is S1-only. Use ssh s1-int or 157.180.125.52.", file=sys.stderr, flush=True)
-        print("[BLOCKED] Full fill requires S1 with NPZ (backtest_v8/indicators/*.npz 975K truncated on Mac gives 0 trades). Use --dry-run to test clone only.", file=sys.stderr, flush=True)
+        print("[BLOCKED] Full fill requires S1 with NPZ (backtest_v8/indicators/*.npz 975K truncated on Mac gives 0 trades DATA_ERROR).", file=sys.stderr, flush=True)
+        print("[BLOCKED] For code writing/testing on Mac: use --dry-run (clone only) or --allow-mac / V15_ALLOW_MAC=1", file=sys.stderr, flush=True)
         sys.exit(2)
-    if sys.platform == "darwin" and args.dry_run:
-        print("[warn] Mac dry-run allowed — clone only, no NPZ/backtest", flush=True)
+    if sys.platform == "darwin" and (args.dry_run or args.allow_mac or os.getenv("V15_ALLOW_MAC") == "1" or "PYTEST_CURRENT_TEST" in os.environ):
+        print("[warn] Mac allowed for writing/testing only — not for real sweeps (S1 required for full universe)", flush=True)
 
     if args.window_days == 365 or args.window_days >= 100:
         print("BLOCKED: 1yr requires 30D gate — run 30D first", file=sys.stderr)
@@ -982,6 +989,51 @@ def main():
         progress = json.loads(progress_path.read_text())
     except Exception:
         progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days}
+    # RESPECT s3/s5 shuffles and stdev: fetch latest progress from S1 peer if on s3/s5 to avoid overwriting better numbers
+    try:
+        import socket as _sock
+        _host = _sock.gethostname().lower()
+        if any(x in _host for x in ["s3", "s5", "htz-v15-s3", "htz-v15-s5"]) or "10.0.0.5" in str(progress_path) or "10.0.0.6" in str(progress_path):
+            # try to fetch S1's progress as source of truth for shuffles/stdev
+            _s1_progress = Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot") / progress_path.name
+            if _s1_progress.exists() and _s1_progress != progress_path:
+                try:
+                    _s1_data = json.loads(_s1_progress.read_text())
+                    # respect S1's better cumulative and hustler if newer/better
+                    if float(_s1_data.get("cumulative_gain", 0)) > float(progress.get("cumulative_gain", 0)):
+                        print(f"[respect-s1] S1 progress {progress_path.name} cum {progress.get('cumulative_gain')} -> S1 { _s1_data.get('cumulative_gain'):.2f} — respect", flush=True)
+                        progress = _s1_data
+                    elif len(_s1_data.get("done", {})) > len(progress.get("done", {})):
+                        # S1 has more done entries (shuffles/stdev), merge
+                        print(f"[respect-s1] S1 has {len(_s1_data.get('done',{}))} done vs local {len(progress.get('done',{}))} — merge", flush=True)
+                        for _k, _v in _s1_data.get("done", {}).items():
+                            if _k not in progress.get("done", {}):
+                                progress.setdefault("done", {})[_k] = _v
+                            else:
+                                # respect STDEV/shuffle: keep max delta for same key
+                                _local_delta = float(progress["done"][_k].get("delta") or 0)
+                                _s1_delta = float(_v.get("delta") or 0)
+                                if abs(_s1_delta) > abs(_local_delta) and _k.startswith(("STDEV", "REENTRY")):
+                                    progress["done"][_k] = _v
+                        if "hustler_best_gain" in _s1_data and float(_s1_data.get("hustler_best_gain") or 0) > float(progress.get("hustler_best_gain") or 0):
+                            progress["hustler_best_gain"] = _s1_data["hustler_best_gain"]
+                            progress["hustler_overrides"] = _s1_data.get("hustler_overrides", {})
+                except Exception as _se:
+                    print(f"[respect-s1-warn] {_se}", flush=True)
+            # also try scp from S1 if local s3/s5 path is empty
+            if not progress.get("done") and progress_path.exists():
+                try:
+                    import subprocess as _sp
+                    _sp.run(["scp", "-o", "StrictHostKeyChecking=no", f"niels@157.90.168.35:/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{progress_path.name}", str(progress_path)], capture_output=True, timeout=5)
+                    if progress_path.exists():
+                        _new = json.loads(progress_path.read_text())
+                        if len(_new.get("done", {})) > len(progress.get("done", {})):
+                            progress = _new
+                            print(f"[respect-s1-scp] fetched {progress_path.name} from S1", flush=True)
+                except Exception:
+                    pass
+    except Exception as _re2:
+        print(f"[respect-warn] {_re2}", flush=True)
     cumulative_gain = progress.get("cumulative_gain", baseline_gain)
     cumulative_overrides = dict(progress.get("cumulative_overrides", overrides))
     cumulative_overrides = {k: v for k, v in cumulative_overrides.items() if not (isinstance(v, str) and " + " in v)}
@@ -1493,15 +1545,33 @@ def main():
                                     _cv = None
                                 if isinstance(_cv, str) or _cv is None:
                                     if _hdr in pending_lbI:
+                                        # RESPECT s3/s5 STDEV/shuffle: if peer already computed this yellow, keep max
+                                        _d = float(pending_lbI[_hdr])
+                                        if sheet == "STDEV_SLOPE_SIZING" and key in progress.get("done", {}) and _hdr in (progress["done"][key].get("yellows") or {}):
+                                            _peer_d = float(progress["done"][key]["yellows"][_hdr] or 0)
+                                            if abs(_peer_d) > abs(_d) and _peer_d != 0:
+                                                _d = _peer_d
+                                                print(f"[respect-stdev] {key} {_hdr} peer {_peer_d:.2f} > new {_d:.2f} — respect", flush=True)
                                         try:
-                                            ws_row.cell(row=r, column=_col).value = float(pending_lbI[_hdr])
+                                            ws_row.cell(row=r, column=_col).value = float(_d)
                                         except Exception:
                                             pass
                                     else:
-                                        try:
-                                            ws_row.cell(row=r, column=_col).value = 0.0
-                                        except Exception:
-                                            pass
+                                        # STDEV respect: don't overwrite peer's valid yellow with 0.0 backstop
+                                        _skip_zero = False
+                                        if sheet == "STDEV_SLOPE_SIZING" and key in progress.get("done", {}):
+                                            _peer_y = (progress["done"][key].get("yellows") or {}).get(_hdr)
+                                            if _peer_y is not None and float(_peer_y) != 0:
+                                                _skip_zero = True
+                                                try:
+                                                    ws_row.cell(row=r, column=_col).value = float(_peer_y)
+                                                except Exception:
+                                                    pass
+                                        if not _skip_zero:
+                                            try:
+                                                ws_row.cell(row=r, column=_col).value = 0.0
+                                            except Exception:
+                                                pass
                                         _missing.append(_hdr)
                             if _missing:
                                 _flag_to_md(flags_md, sheet, r, switch, cand, f"yellow backstop {len(_missing)} unevaluated", 0.0, 0.0, cumulative_before)
@@ -2183,6 +2253,14 @@ def main():
             print(f"[hustler-pool] union baseline {len(_hustle_top)-len(_hustle_top_cum)} + cum {len(_hustle_top_cum)} -> {len(_hustle_top)} unique", flush=True)
         _hustle_top.sort(key=lambda x: x[4], reverse=True)
         _hustle_top = _hustle_top[:80]  # top 80 pos vs baseline/cum to hustle — exhaustive combos need broader pool
+        # --- HYBRID DEFER BIG WINNER (user 2026-09-14): try without big winner so others get chance, then re-apply big over best without it ---
+        _hybrid_defer = __import__("os").environ.get("HYBRID_DEFER_BIG","1") != "0"
+        _hustle_top_hybrid = list(_hustle_top)
+        _big_winner = None
+        if _hybrid_defer and _hustle_top:
+            _big_winner = max(_hustle_top, key=lambda x: x[4])
+            print(f"[hybrid] defer big winner {_big_winner[0]}={_big_winner[1]} vs_base +{_big_winner[4]:.2f} to let others combine first", flush=True)
+            # keep full list for final beam, but also note big for two-phase hustle
         print(f"[hustler] top pos vs baseline {len(_hustle_top)} baseline {baseline_gain:.2f} cum {cumulative_gain:.2f} bh {bh_raw:.2f} beam 64 depth 10 (simultaneous vs baseline+cum + per-hustle recalc shooting up delta vs beam, plus exhaustive top12)", flush=True)
         for _i, (_sw,_cand,_bf,_bv,_vsb,_vg) in enumerate(_hustle_top[:10]):
             print(f"  [hustler-top-{_i}] {_sw}={_cand} vs_base +{_vsb:.2f} vec {_vg:.2f} filter {_bf}={_bv}", flush=True)
@@ -2235,6 +2313,51 @@ def main():
                     # plateau detection 2 rounds no improvement -> break hustle
                     if _depth >= 3 and _cands[0][1] < _best_gain + 0.01:
                         break
+            # --- HYBRID PHASE 1: hustle WITHOUT big winner (let secondary combos emerge) ---
+            if _hybrid_defer and _big_winner is not None and _hustle_top_hybrid:
+                _without_big = [x for x in _hustle_top_hybrid if not (x[0]==_big_winner[0] and str(x[1])==str(_big_winner[1]))]
+                if _without_big:
+                    print(f"[hybrid-phase1] beam without big winner ({len(_without_big)} cands) to find best secondary combo", flush=True)
+                    _beam_nb = [(dict(cumulative_overrides), cumulative_gain)]
+                    _seen_nb = {tuple(sorted(cumulative_overrides.items()))}
+                    _best_nb_over, _best_nb_gain = dict(cumulative_overrides), cumulative_gain
+                    for _d in range(1, 7):
+                        _cands=[]
+                        for _b_over,_b_gain in _beam_nb:
+                            for _sw,_cand,_bf,_bv,_vsb,_vg in _without_big[:40]:
+                                if _sw in _b_over and str(_b_over[_sw])==str(_cand): continue
+                                _var=dict(_b_over); _var[_sw]=_cand
+                                if _bf and _bv and _bf not in _var: _var[_bf]=_bv
+                                _k=tuple(sorted(_var.items()))
+                                if _k in _seen_nb: continue
+                                _seen_nb.add(_k)
+                                _san,_=sanitize_overrides(_var, defaults)
+                                _vec=_hustle_eval(prepared,_san,window_days=args.window_days)
+                                if not _vec or not _vec.get("valid"): continue
+                                _vg2=float(_vec.get("gain_pct")or 0)
+                                if _vg2 - _b_gain >0.2:
+                                    _cands.append((_var,_vg2,_sw,_cand))
+                        if not _cands: break
+                        _cands.sort(key=lambda x: x[1], reverse=True)
+                        _beam_nb=[(_v[0],_v[1]) for _v in _cands[:32]]
+                        if _cands[0][1] > _best_nb_gain:
+                            _best_nb_over,_best_nb_gain=_cands[0][0],_cands[0][1]
+                            print(f"[hybrid-phase1] NEW BEST without big {_best_nb_gain:.2f} via {_cands[0][2]}={_cands[0][3]}", flush=True)
+                    # Phase2: re-apply big winner over best without big
+                    if _best_nb_gain > cumulative_gain:
+                        print(f"[hybrid-phase2] try big winner over best_without_big {cumulative_gain:.2f}->{_best_nb_gain:.2f}", flush=True)
+                        _var_big = dict(_best_nb_over); _var_big[_big_winner[0]]=_big_winner[1]
+                        _san,_=sanitize_overrides(_var_big, defaults)
+                        _vec=_hustle_eval(prepared,_san,window_days=args.window_days)
+                        if _vec and _vec.get("valid"):
+                            _vg2=float(_vec.get("gain_pct")or 0)
+                            print(f"[hybrid-phase2] big over best_without_big gain {_vg2:.2f} vs greedy {cumulative_gain:.2f} vs best_without {_best_nb_gain:.2f}", flush=True)
+                            if _vg2 > _best_gain:
+                                _best_gain=_vg2; _best_overrides=dict(_var_big)
+                                print(f"[hybrid-phase2] PROMOTE hybrid big+secondary {_best_gain:.2f}", flush=True)
+                    # merge secondary best into global best if better
+                    if _best_nb_gain > _best_gain:
+                        _best_gain=_best_nb_gain; _best_overrides=dict(_best_nb_over)
             # --- EXHAUSTIVE TOP12: try ALL subsets of top 12 best deltas together (4096 combos) to guarantee max ---
             try:
                 _ex_top = _hustle_top[:12]
@@ -2281,8 +2404,30 @@ def main():
                 # write hustler overrides to progress and xlsx E column extension (append HUSTLER sheet if needed)
                 try:
                     _hustle_path = OUT_DIR / f"{new_symside}_hustler_best.json"
-                    _hustle_path.write_text(__import__("json").dumps({"symside": new_symside, "baseline": float(baseline_gain or 0), "greedy_cum": float(cumulative_gain), "hustler_best_gain": float(_best_gain), "hustler_delta_vs_baseline": float(_best_gain - float(baseline_gain or 0)), "hustler_delta_vs_greedy": float(_best_gain - cumulative_gain), "overrides": _best_overrides, "bh": float(bh_raw)}, indent=2))
-                    print(f"[hustler] wrote {_hustle_path}", flush=True)
+                    # RESPECT other hosts: s3/s5 shuffles must not overwrite a better hustle from peer
+                    _skip_write = False
+                    if _hustle_path.exists():
+                        try:
+                            _existing = __import__("json").loads(_hustle_path.read_text())
+                            _existing_gain = float(_existing.get("hustler_best_gain") or 0)
+                            if _existing_gain >= float(_best_gain) - 1e-9:
+                                print(f"[hustler-respect] existing {_existing_gain:.2f} >= new {float(_best_gain):.2f} — respect peer, skip overwrite", flush=True)
+                                _skip_write = True
+                            else:
+                                print(f"[hustler-respect] new {float(_best_gain):.2f} beats existing {_existing_gain:.2f} — overwrite", flush=True)
+                        except Exception as _re:
+                            print(f"[hustler-respect-warn] {_re}", flush=True)
+                    if not _skip_write:
+                        _hustle_path.write_text(__import__("json").dumps({"symside": new_symside, "baseline": float(baseline_gain or 0), "greedy_cum": float(cumulative_gain), "hustler_best_gain": float(_best_gain), "hustler_delta_vs_baseline": float(_best_gain - float(baseline_gain or 0)), "hustler_delta_vs_greedy": float(_best_gain - cumulative_gain), "overrides": _best_overrides, "bh": float(bh_raw)}, indent=2))
+                        print(f"[hustler] wrote {_hustle_path}", flush=True)
+                    # also respect progress.json hustler if peer wrote newer
+                    try:
+                        if _skip_write and "hustler_best_gain" in progress:
+                            if float(progress.get("hustler_best_gain") or 0) < float(_existing_gain or 0):
+                                progress["hustler_best_gain"] = float(_existing_gain)
+                                progress["hustler_overrides"] = _existing.get("overrides", {})
+                    except Exception:
+                        pass
                 except Exception as _we:
                     print(f"[hustler-warn] {_we}", flush=True)
                 # optionally promote cumulative_gain to hustler best for final publishing

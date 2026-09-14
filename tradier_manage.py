@@ -13265,6 +13265,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 'WT_3M_FORCE_OPEN_BYPASS_GATES', True, account_key, symbol,
                 position_side,
             ))
+            ls_ratio_scale = 1.0
+            ls_ratio_reason = ""
             if _cfg_auto('LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not _mandatory_reentry_qta and not _ordinary_parity_qta and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
                 _lv2 = 0.0; _sv2 = 0.0
                 for _pk, _p in trade_manager.position_manager.positions.items():
@@ -13279,12 +13281,24 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 _ls_min2 = max(0.30, _cfg_auto('LS_RATIO_MIN_TRADIER', 0.50) + _adj2)
                 _ls_max2 = min(3.00, _cfg_auto('LS_RATIO_MAX_TRADIER', 2.00) + _adj2)
                 _ratio2 = _lv2 / max(_sv2, 1.0)
-                if position_side == "LONG" and _ratio2 > _ls_max2:
-                    logger.warning(f"[LS_RATIO_BLOCK] {position_key}: L/S VALUE ratio ${_lv2:.0f}/${_sv2:.0f}={_ratio2:.2f} > max {_ls_max2:.2f}, blocking LONG open")
-                    return False
-                if position_side == "SHORT" and _ratio2 < _ls_min2:
-                    logger.warning(f"[LS_RATIO_BLOCK] {position_key}: L/S VALUE ratio ${_lv2:.0f}/${_sv2:.0f}={_ratio2:.2f} < min {_ls_min2:.2f}, blocking SHORT open")
-                    return False
+                if position_side == "LONG":
+                    if _ratio2 > _ls_max2:
+                        ls_ratio_scale = max(0.33, min(1.0, _ls_max2 / max(_ratio2, 0.1)))
+                        ls_ratio_reason = f"L/S {_ratio2:.2f} > max {_ls_max2:.2f} overweight LONG -> scale {ls_ratio_scale:.2f}"
+                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, reducing LONG")
+                    elif _ratio2 < _ls_min2:
+                        ls_ratio_scale = min(2.0, max(1.0, _ls_min2 / max(_ratio2, 0.1)))
+                        ls_ratio_reason = f"L/S {_ratio2:.2f} < min {_ls_min2:.2f} underweight LONG -> scale {ls_ratio_scale:.2f}"
+                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, augmenting LONG")
+                elif position_side == "SHORT":
+                    if _ratio2 < _ls_min2:
+                        ls_ratio_scale = max(0.33, min(1.0, _ratio2 / max(_ls_min2, 0.1)))
+                        ls_ratio_reason = f"L/S {_ratio2:.2f} < min {_ls_min2:.2f} overweight SHORT -> scale {ls_ratio_scale:.2f}"
+                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, reducing SHORT")
+                    elif _ratio2 > _ls_max2:
+                        ls_ratio_scale = min(2.0, max(1.0, _ratio2 / max(_ls_max2, 0.1)))
+                        ls_ratio_reason = f"L/S {_ratio2:.2f} > max {_ls_max2:.2f} underweight SHORT -> scale {ls_ratio_scale:.2f}"
+                        logger.warning(f"[LS_RATIO_SCALE] {position_key}: {ls_ratio_reason}, augmenting SHORT")
             side = "BUY" if position_side == "LONG" else "SELL"
         elif action in ["CLOSE", "REDUCE", "SELL"]:
             side = "SELL" if position_side == "LONG" else "BUY"
@@ -13350,6 +13364,18 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 quantity = override_qty if override_qty else await trade_manager.calculate_position_size(symbol, current_price, account_key=account_key)
         else:
             return False
+        if 'ls_ratio_scale' in locals() and ls_ratio_scale != 1.0 and quantity > 0 and action.upper() in ("OPEN", "AUGMENT", "REENTER", "REENTRY", "BUY"):
+            _orig_qty = quantity
+            quantity = max(1.0, quantity * ls_ratio_scale)
+            # round to whole shares for stocks, keep 2 decimals for crypto/fractional
+            try:
+                if quantity >= 10:
+                    quantity = round(quantity)
+                else:
+                    quantity = round(quantity, 2)
+            except Exception:
+                pass
+            logger.info(f"[LS_RATIO_SCALE_APPLIED] {position_key}: {ls_ratio_reason} qty {_orig_qty:.2f} -> {quantity:.2f} (scale {ls_ratio_scale:.2f}x)")
         if quantity <= 0:
             return False
         _ladder_parity_order = _ordinary_parity_qta

@@ -5212,11 +5212,11 @@ class QuickConfig:
     ATR_PARITY_USE_DAILY: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     ATR_TRAIL_2X_EXIT_ENABLED: bool = False  # auto-wired 625
     AUGMENTATION_COOLDOWN_SECONDS: float = 150.0  # auto-wired 625
-    BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 0.5  # auto-wired 625
+    BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0  # TEMPLATE 1.0 (was 0.5)
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
-    BAND_SLOPE_SIZING_V2_MAX: float = 1.25  # auto-wired 625
-    BAND_SLOPE_SIZING_V2_MIN: float = 0.25  # auto-wired 625
-    BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 0.5  # auto-wired 625
+    BAND_SLOPE_SIZING_V2_MAX: float = 2.5  # TEMPLATE 2.5 (was 1.25) — STDEV ladder D 6mo 10x
+    BAND_SLOPE_SIZING_V2_MIN: float = 0.5  # TEMPLATE 0.5 (was 0.25)
+    BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 1.0  # TEMPLATE 1.0 (was 0.5)
     STDEV_SLOPE_SIZING_ENABLED: bool = True  # stdev 2.5 ladder master
     STDEV_BAND_MULTIPLIER: float = 2.5
     STDEV_SLOPE_SIZING_D_MAX: float = 10.0
@@ -6359,7 +6359,7 @@ class QuickConfig:
     BAND_ARROW_EXIT_TFS: str = 'D,4h'
     BAND_ARROW_MAX_POS_MULT: float = 30.0
     BAND_FILE: Path = Path("data")
-    BAND_SLOPE_SIZING_V2_TF: str = '4h'
+    BAND_SLOPE_SIZING_V2_TF: str = 'D'  # TEMPLATE D (was 4h) — STDEV ladder D 6mo 10x
     BASE_PATH: Path = Path("data")
     BB4H_BREAKOUT_LADDER_BASIS_PCT: float = 0.5
     BB4H_BREAKOUT_LADDER_BREAKOUT_PCT: float = 0.25
@@ -9909,11 +9909,11 @@ _DEFAULTS_625 = {
     "AUGMENTATION_COOLDOWN_SECONDS": 150.0,
     "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER": True,
     "BACKTEST_VALIDATED_GATES_TRADIER": True,
-    "BAND_SLOPE_SIZING_V2_DEPTH_GAIN": 0.5,
+    "BAND_SLOPE_SIZING_V2_DEPTH_GAIN": 1.0,
     "BAND_SLOPE_SIZING_V2_ENABLED": True,
-    "BAND_SLOPE_SIZING_V2_MAX": 1.25,
-    "BAND_SLOPE_SIZING_V2_MIN": 0.25,
-    "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY": 0.5,
+    "BAND_SLOPE_SIZING_V2_MAX": 2.5,
+    "BAND_SLOPE_SIZING_V2_MIN": 0.5,
+    "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY": 1.0,
     "BASIS_CONDITION": False,
     "BB_BREAKOUT_ENABLED": False,
     "BB_BREAKOUT_SCORE": 20,
