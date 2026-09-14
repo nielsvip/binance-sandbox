@@ -1,14 +1,78 @@
 {
-  "generated_at": "2026-09-14T17:55:16.132342+00:00",
-  "count": 1,
+  "generated_at": "2026-09-14T18:23:07.224033+00:00",
+  "count": 9,
   "advisories": [
     {
-      "symbol": "A",
+      "symbol": "NFLX",
       "side": "SHORT",
       "action": "CONSIDER_EXIT",
-      "reason": "bullish_news_score=0.84 threshold=0.45",
-      "score": 0.844,
-      "ts": "2026-09-14T17:55:16.132084+00:00"
+      "reason": "bullish_news_score=0.59 threshold=0.45",
+      "score": 0.588,
+      "ts": "2026-09-14T18:23:07.223949+00:00"
+    },
+    {
+      "symbol": "OLED",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.79 threshold=0.45",
+      "score": 0.786,
+      "ts": "2026-09-14T18:23:07.223970+00:00"
+    },
+    {
+      "symbol": "PBF",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.78 threshold=0.45",
+      "score": 0.777,
+      "ts": "2026-09-14T18:23:07.223973+00:00"
+    },
+    {
+      "symbol": "PRI",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.78 threshold=0.45",
+      "score": 0.776,
+      "ts": "2026-09-14T18:23:07.223975+00:00"
+    },
+    {
+      "symbol": "PWR",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.77 threshold=0.45",
+      "score": 0.772,
+      "ts": "2026-09-14T18:23:07.223977+00:00"
+    },
+    {
+      "symbol": "QRVO",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.50 threshold=0.45",
+      "score": 0.501,
+      "ts": "2026-09-14T18:23:07.223979+00:00"
+    },
+    {
+      "symbol": "RGLD",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.65 threshold=0.45",
+      "score": 0.645,
+      "ts": "2026-09-14T18:23:07.223981+00:00"
+    },
+    {
+      "symbol": "ROKU",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.53 threshold=0.45",
+      "score": 0.533,
+      "ts": "2026-09-14T18:23:07.223990+00:00"
+    },
+    {
+      "symbol": "SCHW",
+      "side": "SHORT",
+      "action": "CONSIDER_EXIT",
+      "reason": "bullish_news_score=0.62 threshold=0.45",
+      "score": 0.621,
+      "ts": "2026-09-14T18:23:07.223992+00:00"
     }
   ]
 }
