@@ -1,30 +1,43 @@
 {
- "generated_at": "2026-09-14 01:47 UTC",
- "total_capital_usd": 54.59,
+ "generated_at": "2026-09-14 02:33 UTC",
+ "total_capital_usd": 44.88,
  "tier_capital": {
   "A": 0.0,
-  "B": 54.59,
+  "B": 44.89,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:XTZUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:ETHUSDC_SHORT",
-   "symbol": "ETHUSDC",
-   "account": "flz",
-   "value_usd": 54.59,
-   "gain_pct": -0.067,
+   "pk": "fin:ALGOUSDT_LONG",
+   "symbol": "ALGOUSDT",
+   "account": "fin",
+   "value_usd": 36.3,
+   "gain_pct": 0.972,
    "tier": "B",
-   "perf_mult": 3.34,
-   "amt": 0.022,
-   "mark": 2481.51935715
+   "perf_mult": 3.08,
+   "amt": 368.6,
+   "mark": 0.09847703
+  },
+  {
+   "pk": "fin:XTZUSDT_LONG",
+   "symbol": "XTZUSDT",
+   "account": "fin",
+   "value_usd": 8.59,
+   "gain_pct": -1.135,
+   "tier": "B",
+   "perf_mult": 2.52,
+   "amt": 30.6,
+   "mark": 0.2806
   }
  ]
 }

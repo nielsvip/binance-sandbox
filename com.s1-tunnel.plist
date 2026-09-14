@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.s1.tunnel</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/ssh</string>
+    <string>-NT</string>
+    <string>-L</string>
+    <string>11437:localhost:11434</string>
+    <string>s1-pub</string>
+    <string>-o</string>
+    <string>ExitOnForwardFailure=yes</string>
+    <string>-o</string>
+    <string>ServerAliveInterval=15</string>
+    <string>-o</string>
+    <string>ServerAliveCountMax=6</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>NetworkState</key><true/>
+  </dict>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>/tmp/s1_tunnel.log</string>
+  <key>StandardErrorPath</key><string>/tmp/s1_tunnel.log</string>
+</dict>
+</plist>

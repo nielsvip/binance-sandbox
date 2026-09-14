@@ -1,21 +1,15 @@
-# Copilot Status — 2026-09-11 19:58:44 UTC
+# Copilot Status — 2026-09-14 02:46:04 UTC
 
-**Market Hours:** YES | **Tradier Priority:** YES
+**Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-11T19:57:34
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T19:57:34
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T19:57:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-11T19:57:52
-- **STALE_INDICATORS** [tradier]  — 2026-09-11T19:58:14
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T19:58:14
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T19:58:14
-- **STALE_INDICATORS** [tradier]  — 2026-09-11T19:58:44
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-11T19:58:44
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-11T19:58:44
+- **STALE_INDICATORS** [tradier]  — 2026-09-14T02:45:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T02:45:12
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T02:45:12
+- **RATIO_IMBALANCE** [crypto] fin — 2026-09-14T02:45:12
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +21,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 2 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +5.9%
-
-- WATCHING: **SNDK** LONG (tradier) peaked +7.5%, exited 2m ago
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +6.3%
+- HELD: **SNDK** LONG (tradier) peak +7.5%, now +-4.7%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 1
-- [HIGH] ez_manage.py for ang is NOT running
+**Issues (last 1h):** 9
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running

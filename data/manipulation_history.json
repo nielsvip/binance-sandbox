@@ -2341,5 +2341,14 @@
     ],
     "timestamp": "2026-09-14T01:48:40.257408+00:00",
     "price": 0.07711866
+  },
+  {
+    "symbol": "NVOUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 13.1x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-14T02:11:56.551054+00:00",
+    "price": 43.13
   }
 ]

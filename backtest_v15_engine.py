@@ -13006,6 +13006,9 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     Drives the live call path for ONE config. Slow by design: this is the
     verification step, not a search step.
     """
+    # HARD GUARD: NO backtests ever run on macbook — S1 only (V12_NPZ_CACHE + indicators need S1)
+    if platform.system() == "Darwin" and os.environ.get("V15_ALLOW_MAC") != "1":
+        return {"symside": symside, "valid": False, "invalid_reason": "BLOCKED: NO backtests on MacBook — S1 only (use ssh s1-int). Set V15_ALLOW_MAC=1 to override for dry-run.", "gain_pct": 0.0, "trades": 0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf")}
     _enable_npz_parity()   # frozen-NPZ reads: backtest opts IN, live never does
     import asyncio as _asyncio
     import datetime as _dt

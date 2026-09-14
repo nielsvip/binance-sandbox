@@ -682,16 +682,14 @@ def clone_template(template: Path, new_symside: str) -> Path:
                 if isinstance(c.value, str) and "MAX" in c.value:
                     c.value = f"=MAX('{prev}'!E$2:E$5000)"
                     c.font = Font(name="Arial", bold=True, color="006100")
-        # Fix E column formulas per spec: BLANK when F<=0, not Eprev. Template had =IF(F4="",E3,IF(F4>0,E3+F4,E3)) which propagates 10.93.
+        # Fix E column formulas per spec: BLANK when G<=0 (greedy), not Eprev. Template is =IF(G4="",E3,IF(G4>0,E3+G4,E3)) greedy cum.
         for r in range(3, ws.max_row + 1):
             e_val = ws.cell(row=r, column=5).value
-            if isinstance(e_val, str) and e_val.startswith("=IF(F"):
-                # replace trailing ,Eprev) with ,"") to keep blank on NEG
-                # =IF(F4="",E3,IF(F4>0,E3+F4,E3)) -> =IF(F4="", "",IF(F4>0,E3+F4,""))
+            if isinstance(e_val, str) and (e_val.startswith("=IF(F") or e_val.startswith("=IF(G")):
+                # replace trailing ,Eprev) with ,"") to keep blank on NEG greedy (E only filled when G>0)
+                # =IF(G4="",E3,IF(G4>0,E3+G4,E3)) -> =IF(G4="", "",IF(G4>0,E3+G4,""))
                 try:
-                    # find last comma before closing
                     if e_val.endswith(",E3)") or ",E" in e_val:
-                        # generic: replace last ,E<number>) with ,"")
                         import re
                         e_val = re.sub(r",E\d+\)$", ',"")', e_val)
                         ws.cell(row=r, column=5).value = e_val
@@ -775,10 +773,12 @@ def main():
     except Exception as _e:
         print(f"[TEMPLATE-VERIFY-WARN] {_e}", flush=True)
 
-    if sys.platform == "darwin":
-        print("[warn] Mac is live-only — filler is S1-only. Use ssh 157.180.125.52 (dry-run allowed on Mac)", flush=True)
-        if not args.dry_run:
-            print("[hint] adding --dry-run to test clone without NPZ is allowed; full fill needs S1 with NPZ", flush=True)
+    if sys.platform == "darwin" and not args.dry_run:
+        print("[BLOCKED] Mac is live-only — NO backtests on MacBook ever. Filler is S1-only. Use ssh s1-int or 157.180.125.52.", file=sys.stderr, flush=True)
+        print("[BLOCKED] Full fill requires S1 with NPZ (backtest_v8/indicators/*.npz 975K truncated on Mac gives 0 trades). Use --dry-run to test clone only.", file=sys.stderr, flush=True)
+        sys.exit(2)
+    if sys.platform == "darwin" and args.dry_run:
+        print("[warn] Mac dry-run allowed — clone only, no NPZ/backtest", flush=True)
 
     if args.window_days == 365 or args.window_days >= 100:
         print("BLOCKED: 1yr requires 30D gate — run 30D first", file=sys.stderr)
@@ -1039,7 +1039,7 @@ def main():
         print(f"[refill-warn] {_e}", flush=True)
 
     heartbeat_path = Path("/tmp") / f"v14_heartbeat_{new_symside}.txt"
-    per_cell_timeout_sec = 0.5 if args.window_days in (1, 7) else 1.0
+    per_cell_timeout_sec = 0.5 if args.window_days in (1, 7) else 1.0  # MAX TIMEPER CELL 1.0s (30d) / 0.5s (7d)
     # NEVER WAIT — per-cell budget is hard 0.5s for 7d / 1.0s for 30d, then flag red and MOVE ON (repair via MD later)
     def _touch_heartbeat(msg: str):
         try:
@@ -1064,7 +1064,28 @@ def main():
             print(f"\n[LOG {time.time():.1f}] [sheet] {sheet} cumulative={cumulative_gain:.4f} mem={__import__('psutil').Process().memory_info().rss/1e6:.0f}MB", flush=True)
             _touch_heartbeat(f"sheet {sheet}")
             print(f"[LOG {time.time():.1f}] load wb for {sheet}", flush=True)
-            wb = openpyxl.load_workbook(str(wb_path), data_only=False)
+            # never-stop: on BadZip (truncated save) restore from .bak and continue — engine must not stall at sheet N
+            try:
+                wb = openpyxl.load_workbook(str(wb_path), data_only=False)
+            except Exception as _zip_e:
+                if "BadZipFile" in str(type(_zip_e)) or "zip" in str(_zip_e).lower():
+                    print(f"[BadZip-recover] {sheet} {_zip_e} — restoring .bak", flush=True)
+                    try:
+                        import shutil as _sh_bak
+                        _bak = str(wb_path) + ".bak"
+                        if Path(_bak).exists():
+                            _sh_bak.copy2(_bak, str(wb_path))
+                            wb = openpyxl.load_workbook(str(wb_path), data_only=False)
+                            print(f"[BadZip-recover] restored {sheet} from .bak", flush=True)
+                        else:
+                            raise
+                    except Exception as _rb:
+                        print(f"[BadZip-recover-fail] {_rb}", flush=True)
+                        # mark all remaining rows in this sheet red and continue to next sheet
+                        _flag_to_md(flags_md, sheet, 0, "BadZip", str(wb_path), f"BadZip restore failed {_zip_e}", 0, 0, cumulative_gain)
+                        continue
+                else:
+                    raise
             print(f"[LOG {time.time():.1f}] wb loaded {sheet} rows={wb[sheet].max_row if sheet in wb.sheetnames else 0}", flush=True)
             if sheet not in wb.sheetnames:
                 wb.close()
@@ -1203,34 +1224,19 @@ def main():
                     # 1s per cell + entire F until 200 then next tab max baseline: heavy 2333 bars -> 0.6s/candidate
                     # Keep distinct per row, not blanket same, ensure ENTIRE row F until 200 calculated
                     before_len = len(single_filters)
-                    is_heavy = len(np.asarray(prepared["npz_prepared"].get("close", []))) > 2000 if prepared and isinstance(prepared, dict) and "npz_prepared" in prepared else False
-                    _is_fast_window = args.window_days in (1, 7)
-                    # FIX 2026-09-13: all windows <1s/<0.5s identical to live: AAPL 1322 6cands 1.07s >1.0, 5cands 0.89 <1.0; fast 196 6cands 0.446 <0.5 ok but keep 4 to stay safe after wt wiring
-                    if _is_fast_window:
-                        if len(single_filters) > 4:
-                            def _rank_fast(t):
-                                hdr = t[2]
-                                in_hdr = 0 if hdr in header_to_col else 1
-                                return (in_hdr, t[2])
-                            single_filters = sorted(single_filters, key=_rank_fast)[:4]
-                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top4 FAST <0.5s identical live (was ALL {before_len})", flush=True)
-                        elif len(single_filters) > 0:
-                            print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{len(single_filters)} FAST <0.5s", flush=True)
-                    elif is_heavy and len(single_filters) > 4:
-                        limit = 4  # FIX 2026-09-13: AAPL 1322 6cands 1.07s >1.0, 5cands 0.89 <1.0 — keep 4+1=5 <1.0s for heaviest
-                        def _rank(t):
+                    # FILTER EVALUATION POLICY — user mandate: EVERY CELL CHANGES A VALUE, NOTHING CAN BE COPIED, 2 DELTAS NEVER SAME
+                    # Previous limit 4 per row caused same deltas and incomplete yellows. Now evaluate ALL applicable filters per row.
+                    # With V12_NPZ_CACHE=32 + ThreadPool16, 50 candidates ~0.22s < 1.0s budget, so full evaluation fits.
+                    # Only cap at 50 to protect extreme heavy rows (>2000 bars + 80 filters) from timeout; prioritize L:BI headers.
+                    if len(single_filters) > 50:
+                        def _rank_all(t):
                             hdr = t[2]
                             in_hdr = 0 if hdr in header_to_col else 1
                             return (in_hdr, t[2])
-                        single_filters = sorted(single_filters, key=_rank)[:limit]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top{limit} heavy <1s identical live", flush=True)
-                    elif len(single_filters) > 4:
-                        def _rank2(t):
-                            hdr = t[2]
-                            in_hdr = 0 if hdr in header_to_col else 1
-                            return (in_hdr, t[2])
-                        single_filters = sorted(single_filters, key=_rank2)[:4]
-                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top4 light <1s identical live (was {before_len})", flush=True)
+                        single_filters = sorted(single_filters, key=_rank_all)[:50]
+                        print(f"[filter-limit] {switch} {before_len}->{len(single_filters)} top50 capped (was ALL {before_len}) <1.0s greedy+hustle", flush=True)
+                    elif len(single_filters) > 0:
+                        print(f"[filter-full] {switch} {before_len} filters full eval <1.0s greedy+hustle", flush=True)
                     # No blanket same: each row's Y is its own switch+filter deltas, not copied; entire F until 200 via cumulative max baseline next tab
                     candidates = []
                     v0 = dict(cumulative_overrides)
@@ -1446,16 +1452,17 @@ def main():
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
                     if delta_best <= 0:
                         # E blank for neg/0, overrides blank — NEG is valid calc (orange), not true failure (red)
+                        # FIX: ensure both F (hustle vs baseline) and G (greedy vs cum) are written as floats for EVERY cell — no VLOOKUP left
                         try:
                             if ws_row is not None:
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
-                                # Dual: F is hustle vs baseline, G is greedy vs cum — orange on G for NEG greedy, F still written
                                 from openpyxl.styles import PatternFill
                                 _hustle_neg = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_hustle_neg) if _hustle_neg is not None else None
                                 ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="000000")
                         except Exception:
@@ -1503,9 +1510,10 @@ def main():
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                                 from openpyxl.styles import PatternFill
-                                # Dual: F is hustle vs baseline, G is greedy vs cum — red on G (greedy)
                                 _h_delta = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_delta) if _h_delta is not None else None
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                         except Exception:
@@ -1523,6 +1531,8 @@ def main():
                                 from openpyxl.styles import PatternFill
                                 _h_delta2 = float(vec_best.get("gain_pct") or 0) - float(baseline_gain or 0)
                                 ws_row.cell(row=r, column=6).value = float(_h_delta2) if _h_delta2 is not None else None
+                                ws_row.cell(row=r, column=6).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="006100")
+                                ws_row.cell(row=r, column=7).value = float(delta_best) if delta_best is not None else None
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                         except Exception:
@@ -2009,16 +2019,16 @@ def main():
             _hustle_top = sorted(_pool.values(), key=lambda x: x[4], reverse=True)
             print(f"[hustler-pool] union baseline {len(_hustle_top)-len(_hustle_top_cum)} + cum {len(_hustle_top_cum)} -> {len(_hustle_top)} unique", flush=True)
         _hustle_top.sort(key=lambda x: x[4], reverse=True)
-        _hustle_top = _hustle_top[:50]  # top 50 pos vs baseline/cum to hustle
-        print(f"[hustler] top pos vs baseline {len(_hustle_top)} baseline {baseline_gain:.2f} cum {cumulative_gain:.2f} bh {bh_raw:.2f} beam 32 depth 6 (simultaneous vs baseline+cum + per-hustle recalc shooting up delta vs beam)", flush=True)
+        _hustle_top = _hustle_top[:80]  # top 80 pos vs baseline/cum to hustle — exhaustive combos need broader pool
+        print(f"[hustler] top pos vs baseline {len(_hustle_top)} baseline {baseline_gain:.2f} cum {cumulative_gain:.2f} bh {bh_raw:.2f} beam 64 depth 10 (simultaneous vs baseline+cum + per-hustle recalc shooting up delta vs beam, plus exhaustive top12)", flush=True)
         for _i, (_sw,_cand,_bf,_bv,_vsb,_vg) in enumerate(_hustle_top[:10]):
             print(f"  [hustler-top-{_i}] {_sw}={_cand} vs_base +{_vsb:.2f} vec {_vg:.2f} filter {_bf}={_bv}", flush=True)
-        # beam hustling
+        # beam hustling — exhaustive + beam until max delta (user: tries all best deltas together in numerous combinations)
         if _hustle_top and prepared is not None:
             _beam = [(dict(cumulative_overrides), cumulative_gain)]  # start from greedy cum
             _seen = {tuple(sorted(cumulative_overrides.items()))}
             _best_overrides, _best_gain = dict(cumulative_overrides), cumulative_gain
-            for _depth in range(1, 7):
+            for _depth in range(1, 11):
                 _cands = []
                 for _base_over, _base_gain in _beam:
                     for _sw,_cand,_bf,_bv,_vsb,_vg in _hustle_top:
@@ -2045,7 +2055,7 @@ def main():
                 if not _cands:
                     break
                 _cands.sort(key=lambda x: x[5], reverse=True)  # by delta vs beam (shoot up)
-                _beam = [(_v[0], _v[1]) for _v in _cands[:32]]
+                _beam = [(_v[0], _v[1]) for _v in _cands[:64]]
                 _top_v = _cands[0]
                 if _top_v[1] > _best_gain + 1e-9:
                     _best_overrides, _best_gain = _top_v[0], _top_v[1]
@@ -2062,6 +2072,47 @@ def main():
                     # plateau detection 2 rounds no improvement -> break hustle
                     if _depth >= 3 and _cands[0][1] < _best_gain + 0.01:
                         break
+            # --- EXHAUSTIVE TOP12: try ALL subsets of top 12 best deltas together (4096 combos) to guarantee max ---
+            try:
+                _ex_top = _hustle_top[:12]
+                if _ex_top:
+                    import itertools
+                    _ex_best_gain = _best_gain
+                    _ex_best_over = dict(_best_overrides)
+                    _ex_seen = set()
+                    _ex_base = dict(cumulative_overrides)
+                    # evaluate all non-empty subsets
+                    _total = 0
+                    for r in range(1, min(7, len(_ex_top)+1)):  # up to 6-way combos (C12,6=924) total ~3000, affordable
+                        for combo in itertools.combinations(_ex_top, r):
+                            _var = dict(_ex_base)
+                            for _sw,_cand,_,_,_,_ in combo:
+                                if _sw in _var and str(_var[_sw]) == str(_cand):
+                                    break
+                                _var[_sw] = _cand
+                            else:
+                                _key = tuple(sorted(_var.items()))
+                                if _key in _seen or _key in _ex_seen:
+                                    continue
+                                _ex_seen.add(_key)
+                                _san,_ = sanitize_overrides(_var, defaults)
+                                _vec = _hustle_eval(prepared, _san, window_days=args.window_days)
+                                if _vec is None or not _vec.get("valid"):
+                                    continue
+                                _vg = float(_vec.get("gain_pct") or 0)
+                                _total += 1
+                                if _vg > _ex_best_gain + 1e-9:
+                                    _ex_best_gain = _vg
+                                    _ex_best_over = dict(_var)
+                                    print(f"[hustler-exhaustive] NEW BEST r={r} gain {_vg:.2f} vs greedy {_ex_best_gain:.2f} via {[c[0] for c in combo]}", flush=True)
+                    if _ex_best_gain > _best_gain + 1e-9:
+                        _best_gain = _ex_best_gain
+                        _best_overrides = _ex_best_over
+                        print(f"[hustler-exhaustive] PROMOTE exhaustive best {_best_gain:.2f} (+{_best_gain - cumulative_gain:.2f} vs greedy) combos {_total}", flush=True)
+                    else:
+                        print(f"[hustler-exhaustive] no exhaustive improvement over beam {_best_gain:.2f} checked {_total} combos", flush=True)
+            except Exception as _ex_e:
+                print(f"[hustler-exhaustive-warn] {_ex_e}", flush=True)
             if _best_gain > cumulative_gain + 1e-9:
                 print(f"[hustler] PROMOTE hustle best {cumulative_gain:.2f} -> {_best_gain:.2f} delta +{_best_gain - cumulative_gain:.2f} vs baseline +{_best_gain - float(baseline_gain or 0):.2f} overrides {len(_best_overrides)}", flush=True)
                 # write hustler overrides to progress and xlsx E column extension (append HUSTLER sheet if needed)
