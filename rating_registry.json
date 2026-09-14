@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-14T10:39:20.493803+00:00",
+  "timestamp": "2026-09-14T10:40:56.417364+00:00",
   "market_state": {
     "panic": true,
     "euphoria": false,
@@ -524,23 +524,23 @@
     },
     {
       "symbol": "BTCUSDC",
-      "net_score": 10.6,
-      "long_score": 10.6,
+      "net_score": 10.5,
+      "long_score": 10.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "BTCUSDC",
-      10.6,
-      77937.66361971
+      10.5,
+      77926.80495911
     ]
   ],
   "top_shorts": [
     [
       "STORJUSDT",
       30,
-      0.0309247
+      0.03091593
     ]
   ],
   "hedge_usage": {
