@@ -1,9 +1,9 @@
 [
   {
     "symbol": "SOXLUSDT",
-    "returns_15m": 3.4758620689655184,
-    "returns_3m": 4.757028486315397,
-    "gain_score": 19.028
+    "returns_15m": 4.659598214285719,
+    "returns_3m": 6.100320573260418,
+    "gain_score": 24.401
   },
   {
     "symbol": "MVLLUSDT",
@@ -14,8 +14,8 @@
   {
     "symbol": "SAGAUSDT",
     "returns_15m": 3.24047754405911,
-    "returns_3m": 3.8901601830663624,
-    "gain_score": 15.561
+    "returns_3m": 3.949627933600456,
+    "gain_score": 15.799
   },
   {
     "symbol": "INTWUSDT",
@@ -40,6 +40,12 @@
     "returns_15m": 2.4390243902439024,
     "returns_3m": 2.739726027397254,
     "gain_score": 10.959
+  },
+  {
+    "symbol": "QCOMUSDT",
+    "returns_15m": 1.528071882332751,
+    "returns_3m": 2.7274306560889503,
+    "gain_score": 10.91
   },
   {
     "symbol": "BEUSDT",
@@ -102,6 +108,12 @@
     "gain_score": 7.694
   },
   {
+    "symbol": "RAYSOLUSDT",
+    "returns_15m": 1.8529117184146542,
+    "returns_3m": 1.8310564337314976,
+    "gain_score": 7.324
+  },
+  {
     "symbol": "ETHFIUSDC",
     "returns_15m": 1.4357721093630786,
     "returns_3m": 1.8089835965046808,
@@ -144,16 +156,10 @@
     "gain_score": 5.972
   },
   {
-    "symbol": "QCOMUSDT",
-    "returns_15m": 0.8298283505740639,
-    "returns_3m": 1.4583929082070413,
-    "gain_score": 5.834
-  },
-  {
-    "symbol": "SNDKUSDT",
-    "returns_15m": 1.0317317110893431,
-    "returns_3m": 1.444895951961896,
-    "gain_score": 5.78
+    "symbol": "ZROUSDT",
+    "returns_15m": 0.8553580009610888,
+    "returns_3m": 1.4501160092807546,
+    "gain_score": 5.8
   },
   {
     "symbol": "MUUSDT",
@@ -162,21 +168,15 @@
     "gain_score": 5.662
   },
   {
+    "symbol": "SKHYUSDT",
+    "returns_15m": 0.9993262968785095,
+    "returns_3m": 1.4035285496871706,
+    "gain_score": 5.614
+  },
+  {
     "symbol": "ORCLUSDT",
     "returns_15m": 1.2005457025921005,
     "returns_3m": 1.3457203360885495,
     "gain_score": 5.383
-  },
-  {
-    "symbol": "BEATUSDT",
-    "returns_15m": 1.3349514563106841,
-    "returns_3m": 1.3349514563106841,
-    "gain_score": 5.34
-  },
-  {
-    "symbol": "ZROUSDT",
-    "returns_15m": 1.020408163265322,
-    "returns_3m": 1.3325608342989603,
-    "gain_score": 5.33
   }
 ]
