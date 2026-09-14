@@ -8739,6 +8739,127 @@ def _gap_per_symbol_avg_gap(symbol: str) -> Optional[float]:
         return None
 
 
+# === CLOSE-GAP INVENTORY (2026-09-14 — separate from open-gap, stocks-only, always tested) ===
+_GAP_CLOSE_PER_SYMBOL_INVENTORY: Dict[str, Dict[str, Any]] = {}  # {SYM: {days, sum_gap_pct, last_close_gaps}}
+_GAP_CLOSE_PER_SYMBOL_LAST_LOAD: float = 0.0
+
+def _gap_close_per_symbol_inventory_path() -> Path:
+    return Path(_cfg_auto('GAP_CLOSE_PER_SYMBOL_INVENTORY_FILE', 'data/gap_close_inventory_tradier_per_symbol.json'))
+
+def _gap_close_per_symbol_load(force: bool = False):
+    global _GAP_CLOSE_PER_SYMBOL_INVENTORY, _GAP_CLOSE_PER_SYMBOL_LAST_LOAD
+    try:
+        now = time.time()
+        if not force and now - _GAP_CLOSE_PER_SYMBOL_LAST_LOAD < 300:
+            return
+        p = _gap_close_per_symbol_inventory_path()
+        if not p.exists():
+            logger.warning(f"[GAP_CLOSE_PER_SYMBOL_STALE] {p} missing — no per-symbol close gaps, close-gap sentinel will only use VV")
+            return
+        try:
+            age_h = (now - p.stat().st_mtime) / 3600.0
+            if age_h > 24:
+                logger.warning(f"[GAP_CLOSE_PER_SYMBOL_STALE] {p} age {age_h:.1f}h >24h — using stale data (warn only)")
+        except Exception:
+            pass
+        data = safe_json_loads(p.read_text()) or {}
+        if not data:
+            logger.warning(f"[GAP_CLOSE_PER_SYMBOL_STALE] {p} empty — no per-symbol close gaps")
+            return
+        _GAP_CLOSE_PER_SYMBOL_INVENTORY = data
+        _GAP_CLOSE_PER_SYMBOL_LAST_LOAD = now
+        logger.info(f"[GAP_CLOSE_PER_SYMBOL_LOAD] loaded {len(data)} symbols from {p}")
+    except Exception as _e:
+        logger.debug(f"[GAP_CLOSE_PER_SYMBOL_LOAD] skip {_e}")
+
+def _gap_close_per_symbol_avg_gap(symbol: str) -> Optional[float]:
+    """Per-symbol avg close-gap = (close_D - open_D)/open_D*100 avg over 30d. None if unknown."""
+    try:
+        sym = str(symbol or "").upper().strip()
+        if not sym:
+            return None
+        if not _GAP_CLOSE_PER_SYMBOL_INVENTORY:
+            _gap_close_per_symbol_load(force=True)
+        rec = _GAP_CLOSE_PER_SYMBOL_INVENTORY.get(sym)
+        if not rec:
+            return None
+        s = rec.get('sum_gap_pct')
+        d = rec.get('days', 0)
+        if s is None or not d:
+            return None
+        return float(s) / float(d)
+    except Exception:
+        return None
+
+def _gap_close_per_symbol_should_close(is_long: bool, avg_gap: Optional[float]) -> bool:
+    """Close-gap sentinel: for SHORTS, close when avg_close_gap > +thr (intraday up drift → short at risk gap-up overnight).
+    Respects GAP_CLOSE_MOC_ONLY_FOR_SHORTS (default True) and GAP_CLOSE_MOC_ONLY_STOCKS (auto-checked in caller)."""
+    if avg_gap is None:
+        return False
+    # stocks-only guard is in caller (MODE==tradier); thr here is close-gap thr
+    thr = float(_cfg_auto('GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
+    only_shorts = bool(_cfg_auto('GAP_CLOSE_MOC_ONLY_FOR_SHORTS', True))
+    if only_shorts and is_long:
+        return False
+    # For shorts: avg intraday close > open (+drift) → close short before EOD
+    # For longs (if enabled): opposite — avg close < open would be risk for longs, but defaults OFF
+    if not is_long:
+        return avg_gap > thr
+    else:
+        return avg_gap < -thr
+
+def _gap_close_inventory_record_from_cache(indicators_cache: dict):
+    """Record today's per-symbol close-gap (close_D - open_D)/open_D from cache. Stocks only. Called once after 14:30 ET."""
+    try:
+        if not bool(_cfg_auto('GAP_CLOSE_INVENTORY_ENABLED', True)):
+            return
+        if bool(_cfg_auto('GAP_CLOSE_MOC_ONLY_STOCKS', True)) and str(_cfg_auto('MODE', 'crypto')) != 'tradier':
+            # also check via _cfg_auto fallback
+            pass
+        # write into _GAP_CLOSE_PER_SYMBOL_INVENTORY (per-symbol close gaps)
+        # This is called from gap_moc loop once per day; we aggregate from open_D/close_D
+        for sym, ind in (indicators_cache or {}).items():
+            o = safe_fetch_float(ind.get('open_D', 0), 0)
+            c = safe_fetch_float(ind.get('close_D', 0), 0)
+            if o and c and o > 0:
+                gap_pct = (c - o) / o * 100.0
+                rec = _GAP_CLOSE_PER_SYMBOL_INVENTORY.get(sym.upper(), {'days': 0, 'sum_gap_pct': 0.0, 'last5': []})
+                rec['days'] = int(rec.get('days', 0)) + 1
+                rec['sum_gap_pct'] = float(rec.get('sum_gap_pct', 0)) + gap_pct
+                # rolling keep 30d — trim oldest if >30 (need history list to subtract; approximate by avg decay if no list)
+                lb = int(_cfg_auto('GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS', 30))
+                if rec['days'] > lb:
+                    # if we have last5/history, drop oldest; else decay sum by lb ratio
+                    try:
+                        hist = rec.get('history', [])
+                        if hist and len(hist) >= lb:
+                            old = float(hist.pop(0))
+                            rec['sum_gap_pct'] -= old
+                            rec['days'] = lb
+                        else:
+                            rec['sum_gap_pct'] *= (lb / rec['days'])
+                            rec['days'] = lb
+                    except Exception:
+                        pass
+                    rec['days'] = lb
+                lst = rec.get('last5', [])
+                lst.append(gap_pct)
+                rec['last5'] = lst[-5:]
+                _GAP_CLOSE_PER_SYMBOL_INVENTORY[sym.upper()] = rec
+        # persist atomically
+        p = _gap_close_per_symbol_inventory_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        import tempfile
+        _tmp = p.with_suffix(p.suffix + '.tmp')
+        try:
+            _tmp.write_text(json_dumps(_GAP_CLOSE_PER_SYMBOL_INVENTORY))
+            _tmp.replace(p)
+        except Exception:
+            p.write_text(json_dumps(_GAP_CLOSE_PER_SYMBOL_INVENTORY))
+        logger.info(f"[GAP_CLOSE] recorded close gaps for {len(indicators_cache or {})} symbols")
+    except Exception as _e:
+        logger.debug(f"[GAP_CLOSE_RECORD] skip {_e}")
+
 def _gap_per_symbol_should_close(is_long: bool, avg_gap: Optional[float]) -> bool:
     """User rule 2026-09-11: ONLY per-symbol decides. Close longs when avg gap negative (gap-down risk) beyond thresh, shorts when avg positive beyond thresh. Near 0 → don't close on gap (only VV)."""
     if avg_gap is None:
@@ -9144,16 +9265,35 @@ async def gap_moc_and_morning_loop(trade_manager):
                             logger.error(f"[GAP_MOC_MORNING_ERR] {pk}: {_me}", exc_info=True)
                     _morning_done_today = True
                 # don't continue — allow gap window to also be evaluated if overlapping
-            # --- Pre-close window 90m → 0m before close (14:30-16:00 ET) ---
-            if not bool(_cfg_auto('GAP_MOC_EXIT_ENABLED', True)):
-                continue
+            # --- Pre-close window 90m → 0m before close (14:30-16:00 ET) — OPEN-GAP + CLOSE-GAP (stocks-only) ---
+            # Close-gap sentinel (2026-09-14): separate inventory (close_D - open_D)/open_D, stocks-only, defaults to SHORTS >0.10
+            # Both sentinels share window/deadline but evaluate independently; either firing triggers CLOSE.
             window_start = float(_cfg_auto('GAP_MOC_WINDOW_MINUTES', 90))
             deadline = float(_cfg_auto('GAP_MOC_EXIT_MINUTES_BEFORE_CLOSE', 10))
+            # also support close-gap specific window overrides (default to same)
+            try:
+                _cg_window = float(_cfg_auto('GAP_CLOSE_MOC_WINDOW_MINUTES', window_start))
+                _cg_deadline = float(_cfg_auto('GAP_CLOSE_MOC_EXIT_MINUTES_BEFORE_CLOSE', deadline))
+            except Exception:
+                _cg_window, _cg_deadline = window_start, deadline
             in_window = 0 < mins_to_close <= window_start
             at_deadline = 0 < mins_to_close <= deadline and bool(_cfg_auto('GAP_MOC_FORCE_MOC_AT_CLOSE', True))
-            if not in_window:
+            # record close-gap inventory once per day after 14:30 (once in window)
+            try:
+                if not getattr(trade_manager, '_gap_close_recorded_today', False) and 0 < mins_to_close <= window_start and bool(_cfg_auto('GAP_CLOSE_INVENTORY_ENABLED', True)):
+                    _gap_close_inventory_record_from_cache(getattr(trade_manager, 'indicators_cache', None) or {})
+                    trade_manager._gap_close_recorded_today = True  # type: ignore
+                if now_et.hour == 6 and now_et.minute < 2:
+                    trade_manager._gap_close_recorded_today = False  # type: ignore
+            except Exception:
+                pass
+            if not in_window and not (0 < mins_to_close <= _cg_window and bool(_cfg_auto('GAP_CLOSE_MOC_EXIT_ENABLED', True))):
                 continue
             _gap_per_symbol_load()
+            try:
+                _gap_close_per_symbol_load()
+            except Exception:
+                pass
             # PER-SYMBOL ONLY — market-wide bias deprecated; kept only for recording
             try:
                 positions = trade_manager.position_manager.get_positions_by_account('trb') or {}
@@ -9169,35 +9309,62 @@ async def gap_moc_and_morning_loop(trade_manager):
                     is_long = pk.endswith('_LONG')
                     sym = pk.split(':')[1].replace('_LONG','').replace('_SHORT','')
                     ind = (trade_manager.indicators_cache or {}).get(sym, {}) if hasattr(trade_manager, 'indicators_cache') else {}
-                    # Per-symbol gap decides; VV always forces exit even if avg near 0
+                    # ---- evaluate both sentinels ----
+                    # Open-gap decides per existing rule
                     avg_gap = _gap_per_symbol_avg_gap(sym)
                     thr = float(_cfg_auto('GAP_PER_SYMBOL_AVG_THRESH_PCT', 0.30))
+                    # Close-gap decides (stocks-only, shorts-default)
+                    avg_close_gap = _gap_close_per_symbol_avg_gap(sym)
+                    thr_close = float(_cfg_auto('GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
+                    is_stock = True  # trb is stocks; also check MODE if available
+                    try:
+                        is_stock = str(_cfg_auto('MODE', 'tradier')) == 'tradier' or bool(_cfg_auto('GAP_CLOSE_MOC_ONLY_STOCKS', True))
+                    except Exception:
+                        pass
+                    close_gap_enabled = bool(_cfg_auto('GAP_CLOSE_MOC_EXIT_ENABLED', True)) and is_stock
+                    # respect ONLY_STOCKS flag (already stock) and ONLY_FOR_SHORTS inside should_close
+                    open_gap_should = False
+                    close_gap_should = False
+                    # don't evaluate open-gap sentinel if disabled globally
+                    if bool(_cfg_auto('GAP_MOC_EXIT_ENABLED', True)):
+                        if _gap_per_symbol_should_close(is_long, avg_gap):
+                            if avg_gap is not None and abs(avg_gap) > thr:
+                                open_gap_should = True
+                    if close_gap_enabled:
+                        if _gap_close_per_symbol_should_close(is_long, avg_close_gap):
+                            if avg_close_gap is not None and abs(avg_close_gap) > thr_close:
+                                close_gap_should = True
                     vv_danger = _is_near_dc4_high_with_wt_down(ind, is_long)
-                    if not vv_danger:
-                        if avg_gap is None:
-                            # Unknown symbol → don't close on gap (only VV)
+                    if not vv_danger and not open_gap_should and not close_gap_should:
+                        if avg_gap is None and avg_close_gap is None:
                             continue
-                        if abs(avg_gap) <= thr:
-                            # Near 0 → not wrong way, keep overnight (only VV closes)
+                        # if both gaps near 0 / not wrong-way, keep overnight (only VV closes)
+                        # check if at least one sentinel says wrong-way beyond thr
+                        if avg_gap is not None and abs(avg_gap) <= thr and (avg_close_gap is None or abs(avg_close_gap) <= thr_close):
                             continue
-                        if not _gap_per_symbol_should_close(is_long, avg_gap):
-                            # Avg gap is favourable (long gap-up, short gap-down) → keep
+                        if not open_gap_should and not close_gap_should:
                             continue
-                        # Wrong-way avg gap beyond thresh → close (gap-down risk for longs, gap-up for shorts)
-                    # Require small top/bottom unless at hard deadline
+                        # Wrong-way avg gap beyond thresh → close (gap-down risk for longs, gap-up for shorts, close-gap up for shorts)
+                    # Choose reason tag based on which sentinel fired
+                    _which = "OPEN" if open_gap_should else ("CLOSE" if close_gap_should else "VV")
+                    _avg_for_log = avg_gap if open_gap_should else (avg_close_gap if close_gap_should else avg_gap if avg_gap is not None else avg_close_gap)
+                    _thr_for_log = thr if open_gap_should else thr_close
+                    # Require small top/bottom unless at hard deadline (close-gap shares same top logic)
                     is_top = _is_small_top_for_gap_exit(ind, is_long)
-                    if not is_top and not at_deadline:
+                    _need_top = bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True)) if _which == "OPEN" else bool(_cfg_auto('GAP_CLOSE_MOC_REQUIRE_TOP', True))
+                    _at_deadline = at_deadline if _which != "CLOSE" else (0 < mins_to_close <= _cg_deadline and bool(_cfg_auto('GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE', True)))
+                    if not is_top and not _at_deadline:
                         if mins_to_close % 15 == 0:
-                            _av_disp = f"{avg_gap:+.2f}" if avg_gap is not None else "NA"
-                            logger.info(f"[GAP_MOC] defer {pk}: avg={_av_disp}% thr={thr} need_top={bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True))} at_deadline={at_deadline} — waiting for top")
+                            _av_disp = f"{_avg_for_log:+.2f}" if _avg_for_log is not None else "NA"
+                            logger.info(f"[GAP_MOC] defer {pk}: {_which} avg={_av_disp}% thr={_thr_for_log} need_top={_need_top} at_deadline={_at_deadline} — waiting for top")
                         continue
                     gain = safe_fetch_float(getattr(pos, 'gain', 0), 0)
-                    _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': float(ind.get('current_price', 0)), 'exit_gain': gain, 'ts': time.time(), 'avg_gap': avg_gap}
-                    reason = f"GAP_MOC_EXIT_{pk}_avg{avg_gap:+.2f}_thr{thr:.2f}_top{is_top}_vv{vv_danger}_m{mins_to_close:.0f}" if avg_gap is not None else f"GAP_MOC_EXIT_{pk}_vv{vv_danger}_m{mins_to_close:.0f}"
+                    _GAP_MOC_PENDING_REENTRY[pk] = {'amount': amt, 'exit_price': float(ind.get('current_price', 0)), 'exit_gain': gain, 'ts': time.time(), 'avg_gap': _avg_for_log, 'which': _which}
+                    reason = f"GAP_MOC_EXIT_{_which}_{pk}_avg{_avg_for_log:+.2f}_thr{_thr_for_log:.2f}_top{is_top}_vv{vv_danger}_m{mins_to_close:.0f}" if _avg_for_log is not None else f"GAP_MOC_EXIT_{_which}_{pk}_vv{vv_danger}_m{mins_to_close:.0f}"
                     await queue_trade_action(trade_manager.order_queue, trade_manager, pk, "CLOSE", reason, amt, override_qty=999999)
                     _gap_exit_done.add(pk)
-                    _av_log = f"{avg_gap:+.2f}" if avg_gap is not None else "NA"
-                    logger.warning(f"[GAP_MOC] exit {pk} avg={_av_log}% thr={thr:.2f} is_top={is_top} vv={vv_danger} m_to_close={mins_to_close:.0f}")
+                    _av_log = f"{_avg_for_log:+.2f}" if _avg_for_log is not None else "NA"
+                    logger.warning(f"[GAP_MOC] {_which} exit {pk} avg={_av_log}% thr={_thr_for_log:.2f} is_top={is_top} vv={vv_danger} m_to_close={mins_to_close:.0f}")
                 except Exception as _ce:
                     logger.error(f"[GAP_MOC_EXIT_ERR] {pk}: {_ce}", exc_info=True)
         except asyncio.CancelledError: break
@@ -25234,14 +25401,79 @@ class TradierTradeManager:
                 if _vwap > 0 and _cur_p_v > 0 and _cur_p_v < _vwap:
                     if config.VERBOSE: logger.info(f"[VWAP_FILTER] LONG {symbol} BLOCKED: price={_cur_p_v:.2f} < VWAP={_vwap:.2f}")
                     return False
-            # YOUTUBE_CONSENSUS: 9/21 EMA alignment confirmation
-            if _cfg_auto('EMA_9_21_FILTER_ENABLED', False):
-                _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '1h')
-                _raw = indicators.get(f'ema_9_above_21_{_tf_ema}', -1)
-                _ema9_above = float(_raw if _raw is not None else -1)
-                if _ema9_above == 0.0:
-                    if config.VERBOSE: logger.info(f"[EMA_9_21] LONG {symbol} BLOCKED: 9 EMA < 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '1h')}")
-                    return False
+            # YOUTUBE_CONSENSUS: 9/21 EMA alignment — CUMULATIVE 2026-09-14 (not OR single-pick)
+            # When KINDERGARTEN_CUMULATIVE_MODE=True, multiple EMA/SMA setups cumulate: 9/21 on 1h+D etc + 50/200 + SMA50/200
+            # each enabled pair on each TF is an independent vote; any single failing does NOT exclude others.
+            # TEMPLATE tests each pair×TF independently and sum(positive deltas). Live keeps same scoring.
+            if _cfg_auto('EMA_9_21_FILTER_ENABLED', False) or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED', False):
+                _cum_mode = bool(_cfg_auto('KINDERGARTEN_CUMULATIVE_MODE', True))
+                # Build list of kindergarten EMA/SMA checks (each is independent, cumulating)
+                _kg_checks = []
+                # 9/21 on each TF in EMA_9_21_FILTER_TFS (default "1h", can be "1h,D,4h")
+                _tfs_9_21 = []
+                try:
+                    _raw_tfs = str(_cfg_auto('EMA_9_21_FILTER_TFS', _cfg_auto('EMA_9_21_TIMEFRAME', '1h')) or '1h')
+                    _tfs_9_21 = [t.strip() for t in _raw_tfs.split(',') if t.strip()]
+                except Exception:
+                    _tfs_9_21 = [str(_cfg_auto('EMA_9_21_TIMEFRAME', '1h'))]
+                for _tf in _tfs_9_21:
+                    _raw = indicators.get(f'ema_9_above_21_{_tf}', None)
+                    if _raw is not None:
+                        _kg_checks.append(('EMA9_21_'+_tf, float(_raw) != 0.0))  # True = 9 above 21 for LONG
+                # 50/200 on each TF
+                if bool(_cfg_auto('EMA_50_200_FILTER_ENABLED', False)):
+                    _tfs_50_200 = []
+                    try:
+                        _raw_50 = str(_cfg_auto('EMA_50_200_TFS', _cfg_auto('EMA_50_200_TIMEFRAME', 'D')) or 'D')
+                        _tfs_50_200 = [t.strip() for t in _raw_50.split(',') if t.strip()]
+                    except Exception:
+                        _tfs_50_200 = [str(_cfg_auto('EMA_50_200_TIMEFRAME', 'D'))]
+                    for _tf in _tfs_50_200:
+                        _raw50 = indicators.get(f'ema_50_above_200_{_tf}', indicators.get(f'ema_50_above_200_{_tf.lower()}', None))
+                        if _raw50 is not None:
+                            _kg_checks.append(('EMA50_200_'+_tf, float(_raw50) != 0.0))
+                # SMA 50 / SMA 200 independent
+                if bool(_cfg_auto('SMA_50_FILTER_ENABLED', False)):
+                    _tf_sma50 = str(_cfg_auto('SMA_50_TIMEFRAME', 'D'))
+                    _sma50 = indicators.get(f'sma_50_{_tf_sma50}', None)
+                    _px = float(indicators.get('current_price', 0) or 0)
+                    if _sma50 is not None and _px > 0:
+                        _kg_checks.append(('SMA50_'+_tf_sma50, _px > float(_sma50)))
+                if bool(_cfg_auto('SMA_200_FILTER_ENABLED', False)):
+                    _tf_sma200 = str(_cfg_auto('SMA_200_TIMEFRAME', 'D'))
+                    _sma200 = indicators.get(f'sma_200_{_tf_sma200}', None)
+                    _px2 = float(indicators.get('current_price', 0) or 0)
+                    if _sma200 is not None and _px2 > 0:
+                        _kg_checks.append(('SMA200_'+_tf_sma200, _px2 > float(_sma200)))
+                # Also include SMA_FILTER_PERIOD_TRADIER as kindergarten if enabled alongside
+                # Evaluate cumulation: need at least MIN_TFS agreeing
+                if _kg_checks:
+                    if _cum_mode:
+                        _min_tfs = int(_cfg_auto('KINDERGARTEN_CUMULATIVE_MIN_TFS', 1) or 1)
+                        # strict TFs override: if KINDERGARTEN_STRICT_TFS set, all listed TFs must agree
+                        _strict_raw = str(_cfg_auto('KINDERGARTEN_STRICT_TFS', '') or '').strip()
+                        if _strict_raw:
+                            _strict_tfs = [t.strip() for t in _strict_raw.split(',') if t.strip()]
+                            # require every strict TF check passes
+                            _strict_ok = all(v for k, v in _kg_checks if any(tf in k for tf in _strict_tfs))
+                            if not _strict_ok:
+                                if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] LONG {symbol} BLOCKED: strict TFs {_strict_tfs} not all aligned checks={_kg_checks}")
+                                return False
+                        # count passing checks
+                        _passing = sum(1 for _, ok in _kg_checks if ok)
+                        if _passing < _min_tfs:
+                            if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] LONG {symbol} BLOCKED: only {_passing}/{len(_kg_checks)} kindergarten checks pass (need {_min_tfs}) checks={_kg_checks}")
+                            return False
+                        # log pass — each check cumulates, none excludes another
+                        if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] LONG {symbol} PASS {_passing}/{len(_kg_checks)} {_kg_checks}")
+                    else:
+                        # legacy OR mode: single 1h check as before (backward compat)
+                        _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '1h')
+                        _raw = indicators.get(f'ema_9_above_21_{_tf_ema}', -1)
+                        _ema9_above = float(_raw if _raw is not None else -1)
+                        if _ema9_above == 0.0:
+                            if config.VERBOSE: logger.info(f"[EMA_9_21] LONG {symbol} BLOCKED: 9 EMA < 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '1h')}")
+                            return False
             # YOUTUBE_CONSENSUS: RVOL gate for non-mean-reversion strategies
             _rvol_5m = float(indicators.get('rel_vol_5m', 1.0) or 1.0)
             _rvol_min = _cfg_auto('RVOL_MOMENTUM_MIN', 1.5)
@@ -25523,14 +25755,64 @@ class TradierTradeManager:
                 if _vwap > 0 and _cur_p_v > 0 and _cur_p_v > _vwap:
                     if config.VERBOSE: logger.info(f"[VWAP_FILTER] SHORT {symbol} BLOCKED: price={_cur_p_v:.2f} > VWAP={_vwap:.2f}")
                     return False
-            # YOUTUBE_CONSENSUS: 9/21 EMA alignment confirmation
-            if _cfg_auto('EMA_9_21_FILTER_ENABLED', False):
-                _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '1h')
-                _raw = indicators.get(f'ema_9_above_21_{_tf_ema}', -1)
-                _ema9_above = float(_raw if _raw is not None else -1)
-                if _ema9_above == 1.0:
-                    if config.VERBOSE: logger.info(f"[EMA_9_21] SHORT {symbol} BLOCKED: 9 EMA > 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '1h')}")
-                    return False
+            # YOUTUBE_CONSENSUS: 9/21 EMA alignment — CUMULATIVE 2026-09-14 (not OR)
+            if _cfg_auto('EMA_9_21_FILTER_ENABLED', False) or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED', False):
+                _cum_mode_s = bool(_cfg_auto('KINDERGARTEN_CUMULATIVE_MODE', True))
+                _kg_checks_s = []
+                _tfs_9_21_s = []
+                try:
+                    _raw_tfs_s = str(_cfg_auto('EMA_9_21_FILTER_TFS', _cfg_auto('EMA_9_21_TIMEFRAME', '1h')) or '1h')
+                    _tfs_9_21_s = [t.strip() for t in _raw_tfs_s.split(',') if t.strip()]
+                except Exception:
+                    _tfs_9_21_s = [str(_cfg_auto('EMA_9_21_TIMEFRAME', '1h'))]
+                for _tf in _tfs_9_21_s:
+                    _raw = indicators.get(f'ema_9_above_21_{_tf}', None)
+                    if _raw is not None:
+                        _kg_checks_s.append(('EMA9_21_'+_tf, float(_raw) != 1.0))  # for SHORT, 9 above 21 blocks short (needs 9 <21)
+                if bool(_cfg_auto('EMA_50_200_FILTER_ENABLED', False)):
+                    _tfs_50_200_s = []
+                    try:
+                        _raw_50_s = str(_cfg_auto('EMA_50_200_TFS', _cfg_auto('EMA_50_200_TIMEFRAME', 'D')) or 'D')
+                        _tfs_50_200_s = [t.strip() for t in _raw_50_s.split(',') if t.strip()]
+                    except Exception:
+                        _tfs_50_200_s = [str(_cfg_auto('EMA_50_200_TIMEFRAME', 'D'))]
+                    for _tf in _tfs_50_200_s:
+                        _raw50 = indicators.get(f'ema_50_above_200_{_tf}', None)
+                        if _raw50 is not None:
+                            _kg_checks_s.append(('EMA50_200_'+_tf, float(_raw50) != 1.0))
+                if bool(_cfg_auto('SMA_50_FILTER_ENABLED', False)):
+                    _tf_sma50 = str(_cfg_auto('SMA_50_TIMEFRAME', 'D'))
+                    _sma50 = indicators.get(f'sma_50_{_tf_sma50}', None)
+                    _px = float(indicators.get('current_price', 0) or 0)
+                    if _sma50 is not None and _px > 0:
+                        _kg_checks_s.append(('SMA50_'+_tf_sma50, _px < float(_sma50)))
+                if bool(_cfg_auto('SMA_200_FILTER_ENABLED', False)):
+                    _tf_sma200 = str(_cfg_auto('SMA_200_TIMEFRAME', 'D'))
+                    _sma200 = indicators.get(f'sma_200_{_tf_sma200}', None)
+                    _px2 = float(indicators.get('current_price', 0) or 0)
+                    if _sma200 is not None and _px2 > 0:
+                        _kg_checks_s.append(('SMA200_'+_tf_sma200, _px2 < float(_sma200)))
+                if _kg_checks_s:
+                    if _cum_mode_s:
+                        _min_tfs_s = int(_cfg_auto('KINDERGARTEN_CUMULATIVE_MIN_TFS', 1) or 1)
+                        _strict_raw_s = str(_cfg_auto('KINDERGARTEN_STRICT_TFS', '') or '').strip()
+                        if _strict_raw_s:
+                            _strict_tfs_s = [t.strip() for t in _strict_raw_s.split(',') if t.strip()]
+                            _strict_ok_s = all(v for k, v in _kg_checks_s if any(tf in k for tf in _strict_tfs_s))
+                            if not _strict_ok_s:
+                                if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] SHORT {symbol} BLOCKED: strict TFs {_strict_tfs_s} not all aligned checks={_kg_checks_s}")
+                                return False
+                        _passing_s = sum(1 for _, ok in _kg_checks_s if ok)
+                        if _passing_s < _min_tfs_s:
+                            if config.VERBOSE: logger.info(f"[KINDERGARTEN_CUM] SHORT {symbol} BLOCKED: only {_passing_s}/{len(_kg_checks_s)} checks pass (need {_min_tfs_s}) checks={_kg_checks_s}")
+                            return False
+                    else:
+                        _tf_ema = _cfg_auto('EMA_9_21_TIMEFRAME', '1h')
+                        _raw = indicators.get(f'ema_9_above_21_{_tf_ema}', -1)
+                        _ema9_above = float(_raw if _raw is not None else -1)
+                        if _ema9_above == 1.0:
+                            if config.VERBOSE: logger.info(f"[EMA_9_21] SHORT {symbol} BLOCKED: 9 EMA > 21 EMA on {_cfg_auto('EMA_9_21_TIMEFRAME', '1h')}")
+                            return False
             # YOUTUBE_CONSENSUS: RVOL gate for non-mean-reversion strategies
             _rvol_5m = float(indicators.get('rel_vol_5m', 1.0) or 1.0)
             _rvol_min = _cfg_auto('RVOL_MOMENTUM_MIN', 1.5)

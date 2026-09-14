@@ -2323,5 +2323,23 @@
     ],
     "timestamp": "2026-09-14T01:32:34.509725+00:00",
     "price": 326.32
+  },
+  {
+    "symbol": "TRXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T01:39:35.856764+00:00",
+    "price": 0.33815
+  },
+  {
+    "symbol": "AIAUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T01:48:40.257408+00:00",
+    "price": 0.07711866
   }
 ]

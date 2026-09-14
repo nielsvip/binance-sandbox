@@ -1219,6 +1219,24 @@ class TradierConfig:
     GAP_MOC_DC_PROXIMITY_PCT: float = 0.50  # within 0.50% of dc_4h_high = "close to high"
     # Reentry sizing mirrors crypto: +25% after profitable gap exit
     GAP_MOC_REENTRY_SIZE_MULT: float = 1.25
+    # === CLOSE-GAP INVENTORY (2026-09-14 — separate from open-gap, stocks-only, always tested) ===
+    # Open-gap = (open_D - close_D_prev)/close_D_prev (overnight). Close-gap = (close_D - open_D)/open_D (intraday drift).
+    # Both inventoried per-symbol over 30d. Close-gap sentinel defaults to exiting SHORTS before EOD when avg_close_gap > +0.10%
+    # (intraday up drift → shorts at risk overnight gap-up). VV shorts fallback remains. Always tested (no proof yet).
+    # Stocks only: crypto has no RTH close, so this gate is auto-disabled when MODE != tradier.
+    GAP_CLOSE_INVENTORY_ENABLED: bool = True  # separate close-gap inventory (stocks only)
+    GAP_CLOSE_PER_SYMBOL_INVENTORY_FILE: str = "data/gap_close_inventory_tradier_per_symbol.json"
+    GAP_CLOSE_PER_SYMBOL_HISTORY_FILE: str = "data/gap_close_history_1yr_tradier.json"
+    GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10  # |avg_close_gap| <= this → don't close on close-gap (only VV). Shorts exit when avg > +0.10
+    GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS: int = 30
+    GAP_CLOSE_MOC_EXIT_ENABLED: bool = True  # DEFAULTS to getting out of SHORTS before EOD when avg_close_gap > 0.10% (stocks only)
+    GAP_CLOSE_MOC_ONLY_FOR_SHORTS: bool = True  # live rule: only shorts use close-gap sentinel (longs use open-gap)
+    GAP_CLOSE_MOC_ONLY_STOCKS: bool = True  # only applies to stocks (tradier MODE); crypto auto-skipped
+    GAP_CLOSE_MOC_ALWAYS_TEST: bool = True  # always test in backtest as we have no proof yet
+    GAP_CLOSE_MOC_WINDOW_MINUTES: int = 90  # same window as open-gap (14:30 ET)
+    GAP_CLOSE_MOC_EXIT_MINUTES_BEFORE_CLOSE: int = 10
+    GAP_CLOSE_MOC_REQUIRE_TOP: bool = True
+    GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE: bool = True
     # === INTRADAY L/S RATIO REBALANCE — LIVE-ONLY PORTFOLIO GATE (NON-VECTORIZABLE) ===
     # Enforces portfolio long/short ratio = f(market sentiment) throughout the day by
     # slimming down the overweight-side underperformers at favorable intraday tops/
@@ -1627,6 +1645,22 @@ class TradierConfig:
     EMA_9_21_TIMEFRAME: str = "1h"
     KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA 9/21 + EMA200 gate — blocks counter-trend. User: EMA filters have not been applied at all + trades against trend. Hardened default.
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    # --- KINDERGARTEN CUMULATIVE — FIX 2026-09-14: multiple EMA/SMA setups cumulate, not OR/exclude ---
+    # 9/21 does NOT exclude 50/200 or SMA; each enabled pair adds independently. Mode CUMULATIVE means
+    # all enabled kindergarten filters are evaluated and their signals cumulate (score) rather than a single
+    # TF excluding others. TEMPLATE must test each pair × each TF independently and sum positive deltas.
+    KINDERGARTEN_CUMULATIVE_MODE: bool = True  # True = cumulate all enabled kindergarten filters (not OR single-pick)
+    KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1  # min TFs agreeing to pass when cumulating (1 = any single passes, 2 = need 2)
+    EMA_9_21_FILTER_TFS: str = "1h"  # comma-list of TFs for 9/21 (e.g. "1h,D,4h") — each TF is independent setup, cumulates
+    EMA_50_200_FILTER_ENABLED: bool = False  # 50/200 EMA — OFF baseline, tested as independent kindergarten setup (cumulate, not exclude 9/21)
+    EMA_50_200_TIMEFRAME: str = "D"  # TF for 50/200
+    EMA_50_200_TFS: str = "D"  # multi-TF list for 50/200 (cumulate)
+    SMA_50_FILTER_ENABLED: bool = False  # SMA 50 — independent kindergarten (cumulate)
+    SMA_50_TIMEFRAME: str = "D"
+    SMA_200_FILTER_ENABLED: bool = False  # SMA 200 — independent kindergarten (cumulate, distinct from SMA_FILTER_PERIOD_TRADIER)
+    SMA_200_TIMEFRAME: str = "D"
+    KINDERGARTEN_STRICT_TFS: str = ""  # optional strict list (e.g. "1h,D") — when set, all listed TFs must agree
+    KINDERGARTEN_ALWAYS_TEST: bool = True  # always test all kindergarten options in TEMPLATE (no proof yet — cumulate deltas)
     # --- TTM Squeeze — EXPERIMENTAL, trc only ---
     SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; WIRED 2026-04-16 (priority 80/100) — tradier_manage.py:5286 TRC override destination
     SQUEEZE_SCORE_BONUS: int = 15  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416

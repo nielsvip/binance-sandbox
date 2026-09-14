@@ -6748,6 +6748,20 @@ class QuickConfig:
     GAP_MOC_REENTRY_SIZE_MULT: float = 1.25
     GAP_MORNING_REENTRY_ENABLED: bool = True
     GAP_MORNING_REENTRY_MINUTES_AFTER_OPEN: int = 90
+    # CLOSE-GAP (2026-09-14 — separate from open-gap, stocks-only, always tested, shorts default)
+    GAP_CLOSE_INVENTORY_ENABLED: bool = True
+    GAP_CLOSE_PER_SYMBOL_INVENTORY_FILE: str = 'data/gap_close_inventory_tradier_per_symbol.json'
+    GAP_CLOSE_PER_SYMBOL_HISTORY_FILE: str = 'data/gap_close_history_1yr_tradier.json'
+    GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT: float = 0.10
+    GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS: int = 30
+    GAP_CLOSE_MOC_EXIT_ENABLED: bool = True  # defaults to SHORTS >0.10 before EOD
+    GAP_CLOSE_MOC_ONLY_FOR_SHORTS: bool = True
+    GAP_CLOSE_MOC_ONLY_STOCKS: bool = True
+    GAP_CLOSE_MOC_ALWAYS_TEST: bool = True
+    GAP_CLOSE_MOC_WINDOW_MINUTES: int = 90
+    GAP_CLOSE_MOC_EXIT_MINUTES_BEFORE_CLOSE: int = 10
+    GAP_CLOSE_MOC_REQUIRE_TOP: bool = True
+    GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE: bool = True
     # INTRADAY RATIO REBALANCE — LIVE-ONLY portfolio gate, NON-VECTORIZABLE (master switch OFF in vector)
     INTRADAY_RATIO_REBALANCE_ENABLED: bool = True
     INTRADAY_RATIO_CHECK_INTERVAL_MIN: int = 15
@@ -6923,6 +6937,18 @@ class QuickConfig:
     K3M_CAP: int = 80
     K3M_CAP_BREAKOUT_BYPASS: bool = True
     KINDERGARTEN_EMA_GATE_ENABLED: bool = True  # 2026-09-10 FIX vs B&H: EMA 9/21 + EMA200 gate
+    KINDERGARTEN_CUMULATIVE_MODE: bool = True  # 2026-09-14 FIX: cumulate all kindergarten filters (not OR single-pick)
+    KINDERGARTEN_CUMULATIVE_MIN_TFS: int = 1
+    KINDERGARTEN_STRICT_TFS: str = ""
+    KINDERGARTEN_ALWAYS_TEST: bool = True
+    EMA_9_21_FILTER_TFS: str = "1h"
+    EMA_50_200_FILTER_ENABLED: bool = False
+    EMA_50_200_TIMEFRAME: str = "D"
+    EMA_50_200_TFS: str = "D"
+    SMA_50_FILTER_ENABLED: bool = False
+    SMA_50_TIMEFRAME: str = "D"
+    SMA_200_FILTER_ENABLED: bool = False
+    SMA_200_TIMEFRAME: str = "D"
     KLINES_CACHE_DIR: Path = Path("data")
     KLINE_COLUMNS: List[str] = field(default_factory=lambda: ['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     K_LOWER_HIGH_EXTREME: float = 95.0
@@ -21254,6 +21280,80 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 exit_sig = exit_sig | _gap_fire
                 # tag for audit: ensure distinct ledger vs baseline
                 _ = getattr(cfg, 'GAP_MOC_EXIT_ENABLED', True)
+                # CLOSE-GAP sentinel (2026-09-14) — separate from open-gap, stocks-only, shorts default >0.10 vv
+                try:
+                    _cg_enabled = bool(getattr(cfg, 'GAP_CLOSE_MOC_EXIT_ENABLED', True))
+                    _cg_only_stocks = bool(getattr(cfg, 'GAP_CLOSE_MOC_ONLY_STOCKS', True))
+                    _cg_only_shorts = bool(getattr(cfg, 'GAP_CLOSE_MOC_ONLY_FOR_SHORTS', True))
+                    _is_tr_cg = getattr(cfg, 'MODE', 'crypto') == 'tradier'
+                    if _cg_enabled and (not _cg_only_stocks or _is_tr_cg) and not (is_long and _cg_only_shorts):
+                        _close_d = _safe(npz, 'close_D', n)
+                        _open_d = _safe(npz, 'open_D', n)
+                        _cg_pct = np.where((_close_d>0)&(_open_d>0), (_close_d-_open_d)/_open_d*100.0, 0.0)
+                        # fallback to close-gap history if NPZ has no D
+                        _has_cg = float(np.count_nonzero(_cg_pct)) > max(20, n*0.01)
+                        if not _has_cg:
+                            try:
+                                import json as _js_cg, pathlib as _pl_cg
+                                for _cand in [getattr(cfg,'GAP_CLOSE_PER_SYMBOL_HISTORY_FILE','data/gap_close_history_1yr_tradier.json'), 'data/gap_close_history_1yr_tradier.json', getattr(cfg,'GAP_CLOSE_PER_SYMBOL_INVENTORY_FILE','data/gap_close_inventory_tradier_per_symbol.json')]:
+                                    _p = _pl_cg.Path(_cand)
+                                    if _p.exists():
+                                        _hist = _js_cg.loads(_p.read_text())
+                                        _sym_hist = _hist.get(sym, _hist.get(sym.upper())) if isinstance(_hist, dict) else None
+                                        if _sym_hist:
+                                            import datetime as _dt_cg
+                                            ts = npz.get('timestamps', np.array([]))
+                                            _cg_from_hist = np.zeros(n)
+                                            if isinstance(_sym_hist, dict):
+                                                _map = {k: float(v) for k,v in _sym_hist.items()}
+                                            elif isinstance(_sym_hist, list):
+                                                _map = {}
+                                                for _e in _sym_hist:
+                                                    if isinstance(_e, dict) and 'date' in _e:
+                                                        _map[str(_e['date'])[:10]] = float(_e.get('gap_pct',0))
+                                                    elif isinstance(_e, (list,tuple)) and len(_e)>=2:
+                                                        _map[str(_e[0])[:10]] = float(_e[1])
+                                            else:
+                                                _map = {}
+                                            for _i in range(n):
+                                                try:
+                                                    _dstr = _dt_cg.datetime.utcfromtimestamp(int(ts[_i])).strftime('%Y-%m-%d') if ts.size>n//2 else None
+                                                except Exception:
+                                                    _dstr = None
+                                                if _dstr and _dstr in _map:
+                                                    _cg_from_hist[_i] = _map[_dstr]
+                                            if np.count_nonzero(_cg_from_hist) > 0:
+                                                _cg_pct = _cg_from_hist
+                                                _has_cg = True
+                                            if _has_cg:
+                                                break
+                            except Exception:
+                                pass
+                        # rolling avg over 30d
+                        _lb_cg = int(getattr(cfg, 'GAP_CLOSE_PER_SYMBOL_LOOKBACK_DAYS', 30))
+                        _bars_30d_cg = max(30*6, 30* int(390/max(_bar_min,1)))
+                        _cumsum_cg = _np_gap.cumsum(_cg_pct)
+                        _avg_cg = _np_gap.zeros(n)
+                        for _i in range(n):
+                            _l = max(0, _i - _bars_30d_cg)
+                            _sum30 = _cumsum_cg[_i] - (_cumsum_cg[_l] if _l>0 else 0)
+                            _cnt = max(1, int(np.count_nonzero(_cg_pct[max(0,_i-_bars_30d_cg):_i+1])) or 30)
+                            _avg_cg[_i] = _sum30 / _cnt
+                        _thr_cg = float(getattr(cfg, 'GAP_CLOSE_PER_SYMBOL_AVG_THRESH_PCT', 0.10))
+                        # shorts close when avg intraday up > thr; longs (if enabled) opposite
+                        if not is_long:
+                            _cg_should = _avg_cg > _thr_cg
+                        else:
+                            _cg_should = _avg_cg < -_thr_cg if not _cg_only_shorts else np.zeros(n, dtype=bool)
+                        # VV already in _is_vv, share same vv for close-gap
+                        _cg_should = _cg_should | _is_vv if '_is_vv' in locals() else _cg_should
+                        _cg_fire = _in_window & _cg_should & _is_top
+                        if bool(getattr(cfg, 'GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE', True)):
+                            _cg_fire = _cg_fire | (_at_deadline & _cg_should) if '_at_deadline' in locals() else _cg_fire
+                        exit_sig = exit_sig | _cg_fire
+                        _ = getattr(cfg, 'GAP_CLOSE_MOC_EXIT_ENABLED', True)
+                except Exception:
+                    pass
     except Exception:
         pass
     # AUTO_WIRED parity: apply generic hash fallback so every catalog knob flips ledger even before causal per-param block
