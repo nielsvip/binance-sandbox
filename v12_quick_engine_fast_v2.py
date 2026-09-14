@@ -5213,6 +5213,17 @@ class QuickConfig:
     BAND_SLOPE_SIZING_V2_MAX: float = 1.25  # auto-wired 625
     BAND_SLOPE_SIZING_V2_MIN: float = 0.25  # auto-wired 625
     BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 0.5  # auto-wired 625
+    STDEV_SLOPE_SIZING_ENABLED: bool = True  # stdev 2.5 ladder master — propagated from v12_quick_engine 2026-09-14
+    STDEV_BAND_MULTIPLIER: float = 2.5
+    STDEV_SLOPE_SIZING_D_MAX: float = 10.0
+    STDEV_SLOPE_SIZING_4H_MAX: float = 4.0
+    STDEV_SLOPE_SIZING_1H_MAX: float = 2.0
+    STDEV_SLOPE_SIZING_15M_MAX: float = 1.5
+    STDEV_SLOPE_LOOKBACK_D: int = 180
+    STDEV_SLOPE_LOOKBACK_4H: int = 180
+    STDEV_SLOPE_LOOKBACK_1H: int = 168
+    STDEV_SLOPE_LOOKBACK_15M: int = 96
+    STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
     BB_PULLBACK_GATE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     BB_PULLBACK_GATE_LONG_MAX: float = 0.15  # auto-wired 625
@@ -9734,9 +9745,40 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
         edge = dc_pos_15m if is_long else (1 - dc_pos_15m)
         lo = getattr(cfg, 'DC_EDGE_SIZING_MIN_MULT', 1.0); hi = getattr(cfg, 'DC_EDGE_SIZING_MAX_MULT', 3.0)
         mult = mult * (lo + (1 - edge) * (hi - lo))
+    # STDEV_SLOPE_SIZING 2.5 ladder — REAL position sizing (quantity influences gain)
+    # Mirrors tradier_manage.get_position_size bands: per-TF max 10x D /4x 4h /2x 1h /1.5x 15m, slope_to_top vs bottom_to_top — propagated 2026-09-14
+    if bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)):
+        try:
+            _stdev_max_map = {'D': float(getattr(cfg, 'STDEV_SLOPE_SIZING_D_MAX', 10.0)), '4h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_4H_MAX', 4.0)), '1h': float(getattr(cfg, 'STDEV_SLOPE_SIZING_1H_MAX', 2.0)), '15m': float(getattr(cfg, 'STDEV_SLOPE_SIZING_15M_MAX', 1.5))}
+            _stdev_tf = str(getattr(cfg, 'BAND_SLOPE_SIZING_V2_TF', 'D'))
+            _stdev_max = float(_stdev_max_map.get(_stdev_tf, 10.0))
+            _stdev_min = float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_MIN', 0.5))
+            _stdev_mode = str(getattr(cfg, 'STDEV_SLOPE_SIZING_MODE', 'slope_to_top'))
+            _stdev_pb = _safe(npz, f'lrL_pct_b_{_stdev_tf}', n, 0.5)
+            _stdev_sl = _safe(npz, f'lrL_slope_{_stdev_tf}', n, 0.0)
+            _slope_factor = {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}.get(_stdev_tf, 1.0)
+            _slope_day = _stdev_sl * _slope_factor
+            _edge = (1.0 - _stdev_pb) if is_long else _stdev_pb
+            _edge = np.clip(_edge, 0.0, 1.0)
+            if _stdev_mode == "bottom_to_top":
+                _bs_m = 1.0 + (_stdev_max - 1.0) * _edge
+            elif _stdev_mode == "slope_to_top":
+                _bs_m = np.where(_edge >= 0.5, _stdev_max, 1.0 + (_stdev_max - 1.0) * (_edge * 2.0))
+            else:
+                _dg = float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0))
+                _bs_m = 1.0 + _dg * (_edge - 0.5) * 2.0
+            _sn = np.clip(np.abs(_slope_day) / max(1e-9, float(getattr(cfg, 'BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0))), 0.0, 1.0)
+            _fav = (_slope_day > 0) if is_long else (_slope_day < 0)
+            _slope_mult = np.where(_fav, 1.0 + 0.5 * _sn, np.maximum(0.5, 1.0 - 0.5 * _sn))
+            _bs_m = _bs_m * _slope_mult
+            _bs_m = np.clip(_bs_m, _stdev_min, _stdev_max)
+            _bs_m = np.where(np.isfinite(_bs_m), _bs_m, 1.0)
+            mult = mult * _bs_m
+        except Exception:
+            pass
     # STDEV_BREAKOUT_RETEST_SIZE_MULT — faithful to live: 1-10x slope-vs-stdev sizing boost
     _stdev_mult = float(getattr(cfg, 'STDEV_BREAKOUT_RETEST_SIZE_MULT', 1.5))
-    if _stdev_mult != 1.5 and _stdev_mult > 0:
+    if not bool(getattr(cfg, 'STDEV_SLOPE_SIZING_ENABLED', False)) and _stdev_mult != 1.5 and _stdev_mult > 0:
         # Use bb_pct_b distance from band + slope alignment as proxy for stdev extreme (live uses stdev slope)
         # Scale linearly around 1.5 baseline so sweep 1.0→10.0 yields distinct sizing
         _stdev_scale = _stdev_mult / 1.5

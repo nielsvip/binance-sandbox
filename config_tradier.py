@@ -1419,7 +1419,7 @@ class TradierConfig:
     # trc is paper-money. Push extreme settings here to prove before applying to trb.
     # 2026-04-27 SECOND CUT — every trc cap now 1/4 of original.
     TRC_START_POSITION_SIZE: float = 330.0    # was 500 / orig 1000
-    TRC_MAX_ORDER_VALUE: float = 1250.0       # was 2500 / orig 5000
+    TRC_MAX_ORDER_VALUE: float = 3300.0       # STDEV_SLOPE fix 2026-09-14: was 1250 (3.78x START) →3300 for 10x ladder (330*10)
     TRC_MAX_POSITION_SIZE: float = 3750.0     # was 2500 / orig 5000
     TRC_SCALP_START_SIZE: float = 495.0       # was 500 / orig 1000
     TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 12   # was 10 / orig 20

@@ -4539,7 +4539,7 @@ class QuickConfig:
     NOLOSS_ENABLED: bool = True
     DC_RECOVERY_EXIT_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
-    START_POSITION_SIZE: float = 2000.0
+    START_POSITION_SIZE: float = 500.0  # parity 2026-09-14: tradier live 500 vs vec 2000 caused 4x gain mismatch (vec cap 38502 vs live 2492) — align to config_tradier.TradierConfig
     CRYPTO_ROUND_TRIP_COMMISSION_PCT: float = 0.08  # USER 2026-08-08: binance futures 0.08% round trip; tradier is commission-free
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = False
@@ -5462,7 +5462,7 @@ class QuickConfig:
     MARKET_QUALITY_SCORE_ENABLED_TRADIER: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     MAX_CONCURRENT_POSITIONS: float = 8  # auto-wired 625
     MAX_DAILY_LOSS_PCT: float = 1.5  # auto-wired 625
-    MAX_ORDER_VALUE: float = 1250.0  # auto-wired 625
+    MAX_ORDER_VALUE: float = 2500.0  # parity 2026-09-14: live 2500 vs vec 1250 (2x) — align to config_tradier
     MAX_POSITION_SIZE: float = 1125.0  # auto-wired 625
     MAX_SYMBOL_VALUE_TRADIER: float = 1875.0  # auto-wired 625
     MFI_LONG_THRESHOLD_D: float = 40.0  # auto-wired 625
@@ -5744,7 +5744,7 @@ class QuickConfig:
     TRC_SMFI_LONG_BUDGET: float = 4950.0  # auto-wired 625
     TRC_SMFI_POSITION_SIZE: float = 990.0  # auto-wired 625
     TRC_SMFI_SHORT_BUDGET: float = 4950.0  # auto-wired 625
-    TRC_START_POSITION_SIZE: float = 165.0  # auto-wired 625
+    TRC_START_POSITION_SIZE: float = 330.0  # parity 2026-09-14: live 330 vs vec 165 (2x) — align to config_tradier
     TRC_SWING_LONG_BUDGET: float = 50000.0  # auto-wired 625
     TRC_SWING_SHORT_BUDGET: float = 50000.0  # auto-wired 625
     TREND_GATES: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -21349,7 +21349,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if px <= 0:
             continue
         if force_initial_seed and pos is None and i == 0:
-            qty0 = _size_qty(cfg, cfg.START_POSITION_SIZE, px)
+            _dollar = float(cfg.START_POSITION_SIZE)
+            try:
+                _cap = float(getattr(cfg, "MAX_ORDER_VALUE", 2500.0) or 2500.0)
+                if _cap > 0:
+                    _dollar = min(_dollar, _cap)
+            except Exception:
+                pass
+            qty0 = _size_qty(cfg, _dollar, px)
             if qty0 > 0:
                 pos = _open(qty0, px, i, 'SEED_BH')
                 bars_in_pos += 1
@@ -21367,7 +21374,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 fire = True
             if fire:
                 mult = getattr(cfg, 'REENTRY_TIER1_SIZE_MULT_TRADIER', 1.0) if (has_closed_before and is_tradier) else 1.0
-                qty0 = _size_qty(cfg, cfg.START_POSITION_SIZE * regime_mult[i] * mult, px)
+                _dollar = float(cfg.START_POSITION_SIZE) * float(regime_mult[i]) * float(mult)
+                try:
+                    _cap = float(getattr(cfg, "MAX_ORDER_VALUE", 2500.0) or 2500.0)
+                    if _cap > 0:
+                        _dollar = min(_dollar, _cap)
+                except Exception:
+                    pass
+                qty0 = _size_qty(cfg, _dollar, px)
                 if qty0 > 0:
                     # Derive real entry reason from the block that fired at this bar
                     entry_reason = 'VECTOR_ENTRY'
