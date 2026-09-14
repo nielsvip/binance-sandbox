@@ -9400,8 +9400,71 @@ async def gap_moc_and_morning_loop(trade_manager):
                                 intraday_same_dir = True
                     except Exception:
                         pass
+                    # L/S + market direction gate: when overweight LONG and bear market, keep SHORTS (don't close shorts for gap), prioritize LONG closes
+                    # This fixes 2026-09-14 3:1 L:S + market DOWN where script was closing 6 shorts vs 2 longs (backwards)
+                    _ls_gate_skip = False
+                    try:
+                        _ls_nL = sum(1 for _pk2, _pos2 in positions.items() if str(_pk2).endswith('_LONG') and abs(safe_fetch_float(getattr(_pos2, 'positionAmt', 0), 0)) > 0)
+                        _ls_nS = sum(1 for _pk2, _pos2 in positions.items() if str(_pk2).endswith('_SHORT') and abs(safe_fetch_float(getattr(_pos2, 'positionAmt', 0), 0)) > 0)
+                        _ls_ratio = _ls_nL / max(_ls_nS, 1) if _ls_nS else 999
+                        _ls_max = min(float(_cfg_auto('LS_RATIO_MAX_TRADIER', 5.0)), 1.5)  # bear market: treat >1.5 as overweight even if config 5.0 (user 3:1 down market)
+                        _ls_min = max(float(_cfg_auto('LS_RATIO_MIN_TRADIER', 0.2)), 0.67)  # bull market: treat <0.67 as overweight short
+                        # market DOWN: SPY/QQQ intraday <0 or sentiment negative
+                        _mkt_down = False
+                        try:
+                            _spy = (trade_manager.indicators_cache or {}).get('SPY', {})
+                            _spy_cp = float(_spy.get('current_price', 0) or 0)
+                            _spy_prev = float(_spy.get('close_1h_prev', 0) or _spy.get('close_15m_prev', 0) or 0)
+                            if _spy_cp and _spy_prev:
+                                _mkt_down = (_spy_cp - _spy_prev) / _spy_prev * 100 < -0.05
+                            # also check sentiment score
+                            _sent = float(_spy.get('0market_sentiment_score', 0) or 0)
+                            if _sent < -1.0:
+                                _mkt_down = True
+                        except Exception:
+                            pass
+                        if _ls_ratio > _ls_max and _mkt_down and not is_long and (open_gap_should or intraday_same_dir):
+                            # overweight LONG + bear: keep SHORTS, don't close gap-up shorts
+                            _ls_gate_skip = True
+                            logger.info(f"[GAP_MOC_LS_GATE] skip {pk}: overweight LONG L:S {_ls_ratio:.2f}>{_ls_max} + bear market -> keep SHORT (gap {open_gap_should} intraday {intraday_same_dir})")
+                        elif _ls_ratio < _ls_min and not _mkt_down and is_long and (open_gap_should or intraday_same_dir):
+                            # overweight SHORT + bull: keep LONGS
+                            _ls_gate_skip = True
+                            logger.info(f"[GAP_MOC_LS_GATE] skip {pk}: overweight SHORT L:S {_ls_ratio:.2f}<{_ls_min} + bull -> keep LONG")
+                    except Exception as _e:
+                        logger.debug(f"[GAP_MOC_LS_GATE_ERR] {pk}: {_e}")
+                    if _ls_gate_skip:
+                        continue
+                    # LS force close: when overweight LONG + bear, close weakest LONGS even if not gap BAD (fix 3:1 down market)
+                    _ls_force_close = False
+                    _ls_forced_which = None
+                    try:
+                        if _ls_ratio > _ls_max and _mkt_down and is_long and not open_gap_should and not close_gap_should and not intraday_same_dir and not vv_danger:
+                            # rank longs by avg gap asc (most gap-down = weakest) + intraday most negative
+                            _all_longs = []
+                            for _pk2 in positions:
+                                if str(_pk2).endswith('_LONG') and abs(safe_fetch_float(getattr(positions[_pk2], 'positionAmt', 0), 0)) > 0:
+                                    _sym2 = str(_pk2).split(':')[1].replace('_LONG','').replace('_SHORT','')
+                                    _avg2 = _gap_per_symbol_avg_gap(_sym2)
+                                    _avg2 = float(_avg2) if _avg2 is not None else 0
+                                    _ind2 = (trade_manager.indicators_cache or {}).get(_sym2, {})
+                                    _cp2 = float(_ind2.get('current_price', 0) or 0)
+                                    _prev2 = float(_ind2.get('close_1h_prev', 0) or _ind2.get('close_15m_prev', 0) or 0)
+                                    _intra2 = (_cp2 - _prev2) / _prev2 * 100 if _cp2 and _prev2 else 0
+                                    # composite weakest score: avg gap + intraday (lower = weaker in bear)
+                                    _score2 = _avg2 + _intra2
+                                    _all_longs.append((str(_pk2), _score2, _avg2))
+                            _all_longs_sorted = sorted(_all_longs, key=lambda x: x[1])
+                            _weakest_n = max(1, int(len(_all_longs) * 0.5))  # 50% weakest
+                            if pk in [x[0] for x in _all_longs_sorted[:_weakest_n]]:
+                                _ls_force_close = True
+                                _ls_forced_which = "LS_FORCE"
+                                _intraday_pct = float(_all_longs_sorted[0][1]) if _all_longs_sorted else 0
+                                logger.warning(f"[GAP_MOC_LS_FORCE] force LONG {pk}: overweight LONG L:S {_ls_ratio:.2f}>{_ls_max} bear -> close weakest score {_all_longs_sorted[0][1]:.2f} avg {avg_gap}")
+                    except Exception as _e2:
+                        logger.debug(f"[GAP_MOC_LS_FORCE_ERR] {pk}: {_e2}")
                     vv_danger = _is_near_dc4_high_with_wt_down(ind, is_long)
-                    if not vv_danger and not open_gap_should and not close_gap_should and not intraday_same_dir:
+                    if not vv_danger and not open_gap_should and not close_gap_should and not intraday_same_dir and not _ls_force_close:
                         if avg_gap is None and avg_close_gap is None:
                             continue
                         # if both gaps near 0 / not wrong-way, keep overnight (only VV closes)
@@ -9412,15 +9475,15 @@ async def gap_moc_and_morning_loop(trade_manager):
                             continue
                         # Wrong-way avg gap beyond thresh → close (gap-down risk for longs, gap-up for shorts, close-gap up for shorts)
                     # Choose reason tag based on which sentinel fired
-                    _which = "OPEN" if open_gap_should else ("CLOSE" if close_gap_should else ("INTRADAY" if intraday_same_dir else "VV"))
-                    _avg_for_log = avg_gap if open_gap_should else (avg_close_gap if close_gap_should else (_intraday_pct if intraday_same_dir else (avg_gap if avg_gap is not None else avg_close_gap)))
-                    _thr_for_log = thr if open_gap_should else (thr_close if close_gap_should else (_intraday_thr if intraday_same_dir else thr_close))
+                    _which = "OPEN" if open_gap_should else ("CLOSE" if close_gap_should else ("INTRADAY" if intraday_same_dir else ("LS_FORCE" if _ls_force_close else "VV")))
+                    _avg_for_log = avg_gap if open_gap_should else (avg_close_gap if close_gap_should else (_intraday_pct if intraday_same_dir else (_intraday_pct if _ls_force_close else (avg_gap if avg_gap is not None else avg_close_gap))))
+                    _thr_for_log = thr if open_gap_should else (thr_close if close_gap_should else (_intraday_thr if intraday_same_dir else (_intraday_thr if _ls_force_close else thr_close)))
                     # Require small top/bottom unless at hard deadline (close-gap shares same top logic)
                     is_top = _is_small_top_for_gap_exit(ind, is_long)
-                    _need_top = bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True)) if _which in ("OPEN", "INTRADAY") else bool(_cfg_auto('GAP_CLOSE_MOC_REQUIRE_TOP', True))
+                    _need_top = bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True)) if _which in ("OPEN", "INTRADAY", "LS_FORCE") else bool(_cfg_auto('GAP_CLOSE_MOC_REQUIRE_TOP', True))
                     # EMERGENCY 2026-09-14 15:32 ET: 30m left, NOTHING CLOSED — force gap exits ignoring small-top (user URGENT)
                     # Make gap-risk closes bypass top in last 30m (deadline was 10m was too late); also honor 30m emergency window
-                    _emergency_force = mins_to_close <= 30 and (open_gap_should or close_gap_should or intraday_same_dir)
+                    _emergency_force = mins_to_close <= 30 and (open_gap_should or close_gap_should or intraday_same_dir or _ls_force_close)
                     _at_deadline = (at_deadline or _emergency_force) if _which != "CLOSE" else ((0 < mins_to_close <= _cg_deadline or _emergency_force) and bool(_cfg_auto('GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE', True)))
                     if not is_top and not _at_deadline:
                         if mins_to_close % 15 == 0 or mins_to_close <= 30:

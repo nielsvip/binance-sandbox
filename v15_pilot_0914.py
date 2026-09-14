@@ -460,19 +460,25 @@ def _validate_e_chain_and_yellows(progress: dict, wb_path: pathlib.Path | None =
     and that written F are floats (not VLOOKUP) and yellows exist."""
     try:
         j = progress
-        # sort by row
-        def row_key(k):
-            try:
-                return int(k.split("!")[1].split(":")[0])
-            except:
-                return 9999
+        # Use insertion order (execution order) when available — cycle/worst2best/sheet-order execute out of row-number order.
+        # Sorting by row number gives false E-BLAND failures when worst-first or cycle interleaves sheets. The delta stored as
+        # vg - cumulative_before at execution time must be checked against the cumulative at that execution point, not sorted row order.
+        # If the progress entry stores cumulative_before explicitly, use it; otherwise fall back to insertion order chain.
         cum = float(j.get("baseline_gain", 0))
-        for k in sorted(j.get("done", {}).keys(), key=row_key):
-            v = j["done"][k]
+        # Prefer execution order: dict insertion order preserves pilot execution sequence (cycle, worst2best, shuffle, sheet-order)
+        done_items = list(j.get("done", {}).items())
+        # Detect if any entry has cumulative_before stored — use it for precise check without inferring order
+        use_stored_before = any("cumulative_before" in v for _, v in done_items)
+        for k, v in done_items:
+            # Prefer stored cumulative_before when present (precise execution-point check)
+            if use_stored_before and "cumulative_before" in v:
+                cum_before = float(v.get("cumulative_before", cum))
+            else:
+                cum_before = cum
             delta = float(v.get("delta", 0) or 0)
             vg = float(v.get("vec_gain", 0) or 0)
-            if abs((vg - cum) - delta) > 1e-6:
-                print(f"[E-BLAND-CHECK-FAIL] {k} delta {delta:.4f} != vg {vg:.4f} - cum {cum:.4f}", flush=True)
+            if abs((vg - cum_before) - delta) > 1e-6:
+                print(f"[E-BLAND-CHECK-FAIL] {k} delta {delta:.4f} != vg {vg:.4f} - cum {cum_before:.4f}", flush=True)
             if delta > 0:
                 new_cum = float(v.get("cumulative_after", cum))
                 if new_cum + 1e-9 < cum:
@@ -1811,7 +1817,7 @@ def main():
                             pass
                     except Exception as _e:
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
-                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs)}
+                    progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before)}
                     try:
                         # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
                         if r % 10 == 0 or args.window_days not in (1,7):
