@@ -1306,7 +1306,21 @@ def main():
             # This delegates to the same logic as sequential: get opportune filters, evaluate candidates, compute delta_best = vg - cumulative_before, write yellows, update progress
             # For maintainability we call the extracted helper if available, otherwise fallback to inline
             # We capture delta via the shared helper _eval_row (defined below) — here we just call it
-            return _process_0914_row_helper(sheet, r, switch, cand)
+            # Use the real helper defined above (which evaluates naked + yellows)
+            try:
+                return _process_0914_row_helper(sheet, r, switch, cand)
+            except NameError:
+                # Fallback inline: evaluate naked variant
+                try:
+                    v0 = dict(cumulative_overrides)
+                    v0[switch] = cand
+                    v0, _ = sanitize_overrides(v0, defaults)
+                    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eval_h2
+                    vec = _eval_h2(prepared, v0, window_days=args.window_days) if prepared is not None else None
+                    if vec and vec.get("valid"):
+                        return float(vec.get("gain_pct") or 0) - cumulative_gain
+                except: pass
+                return 0
         # Iterate with POS-stay / NEG-advance
         while _deque_sheets and _processed_cycle < _remaining_cycle:
             sheet = _deque_sheets[0]
@@ -1359,6 +1373,12 @@ def main():
         print(f"[0914-cycle] dynamic cycle complete {len(progress.get('done',{}))} rows cum={cumulative_gain:.4f} (stay on POS, next tab on NEG)", flush=True)
         # Skip sequential fallback — cycle has handled all rows
         raise SystemExit(0)
+    # Ensure _cycle_deque is defined for sequential mode
+    if '_cycle_deque' not in locals():
+        _cycle_deque = None
+    # Ensure _cycle_deque defined for sequential mode (was only primed for cycle)
+    if '_cycle_deque' not in locals():
+        _cycle_deque = None
     # Sequential vs cycle deque: cycle stays on same tab with POS, next tab with NEG only
     if _cycle_deque is not None:
         # Cycle deque already primed above — drive sheets via deque, processing one sheet's rows with POS/NEG logic
