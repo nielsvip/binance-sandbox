@@ -5070,5 +5070,41 @@
     ],
     "timestamp": "2026-09-14T11:31:56.311445+00:00",
     "price": 0.0001613
+  },
+  {
+    "symbol": "BCHUSDC",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T12:13:51.152121+00:00",
+    "price": 223.11
+  },
+  {
+    "symbol": "IWMUSDT",
+    "severity": 2,
+    "reasons": [
+      "VOL_SPIKE_3M: 15.9x normal (threshold 12.0x)"
+    ],
+    "timestamp": "2026-09-14T12:13:51.152121+00:00",
+    "price": 287.31
+  },
+  {
+    "symbol": "EWTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 9.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T12:16:11.174076+00:00",
+    "price": 107.71531643
+  },
+  {
+    "symbol": "AMDUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T12:20:14.779885+00:00",
+    "price": 487.98624583
   }
 ]
