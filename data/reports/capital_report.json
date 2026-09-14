@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 08:55 UTC",
- "total_capital_usd": 12.05,
+ "generated_at": "2026-09-14 09:05 UTC",
+ "total_capital_usd": 23.85,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.05,
+  "B": 23.85,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,20 @@
  },
  "winners": [],
  "losers": [
-  "inf:RLCUSDT_SHORT"
+  "fin:IOTXUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
-   "account": "inf",
-   "value_usd": 12.05,
-   "gain_pct": -0.548,
+   "pk": "fin:IOTXUSDT_LONG",
+   "symbol": "IOTXUSDT",
+   "account": "fin",
+   "value_usd": 23.85,
+   "gain_pct": -0.528,
    "tier": "B",
-   "perf_mult": 2.94,
-   "amt": 43.8,
-   "mark": 0.2752
+   "perf_mult": 1.0,
+   "amt": 6930.0,
+   "mark": 0.00344094
   }
  ]
 }
