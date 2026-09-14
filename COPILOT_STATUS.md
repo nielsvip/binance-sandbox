@@ -1,21 +1,21 @@
-# Copilot Status — 2026-09-14 11:57:44 UTC
+# Copilot Status — 2026-09-14 13:36:23 UTC
 
-**Market Hours:** NO | **Tradier Priority:** NO
+**Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T11:49:42
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T11:49:42
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T11:49:42
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T11:51:47
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T11:51:47
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T11:51:47
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T11:53:53
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T11:53:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T11:55:58
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T11:55:58
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T13:34:30
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T13:35:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T13:35:02
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T13:35:02
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T13:35:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T13:35:32
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T13:35:32
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T13:36:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T13:36:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T13:36:03
 
 ## Missed Trades (trader comparison)
 
@@ -27,18 +27,19 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 2 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +15.0%, now +6.3%
-- HELD: **SNDK** LONG (tradier) peak +7.5%, now +-4.7%
+- HELD: **CIBR** LONG (tradier) peak +15.0%, now +8.3%
+
+- WATCHING: **SNDK** LONG (tradier) peaked +7.5%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
-- [MEDIUM] tradier_manage.py for trb is NOT running
-- [MEDIUM] tradier_manage.py for trc is NOT running
+**Issues (last 1h):** 23
+- [HIGH] ez_manage.py for inf is NOT running
+- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
+- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for ang is NOT running

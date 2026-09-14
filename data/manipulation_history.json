@@ -5133,5 +5133,50 @@
     ],
     "timestamp": "2026-09-14T13:18:20.001867+00:00",
     "price": 152.41
+  },
+  {
+    "symbol": "AMZNUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.0x (from rankings)"
+    ],
+    "timestamp": "2026-09-14T13:30:01.707418+00:00",
+    "price": 253.34474413
+  },
+  {
+    "symbol": "XBIUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 18.8x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T13:32:42.788742+00:00",
+    "price": 156.61478011
+  },
+  {
+    "symbol": "LRCXUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 23.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T13:34:03.587641+00:00",
+    "price": 275.29794692
+  },
+  {
+    "symbol": "BITOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 15.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T13:35:33.843282+00:00",
+    "price": 10.47360301
+  },
+  {
+    "symbol": "AVGOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 43.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T13:36:34.162589+00:00",
+    "price": 348.13
   }
 ]
