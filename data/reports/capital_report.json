@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-09-14 06:44 UTC",
- "total_capital_usd": 23.98,
+ "generated_at": "2026-09-14 07:15 UTC",
+ "total_capital_usd": 12.07,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.98,
-  "C": 12.0
+  "B": 0.0,
+  "C": 12.07
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:VETUSDT_LONG"
+  "men:VETUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:VETUSDT_LONG",
+   "pk": "men:VETUSDT_LONG",
    "symbol": "VETUSDT",
-   "account": "fin",
-   "value_usd": 12.0,
-   "gain_pct": 0.023,
+   "account": "men",
+   "value_usd": 12.07,
+   "gain_pct": 0.07,
    "tier": "C",
-   "perf_mult": 0.5,
-   "amt": 1494.0,
-   "mark": 0.008031
-  },
-  {
-   "pk": "fin:IOTXUSDT_LONG",
-   "symbol": "IOTXUSDT",
-   "account": "fin",
-   "value_usd": 11.98,
-   "gain_pct": -0.356,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 3436.0,
-   "mark": 0.003488
+   "perf_mult": 0.47,
+   "amt": 1490.0,
+   "mark": 0.008098
   }
  ]
 }
