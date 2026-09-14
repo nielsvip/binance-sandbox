@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-14T06:15:09.393023+00:00",
+  "timestamp": "2026-09-14T06:35:27.308346+00:00",
   "market_state": {
-    "panic": true,
+    "panic": false,
     "euphoria": false,
     "total_ranked": 100
   },
   "unified_ranking": [
-    {
-      "symbol": "STORJUSDT",
-      "net_score": -30,
-      "long_score": 0,
-      "short_score": 30
-    },
     {
       "symbol": "1INCHUSDT",
       "net_score": 0,
@@ -20,6 +14,12 @@
     },
     {
       "symbol": "GRTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "STORJUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -608,13 +608,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "STORJUSDT",
-      30,
-      0.02953165
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
