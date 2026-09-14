@@ -1936,9 +1936,52 @@ def main():
                         _bf = _hv.get("best_filter")
                         _bv = _hv.get("best_fval")
                         _hustle_top.append((_sw, _cand, _bf, _bv, _vs_base, _vg))
+        # --- IMPROVED HUSTLE POOL: also consider pos vs greedy cum (not just baseline) ---
+        # Greedy is sequential vs cum; a switch NEG vs baseline can be POS vs cum after other picks — hustle missed those before.
+        _hustle_top_cum = []
+        try:
+            if _sim_all and prepared is not None and cumulative_overrides:
+                _cum_variants = []
+                for _sw,_cand in _sim_all:
+                    if _sw in cumulative_overrides and str(cumulative_overrides[_sw]) == str(_cand):
+                        continue
+                    _v2 = dict(cumulative_overrides)
+                    _v2[_sw] = _cand
+                    _san2,_ = sanitize_overrides(_v2, defaults)
+                    _cum_variants.append((_sw,_cand,_san2))
+                if _cum_variants:
+                    def _eval_cum(tup):
+                        _,_,_san = tup
+                        return _hustle_eval(prepared, _san, window_days=args.window_days)
+                    try:
+                        from concurrent.futures import ThreadPoolExecutor as _TPE2
+                        with _TPE2(max_workers=16) as _ex2:
+                            _cum_sims = list(_ex2.map(lambda t: _eval_cum(t), _cum_variants))
+                    except Exception:
+                        _cum_sims = [_eval_cum(t) for t in _cum_variants]
+                    for (_sw,_cand,_), _vec2 in zip(_cum_variants, _cum_sims):
+                        if _vec2 is None or not _vec2.get("valid"):
+                            continue
+                        _vg2 = float(_vec2.get("gain_pct") or 0)
+                        _d_cum = _vg2 - float(cumulative_gain or 0)
+                        _d_base = _vg2 - float(baseline_gain or 0)
+                        if _d_cum > 0.3:  # meaningful vs greedy cum (avoid noise <0.3)
+                            _hustle_top_cum.append((_sw,_cand,None,None,_d_base,_vg2))
+                    print(f"[hustler-sim-cum] found {len(_hustle_top_cum)} pos vs greedy cum {cumulative_gain:.2f} (union will add)", flush=True)
+        except Exception as _se2:
+            print(f"[hustler-sim-cum-warn] {_se2}", flush=True)
+        # Union baseline top + cum top, dedupe by switch=cand, keep best delta
+        if _hustle_top_cum:
+            _pool = {}
+            for rec in _hustle_top + _hustle_top_cum:
+                _k = (rec[0], str(rec[1]))
+                if _k not in _pool or rec[4] > _pool[_k][4]:
+                    _pool[_k] = rec
+            _hustle_top = sorted(_pool.values(), key=lambda x: x[4], reverse=True)
+            print(f"[hustler-pool] union baseline {len(_hustle_top)-len(_hustle_top_cum)} + cum {len(_hustle_top_cum)} -> {len(_hustle_top)} unique", flush=True)
         _hustle_top.sort(key=lambda x: x[4], reverse=True)
-        _hustle_top = _hustle_top[:50]  # top 50 pos vs baseline to hustle
-        print(f"[hustler] top pos vs baseline {len(_hustle_top)} baseline {baseline_gain:.2f} cum {cumulative_gain:.2f} bh {bh_raw:.2f} beam 32 depth 6 (simultaneous + per-hustle recalc shooting up delta)", flush=True)
+        _hustle_top = _hustle_top[:50]  # top 50 pos vs baseline/cum to hustle
+        print(f"[hustler] top pos vs baseline {len(_hustle_top)} baseline {baseline_gain:.2f} cum {cumulative_gain:.2f} bh {bh_raw:.2f} beam 32 depth 6 (simultaneous vs baseline+cum + per-hustle recalc shooting up delta vs beam)", flush=True)
         for _i, (_sw,_cand,_bf,_bv,_vsb,_vg) in enumerate(_hustle_top[:10]):
             print(f"  [hustler-top-{_i}] {_sw}={_cand} vs_base +{_vsb:.2f} vec {_vg:.2f} filter {_bf}={_bv}", flush=True)
         # beam hustling
@@ -1966,10 +2009,13 @@ def main():
                             continue
                         _vg2 = float(_vec.get("gain_pct") or 0)
                         _delta_base = _vg2 - float(baseline_gain or 0)
-                        _cands.append((_variant, _vg2, _delta_base, _sw, _cand))
+                        _delta_beam = _vg2 - float(_base_gain or 0)  # shoot up vs beam, not just baseline
+                        # Only consider meaningful vs beam to avoid noise; hustler must beat beam
+                        if _delta_beam > 0.2:
+                            _cands.append((_variant, _vg2, _delta_base, _sw, _cand, _delta_beam, _base_gain))
                 if not _cands:
                     break
-                _cands.sort(key=lambda x: x[1], reverse=True)  # by vec gain (or delta vs baseline)
+                _cands.sort(key=lambda x: x[5], reverse=True)  # by delta vs beam (shoot up)
                 _beam = [(_v[0], _v[1]) for _v in _cands[:32]]
                 _top_v = _cands[0]
                 if _top_v[1] > _best_gain + 1e-9:

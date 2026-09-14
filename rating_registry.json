@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T23:58:24.188049+00:00",
+  "timestamp": "2026-09-14T00:17:04.759821+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,22 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "MOVEUSDT",
-      "net_score": -14.9,
+      "symbol": "STORJUSDT",
+      "net_score": -30,
       "long_score": 0,
-      "short_score": 14.9
-    },
-    {
-      "symbol": "1000LUNCUSDT",
-      "net_score": -13.9,
-      "long_score": 0,
-      "short_score": 13.9
-    },
-    {
-      "symbol": "SANDUSDT",
-      "net_score": -12.4,
-      "long_score": 0,
-      "short_score": 12.4
+      "short_score": 30
     },
     {
       "symbol": "ALABUSDT",
@@ -37,6 +25,12 @@
       "short_score": 11.3
     },
     {
+      "symbol": "ZKUSDT",
+      "net_score": -11.0,
+      "long_score": 0,
+      "short_score": 11.0
+    },
+    {
       "symbol": "VIRTUALUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -44,6 +38,12 @@
     },
     {
       "symbol": "1INCHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "1000LUNCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -229,6 +229,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SANDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "WLFIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -236,6 +242,12 @@
     },
     {
       "symbol": "ZILUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MOVEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -254,12 +266,6 @@
     },
     {
       "symbol": "ORDIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "STORJUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -817,12 +823,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ZKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "DASHUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -1024,19 +1024,14 @@
   "top_longs": [],
   "top_shorts": [
     [
-      "MOVEUSDT",
-      14.9,
-      0.00797563
+      "STORJUSDT",
+      30,
+      0.03541706
     ],
     [
-      "1000LUNCUSDT",
-      13.9,
-      0.04966727
-    ],
-    [
-      "SANDUSDT",
-      12.4,
-      0.03510663
+      "ZKUSDT",
+      11.0,
+      0.00944783
     ]
   ],
   "hedge_usage": {
