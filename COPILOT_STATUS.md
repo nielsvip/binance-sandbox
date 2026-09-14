@@ -1,4 +1,4 @@
-# Copilot Status — 2026-09-14 23:26:19 UTC
+# Copilot Status — 2026-09-14 23:50:52 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T23:24:16
-- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T23:24:16
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T23:24:16
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T23:24:16
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T23:24:57
-- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T23:25:58
-- **STALE_INDICATORS** [tradier]  — 2026-09-14T23:26:19
-- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T23:26:19
-- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T23:26:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T23:26:19
+- **STALE_INDICATORS** [tradier]  — 2026-09-14T23:48:06
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T23:48:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T23:48:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T23:48:06
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T23:48:17
+- **RATIO_IMBALANCE** [crypto] flz — 2026-09-14T23:49:19
+- **STALE_INDICATORS** [tradier]  — 2026-09-14T23:50:10
+- **BIG_LOSER** [tradier] trb:SNDK_LONG — 2026-09-14T23:50:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-09-14T23:50:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-09-14T23:50:10
 
 ## Missed Trades (trader comparison)
 
@@ -36,8 +36,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] ez_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
