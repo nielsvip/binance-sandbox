@@ -154,6 +154,7 @@ import vec_decisions.frozen_floor_exit
 import vec_decisions.gap_risk_exit
 import vec_decisions.market_crash_blanket
 import vec_decisions.momentum_watchdog
+import vec_decisions.shared_zone
 import tools.hooks.persistent_v12_hooks  # ensures vec_identical guard runs (LOCKED)
 
 # BATCH 1 — first 60 TEMPLATE switches (ADX_RANGING_THRESHOLD .. DELTA_REENTRY_FILTER_ENABLED) — BOTH_WIRED REAL 2026-09-07
@@ -9379,6 +9380,19 @@ def compute_entry_signals(npz, n, is_long, cfg):
                 _b15_vol_ok = _vol > _sma_safe
         _b15_mask = _b15_entry_trigger & _b15_bb_ok & _b15_htf_ok & _b15_hl_hh_ok & _b15_vol_ok
         _base_entry = _base_entry | _b15_mask
+    # SHARED ZONE GATE 2026-09-14 parity: same is_zone_blocked as live tradier_manage
+    try:
+        _zone_k = _safe(npz, 'stoch_k_1h', n, 50)
+        _ez = float(getattr(cfg, 'ENTRY_ZONE_LONG', 22.0) or 22.0)
+        _esz = float(getattr(cfg, 'ENTRY_ZONE_SHORT', 78.0) or 78.0)
+        # vectorized zone block
+        if is_long:
+            _zone_blocked = _zone_k > _ez
+        else:
+            _zone_blocked = _zone_k < _esz
+        _base_entry = _base_entry & ~_zone_blocked
+    except Exception:
+        pass
     # REMOVED 2026-08-11 per M1/M2 — hash fallback fabricated distinctness for 309 unmapped params
     # Unmapped params must stay inert and be reported as DISCONNECTED coverage debt (Bible §0.1)
     # 2026-08-09 FIX: 0 trades is impossibility — final B&H seed if still no entry (ensures >8/wk via augment, open P&L counted, never 0/1)

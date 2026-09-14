@@ -27,6 +27,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Set, Tuple
 from zoneinfo import ZoneInfo
 
+import vec_decisions.shared_zone
 import aiofiles
 import numpy as np
 import pandas as pd
@@ -22951,7 +22952,7 @@ class TradierTradeManager:
         if _is_augment_or_entry and not is_hedge and not _is_wf_force:
             _ez = getattr(self.config, 'ENTRY_ZONE_LONG', 22.0); _esz = getattr(self.config, 'ENTRY_ZONE_SHORT', 100.0 - _ez)
             if action in ('OPEN', 'QUICK_OPEN') and not _is_reentry and not _is_rotation and not _is_gap_fill and not _is_rz_entry:
-                if (is_long and _zone_k > _ez) or (not is_long and _zone_k < _esz):
+                if vec_decisions.shared_zone.is_zone_blocked(is_long, _zone_k, _ez, _esz):
                     logger.warning(f"[TRADIER_ZONE_BLOCK] {position_key}: k_{_zone_tf}={_zone_k:.0f} outside zone {_ez}/{_esz} ({'FAST' if _is_fast_window else 'SWING'})")
                     return f"BLOCKED_ZONE_k{_zone_tf}={_zone_k:.0f}"
             # Alignment: count conditions agreeing with direction
