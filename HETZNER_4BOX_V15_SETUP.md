@@ -345,3 +345,58 @@ hcloud image list | grep v15-clean
 10. Teardown §10 — delete boxes, keep snapshot + all results on S1/Mac.
 
 > RESTORE=DEATH PENALTY: never restore `TEMPLATE.xlsx` without diff. DEAT PENALTY on empty/repeated/0.0 — checker must STOP and repair. Keep `hcloud image` replica before data files to make next 4-box spin-up <2 min.
+
+---
+
+## 12. 7-BOX FOR 100 × 30D BEFORE MARKET OPEN — 3× `cax41` (best `$/core` available)
+
+**Why `cax41` not `cx33`:** `cx33` 4c 8GB `$0.016/h` (`$0.0040/core/h`) and `cx43`/`cx53` show `Available: no` in `nbg1`/`hel1`/`fsn1` (`hcloud server-type describe cx33` `Available: no`), so you **cannot** provision new `cx33` in `nbg1` (where `S1`/`S2` live). Best `Available: yes` with best performance/`$/h` for this workload is `cax41` (`arm` Ampere Altra):
+
+| Type | Cores | RAM | Disk | Arch | $/h `nbg1` | $/core/h | Available `nbg1` | V15 pilots concurrent* | 10 syms |
+|------|-------|-----|------|------|------------|-----------|------------------|------------------------|---------|
+| `cx33` | 4 | 8GB | 80GB | x86 | $0.016 | $0.0040 | **no** | 3 (`V12_NPZ_CACHE=32` ~1.2GB) | ~100 min |
+| `cax31` | 8 | 16GB | 160GB | arm | $0.040 | $0.0050 | yes | 6 | ~60 min |
+| **`cax41`** | **16** | **32GB** | **320GB** | **arm** | **$0.0777** | **$0.0048** | **yes** | **10-12** | **~30 min** |
+| `cpx32` | 4 | 8GB | 160GB | x86 | $0.0673 | $0.0168 | yes | 3 | ~100 min |
+| `ccx33` | 8 | 32GB | 240GB | x86 | $0.266 | $0.033 | yes | 6 | ~60 min but `$0.266/h` 6× worse |
+
+`*` `v15_pilot.py` `workers 16` `per_cell 1.0s 30D` `MAX_ROWS 50000` `V12_NPZ_CACHE=32`. `cax41` `32GB` fits `10` pilots at `70%` CPU, `80GB` on `cx33` fits `3`.
+
+**Current:** `niels (S1)` `cax41` `hel1` `10.0.0.3` `16c` + `htz-v15-s2` `cx33` `nbg1` `10.0.0.4` `4c` = `20c` total → `~40 syms /2h` (the `40` doc). For `100` absolutely complete `30D` `13/13` `F/G floats` before `08:00` (`~4h` left `03:55`) you need `100/4h =25 syms/h`.
+
+**Add 3× `cax41` in `nbg1` (best `nbg1` `Available: yes` + cheapest `$/core` for `16c`):**
+```bash
+# total then  S1 cax41 hel1 + S2 cx33 nbg1 + 3× cax41 nbg1 = 5 boxes = 4×cax41 +1×cx33 = 68c 144GB
+# 4×cax41 ×10 concurrent +1×cx33 ×3 = 43 pilots concurrent → 100 syms /43 ≈2.3 batches ×10 min ≈23 min for 100, well <4h
+# hourly: 4×$0.0777 +1×$0.016 = $0.327/h → $1.31 for 4h until market open (vs 10×cx33 $0.16/h but not available)
+# arm snapshot note: S2 snapshot is x86 cx33, cannot be used for arm cax41 - bootstrap cax41 from scratch §3 (3 min) then snapshot arm-clean
+
+hcloud server create --name htz-v15-s3 --type cax41 --image ubuntu-22.04 --ssh-key macbook-niels --location nbg1 --network tradingnet --enable-ipv6 &
+hcloud server create --name htz-v15-s4 --type cax41 --image ubuntu-22.04 --ssh-key macbook-niels --location nbg1 --network tradingnet --enable-ipv6 &
+hcloud server create --name htz-v15-s5 --type cax41 --image ubuntu-22.04 --ssh-key macbook-niels --location nbg1 --network tradingnet --enable-ipv6 &
+wait; hcloud server list | grep htz-v15
+# add s3/s4/s5 to ~/.ssh/config on Mac + S1 (copy §7 block, Host s3/s4/s5)
+# bootstrap each s3/s4/s5 from scratch §3 (useradd, rsync --exclude='*.npz' from S1, venv, V12_NPZ_CACHE=32)
+# then §4 first NPZ + launch, §5 gate, then shard 10-15 syms each (use 7-way split: awk "NR%7==i" /tmp/100.txt)
+```
+
+**100-way split for market open:**
+```bash
+cat > /tmp/split100.sh << 'EOS'
+cat << 'LIST' > /tmp/100.txt
+# 24 MANDATORY LONG + 12 SHORT =36 + 39 TRB LONG + 25 TRB SHORT =100 (pick 100 of 125 to fill 08:00)
+# take all 36 MANDATORY + 25 of each TRB to reach 100
+LIST
+# use 7-way for S1(16c) + S2(4c) + 3×cax41(16c) =5 boxes: give cax41 15 syms each, cx33 10 syms
+for i in 0 1 2 3 4; do awk "NR%5==$((i+1))" /tmp/100.txt > "V15_SHARD_$((i+1))of5.txt"; echo "shard $((i+1)): $(wc -l < V15_SHARD_$((i+1))of5.txt)"; done
+# or 7-way: S1 15, S2 10, S3 15, S4 15, S5 15, S6 15, S7 15 =105 → trim 5
+EOS
+```
+
+**If you want 100 in 2h (not 4h):** add `2` more `cax41` (`htz-v15-s6/s7`) → `7` boxes `6×cax41 +1×cx33` `=100c` `=70 pilots concurrent` → `100 syms /70 ≈1.4 batches ×10 min ≈14 min`. Cost `6×$0.0777 +$0.016 = $0.482/h` → `$0.96` for `2h` until `08:00`.
+
+> `arm` note: `cax41` is `arm` `Ampere Altra` - `openpyxl/numpy/pandas/pyarrow` are pure Python/wheels for `arm` on `ubuntu-22.04` (tested `S1` `cax41` hel1 is already `arm` and runs `15` pilots `load 55` `30Gi`). Use `ubuntu-22.04` `arm` image, same `§3` bootstrap, `V12_NPZ_CACHE=32` fits `32GB`.
+
+> `Hourly billing` `hcloud` caps at monthly - delete `htz-v15-s3/s4/s5` after `08:00` present `hcloud server delete htz-v15-s3` etc - you only pay `3×$0.0777×4h ≈$0.93` for `100` complete `30D`.
+
+> `Current S1` is already `cax41 hel1` `16c 32GB` - adding `3×cax41 nbg1` keeps `tradingnet 10.0.0.0/24` `10.0.0.5/6/7` for `s3/s4/s5` - no `cx33` available to add.
