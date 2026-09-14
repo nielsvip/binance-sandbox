@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-09-14T11:23:07.424113+00:00",
+  "timestamp": "2026-09-14T11:43:26.951406+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 94
+    "total_ranked": 95
   },
   "unified_ranking": [
+    {
+      "symbol": "AMATUSDT",
+      "net_score": -12.2,
+      "long_score": 0,
+      "short_score": 12.2
+    },
+    {
+      "symbol": "MANAUSDT",
+      "net_score": -11.3,
+      "long_score": 0,
+      "short_score": 11.3
+    },
     {
       "symbol": "COMPUSDT",
       "net_score": 0,
@@ -295,6 +307,12 @@
       "short_score": 0
     },
     {
+      "symbol": "XLMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RVNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -415,12 +433,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AMATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GALAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -440,12 +452,6 @@
     },
     {
       "symbol": "MUUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MANAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -517,7 +523,7 @@
       "short_score": 0
     },
     {
-      "symbol": "AXSUSDT",
+      "symbol": "ZKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -530,6 +536,12 @@
     },
     {
       "symbol": "RLCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AXSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -560,30 +572,30 @@
     },
     {
       "symbol": "MSFTUSDT",
-      "net_score": 12.4,
-      "long_score": 12.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "XLMUSDT",
-      "net_score": 15.9,
-      "long_score": 15.9,
+      "net_score": 11.1,
+      "long_score": 11.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "XLMUSDT",
-      15.9,
-      0.19048
-    ],
-    [
       "MSFTUSDT",
-      12.4,
-      497.63
+      11.1,
+      497.65
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "AMATUSDT",
+      12.2,
+      426.37
+    ],
+    [
+      "MANAUSDT",
+      11.3,
+      0.07478
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

@@ -5052,5 +5052,23 @@
     ],
     "timestamp": "2026-09-14T10:26:50.237907+00:00",
     "price": 145.24
+  },
+  {
+    "symbol": "GOOGLUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.1x (from rankings)"
+    ],
+    "timestamp": "2026-09-14T11:29:40.716015+00:00",
+    "price": 343.92
+  },
+  {
+    "symbol": "HMSTRUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.0x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T11:31:56.311445+00:00",
+    "price": 0.0001613
   }
 ]
