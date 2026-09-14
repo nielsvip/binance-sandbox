@@ -5106,5 +5106,14 @@
     ],
     "timestamp": "2026-09-14T12:20:14.779885+00:00",
     "price": 487.98624583
+  },
+  {
+    "symbol": "FLOWUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 8.9x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T12:54:52.125815+00:00",
+    "price": 0.02814597
   }
 ]
