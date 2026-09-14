@@ -9344,12 +9344,14 @@ async def gap_moc_and_morning_loop(trade_manager):
                 pass
             # PER-SYMBOL ONLY — market-wide bias deprecated; kept only for recording
             try:
-                positions = trade_manager.position_manager.get_positions_by_account('trb') or {}
+                positions = trade_manager.position_manager.get_positions_by_account('trb') or {}  # TRA excluded from preventive gap closes per user 2026-09-14 — only trb (trc sandbox separate)
             except Exception as _pe:
                 logger.error(f"[GAP_MOC] positions err: {_pe}")
                 continue
             for pk, pos in list(positions.items()):
                 try:
+                    if pk.startswith('tra:'):
+                        continue  # preventive gap closes do NOT apply to tra
                     if pk in _gap_exit_done:
                         continue
                     amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0), 0))
@@ -9382,27 +9384,46 @@ async def gap_moc_and_morning_loop(trade_manager):
                         if _gap_close_per_symbol_should_close(is_long, avg_close_gap):
                             if avg_close_gap is not None and abs(avg_close_gap) > thr_close:
                                 close_gap_should = True
+                    # INTRADAY 90m same-direction sentinel (user URGENT 2026-09-14 15:32: close all sym_sides that gap same direction in last 90m)
+                    # Uses 60-90m proxy (close_1h_prev) vs current_price. LONG + up >0.3% => close, SHORT + down <-0.3% => close. This is MOC lock-in.
+                    intraday_same_dir = False
+                    _intraday_pct = None
+                    try:
+                        _cp = float(ind.get('current_price', 0) or ind.get('close_1m', 0) or 0)
+                        _prev = float(ind.get('close_1h_prev', 0) or ind.get('close_15m_prev', 0) or 0)
+                        if _cp and _prev and _prev != 0:
+                            _intraday_pct = (_cp - _prev) / _prev * 100.0
+                            _intraday_thr = float(_cfg_auto('GAP_MOC_INTRADAY_PCT', 0.30))
+                            if is_long and _intraday_pct > _intraday_thr:
+                                intraday_same_dir = True
+                            elif not is_long and _intraday_pct < -_intraday_thr:
+                                intraday_same_dir = True
+                    except Exception:
+                        pass
                     vv_danger = _is_near_dc4_high_with_wt_down(ind, is_long)
-                    if not vv_danger and not open_gap_should and not close_gap_should:
+                    if not vv_danger and not open_gap_should and not close_gap_should and not intraday_same_dir:
                         if avg_gap is None and avg_close_gap is None:
                             continue
                         # if both gaps near 0 / not wrong-way, keep overnight (only VV closes)
                         # check if at least one sentinel says wrong-way beyond thr
                         if avg_gap is not None and abs(avg_gap) <= thr and (avg_close_gap is None or abs(avg_close_gap) <= thr_close):
                             continue
-                        if not open_gap_should and not close_gap_should:
+                        if not open_gap_should and not close_gap_should and not intraday_same_dir:
                             continue
                         # Wrong-way avg gap beyond thresh → close (gap-down risk for longs, gap-up for shorts, close-gap up for shorts)
                     # Choose reason tag based on which sentinel fired
-                    _which = "OPEN" if open_gap_should else ("CLOSE" if close_gap_should else "VV")
-                    _avg_for_log = avg_gap if open_gap_should else (avg_close_gap if close_gap_should else avg_gap if avg_gap is not None else avg_close_gap)
-                    _thr_for_log = thr if open_gap_should else thr_close
+                    _which = "OPEN" if open_gap_should else ("CLOSE" if close_gap_should else ("INTRADAY" if intraday_same_dir else "VV"))
+                    _avg_for_log = avg_gap if open_gap_should else (avg_close_gap if close_gap_should else (_intraday_pct if intraday_same_dir else (avg_gap if avg_gap is not None else avg_close_gap)))
+                    _thr_for_log = thr if open_gap_should else (thr_close if close_gap_should else (_intraday_thr if intraday_same_dir else thr_close))
                     # Require small top/bottom unless at hard deadline (close-gap shares same top logic)
                     is_top = _is_small_top_for_gap_exit(ind, is_long)
-                    _need_top = bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True)) if _which == "OPEN" else bool(_cfg_auto('GAP_CLOSE_MOC_REQUIRE_TOP', True))
-                    _at_deadline = at_deadline if _which != "CLOSE" else (0 < mins_to_close <= _cg_deadline and bool(_cfg_auto('GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE', True)))
+                    _need_top = bool(_cfg_auto('GAP_MOC_REQUIRE_TOP', True)) if _which in ("OPEN", "INTRADAY") else bool(_cfg_auto('GAP_CLOSE_MOC_REQUIRE_TOP', True))
+                    # EMERGENCY 2026-09-14 15:32 ET: 30m left, NOTHING CLOSED — force gap exits ignoring small-top (user URGENT)
+                    # Make gap-risk closes bypass top in last 30m (deadline was 10m was too late); also honor 30m emergency window
+                    _emergency_force = mins_to_close <= 30 and (open_gap_should or close_gap_should or intraday_same_dir)
+                    _at_deadline = (at_deadline or _emergency_force) if _which != "CLOSE" else ((0 < mins_to_close <= _cg_deadline or _emergency_force) and bool(_cfg_auto('GAP_CLOSE_MOC_FORCE_MOC_AT_CLOSE', True)))
                     if not is_top and not _at_deadline:
-                        if mins_to_close % 15 == 0:
+                        if mins_to_close % 15 == 0 or mins_to_close <= 30:
                             _av_disp = f"{_avg_for_log:+.2f}" if _avg_for_log is not None else "NA"
                             logger.info(f"[GAP_MOC] defer {pk}: {_which} avg={_av_disp}% thr={_thr_for_log} need_top={_need_top} at_deadline={_at_deadline} — waiting for top")
                         continue
