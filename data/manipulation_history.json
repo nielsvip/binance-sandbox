@@ -5115,5 +5115,23 @@
     ],
     "timestamp": "2026-09-14T12:54:52.125815+00:00",
     "price": 0.02814597
+  },
+  {
+    "symbol": "MSFTUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 11.5x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T13:06:05.780688+00:00",
+    "price": 498.39937402
+  },
+  {
+    "symbol": "CRDOUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 12.1x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T13:18:20.001867+00:00",
+    "price": 152.41
   }
 ]

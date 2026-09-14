@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-09-14 13:04 UTC",
- "total_capital_usd": 11.97,
+ "generated_at": "2026-09-14 13:19 UTC",
+ "total_capital_usd": 3.64,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.97,
-  "C": 0.0
+  "B": 0.0,
+  "C": 3.64
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "inf:WIFUSDC_SHORT"
+ "losers": [
+  "men:XLMUSDT_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:WIFUSDC_SHORT",
-   "symbol": "WIFUSDC",
-   "account": "inf",
-   "value_usd": 11.97,
-   "gain_pct": -0.092,
-   "tier": "B",
-   "perf_mult": 0.73,
-   "amt": 64.1,
-   "mark": 0.18677079
+   "pk": "men:XLMUSDT_LONG",
+   "symbol": "XLMUSDT",
+   "account": "men",
+   "value_usd": 3.64,
+   "gain_pct": 0.692,
+   "tier": "C",
+   "perf_mult": 0.53,
+   "amt": 19.0,
+   "mark": 0.19167
   }
  ]
 }
