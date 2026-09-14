@@ -1,15 +1,15 @@
-PERFORMANCE REPORT — 2026-09-14 17:09 UTC
+PERFORMANCE REPORT — 2026-09-14 17:53 UTC
 ================================================================================
-Total: 159 symbols | A=2 B=121 C=36
+Total: 159 symbols | A=3 B=120 C=36
 Window: 14 days | Min trades: 5
 
---- TIER A (2 symbols) ---
+--- TIER A (3 symbols) ---
           ZECUSDT  WR=79%  avg=+1.30%  total=+42.8%  trades= 28  mult=10.00
+             DELL  WR=92%  avg=+2.77%  total=+38.2%  trades= 12  mult=10.00
              INTC  WR=80%  avg=+1.15%  total=+12.0%  trades= 10  mult=7.58
 
---- TIER B (121 symbols) ---
+--- TIER B (120 symbols) ---
              CRWV  WR=86%  avg=+8.10%  total=+71.0%  trades=  7  mult=6.40
-             DELL  WR=89%  avg=+2.43%  total=+23.6%  trades=  9  mult=8.20
              COHR  WR=100%  avg=+7.91%  total=+16.4%  trades=  2  mult=1.00
              QBTS  WR=100%  avg=+4.61%  total=+14.3%  trades=  3  mult=1.00
               ETN  WR=33%  avg=+1.50%  total=+9.1%  trades=  6  mult=2.80
@@ -169,7 +169,7 @@ Window: 14 days | Min trades: 5
              AXON  WR=0%  avg=-4.53%  total=-40.1%  trades= 11  mult=0.18
 
 SUMMARY:
-  Total PnL (all symbols): -38.0%
+  Total PnL (all symbols): -23.3%
   Avg win rate: 48%
-  A-tier avg mult: 8.79
+  A-tier avg mult: 9.19
   C-tier avg mult: 0.44
