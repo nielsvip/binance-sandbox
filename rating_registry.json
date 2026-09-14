@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-09-14T10:18:47.831253+00:00",
+  "timestamp": "2026-09-14T10:39:20.493803+00:00",
   "market_state": {
-    "panic": false,
+    "panic": true,
     "euphoria": false,
     "total_ranked": 87
   },
@@ -11,18 +11,6 @@
       "net_score": -30,
       "long_score": 0,
       "short_score": 30
-    },
-    {
-      "symbol": "AMATUSDT",
-      "net_score": -12.7,
-      "long_score": 0,
-      "short_score": 12.7
-    },
-    {
-      "symbol": "NVDAUSDT",
-      "net_score": -10.9,
-      "long_score": 0,
-      "short_score": 10.9
     },
     {
       "symbol": "ALGOUSDT",
@@ -68,6 +56,12 @@
     },
     {
       "symbol": "OPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -266,6 +260,12 @@
     },
     {
       "symbol": "ETHUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -524,33 +524,23 @@
     },
     {
       "symbol": "BTCUSDC",
-      "net_score": 11.1,
-      "long_score": 11.1,
+      "net_score": 10.6,
+      "long_score": 10.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "BTCUSDC",
-      11.1,
-      77980.06650712
+      10.6,
+      77937.66361971
     ]
   ],
   "top_shorts": [
     [
       "STORJUSDT",
       30,
-      0.03099107
-    ],
-    [
-      "AMATUSDT",
-      12.7,
-      431.39768644
-    ],
-    [
-      "NVDAUSDT",
-      10.9,
-      211.96575359
+      0.0309247
     ]
   ],
   "hedge_usage": {

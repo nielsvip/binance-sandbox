@@ -5034,5 +5034,23 @@
     ],
     "timestamp": "2026-09-14T10:15:20.623977+00:00",
     "price": 794.40153931
+  },
+  {
+    "symbol": "VIRTUALUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 10.3x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T10:25:50.390004+00:00",
+    "price": 0.6198
+  },
+  {
+    "symbol": "ORCLUSDT",
+    "severity": 2,
+    "reasons": [
+      "WICK_RATIO_3M: 13.7x (wick >> body = manipulation candle)"
+    ],
+    "timestamp": "2026-09-14T10:26:50.237907+00:00",
+    "price": 145.24
   }
 ]
