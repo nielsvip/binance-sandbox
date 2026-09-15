@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T08:25:44.928418+00:00",
+  "timestamp": "2026-09-15T08:41:53.970779+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,34 @@
   },
   "unified_ranking": [
     {
-      "symbol": "TIAUSDC",
-      "net_score": -12.3,
+      "symbol": "RVNUSDT",
+      "net_score": -14.3,
       "long_score": 0,
-      "short_score": 12.3
+      "short_score": 14.3
+    },
+    {
+      "symbol": "DELLUSDT",
+      "net_score": -13.4,
+      "long_score": 0,
+      "short_score": 13.4
+    },
+    {
+      "symbol": "TIAUSDC",
+      "net_score": -12.6,
+      "long_score": 0,
+      "short_score": 12.6
+    },
+    {
+      "symbol": "CRMUSDT",
+      "net_score": -11.8,
+      "long_score": 0,
+      "short_score": 11.8
+    },
+    {
+      "symbol": "SPYUSDT",
+      "net_score": -10.0,
+      "long_score": 0,
+      "short_score": 10.0
     },
     {
       "symbol": "BABAUSDT",
@@ -86,18 +110,6 @@
     },
     {
       "symbol": "ETHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "RVNUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XMRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -194,12 +206,6 @@
     },
     {
       "symbol": "ZROUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SPYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -302,12 +308,6 @@
     },
     {
       "symbol": "AMATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -469,18 +469,44 @@
       "short_score": 0
     },
     {
-      "symbol": "DELLUSDT",
-      "net_score": 0,
-      "long_score": 0,
+      "symbol": "XMRUSDT",
+      "net_score": 13.0,
+      "long_score": 13.0,
       "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "XMRUSDT",
+      13.0,
+      519.38
+    ]
+  ],
   "top_shorts": [
     [
+      "RVNUSDT",
+      14.3,
+      0.002119
+    ],
+    [
+      "DELLUSDT",
+      13.4,
+      528.63027604
+    ],
+    [
       "TIAUSDC",
-      12.3,
-      0.3458
+      12.6,
+      0.34580547
+    ],
+    [
+      "CRMUSDT",
+      11.8,
+      255.46910409
+    ],
+    [
+      "SPYUSDT",
+      10.0,
+      757.6965707
     ]
   ],
   "hedge_usage": {
