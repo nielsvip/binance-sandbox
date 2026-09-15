@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T13:54:10.296609+00:00",
+  "timestamp": "2026-09-15T14:11:59.067469+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "BTCDOMUSDT",
-      "net_score": -13.6,
+      "symbol": "SPCXUSDT",
+      "net_score": -16.3,
       "long_score": 0,
-      "short_score": 13.6
+      "short_score": 16.3
     },
     {
       "symbol": "CRMUSDT",
@@ -32,12 +32,6 @@
     },
     {
       "symbol": "RAYSOLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRDOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -217,12 +211,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SPCXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LITEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -266,6 +254,12 @@
     },
     {
       "symbol": "CIENUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -320,12 +314,6 @@
     },
     {
       "symbol": "ZENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "QCOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -409,6 +397,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GRAMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -428,12 +422,6 @@
     },
     {
       "symbol": "COHRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "METAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -463,35 +451,57 @@
       "short_score": 0
     },
     {
-      "symbol": "MRVLUSDT",
-      "net_score": 10.6,
-      "long_score": 10.6,
+      "symbol": "CRDOUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
       "short_score": 0
     },
     {
       "symbol": "NVDAUSDT",
-      "net_score": 13.0,
-      "long_score": 13.0,
+      "net_score": 12.6,
+      "long_score": 12.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "QCOMUSDT",
+      "net_score": 15.3,
+      "long_score": 15.3,
+      "short_score": 0
+    },
+    {
+      "symbol": "METAUSDT",
+      "net_score": 17.4,
+      "long_score": 17.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "NVDAUSDT",
-      13.0,
-      213.6906623
+      "METAUSDT",
+      17.4,
+      670.1888749
     ],
     [
-      "MRVLUSDT",
-      10.6,
-      224.76494761
+      "QCOMUSDT",
+      15.3,
+      187.89734238
+    ],
+    [
+      "NVDAUSDT",
+      12.6,
+      213.21723966
+    ],
+    [
+      "CRDOUSDT",
+      11.7,
+      153.49
     ]
   ],
   "top_shorts": [
     [
-      "BTCDOMUSDT",
-      13.6,
-      5181.7
+      "SPCXUSDT",
+      16.3,
+      146.93
     ]
   ],
   "hedge_usage": {

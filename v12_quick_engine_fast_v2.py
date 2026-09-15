@@ -9765,6 +9765,20 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
             _slope_map = {'1h': 24.0, '4h': 6.0, 'D': 1.0, '15m': 96.0} if _is_crypto_venue else {'1h': 6.5, '4h': 1.625, 'D': 1.0, '15m': 26.0}
             _slope_factor = _slope_map.get(_stdev_tf, 1.0)
             _slope_day = _stdev_sl * _slope_factor
+            try:
+                _lb_map = {'D': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_D', 180)), '4h': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_4H', 180)), '1h': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_1H', 168)), '15m': int(getattr(cfg, 'STDEV_SLOPE_LOOKBACK_15M', 96))}
+                _lb = float(_lb_map.get(_stdev_tf, 180))
+                _lb_def = float({'D': 180, '4h': 180, '1h': 168, '15m': 96}.get(_stdev_tf, 180))
+                if _lb > 0 and _lb != _lb_def:
+                    _slope_day = _slope_day * (_lb_def / _lb)
+            except Exception:
+                pass
+            try:
+                _bm = float(getattr(cfg, 'STDEV_BAND_MULTIPLIER', 2.5))
+                if _bm != 2.5 and _bm > 0:
+                    _edge = np.clip(_edge * (_bm / 2.5), 0.0, 1.0)
+            except Exception:
+                pass
             _edge = (1.0 - _stdev_pb) if is_long else _stdev_pb
             _edge = np.clip(_edge, 0.0, 1.0)
             if _stdev_mode == "bottom_to_top":
