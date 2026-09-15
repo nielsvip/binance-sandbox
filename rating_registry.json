@@ -1,23 +1,11 @@
 {
-  "timestamp": "2026-09-15T06:17:35.727809+00:00",
+  "timestamp": "2026-09-15T06:35:34.897045+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
-    {
-      "symbol": "XTZUSDT",
-      "net_score": -15.5,
-      "long_score": 0,
-      "short_score": 15.5
-    },
-    {
-      "symbol": "IOTXUSDT",
-      "net_score": -13.6,
-      "long_score": 0,
-      "short_score": 13.6
-    },
     {
       "symbol": "CRMUSDT",
       "net_score": 0,
@@ -61,6 +49,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IOTXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -68,6 +62,12 @@
     },
     {
       "symbol": "USARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -176,6 +176,12 @@
     },
     {
       "symbol": "GOOGLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -467,33 +473,10 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "LLYUSDT",
-      "net_score": 10.8,
-      "long_score": 10.8,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "LLYUSDT",
-      10.8,
-      1146.66
-    ]
-  ],
-  "top_shorts": [
-    [
-      "XTZUSDT",
-      15.5,
-      0.26443648
-    ],
-    [
-      "IOTXUSDT",
-      13.6,
-      0.0030774
-    ]
-  ],
+  "top_longs": [],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
