@@ -3615,8 +3615,8 @@ class QuickConfig:
     TF_HTF1: str = "1h"
     TF_HTF3: str = "D"
     TF_MACRO: str = "D"
-    TRADIER_DC_DAYTRADE_ENABLED: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-08-09: was silently True (kill-switch-off violation) — "DC Daytrade" is on CLAUDE.md's banned-without-approval strategy list; do not flip True without explicit user sign-off
-    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 240
+    TRADIER_DC_DAYTRADE_ENABLED: bool = False  # 2026-09-15: OFF by default per user - max hold also 0, use DC/BB/WT wait fallback
+    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 0
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005
