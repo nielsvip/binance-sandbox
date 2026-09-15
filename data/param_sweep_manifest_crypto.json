@@ -1,7 +1,7 @@
 {
   "mode": "crypto",
   "generated_at": "2026-08-02T21:29:44.539480+00:00",
-  "n_params": 2057,
+  "n_params": 2059,
   "tier_counts": {
     "VEC_SCREEN": 331,
     "ENGINE_SCREEN": 219,
@@ -81288,6 +81288,80 @@
       "best_value_seen": null,
       "best_mean_pool_sharpe": null,
       "support_obs": 0
+    },
+    "DC_DAYTRADE_ENABLED": {
+      "best_mean_pool_sharpe": null,
+      "best_value_seen": null,
+      "consumed_by": {
+        "live": true,
+        "tier2": true,
+        "vec": true
+      },
+      "default": true,
+      "grid_contract_evidence": null,
+      "range_method": "bool_toggle",
+      "range_validation": {
+        "domain": {
+          "kind": "boolean",
+          "maximum": null,
+          "minimum": null
+        },
+        "reason": "added 2026-09-15 DAYTRADE as sweepable True|False after being always ON",
+        "rejected_values": [],
+        "status": "VALID",
+        "valid_values": [
+          true,
+          false
+        ]
+      },
+      "runtime_control_not_alpha": false,
+      "support_obs": 0,
+      "sweep_tier": "ENGINE_SCREEN",
+      "sweepable": true,
+      "swept_in_history": false,
+      "test_values": [
+        true,
+        false
+      ],
+      "type": "bool"
+    },
+    "DC_DAYTRADE_MAX_HOLD_MINUTES": {
+      "best_mean_pool_sharpe": null,
+      "best_value_seen": null,
+      "consumed_by": {
+        "live": true,
+        "tier2": true,
+        "vec": true
+      },
+      "default": 240,
+      "grid_contract_evidence": null,
+      "range_method": "bool_toggle",
+      "range_validation": {
+        "domain": {
+          "kind": "boolean",
+          "maximum": null,
+          "minimum": null
+        },
+        "reason": "added 2026-09-15 DAYTRADE as sweepable True|False after being always ON",
+        "rejected_values": [],
+        "status": "VALID",
+        "valid_values": [
+          true,
+          false
+        ]
+      },
+      "runtime_control_not_alpha": false,
+      "support_obs": 0,
+      "sweep_tier": "ENGINE_SCREEN",
+      "sweepable": true,
+      "swept_in_history": false,
+      "test_values": [
+        0,
+        60,
+        120,
+        240
+      ],
+      "type": "bool"
     }
   }
 }

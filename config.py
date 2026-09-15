@@ -5395,6 +5395,10 @@ class Config:
     WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # PORTED from TradierConfig 2026-08-17
     WT_EXIT_VELOCITY_TRADIER: bool = False  # SWEEP: velocity makes zero difference. Cross is simpler. ; DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     WT_EXIT_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, WT_EXIT_MIN_TFS_TRADIER actually gates exits. Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
+    # === WT WAIT EXITS — crypto parity 2026-09-15 (mirror of TradierConfig) ===
+    WT_15M_LH_WAIT_EXIT_ENABLED: bool = False  # WT 15m lower-high + DC/BB/WT wait — vv
+    WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED: bool = False  # WT LH while price HH (divergence) + wait
+    WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = True  # gate: technical exits require LH/div wait
     WT_FORCE_OPEN_FRESH_CROSS_ONLY: bool = False        # [2026-06-27] True=fire only on a FRESH WT cross event (wt_cross_bull/bear), not the standing wt1>wt2 state. Standing-state on higher TF churned MORE (688→940 tr/sym/yr); cross-event fires once per cross. A/B-tested.  # PORTED from TradierConfig 2026-08-17
     WT_FORCE_OPEN_FRESH_MAX_BARS: int = 0               # [2026-06-27] freshness window for FRESH_CROSS_ONLY. 0=this bar only (strictest); N=within N bars of cross (uses wt_cross_bars_ago + wt_cross_rising direction).  # PORTED from TradierConfig 2026-08-17
     WT_FORCE_OPEN_TRIGGER_TF: str = "5m"                # [2026-06-26] force-open WT-cross trigger TF. 5m=current (fires every 5m bar=churn); 15m/1h fire less=less churn. A/B-tested 5m vs 15m vs 1h vs OFF; keep best.  # PORTED from TradierConfig 2026-08-17

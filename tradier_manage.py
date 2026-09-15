@@ -16907,8 +16907,8 @@ class StockStrategy:
         score = 0.0
         parts = []
         tfs = ('5m', '15m', '1h', '4h', 'D')
-        # --- 1. WT DIVERGENCE: price vs WT peak/trough — vector retrace WT_DIV_EXIT_ENABLED (was VEC_PATHS_ONLY, now mirrored live) ---
-        if _cfg_auto('WT_DIV_EXIT_ENABLED', True):
+        # --- 1. WT DIVERGENCE: price vs WT peak/trough — 2026-09-15 FIX: default OFF, must wait for LH/div + DC/BB/WT (never mid-rally)
+        if _cfg_auto('WT_DIV_EXIT_ENABLED', False):
             for tf in ('1h', '4h', 'D'):
                 wt1 = g(f'wt1_{tf}'); pk_val = g(f'wt_peak_value_{tf}'); tr_val = g(f'wt_trough_value_{tf}')
                 close_now = g(f'close_{tf}', current_price); close_prev = g(f'close_{tf}_prev')
@@ -17018,6 +17018,55 @@ class StockStrategy:
             _exh_against = sum(1 for tf in ('15m','1h','4h') if (abs(g(f'wt1_{tf}')) > 80 if is_long else abs(g(f'wt1_{tf}')) > 80))
             if _exh_against >= _exh_min:
                 score += 5; parts.append(f"WT_EXHST_{_exh_against}tf")
+        # 2026-09-15 WAIT exits — lower-high / divergence + DC/BB/WT confirmation (never mid-rally)
+        # WT_15M_LH_WAIT: WT 15m peak LH (lower high) + wait for DC high/low, BB extreme, or WT cross
+        if _cfg_auto('WT_15M_LH_WAIT_EXIT_ENABLED', False):
+            try:
+                _wt_pk_s = str(i.get('wt_peak_structure_15m', ''))
+                _wt_tr_s = str(i.get('wt_trough_structure_15m', ''))
+                _wt1_15m = g('wt1_15m'); _wt2_15m = g('wt2_15m')
+                _dc_pos_15m = g('dc_position_15m', 0.5)
+                _bb_15m = g('bb_pct_b_15m', 0.5)
+                _wt_cross_against = ( _wt1_15m < _wt2_15m) if is_long else ( _wt1_15m > _wt2_15m)
+                if is_long and _wt_pk_s == 'LH':
+                    _wait_ok = (_dc_pos_15m > 0.65) or (_bb_15m > 0.70) or _wt_cross_against
+                    if _wait_ok:
+                        score += 18; parts.append(f"WT15_LH_WAIT(dc{_dc_pos_15m:.2f} bb{_bb_15m:.2f} cross{_wt_cross_against})")
+                elif not is_long and _wt_tr_s == 'LL':
+                    _wait_ok = (_dc_pos_15m < 0.35) or (_bb_15m < 0.30) or _wt_cross_against
+                    if _wait_ok:
+                        score += 18; parts.append(f"WT15_HL_WAIT_LL(dc{_dc_pos_15m:.2f} bb{_bb_15m:.2f})")
+                # also handle int-encoded LH (-1) from NPZ path parity
+                if is_long and str(_wt_pk_s) == '-1':
+                    _wait_ok = (_dc_pos_15m > 0.65) or (_bb_15m > 0.70) or _wt_cross_against
+                    if _wait_ok:
+                        score += 0  # already counted via string path
+                elif not is_long and str(_wt_tr_s) == '-1':
+                    _wait_ok = (_dc_pos_15m < 0.35) or (_bb_15m < 0.30) or _wt_cross_against
+                    if _wait_ok:
+                        score += 0
+            except Exception:
+                pass
+        # WT_DIVERGENCE_VV_SHORT: WT LH while price HH (bear div for longs) + wait
+        if _cfg_auto('WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED', False):
+            try:
+                _div = str(i.get('wt_divergence_15m', '')); _div_int = i.get('wt_divergence_15m', 0)
+                _wt1_15m = g('wt1_15m'); _wt2_15m = g('wt2_15m')
+                _dc_pos_15m = g('dc_position_15m', 0.5)
+                _bb_15m = g('bb_pct_b_15m', 0.5)
+                _wt_cross_against = ( _wt1_15m < _wt2_15m) if is_long else ( _wt1_15m > _wt2_15m)
+                _is_bear_div = (_div == 'BEAR' or _div_int == -1 or _div == '-1')
+                _is_bull_div = (_div == 'BULL' or _div_int == 1 or _div == '1')
+                if is_long and _is_bear_div:
+                    _wait_ok = (_dc_pos_15m > 0.65) or (_bb_15m > 0.70) or _wt_cross_against
+                    if _wait_ok:
+                        score += 22; parts.append(f"DIV_VV_BEAR_WAIT(dc{_dc_pos_15m:.2f} bb{_bb_15m:.2f})")
+                elif not is_long and _is_bull_div:
+                    _wait_ok = (_dc_pos_15m < 0.35) or (_bb_15m < 0.30) or _wt_cross_against
+                    if _wait_ok:
+                        score += 22; parts.append(f"DIV_VV_BULL_WAIT(dc{_dc_pos_15m:.2f})")
+            except Exception:
+                pass
         # MIN_EXIT_GAIN — require minimum gain to exit (prevents premature exits)
         _min_exit_gain = float(_cfg_auto('MIN_EXIT_GAIN_PCT', 0))
         if _min_exit_gain > 0 and gain < _min_exit_gain:

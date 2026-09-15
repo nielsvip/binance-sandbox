@@ -1885,6 +1885,12 @@ class TradierConfig:
     K_LOWER_HIGH_EXIT_ENABLED: bool = False        # v8 engine: exit if k peaks below extreme and turns down
     K_LOWER_HIGH_LTF_THRESHOLD: float = 65.0     # k_5m must reach >= 65 to qualify as failed rally
     K_LOWER_HIGH_EXTREME: float = 95.0           # only fires if k_prev < 95 (didn't reach true extreme)
+    # === WT WAIT EXITS — 2026-09-15 USER: never cut mid-rally/demise, wait for lower-high/divergence + DC/BB/WT confirmation ===
+    # All default OFF. When ON they wait for a lower-high (or divergence) AND a structural confirmation
+    # (DC high/low, BB extreme, or WT cross) so exits fire at the top, not in the middle of the move.
+    WT_15M_LH_WAIT_EXIT_ENABLED: bool = False    # WT 15m lower-high + wait for DC/BB high-low or WT cross — exit at LH, not mid-rally
+    WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED: bool = False  # WT lower-high while price higher than prev cross (vv short divergence) + DC/BB/WT wait
+    WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = True  # when True, ALL WT technical exits (DIV/ACCEL/MOMENTUM/K_LH) require LH/divergence confirmation before firing
     STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
     # ═══ D4 BREAKOUT MULTI-LUNG (stocks, 2026-04-16) — extracted from ez_breakout_agent.py ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung_tradier delivers Sharpe > 2 on 128-stock × 2yr.
