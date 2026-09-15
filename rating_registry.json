@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T17:43:14.561243+00:00",
+  "timestamp": "2026-09-15T18:02:55.032437+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,21 @@
   "unified_ranking": [
     {
       "symbol": "SPCXUSDT",
-      "net_score": -12.8,
+      "net_score": -15.3,
       "long_score": 0,
-      "short_score": 12.8
+      "short_score": 15.3
+    },
+    {
+      "symbol": "LLYUSDT",
+      "net_score": -11.6,
+      "long_score": 0,
+      "short_score": 11.6
+    },
+    {
+      "symbol": "PYPLUSDT",
+      "net_score": -10.0,
+      "long_score": 0,
+      "short_score": 10.0
     },
     {
       "symbol": "CRMUSDT",
@@ -187,12 +199,6 @@
       "short_score": 0
     },
     {
-      "symbol": "LLYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZROUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -271,12 +277,6 @@
       "short_score": 0
     },
     {
-      "symbol": "PYPLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BMNRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -320,12 +320,6 @@
     },
     {
       "symbol": "ZENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "QCOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -473,14 +467,36 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "QCOMUSDT",
+      "net_score": 11.9,
+      "long_score": 11.9,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "QCOMUSDT",
+      11.9,
+      189.59
+    ]
+  ],
   "top_shorts": [
     [
       "SPCXUSDT",
-      12.8,
-      144.02
+      15.3,
+      143.48
+    ],
+    [
+      "LLYUSDT",
+      11.6,
+      1140.92559489
+    ],
+    [
+      "PYPLUSDT",
+      10.0,
+      53.86
     ]
   ],
   "hedge_usage": {
