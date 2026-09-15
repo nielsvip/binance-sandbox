@@ -21527,7 +21527,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         held_bars = i - pos['entry_bar']
 
         if augment_sig[i] and _augment_allowed(cfg, live_pnl_pct):
-            add_qty = _size_qty(cfg, pos['qty'] * px * augment_mult[i], px) if is_tradier else pos['qty'] * augment_mult[i]
+            # STDEV_SLOPE_SIZING ladder applies to augment as well (user mandate: entry AND augment sizing)
+            _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0
+            _aug_add_mult = float(augment_mult[i]) * _aug_regime
+            add_qty = _size_qty(cfg, pos['qty'] * px * _aug_add_mult, px) if is_tradier else pos['qty'] * _aug_add_mult
             if add_qty > 0:
                 new_qty = pos['qty'] + add_qty
                 pos['avg_price'] = (pos['avg_price'] * pos['qty'] + px * add_qty) / new_qty
