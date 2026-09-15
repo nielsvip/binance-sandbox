@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-15T02:06:54.930886+00:00",
+  "timestamp": "2026-09-15T02:23:03.034918+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
-    {
-      "symbol": "WLFIUSDC",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
-    },
     {
       "symbol": "CRMUSDT",
       "net_score": 0,
@@ -115,6 +109,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SANDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -127,7 +127,7 @@
       "short_score": 0
     },
     {
-      "symbol": "SANDUSDT",
+      "symbol": "WLFIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -367,12 +367,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BABAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "DELLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -473,16 +467,22 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "BABAUSDT",
+      "net_score": 10.0,
+      "long_score": 10.0,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [
+  "top_longs": [
     [
-      "WLFIUSDC",
-      10.1,
-      0.05710868
+      "BABAUSDT",
+      10.0,
+      110.23
     ]
   ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
