@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T04:04:56.890823+00:00",
+  "timestamp": "2026-09-15T04:21:19.741526+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "XTZUSDT",
-      "net_score": -14.7,
+      "net_score": -10.9,
       "long_score": 0,
-      "short_score": 14.7
-    },
-    {
-      "symbol": "TIAUSDC",
-      "net_score": -11.3,
-      "long_score": 0,
-      "short_score": 11.3
+      "short_score": 10.9
     },
     {
       "symbol": "CRMUSDT",
@@ -295,6 +289,12 @@
       "short_score": 0
     },
     {
+      "symbol": "TIAUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -479,13 +479,8 @@
   "top_shorts": [
     [
       "XTZUSDT",
-      14.7,
-      0.26962951
-    ],
-    [
-      "TIAUSDC",
-      11.3,
-      0.3504
+      10.9,
+      0.2682
     ]
   ],
   "hedge_usage": {
