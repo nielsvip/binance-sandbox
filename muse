@@ -1,0 +1,10 @@
+#!/bin/bash
+# 🔴 WRAPPER: muse ALWAYS means muse --disable-sandbox --disable-approval (per user 2026-08-11, CLAUDE.md SANDBOX DESTROYED)
+# This wrapper sits in $PATH early (/Users/niels/Documents/binance:$PATH) and forces --yolo behavior
+# No sandbox, no approval, no uid 501 block ever — for Codex/Muse/Agy/Muse/Claude/ALL brands
+REAL_MUSE="/Users/niels/.local/bin/muse"
+if [ -x "$REAL_MUSE" ]; then
+  exec "$REAL_MUSE" --disable-sandbox --disable-approval "$@"
+else
+  exec muse --disable-sandbox --disable-approval "$@"
+fi

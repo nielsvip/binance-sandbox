@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T20:09:55.457131+00:00",
+  "timestamp": "2026-09-15T20:30:14.519414+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,22 +7,22 @@
   },
   "unified_ranking": [
     {
+      "symbol": "ETCUSDT",
+      "net_score": -13.1,
+      "long_score": 0,
+      "short_score": 13.1
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "net_score": -11.4,
+      "long_score": 0,
+      "short_score": 11.4
+    },
+    {
       "symbol": "ATOMUSDT",
-      "net_score": -12.6,
+      "net_score": -10.0,
       "long_score": 0,
-      "short_score": 12.6
-    },
-    {
-      "symbol": "IOTXUSDT",
-      "net_score": -11.2,
-      "long_score": 0,
-      "short_score": 11.2
-    },
-    {
-      "symbol": "MSFTUSDT",
-      "net_score": -10.6,
-      "long_score": 0,
-      "short_score": 10.6
+      "short_score": 10.0
     },
     {
       "symbol": "CRMUSDT",
@@ -62,6 +62,12 @@
     },
     {
       "symbol": "MUUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "IOTXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -163,12 +169,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ONDOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -230,12 +230,6 @@
     },
     {
       "symbol": "CRWVUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -332,6 +326,12 @@
     },
     {
       "symbol": "QCOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -478,19 +478,19 @@
   "top_longs": [],
   "top_shorts": [
     [
+      "ETCUSDT",
+      13.1,
+      7.195
+    ],
+    [
+      "ONDOUSDT",
+      11.4,
+      0.3306
+    ],
+    [
       "ATOMUSDT",
-      12.6,
-      1.526
-    ],
-    [
-      "IOTXUSDT",
-      11.2,
-      0.00294565
-    ],
-    [
-      "MSFTUSDT",
-      10.6,
-      498.01615928
+      10.0,
+      1.51359524
     ]
   ],
   "hedge_usage": {
