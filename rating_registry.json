@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T17:22:58.032986+00:00",
+  "timestamp": "2026-09-15T17:43:14.561243+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "SPCXUSDT",
-      "net_score": -13.2,
+      "net_score": -12.8,
       "long_score": 0,
-      "short_score": 13.2
-    },
-    {
-      "symbol": "BNCUSDT",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
+      "short_score": 12.8
     },
     {
       "symbol": "CRMUSDT",
@@ -151,6 +145,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PLTRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "INJUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -194,6 +194,12 @@
     },
     {
       "symbol": "ZROUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BNCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -467,31 +473,14 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
-      "net_score": 12.8,
-      "long_score": 12.8,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "PLTRUSDT",
-      12.8,
-      175.48214896
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "SPCXUSDT",
-      13.2,
-      144.12957423
-    ],
-    [
-      "BNCUSDT",
-      10.5,
-      4.849
+      12.8,
+      144.02
     ]
   ],
   "hedge_usage": {
