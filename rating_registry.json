@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-09-15T02:57:12.621681+00:00",
+  "timestamp": "2026-09-15T03:14:52.914304+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
+    {
+      "symbol": "XTZUSDT",
+      "net_score": -12.7,
+      "long_score": 0,
+      "short_score": 12.7
+    },
+    {
+      "symbol": "TIAUSDC",
+      "net_score": -11.9,
+      "long_score": 0,
+      "short_score": 11.9
+    },
     {
       "symbol": "CRMUSDT",
       "net_score": 0,
@@ -62,12 +74,6 @@
     },
     {
       "symbol": "USARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -289,12 +295,6 @@
       "short_score": 0
     },
     {
-      "symbol": "TIAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -476,7 +476,18 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "XTZUSDT",
+      12.7,
+      0.27161509
+    ],
+    [
+      "TIAUSDC",
+      11.9,
+      0.3507
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
