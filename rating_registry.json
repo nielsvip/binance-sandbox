@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T11:06:57.424796+00:00",
+  "timestamp": "2026-09-15T11:24:40.889529+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -26,6 +26,12 @@
     },
     {
       "symbol": "RAYSOLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRDOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -68,6 +74,12 @@
     },
     {
       "symbol": "UNIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASMLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -163,12 +175,6 @@
       "short_score": 0
     },
     {
-      "symbol": "GOOGLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -205,6 +211,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LITEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -224,6 +236,12 @@
     },
     {
       "symbol": "SOLUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SNDKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -379,6 +397,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GRAMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -392,6 +416,12 @@
     },
     {
       "symbol": "COHRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -427,94 +457,39 @@
       "short_score": 0
     },
     {
-      "symbol": "ASMLUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "SNDKUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
+      "symbol": "GOOGLUSDT",
+      "net_score": 10.2,
+      "long_score": 10.2,
       "short_score": 0
     },
     {
       "symbol": "AMATUSDT",
-      "net_score": 11.8,
-      "long_score": 11.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "LITEUSDT",
-      "net_score": 12.2,
-      "long_score": 12.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "MRVLUSDT",
-      "net_score": 12.7,
-      "long_score": 12.7,
+      "net_score": 14.3,
+      "long_score": 14.3,
       "short_score": 0
     },
     {
       "symbol": "CRWVUSDT",
-      "net_score": 13.5,
-      "long_score": 13.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "NVDAUSDT",
-      "net_score": 13.6,
-      "long_score": 13.6,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRDOUSDT",
-      "net_score": 16.1,
-      "long_score": 16.1,
+      "net_score": 15.0,
+      "long_score": 15.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "CRDOUSDT",
-      16.1,
-      153.23774672
-    ],
-    [
-      "NVDAUSDT",
-      13.6,
-      212.75
-    ],
-    [
       "CRWVUSDT",
-      13.5,
-      83.70309806
-    ],
-    [
-      "MRVLUSDT",
-      12.7,
-      221.68444174
-    ],
-    [
-      "LITEUSDT",
-      12.2,
-      852.99176509
+      15.0,
+      83.76
     ],
     [
       "AMATUSDT",
-      11.8,
-      431.0876263
+      14.3,
+      431.85
     ],
     [
-      "ASMLUSDT",
-      10.3,
-      1628.22547458
-    ],
-    [
-      "SNDKUSDT",
-      10.3,
-      1573.99
+      "GOOGLUSDT",
+      10.2,
+      346.80776642
     ]
   ],
   "top_shorts": [],
