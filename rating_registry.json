@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T10:35:00.842839+00:00",
+  "timestamp": "2026-09-15T10:50:17.400169+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -127,6 +127,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MSTRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -152,12 +158,6 @@
     },
     {
       "symbol": "ARMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRWVUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -451,50 +451,45 @@
       "short_score": 0
     },
     {
-      "symbol": "MRVLUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
+      "symbol": "NVDAUSDT",
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     },
     {
       "symbol": "AMATUSDT",
-      "net_score": 11.8,
-      "long_score": 11.8,
+      "net_score": 11.5,
+      "long_score": 11.5,
       "short_score": 0
     },
     {
-      "symbol": "NVDAUSDT",
-      "net_score": 14.1,
-      "long_score": 14.1,
+      "symbol": "CRWVUSDT",
+      "net_score": 13.1,
+      "long_score": 13.1,
       "short_score": 0
     },
     {
       "symbol": "CRDOUSDT",
-      "net_score": 15.2,
-      "long_score": 15.2,
+      "net_score": 14.7,
+      "long_score": 14.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "CRDOUSDT",
-      15.2,
-      153.19
+      14.7,
+      152.33551353
     ],
     [
-      "NVDAUSDT",
-      14.1,
-      212.59698949
+      "CRWVUSDT",
+      13.1,
+      83.52
     ],
     [
       "AMATUSDT",
-      11.8,
-      429.94
-    ],
-    [
-      "MRVLUSDT",
-      11.2,
-      220.85
+      11.5,
+      430.28449064
     ]
   ],
   "top_shorts": [],
