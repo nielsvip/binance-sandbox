@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Lifecycle-aware pilot — INTERNAL LIBRARY (month=30T/30C, yr=365C).
 
+🔴 ABSOLUTE RESUME LAW — 2026-09-15 USER MANDATE — RESTARTING FROM ZERO IS ABSOLUTELY PROHIBITED 🔴
+Every trial's calculated content is STORED in the append-only ledger (run_dir/{SYM}.jsonl)
+and in memory as `completed = {row.trial_id for row in rows}`. On crash / OOM / pkill / reboot
+/ timeout you MUST RESUME from the last filled trial_id — NEVER delete `done`, NEVER truncate
+the ledger, NEVER re-init `rows = []` over existing progress. `_append_jsonl` + `_atomic_json`
+after EVERY trial guarantees resumability. Deleting or restarting wastes days and is FORBIDDEN.
+
 DO NOT RUN THIS FILE DIRECTLY — USE tools/opt/v12_pilot.py INSTEAD.
 v12_pilot.py is the sanitized evolution that wraps this module's
 exact_month_slice / compact_to_completed_timeframe / _config_and_month_npz
@@ -1251,8 +1258,13 @@ def run_symside(symside: str, recipe: Mapping[str, Any], run_dir: Path, workers:
     require_per_sym_parity_contract()
     _memory_preflight()
     ledger_path = run_dir / f"{symside}.jsonl"
+    # 🔴 RESUME LAW: ledger is append-only — NEVER truncate, NEVER restart from zero
+    _ledger_existed = ledger_path.exists()
+    _ledger_mtime = ledger_path.stat().st_mtime if _ledger_existed else 0
     rows = _load_rows(ledger_path)
     completed = {row.get("trial_id") for row in rows}
+    if _ledger_existed:
+        print(f"[resume] {symside} RESUMING from {len(rows)} ledger rows ({len(completed)} trial_ids), mtime {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(_ledger_mtime))} — restart from zero is PROHIBITED", flush=True)
     baseline_overrides = dict(recipe["overrides"])
     # FIX 2026-09-04: sanitise bool-for-float corruptions (MU_LONG 5 True→float) so baseline is not 0 trades
     try:
