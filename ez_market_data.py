@@ -144,6 +144,28 @@ def wavetrend_numpy(highs, lows, closes, n1=10, n2=21, smooth=3):
     velocity = float(wt1[-1] - wt1[-4]) if n > 4 else 0.0
     return {"wt1": round(float(wt1[-1]), 2), "wt2": round(float(wt2[-1]), 2), "wt1_prev": round(float(wt1[-2]), 2), "wt2_prev": round(float(wt2[-2]), 2), "cross_bull": bool(cross_bull_arr[-1]) if len(cross_bull_arr) > 0 else False, "cross_bear": bool(cross_bear_arr[-1]) if len(cross_bear_arr) > 0 else False, "cross": recent_cross, "cross_value": cross_value, "cross_prev_value": cross_prev_value, "cross_rising": cross_rising, "cross_bars_ago": bars_ago, "bullish": bool(wt1[-1] > wt2[-1]), "score": round(float(wt1[-1] - wt2[-1]), 2), "velocity": round(velocity, 2)}
 
+def calculate_regression_slope_line(series):
+    import pandas as pd
+    from scipy.stats import linregress
+    if series is None or len(series) < 2:
+        return 0.0, 0.0, np.array([])
+    s = pd.to_numeric(series, errors='coerce').dropna()
+    if len(s) < 2:
+        return 0.0, 0.0, np.array([])
+    avgp = float(s.mean())
+    if avgp <= 0 or pd.isna(avgp):
+        return 0.0, 0.0, np.array([])
+    x = np.arange(len(s))
+    y_norm = s.values.astype(float) / avgp
+    try:
+        slp, icpt, rvv, p_val, std_err = linregress(x, y_norm)
+    except ValueError:
+        return 0.0, 0.0, np.array([])
+    slope_pct = float(slp * 100.0)
+    yhat_norm = icpt + slp * x
+    yhat_abs = yhat_norm * avgp
+    return slope_pct, float(rvv) if pd.notna(rvv) else 0.0, yhat_abs
+
 def stoch_rsi_numpy(closes, period=14, k_window=3, d_window=3):
     n = len(closes)
     if n < period + k_window + d_window + 2: return None
