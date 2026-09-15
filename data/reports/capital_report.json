@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-14 23:37 UTC",
- "total_capital_usd": 78.24,
+ "generated_at": "2026-09-15 00:37 UTC",
+ "total_capital_usd": 10.27,
  "tier_capital": {
   "A": 0.0,
-  "B": 78.24,
+  "B": 10.27,
   "C": 0.0
  },
  "tier_count": {
@@ -14,19 +14,19 @@
  "winners": [],
  "losers": [],
  "mediocre": [
-  "flz:BTCUSDC_LONG"
+  "flz:SOLUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "flz:BTCUSDC_LONG",
-   "symbol": "BTCUSDC",
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
    "account": "flz",
-   "value_usd": 78.24,
-   "gain_pct": -0.18,
+   "value_usd": 10.27,
+   "gain_pct": 0.233,
    "tier": "B",
-   "perf_mult": 0.63,
-   "amt": 0.001,
-   "mark": 78235.60326413
+   "perf_mult": 0.86,
+   "amt": 0.1,
+   "mark": 102.67
   }
  ]
 }
