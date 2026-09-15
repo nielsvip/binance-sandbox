@@ -1,56 +1,30 @@
 {
- "generated_at": "2026-09-15 02:37 UTC",
- "total_capital_usd": 123.02,
+ "generated_at": "2026-09-15 09:22 UTC",
+ "total_capital_usd": 35.97,
  "tier_capital": {
   "A": 0.0,
-  "B": 123.02,
+  "B": 35.97,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 1,
   "C": 0
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "flz:BTCUSDC_LONG",
-  "flz:XRPUSDC_LONG",
-  "flz:SOLUSDC_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BTCUSDC_LONG",
-   "symbol": "BTCUSDC",
-   "account": "flz",
-   "value_usd": 77.9,
-   "gain_pct": -0.139,
+   "pk": "fin:COTIUSDT_LONG",
+   "symbol": "COTIUSDT",
+   "account": "fin",
+   "value_usd": 35.97,
+   "gain_pct": 0.0,
    "tier": "B",
-   "perf_mult": 0.65,
-   "amt": 0.001,
-   "mark": 77899.49035432
-  },
-  {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 28.77,
-   "gain_pct": -0.033,
-   "tier": "B",
-   "perf_mult": 0.98,
-   "amt": 20.2,
-   "mark": 1.42428626
-  },
-  {
-   "pk": "flz:SOLUSDC_LONG",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 16.35,
-   "gain_pct": -0.179,
-   "tier": "B",
-   "perf_mult": 0.93,
-   "amt": 0.16,
-   "mark": 102.20129554
+   "perf_mult": 6.24,
+   "amt": 2057.0,
+   "mark": 0.01748896
   }
  ]
 }
