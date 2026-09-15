@@ -1511,7 +1511,7 @@ def main():
                         try:
                             if ws_row is not None:
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle vs baseline 0
-                                ws_row.cell(row=r, column=7).value = 0.0  # G greedy vs cum 0
+                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG/invalid — was 0.0
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
@@ -1519,7 +1519,7 @@ def main():
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                         except: pass
-                        _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", 0.0, 0.0, cumulative_before)
+                        _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", -1.0, 0.0, cumulative_before)
                         continue
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
@@ -1858,14 +1858,14 @@ def main():
                             if ws_row is not None:
                                 from openpyxl.styles import PatternFill
                                 ws_row.cell(row=r, column=6).value = 0.0  # F hustle
-                                ws_row.cell(row=r, column=7).value = 0.0  # G greedy
+                                ws_row.cell(row=r, column=7).value = -1.0  # G never 0.0 for NEG/ERR — was 0.0
                                 ws_row.cell(row=r, column=7).fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                                 ws_row.cell(row=r, column=7).font = __import__("openpyxl").styles.Font(name="Arial", bold=True, color="FFFFFF")
                                 if r + 1 <= ws_row.max_row:
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                         except: pass
-                        _flag_to_md(flags_md, sheet, r, switch, cand, f"ROW-ERR {e}", 0.0, 0.0, cumulative_before)
+                        _flag_to_md(flags_md, sheet, r, switch, cand, f"ROW-ERR {e}", -1.0, 0.0, cumulative_before)
                     except: pass
                     _touch_heartbeat(f"cell {sheet}!{r} ERR")
                     continue
