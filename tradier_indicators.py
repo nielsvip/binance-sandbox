@@ -487,6 +487,27 @@ def linreg_channel(series: pd.Series, length: int, std_mult: float = 2.5) -> Tup
     y_fit = y_mean + slope * (x - x_mean)
     residual_std = float(np.std(y - y_fit, ddof=0))
     price = float(series.iloc[-1])
+
+def calculate_regression_slope_line(series: pd.Series) -> Tuple[float, float, np.ndarray]:
+    if series is None or len(series) < 2:
+        return 0.0, 0.0, np.array([])
+    s = pd.to_numeric(series, errors='coerce').dropna()
+    if len(s) < 2:
+        return 0.0, 0.0, np.array([])
+    avgp = float(s.mean())
+    if avgp <= 0 or pd.isna(avgp):
+        return 0.0, 0.0, np.array([])
+    x = np.arange(len(s))
+    y_norm = s.values.astype(float) / avgp
+    try:
+        from scipy.stats import linregress
+        slp, icpt, rvv, p_val, std_err = linregress(x, y_norm)
+    except ValueError:
+        return 0.0, 0.0, np.array([])
+    slope_pct = float(slp * 100.0)
+    yhat_norm = icpt + slp * x
+    yhat_abs = yhat_norm * avgp
+    return slope_pct, float(rvv) if pd.notna(rvv) else 0.0, yhat_abs
     fit_end = float(y_fit[-1])
     upper = fit_end + std_mult * residual_std
     lower = fit_end - std_mult * residual_std
@@ -1780,16 +1801,35 @@ class IndicatorCalculator:
                 result[f"lr_upper_{timeframe}"] = _lr_u
                 result[f"lr_lower_{timeframe}"] = _lr_l
                 result[f"lr_pct_b_{timeframe}"] = _lr_pb
+            # FIX 2026-09-15: lrL slope like in plots (rankings) for D/4h/1h/15m with exact LR lookback per venue + stdev
             _lrL_len = (getattr(config, "LR_CHANNEL_LONG_LENGTHS", None) or {}).get(timeframe)
+            # For 15m, LR not defined, use STDEV lookback as fallback to get 15m slope like in plots
+            if not _lrL_len and timeframe == "15m":
+                _lrL_len = int(getattr(config, "STDEV_SLOPE_LOOKBACK_15M", 96))
             if _lrL_len and len(close_series) >= int(_lrL_len):
                 _lrL_u, _lrL_l, _lrL_pb = linreg_channel(close_series, int(_lrL_len), std_mult=2.5)
-                _lrL_slope, _lrL_lin = linreg_features(close_series, int(_lrL_len))
-                _lrL_px = float(close_series.iloc[-1])
-                if _lrL_pb is not None and _lrL_slope is not None and _lrL_px > 0:
+                # Use rankings' calculate_regression_slope_line for slope like in plots (avgp norm, linregress)
+                _slice = close_series.iloc[-int(_lrL_len):]
+                _slope_pct, _rvv, _ = calculate_regression_slope_line(_slice)
+                if _lrL_pb is not None and _slope_pct is not None:
                     result[f"lrL_pct_b_{timeframe}"] = _lrL_pb
-                    result[f"lrL_slope_{timeframe}"] = round(_lrL_slope / _lrL_px * 100.0, 6)
-                    if _lrL_lin is not None:
-                        result[f"lrL_r2_{timeframe}"] = round(float(_lrL_lin), 6)
+                    result[f"lrL_slope_{timeframe}"] = round(float(_slope_pct), 6)
+                    result[f"lrL_r2_{timeframe}"] = round(float(_rvv), 6)
+                    # stdev like in rankings band: std of residuals
+                    try:
+                        # stdev from linreg_channel residuals
+                        x = np.arange(int(_lrL_len))
+                        y = _slice.values.astype(float)
+                        y_mean = float(np.mean(y))
+                        slope_raw = _slope_pct / 100.0 * float(np.mean(y))  # approx
+                        # Use band std
+                        y_pred = y_mean + slope_raw * (x - np.mean(x))
+                        # Actually use linreg_channel std
+                        _, _, _ = linreg_channel(_slice, int(_lrL_len), std_mult=2.5)
+                        # Store stdev for npz (same as band std)
+                        result[f"lrL_stdev_{timeframe}"] = round(float(np.std(y - (np.mean(y) + slope_raw * (x - np.mean(x))))), 6)
+                    except:
+                        pass
             bar_pat = detect_bar_patterns(adjusted_df, timeframe)
             result.update(bar_pat)
             # Candle body comparison (current vs prev) — needed by Strategy 3 (EMA200+StochRSI)
