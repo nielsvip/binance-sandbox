@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T08:05:32.565676+00:00",
+  "timestamp": "2026-09-15T08:25:44.928418+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "IOTAUSDT",
-      "net_score": -11.3,
+      "symbol": "TIAUSDC",
+      "net_score": -12.3,
       "long_score": 0,
-      "short_score": 11.3
+      "short_score": 12.3
     },
     {
       "symbol": "BABAUSDT",
@@ -229,6 +229,12 @@
       "short_score": 0
     },
     {
+      "symbol": "IOTAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -302,12 +308,6 @@
     },
     {
       "symbol": "CRMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "TIAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -478,9 +478,9 @@
   "top_longs": [],
   "top_shorts": [
     [
-      "IOTAUSDT",
-      11.3,
-      0.04181
+      "TIAUSDC",
+      12.3,
+      0.3458
     ]
   ],
   "hedge_usage": {
