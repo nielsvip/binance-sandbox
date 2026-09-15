@@ -4690,7 +4690,7 @@ class QuickConfig:
     ATR_ADAPTIVE_STOP_MULT: float = 2.0
     ATR_ADAPTIVE_STOP_TF: str = '1h'
     ATR_LONG_WINDOW: int = 100
-    BB_SQUEEZE_ENTRY_ENABLED: bool = False  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off until proven, was default True from agent
+    BB_SQUEEZE_ENTRY_ENABLED: bool = True  # FIX 2026-09-15: align to config.py crypto sweep winner (11 sym, Sharpe 89.7) - was False (dead) caused 0 trades in backtest, now True per user directive
     BB_SQUEEZE_EXIT_ENABLED: bool = False  # split exit double-count fix 2026-09-04
     BB_SQUEEZE_THRESHOLD_15M: float = 0.025
     BB_SQUEEZE_THRESHOLD_1H: float = 0.03
@@ -6165,8 +6165,8 @@ class QuickConfig:
     OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED: float = 0.0  # auto-added TEMPLATE generic
     OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED: float = 0.0  # auto-added TEMPLATE generic
     OI_CONFIRM_ENABLED: bool = False  # auto-added TEMPLATE
-    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.0  # auto-added TEMPLATE
-    OI_CONFIRM_MIN_PRICE_PCT: float = 0.0  # auto-added TEMPLATE
+    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5  # FIX 2026-09-15: align to config.py 0.5 (was 0.0 dead, no OI gate)
+    OI_CONFIRM_MIN_PRICE_PCT: float = 0.3  # FIX 2026-09-15: align to config.py 0.3 (was 0.0 dead)
     OPEN_INTENT_SIZE_GATES_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     PARTIAL_EXIT_FRAC: float = 0.0  # auto-added TEMPLATE generic
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.0  # auto-added TEMPLATE generic
