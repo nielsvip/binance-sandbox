@@ -110,3 +110,22 @@ User did row-by-row by hand in mind — we did 11M-cell bulk copy. User wanted y
 **Files to keep until fixed:** `SPREADSHEETS/TEMPLATE.xlsx`, `SPREADSHEETS/V15_AVG_DELTAS.xlsx`, `v15_pilot_0914.py`, `backups/template_fix_20260914/*`
 
 **Files to discard/rebuild:** `SPREADSHEETS/TEMPLATE_0914_STOCKS_LONG.xlsx` (corrupt), `TEMPLATE_0914_CRYPTO_LONG/SHORT`, `TEMPLATE_0914_STOCKS_SHORT` (all G4 bug), all `SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx` (ENOSPC residue)
+
+---
+
+## UPDATE 2026-09-15 01:07 UTC — BACKGROUND WORKFLOW RESCUED 1/4 AFTER HANDOFF
+
+**Evidence at 01:07 after handoff written at 00:38:**
+
+| File | mtime | WT True | E/G | Yellows L:BI | Sheets 0-2 | Verdict |
+|---|---|---|---|---|---|---|
+| **STOCKS_LONG** | 00:45 863K | r199 True | `=IF(G199="",E198,IF(G199>0` + `VLOOKUP($A199` | **0** | `INSTRUCTIONS, INSTRUCTIONS_V2, STDEV` | **FIXED** — matches LIVE |
+| **CRYPTO_LONG** | 01:07 1.1M | r199 True | same G199 correct | **49** (should be 0) | same INSTRUCTIONS first | **HALF-FIXED** — formula ok but yellows bloated 49 vs 0, size 1.1M vs 819K = duplicated fills |
+| **CRYPTO_SHORT** | 00:?? 859K | r199 True | same G199 correct | **49** | same | **HALF-FIXED** same bloat |
+| **STOCKS_SHORT** | 00:58 948K | r199 True | `=IF(G4="",E3,IF(G4>0` still | **0** but wrong row refs | `CATEGORY_STOCKS_SHORT, ORDERING_0914_REV2` | **STILL BROKEN** — G4 bug + sheet order not fixed |
+
+**What happened:** Workflow `aef917a7` (deferred background) completed *after* dead handoff, fixing STOCKS_LONG correctly via full-row copy with `re.sub G4→G199`. But same workflow bloated CRYPTO_* with 49 yellows (copied fill from wrong source row) and never touched STOCKS_SHORT (still G4 + CATEGORY first). Size 1.1M/948K vs 863K proves fill duplication.
+
+**Implication:** Dead handoff §2 table was correct at 00:36, but at 01:07 STOCKS_LONG is rescued. Do NOT trust CRYPTO_* 49 yellows — those are still wrong per "yellow cells moved along with switches in exact column as TEMPLATE.xlsx". STOCKS_SHORT still needs full redo.
+
+**Next:** Re-run row-by-row fix only for CRYPTO_LONG, CRYPTO_SHORT, STOCKS_SHORT (3 files) with per-row fill copy + formula rewrite — will drop 1.1M→~863K and fix 49→0 yellows.
