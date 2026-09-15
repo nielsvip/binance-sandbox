@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T05:11:33.129116+00:00",
+  "timestamp": "2026-09-15T05:27:45.794687+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,16 +7,22 @@
   },
   "unified_ranking": [
     {
-      "symbol": "BMNRUSDT",
-      "net_score": -10.3,
+      "symbol": "TIAUSDC",
+      "net_score": -14.0,
       "long_score": 0,
-      "short_score": 10.3
+      "short_score": 14.0
+    },
+    {
+      "symbol": "XTZUSDT",
+      "net_score": -13.6,
+      "long_score": 0,
+      "short_score": 13.6
     },
     {
       "symbol": "SPYUSDT",
-      "net_score": -10.2,
+      "net_score": -10.4,
       "long_score": 0,
-      "short_score": 10.2
+      "short_score": 10.4
     },
     {
       "symbol": "CRMUSDT",
@@ -74,12 +80,6 @@
     },
     {
       "symbol": "USARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -289,13 +289,13 @@
       "short_score": 0
     },
     {
-      "symbol": "AMDUSDT",
+      "symbol": "BMNRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "TIAUSDC",
+      "symbol": "AMDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -478,14 +478,19 @@
   "top_longs": [],
   "top_shorts": [
     [
-      "BMNRUSDT",
-      10.3,
-      24.79108419
+      "TIAUSDC",
+      14.0,
+      0.3487
+    ],
+    [
+      "XTZUSDT",
+      13.6,
+      0.2653
     ],
     [
       "SPYUSDT",
-      10.2,
-      758.83
+      10.4,
+      758.68179472
     ]
   ],
   "hedge_usage": {
