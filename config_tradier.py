@@ -728,7 +728,25 @@ class TradierConfig:
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = True
     R2_TF_LIST: tuple = ('1h', '4h', 'D')          # stocks: HTFs primary per user 2026-05-09
     # === WT_15M_BOUNCE OPEN — 2026-09-01 parity fix (tradier mirror) ===
-    WT_15M_BOUNCE_OPEN_ENABLED: bool = False
+    WT_15M_BOUNCE_OPEN_ENABLED: bool = True  # V15 PROMOTED: stocks_long True wins +6.05 (CATEGORY_RECOMMENDATIONS r48), crypto_short True +9.58 — template bold per-file, config default True raises baseline
+
+    # === V15 PROMOTED FILTER_TF defaults — ABSOLUTELY KEEP marginal_avg +0.5…+2.47 (DEFAULT_APPLIED) — bold in templates, raises baselines ===
+    GR_FILTER_VEC_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    GOLDEN_RULE_ENFORCE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    NOLOSS_BYPASS_WT5OF5_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    BT_WT_CROSS_LADDER_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    GOLDEN_RULE_HTF_VOTE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    DC_BREACH_REDUCE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    HAIKU_WINNER_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    NEWBORN_PROTECT_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    NEWBORN_LOSS_KILL_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    BB_PULLBACK_GATE_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    BB_RECOVERY_ENTRY_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    BB_RECOVERY_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+    PARTIAL_PROFIT_LOCK_V2_FILTER_TF: str = "15m"  # FILTER_TF V15 promoted — 15m variant wins per V15_AVG_DELTAS DEFAULT_APPLIED + CATEGORY_RECOMMENDATIONS
+
     WT_15M_BOUNCE_BB_MIN: float = 0.05
     WT_15M_BOUNCE_BB_MAX: float = 0.95
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False
@@ -2370,7 +2388,7 @@ class TradierConfig:
     BB_PULLBACK_GATE_SHORT_MIN: float = 0.70
     BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol
     BB_SQUEEZE_ENABLED: bool = True  # Master toggle for BB squeeze breakout entries
-    BB_SQUEEZE_ENTRY_ENABLED: bool = False  # Enter when Bollinger bands compress (< threshold) ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
+    BB_SQUEEZE_ENTRY_ENABLED: bool = True  # V15 PROMOTED: stocks_short True wins +1.33 (CATEGORY r70) — template STOCKS_SHORT bold (< threshold) ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     BB_SQUEEZE_EXIT_ENABLED: bool = False  # Exit squeeze release - split from master to avoid double count 2026-09-04
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze — parity with config.py 2382
     # === PER-ROW FILTERS (2026-09-07) -- per-switch filter settings from TEMPLATE.xlsx L:BI ===
