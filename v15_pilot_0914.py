@@ -30,6 +30,23 @@ Real numbers: delta = variant_gain - cumulative_before (NOT variant-baseline), E
 IF(F>0,Eprev+F,Eprev) via Excel VLOOKUP, variant_gain = gain_pct pnl_dollars/peak,
 trades/tim/max_dd/pool_sharpe per trade, validated via live parity (or vector_only).
 
+STDEV_SLOPE_SIZING — 15-switch ladder (TEMPLATE.xlsx STDEV_SLOPE_SIZING sheet, 34 rows):
+  Base = STDEV_SLOPE_SIZING_ENABLED True + BAND_SLOPE_SIZING_V2_ENABLED True + TF=D + MODE=slope_to_top
+         + MIN 0.5 + MAX 2.5 (header) then 15 measured rows: ENABLED False→True, D_MAX 10/4/6/8,
+         4H/1H/15M_MAX, BAND_MULT 2.5→1.5/1.0, LOOKBACK 180→90/48, MODE bottom_to_top vs slope_to_top,
+         BAND_SLOPE_SIZING_V2_MAX/MIN etc. Every row is a delta vs cumulative_before.
+  Engine = v12_quick_engine.compute_regime_sizing_mult(): per-TF _stdev_max_map {'D':10,'4h':4,'1h':2,'15m':1.5}
+           × _edge (1 at DARK/bottom, 0 at opposite top; mirrored shorts) × slope_mult (±0.5× slope_day)
+           × lookback scale (_lb_def/_lb) × band multiplier (_bm/2.5), clipped [MIN,MAX].
+           Mode bottom_to_top: 1+(max-1)*edge  (-2.5→+2.5 soft). slope_to_top: 1 below slope, max at +2.5 steep.
+           Entry sizing: _dollar=START*regime_mult[i]; Augment: _aug_regime=regime_mult[i] (gain×multiplier).
+  NPZ = backtest_v8/indicators/*.npz precomputed per-bar stdev_edge_D/4h/1h/15m + stdev_slope_D/4h/1h/15m
+        (243 files on S1, rsynced to Mac). Every price between -2.5σ and +2.5σ has its own multiplier
+        via edge; use evaluate_prepared_sanitized (no per-trade lrL recompute).
+  Templates = SPREADSHEETS/TEMPLATE_STOCKS_LONG/SHORT + TEMPLATE_CRYPTO_LONG/SHORT + V15 variants,
+              all 34 rows copied from /Users/niels/Downloads/TEMPLATE.xlsx (canonical source) on Mac
+              and rsynced to S1 ~/binance-sandbox/SPREADSHEETS/. Run only on S1 via v15_local_herd.
+
 Integrated from tests/test_v15_e_bland.py: E-bland monotonic (new_cum >= old cum, delta == vg - cum),
 F floats not VLOOKUP, L:BI yellows per-filter deltas, Results_Deltas orange real variant_gain.
 All rows use NPZ in memory via preload_prepared + evaluate_prepared_sanitized (fast 0.5s/row, not slow reload).

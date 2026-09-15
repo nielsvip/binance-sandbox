@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""fix_row_and_sheet — worst_first sheet reordering + row-level STDEV ladder sync.
+
+WORST_ORDER keeps STDEV_SLOPE_SIZING FIRST (highest delta). STDEV ladder = 12 fields
+D_MAX/4H_MAX/1H_MAX/15M_MAX + LOOKBACK_D/4H/1H/15M + BAND_MULTIPLIER/MODE/GAP_PER_SYMBOL,
+connected in v12_quick_engine.compute_regime_sizing_mult via _stdev_max_map {'D':10,'4h':4,'1h':2,'15m':1.5}
+× _edge (mirrored long/short) × slope_mult × LOOKBACK×BAND scaling. TEMPLATE.xlsx (34 rows,
+/Users/niels/Downloads/TEMPLATE.xlsx canonical) is the source; fix_one copies exact row values
++ formulas + styles from ORIG to any TEMPLATE_STOCKS/CRYPTO_LONG/SHORT or V15 variant,
+preserving NPZ stdev_edge_*/stdev_slope_* wiring. Use: python3 fix_row_and_sheet.py SPREADSHEETS/TEMPLATE*.xlsx
+"""
 import openpyxl, pathlib, re, shutil, os
 from copy import copy
 from concurrent.futures import ThreadPoolExecutor
