@@ -2064,9 +2064,9 @@ class TradierConfig:
     TRADIER_MI_EXIT_ENABLED_TRADIER: bool = False       # REVERTED 2026-04-17: see MI_EXIT_ENABLED_TRADIER above.
     TRADIER_MI_SUBSIGNAL_MIN_COUNT: int = 3             # N of 5 sub-signals must fire
 
-    # DC Daytrade — OFF by default 2026-09-15 per user: destroyed performance, use DC/BB/WT wait fallback
-    TRADIER_DC_DAYTRADE_ENABLED: bool = False
-    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 0
+    # DC Daytrade — buy DC upper-quarter breakouts on 5m/15m with 1h expansion
+    TRADIER_DC_DAYTRADE_ENABLED: bool = True
+    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 0  # 2026-09-15: OFF by default per user - max hold disabled
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued.

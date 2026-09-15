@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T18:20:22.105221+00:00",
+  "timestamp": "2026-09-15T18:39:55.174717+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "LLYUSDT",
-      "net_score": -10.9,
+      "net_score": -10.8,
       "long_score": 0,
-      "short_score": 10.9
+      "short_score": 10.8
     },
     {
       "symbol": "CRMUSDT",
@@ -38,12 +38,6 @@
     },
     {
       "symbol": "CRDOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BNBUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -473,14 +467,26 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "BNBUSDC",
+      "net_score": 10.4,
+      "long_score": 10.4,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "BNBUSDC",
+      10.4,
+      722.1282042
+    ]
+  ],
   "top_shorts": [
     [
       "LLYUSDT",
-      10.9,
-      1141.07
+      10.8,
+      1139.00238951
     ]
   ],
   "hedge_usage": {

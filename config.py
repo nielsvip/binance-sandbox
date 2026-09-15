@@ -5155,8 +5155,8 @@ class Config:
     TRADIER_ACCOUNT_ID: str = os.getenv("TRADIER_ACCOUNT_ID_TRC", "")  # DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     TRADIER_API_BASE_URL: str = "https://api.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
     TRADIER_API_KEY: str = os.getenv("TRADIER_API_KEY_TRC", "")  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416  # PORTED from TradierConfig 2026-08-17
-    TRADIER_DC_DAYTRADE_ENABLED: bool = False  # 2026-09-15: OFF by default per user - DAYTRADE destroyed performance, needs DC/BB/WT wait fallback
-    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 0  # 2026-09-15: OFF by default per user - max hold disabled
+    TRADIER_DC_DAYTRADE_ENABLED: bool = True  # PORTED from TradierConfig 2026-08-17
+    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 0  # 2026-09-15: OFF by default per user - max hold disabled, DAYTRADE OFF tested as switch after other exits True
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True  # PORTED from TradierConfig 2026-08-17
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop  # PORTED from TradierConfig 2026-08-17
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued.  # PORTED from TradierConfig 2026-08-17
