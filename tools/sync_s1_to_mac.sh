@@ -12,8 +12,8 @@ SRC_SPREADSHEET_CHARTS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*COM
 SRC_SPREADSHEET_FINALS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*FINAL.html"
 SRC_SPREADSHEET_TABS="niels@157.180.125.52:~/binance-sandbox/SPREADSHEETS/*_chart.html"
 mkdir -p "$DST" "$DST_V15" "$DST_CHARTS"
-echo "[$(date)] Sync S1 -> Mac xls..."
-rsync -avz --progress --exclude='TEMPLATE.xlsx' -e "ssh -o BatchMode=yes" "$SRC" "$DST" 2>&1 | tail -n 20
+echo "[$(date)] Sync S1 -> Mac xls... (TEMPLATE* excluded - Mac is source of truth, never S1->Mac)"
+rsync -avz --progress --exclude='*TEMPLATE*' -e "ssh -o BatchMode=yes" "$SRC" "$DST" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac V15_V16_CELL_BY_CELL xls..."
 rsync -avz --progress -e "ssh -o BatchMode=yes" "$SRC_V15" "$DST_V15" 2>&1 | tail -n 20
 echo "[$(date)] Sync S1 -> Mac SPREADSHEET COMPLETE/FINAL charts..."
