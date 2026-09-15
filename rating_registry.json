@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T04:54:54.795370+00:00",
+  "timestamp": "2026-09-15T05:11:33.129116+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,16 @@
   },
   "unified_ranking": [
     {
-      "symbol": "XTZUSDT",
-      "net_score": -16.2,
+      "symbol": "BMNRUSDT",
+      "net_score": -10.3,
       "long_score": 0,
-      "short_score": 16.2
+      "short_score": 10.3
+    },
+    {
+      "symbol": "SPYUSDT",
+      "net_score": -10.2,
+      "long_score": 0,
+      "short_score": 10.2
     },
     {
       "symbol": "CRMUSDT",
@@ -68,6 +74,12 @@
     },
     {
       "symbol": "USARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -277,12 +289,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BMNRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AMDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -467,20 +473,19 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "SPYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
     }
   ],
   "top_longs": [],
   "top_shorts": [
     [
-      "XTZUSDT",
-      16.2,
-      0.26685971
+      "BMNRUSDT",
+      10.3,
+      24.79108419
+    ],
+    [
+      "SPYUSDT",
+      10.2,
+      758.83
     ]
   ],
   "hedge_usage": {
