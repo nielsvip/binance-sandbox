@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-15T13:19:12.878588+00:00",
+  "timestamp": "2026-09-15T13:36:45.458192+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -349,12 +349,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AMDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -427,12 +421,6 @@
       "short_score": 0
     },
     {
-      "symbol": "NVDAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -473,9 +461,32 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "AMDUSDT",
+      "net_score": 10.5,
+      "long_score": 10.5,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
+      "net_score": 12.7,
+      "long_score": 12.7,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "NVDAUSDT",
+      12.7,
+      213.27522746
+    ],
+    [
+      "AMDUSDT",
+      10.5,
+      500.53
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

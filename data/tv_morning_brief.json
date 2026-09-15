@@ -1,11 +1,2365 @@
 {
-  "generated_at": "2026-09-14T13:25:00Z",
-  "data_age_minutes": 0.0,
-  "symbols_scanned": 0,
+  "generated_at": "2026-09-15T13:25:05Z",
+  "data_age_minutes": 0.3,
+  "symbols_scanned": 114,
   "market_bias": "NEUTRAL",
-  "summary": "0 BUY setups, 0 SHORT setups, 0 HOLD, 0 AVOID \u2014 from 125 trb symbols",
+  "summary": "0 BUY setups, 0 SHORT setups, 0 HOLD, 125 AVOID \u2014 from 125 trb symbols",
   "top_buys": [],
   "top_shorts": [],
   "top_holds": [],
-  "assessments": {}
+  "assessments": {
+    "PLTR": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "NEM": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "COPX": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "CVX": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "FNV": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "ASML": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "QQQ": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "DVN": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "META": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "CLS": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "DUOL": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "VT": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "WDAY": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "GLD": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "BNO": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "XOP": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "MPC": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "NVDA": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "TSLA": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "GDXJ": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "CRWD": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "MRVL": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "AEM": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "UAN": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "COP": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "PSX": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "QCOM": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "CRM": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "OKE": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "MSTR": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "PR": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "ZETA": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "VLO": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "BMNR": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "DINO": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "MOS": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "AU": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "ACN": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "CDW": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "AGI": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "GOOGL": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "SLV": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "MU": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "TRGP": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "AAPL": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "SPY": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "MSFT": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "GDX": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "GOLD": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "HOOD": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "QRVO": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "AMZN": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "RBLX": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      },
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "SNDK": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "CF": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "PBF": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "DELL": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "DE": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "IBIT": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "SMCI": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "AGCO": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "LITE": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "WPM": {
+      "long": {
+        "side": "long",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bearish across TFs \u2014 wrong side"
+        ],
+        "note": "WT bearish all TFs"
+      }
+    },
+    "BWXT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "BABA": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "LAC": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "LOW": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "PYPL": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "SBUX": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "ALB": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "CLX": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "USAR": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "CRWV": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "CVS": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "BA": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "LMT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "SHOP": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "VICR": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "AMAT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "ARM": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "COHR": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "BHVN": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "CAT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "STLD": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "MNTS": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "HD": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "ABT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "BIDU": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "HAO": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "NOC": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "STZ": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "HON": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "UPS": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "AVGO": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "LRCX": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "HII": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "TDG": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "BHP": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "GE": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "RTX": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "COE": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "AXON": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "CIEN": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "LYFT": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "BKR": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "MCD": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "LLY": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "SMG": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "PRI": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "QLYS": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "LEXX": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "UNH": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "JOBY": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    },
+    "NKE": {
+      "short": {
+        "side": "short",
+        "recommendation": "AVOID",
+        "confidence": "MEDIUM",
+        "tf_bias": {
+          "1h": "?",
+          "4h": "?",
+          "D": "?"
+        },
+        "stoch_status": null,
+        "mfi_status": null,
+        "momentum": null,
+        "cautions": [
+          "WT bullish across TFs \u2014 wrong side to short"
+        ],
+        "note": "WT bullish all TFs"
+      }
+    }
+  }
 }
