@@ -16928,6 +16928,28 @@ class StockStrategy:
                 score += w; parts.append(f"DC_FADE_{tf}({dc_pos:.2f})")
             elif not is_long and dc_pos > 0.65:
                 score += w; parts.append(f"DC_FADE_{tf}({dc_pos:.2f})")
+        # --- 2b. DC BREAK WAIT WT15 CLOSE (2026-09-15 USER: wait for wt15 close instead of jumping at dc_low/high break) ---
+        _dc_wait_wt15 = _cfg_auto('DC_BREAK_WAIT_WT15_CLOSE_ENABLED', False)
+        _dc_low_15m = g('dc_low_15m', 0); _dc_high_15m = g('dc_high_15m', 0)
+        _wt1_15m_dc = g('wt1_15m'); _wt2_15m_dc = g('wt2_15m')
+        _wt_close_long = (_wt1_15m_dc < _wt2_15m_dc)
+        _wt_close_short = (_wt1_15m_dc > _wt2_15m_dc)
+        if is_long and _dc_low_15m > 0 and current_price < _dc_low_15m:
+            if _dc_wait_wt15:
+                if _wt_close_long:
+                    score += 10; parts.append(f"DC_BREAK_WAIT_WT15_L({current_price:.2f}<dc{_dc_low_15m:.2f} wtClose)")
+                else:
+                    parts.append(f"DC_BREAK_WAIT_BLOCK_L({current_price:.2f}<dc{_dc_low_15m:.2f} no wtClose)")
+            else:
+                score += 10; parts.append(f"DC_BREAK_L({current_price:.2f}<dc{_dc_low_15m:.2f})")
+        elif not is_long and _dc_high_15m > 0 and current_price > _dc_high_15m:
+            if _dc_wait_wt15:
+                if _wt_close_short:
+                    score += 10; parts.append(f"DC_BREAK_WAIT_WT15_S({current_price:.2f}>dc{_dc_high_15m:.2f} wtClose)")
+                else:
+                    parts.append(f"DC_BREAK_WAIT_BLOCK_S({current_price:.2f}>dc{_dc_high_15m:.2f} no wtClose)")
+            else:
+                score += 10; parts.append(f"DC_BREAK_S({current_price:.2f}>dc{_dc_high_15m:.2f})")
         # --- 3. WT VELOCITY DECELERATION (trend dying before cross) ---
         vel_against = 0; vel_details = []
         for tf in ('5m', '15m', '1h', '4h'):
@@ -17025,9 +17047,10 @@ class StockStrategy:
                 _wt_pk_s = str(i.get('wt_peak_structure_15m', ''))
                 _wt_tr_s = str(i.get('wt_trough_structure_15m', ''))
                 _wt1_15m = g('wt1_15m'); _wt2_15m = g('wt2_15m')
+                _wt1_prev = g('wt1_15m_prev', _wt1_15m); _wt2_prev = g('wt2_15m_prev', _wt2_15m)
                 _dc_pos_15m = g('dc_position_15m', 0.5)
                 _bb_15m = g('bb_pct_b_15m', 0.5)
-                _wt_cross_against = ( _wt1_15m < _wt2_15m) if is_long else ( _wt1_15m > _wt2_15m)
+                _wt_cross_against = ( _wt1_15m < _wt2_15m and _wt1_prev >= _wt2_prev) if is_long else ( _wt1_15m > _wt2_15m and _wt1_prev <= _wt2_prev)
                 if is_long and _wt_pk_s == 'LH':
                     _wait_ok = (_dc_pos_15m > 0.65) or (_bb_15m > 0.70) or _wt_cross_against
                     if _wait_ok:
@@ -17052,9 +17075,10 @@ class StockStrategy:
             try:
                 _div = str(i.get('wt_divergence_15m', '')); _div_int = i.get('wt_divergence_15m', 0)
                 _wt1_15m = g('wt1_15m'); _wt2_15m = g('wt2_15m')
+                _wt1_prev = g('wt1_15m_prev', _wt1_15m); _wt2_prev = g('wt2_15m_prev', _wt2_15m)
                 _dc_pos_15m = g('dc_position_15m', 0.5)
                 _bb_15m = g('bb_pct_b_15m', 0.5)
-                _wt_cross_against = ( _wt1_15m < _wt2_15m) if is_long else ( _wt1_15m > _wt2_15m)
+                _wt_cross_against = ( _wt1_15m < _wt2_15m and _wt1_prev >= _wt2_prev) if is_long else ( _wt1_15m > _wt2_15m and _wt1_prev <= _wt2_prev)
                 _is_bear_div = (_div == 'BEAR' or _div_int == -1 or _div == '-1')
                 _is_bull_div = (_div == 'BULL' or _div_int == 1 or _div == '1')
                 if is_long and _is_bear_div:
@@ -24110,6 +24134,35 @@ class TradierTradeManager:
                                 if lock_acquired and self.redis_manager:
                                     await self.redis_manager.delete(exec_lock_key)
                                 return f"BLOCKED_HTF_TREND_VETO_ON_REDUCE_action={action}"
+
+            # === EXIT BLOCKER — 2026-09-15 USER: block any REDUCE/CLOSE not accompanied by LH (closed 15m) OR LL (forming candle) ===
+            if (bool(_cfg('EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED', False, account_key, symbol, position_side)) and _is_exit_or_reduce and not is_hedge):
+                try:
+                    _blk_ind = None
+                    try:
+                        _blk_ind = await self.tradier_indicators.get_indicators(symbol) if getattr(self, 'tradier_indicators', None) else None
+                    except Exception:
+                        _blk_ind = None
+                    if _blk_ind:
+                        _blk_pk_s = str(_blk_ind.get('wt_peak_structure_15m', ''))
+                        _blk_tr_s = str(_blk_ind.get('wt_trough_structure_15m', ''))
+                        _blk_low = float(_blk_ind.get('low_15m', 0) or 0)
+                        _blk_low_prev = float(_blk_ind.get('low_15m_prev', 0) or 0)
+                        _blk_high = float(_blk_ind.get('high_15m', 0) or 0)
+                        _blk_high_prev = float(_blk_ind.get('high_15m_prev', 0) or 0)
+                        _blk_closed_lh = (_blk_pk_s == 'LH' or _blk_pk_s == '-1')
+                        _blk_closed_hl = (_blk_pk_s == 'LH' or _blk_tr_s == 'HL')  # parity: also check LH for shorts
+                        _blk_forming_ll = (_blk_low > 0 and _blk_low_prev > 0 and _blk_low < _blk_low_prev) or (_blk_high > 0 and _blk_high_prev > 0 and _blk_high < _blk_high_prev)
+                        # For LONG: need LH closed OR LL forming; for SHORT: need HL? mirror to same check per user spec (LH OR LL)
+                        _blk_pass = _blk_closed_lh or _blk_forming_ll if is_long else (_blk_closed_hl or _blk_forming_ll)
+                        # Strict per user spec: either LH in latest closed 15m bar OR LL in currently forming candle (vv shorts)
+                        if not _blk_pass:
+                            logger.warning(f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})")
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return "BLOCKED_EXIT_LH_LL_REQUIRED"
+                except Exception as _blk_e:
+                    logger.debug(f"[EXIT_BLOCKER_LH_LL] {position_key}: check skipped ({_blk_e})")
 
             # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN bypasses augment cooldown so any
             # tradeable_key with wt1_3m vs wt2_3m condition met can reopen immediately.

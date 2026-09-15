@@ -29116,6 +29116,31 @@ class MultiAccountTradeManager:
         except Exception as _tor_e:
             logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key}: check error (fail-open): {_tor_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🚫 EXIT BLOCKER LH/LL — 2026-09-15 USER: block REDUCE/CLOSE unless LH (closed 15m) OR LL (forming) ===
+        try:
+            if (bool(getattr(config, "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED", False))
+                and ("REDUCE" in _kill_act or "CLOSE" in _kill_act)
+                and "HEDGE" not in (reason or "").upper()):
+                _blk_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
+                if _blk_sym:
+                    _blk_ind = await ii(self, _blk_sym) or {}
+                    _blk_pk_s = str(_blk_ind.get('wt_peak_structure_15m', ''))
+                    _blk_tr_s = str(_blk_ind.get('wt_trough_structure_15m', ''))
+                    _blk_low = safe_fetch_float(_blk_ind.get('low_15m', 0), 0.0)
+                    _blk_low_prev = safe_fetch_float(_blk_ind.get('low_15m_prev', 0), 0.0)
+                    _blk_high = safe_fetch_float(_blk_ind.get('high_15m', 0), 0.0)
+                    _blk_high_prev = safe_fetch_float(_blk_ind.get('high_15m_prev', 0), 0.0)
+                    _blk_is_long = (position_side or "LONG") == "LONG"
+                    _blk_closed_lh = (_blk_pk_s == 'LH' or _blk_pk_s == '-1')
+                    _blk_closed_hl = (_blk_pk_s == 'LH' or _blk_tr_s == 'HL')
+                    _blk_forming_ll = (_blk_low > 0 and _blk_low_prev > 0 and _blk_low < _blk_low_prev) or (_blk_high > 0 and _blk_high_prev > 0 and _blk_high < _blk_high_prev)
+                    _blk_pass = (_blk_closed_lh or _blk_forming_ll) if _blk_is_long else (_blk_closed_hl or _blk_forming_ll)
+                    if not _blk_pass:
+                        logger.warning(f"[EXIT_BLOCKER_LH_LL] {position_key}: BLOCKED action={action} reason={(reason or '')[:60]} — no LH closed (pk={_blk_pk_s}) nor LL forming (low={_blk_low:.4f} prev={_blk_low_prev:.4f})")
+                        return "BLOCKED_EXIT_LH_LL_REQUIRED"
+        except Exception as _blk_e:
+            logger.debug(f"[EXIT_BLOCKER_LH_LL] {position_key}: check skipped ({_blk_e})")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ MTF FILTER (USER 2026-05-20) — Phase I REJ_1h winner config gates entries.
         # Phase J validated: pool_S +0.28, avg DD 6.5%, +113%/sym/yr on 293 stocks × 2.13y.
         # MTF runs as a FILTER on existing entries (not a replacement):
@@ -39208,6 +39233,214 @@ def _apply_sentiment_boost(reasons, sentiment_boost_factor):
     if sentiment_boost_factor > 1.0:
         reasons.append(f"SENTIMENT_BOOST_{sentiment_boost_factor:.1f}x")
     return reasons
+
+
+# === PARITY: evaluate_multi_tf_exit — IDENTICAL to tradier_manage.evaluate_multi_tf_exit (2026-09-15) ===
+# Never diverge: WT_15M_LH_WAIT + WT_DIVERGENCE_VV_SHORT + proper WT cross detection + EXIT_BLOCKER parity.
+# Any change here must be mirrored in tradier_manage.py and v12_quick_engine.py.
+def evaluate_multi_tf_exit(i: dict, is_long: bool, gain: float, hold_time_min: float, current_price: float) -> tuple:
+    """Multi-TF technical exit scorer. Returns (should_exit, reason, exit_score 0-100). PARITY with tradier_manage."""
+    from ez_manage import config as _cfg_mod  # local import to avoid circular
+    def _cfg_auto(k, d):
+        try:
+            return getattr(_cfg_mod, k, d)
+        except Exception:
+            return d
+    g = lambda k, d=0: float(i.get(k, d) or d)
+    score = 0.0
+    parts = []
+    tfs = ('5m', '15m', '1h', '4h', 'D')
+    if _cfg_auto('WT_DIV_EXIT_ENABLED', False):
+        for tf in ('1h', '4h', 'D'):
+            wt1 = g(f'wt1_{tf}'); pk_val = g(f'wt_peak_value_{tf}'); tr_val = g(f'wt_trough_value_{tf}')
+            close_now = g(f'close_{tf}', current_price); close_prev = g(f'close_{tf}_prev')
+            if is_long and pk_val != 0 and close_prev > 0:
+                if wt1 < pk_val * 0.85 and close_now >= close_prev:
+                    w = {'1h': 6, '4h': 10, 'D': 14}.get(tf, 6)
+                    score += w; parts.append(f"DIV_LH_{tf}({wt1:.0f}<pk{pk_val:.0f})")
+            elif not is_long and tr_val != 0 and close_prev > 0:
+                if wt1 > tr_val * 0.85 and close_now <= close_prev:
+                    w = {'1h': 6, '4h': 10, 'D': 14}.get(tf, 6)
+                    score += w; parts.append(f"DIV_HL_{tf}({wt1:.0f}>tr{tr_val:.0f})")
+    for tf in ('15m', '1h', '4h'):
+        dc_pos = g(f'dc_position_{tf}', 0.5)
+        w = {'15m': 4, '1h': 7, '4h': 10}.get(tf, 4)
+        if is_long and dc_pos < 0.35:
+            score += w; parts.append(f"DC_FADE_{tf}({dc_pos:.2f})")
+        elif not is_long and dc_pos > 0.65:
+            score += w; parts.append(f"DC_FADE_{tf}({dc_pos:.2f})")
+    # --- DC BREAK WAIT WT15 CLOSE (parity with tradier_manage 2026-09-15) ---
+    _dc_wait_wt15 = _cfg_auto('DC_BREAK_WAIT_WT15_CLOSE_ENABLED', False)
+    _dc_low_15m = g('dc_low_15m', 0); _dc_high_15m = g('dc_high_15m', 0)
+    _wt1_15m_dc = g('wt1_15m'); _wt2_15m_dc = g('wt2_15m')
+    _wt_close_long = (_wt1_15m_dc < _wt2_15m_dc)
+    _wt_close_short = (_wt1_15m_dc > _wt2_15m_dc)
+    if is_long and _dc_low_15m > 0 and current_price < _dc_low_15m:
+        if _dc_wait_wt15:
+            if _wt_close_long:
+                score += 10; parts.append(f"DC_BREAK_WAIT_WT15_L({current_price:.2f}<dc{_dc_low_15m:.2f} wtClose)")
+            else:
+                parts.append(f"DC_BREAK_WAIT_BLOCK_L({current_price:.2f}<dc{_dc_low_15m:.2f} no wtClose)")
+        else:
+            score += 10; parts.append(f"DC_BREAK_L({current_price:.2f}<dc{_dc_low_15m:.2f})")
+    elif not is_long and _dc_high_15m > 0 and current_price > _dc_high_15m:
+        if _dc_wait_wt15:
+            if _wt_close_short:
+                score += 10; parts.append(f"DC_BREAK_WAIT_WT15_S({current_price:.2f}>dc{_dc_high_15m:.2f} wtClose)")
+            else:
+                parts.append(f"DC_BREAK_WAIT_BLOCK_S({current_price:.2f}>dc{_dc_high_15m:.2f} no wtClose)")
+        else:
+            score += 10; parts.append(f"DC_BREAK_S({current_price:.2f}>dc{_dc_high_15m:.2f})")
+    vel_against = 0; vel_details = []
+    for tf in ('5m', '15m', '1h', '4h'):
+        vel = g(f'wt_velocity_{tf}')
+        thresh = {'5m': 1.5, '15m': 1.0, '1h': 0.5, '4h': 0.3}.get(tf, 1.0)
+        if is_long and vel < -thresh:
+            vel_against += 1; vel_details.append(f"{tf}:{vel:.1f}")
+        elif not is_long and vel > thresh:
+            vel_against += 1; vel_details.append(f"{tf}:{vel:.1f}")
+    if vel_against >= 2:
+        score += vel_against * 5; parts.append(f"VEL_DECEL_{vel_against}tf({','.join(vel_details)})")
+    struct_total = 0
+    for tf in tfs:
+        tf_score_local = 0
+        wt1 = g(f'wt1_{tf}'); wt2 = g(f'wt2_{tf}')
+        if is_long and wt1 < wt2: tf_score_local += 1
+        elif not is_long and wt1 > wt2: tf_score_local += 1
+        k = g(f'k_{tf}', 50); d = g(f'd_{tf}', 50)
+        if is_long and k < d: tf_score_local += 1
+        elif not is_long and k > d: tf_score_local += 1
+        dc_pos = g(f'dc_position_{tf}', 0.5)
+        if is_long and dc_pos < 0.3: tf_score_local += 1
+        elif not is_long and dc_pos > 0.7: tf_score_local += 1
+        ha = g(f'ha_green_{tf}', 0.5)
+        if is_long and ha < 0.5: tf_score_local += 1
+        elif not is_long and ha > 0.5: tf_score_local += 1
+        struct_total += tf_score_local
+    if struct_total >= 12:
+        score += 20; parts.append(f"STRUCT_BREAK_{struct_total}/20")
+    elif struct_total >= 9:
+        score += 10; parts.append(f"STRUCT_WEAK_{struct_total}/20")
+    for tf in ('15m', '1h', '4h'):
+        bb = g(f'bb_pct_b_{tf}', 0.5)
+        w = {'15m': 4, '1h': 6, '4h': 8}.get(tf, 4)
+        if is_long and bb < 0.3:
+            score += w; parts.append(f"BB_REJ_{tf}({bb:.2f})")
+        elif not is_long and bb > 0.7:
+            score += w; parts.append(f"BB_REJ_{tf}({bb:.2f})")
+    stoch_against = 0
+    for tf in ('5m', '15m', '1h'):
+        k = g(f'k_{tf}', 50); kp = g(f'k_{tf}_prev', 50)
+        d = g(f'd_{tf}', 50); dp = g(f'd_{tf}_prev', 50)
+        if is_long and kp >= dp and k < d: stoch_against += 1
+        elif not is_long and kp <= dp and k > d: stoch_against += 1
+    if stoch_against >= 2:
+        score += stoch_against * 4; parts.append(f"STOCH_CROSS_{stoch_against}tf")
+    mfi_1h = g('mfi_1h', 50); mfi_4h = g('mfi_4h', 50)
+    if is_long and mfi_1h > 80 and mfi_4h > 70:
+        score += 6; parts.append(f"MFI_EXHST_L({mfi_1h:.0f},{mfi_4h:.0f})")
+    elif not is_long and mfi_1h < 20 and mfi_4h < 30:
+        score += 6; parts.append(f"MFI_EXHST_S({mfi_1h:.0f},{mfi_4h:.0f})")
+    _dh = g('high_D', 0); _dl = g('low_D', 0)
+    _dhp = g('high_D_prev', 0); _dlp = g('low_D_prev', 0)
+    if _dh > 0 and _dhp > 0 and _dl > 0 and _dlp > 0:
+        if is_long and _dh < _dhp and _dl < _dlp:
+            score += 8; parts.append(f"D_LL_LH({_dl:.2f}<{_dlp:.2f})")
+        elif not is_long and _dh > _dhp and _dl > _dlp:
+            score += 8; parts.append(f"D_HH_HL({_dh:.2f}>{_dhp:.2f})")
+    if gain > 3.0 and score >= 20: score *= 1.3
+    elif gain > 1.0 and score >= 25: score *= 1.2
+    if _cfg_auto('WT_HTF_DISCOUNT_ENABLED', False):
+        _wt_htf_against = sum(1 for tf in ('1h','4h','D') if (g(f'wt1_{tf}') < g(f'wt2_{tf}') if is_long else g(f'wt1_{tf}') > g(f'wt2_{tf}')))
+        if _wt_htf_against >= 2:
+            score += 5; parts.append(f"WT_HTF_DISC_{_wt_htf_against}tf")
+    if _cfg_auto('WT_ACCEL_EXIT_ENABLED', False):
+        _accel_against = sum(1 for tf in ('5m','15m','1h') if (g(f'wt_velocity_{tf}') < -1.0 if is_long else g(f'wt_velocity_{tf}') > 1.0))
+        _accel_min = int(_cfg_auto('WT_ACCEL_EXIT_MIN_TFS', 2))
+        if _accel_against >= _accel_min:
+            score += _accel_against * 4; parts.append(f"WT_ACCEL_{_accel_against}tf")
+    if _cfg_auto('WT_MOMENTUM_EXIT_ENABLED', False):
+        _mom_thr = float(_cfg_auto('WT_MOMENTUM_EXIT_THRESHOLD', 20))
+        _mom_against = sum(1 for tf in ('15m','1h','4h') if (g(f'wt1_{tf}') < -_mom_thr if is_long else g(f'wt1_{tf}') > _mom_thr))
+        if _mom_against >= 2:
+            score += 6; parts.append(f"WT_MOM_{_mom_against}tf")
+    if _cfg_auto('WT_EXHAUST_EXIT_MIN_TFS', 0):
+        _exh_min = int(_cfg_auto('WT_EXHAUST_EXIT_MIN_TFS', 2))
+        _exh_against = sum(1 for tf in ('15m','1h','4h') if (abs(g(f'wt1_{tf}')) > 80 if is_long else abs(g(f'wt1_{tf}')) > 80))
+        if _exh_against >= _exh_min:
+            score += 5; parts.append(f"WT_EXHST_{_exh_against}tf")
+    if _cfg_auto('WT_15M_LH_WAIT_EXIT_ENABLED', False):
+        try:
+            _wt_pk_s = str(i.get('wt_peak_structure_15m', ''))
+            _wt_tr_s = str(i.get('wt_trough_structure_15m', ''))
+            _wt1_15m = g('wt1_15m'); _wt2_15m = g('wt2_15m')
+            _wt1_prev = g('wt1_15m_prev', _wt1_15m); _wt2_prev = g('wt2_15m_prev', _wt2_15m)
+            _dc_pos_15m = g('dc_position_15m', 0.5)
+            _bb_15m = g('bb_pct_b_15m', 0.5)
+            _wt_cross_against = ( _wt1_15m < _wt2_15m and _wt1_prev >= _wt2_prev) if is_long else ( _wt1_15m > _wt2_15m and _wt1_prev <= _wt2_prev)
+            if is_long and _wt_pk_s == 'LH':
+                _wait_ok = (_dc_pos_15m > 0.65) or (_bb_15m > 0.70) or _wt_cross_against
+                if _wait_ok:
+                    score += 18; parts.append(f"WT15_LH_WAIT(dc{_dc_pos_15m:.2f} bb{_bb_15m:.2f} cross{_wt_cross_against})")
+            elif not is_long and _wt_tr_s == 'LL':
+                _wait_ok = (_dc_pos_15m < 0.35) or (_bb_15m < 0.30) or _wt_cross_against
+                if _wait_ok:
+                    score += 18; parts.append(f"WT15_HL_WAIT_LL(dc{_dc_pos_15m:.2f} bb{_bb_15m:.2f})")
+            if is_long and str(_wt_pk_s) == '-1':
+                _wait_ok = (_dc_pos_15m > 0.65) or (_bb_15m > 0.70) or _wt_cross_against
+                if _wait_ok:
+                    score += 0
+            elif not is_long and str(_wt_tr_s) == '-1':
+                _wait_ok = (_dc_pos_15m < 0.35) or (_bb_15m < 0.30) or _wt_cross_against
+                if _wait_ok:
+                    score += 0
+        except Exception:
+            pass
+    if _cfg_auto('WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED', False):
+        try:
+            _div = str(i.get('wt_divergence_15m', '')); _div_int = i.get('wt_divergence_15m', 0)
+            _wt1_15m = g('wt1_15m'); _wt2_15m = g('wt2_15m')
+            _wt1_prev = g('wt1_15m_prev', _wt1_15m); _wt2_prev = g('wt2_15m_prev', _wt2_15m)
+            _dc_pos_15m = g('dc_position_15m', 0.5)
+            _bb_15m = g('bb_pct_b_15m', 0.5)
+            _wt_cross_against = ( _wt1_15m < _wt2_15m and _wt1_prev >= _wt2_prev) if is_long else ( _wt1_15m > _wt2_15m and _wt1_prev <= _wt2_prev)
+            _is_bear_div = (_div == 'BEAR' or _div_int == -1 or _div == '-1')
+            _is_bull_div = (_div == 'BULL' or _div_int == 1 or _div == '1')
+            if is_long and _is_bear_div:
+                _wait_ok = (_dc_pos_15m > 0.65) or (_bb_15m > 0.70) or _wt_cross_against
+                if _wait_ok:
+                    score += 22; parts.append(f"DIV_VV_BEAR_WAIT(dc{_dc_pos_15m:.2f} bb{_bb_15m:.2f})")
+            elif not is_long and _is_bull_div:
+                _wait_ok = (_dc_pos_15m < 0.35) or (_bb_15m < 0.30) or _wt_cross_against
+                if _wait_ok:
+                    score += 22; parts.append(f"DIV_VV_BULL_WAIT(dc{_dc_pos_15m:.2f})")
+        except Exception:
+            pass
+    _min_exit_gain = float(_cfg_auto('MIN_EXIT_GAIN_PCT', 0))
+    if _min_exit_gain > 0 and gain < _min_exit_gain:
+        score = 0; parts.append(f"MIN_GAIN_BLOCK_{gain:.1f}<{_min_exit_gain}")
+    score = min(score, 100.0)
+    threshold = 35 if gain > 1.0 else 45 if gain > 0.3 else 55
+    should_exit = score >= threshold
+    reason = f"MULTI_TF_EXIT(s={score:.0f}/{threshold},g={gain:.1f}%,{'+'.join(parts[:6])})" if parts else ""
+    try:
+        _wt_tfs_str = _cfg_auto('TRADIER_WT_EXIT_TFS_TRADIER', '5m+15m+1h+4h+D')
+        _wt_min_tfs = int(_cfg_auto('TRADIER_WT_EXIT_MIN_TFS_TRADIER', 4))
+        _wt_tfs = [t.strip() for t in _wt_tfs_str.replace('+', ',').split(',') if t.strip()]
+        _wt_against = 0
+        _wt_against_tfs = []
+        for _tf in _wt_tfs:
+            _wt1 = g(f'wt1_{_tf}'); _wt2 = g(f'wt2_{_tf}')
+            if is_long and _wt1 < _wt2:
+                _wt_against += 1; _wt_against_tfs.append(_tf)
+            elif not is_long and _wt1 > _wt2:
+                _wt_against += 1; _wt_against_tfs.append(_tf)
+        if _wt_min_tfs > 0 and _wt_against >= _wt_min_tfs and len(_wt_tfs) > 0:
+            should_exit = True
+            reason = f"WT_EXIT_TFS({_wt_against}/{len(_wt_tfs)}>={_wt_min_tfs}:{'+'.join(_wt_against_tfs)})|" + reason
+    except Exception:
+        pass
+    return (should_exit, reason, score)
 
 
 @timed_function("evaluate_technical_indicator_signals")

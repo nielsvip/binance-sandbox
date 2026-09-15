@@ -4457,6 +4457,7 @@ class Config:
     DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_ENABLED: bool = False       # master switch; sweep variants set True + TF  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_FLOOR_PCT: float = -999.0  # abs loss floor; -999 = off  # PORTED from TradierConfig 2026-08-17
+    DC_BREAK_WAIT_WT15_CLOSE_ENABLED: bool = False  # 2026-09-15 wait for wt15 close instead of dc_low/high break
     DC_LOW_FROZEN_STOP_TF: str = '4h'             # TF to freeze: '5m','15m','1h','4h','D' (D added 2026-07-18 — engine reads dc_low_{tf} generically, NPZ has D)  # PORTED from TradierConfig 2026-08-17
     DC_LOW_FROZEN_STOP_USE_4BAR: bool = False      # True=dc_low4_{tf} (4-bar tight), False=dc_low_{tf} (20-bar)  # PORTED from TradierConfig 2026-08-17
     DC_POSITION_ENTRY_THRESHOLD: float = 0.25  # REVERTED 2026-04-17: 0.15 was too tight. Mar-30 baseline 0.25 = Sharpe 18.57 on 61 stocks.  # PORTED from TradierConfig 2026-08-17
@@ -5399,6 +5400,10 @@ class Config:
     WT_15M_LH_WAIT_EXIT_ENABLED: bool = False  # WT 15m lower-high + DC/BB/WT wait — vv
     WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED: bool = False  # WT LH while price HH (divergence) + wait
     WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = True  # gate: technical exits require LH/div wait
+    # === EXIT BLOCKER parity (tradier mirror) — 2026-09-15 ===
+    EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = False
+    EXIT_BLOCKER_LH_TF: str = "15m"
+    EXIT_BLOCKER_LL_TF: str = "15m"
     WT_FORCE_OPEN_FRESH_CROSS_ONLY: bool = False        # [2026-06-27] True=fire only on a FRESH WT cross event (wt_cross_bull/bear), not the standing wt1>wt2 state. Standing-state on higher TF churned MORE (688→940 tr/sym/yr); cross-event fires once per cross. A/B-tested.  # PORTED from TradierConfig 2026-08-17
     WT_FORCE_OPEN_FRESH_MAX_BARS: int = 0               # [2026-06-27] freshness window for FRESH_CROSS_ONLY. 0=this bar only (strictest); N=within N bars of cross (uses wt_cross_bars_ago + wt_cross_rising direction).  # PORTED from TradierConfig 2026-08-17
     WT_FORCE_OPEN_TRIGGER_TF: str = "5m"                # [2026-06-26] force-open WT-cross trigger TF. 5m=current (fires every 5m bar=churn); 15m/1h fire less=less churn. A/B-tested 5m vs 15m vs 1h vs OFF; keep best.  # PORTED from TradierConfig 2026-08-17

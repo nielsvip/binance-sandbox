@@ -1018,6 +1018,7 @@ class TradierConfig:
     DC_LOW_FROZEN_STOP_TF: str = '4h'             # TF to freeze: '5m','15m','1h','4h','D' (D added 2026-07-18 — engine reads dc_low_{tf} generically, NPZ has D)
     DC_LOW_FROZEN_STOP_USE_4BAR: bool = False      # True=dc_low4_{tf} (4-bar tight), False=dc_low_{tf} (20-bar)
     DC_LOW_FROZEN_STOP_FLOOR_PCT: float = -999.0  # abs loss floor; -999 = off
+    DC_BREAK_WAIT_WT15_CLOSE_ENABLED: bool = False  # 2026-09-15 USER: wait for wt15 close (wt1_15m < wt2_15m for LONG) instead of dc_low/high break
     BB_FROZEN_STOP_ENABLED: bool = False           # freeze bb_lower/upper/basis at entry as stop
     BB_FROZEN_STOP_TF: str = '1h'                 # TF to freeze: '3m','5m','15m','1h','4h','D','W' (D/W added 2026-07-18 — engine reads bb_{field}_{tf} generically, NPZ has D+W)
     BB_FROZEN_STOP_FIELD: str = 'lower'           # 'lower' (LONG stop), 'upper' (SHORT stop), 'basis' (both)
@@ -1891,6 +1892,10 @@ class TradierConfig:
     WT_15M_LH_WAIT_EXIT_ENABLED: bool = False    # WT 15m lower-high + wait for DC/BB high-low or WT cross — exit at LH, not mid-rally
     WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED: bool = False  # WT lower-high while price higher than prev cross (vv short divergence) + DC/BB/WT wait
     WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = True  # when True, ALL WT technical exits (DIV/ACCEL/MOMENTUM/K_LH) require LH/divergence confirmation before firing
+    # === EXIT BLOCKER — 2026-09-15 USER: block any exit not accompanied by LH in latest closed 15m bar OR LL in forming candle ===
+    EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = False  # when True, REDUCE/CLOSE requires lower-high (closed 15m) OR lower-low (forming candle)
+    EXIT_BLOCKER_LH_TF: str = "15m"  # TF for closed-bar LH check (wt_peak_structure_15m == LH)
+    EXIT_BLOCKER_LL_TF: str = "15m"  # TF for forming candle LL check (low < prev low on 15m)
     STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
     # ═══ D4 BREAKOUT MULTI-LUNG (stocks, 2026-04-16) — extracted from ez_breakout_agent.py ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung_tradier delivers Sharpe > 2 on 128-stock × 2yr.

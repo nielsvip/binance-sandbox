@@ -5029,6 +5029,10 @@ class QuickConfig:
     WT_15M_LH_WAIT_EXIT_ENABLED: bool = False  # 2026-09-15 WAIT: lower-high 15m + DC/BB/WT wait — never mid-rally
     WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED: bool = False  # 2026-09-15 WAIT: wt LH while price HH divergence + wait
     WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = True  # gate: require LH/div before any WT technical exit fires
+    EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = False  # 2026-09-15 EXIT BLOCKER — requires LH (closed 15m) OR LL (forming) for any exit
+    EXIT_BLOCKER_LH_TF: str = "15m"
+    EXIT_BLOCKER_LL_TF: str = "15m"
+    DC_BREAK_WAIT_WT15_CLOSE_ENABLED: bool = False  # 2026-09-15 wait for wt15 close instead of dc break
     WT_EXHAUST_EXIT_MIN_GAIN_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
     WT_MOMENTUM_EXIT_THRESHOLD: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
@@ -5883,6 +5887,10 @@ class QuickConfig:
     WT_15M_LH_WAIT_EXIT_ENABLED: bool = False  # 2026-09-15 WAIT lower-high 15m + DC/BB/WT wait
     WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED: bool = False  # 2026-09-15 WAIT divergence vv short
     WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = True  # gate: require LH/div wait
+    EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = False  # EXIT BLOCKER parity
+    EXIT_BLOCKER_LH_TF: str = "15m"
+    EXIT_BLOCKER_LL_TF: str = "15m"
+    DC_BREAK_WAIT_WT15_CLOSE_ENABLED: bool = False  # wait for wt15 close instead of dc break
     BREAKOUT_MULTI_LUNG_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
     TRC_CLENOW_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
     TRC_MINERVINI_ENABLED: bool = True  # live parity: config_tradier True (added batch 2)
@@ -17442,38 +17450,69 @@ def _apply_new_audit_causal(cfg, npz, n, is_long, entry_mask, exit_mask, augment
             _v = _safe(npz, 'wt1_15m', n, 0)
             _cond = ((_v > _safe(npz, 'wt2_15m', n, 0)) if is_long else (_v < _safe(npz, 'wt2_15m', n, 0)))  # wt1>wt2 balanced
             exit_mask = exit_mask | _cond  # K_LOWER_HIGH_EXIT_ENABLED NEW_AUDIT balanced
-        # 2026-09-15 WAIT exits — real logic: LH/divergence + DC/BB/WT wait, never mid-rally
+        # 2026-09-15 WAIT exits — real logic: LH/divergence + DC/BB/WT wait, never mid-rally (proper WT cross = wt1<wt2 and prev wt1>=prev wt2)
         if bool(getattr(cfg, 'WT_15M_LH_WAIT_EXIT_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_15M_LH_WAIT_EXIT_ENABLED', False)):
             _wt_pk_s = _safe(npz, 'wt_peak_structure_15m', n, 0)
             _wt1 = _safe(npz, 'wt1_15m', n, 0); _wt2 = _safe(npz, 'wt2_15m', n, 0)
+            _wt1_prev = _safe(npz, 'wt1_15m_prev', n, _wt1); _wt2_prev = _safe(npz, 'wt2_15m_prev', n, _wt2)
             _dc_pos = _safe(npz, 'dc_position_15m', n, 0.5)
             _bb = _safe(npz, 'bb_pct_b_15m', n, 0.5)
-            # LONG: WT 15m lower-high (pk_s==-1) + wait for DC high/BB high/WT cross down
-            # SHORT: WT 15m higher-low (peak LH inverse -> trough HL == 1 for shorts uses peak LH mirrored) -> use pk_s==-1 for LONG, tr_s== -1? simplified to pk_s
+            _wt_cross = ((_wt1 < _wt2) & (_wt1_prev >= _wt2_prev)) if is_long else ((_wt1 > _wt2) & (_wt1_prev <= _wt2_prev))
             if is_long:
                 _lh = (_wt_pk_s == -1)
-                _wait = ((_dc_pos > 0.65) | (_bb > 0.70) | (_wt1 < _wt2))
+                _wait = ((_dc_pos > 0.65) | (_bb > 0.70) | _wt_cross)
                 _cond = _lh & _wait
             else:
                 _wt_tr_s = _safe(npz, 'wt_trough_structure_15m', n, 0)
                 _lh = (_wt_tr_s == -1)  # LL for shorts (trough lower)
-                _wait = ((_dc_pos < 0.35) | (_bb < 0.30) | (_wt1 > _wt2))
+                _wait = ((_dc_pos < 0.35) | (_bb < 0.30) | _wt_cross)
                 _cond = _lh & _wait
             exit_mask = exit_mask | _cond  # WT_15M_LH_WAIT_EXIT_ENABLED — wait LH+structural confirm
         if bool(getattr(cfg, 'WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED', False)) != bool(_DEFAULTS_625.get('WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED', False)):
             _div = _safe(npz, 'wt_divergence_15m', n, 0)
             _wt1 = _safe(npz, 'wt1_15m', n, 0); _wt2 = _safe(npz, 'wt2_15m', n, 0)
+            _wt1_prev = _safe(npz, 'wt1_15m_prev', n, _wt1); _wt2_prev = _safe(npz, 'wt2_15m_prev', n, _wt2)
             _dc_pos = _safe(npz, 'dc_position_15m', n, 0.5)
             _bb = _safe(npz, 'bb_pct_b_15m', n, 0.5)
+            _wt_cross = ((_wt1 < _wt2) & (_wt1_prev >= _wt2_prev)) if is_long else ((_wt1 > _wt2) & (_wt1_prev <= _wt2_prev))
             if is_long:
                 _div_bear = (_div == -1)  # price HH but WT LH
-                _wait = ((_dc_pos > 0.65) | (_bb > 0.70) | (_wt1 < _wt2))
+                _wait = ((_dc_pos > 0.65) | (_bb > 0.70) | _wt_cross)
                 _cond = _div_bear & _wait
             else:
                 _div_bull = (_div == 1)  # price LL but WT HL
-                _wait = ((_dc_pos < 0.35) | (_bb < 0.30) | (_wt1 > _wt2))
+                _wait = ((_dc_pos < 0.35) | (_bb < 0.30) | _wt_cross)
                 _cond = _div_bull & _wait
             exit_mask = exit_mask | _cond  # WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED — divergence+wait
+        # 2026-09-15 EXIT BLOCKER — when enabled, block any exit without LH (closed 15m) OR LL (forming candle)
+        if bool(getattr(cfg, 'EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED', False)) != bool(_DEFAULTS_625.get('EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED', False)):
+            _pk_s = _safe(npz, 'wt_peak_structure_15m', n, 0)
+            _low = _safe(npz, 'low_15m', n, 0); _low_prev = _safe(npz, 'low_15m_prev', n, _low)
+            _high = _safe(npz, 'high_15m', n, 0); _high_prev = _safe(npz, 'high_15m_prev', n, _high)
+            if 'low_15m_prev' not in npz:
+                # fallback: use close delta if low_prev missing
+                _close = _safe(npz, 'close_15m', n, 0); _close_prev = _safe(npz, 'close_15m_prev', n, _close)
+                _forming_ll = (_close < _close_prev)
+            else:
+                _forming_ll = ((_low < _low_prev) | (_high < _high_prev))
+            _closed_lh = (_pk_s == -1)
+            _blocker_pass = _closed_lh | _forming_ll
+            # AND with existing exit_mask: blocker removes exits without LH/LL
+            exit_mask = exit_mask & _blocker_pass  # EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED — LH closed OR LL forming required
+        # 2026-09-15 DC BREAK WAIT WT15 CLOSE — wait for wt15 close instead of dc break (vector)
+        if bool(getattr(cfg, 'DC_BREAK_WAIT_WT15_CLOSE_ENABLED', False)) != bool(_DEFAULTS_625.get('DC_BREAK_WAIT_WT15_CLOSE_ENABLED', False)):
+            _dc_low = _safe(npz, 'dc_low_15m', n, 0); _dc_high = _safe(npz, 'dc_high_15m', n, 0)
+            _close = _safe(npz, 'close_15m', n, 0); _close_prev = _safe(npz, 'close_15m_prev', n, _close) if 'close_15m_prev' in npz else _close
+            _wt1 = _safe(npz, 'wt1_15m', n, 0); _wt2 = _safe(npz, 'wt2_15m', n, 0)
+            _wt_close_long = (_wt1 < _wt2)
+            _wt_close_short = (_wt1 > _wt2)
+            if is_long:
+                _break = (_close < _dc_low) & (_dc_low != 0)
+                _cond = _break & _wt_close_long
+            else:
+                _break = (_close > _dc_high) & (_dc_high != 0)
+                _cond = _break & _wt_close_short
+            exit_mask = exit_mask | _cond  # DC_BREAK_WAIT_WT15_CLOSE_ENABLED — dc break + wt15 close
         if bool(getattr(cfg, 'LEGACY_DC_BREAKOUT_REENTRY', True)) != bool(_DEFAULTS_625.get('LEGACY_DC_BREAKOUT_REENTRY', True)):
             _v = _safe(npz, 'rsi_1h', n, 50)
             _cond = (_v > 55 if is_long else _v < 45)  # rsi>55 balanced
