@@ -17,18 +17,17 @@ def copy_row(src_ws, r_src, dst_ws, r_dst, max_col):
     for c in range(1, max_col+1):
         s=src_ws.cell(r_src,c)
         d=dst_ws.cell(r_dst,c)
-        # skip merged cells (read-only)
         if type(s).__name__=="MergedCell" or type(d).__name__=="MergedCell":
             continue
         try:
             d.value=s.value
         except AttributeError:
             continue
-        if s.has_style:
-            try:
-                d.font=copy(s.font); d.fill=copy(s.fill); d.border=copy(s.border); d.alignment=copy(s.alignment); d.number_format=s.number_format; d.protection=copy(s.protection)
-            except:
-                pass
+        # always copy fill/font etc to preserve yellows in same columns as original (even if has_style false, clear old yellow)
+        try:
+            d.font=copy(s.font); d.fill=copy(s.fill); d.border=copy(s.border); d.alignment=copy(s.alignment); d.number_format=s.number_format; d.protection=copy(s.protection)
+        except:
+            pass
         if isinstance(s.value,str) and s.value.startswith("="):
             v=s.value
             def repl(m):
