@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T07:00:47.158422+00:00",
+  "timestamp": "2026-09-16T07:18:50.279992+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -50,12 +50,6 @@
     },
     {
       "symbol": "HDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -115,6 +109,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ASMLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -140,12 +140,6 @@
     },
     {
       "symbol": "THETAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -301,12 +295,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CRWVUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "CATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -314,6 +302,12 @@
     },
     {
       "symbol": "RVNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRDOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -445,28 +439,39 @@
       "short_score": 0
     },
     {
-      "symbol": "CRDOUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
+      "symbol": "ARMUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     },
     {
-      "symbol": "ASMLUSDT",
-      "net_score": 12.3,
-      "long_score": 12.3,
+      "symbol": "CRWVUSDT",
+      "net_score": 11.3,
+      "long_score": 11.3,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMATUSDT",
+      "net_score": 12.9,
+      "long_score": 12.9,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ASMLUSDT",
-      12.3,
-      1610.55
+      "AMATUSDT",
+      12.9,
+      428.15
     ],
     [
-      "CRDOUSDT",
-      11.5,
-      152.48
+      "CRWVUSDT",
+      11.3,
+      82.11
+    ],
+    [
+      "ARMUSDT",
+      10.4,
+      246.0656136
     ]
   ],
   "top_shorts": [],
