@@ -58,4 +58,6 @@ if [[ $DO_NPZ -eq 1 ]]; then
     echo "  no backtest_v8/indicators dir, skipping"
   fi
 fi
+# final perm fix — templates were historically 444 (read-only) causing Access Denied on overwrite
+ssh "$S3" "chmod 644 $REMOTE_BASE/SPREADSHEETS/TEMPLATE*.xlsx $REMOTE_BASE/backtest_v8/indicators/*.npz 2>/dev/null; chmod 775 $REMOTE_BASE/SPREADSHEETS $REMOTE_BASE/backtest_v8/indicators 2>/dev/null; echo 'perms fixed 644/775'" >/dev/null || true
 echo "==> Done. Verify: ssh s3 'ls -lh ~/binance-sandbox/SPREADSHEETS/TEMPLATE*.xlsx; ls ~/binance-sandbox/backtest_v8/indicators/*.npz | wc -l'"
