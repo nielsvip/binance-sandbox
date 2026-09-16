@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T12:12:23.626625+00:00",
+  "timestamp": "2026-09-16T12:30:51.592668+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -217,6 +217,12 @@
       "short_score": 0
     },
     {
+      "symbol": "DASHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -290,12 +296,6 @@
     },
     {
       "symbol": "CRMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -433,50 +433,50 @@
       "short_score": 0
     },
     {
+      "symbol": "CATUSDT",
+      "net_score": 10.1,
+      "long_score": 10.1,
+      "short_score": 0
+    },
+    {
       "symbol": "SPYUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRWVUSDT",
-      "net_score": 10.6,
-      "long_score": 10.6,
-      "short_score": 0
-    },
-    {
-      "symbol": "DASHUSDT",
-      "net_score": 13.0,
-      "long_score": 13.0,
+      "net_score": 10.7,
+      "long_score": 10.7,
       "short_score": 0
     },
     {
       "symbol": "CIENUSDT",
-      "net_score": 16.1,
-      "long_score": 16.1,
+      "net_score": 14.2,
+      "long_score": 14.2,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRWVUSDT",
+      "net_score": 15.7,
+      "long_score": 15.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "CIENUSDT",
-      16.1,
-      345.67006728
-    ],
-    [
-      "DASHUSDT",
-      13.0,
-      53.66
-    ],
-    [
       "CRWVUSDT",
-      10.6,
-      82.93148238
+      15.7,
+      83.71561774
+    ],
+    [
+      "CIENUSDT",
+      14.2,
+      347.99
     ],
     [
       "SPYUSDT",
-      10.3,
-      761.16422995
+      10.7,
+      760.98
+    ],
+    [
+      "CATUSDT",
+      10.1,
+      793.72670856
     ]
   ],
   "top_shorts": [],
