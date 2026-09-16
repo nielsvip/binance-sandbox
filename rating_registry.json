@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T16:46:01.772001+00:00",
+  "timestamp": "2026-09-16T17:08:34.288477+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "PYPLUSDT",
-      "net_score": -13.8,
+      "net_score": -13.9,
       "long_score": 0,
-      "short_score": 13.8
-    },
-    {
-      "symbol": "ASMLUSDT",
-      "net_score": -10.0,
-      "long_score": 0,
-      "short_score": 10.0
+      "short_score": 13.9
     },
     {
       "symbol": "GRAMUSDT",
@@ -127,6 +121,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ASMLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -224,6 +224,12 @@
     },
     {
       "symbol": "LITEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MINAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -461,31 +467,14 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "MINAUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "MINAUSDT",
-      11.5,
-      0.08632
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "PYPLUSDT",
-      13.8,
-      53.34177319
-    ],
-    [
-      "ASMLUSDT",
-      10.0,
-      1607.32
+      13.9,
+      53.29323888
     ]
   ],
   "hedge_usage": {
