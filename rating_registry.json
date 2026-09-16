@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T12:49:17.667858+00:00",
+  "timestamp": "2026-09-16T13:07:42.729260+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -86,6 +86,12 @@
     },
     {
       "symbol": "CRMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRWVUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -440,38 +446,27 @@
     },
     {
       "symbol": "METAUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     },
     {
       "symbol": "HDUSDT",
-      "net_score": 12.4,
-      "long_score": 12.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRWVUSDT",
-      "net_score": 13.8,
-      "long_score": 13.8,
+      "net_score": 13.2,
+      "long_score": 13.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "CRWVUSDT",
-      13.8,
-      83.72244457
-    ],
-    [
       "HDUSDT",
-      12.4,
-      306.82879706
+      13.2,
+      306.9257819
     ],
     [
       "METAUSDT",
-      11.2,
-      677.92
+      10.4,
+      677.38
     ]
   ],
   "top_shorts": [],
