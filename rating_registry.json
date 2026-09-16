@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T20:33:19.652494+00:00",
+  "timestamp": "2026-09-16T20:54:54.047118+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,28 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "PYPLUSDT",
-      "net_score": -17.1,
+      "symbol": "GRAMUSDT",
+      "net_score": 0,
       "long_score": 0,
-      "short_score": 17.1
-    },
-    {
-      "symbol": "METAUSDT",
-      "net_score": -16.2,
-      "long_score": 0,
-      "short_score": 16.2
-    },
-    {
-      "symbol": "AMDUSDT",
-      "net_score": -14.3,
-      "long_score": 0,
-      "short_score": 14.3
-    },
-    {
-      "symbol": "QQQUSDT",
-      "net_score": -10.0,
-      "long_score": 0,
-      "short_score": 10.0
+      "short_score": 0
     },
     {
       "symbol": "IOTAUSDT",
@@ -97,12 +79,6 @@
       "short_score": 0
     },
     {
-      "symbol": "QTUMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AVGOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -157,12 +133,6 @@
       "short_score": 0
     },
     {
-      "symbol": "THETAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -194,12 +164,6 @@
     },
     {
       "symbol": "VETUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -271,7 +235,7 @@
       "short_score": 0
     },
     {
-      "symbol": "SOLUSDC",
+      "symbol": "QQQUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -349,7 +313,7 @@
       "short_score": 0
     },
     {
-      "symbol": "LTCUSDC",
+      "symbol": "AMDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -361,7 +325,19 @@
       "short_score": 0
     },
     {
+      "symbol": "METAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ZENUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PYPLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -451,74 +427,97 @@
       "short_score": 0
     },
     {
+      "symbol": "NEARUSDC",
+      "net_score": 10.5,
+      "long_score": 10.5,
+      "short_score": 0
+    },
+    {
       "symbol": "PLTRUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
+      "net_score": 11.0,
+      "long_score": 11.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SOLUSDC",
+      "net_score": 11.4,
+      "long_score": 11.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "QTUMUSDT",
+      "net_score": 12.5,
+      "long_score": 12.5,
       "short_score": 0
     },
     {
       "symbol": "ASTSUSDT",
+      "net_score": 13.3,
+      "long_score": 13.3,
+      "short_score": 0
+    },
+    {
+      "symbol": "THETAUSDT",
       "net_score": 13.4,
       "long_score": 13.4,
       "short_score": 0
     },
     {
-      "symbol": "GRAMUSDT",
-      "net_score": 13.7,
-      "long_score": 13.7,
+      "symbol": "LTCUSDC",
+      "net_score": 14.5,
+      "long_score": 14.5,
       "short_score": 0
     },
     {
       "symbol": "1000PEPEUSDC",
-      "net_score": 13.9,
-      "long_score": 13.9,
+      "net_score": 16.4,
+      "long_score": 16.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "1000PEPEUSDC",
-      13.9,
-      0.00338474
+      16.4,
+      0.0033809
     ],
     [
-      "GRAMUSDT",
-      13.7,
-      1.309
+      "LTCUSDC",
+      14.5,
+      51.24
+    ],
+    [
+      "THETAUSDT",
+      13.4,
+      0.1772
     ],
     [
       "ASTSUSDT",
-      13.4,
-      59.44
+      13.3,
+      59.42881761
+    ],
+    [
+      "QTUMUSDT",
+      12.5,
+      0.86003854
+    ],
+    [
+      "SOLUSDC",
+      11.4,
+      98.48
     ],
     [
       "PLTRUSDT",
-      10.4,
-      173.95
+      11.0,
+      174.32
+    ],
+    [
+      "NEARUSDC",
+      10.5,
+      2.585
     ]
   ],
-  "top_shorts": [
-    [
-      "PYPLUSDT",
-      17.1,
-      52.72287947
-    ],
-    [
-      "METAUSDT",
-      16.2,
-      674.16
-    ],
-    [
-      "AMDUSDT",
-      14.3,
-      513.66
-    ],
-    [
-      "QQQUSDT",
-      10.0,
-      705.61
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
