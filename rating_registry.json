@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T16:02:41.267915+00:00",
+  "timestamp": "2026-09-16T16:23:19.242323+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "PYPLUSDT",
-      "net_score": -14.4,
+      "net_score": -14.7,
       "long_score": 0,
-      "short_score": 14.4
+      "short_score": 14.7
     },
     {
-      "symbol": "BNCUSDT",
-      "net_score": -12.0,
+      "symbol": "BMNRUSDT",
+      "net_score": -12.1,
       "long_score": 0,
-      "short_score": 12.0
+      "short_score": 12.1
     },
     {
       "symbol": "GRAMUSDT",
@@ -181,6 +181,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SPYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -283,7 +289,7 @@
       "short_score": 0
     },
     {
-      "symbol": "BMNRUSDT",
+      "symbol": "BNCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -449,31 +455,19 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "SPYUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "SPYUSDT",
-      10.3,
-      761.54
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "PYPLUSDT",
-      14.4,
-      53.37645607
+      14.7,
+      53.31063722
     ],
     [
-      "BNCUSDT",
-      12.0,
-      4.72812412
+      "BMNRUSDT",
+      12.1,
+      22.80467301
     ]
   ],
   "hedge_usage": {
