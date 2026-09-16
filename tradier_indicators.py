@@ -914,6 +914,27 @@ def hull_trend_indicators(close_series: pd.Series, length_short: int = 9, length
         return t_up, swingbuy, swingsell
     except Exception: return None, None, None
 
+def ha_streak_count(df: pd.DataFrame) -> int:
+    if df is None or len(df) < 3:
+        return 0
+    streak = 0
+    for idx in range(len(df) - 1, max(len(df) - 21, 1), -1):
+        ha_c = (df["open"].iloc[idx] + df["high"].iloc[idx] + df["low"].iloc[idx] + df["close"].iloc[idx]) / 4.0
+        if idx > 0:
+            prev_c = (df["open"].iloc[idx - 1] + df["high"].iloc[idx - 1] + df["low"].iloc[idx - 1] + df["close"].iloc[idx - 1]) / 4.0
+            prev_o = (df["open"].iloc[idx - 1] + df["close"].iloc[idx - 1]) / 2.0
+        else:
+            break
+        ha_o = (prev_c + prev_o) / 2.0
+        color = 1 if ha_c >= ha_o else -1
+        if streak == 0:
+            streak = color
+        elif (streak > 0 and color > 0) or (streak < 0 and color < 0):
+            streak += color
+        else:
+            break
+    return streak
+
 STOCH_LEN = 14
 STOCH_K = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.81 Sharpe 5.04 for stocks (was 3)
 STOCH_D = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
@@ -1645,6 +1666,21 @@ class IndicatorCalculator:
             )
         if timeframe == "15m" and len(close_series) >= 200:
             result["sma_200_15m"] = float(close_series.iloc[-200:].mean())
+        # 2026-09-16 FIX: generic sma_200_{tf} for all TFs where tradier_manage expects it
+        # (previous TIMEFRAMES only defined sma for 1m, so 1h/4h/D were missing)
+        if len(close_series) >= 200:
+            _sma200_key = f"sma_200_{timeframe}"
+            if _sma200_key not in result:
+                result[_sma200_key] = float(close_series.iloc[-200:].mean())
+                if len(close_series) >= 201:
+                    result[f"{_sma200_key}_prev"] = float(close_series.iloc[-201:-1].mean())
+        # 2026-09-16 FIX: volume_{tf} was never emitted — tradier_manage reads volume_1h/volume_15m
+        try:
+            result[f"volume_{timeframe}"] = float(volume_series.iloc[-1]) if len(volume_series) > 0 else 0.0
+            if len(volume_series) > 1:
+                result[f"volume_{timeframe}_prev"] = float(volume_series.iloc[-2])
+        except Exception:
+            pass
 
         tf_config = TIMEFRAMES.get(timeframe, {"sec": 60, "half": 30, "dc_window": 20, "atr": 14, "ema": [20, 50, 200], "sma":[]})
         dc_window = tf_config["dc_window"]
@@ -1741,16 +1777,14 @@ class IndicatorCalculator:
         rsi_val = rsi_value(close_series, 14)
         if rsi_val is not None:
             result[f"rsi_{timeframe}"] = rsi_val
-        # ADX + BB width + DC width — needed for market quality scoring (BACKTEST_CHANGE_146)
-        if timeframe in ("1h", "4h", "D"):
+        # ADX + BB width + DC width — needed for market quality scoring.
+        # 2026-09-16 FIX: extend to 15m/5m so tradier_manage entry/exit checks
+        # (bb_pct_b_15m, dc_position_15m) don't fall back to defaults.
+        if timeframe in ("5m", "15m", "1h", "4h", "D"):
             _adx_val = adx_value(adjusted_df, 14)
             if _adx_val is not None:
                 result[f"adx_{timeframe}"] = _adx_val
-            _bb_u = result.get(f"bb_upper_{timeframe}")
-            _bb_l = result.get(f"bb_lower_{timeframe}")
-            if _bb_u and _bb_l:
-                _bb_mid = (_bb_u + _bb_l) / 2.0 if (_bb_u + _bb_l) > 0 else 0
-                result[f"bb_width_{timeframe}"] = round((_bb_u - _bb_l) / _bb_mid * 100.0, 3) if _bb_mid > 0 else 0.0
+            # dc_width/dc_position for all TFs (was 1h/4h/D only — 15m missing)
             _dc_h = result.get(f"dc_high_{timeframe}")
             _dc_l = result.get(f"dc_low_{timeframe}")
             if _dc_h and _dc_l and _dc_l > 0:
@@ -1758,6 +1792,22 @@ class IndicatorCalculator:
                 _dc_range = _dc_h - _dc_l
                 if _dc_range > 0:
                     result[f"dc_position_{timeframe}"] = round(max(0.0, min(1.0, (current_price - _dc_l) / _dc_range)), 4)
+            else:
+                # Fallback compute directly if dc_high/low not yet set
+                try:
+                    _dc_h2, _dc_l2, _ = donchian(high_series, low_series, dc_window)
+                    if _dc_h2 and _dc_l2 and _dc_l2 > 0:
+                        result[f"dc_width_{timeframe}"] = round((_dc_h2 - _dc_l2) / _dc_l2 * 100, 4)
+                        _dc_range2 = _dc_h2 - _dc_l2
+                        if _dc_range2 > 0:
+                            result[f"dc_position_{timeframe}"] = round(max(0.0, min(1.0, (current_price - _dc_l2) / _dc_range2)), 4)
+                except Exception:
+                    pass
+            _bb_u = result.get(f"bb_upper_{timeframe}")
+            _bb_l = result.get(f"bb_lower_{timeframe}")
+            if _bb_u and _bb_l:
+                _bb_mid = (_bb_u + _bb_l) / 2.0 if (_bb_u + _bb_l) > 0 else 0
+                result[f"bb_width_{timeframe}"] = round((_bb_u - _bb_l) / _bb_mid * 100.0, 3) if _bb_mid > 0 else 0.0
             
         for ema_length in tf_config["ema"]:
             ema_curr, ema_prev = ema_pair(close_series, ema_length)
@@ -1790,7 +1840,8 @@ class IndicatorCalculator:
         if linearity is not None:
             result[f"linearity_{timeframe}"] = linearity
             result[f"slope_close_{timeframe}"] = slope
-        if timeframe in ("1h", "4h", "D"):
+        # 2026-09-16 FIX: extend bb to 15m/5m (was 1h/4h/D only) — tradier_manage uses bb_pct_b_15m
+        if timeframe in ("5m", "15m", "1h", "4h", "D"):
             _bb_u, _bb_l, _bb_pb = bb_features(close_series, length=20, std_mult=2.0)
             if _bb_pb is not None:
                 result[f"bb_upper_{timeframe}"] = _bb_u
@@ -1804,7 +1855,7 @@ class IndicatorCalculator:
             # FIX 2026-09-15: lrL slope like in plots (rankings) for D/4h/1h/15m with exact LR lookback per venue + stdev
             _lrL_len = (getattr(config, "LR_CHANNEL_LONG_LENGTHS", None) or {}).get(timeframe)
             # For 15m, LR not defined, use STDEV lookback as fallback to get 15m slope like in plots
-            if not _lrL_len and timeframe == "15m":
+            if not _lrL_len and timeframe in ("5m", "15m"):
                 _lrL_len = int(getattr(config, "STDEV_SLOPE_LOOKBACK_15M", 96))
             if _lrL_len and len(close_series) >= int(_lrL_len):
                 _lrL_u, _lrL_l, _lrL_pb = linreg_channel(close_series, int(_lrL_len), std_mult=2.5)
@@ -1855,6 +1906,15 @@ class IndicatorCalculator:
         if t_up is not None: result[f"t_up_{timeframe}"] = t_up
         if tco is not None: result[f"tco_{timeframe}"] = tco
         if tcu is not None: result[f"tcu_{timeframe}"] = tcu
+        # 2026-09-16 FIX: ha_streak was missing — tradier_manage uses ha_streak_1h for lsc filter
+        try:
+            _ha_streak = ha_streak_count(adjusted_df)
+            result[f"ha_streak_{timeframe}"] = int(_ha_streak)
+            # legacy alias without TF for consumers that read ha_streak
+            if f"ha_streak_{timeframe}" not in result:
+                result["ha_streak"] = int(_ha_streak)
+        except Exception:
+            pass
 
         # Use real time for updated_at to satisfy freshness filters in save/broadcasting
         ts_real_now = isoformat(utc_now())
@@ -3330,16 +3390,17 @@ class TradierIndicatorOrchestrator:
             for symbol, values in self.data.items():
                 if symbol not in self.symbol_set: continue
                 if not isinstance(values, dict): continue
-                # 2026-09-14 FAIL-SOFT: the old hard gate dropped EVERY symbol when
-                # 1m_updated_at aged past 1200s (frozen snapshot {} -> all entries/
-                # reentries blocked). Per-TF filtering below already strips stale TF
-                # fields, so keep last-good data and let consumers judge freshness.
-                _TF_MAX_AGE = {"1m": 90.0, "5m": 540.0, "15m": 1200.0, "1h": 1200.0, "4h": 1200.0, "D": 1200.0}
-                stale_tfs = {tf for tf, max_age in _TF_MAX_AGE.items() if (lambda d: not d or (now_utc - d).total_seconds() > max_age)(safe_datetime(values.get(f"timestamp_{tf}")))}
+                # 2026-09-16 FIX: previous per-TF staleness filter dropped ALL current
+                # keys after market close (timestamp_{tf} ages past 1200s), leaving
+                # only _prev suffix keys. Consumers then ran on defaults (50/0).
+                # Keep all keys — consumers judge freshness via timestamp. Log stale
+                # for monitoring but never drop current indicators.
+                _TF_MAX_AGE = {"1m": 300.0, "5m": 1800.0, "15m": 7200.0, "1h": 28800.0, "4h": 86400.0, "D": 259200.0}
+                stale_tfs = {tf for tf, max_age in _TF_MAX_AGE.items() if (lambda d: d is not None and (now_utc - d).total_seconds() > max_age)(safe_datetime(values.get(f"timestamp_{tf}")))}
+                if stale_tfs:
+                    logger.debug(f"stale TFs for {symbol}: {stale_tfs} — keeping last-good (no drop)")
                 filtered: Dict[str, Any] = {}
                 for key, value in values.items():
-                    tf_match = next((tf for tf in ("1m", "5m", "15m", "1h", "4h", "D") if key.endswith(f"_{tf}")), None)
-                    if tf_match in stale_tfs: continue
                     cleaned = clean_nans(value)
                     if cleaned is not None:
                         if hasattr(cleaned, "item") and not isinstance(cleaned, (list, dict)): cleaned = cleaned.item()
