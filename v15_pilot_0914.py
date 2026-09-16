@@ -20,11 +20,20 @@ via _atomic_save per row, real ledger numbers recalculated on live trading scrip
 (v12_pilot.prepare_batch + evaluate_prepared_sanitized → evaluate_v12.prepare/evaluate_prepared).
 
 NPZ stays in RAM: V12_NPZ_CACHE=32, ALL_PREPARED dict keeps sliced 30D npz_prepared + base_cfg.
-No per-row reload. ThreadPool 16 batched 0.07s each, skip 84 combos when >500 rows.
+No per-row reload. ThreadPool 16 batched 0.07s each (28 workers on s5, 64 on s1), skip 84 combos when >500 rows.
+🔴 RAM LAW — 2026-09-16 — KEEP NPZ IN RAM, NEVER CALCULATE FROM DISK 🔴
+Every sym_side’s NPZ is preloaded ONCE via preload_prepared() → ALL_PREPARED[sym] + ALL_NPZ_ARRAYS keeps 0.85-1.5G per sym in RAM.
+V12_NPZ_CACHE=32, evaluate_prepared_sanitized() uses RAM arrays only. Per-row disk reload is FORBIDDEN — it turns 0.07s/cell into >1s/cell and makes 13 sheets take HOURS.
+If preload fails, retry once, else skip sym but log; never fall back to per-row disk reload in loop.
+Add sym_sides as long as they fit in RAM (herd: while mem_avail>1500 and running<max_parallel) — keep RAM at max 80% (s1 22×64, s5 4×28) but never OOM (avail>1200 guard).
 
 Does NOT overwrite: clones TEMPLATE.xlsx → V15_V16_CELL_BY_CELL/{SYM}_30d_matrix.xlsx
 (reuses latest pilot if exists), _atomic_save tmp+rename, progress.json resume per row,
 heartbeat /tmp/v14_heartbeat_{SYM}.txt per cell, never crashes whole sheet (per-row try/except).
+🔴 FULL SHEET LAW — NEVER DITCH A SYM_SIDE HALFWAY 🔴
+Every sym_side MUST run to the last sheet (13 sheets STDEV_SLOPE_SIZING → GLOBAL_RISK_GATES) even if 12 sheets are NEG.
+Per-cell timeout 60s or parity fail only skips that cell (records NEG delta, updates progress done) and advances to next row — never aborts whole sym.
+Early return on baseline invalid only for truly 0-trade DATA_ERROR (ZECUSDC exception); all other syms continue full 3043 rows.
 
 Real numbers: delta = variant_gain - cumulative_before (NOT variant-baseline), E chain
 IF(F>0,Eprev+F,Eprev) via Excel VLOOKUP, variant_gain = gain_pct pnl_dollars/peak,

@@ -29,6 +29,11 @@ import orjson
 import pandas as pd
 import redis.asyncio as redis
 
+try:
+    import npz_live_generator as _npz_gen
+except ImportError:
+    _npz_gen = None
+
 from config import Config
 from classic_formations import formation_fields_from_ohlcv, latest_formation_fields
 
@@ -159,6 +164,57 @@ def choppiness_index(df: pd.DataFrame, length: int = 14) -> Optional[float]:
         return None
     chop = 100.0 * math.log10(atr_sum / hl_range) / math.log10(float(length))
     return max(0.0, min(100.0, chop))
+
+
+def normalize_indicator_aliases(indicators: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure stoch_k/d ≡ k/d and _ant ≡ _prev for every TF.
+    Mutates and returns dict. Used by all consumers and producers.
+    """
+    if not isinstance(indicators, dict):
+        return indicators
+    tfs = ["1m", "3m", "5m", "15m", "1h", "4h", "D", "W"]
+    for tf in tfs:
+        k = indicators.get(f"k_{tf}")
+        sk = indicators.get(f"stoch_k_{tf}")
+        if k is None and sk is not None:
+            indicators[f"k_{tf}"] = sk
+        elif sk is None and k is not None:
+            indicators[f"stoch_k_{tf}"] = k
+        elif k is not None and sk is not None and k != sk:
+            indicators[f"stoch_k_{tf}"] = k
+        d = indicators.get(f"d_{tf}")
+        sd = indicators.get(f"stoch_d_{tf}")
+        if d is None and sd is not None:
+            indicators[f"d_{tf}"] = sd
+        elif sd is None and d is not None:
+            indicators[f"stoch_d_{tf}"] = d
+        elif d is not None and sd is not None and d != sd:
+            indicators[f"stoch_d_{tf}"] = d
+        for suffix_prev, suffix_ant in [
+            (f"k_{tf}_prev", f"k_{tf}_ant"),
+            (f"d_{tf}_prev", f"d_{tf}_ant"),
+            (f"stoch_k_{tf}_prev", f"stoch_k_{tf}_ant"),
+            (f"stoch_d_{tf}_prev", f"stoch_d_{tf}_ant"),
+        ]:
+            pv = indicators.get(suffix_prev)
+            av = indicators.get(suffix_ant)
+            if pv is None and av is not None:
+                indicators[suffix_prev] = av
+            elif av is None and pv is not None:
+                indicators[suffix_ant] = pv
+            elif pv is not None and av is not None and pv != av:
+                indicators[suffix_ant] = pv
+        for base in ["k", "d"]:
+            for suf in ["", "_prev", "_ant"]:
+                k_key = f"{base}_{tf}{suf}"
+                s_key = f"stoch_{base}_{tf}{suf}"
+                kv = indicators.get(k_key)
+                sv = indicators.get(s_key)
+                if kv is None and sv is not None:
+                    indicators[k_key] = sv
+                elif sv is None and kv is not None:
+                    indicators[s_key] = kv
+    return indicators
 
 
 logger = logging.getLogger("ez_indicators")
@@ -2276,6 +2332,13 @@ class IndicatorCalculator:
                 # ensure stoch_d_{tf}_prev exists even if d_prev derived
                 if f"stoch_d_{timeframe}_prev" not in result and f"d_{timeframe}_prev" in result:
                     result[f"stoch_d_{timeframe}_prev"] = result[f"d_{timeframe}_prev"]
+            # k_ant ≡ k_prev alias for cross-script equality (stoch/k and _ant/_prev)
+            if f"k_{timeframe}_prev" in result:
+                result[f"k_{timeframe}_ant"] = result[f"k_{timeframe}_prev"]
+                result[f"stoch_k_{timeframe}_ant"] = result[f"k_{timeframe}_prev"]
+            if f"d_{timeframe}_prev" in result:
+                result[f"d_{timeframe}_ant"] = result[f"d_{timeframe}_prev"]
+                result[f"stoch_d_{timeframe}_ant"] = result[f"d_{timeframe}_prev"]
         wt1, wt2 = wavetrend(adjusted_df, timeframe=timeframe)
         if wt1 is not None and wt2 is not None and not wt1.empty and not wt2.empty:
             wt_intel = wavetrend_intelligence(wt1, wt2, close_series, high_series, low_series, timeframe)
@@ -2706,6 +2769,53 @@ class IndicatorOrchestrator:
             self.pending_mid[symbol] = []
             self.pending_trivial[symbol] = False
 
+    async def _npz_update_loop(self) -> None:
+        """Incremental NPZ updater — keeps backtest_v8/indicators/*.npz correct to last 15m close.
+        Point-in-time: uses only closed bars, 30s after close. Ensures live vs vectorized parity."""
+        if _npz_gen is None:
+            logger.info("[NPZ] npz_live_generator not available — skipping")
+            return
+        logger.info("[NPZ] updater started — will append last 15m close to NPZs")
+        # Initial catch-up: ensure current NPZs are up to now (if behind, update immediately)
+        try:
+            for sym in self.symbols[:5]:  # quick sanity on first 5
+                try:
+                    await asyncio.to_thread(_npz_gen.update_npz_for_symbol, sym, "crypto", self.kline_manager, self.calculator, self.base_path)
+                except Exception as e:
+                    logger.debug(f"[NPZ] initial {sym}: {e}")
+        except Exception:
+            pass
+        while not self._shutdown.is_set():
+            try:
+                now = datetime.now(timezone.utc)
+                last_close = _npz_gen._last_15m_close_utc(now)
+                next_close = last_close + timedelta(minutes=15)
+                wait = (next_close - now).total_seconds() + 35  # 35s after close for klines to arrive
+                if wait < 5:
+                    wait += 900
+                if wait > 1200:
+                    wait = 900
+                try:
+                    await asyncio.wait_for(self._shutdown.wait(), timeout=wait)
+                    break
+                except asyncio.TimeoutError:
+                    pass
+                # Batch update all symbols (limited concurrency to avoid I/O storm)
+                sem = asyncio.Semaphore(8)
+                async def _one(sym: str):
+                    async with sem:
+                        try:
+                            await asyncio.to_thread(_npz_gen.update_npz_for_symbol, sym, "crypto", self.kline_manager, self.calculator, self.base_path)
+                        except Exception as e:
+                            logger.debug(f"[NPZ] {sym}: {e}")
+                await asyncio.gather(*[_one(s) for s in self.symbols])
+                logger.info(f"[NPZ] crypto cycle done — {len(self.symbols)} symbols checked")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"[NPZ] loop error: {e}")
+                await asyncio.sleep(60)
+
     async def run(self) -> None:
         logger.info(f"Starting orchestrator for {len(self.symbols)} symbols in {self.env}")
         await self.price_cache.start()
@@ -2713,7 +2823,7 @@ class IndicatorOrchestrator:
             await self._process_timeframe(tf, force=self.reactive_mode)
         self._sentiment_dirty = True
         self._save_due = True
-        tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._midcycle_loop()), asyncio.create_task(self._save_loop()), asyncio.create_task(self._3m_refresh_loop()),asyncio.create_task(self._priority_fix_loop())]
+        tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._midcycle_loop()), asyncio.create_task(self._save_loop()), asyncio.create_task(self._3m_refresh_loop()),asyncio.create_task(self._priority_fix_loop()), asyncio.create_task(self._npz_update_loop())]
         try:
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
@@ -3498,7 +3608,8 @@ class IndicatorOrchestrator:
                         else:
                             fallback = self._fallback_value(symbol, key, filtered)
                             if fallback is not None: filtered[key] = fallback
-                
+                # Ensure stoch/k and _ant/_prev aliases all present before persisting
+                normalize_indicator_aliases(filtered)
                 safe[symbol] = OrderedDict(sorted(filtered.items()))
 
             # 3. Create priority-ordered dictionary

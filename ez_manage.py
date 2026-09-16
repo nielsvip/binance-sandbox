@@ -342,6 +342,12 @@ def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_pr
 def check_entry_alignment(
     indicators: Dict[str, Any], is_long: bool
 ) -> Tuple[bool, str]:
+    # 2026-09-16 FIX: stoch_k ≡ k and _ant ≡ _prev alias normalization for all scripts
+    try:
+        from ez_indicators import normalize_indicator_aliases as _norm
+        indicators = _norm(dict(indicators or {}))
+    except Exception:
+        pass
     # 2026-09-04 VEC_IDENTICAL BB_PULLBACK_GATE — identical to tradier_manage/tradier_matrix_gates + v12_quick_engine
     try:
         if _bb_pullback_gate and _tradier_matrix_gates and _tradier_matrix_gates.bb_pullback_gate_blocks(indicators, config, is_long):

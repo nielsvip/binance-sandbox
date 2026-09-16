@@ -31,6 +31,11 @@ from dateutil.parser import isoparse
 
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
+
+try:
+    import npz_live_generator as _npz_gen
+except ImportError:
+    _npz_gen = None
 # wt_composite logic inlined into _inject_wt_composite() — no external dependency
 from utils import (clean_nans, get_current_environment,
                    get_simple_redis_manager, load_environment_from_gpg,
@@ -1080,6 +1085,57 @@ def crossover_flags(price: float, price_prev: float, ref: Optional[float], ref_p
     cross_under = price_prev >= ref_prev and price < ref
     return cross_over, cross_under
 
+def normalize_indicator_aliases(indicators: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure stoch_k/d ≡ k/d and _ant ≡ _prev for every TF/timeframe.
+    Mutates and returns dict for convenience. Used by all consumers to
+    interpret aliases as equal, and by producers before save.
+    """
+    if not isinstance(indicators, dict):
+        return indicators
+    tfs = ["1m", "3m", "5m", "15m", "1h", "4h", "D", "W"]
+    for tf in tfs:
+        # current
+        k = indicators.get(f"k_{tf}")
+        sk = indicators.get(f"stoch_k_{tf}")
+        if k is None and sk is not None:
+            indicators[f"k_{tf}"] = sk
+        elif sk is None and k is not None:
+            indicators[f"stoch_k_{tf}"] = k
+        elif k is not None and sk is not None and k != sk:
+            # canonical keep both but ensure equality: prefer k
+            indicators[f"stoch_k_{tf}"] = k
+        d = indicators.get(f"d_{tf}")
+        sd = indicators.get(f"stoch_d_{tf}")
+        if d is None and sd is not None:
+            indicators[f"d_{tf}"] = sd
+        elif sd is None and d is not None:
+            indicators[f"stoch_d_{tf}"] = d
+        elif d is not None and sd is not None and d != sd:
+            indicators[f"stoch_d_{tf}"] = d
+        # prev / ant
+        for suffix_prev, suffix_ant in [(f"k_{tf}_prev", f"k_{tf}_ant"), (f"d_{tf}_prev", f"d_{tf}_ant"), (f"stoch_k_{tf}_prev", f"stoch_k_{tf}_ant"), (f"stoch_d_{tf}_prev", f"stoch_d_{tf}_ant")]:
+            pv = indicators.get(suffix_prev)
+            av = indicators.get(suffix_ant)
+            if pv is None and av is not None:
+                indicators[suffix_prev] = av
+            elif av is None and pv is not None:
+                indicators[suffix_ant] = pv
+            elif pv is not None and av is not None and pv != av:
+                # _ant ≡ _prev : canonicalize to prev
+                indicators[suffix_ant] = pv
+        # cross aliases between k/d and stoch for prev/ant
+        for base in ["k", "d"]:
+            for suf in ["", "_prev", "_ant"]:
+                k_key = f"{base}_{tf}{suf}"
+                s_key = f"stoch_{base}_{tf}{suf}"
+                kv = indicators.get(k_key)
+                sv = indicators.get(s_key)
+                if kv is None and sv is not None:
+                    indicators[k_key] = sv
+                elif sv is None and kv is not None:
+                    indicators[s_key] = kv
+    return indicators
+
 TIMEFRAMES = {
     "1m":  {"sec": 60,   "half": 30, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[("sma_200_1m", 70)]},
     "3m":  {"sec": 180,  "half": 90, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]},
@@ -1733,6 +1789,16 @@ class IndicatorCalculator:
             result[f"d_{timeframe}"] = d_curr if d_curr is not None else k_curr
             result[f"k_{timeframe}_prev"] = k_prev if k_prev is not None else k_curr
             result[f"d_{timeframe}_prev"] = d_prev if d_prev is not None else d_curr
+            # 2026-09-16 FIX: stoch_k/d ≡ k/d alias for cross-script compatibility
+            result[f"stoch_k_{timeframe}"] = result[f"k_{timeframe}"]
+            result[f"stoch_d_{timeframe}"] = result[f"d_{timeframe}"]
+            result[f"stoch_k_{timeframe}_prev"] = result[f"k_{timeframe}_prev"]
+            result[f"stoch_d_{timeframe}_prev"] = result[f"d_{timeframe}_prev"]
+            # k_ant ≡ k_prev alias (user mandate: _ant and _prev interpreted equal)
+            result[f"k_{timeframe}_ant"] = result[f"k_{timeframe}_prev"]
+            result[f"d_{timeframe}_ant"] = result[f"d_{timeframe}_prev"]
+            result[f"stoch_k_{timeframe}_ant"] = result[f"stoch_k_{timeframe}_prev"]
+            result[f"stoch_d_{timeframe}_ant"] = result[f"stoch_d_{timeframe}_prev"]
             
         wt1, wt2 = wavetrend(adjusted_df, timeframe=timeframe)
         if wt1 is not None and wt2 is not None and not wt1.empty and not wt2.empty:
@@ -3420,6 +3486,8 @@ class TradierIndicatorOrchestrator:
                     if cleaned is not None:
                         if hasattr(cleaned, "item") and not isinstance(cleaned, (list, dict)): cleaned = cleaned.item()
                         filtered[key] = cleaned
+                # Ensure stoch/k and _ant/_prev aliases are all present before persisting
+                normalize_indicator_aliases(filtered)
                 if filtered:
                     safe[symbol] = OrderedDict(sorted(filtered.items()))
                     symbols_with_data += 1
@@ -3488,6 +3556,70 @@ class TradierIndicatorOrchestrator:
             if now - last_cleanup >= cleanup_interval:
                 self.cleanup_old_indicator_files()
                 last_cleanup = now
+
+    async def _npz_update_loop(self) -> None:
+        """Incremental NPZ updater — tradier (RTH 09:30-16:00 ET), point-in-time to last 15m close."""
+        if _npz_gen is None:
+            logger.info("[NPZ] npz_live_generator not available — skipping tradier NPZ")
+            return
+        logger.info("[NPZ] tradier updater started — will keep backtest_v8/indicators/*.npz current")
+        # Initial catch-up for 5 symbols
+        try:
+            for sym in self.symbols[:5]:
+                try:
+                    await asyncio.to_thread(_npz_gen.update_npz_for_symbol, sym, "tradier", self, self.calculator if hasattr(self, 'calculator') else None, self.config.BASE_PATH if hasattr(self.config, 'BASE_PATH') else Path.cwd())
+                except Exception as e:
+                    logger.debug(f"[NPZ] initial tradier {sym}: {e}")
+        except Exception:
+            pass
+        while not self._shutdown.is_set():
+            try:
+                now = datetime.now(timezone.utc)
+                # Outside RTH, sleep until next open (09:30 ET)
+                if not _npz_gen._is_tradier_market_hours(now):
+                    # Sleep until 09:30 ET next open
+                    et_now = now.astimezone(_npz_gen.ET)
+                    # Compute next 09:30 ET
+                    next_open_et = et_now.replace(hour=9, minute=30, second=0, microsecond=0)
+                    if et_now >= next_open_et:
+                        next_open_et += timedelta(days=1)
+                        # Skip weekend
+                        while next_open_et.weekday() >= 5:
+                            next_open_et += timedelta(days=1)
+                    next_open_utc = next_open_et.astimezone(timezone.utc)
+                    wait = (next_open_utc - now).total_seconds()
+                    wait = max(60, min(wait, 3600))
+                    try:
+                        await asyncio.wait_for(self._shutdown.wait(), timeout=wait)
+                        break
+                    except asyncio.TimeoutError:
+                        continue
+                last_close = _npz_gen._last_15m_close_utc(now)
+                next_close = last_close + timedelta(minutes=15)
+                wait = (next_close - now).total_seconds() + 35
+                if wait < 5:
+                    wait += 900
+                if wait > 1200:
+                    wait = 900
+                try:
+                    await asyncio.wait_for(self._shutdown.wait(), timeout=wait)
+                    break
+                except asyncio.TimeoutError:
+                    pass
+                sem = asyncio.Semaphore(6)
+                async def _one(sym: str):
+                    async with sem:
+                        try:
+                            await asyncio.to_thread(_npz_gen.update_npz_for_symbol, sym, "tradier", self, getattr(self, 'calculator', None) or getattr(self, '_calculator', None), Path(getattr(self.config, 'BASE_PATH', '.')))
+                        except Exception as e:
+                            logger.debug(f"[NPZ] tradier {sym}: {e}")
+                await asyncio.gather(*[_one(s) for s in self.symbols])
+                logger.info(f"[NPZ] tradier cycle done — {len(self.symbols)} symbols checked")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"[NPZ] tradier loop error: {e}")
+                await asyncio.sleep(60)
     
     
     async def run(self) -> None:
@@ -3519,7 +3651,7 @@ class TradierIndicatorOrchestrator:
                 logger.error(f"init-pass save failed after {tf}: {_se}")
         self._save_due = True
         await self._save_data()
-        tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._save_loop())]
+        tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._save_loop()), asyncio.create_task(self._npz_update_loop())]
         try:
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:

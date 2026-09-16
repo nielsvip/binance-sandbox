@@ -108,7 +108,7 @@ from reentry_contract import (
     update_reentry_trace as _update_reentry_trace,
 )
 from tradier_reentry_wt_contract import mandatory_reentry_wt_gate as _mandatory_reentry_wt_gate
-from tradier_indicators import analyze_multi_tf_state_tradier
+from tradier_indicators import analyze_multi_tf_state_tradier, normalize_indicator_aliases as _normalize_aliases_tradier
 from classic_formations import (
     CONFIG_FAMILY_PREFIX,
     select_latest_formation,
@@ -16290,7 +16290,7 @@ class StockStrategy:
         return bool(val)
 
     def parse_market_data(self, indicators: dict):
-        i = indicators or {}
+        i = _normalize_aliases_tradier(dict(indicators or {}))
         d = {}
         
         # --- Add this so timestamps survive the parsing ---
@@ -21979,6 +21979,8 @@ class TradierTradeManager:
             return []
     def _adapt_indicators_for_ez_manage(self, i: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(i, dict): return {}
+        # 2026-09-16 FIX: stoch/k and _ant/_prev interpreted equal everywhere
+        i = _normalize_aliases_tradier(dict(i))
         
         # Standard Mappings
         i['k_3m'] = i.get('k_5m')
