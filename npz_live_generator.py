@@ -28,6 +28,7 @@ import asyncio
 import json
 import logging
 import os
+import platform
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -38,6 +39,20 @@ import numpy as np
 import pandas as pd
 
 logger = logging.getLogger("npz_live_generator")
+
+def _is_s1_host() -> bool:
+    """Only S1 should write NPZs; Mac (Darwin) must never create backtest_v8/indicators/*.npz."""
+    # S1 is Linux, MacBook is Darwin. Also check hostname for safety.
+    if platform.system() == "Darwin":
+        return False
+    try:
+        import socket
+        host = socket.gethostname().lower()
+        if "mac" in host or "macbook" in host:
+            return False
+    except Exception:
+        pass
+    return True
 
 # ET for tradier RTH checks
 ET = ZoneInfo("America/New_York")
@@ -200,9 +215,9 @@ def _compute_row_for_15m_close(
                     raise e
             if not res:
                 continue
-            # Collect scalar keys for NPZ row: keys ending with _{tf} are timeframe-specific
+            # Collect scalar keys for NPZ row: any key containing _{tf} is timeframe-specific
             for k, v in res.items():
-                if k.endswith(f"_{tf}") or k in ("open", "high", "low", "close", "volume", "timestamp", "timestamp_15m", "timestamp_1h", "timestamp_4h", "timestamp_D"):
+                if f"_{tf}" in k or k in ("open", "high", "low", "close", "volume", "timestamp"):
                     # For base_tf, close_15m -> also set close (NPZ has both)
                     if tf == base_tf and k == f"close_{base_tf}":
                         row["close"] = v
@@ -219,8 +234,8 @@ def _compute_row_for_15m_close(
                     elif tf == base_tf and k == f"volume_{base_tf}":
                         row[k] = v
                         row["volume"] = v
-                    elif k.endswith(f"_{tf}"):
-                        # HTF or base: store as is (e.g., k_1h, stoch_k_15m, close_1h)
+                    elif f"_{tf}" in k:
+                        # HTF or base: store as is (e.g., k_1h, stoch_k_15m, close_1h, k_15m_prev, k_15m_ant)
                         row[k] = v
                     elif k in ("open", "high", "low", "close", "volume") and tf == base_tf:
                         row[f"{k}_{base_tf}"] = v
@@ -289,6 +304,8 @@ def _resolve_kline_path(symbol: str, tf: str, mode: str, base_path: Path) -> Opt
     return None
 
 def _should_update_npz(npz_path: Path, last_15m_close: datetime) -> bool:
+    if not _is_s1_host():
+        return False
     if not npz_path.exists():
         return True
     data = _load_npz(npz_path)
@@ -310,7 +327,10 @@ def update_npz_for_symbol(
     Ensure NPZ for symbol is up to last 15m close. Returns True if updated.
     Point-in-time: uses only closed bars. For tradier, respects RTH gaps via
     kline file's last timestamp, not wall time.
+    Only writes on S1 (Linux); Mac is read-only for backtests.
     """
+    if not _is_s1_host():
+        return False
     # Determine last closed 15m bar from klines (point-in-time, no wall-time guess)
     # Try multiple kline sources: backtest (long history) then live, then gateway, then sandbox
     def _find_kline_file(sym: str, tf: str, m: str) -> Optional[Path]:
