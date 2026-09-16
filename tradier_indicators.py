@@ -1847,6 +1847,21 @@ class IndicatorCalculator:
                 result[f"bb_upper_{timeframe}"] = _bb_u
                 result[f"bb_lower_{timeframe}"] = _bb_l
                 result[f"bb_pct_b_{timeframe}"] = _bb_pb
+                # bb_width was computed too early (before bb existed) — compute here after bb is known
+                try:
+                    _bb_mid = (_bb_u + _bb_l) / 2.0 if (_bb_u + _bb_l) > 0 else 0
+                    if _bb_mid > 0:
+                        result[f"bb_width_{timeframe}"] = round((_bb_u - _bb_l) / _bb_mid * 100.0, 3)
+                    # also ensure dc_width/position is present if not set earlier (idempotent)
+                    _dc_h3 = result.get(f"dc_high_{timeframe}")
+                    _dc_l3 = result.get(f"dc_low_{timeframe}")
+                    if _dc_h3 and _dc_l3 and _dc_l3 > 0 and f"dc_width_{timeframe}" not in result:
+                        result[f"dc_width_{timeframe}"] = round((_dc_h3 - _dc_l3) / _dc_l3 * 100, 4)
+                        _dc_r = _dc_h3 - _dc_l3
+                        if _dc_r > 0 and f"dc_position_{timeframe}" not in result:
+                            result[f"dc_position_{timeframe}"] = round(max(0.0, min(1.0, (current_price - _dc_l3) / _dc_r)), 4)
+                except Exception:
+                    pass
             _lr_u, _lr_l, _lr_pb = linreg_channel(close_series, LINREG_LENGTH, std_mult=2.5)
             if _lr_pb is not None:
                 result[f"lr_upper_{timeframe}"] = _lr_u

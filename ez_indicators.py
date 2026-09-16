@@ -2261,6 +2261,21 @@ class IndicatorCalculator:
             result[f"d_{timeframe}"] = d_curr if d_curr is not None else k_curr
             result[f"k_{timeframe}_prev"] = k_prev if k_prev is not None else k_curr
             result[f"d_{timeframe}_prev"] = d_prev if d_prev is not None else d_curr
+            # 2026-09-16 FIX: REQUIRED_INDICATORS expects stoch_k/d aliases for market_data coverage
+            # legacy consumers read stoch_k_{tf} while compute names it k_{tf}; emit both to satisfy every script
+            result[f"stoch_k_{timeframe}"] = result[f"k_{timeframe}"]
+            result[f"stoch_d_{timeframe}"] = result[f"d_{timeframe}"]
+            result[f"k_{timeframe}_prev"] = result[f"k_{timeframe}_prev"]  # keep canonical
+            # stoch_k_{tf}_prev / stoch_d_{tf}_prev aliases for REQUIRED list compliance
+            if f"k_{timeframe}_prev" in result:
+                result[f"stoch_k_{timeframe}_prev"] = result[f"k_{timeframe}_prev"]
+            if f"d_{timeframe}_prev" in result:
+                result[f"stoch_d_{timeframe}_prev"] = result[f"d_{timeframe}_prev"]
+            # also provide legacy k_/d_ for 1m
+            if timeframe in ("3m", "15m", "1h", "4h", "D"):
+                # ensure stoch_d_{tf}_prev exists even if d_prev derived
+                if f"stoch_d_{timeframe}_prev" not in result and f"d_{timeframe}_prev" in result:
+                    result[f"stoch_d_{timeframe}_prev"] = result[f"d_{timeframe}_prev"]
         wt1, wt2 = wavetrend(adjusted_df, timeframe=timeframe)
         if wt1 is not None and wt2 is not None and not wt1.empty and not wt2.empty:
             wt_intel = wavetrend_intelligence(wt1, wt2, close_series, high_series, low_series, timeframe)
@@ -2312,10 +2327,16 @@ class IndicatorCalculator:
                 result[f"ema_{ema_length}_{timeframe}"] = ema_curr
             if ema_prev is not None:
                 result[f"ema_{ema_length}_{timeframe}_prev"] = ema_prev
-            if timeframe == "3m" and ema_length == 20:
-                ema_std_val = ema_std(close_series, ema_length, std_window=20)
-                if ema_std_val is not None:
-                    result[f"ema_{ema_length}_std_{timeframe}"] = ema_std_val
+            if ema_length == 20:
+                # 2026-09-16 FIX: REQUIRED_INDICATORS expects ema_20_std_4h (was only 3m); emit for all TFs where ema_20 exists
+                if timeframe in ("3m", "15m", "1h", "4h", "D"):
+                    ema_std_val = ema_std(close_series, ema_length, std_window=20)
+                    if ema_std_val is not None:
+                        result[f"ema_{ema_length}_std_{timeframe}"] = ema_std_val
+                elif timeframe == "3m" and ema_length == 20:  # legacy guard (now covered above)
+                    ema_std_val = ema_std(close_series, ema_length, std_window=20)
+                    if ema_std_val is not None:
+                        result[f"ema_{ema_length}_std_{timeframe}"] = ema_std_val
         for field_name, length in TIMEFRAMES[timeframe]["sma"]:
             sma_curr, sma_prev = sma_pair(close_series, length)
             if sma_curr is not None:
