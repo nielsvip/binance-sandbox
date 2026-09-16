@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-16 18:47 UTC",
- "total_capital_usd": 34.73,
+ "generated_at": "2026-09-16 20:02 UTC",
+ "total_capital_usd": 36.44,
  "tier_capital": {
   "A": 0.0,
-  "B": 34.73,
+  "B": 36.44,
   "C": 0.0
  },
  "tier_count": {
@@ -19,12 +19,12 @@
    "pk": "fin:COTIUSDT_LONG",
    "symbol": "COTIUSDT",
    "account": "fin",
-   "value_usd": 34.73,
-   "gain_pct": -0.288,
+   "value_usd": 36.44,
+   "gain_pct": 0.806,
    "tier": "B",
-   "perf_mult": 2.82,
-   "amt": 1965.0,
-   "mark": 0.01767353
+   "perf_mult": 2.03,
+   "amt": 2099.0,
+   "mark": 0.01735878
   }
  ]
 }
