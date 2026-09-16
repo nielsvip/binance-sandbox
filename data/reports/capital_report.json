@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-16 20:02 UTC",
- "total_capital_usd": 36.44,
+ "generated_at": "2026-09-16 22:02 UTC",
+ "total_capital_usd": 36.1,
  "tier_capital": {
   "A": 0.0,
-  "B": 36.44,
+  "B": 36.1,
   "C": 0.0
  },
  "tier_count": {
@@ -12,19 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:COTIUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
    "pk": "fin:COTIUSDT_LONG",
    "symbol": "COTIUSDT",
    "account": "fin",
-   "value_usd": 36.44,
-   "gain_pct": 0.806,
+   "value_usd": 36.1,
+   "gain_pct": -0.948,
    "tier": "B",
-   "perf_mult": 2.03,
-   "amt": 2099.0,
-   "mark": 0.01735878
+   "perf_mult": 2.21,
+   "amt": 2072.0,
+   "mark": 0.01742234
   }
  ]
 }
