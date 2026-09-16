@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T15:22:30.074646+00:00",
+  "timestamp": "2026-09-16T15:44:06.324366+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,33 @@
   "unified_ranking": [
     {
       "symbol": "PYPLUSDT",
-      "net_score": -13.4,
+      "net_score": -13.9,
       "long_score": 0,
-      "short_score": 13.4
+      "short_score": 13.9
     },
     {
       "symbol": "BNCUSDT",
-      "net_score": -13.0,
+      "net_score": -12.0,
       "long_score": 0,
-      "short_score": 13.0
+      "short_score": 12.0
+    },
+    {
+      "symbol": "CRMUSDT",
+      "net_score": -11.3,
+      "long_score": 0,
+      "short_score": 11.3
+    },
+    {
+      "symbol": "MOVEUSDT",
+      "net_score": -10.9,
+      "long_score": 0,
+      "short_score": 10.9
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "KAVAUSDT",
@@ -32,12 +50,6 @@
     },
     {
       "symbol": "QTUMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -86,18 +98,6 @@
     },
     {
       "symbol": "SANDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ATOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SPYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -158,12 +158,6 @@
     },
     {
       "symbol": "TIAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MOVEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -343,6 +337,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AVGOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AMDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -451,29 +451,44 @@
       "short_score": 0
     },
     {
-      "symbol": "AVGOUSDT",
-      "net_score": 12.2,
-      "long_score": 12.2,
+      "symbol": "SPYUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "AVGOUSDT",
-      12.2,
-      343.29
+      "SPYUSDT",
+      10.4,
+      761.38707358
     ]
   ],
   "top_shorts": [
     [
       "PYPLUSDT",
-      13.4,
-      53.56054188
+      13.9,
+      53.47840849
     ],
     [
       "BNCUSDT",
-      13.0,
-      4.724
+      12.0,
+      4.726
+    ],
+    [
+      "CRMUSDT",
+      11.3,
+      252.05
+    ],
+    [
+      "MOVEUSDT",
+      10.9,
+      0.00748288
+    ],
+    [
+      "ATOMUSDT",
+      10.3,
+      1.48427314
     ]
   ],
   "hedge_usage": {
