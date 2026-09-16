@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T04:47:55.705140+00:00",
+  "timestamp": "2026-09-16T05:06:42.607054+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -62,6 +62,12 @@
     },
     {
       "symbol": "MOVEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -229,6 +235,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SNDKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MINAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -301,6 +313,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RVNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -367,6 +385,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CIENUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -427,61 +451,17 @@
       "short_score": 0
     },
     {
-      "symbol": "SNDKUSDT",
-      "net_score": 10.5,
-      "long_score": 10.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "CATUSDT",
-      "net_score": 10.5,
-      "long_score": 10.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "CIENUSDT",
-      "net_score": 13.5,
-      "long_score": 13.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "NVDAUSDT",
-      "net_score": 13.9,
-      "long_score": 13.9,
-      "short_score": 0
-    },
-    {
       "symbol": "CRDOUSDT",
-      "net_score": 15.7,
-      "long_score": 15.7,
+      "net_score": 14.1,
+      "long_score": 14.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "CRDOUSDT",
-      15.7,
-      151.6
-    ],
-    [
-      "NVDAUSDT",
-      13.9,
-      213.30777803
-    ],
-    [
-      "CIENUSDT",
-      13.5,
-      338.72524533
-    ],
-    [
-      "CATUSDT",
-      10.5,
-      787.58
-    ],
-    [
-      "SNDKUSDT",
-      10.5,
-      1539.0270677
+      14.1,
+      151.43378706
     ]
   ],
   "top_shorts": [],
