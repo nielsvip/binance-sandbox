@@ -41,8 +41,10 @@ import pandas as pd
 logger = logging.getLogger("npz_live_generator")
 
 def _is_s1_host() -> bool:
-    """Only S1 should write NPZs; Mac (Darwin) must never create backtest_v8/indicators/*.npz."""
-    # S1 is Linux, MacBook is Darwin. Also check hostname for safety.
+    """Only S1 (10.0.0.3 / niels) should write NPZs.
+    Mac (Darwin) never, S3 (htz-v15-s3 / 10.0.0.5) never, S5 (htz-v15-s5 / 10.0.0.6) never —
+    S3/S5 only calculate XLS sides and pull missing NPZ from S1 on demand.
+    """
     if platform.system() == "Darwin":
         return False
     try:
@@ -50,9 +52,23 @@ def _is_s1_host() -> bool:
         host = socket.gethostname().lower()
         if "mac" in host or "macbook" in host:
             return False
+        # Only S1 hostname / IP is allowed to write
+        # S1: hostname niels, IP 10.0.0.3
+        if host == "niels":
+            return True
+        # Fallback IP check for S1
+        addrs = socket.gethostbyname_ex(host)[2] if hasattr(socket, "gethostbyname_ex") else []
+        try:
+            import subprocess
+            out = subprocess.check_output(["hostname", "-I"], text=True, timeout=1)
+            addrs += out.split()
+        except Exception:
+            pass
+        if "10.0.0.3" in addrs:
+            return True
+        return False
     except Exception:
-        pass
-    return True
+        return False
 
 # ET for tradier RTH checks
 ET = ZoneInfo("America/New_York")

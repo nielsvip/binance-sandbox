@@ -864,10 +864,33 @@ def main():
         print("[warn] Mac allowed for writing/testing only — not for real sweeps (S1 required for full universe)", flush=True)
 
     if args.window_days == 365 or args.window_days >= 100:
-        print("BLOCKED: 1yr requires 30D gate — run 30D first", file=sys.stderr)
-        sys.exit(2)
-    if args.window_days not in (30, 20, 7, 1):
-        print(f"BLOCKED: only 30/20/7/1 allowed, got {args.window_days}", file=sys.stderr)
+        gate_ok = False
+        try:
+            _gate_sym = (args.sym_side or "").strip().upper() if args.sym_side else None
+            if _gate_sym:
+                _gate_paths = [
+                    PROGRESS_DIR / f"{_gate_sym}_v14_progress.json",
+                    Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_gate_sym}_v14_progress.json"),
+                ]
+                for _gp in _gate_paths:
+                    if _gp.exists():
+                        try:
+                            _gd = json.loads(_gp.read_text())
+                            if _gd.get("final_gain") is not None or len(_gd.get("done", {})) >= 50:
+                                gate_ok = True
+                                break
+                        except Exception:
+                            continue
+            else:
+                gate_ok = True
+        except Exception:
+            gate_ok = False
+        if not gate_ok:
+            print("BLOCKED: 1yr requires 30D gate — run 30D first (no 30d progress with >=50 done or final_gain)", file=sys.stderr)
+            sys.exit(2)
+        print(f"[365-GATE] 30D gate passed for {args.sym_side} — proceeding 365D", flush=True)
+    if args.window_days not in (30, 20, 7, 1, 365):
+        print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
     if args.sym_side:

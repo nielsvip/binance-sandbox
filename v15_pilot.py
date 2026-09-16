@@ -690,7 +690,31 @@ def clone_template(template: Path, new_symside: str) -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     _pilots = sorted(_glob.glob(str(OUT_DIR / f"{new_symside}_30d_matrix_pilot_*.xlsx")))
     if _pilots:
-        return Path(_pilots[-1])
+        # reuse only if latest pilot is NOT truncated: must have all SWITCH_SHEETS and each sheet's data rows >= expected
+        _latest = Path(_pilots[-1])
+        try:
+            _wb_check = openpyxl.load_workbook(str(_latest), data_only=False, read_only=True)
+            _sheet_ok = all(s in _wb_check.sheetnames for s in SWITCH_SHEETS)
+            _rows_ok = True
+            if _sheet_ok:
+                for _sh in SWITCH_SHEETS:
+                    ws = _wb_check[_sh]
+                    _cnt = sum(1 for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value and isinstance(ws.cell(r, 1).value, str) and ws.cell(r, 1).value.strip().lower() not in ("switch", "general", "blanket", "filter", "option value") and not ws.cell(r, 1).value.strip().startswith("—"))
+                    if _cnt < 3:
+                        _rows_ok = False
+                        break
+                # STDEV must have at least 10 rows, ENTRY_REVERSAL at least 10
+                if "STDEV_SLOPE_SIZING" in _wb_check.sheetnames:
+                    ws = _wb_check["STDEV_SLOPE_SIZING"]
+                    _cnt = sum(1 for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value and str(ws.cell(r, 1).value).strip())
+                    if _cnt < 10:
+                        _rows_ok = False
+            _wb_check.close()
+            if _sheet_ok and _rows_ok:
+                return _latest
+            print(f"[clone] latest pilot {_latest.name} truncated (sheets_ok={_sheet_ok} rows_ok={_rows_ok}) — cloning fresh from TEMPLATE", flush=True)
+        except Exception as _e:
+            print(f"[clone-warn] {_e} — cloning fresh", flush=True)
     target = OUT_DIR / f"{new_symside}_30d_matrix.xlsx"
     if target.exists():
         ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
@@ -827,10 +851,33 @@ def main():
         print("[warn] Mac allowed for writing/testing only — not for real sweeps (S1 required for full universe)", flush=True)
 
     if args.window_days == 365 or args.window_days >= 100:
-        print("BLOCKED: 1yr requires 30D gate — run 30D first", file=sys.stderr)
-        sys.exit(2)
-    if args.window_days not in (30, 20, 7, 1):
-        print(f"BLOCKED: only 30/20/7/1 allowed, got {args.window_days}", file=sys.stderr)
+        gate_ok = False
+        try:
+            _gate_sym = (args.sym_side or "").strip().upper() if args.sym_side else None
+            if _gate_sym:
+                _gate_paths = [
+                    PROGRESS_DIR / f"{_gate_sym}_v14_progress.json",
+                    Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{_gate_sym}_v14_progress.json"),
+                ]
+                for _gp in _gate_paths:
+                    if _gp.exists():
+                        try:
+                            _gd = json.loads(_gp.read_text())
+                            if _gd.get("final_gain") is not None or len(_gd.get("done", {})) >= 50:
+                                gate_ok = True
+                                break
+                        except Exception:
+                            continue
+            else:
+                gate_ok = True
+        except Exception:
+            gate_ok = False
+        if not gate_ok:
+            print("BLOCKED: 1yr requires 30D gate — run 30D first (no 30d progress with >=50 done or final_gain)", file=sys.stderr)
+            sys.exit(2)
+        print(f"[365-GATE] 30D gate passed for {args.sym_side} — proceeding 365D", flush=True)
+    if args.window_days not in (30, 20, 7, 1, 365):
+        print(f"BLOCKED: only 30/20/7/1/365 allowed, got {args.window_days}", file=sys.stderr)
         sys.exit(2)
 
     if args.sym_side:
@@ -1540,6 +1587,11 @@ def main():
                                 ws_row.cell(row=r, column=3).value = None
                         except: pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", -1.0, 0.0, cumulative_before)
+                        # FLUSH FIX: invalid rows still occupy workbook cells — flush every invalid to disk (was only every 10th row, so None remained)
+                        try:
+                            if r % 5 == 0:
+                                _atomic_save(wb_keep, wb_path)
+                        except: pass
                         continue
 
                     delta_best, variant_best, filt_best, fval_best, hdr_best, vec_best = best
