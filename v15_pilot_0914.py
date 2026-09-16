@@ -138,8 +138,12 @@ def ensure_npz_for_symside(symside: str, window_days: int = 30) -> Path | None:
                 import subprocess as _sp
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 # try scp with short timeout to avoid 30s hang
+                # ONE npz at a time, no useless waits — 1s timeout, skip if local exists (2026-09-16 user: idle at baseline until NPZ fetch completes)
+                if dst.exists() and dst.stat().st_size > 100_000:
+                    print(f"[npz-local] {dst} {dst.stat().st_size/1e6:.1f}M", flush=True)
+                    return dst
                 cmd = ["scp", "-P", "2201", f"{host}:{s1_src}", str(dst)] if "157.90" in host else ["scp", f"{host}:{s1_src}", str(dst)]
-                r = _sp.run(cmd, capture_output=True, timeout=5)
+                r = _sp.run(cmd, capture_output=True, timeout=1)
                 if dst.exists() and dst.stat().st_size > 100_000:
                     print(f"[npz-fetch] {src_sym}.npz from {host} -> {dst} {dst.stat().st_size/1e6:.1f}M", flush=True)
                     return dst
@@ -151,7 +155,7 @@ def ensure_npz_for_symside(symside: str, window_days: int = 30) -> Path | None:
             if Path("/home/niels/binance-sandbox").exists():
                 raise RuntimeError("skip rsync on S1")
             import subprocess as _sp
-            _sp.run(["rsync", "-avz", "-e", "ssh -p 2201", f"{S1_SSH}:{s1_src}", str(dst)], capture_output=True, timeout=5)
+            _sp.run(["rsync", "-avz", "-e", "ssh -p 2201", f"{S1_SSH}:{s1_src}", str(dst)], capture_output=True, timeout=1)
             if dst.exists() and dst.stat().st_size > 100_000:
                 print(f"[npz-rsync] {src_sym}.npz -> {dst}", flush=True)
                 return dst
