@@ -24,6 +24,10 @@ tools/*
 !SPREADSHEETS/
 SPREADSHEETS/*
 !SPREADSHEETS/TEMPLATE.xlsx
+!SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx
+!SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx
+!SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx
+!SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx
 
 # Symlinks to directories (the trailing-slash `*/` rule above does NOT match
 # symlinks, only real directories — confirmed 2026-07-20: .binance_env is a
