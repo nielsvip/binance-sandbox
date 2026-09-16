@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-16 05:47 UTC",
- "total_capital_usd": 5.26,
+ "generated_at": "2026-09-16 13:12 UTC",
+ "total_capital_usd": 30.67,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.26,
+  "B": 30.67,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:GRAMUSDT_SHORT",
-   "symbol": "GRAMUSDT",
+   "pk": "fin:COTIUSDT_LONG",
+   "symbol": "COTIUSDT",
    "account": "fin",
-   "value_usd": 5.26,
-   "gain_pct": 0.032,
+   "value_usd": 30.67,
+   "gain_pct": -0.45,
    "tier": "B",
-   "perf_mult": 1.46,
-   "amt": 4.0,
-   "mark": 1.315
+   "perf_mult": 5.92,
+   "amt": 1839.0,
+   "mark": 0.01667865
   }
  ]
 }

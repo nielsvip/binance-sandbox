@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-16T13:07:42.729260+00:00",
+  "timestamp": "2026-09-16T13:25:43.930891+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 75
   },
   "unified_ranking": [
+    {
+      "symbol": "CHRUSDT",
+      "net_score": -11.4,
+      "long_score": 0,
+      "short_score": 11.4
+    },
     {
       "symbol": "ASTSUSDT",
       "net_score": 0,
@@ -74,6 +80,12 @@
     },
     {
       "symbol": "SPCXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "METAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -151,6 +163,12 @@
       "short_score": 0
     },
     {
+      "symbol": "HDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -188,12 +206,6 @@
     },
     {
       "symbol": "BCHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CHRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -337,12 +349,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SPYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZENUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -445,31 +451,26 @@
       "short_score": 0
     },
     {
-      "symbol": "METAUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "HDUSDT",
-      "net_score": 13.2,
-      "long_score": 13.2,
+      "symbol": "SPYUSDT",
+      "net_score": 11.0,
+      "long_score": 11.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "HDUSDT",
-      13.2,
-      306.9257819
-    ],
-    [
-      "METAUSDT",
-      10.4,
-      677.38
+      "SPYUSDT",
+      11.0,
+      760.79993956
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "CHRUSDT",
+      11.4,
+      0.01481
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
