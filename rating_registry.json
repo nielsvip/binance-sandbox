@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T17:51:28.904134+00:00",
+  "timestamp": "2026-09-16T18:15:04.280937+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -134,12 +134,6 @@
     },
     {
       "symbol": "SPCXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "COTIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -343,12 +337,6 @@
       "short_score": 0
     },
     {
-      "symbol": "LTCUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "RAYSOLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -467,9 +455,32 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "LTCUSDC",
+      "net_score": 10.8,
+      "long_score": 10.8,
+      "short_score": 0
+    },
+    {
+      "symbol": "COTIUSDT",
+      "net_score": 11.6,
+      "long_score": 11.6,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "COTIUSDT",
+      11.6,
+      0.019119
+    ],
+    [
+      "LTCUSDC",
+      10.8,
+      50.82212081
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
