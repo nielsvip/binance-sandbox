@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T05:06:42.607054+00:00",
+  "timestamp": "2026-09-16T05:25:46.550380+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -325,6 +325,12 @@
       "short_score": 0
     },
     {
+      "symbol": "CRDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ONDOUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -449,21 +455,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "CRDOUSDT",
-      "net_score": 14.1,
-      "long_score": 14.1,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "CRDOUSDT",
-      14.1,
-      151.43378706
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
