@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T11:00:39.038542+00:00",
+  "timestamp": "2026-09-16T11:17:23.270599+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -391,12 +391,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CIENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -455,9 +449,21 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "CIENUSDT",
+      "net_score": 16.9,
+      "long_score": 16.9,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "CIENUSDT",
+      16.9,
+      344.44
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
