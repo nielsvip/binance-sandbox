@@ -487,6 +487,12 @@ def linreg_channel(series: pd.Series, length: int, std_mult: float = 2.5) -> Tup
     y_fit = y_mean + slope * (x - x_mean)
     residual_std = float(np.std(y - y_fit, ddof=0))
     price = float(series.iloc[-1])
+    fit_end = float(y_fit[-1])
+    upper = fit_end + std_mult * residual_std
+    lower = fit_end - std_mult * residual_std
+    band_width = upper - lower
+    pct_b = (price - lower) / band_width if band_width > 0 else 0.5
+    return upper, lower, max(0.0, min(1.0, pct_b))
 
 def calculate_regression_slope_line(series: pd.Series) -> Tuple[float, float, np.ndarray]:
     if series is None or len(series) < 2:
@@ -508,12 +514,6 @@ def calculate_regression_slope_line(series: pd.Series) -> Tuple[float, float, np
     yhat_norm = icpt + slp * x
     yhat_abs = yhat_norm * avgp
     return slope_pct, float(rvv) if pd.notna(rvv) else 0.0, yhat_abs
-    fit_end = float(y_fit[-1])
-    upper = fit_end + std_mult * residual_std
-    lower = fit_end - std_mult * residual_std
-    band_width = upper - lower
-    pct_b = (price - lower) / band_width if band_width > 0 else 0.5
-    return upper, lower, max(0.0, min(1.0, pct_b))
 
 def donchian(high: pd.Series, low: pd.Series, window: int) -> Tuple[Optional[float], Optional[float], Optional[float]]:
     if len(high) < window or len(low) < window:
