@@ -818,7 +818,8 @@ def main():
     ap.add_argument("--no-lbI", action="store_true")
     ap.add_argument("--allow-mac", action="store_true", help="allow full run on MacBook for code writing/testing only (requires V15_ALLOW_MAC=1 or this flag); otherwise S1-only")
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
-    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta)")
+    ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
+    ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
     ap.add_argument("--sheet-order", default=None, help="0914 override sheet order comma-separated (e.g. GLOBAL_RISK_GATES,EXIT_VELOCITY,...)")
     args = ap.parse_args()
@@ -829,6 +830,7 @@ def main():
         args.seq_mode = "cycle"
     if args.seq_mode in ("worst_to_best",):
         args.seq_mode = "worst2best"
+    # shuffle is kept as shuffle (no alias)
 
     import os as _os
     _os.environ["V8_SWEEP_MODE"] = "1"
@@ -893,8 +895,12 @@ def main():
                 except Exception:
                     continue
         if _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
-            print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
-            return
+            # shuffle second round with baseline-json is allowed to retouch oldest for iterative hill-climb
+            if args.seq_mode == "shuffle" and args.baseline_json:
+                print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed for second round", flush=True)
+            else:
+                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
+                return
         # also S1 peer check before NPZ fetch
         try:
             import subprocess as _sp_early
@@ -904,8 +910,11 @@ def main():
                         f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
                         capture_output=True, text=True, timeout=5)
                     if _r.stdout and _r.stdout.strip() not in ("","None","null"):
-                        print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
-                        return
+                        if args.seq_mode == "shuffle" and args.baseline_json:
+                            print(f"[SHUFFLE-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but shuffle+baseline-json allowed", flush=True)
+                        else:
+                            print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
+                            return
                 except Exception:
                     continue
         except Exception:
@@ -921,6 +930,21 @@ def main():
         recipes = {}
     overrides = dict(recipes.get(new_symside, {}).get("overrides") or {}) if new_symside in recipes else {}
     overrides = {k: v for k, v in overrides.items() if not (isinstance(v, str) and " + " in v)}
+    # baseline-json for shuffle second round: found settings as new baseline
+    if args.baseline_json:
+        try:
+            import json as _js2
+            import pathlib as _pl2
+            bj = _pl2.Path(args.baseline_json)
+            if bj.exists():
+                _base_over = _js2.loads(bj.read_text())
+                # merge found overrides on top of recipes
+                for k, v in _base_over.items():
+                    if k not in overrides:
+                        overrides[k] = v
+                print(f"[baseline-json] loaded {len(_base_over)} overrides from {bj} as new baseline for shuffle", flush=True)
+        except Exception as _e:
+            print(f"[baseline-json-warn] {args.baseline_json} {_e}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
@@ -1249,6 +1273,11 @@ def main():
                 print(f"[0914-worst2best] no history, heuristic reversed {sheets}", flush=True)
         except Exception as _e:
             print(f"[0914-worst2best-warn] {_e}", flush=True)
+    elif args.seq_mode == "shuffle":
+        import random as _rnd2
+        _rnd2.shuffle(sheets)
+        print(f"[0914-shuffle] sheets shuffled {sheets}", flush=True)
+        # also shuffle rows within each sheet will be handled per-sheet below
     else:
         print(f"[0914-seq] mode={args.seq_mode} sheets={sheets}", flush=True)
     # 0914 PROTOTYPE: cycle-through-tabs on every NEG delta — build per-sheet row queues
