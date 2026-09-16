@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-16T20:14:07.578873+00:00",
+  "timestamp": "2026-09-16T20:33:19.652494+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,28 +7,28 @@
   },
   "unified_ranking": [
     {
-      "symbol": "QQQUSDT",
-      "net_score": -21.0,
-      "long_score": 0,
-      "short_score": 21.0
-    },
-    {
       "symbol": "PYPLUSDT",
-      "net_score": -16.7,
+      "net_score": -17.1,
       "long_score": 0,
-      "short_score": 16.7
+      "short_score": 17.1
     },
     {
-      "symbol": "MSFTUSDT",
-      "net_score": -14.4,
+      "symbol": "METAUSDT",
+      "net_score": -16.2,
       "long_score": 0,
-      "short_score": 14.4
+      "short_score": 16.2
     },
     {
-      "symbol": "GRAMUSDT",
-      "net_score": 0,
+      "symbol": "AMDUSDT",
+      "net_score": -14.3,
       "long_score": 0,
-      "short_score": 0
+      "short_score": 14.3
+    },
+    {
+      "symbol": "QQQUSDT",
+      "net_score": -10.0,
+      "long_score": 0,
+      "short_score": 10.0
     },
     {
       "symbol": "IOTAUSDT",
@@ -217,6 +217,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "UNIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -343,12 +349,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AMDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -356,12 +356,6 @@
     },
     {
       "symbol": "RAYSOLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "METAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -385,12 +379,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ASTSUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "CIENUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -398,12 +386,6 @@
     },
     {
       "symbol": "GOOGLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -469,34 +451,72 @@
       "short_score": 0
     },
     {
+      "symbol": "PLTRUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTSUSDT",
+      "net_score": 13.4,
+      "long_score": 13.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "GRAMUSDT",
+      "net_score": 13.7,
+      "long_score": 13.7,
+      "short_score": 0
+    },
+    {
       "symbol": "1000PEPEUSDC",
-      "net_score": 15.7,
-      "long_score": 15.7,
+      "net_score": 13.9,
+      "long_score": 13.9,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "1000PEPEUSDC",
-      15.7,
-      0.0033842
+      13.9,
+      0.00338474
+    ],
+    [
+      "GRAMUSDT",
+      13.7,
+      1.309
+    ],
+    [
+      "ASTSUSDT",
+      13.4,
+      59.44
+    ],
+    [
+      "PLTRUSDT",
+      10.4,
+      173.95
     ]
   ],
   "top_shorts": [
     [
-      "QQQUSDT",
-      21.0,
-      706.16
-    ],
-    [
       "PYPLUSDT",
-      16.7,
-      52.84669567
+      17.1,
+      52.72287947
     ],
     [
-      "MSFTUSDT",
-      14.4,
-      491.21240581
+      "METAUSDT",
+      16.2,
+      674.16
+    ],
+    [
+      "AMDUSDT",
+      14.3,
+      513.66
+    ],
+    [
+      "QQQUSDT",
+      10.0,
+      705.61
     ]
   ],
   "hedge_usage": {
