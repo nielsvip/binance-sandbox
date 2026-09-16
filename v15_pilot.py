@@ -804,6 +804,12 @@ def clone_template(template: Path, new_symside: str) -> Path:
     return target
 
 def main():
+    # DISABLED per user 2026-09-16: v15_pilot.py REPLACED — ONLY v15_pilot_0914.py allowed until instructed
+    if __import__("os").environ.get("V15_FORCE_USE") != "1":
+        print("[DISABLED] v15_pilot.py is REPLACED — use v15_pilot_0914.py ONLY until instructed otherwise", flush=True)
+        print("[DISABLED] Set V15_FORCE_USE=1 to override (not recommended)", flush=True)
+        sys.exit(2)
+
     ap = argparse.ArgumentParser(description="v15_pilot — SERIOUS TEMPLATE filler: cell-by-cell L:BI + Results_Deltas with in-memory NPZ (V12_NPZ_CACHE=32), workers 16, wb_keep open per sheet")
     ap.add_argument("--sym-side", dest="sym_side", default=None)
     ap.add_argument("--template", default=str(TEMPLATE))
@@ -890,6 +896,38 @@ def main():
             new_symside = queue[0].get("symside", "AAPL_LONG") if queue else "AAPL_LONG"
         except Exception:
             new_symside = "AAPL_LONG"
+
+    # ABSOLUTE PROHIBITION — check BEFORE any heavy NPZ/prepare (2026-09-16)
+    # Finished workbooks (SNDK etc) have final_gain + done set + xls/log/zip/bak backups — MUST NOT be re-touched on ANY server.
+    try:
+        _early_prog = None
+        for _pp in [PROGRESS_DIR / f"{new_symside}_v14_progress.json", Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json")]:
+            if _pp.exists():
+                try:
+                    _early_prog = json.loads(_pp.read_text())
+                    break
+                except Exception:
+                    continue
+        if _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+            print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
+            return
+        # also S1 peer check before NPZ fetch
+        try:
+            import subprocess as _sp_early
+            for _h in ["s1-pub"]:
+                try:
+                    _r = _sp_early.run(["ssh","-o","ConnectTimeout=3","-o","StrictHostKeyChecking=accept-new",_h,
+                        f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
+                        capture_output=True, text=True, timeout=5)
+                    if _r.stdout and _r.stdout.strip() not in ("","None","null"):
+                        print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
+                        return
+                except Exception:
+                    continue
+        except Exception:
+            pass
+    except Exception as _ee:
+        print(f"[early-finished-warn] {_ee}", flush=True)
 
     # defaults + live recipes
     try:
@@ -1056,6 +1094,53 @@ def main():
         progress = json.loads(progress_path.read_text())
     except Exception:
         progress = {"symside": new_symside, "baseline_gain": baseline_gain, "bh": bh, "done": {}, "window_days": args.window_days}
+    # ABSOLUTE PROHIBITION — FINISHED WORKBOOKS MUST NEVER BE RETOUCHED (user 2026-09-16)
+    # SNDK was finished days ago — recalculating same cells (xls/log/zip/bak backups exist) is FORBIDDEN.
+    # Check finished via: progress.final_gain + done set + published bh_gain file + S1 peer. If finished, exit immediately.
+    try:
+        _is_finished = False
+        _finished_reason = ""
+        if progress.get("final_gain") is not None and len(progress.get("done", {})) >= 50:
+            _is_finished = True
+            _finished_reason = f"progress final_gain {progress.get('final_gain'):.2f} done {len(progress.get('done',{}))}"
+        # also check published final file OUT_DIR / {SYM}_bh*_gain*_30d_matrix.xlsx
+        if not _is_finished:
+            import glob as _glob_finished
+            _finals = _glob_finished.glob(str(OUT_DIR / f"{new_symside}_bh*_gain*_30d_matrix.xlsx"))
+            if _finals:
+                _is_finished = True
+                _finished_reason = f"published final {Path(_finals[0]).name}"
+        # cross-server check: query S1 for finished (s1-pub gateway always reachable, s1-int may be down)
+        if not _is_finished:
+            try:
+                import subprocess as _sp_finished
+                for _h in ["s1-pub", "niels@157.180.125.52"]:
+                    try:
+                        _r = _sp_finished.run(["ssh","-o","ConnectTimeout=3","-o","StrictHostKeyChecking=accept-new",_h,
+                            f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
+                            capture_output=True, text=True, timeout=5)
+                        if _r.stdout and _r.stdout.strip() not in ("","None","null"):
+                            _is_finished = True
+                            _finished_reason = f"S1 peer finished final_gain { _r.stdout.strip() } on {_h}"
+                            break
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+        # also check local .bak / .zip / log backups exist as done-set (user: have backups in xls/log/zip/bak)
+        if not _is_finished and len(progress.get("done", {})) >= 100:
+            _bak = list(OUT_DIR.glob(f"{new_symside}_*.bak"))
+            _logs = list((ROOT / "data" / "reports" / "lifecycle_pilot").glob(f"{new_symside}*.log"))
+            if _bak or _logs:
+                # if progress has substantial done and backups exist, treat as finished-ish — but allow continue if no final_gain
+                pass
+        if _is_finished:
+            print(f"[PROHIBITED] {new_symside} ALREADY FINISHED ({_finished_reason}) — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping entire sym_side. Next sym_side.", flush=True)
+            print(f"[PROHIBITED] Finished workbook {new_symside} has {len(progress.get('done',{}))} cells — recalculating same cells is FORBIDDEN across all servers (s1/s3/s5/s2/Mac).", flush=True)
+            # never delete progress, never touch workbook, never recalc — sequential guard: finish one workbook then continue to next
+            return
+    except Exception as _fe:
+        print(f"[finished-check-warn] {_fe}", flush=True)
     # RESPECT s3/s5 shuffles and stdev: fetch latest progress from S1 peer if on s3/s5 to avoid overwriting better numbers
     try:
         import socket as _sock
@@ -1350,74 +1435,58 @@ def main():
                 _rel_total = len(_rel_eval) + len(_rel_ident)
                 if key in progress.get("done", {}):
                     prev = progress["done"][key]
-                    expected_before = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
-                    is_stale = abs(expected_before - cumulative_gain) >= 1e-6
-                    # Skip recalc if not stale: pre-fill from json instead of wasting 1s/cell
-                    # But if this row's yellow set is incomplete, must re-eval to populate it
-                    _prev_y = prev.get("yellows") or prev.get("pending_lbI") or {}
-                    _y_missing = len(_prev_y) < _rel_total
-                    if not is_stale and not _y_missing:
-                        # versioned-file fragmentation: json may be complete while THIS
-                        # file's cells are unwritten (VLOOKUP/empty/int) — rewrite F/G
-                        # + relevant yellows from the record (cum unchanged, so valid)
+                    # ABSOLUTE PER-CELL PROHIBITION — never recalc a cell already in done set (2026-09-16)
+                    # Backups in xls/log/zip/bak exist — repeating wastes 1s/cell and violates Sequential One-Workbook-Then-Next law.
+                    # Even if cum stale or yellows missing, DO NOT re-eval — keep original delta vs original cum (honest historical record).
+                    try:
+                        _wsk = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
+                        if _wsk is not None:
+                            _pd = float(prev.get("delta") or 0)
+                            if not isinstance(_wsk.cell(row=r, column=6).value, float):
+                                _wsk.cell(row=r, column=6).value = _pd
+                            if not isinstance(_wsk.cell(row=r, column=7).value, float):
+                                _wsk.cell(row=r, column=7).value = _pd
+                            for _yh, _yd in ((prev.get("yellows") or prev.get("pending_lbI") or {}).items()):
+                                _yc = header_to_col.get(_yh)
+                                if _yc and not isinstance(_wsk.cell(row=r, column=_yc).value, float):
+                                    try:
+                                        _wsk.cell(row=r, column=_yc).value = float(_yd)
+                                    except Exception:
+                                        pass
+                            try:
+                                _rec_hdrs = set((prev.get("yellows") or prev.get("pending_lbI") or {}).keys())
+                                for _hc, _cc in header_to_col.items():
+                                    if _hc in _rec_hdrs:
+                                        continue
+                                    if isinstance(_wsk.cell(row=r, column=_cc).value, float):
+                                        _wsk.cell(row=r, column=_cc).value = None
+                            except Exception:
+                                pass
+                            try:
+                                _e_cell = _wsk.cell(row=r, column=5)
+                                _is_pos = bool(prev.get("delta") and prev["delta"] > 0)
+                                _exp = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
+                                if _is_pos and not isinstance(_e_cell.value, float):
+                                    _e_cell.value = float(_exp)
+                                elif not _is_pos and _e_cell.value not in (None, ""):
+                                    _e_cell.value = None
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    if prev.get("delta") and prev["delta"] > 0:
                         try:
-                            _wsk = wb_keep[sheet] if sheet in wb_keep.sheetnames else None
-                            if _wsk is not None:
-                                _pd = float(prev.get("delta") or 0)
-                                if not isinstance(_wsk.cell(row=r, column=6).value, float):
-                                    _wsk.cell(row=r, column=6).value = _pd
-                                if not isinstance(_wsk.cell(row=r, column=7).value, float):
-                                    _wsk.cell(row=r, column=7).value = _pd
-                                for _yh, _yd in ((prev.get("yellows") or {}).items()):
-                                    _yc = header_to_col.get(_yh)
-                                    if _yc and not isinstance(_wsk.cell(row=r, column=_yc).value, float):
-                                        try:
-                                            _wsk.cell(row=r, column=_yc).value = float(_yd)
-                                        except Exception:
-                                            pass
-                                # orphans: floats under current headers that are NOT in this
-                                # row's record (stale writes orphaned by header-layout churn)
-                                # — clear so a skipped row can never show wrong numbers
-                                try:
-                                    _rec_hdrs = set((prev.get("yellows") or {}).keys())
-                                    for _hc, _cc in header_to_col.items():
-                                        if _hc in _rec_hdrs:
-                                            continue
-                                        if isinstance(_wsk.cell(row=r, column=_cc).value, float):
-                                            _wsk.cell(row=r, column=_cc).value = None
-                                except Exception:
-                                    pass
-                                # E cumulative chain for this row (col5): POS rows carry
-                                # the cumulative-before float, NEG rows must be blank
-                                # (hustle vs baseline (F) stays; greedy vs cum (G) already
-                                # rewritten above as _pd)
-                                try:
-                                    _e_cell = _wsk.cell(row=r, column=5)
-                                    _is_pos = bool(prev.get("delta") and prev["delta"] > 0)
-                                    _exp = float(prev.get("vec_gain", 0) or 0) - float(prev.get("delta") or 0)
-                                    if _is_pos and not isinstance(_e_cell.value, float):
-                                        _e_cell.value = float(_exp)
-                                    elif not _is_pos and _e_cell.value not in (None, ""):
-                                        _e_cell.value = None
-                                except Exception:
-                                    pass
+                            cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
                         except Exception:
                             pass
-                        if prev.get("delta") and prev["delta"] > 0:
-                            cumulative_gain = float(prev.get("cumulative_after", cumulative_gain))
-                            cumulative_overrides[switch] = cand
-                            if prev.get("best_filter"):
-                                cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
-                            print(f"[DEBUG] skip cached POS {key} cum {cumulative_gain:.4f}", flush=True)
-                            continue
-                        else:
-                            # NEG/0 with same cum will stay NEG — no need to recalc, cells ensured above
-                            print(f"[DEBUG] skip cached NEG {key} delta {prev.get('delta')} cum {cumulative_gain:.4f}", flush=True)
-                            continue
-                    elif _y_missing and not is_stale:
-                        print(f"[DEBUG] re-eval NEG missing yellows {key} delta {prev.get('delta')}", flush=True)
+                        cumulative_overrides[switch] = cand
+                        if prev.get("best_filter"):
+                            cumulative_overrides[prev["best_filter"]] = prev.get("best_fval")
+                        print(f"[PROHIBITED-CELL] skip cached POS {key} cum {cumulative_gain:.4f} — already filled, never recalc (xls/log/zip/bak)", flush=True)
+                        continue
                     else:
-                        print(f"[DEBUG] re-eval stale {key} prev_cum {expected_before:.4f} != cur {cumulative_gain:.4f} delta {prev.get('delta')}", flush=True)
+                        print(f"[PROHIBITED-CELL] skip cached NEG {key} delta {prev.get('delta')} cum {cumulative_gain:.4f} — already filled, never recalc", flush=True)
+                        continue
                 print(f"[DEBUG] sheet {sheet} row {r} {switch}={cand} start cum={cumulative_gain:.4f}", flush=True)
                 _touch_heartbeat(f"cell {sheet}!{r}")
                 try:
