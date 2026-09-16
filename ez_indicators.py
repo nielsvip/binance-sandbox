@@ -4970,16 +4970,22 @@ async def main() -> None:
     indicators_service_global = orchestrator
     price_service_global = orchestrator.price_cache
     logger.info("Initializing PositionsServiceClient...")
-    from ez_positions_service import PositionsServiceClient
-    positions_client = PositionsServiceClient(
-        host=str(getattr(config, "POSITIONS_RPC_HOST", "127.0.0.1")),
-        port=int(getattr(config, "POSITIONS_RPC_PORT", 8765)), )
+    try:
+        from ez_positions_service import PositionsServiceClient
+        positions_client = PositionsServiceClient(
+            host=str(getattr(config, "POSITIONS_RPC_HOST", "127.0.0.1")),
+            port=int(getattr(config, "POSITIONS_RPC_PORT", 8765)), )
+    except ImportError as _e:
+        logger.warning(f"PositionsServiceClient not available (optional, continuing without it): {_e}")
+        positions_client = None
+        PositionsServiceClient = None  # type: ignore
     logger.info("Starting orchestrator.run()...")
     try:
         await orchestrator.run()
     finally:
         try:
-            await positions_client.shutdown_service("ez_indicators_shutdown")
+            if positions_client is not None:
+                await positions_client.shutdown_service("ez_indicators_shutdown")
         except Exception:
             pass
         indicators_service_global = None
