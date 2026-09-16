@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-16T21:14:40.777731+00:00",
+  "timestamp": "2026-09-16T21:35:11.639723+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
-    {
-      "symbol": "AMDUSDT",
-      "net_score": -13.7,
-      "long_score": 0,
-      "short_score": 13.7
-    },
     {
       "symbol": "GRAMUSDT",
       "net_score": 0,
@@ -343,6 +337,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AMDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -392,6 +392,12 @@
     },
     {
       "symbol": "GOOGLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -457,48 +463,31 @@
       "short_score": 0
     },
     {
-      "symbol": "PLTRUSDT",
+      "symbol": "ASTSUSDT",
       "net_score": 11.4,
       "long_score": 11.4,
       "short_score": 0
     },
     {
-      "symbol": "ASTSUSDT",
-      "net_score": 12.1,
-      "long_score": 12.1,
-      "short_score": 0
-    },
-    {
       "symbol": "1000PEPEUSDC",
-      "net_score": 15.3,
-      "long_score": 15.3,
+      "net_score": 11.8,
+      "long_score": 11.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "1000PEPEUSDC",
-      15.3,
-      0.0033726
+      11.8,
+      0.0033759
     ],
     [
       "ASTSUSDT",
-      12.1,
-      59.49
-    ],
-    [
-      "PLTRUSDT",
       11.4,
-      174.21611674
+      59.44
     ]
   ],
-  "top_shorts": [
-    [
-      "AMDUSDT",
-      13.7,
-      513.69251445
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
