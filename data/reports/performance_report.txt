@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-16 16:51 UTC
+PERFORMANCE REPORT — 2026-09-16 17:15 UTC
 ================================================================================
 Total: 160 symbols | A=3 B=120 C=37
 Window: 14 days | Min trades: 5
@@ -9,11 +9,11 @@ Window: 14 days | Min trades: 5
              INTC  WR=80%  avg=+1.15%  total=+12.0%  trades= 10  mult=7.58
 
 --- TIER B (120 symbols) ---
-             CRWV  WR=86%  avg=+7.17%  total=+60.1%  trades=  7  mult=6.40
+             CRWV  WR=86%  avg=+6.90%  total=+57.4%  trades=  7  mult=6.40
              COHR  WR=100%  avg=+8.84%  total=+18.5%  trades=  2  mult=1.00
-             QBTS  WR=100%  avg=+3.90%  total=+11.9%  trades=  3  mult=1.00
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
              AMAT  WR=33%  avg=+1.55%  total=+9.3%  trades=  6  mult=2.80
+             QBTS  WR=100%  avg=+3.07%  total=+9.3%  trades=  3  mult=1.00
               ETN  WR=33%  avg=+1.46%  total=+8.8%  trades=  6  mult=2.80
          RUNEUSDT  WR=46%  avg=+0.28%  total=+7.3%  trades= 26  mult=2.19
           UNIUSDC  WR=55%  avg=+0.43%  total=+4.8%  trades= 11  mult=3.06
@@ -92,9 +92,9 @@ Window: 14 days | Min trades: 5
          MEMEUSDT  WR=80%  avg=-0.01%  total=-0.1%  trades=  5  mult=2.33
          LRCXUSDT  WR=0%  avg=-0.06%  total=-0.1%  trades=  1  mult=1.00
           ICPUSDT  WR=0%  avg=-0.03%  total=-0.1%  trades=  3  mult=1.00
-             PYPL  WR=50%  avg=+0.00%  total=-0.1%  trades=  4  mult=1.00
           INJUSDT  WR=46%  avg=-0.01%  total=-0.1%  trades= 13  mult=0.82
          USARUSDT  WR=75%  avg=-0.03%  total=-0.1%  trades=  4  mult=1.00
+             PYPL  WR=50%  avg=-0.01%  total=-0.2%  trades=  4  mult=1.00
           WMTUSDT  WR=56%  avg=-0.01%  total=-0.2%  trades= 18  mult=1.84
          ALGOUSDT  WR=61%  avg=-0.01%  total=-0.2%  trades= 23  mult=2.90
           SNXUSDT  WR=50%  avg=-0.03%  total=-0.3%  trades=  8  mult=0.96
@@ -160,8 +160,8 @@ Window: 14 days | Min trades: 5
              AMZN  WR=33%  avg=-1.48%  total=-8.6%  trades=  6  mult=0.39
              MSTR  WR=38%  avg=-0.82%  total=-10.6%  trades= 13  mult=0.31
              USAR  WR=18%  avg=-1.04%  total=-10.9%  trades= 11  mult=0.24
-             COPX  WR=38%  avg=-1.44%  total=-11.5%  trades=  8  mult=0.33
-             BABA  WR=0%  avg=-1.77%  total=-11.8%  trades=  7  mult=0.26
+             BABA  WR=0%  avg=-1.72%  total=-11.4%  trades=  7  mult=0.26
+             COPX  WR=30%  avg=-1.28%  total=-12.7%  trades= 10  mult=0.27
               NKE  WR=18%  avg=-0.79%  total=-12.8%  trades= 17  mult=0.19
               SLV  WR=0%  avg=-2.84%  total=-13.4%  trades=  5  mult=0.33
             GOOGL  WR=0%  avg=-2.32%  total=-26.3%  trades= 13  mult=0.16
@@ -170,7 +170,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=21%  avg=-3.19%  total=-71.9%  trades= 39  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +692.9%
+  Total PnL (all symbols): +686.6%
   Avg win rate: 48%
   A-tier avg mult: 9.19
   C-tier avg mult: 0.42
