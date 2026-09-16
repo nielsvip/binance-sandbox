@@ -820,6 +820,7 @@ def main():
     # 0914 PROTOTYPE sequencing variants (TEMPLATE_0914 + v15_pilot_0914): cycle tabs on neg delta, worst->best ordering
     ap.add_argument("--seq-mode", default="sequential", choices=["sequential", "cycle", "round_robin", "worst2best", "worst_to_best", "shuffle"], help="0914 prototype sequencing: sequential (legacy), cycle/round_robin (cycle tabs on every neg delta), worst2best (sheets ordered worst->best by avg delta), shuffle (random shuffle for second round)")
     ap.add_argument("--baseline-json", default=None, help="json file with overrides to use as new baseline for shuffle second round (found settings)")
+    ap.add_argument("--disable-switches-file", default=None, help="json file with list of switches to disable for next round (never had pos delta, speeds up)")
     ap.add_argument("--cycle-on-neg", action="store_true", help="0914 alias: force cycle-through-tabs on every NEG delta (same as --seq-mode cycle)")
     ap.add_argument("--sheet-order", default=None, help="0914 override sheet order comma-separated (e.g. GLOBAL_RISK_GATES,EXIT_VELOCITY,...)")
     args = ap.parse_args()
@@ -945,6 +946,22 @@ def main():
                 print(f"[baseline-json] loaded {len(_base_over)} overrides from {bj} as new baseline for shuffle", flush=True)
         except Exception as _e:
             print(f"[baseline-json-warn] {args.baseline_json} {_e}", flush=True)
+    # disabled switches for next round: never had pos delta → skip to speed up
+    disabled_switches = set()
+    if args.disable_switches_file:
+        try:
+            import json as _js3
+            import pathlib as _pl3
+            dj = _pl3.Path(args.disable_switches_file)
+            if dj.exists():
+                _dis = _js3.loads(dj.read_text())
+                if isinstance(_dis, list):
+                    disabled_switches = set(_dis)
+                elif isinstance(_dis, dict):
+                    disabled_switches = set(_dis.keys())
+                print(f"[disable-switches] loaded {len(disabled_switches)} disabled switches from {dj} for speed (220 never pos)", flush=True)
+        except Exception as _e:
+            print(f"[disable-switches-warn] {args.disable_switches_file} {_e}", flush=True)
     defaults = get_defaults_for_symside(new_symside)
     overrides, warns = sanitize_overrides(overrides, defaults)
     if warns:
@@ -1399,6 +1416,10 @@ def main():
         def _process_0914_row_helper(sheet: str, r: int, switch: str, cand):
             """Full per-row evaluator: naked + ALL yellows vs cumulative_before, writes L:BI yellows, updates progress/cumulative_gain. Mirrors sequential body."""
             nonlocal cumulative_gain, progress, cumulative_overrides, wb_path, flags_md, prepared, defaults, baseline_gain, args
+            # skip disabled switches that never had pos delta for speed (next round)
+            if switch in disabled_switches:
+                print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
+                return 0
             # Build header map for this sheet
             wb_h, htc = _get_wb_keep(sheet)
             ws_h = wb_h[sheet] if sheet in wb_h.sheetnames else None
@@ -1699,6 +1720,9 @@ def main():
                         break
 
             for (r, switch, cand) in rows:
+                if switch in disabled_switches:
+                    print(f"[SKIP-DISABLED] {switch} never had pos delta, skipping for speed (shuffle)", flush=True)
+                    continue
                 cell_start = time.time()
                 key = f"{sheet}!{r}:{switch}={cand}"
                 # YELLOW SET FOR A SINGLE SWITCH (this row): SPECIFIC filters gated
