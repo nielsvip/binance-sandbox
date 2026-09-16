@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-16T08:50:01.030326+00:00",
+  "timestamp": "2026-09-16T09:08:49.159131+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 75
   },
   "unified_ranking": [
-    {
-      "symbol": "MSFTUSDT",
-      "net_score": -14.4,
-      "long_score": 0,
-      "short_score": 14.4
-    },
     {
       "symbol": "HDUSDT",
       "net_score": 0,
@@ -295,6 +289,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BCHUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -452,25 +452,19 @@
     },
     {
       "symbol": "CRDOUSDT",
-      "net_score": 10.6,
-      "long_score": 10.6,
+      "net_score": 10.3,
+      "long_score": 10.3,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "CRDOUSDT",
-      10.6,
-      153.11
+      10.3,
+      153.15
     ]
   ],
-  "top_shorts": [
-    [
-      "MSFTUSDT",
-      14.4,
-      495.86932861
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
