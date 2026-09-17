@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-17T15:29:22.129765+00:00",
+  "timestamp": "2026-09-17T15:51:37.325135+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -223,19 +223,7 @@
       "short_score": 0
     },
     {
-      "symbol": "MINAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ETCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SNDKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -349,12 +337,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AMDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -385,19 +367,7 @@
       "short_score": 0
     },
     {
-      "symbol": "SMCIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ATOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -481,28 +451,83 @@
       "short_score": 0
     },
     {
+      "symbol": "SNDKUSDT",
+      "net_score": 10.8,
+      "long_score": 10.8,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMDUSDT",
+      "net_score": 10.9,
+      "long_score": 10.9,
+      "short_score": 0
+    },
+    {
+      "symbol": "MINAUSDT",
+      "net_score": 11.1,
+      "long_score": 11.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "ASTSUSDT",
+      "net_score": 11.6,
+      "long_score": 11.6,
+      "short_score": 0
+    },
+    {
       "symbol": "1000PEPEUSDC",
-      "net_score": 15.2,
-      "long_score": 15.2,
+      "net_score": 15.6,
+      "long_score": 15.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "SMCIUSDT",
+      "net_score": 18.8,
+      "long_score": 18.8,
       "short_score": 0
     },
     {
       "symbol": "SNOWUSDT",
-      "net_score": 22.0,
-      "long_score": 22.0,
+      "net_score": 20.0,
+      "long_score": 20.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "SNOWUSDT",
-      22.0,
-      344.51
+      20.0,
+      343.24513469
+    ],
+    [
+      "SMCIUSDT",
+      18.8,
+      40.37
     ],
     [
       "1000PEPEUSDC",
-      15.2,
-      0.00357519
+      15.6,
+      0.00362413
+    ],
+    [
+      "ASTSUSDT",
+      11.6,
+      62.68
+    ],
+    [
+      "MINAUSDT",
+      11.1,
+      0.0977886
+    ],
+    [
+      "AMDUSDT",
+      10.9,
+      546.16
+    ],
+    [
+      "SNDKUSDT",
+      10.8,
+      1605.87
     ]
   ],
   "top_shorts": [],
