@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-17T08:20:05.534351+00:00",
+  "timestamp": "2026-09-17T08:41:35.278326+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,12 +8,6 @@
   "unified_ranking": [
     {
       "symbol": "ASTSUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AVGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -217,12 +211,6 @@
       "short_score": 0
     },
     {
-      "symbol": "USARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BABAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -325,12 +313,6 @@
       "short_score": 0
     },
     {
-      "symbol": "GOOGLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "INJUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -409,12 +391,6 @@
       "short_score": 0
     },
     {
-      "symbol": "COTIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -451,50 +427,94 @@
       "short_score": 0
     },
     {
+      "symbol": "SNDKUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
+      "short_score": 0
+    },
+    {
       "symbol": "SNOWUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
+      "net_score": 10.5,
+      "long_score": 10.5,
+      "short_score": 0
+    },
+    {
+      "symbol": "AVGOUSDT",
+      "net_score": 11.0,
+      "long_score": 11.0,
       "short_score": 0
     },
     {
       "symbol": "HDUSDT",
-      "net_score": 10.7,
-      "long_score": 10.7,
+      "net_score": 11.3,
+      "long_score": 11.3,
       "short_score": 0
     },
     {
-      "symbol": "SNDKUSDT",
-      "net_score": 10.9,
-      "long_score": 10.9,
+      "symbol": "GOOGLUSDT",
+      "net_score": 12.4,
+      "long_score": 12.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "USARUSDT",
+      "net_score": 12.5,
+      "long_score": 12.5,
       "short_score": 0
     },
     {
       "symbol": "SMCIUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
+      "net_score": 13.0,
+      "long_score": 13.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "COTIUSDT",
+      "net_score": 14.8,
+      "long_score": 14.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "SMCIUSDT",
-      11.2,
-      37.45
+      "COTIUSDT",
+      14.8,
+      0.01847086
     ],
     [
-      "SNDKUSDT",
-      10.9,
-      1540.76427533
+      "SMCIUSDT",
+      13.0,
+      37.53
+    ],
+    [
+      "USARUSDT",
+      12.5,
+      15.51
+    ],
+    [
+      "GOOGLUSDT",
+      12.4,
+      347.78491243
     ],
     [
       "HDUSDT",
-      10.7,
-      305.45
+      11.3,
+      305.55831908
+    ],
+    [
+      "AVGOUSDT",
+      11.0,
+      344.76271349
     ],
     [
       "SNOWUSDT",
-      10.3,
-      334.7
+      10.5,
+      334.66
+    ],
+    [
+      "SNDKUSDT",
+      10.4,
+      1542.66
     ]
   ],
   "top_shorts": [],

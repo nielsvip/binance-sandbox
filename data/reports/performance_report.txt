@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-09-17 07:52 UTC
+PERFORMANCE REPORT — 2026-09-17 08:21 UTC
 ================================================================================
-Total: 159 symbols | A=3 B=118 C=38
+Total: 159 symbols | A=3 B=119 C=37
 Window: 14 days | Min trades: 5
 
 --- TIER A (3 symbols) ---
@@ -8,7 +8,7 @@ Window: 14 days | Min trades: 5
           ZECUSDT  WR=79%  avg=+1.30%  total=+42.8%  trades= 28  mult=10.00
              INTC  WR=80%  avg=+1.15%  total=+12.0%  trades= 10  mult=7.58
 
---- TIER B (118 symbols) ---
+--- TIER B (119 symbols) ---
              CRWV  WR=67%  avg=+3.84%  total=+36.8%  trades=  9  mult=6.40
              COHR  WR=100%  avg=+8.84%  total=+18.5%  trades=  2  mult=1.00
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
@@ -45,7 +45,7 @@ Window: 14 days | Min trades: 5
          ASTSUSDT  WR=50%  avg=+0.12%  total=+0.7%  trades=  6  mult=1.25
           INJUSDT  WR=62%  avg=+0.08%  total=+0.7%  trades=  8  mult=2.13
           ETHUSDC  WR=53%  avg=+0.04%  total=+0.6%  trades= 17  mult=1.67
-          DOTUSDT  WR=47%  avg=+0.03%  total=+0.5%  trades= 15  mult=0.89
+          DOTUSDT  WR=50%  avg=+0.04%  total=+0.6%  trades= 16  mult=1.19
          PYPLUSDT  WR=67%  avg=+0.06%  total=+0.5%  trades=  9  mult=2.52
           TRBUSDT  WR=60%  avg=+0.10%  total=+0.5%  trades=  5  mult=1.62
           RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
@@ -102,6 +102,7 @@ Window: 14 days | Min trades: 5
          EGLDUSDT  WR=58%  avg=-0.03%  total=-0.4%  trades= 12  mult=1.77
          BABAUSDT  WR=54%  avg=-0.04%  total=-0.5%  trades= 13  mult=1.27
          PLTRUSDT  WR=0%  avg=-0.27%  total=-0.5%  trades=  2  mult=1.00
+         ORDIUSDC  WR=60%  avg=-0.12%  total=-0.6%  trades=  5  mult=1.25
           XMRUSDT  WR=50%  avg=-0.15%  total=-0.6%  trades=  4  mult=1.00
          MSFTUSDT  WR=0%  avg=-0.22%  total=-0.7%  trades=  3  mult=1.00
               LLY  WR=0%  avg=-0.40%  total=-0.8%  trades=  2  mult=1.00
@@ -128,7 +129,7 @@ Window: 14 days | Min trades: 5
                MU  WR=50%  avg=-1.83%  total=-13.9%  trades=  8  mult=0.39
              COIN  WR=0%  avg=-11.82%  total=-31.4%  trades=  3  mult=1.00
 
---- TIER C (38 symbols) ---
+--- TIER C (37 symbols) ---
           NOTUSDT  WR=36%  avg=-0.01%  total=-0.2%  trades= 14  mult=0.55
     1000FLOKIUSDT  WR=0%  avg=-0.03%  total=-0.2%  trades=  6  mult=0.45
      1000PEPEUSDC  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.61
@@ -137,7 +138,6 @@ Window: 14 days | Min trades: 5
           AXSUSDT  WR=40%  avg=-0.07%  total=-0.4%  trades=  5  mult=0.80
           CRMUSDT  WR=20%  avg=-0.08%  total=-0.4%  trades=  5  mult=0.60
           ADAUSDC  WR=31%  avg=-0.05%  total=-0.7%  trades= 13  mult=0.48
-         ORDIUSDC  WR=40%  avg=-0.07%  total=-0.8%  trades= 10  mult=0.66
           KASUSDT  WR=36%  avg=-0.06%  total=-0.8%  trades= 14  mult=0.52
           SUIUSDC  WR=17%  avg=-0.14%  total=-0.8%  trades=  6  mult=0.52
          HOODUSDT  WR=20%  avg=-0.23%  total=-1.1%  trades=  5  mult=0.56
@@ -169,7 +169,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +604.4%
+  Total PnL (all symbols): +604.6%
   Avg win rate: 46%
   A-tier avg mult: 9.19
-  C-tier avg mult: 0.41
+  C-tier avg mult: 0.40
