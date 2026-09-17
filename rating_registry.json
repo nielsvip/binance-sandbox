@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-17T20:43:18.368914+00:00",
+  "timestamp": "2026-09-17T21:02:35.630936+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 81
   },
   "unified_ranking": [
-    {
-      "symbol": "AVGOUSDT",
-      "net_score": -11.1,
-      "long_score": 0,
-      "short_score": 11.1
-    },
     {
       "symbol": "GRAMUSDT",
       "net_score": 0,
@@ -92,6 +86,12 @@
     },
     {
       "symbol": "QTUMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AVGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -488,25 +488,19 @@
     },
     {
       "symbol": "COTIUSDT",
-      "net_score": 12.5,
-      "long_score": 12.5,
+      "net_score": 10.6,
+      "long_score": 10.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "COTIUSDT",
-      12.5,
-      0.023651
+      10.6,
+      0.02269178
     ]
   ],
-  "top_shorts": [
-    [
-      "AVGOUSDT",
-      11.1,
-      348.03
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
