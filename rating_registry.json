@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-17T18:07:43.353011+00:00",
+  "timestamp": "2026-09-17T18:30:21.324929+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -133,12 +133,6 @@
       "short_score": 0
     },
     {
-      "symbol": "COTIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "THETAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -199,6 +193,12 @@
       "short_score": 0
     },
     {
+      "symbol": "UNIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LITEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -254,6 +254,12 @@
     },
     {
       "symbol": "QQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SOLUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -433,12 +439,6 @@
       "short_score": 0
     },
     {
-      "symbol": "TIAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZILUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -463,61 +463,61 @@
       "short_score": 0
     },
     {
-      "symbol": "MSTRUSDT",
-      "net_score": 12.8,
-      "long_score": 12.8,
-      "short_score": 0
-    },
-    {
       "symbol": "ONDOUSDT",
-      "net_score": 13.5,
-      "long_score": 13.5,
+      "net_score": 11.3,
+      "long_score": 11.3,
       "short_score": 0
     },
     {
-      "symbol": "SOLUSDC",
-      "net_score": 14.5,
-      "long_score": 14.5,
+      "symbol": "COTIUSDT",
+      "net_score": 11.5,
+      "long_score": 11.5,
       "short_score": 0
     },
     {
-      "symbol": "UNIUSDC",
-      "net_score": 15.4,
-      "long_score": 15.4,
+      "symbol": "MSTRUSDT",
+      "net_score": 11.9,
+      "long_score": 11.9,
+      "short_score": 0
+    },
+    {
+      "symbol": "TIAUSDC",
+      "net_score": 12.6,
+      "long_score": 12.6,
       "short_score": 0
     },
     {
       "symbol": "NEARUSDC",
-      "net_score": 17.1,
-      "long_score": 17.1,
+      "net_score": 16.0,
+      "long_score": 16.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "NEARUSDC",
-      17.1,
-      3.03947527
+      16.0,
+      3.05679086
     ],
     [
-      "UNIUSDC",
-      15.4,
-      7.661
-    ],
-    [
-      "SOLUSDC",
-      14.5,
-      101.28
-    ],
-    [
-      "ONDOUSDT",
-      13.5,
-      0.37847232
+      "TIAUSDC",
+      12.6,
+      0.355
     ],
     [
       "MSTRUSDT",
-      12.8,
-      132.36171575
+      11.9,
+      132.70580695
+    ],
+    [
+      "COTIUSDT",
+      11.5,
+      0.02085069
+    ],
+    [
+      "ONDOUSDT",
+      11.3,
+      0.37639756
     ]
   ],
   "top_shorts": [],
