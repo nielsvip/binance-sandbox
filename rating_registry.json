@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-17T10:36:34.346388+00:00",
+  "timestamp": "2026-09-17T10:56:41.377077+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -319,6 +319,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RVNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -467,21 +473,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "GMEUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "GMEUSDT",
-      11.1,
-      22.18
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
