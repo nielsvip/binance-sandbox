@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-17 16:21 UTC
+PERFORMANCE REPORT — 2026-09-17 16:52 UTC
 ================================================================================
 Total: 153 symbols | A=3 B=115 C=35
 Window: 14 days | Min trades: 5
@@ -39,7 +39,6 @@ Window: 14 days | Min trades: 5
           SOLUSDC  WR=42%  avg=+0.03%  total=+0.8%  trades= 26  mult=0.66
           ZRXUSDT  WR=44%  avg=+0.09%  total=+0.8%  trades=  9  mult=0.93
          MEMEUSDT  WR=50%  avg=+0.19%  total=+0.8%  trades=  4  mult=1.00
-         SMCIUSDT  WR=50%  avg=+0.05%  total=+0.7%  trades= 14  mult=1.25
          ASTSUSDT  WR=50%  avg=+0.12%  total=+0.7%  trades=  6  mult=1.25
           INJUSDT  WR=62%  avg=+0.08%  total=+0.7%  trades=  8  mult=2.13
          DELLUSDT  WR=71%  avg=+0.10%  total=+0.7%  trades=  7  mult=2.58
@@ -51,6 +50,7 @@ Window: 14 days | Min trades: 5
          SPCXUSD1  WR=100%  avg=+0.20%  total=+0.4%  trades=  2  mult=1.00
          GALAUSDT  WR=60%  avg=+0.04%  total=+0.3%  trades= 10  mult=2.02
           LTCUSDC  WR=71%  avg=+0.05%  total=+0.3%  trades=  7  mult=2.46
+         SMCIUSDT  WR=46%  avg=+0.03%  total=+0.3%  trades= 13  mult=0.87
       VIRTUALUSDT  WR=40%  avg=+0.06%  total=+0.3%  trades=  5  mult=0.87
           CRVUSDC  WR=60%  avg=+0.06%  total=+0.3%  trades=  5  mult=1.55
           KSMUSDT  WR=100%  avg=+0.04%  total=+0.3%  trades=  7  mult=4.25
@@ -163,7 +163,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +572.2%
+  Total PnL (all symbols): +571.8%
   Avg win rate: 46%
   A-tier avg mult: 8.46
   C-tier avg mult: 0.42
