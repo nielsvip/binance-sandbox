@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-17 11:21 UTC
+PERFORMANCE REPORT — 2026-09-17 11:52 UTC
 ================================================================================
 Total: 159 symbols | A=3 B=118 C=38
 Window: 14 days | Min trades: 5
@@ -18,8 +18,8 @@ Window: 14 days | Min trades: 5
            ARUSDT  WR=60%  avg=+0.19%  total=+3.9%  trades= 20  mult=4.11
           UNIUSDC  WR=100%  avg=+1.90%  total=+3.8%  trades=  2  mult=1.00
          COTIUSDT  WR=52%  avg=+0.07%  total=+3.7%  trades= 54  mult=1.80
-          PTBUSDT  WR=57%  avg=+0.10%  total=+3.7%  trades= 37  mult=2.88
         ETHFIUSDC  WR=64%  avg=+0.09%  total=+3.6%  trades= 39  mult=4.16
+          PTBUSDT  WR=56%  avg=+0.08%  total=+2.8%  trades= 34  mult=2.61
          RKLBUSDT  WR=74%  avg=+0.14%  total=+2.7%  trades= 19  mult=5.94
          MANAUSDT  WR=83%  avg=+0.12%  total=+2.2%  trades= 18  mult=7.15
           RLCUSDT  WR=52%  avg=+0.10%  total=+2.2%  trades= 21  mult=2.12
@@ -41,7 +41,6 @@ Window: 14 days | Min trades: 5
          MEMEUSDT  WR=50%  avg=+0.19%  total=+0.8%  trades=  4  mult=1.00
          SMCIUSDT  WR=50%  avg=+0.05%  total=+0.7%  trades= 14  mult=1.25
          ASTSUSDT  WR=50%  avg=+0.12%  total=+0.7%  trades=  6  mult=1.25
-          ZROUSDT  WR=67%  avg=+0.08%  total=+0.7%  trades=  9  mult=2.58
           INJUSDT  WR=62%  avg=+0.08%  total=+0.7%  trades=  8  mult=2.13
           ETHUSDC  WR=53%  avg=+0.04%  total=+0.6%  trades= 17  mult=1.67
           DOTUSDT  WR=47%  avg=+0.03%  total=+0.6%  trades= 17  mult=0.90
@@ -63,6 +62,7 @@ Window: 14 days | Min trades: 5
          DELLUSDT  WR=62%  avg=+0.03%  total=+0.2%  trades=  8  mult=1.97
           XRPUSDC  WR=55%  avg=+0.00%  total=+0.2%  trades= 58  mult=1.96
           ENSUSDT  WR=36%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.64
+          ZROUSDT  WR=57%  avg=+0.03%  total=+0.2%  trades=  7  mult=1.51
          AXTIUSDT  WR=100%  avg=+0.06%  total=+0.2%  trades=  3  mult=1.00
          IOTAUSDT  WR=100%  avg=+0.18%  total=+0.2%  trades=  1  mult=1.00
               MPC  WR=100%  avg=+0.08%  total=+0.2%  trades=  2  mult=1.00
@@ -169,7 +169,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +598.4%
+  Total PnL (all symbols): +597.0%
   Avg win rate: 46%
   A-tier avg mult: 9.19
   C-tier avg mult: 0.41
