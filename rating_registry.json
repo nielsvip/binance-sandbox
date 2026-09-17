@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-09-17T10:56:41.377077+00:00",
+  "timestamp": "2026-09-17T11:17:31.762490+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
-    {
-      "symbol": "GRAMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
     {
       "symbol": "IOTAUSDT",
       "net_score": 0,
@@ -473,9 +467,21 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "GRAMUSDT",
+      "net_score": 17.9,
+      "long_score": 17.9,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "GRAMUSDT",
+      17.9,
+      1.34361067
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
