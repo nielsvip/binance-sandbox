@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-17T20:23:21.388187+00:00",
+  "timestamp": "2026-09-17T20:43:18.368914+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -194,6 +194,12 @@
     },
     {
       "symbol": "BCHUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MSFTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -481,35 +487,24 @@
       "short_score": 0
     },
     {
-      "symbol": "MSFTUSDT",
-      "net_score": 10.9,
-      "long_score": 10.9,
-      "short_score": 0
-    },
-    {
       "symbol": "COTIUSDT",
-      "net_score": 13.6,
-      "long_score": 13.6,
+      "net_score": 12.5,
+      "long_score": 12.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "COTIUSDT",
-      13.6,
-      0.022892
-    ],
-    [
-      "MSFTUSDT",
-      10.9,
-      497.96114923
+      12.5,
+      0.023651
     ]
   ],
   "top_shorts": [
     [
       "AVGOUSDT",
       11.1,
-      347.96
+      348.03
     ]
   ],
   "hedge_usage": {
