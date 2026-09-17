@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-09-17 00:21 UTC
+PERFORMANCE REPORT — 2026-09-17 00:51 UTC
 ================================================================================
-Total: 161 symbols | A=4 B=119 C=38
+Total: 161 symbols | A=4 B=118 C=39
 Window: 14 days | Min trades: 5
 
 --- TIER A (4 symbols) ---
@@ -9,7 +9,7 @@ Window: 14 days | Min trades: 5
              INTC  WR=80%  avg=+1.15%  total=+12.0%  trades= 10  mult=7.58
           UNIUSDC  WR=60%  avg=+0.53%  total=+5.4%  trades= 10  mult=3.69
 
---- TIER B (119 symbols) ---
+--- TIER B (118 symbols) ---
              CRWV  WR=67%  avg=+3.84%  total=+36.8%  trades=  9  mult=6.40
              COHR  WR=100%  avg=+8.84%  total=+18.5%  trades=  2  mult=1.00
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
@@ -20,26 +20,26 @@ Window: 14 days | Min trades: 5
          COTIUSDT  WR=55%  avg=+0.09%  total=+3.8%  trades= 44  mult=2.41
           PTBUSDT  WR=57%  avg=+0.10%  total=+3.7%  trades= 37  mult=2.88
         ETHFIUSDC  WR=64%  avg=+0.09%  total=+3.6%  trades= 39  mult=4.16
-         MANAUSDT  WR=79%  avg=+0.10%  total=+2.8%  trades= 28  mult=6.82
+           OPUSDT  WR=65%  avg=+0.15%  total=+3.0%  trades= 20  mult=4.71
+         MANAUSDT  WR=81%  avg=+0.10%  total=+2.7%  trades= 26  mult=7.23
          RKLBUSDT  WR=74%  avg=+0.14%  total=+2.7%  trades= 19  mult=5.94
-           OPUSDT  WR=56%  avg=+0.09%  total=+2.3%  trades= 25  mult=2.71
-          RLCUSDT  WR=57%  avg=+0.07%  total=+2.1%  trades= 30  mult=2.67
+          RLCUSDT  WR=52%  avg=+0.09%  total=+2.1%  trades= 25  mult=1.94
               PBF  WR=100%  avg=+0.97%  total=+1.9%  trades=  2  mult=1.00
          NEARUSDC  WR=52%  avg=+0.08%  total=+1.9%  trades= 25  mult=1.87
          FLOWUSDT  WR=38%  avg=+0.10%  total=+1.5%  trades= 16  mult=0.64
-         HYPEUSDT  WR=53%  avg=+0.02%  total=+1.4%  trades= 59  mult=1.62
+          SOLUSDC  WR=44%  avg=+0.03%  total=+1.5%  trades= 45  mult=0.74
          CAKEUSDT  WR=55%  avg=+0.12%  total=+1.4%  trades= 11  mult=1.91
           BCHUSDC  WR=100%  avg=+0.46%  total=+1.4%  trades=  3  mult=1.00
-          SOLUSDC  WR=45%  avg=+0.03%  total=+1.3%  trades= 49  mult=0.75
+         HYPEUSDT  WR=52%  avg=+0.02%  total=+1.2%  trades= 52  mult=1.51
          AVAXUSDC  WR=50%  avg=+0.12%  total=+1.2%  trades= 10  mult=1.40
      FARTCOINUSDT  WR=70%  avg=+0.06%  total=+1.2%  trades= 20  mult=5.00
         PARTIUSDT  WR=53%  avg=+0.08%  total=+1.2%  trades= 15  mult=1.84
           BIOUSDC  WR=57%  avg=+0.16%  total=+1.1%  trades=  7  mult=1.82
           SKYUSDT  WR=60%  avg=+0.05%  total=+1.1%  trades= 20  mult=3.17
-          ETHUSDC  WR=62%  avg=+0.04%  total=+1.0%  trades= 24  mult=3.53
           XLMUSDT  WR=55%  avg=+0.05%  total=+1.0%  trades= 20  mult=2.23
                BA  WR=100%  avg=+0.32%  total=+1.0%  trades=  3  mult=1.00
           TIAUSDC  WR=71%  avg=+0.13%  total=+0.9%  trades=  7  mult=2.65
+          ETHUSDC  WR=60%  avg=+0.05%  total=+0.9%  trades= 20  mult=3.10
           TRBUSDT  WR=56%  avg=+0.05%  total=+0.9%  trades= 18  mult=2.20
          ASTSUSDT  WR=50%  avg=+0.08%  total=+0.8%  trades= 10  mult=1.28
           BSVUSDT  WR=60%  avg=+0.17%  total=+0.8%  trades=  5  mult=1.73
@@ -55,15 +55,13 @@ Window: 14 days | Min trades: 5
       VIRTUALUSDT  WR=50%  avg=+0.06%  total=+0.4%  trades=  6  mult=1.13
           LTCUSDC  WR=79%  avg=+0.03%  total=+0.4%  trades= 14  mult=4.73
          COHRUSDT  WR=50%  avg=+0.08%  total=+0.3%  trades=  4  mult=1.00
-     1000PEPEUSDC  WR=47%  avg=+0.02%  total=+0.3%  trades= 17  mult=0.87
          BMNRUSDT  WR=75%  avg=+0.04%  total=+0.3%  trades=  8  mult=2.90
+          LPTUSDT  WR=73%  avg=+0.02%  total=+0.3%  trades= 11  mult=3.34
          AAVEUSDC  WR=75%  avg=+0.07%  total=+0.3%  trades=  4  mult=1.00
          MSTRUSDT  WR=67%  avg=+0.05%  total=+0.3%  trades=  6  mult=1.99
-          LPTUSDT  WR=67%  avg=+0.02%  total=+0.3%  trades= 12  mult=2.89
          DOGEUSDC  WR=50%  avg=+0.06%  total=+0.2%  trades=  4  mult=1.00
-       RENDERUSDT  WR=78%  avg=+0.03%  total=+0.2%  trades=  9  mult=3.33
+       RENDERUSDT  WR=75%  avg=+0.03%  total=+0.2%  trades=  8  mult=2.88
          DELLUSDT  WR=62%  avg=+0.03%  total=+0.2%  trades=  8  mult=1.97
-          KSMUSDT  WR=45%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.85
           ENSUSDT  WR=36%  avg=+0.02%  total=+0.2%  trades= 11  mult=0.64
          IOTAUSDT  WR=100%  avg=+0.18%  total=+0.2%  trades=  1  mult=1.00
           BTCUSDC  WR=42%  avg=+0.00%  total=+0.2%  trades= 45  mult=0.62
@@ -71,26 +69,27 @@ Window: 14 days | Min trades: 5
           CRVUSDC  WR=57%  avg=+0.02%  total=+0.1%  trades=  7  mult=1.49
               PSX  WR=50%  avg=+0.06%  total=+0.1%  trades=  2  mult=1.00
          GRAMUSDT  WR=78%  avg=+0.01%  total=+0.1%  trades=  9  mult=3.29
+         GALAUSDT  WR=44%  avg=+0.01%  total=+0.1%  trades= 18  mult=0.72
           WLDUSDC  WR=41%  avg=+0.00%  total=+0.1%  trades= 59  mult=0.57
+         CRWVUSDT  WR=100%  avg=+0.08%  total=+0.1%  trades=  1  mult=1.00
           AMDUSDT  WR=50%  avg=+0.02%  total=+0.1%  trades=  4  mult=1.00
      1000SHIBUSDC  WR=30%  avg=+0.01%  total=+0.1%  trades= 10  mult=0.56
          ORDIUSDC  WR=46%  avg=+0.01%  total=+0.1%  trades= 13  mult=0.84
-        MAGICUSDT  WR=80%  avg=+0.01%  total=+0.1%  trades=  5  mult=2.37
+         MEMEUSDT  WR=100%  avg=+0.02%  total=+0.1%  trades=  4  mult=1.00
          NFLXUSDT  WR=100%  avg=+0.06%  total=+0.1%  trades=  1  mult=1.00
          ALGOUSDT  WR=64%  avg=+0.00%  total=+0.1%  trades= 22  mult=3.48
-         GALAUSDT  WR=40%  avg=+0.00%  total=+0.0%  trades= 20  mult=0.56
-          DOTUSDT  WR=36%  avg=+0.00%  total=+0.0%  trades= 11  mult=0.63
         LUNA2USDT  WR=67%  avg=+0.01%  total=+0.0%  trades=  3  mult=1.00
+          DOTUSDT  WR=38%  avg=+0.00%  total=+0.0%  trades= 13  mult=0.63
               CRM  WR=100%  avg=+0.03%  total=+0.0%  trades=  1  mult=1.00
+          KSMUSDT  WR=40%  avg=+0.00%  total=+0.0%  trades= 10  mult=0.72
          INTCUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
          ADBEUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
          IOTXUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades= 12  mult=1.00
         USUALUSDT  WR=67%  avg=+0.00%  total=+0.0%  trades=  3  mult=1.00
           ARMUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  2  mult=1.00
+        MAGICUSDT  WR=75%  avg=-0.00%  total=-0.0%  trades=  4  mult=1.00
          QCOMUSDT  WR=50%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
-         CRWVUSDT  WR=33%  avg=-0.02%  total=-0.1%  trades=  3  mult=1.00
           ZILUSDT  WR=58%  avg=-0.01%  total=-0.1%  trades= 12  mult=1.88
-         MEMEUSDT  WR=80%  avg=-0.01%  total=-0.1%  trades=  5  mult=2.33
          LRCXUSDT  WR=0%  avg=-0.06%  total=-0.1%  trades=  1  mult=1.00
           ICPUSDT  WR=0%  avg=-0.03%  total=-0.1%  trades=  3  mult=1.00
           INJUSDT  WR=46%  avg=-0.01%  total=-0.1%  trades= 13  mult=0.82
@@ -101,7 +100,7 @@ Window: 14 days | Min trades: 5
           XMRUSDT  WR=67%  avg=-0.05%  total=-0.3%  trades=  6  mult=1.80
           FILUSDC  WR=58%  avg=-0.02%  total=-0.3%  trades= 12  mult=1.80
          AXTIUSDT  WR=67%  avg=-0.11%  total=-0.3%  trades=  3  mult=1.00
-          XRPUSDC  WR=49%  avg=-0.01%  total=-0.5%  trades= 71  mult=0.93
+          XRPUSDC  WR=52%  avg=-0.01%  total=-0.4%  trades= 67  mult=1.36
          BABAUSDT  WR=57%  avg=-0.04%  total=-0.5%  trades= 14  mult=1.73
          MSFTUSDT  WR=0%  avg=-0.22%  total=-0.7%  trades=  3  mult=1.00
           BNBUSDC  WR=55%  avg=-0.02%  total=-0.7%  trades= 42  mult=1.74
@@ -130,9 +129,10 @@ Window: 14 days | Min trades: 5
                MU  WR=50%  avg=-1.83%  total=-13.9%  trades=  8  mult=0.39
              COIN  WR=0%  avg=-11.82%  total=-31.4%  trades=  3  mult=1.00
 
---- TIER C (38 symbols) ---
+--- TIER C (39 symbols) ---
+          NOTUSDT  WR=40%  avg=-0.01%  total=-0.2%  trades= 15  mult=0.61
     1000FLOKIUSDT  WR=0%  avg=-0.03%  total=-0.2%  trades=  6  mult=0.45
-          NOTUSDT  WR=38%  avg=-0.01%  total=-0.2%  trades= 16  mult=0.55
+     1000PEPEUSDC  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.61
          AMZNUSDT  WR=40%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.80
           AXSUSDT  WR=40%  avg=-0.07%  total=-0.4%  trades=  5  mult=0.80
           CRMUSDT  WR=20%  avg=-0.08%  total=-0.4%  trades=  5  mult=0.60
@@ -141,7 +141,7 @@ Window: 14 days | Min trades: 5
           ADAUSDC  WR=31%  avg=-0.05%  total=-0.7%  trades= 13  mult=0.48
           KASUSDT  WR=36%  avg=-0.06%  total=-0.8%  trades= 14  mult=0.52
           SUIUSDC  WR=17%  avg=-0.14%  total=-0.8%  trades=  6  mult=0.52
-        PENGUUSDC  WR=36%  avg=-0.09%  total=-1.0%  trades= 11  mult=0.57
+        PENGUUSDC  WR=30%  avg=-0.12%  total=-1.1%  trades= 10  mult=0.51
          HOODUSDT  WR=14%  avg=-0.19%  total=-1.3%  trades=  7  mult=0.45
           ZENUSDT  WR=44%  avg=-0.08%  total=-1.5%  trades= 18  mult=0.62
           VETUSDT  WR=34%  avg=-0.04%  total=-1.7%  trades= 44  mult=0.42
