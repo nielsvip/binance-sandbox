@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-17 02:12 UTC",
- "total_capital_usd": 35.86,
+ "generated_at": "2026-09-17 06:33 UTC",
+ "total_capital_usd": 8.08,
  "tier_capital": {
   "A": 0.0,
-  "B": 35.86,
+  "B": 8.08,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:COTIUSDT_LONG",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 35.86,
-   "gain_pct": 0.0,
+   "pk": "men:DOTUSDT_LONG",
+   "symbol": "DOTUSDT",
+   "account": "men",
+   "value_usd": 8.08,
+   "gain_pct": 0.309,
    "tier": "B",
-   "perf_mult": 2.38,
-   "amt": 2065.0,
-   "mark": 0.017364
+   "perf_mult": 0.64,
+   "amt": 8.0,
+   "mark": 1.0095067
   }
  ]
 }
