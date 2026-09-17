@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-17T10:16:56.121825+00:00",
+  "timestamp": "2026-09-17T10:36:34.346388+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -62,6 +62,12 @@
     },
     {
       "symbol": "MOVEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -313,12 +319,6 @@
       "short_score": 0
     },
     {
-      "symbol": "GMEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "RVNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -469,17 +469,17 @@
       "short_score": 0
     },
     {
-      "symbol": "NVDAUSDT",
-      "net_score": 10.5,
-      "long_score": 10.5,
+      "symbol": "GMEUSDT",
+      "net_score": 11.1,
+      "long_score": 11.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "NVDAUSDT",
-      10.5,
-      217.33
+      "GMEUSDT",
+      11.1,
+      22.18
     ]
   ],
   "top_shorts": [],
