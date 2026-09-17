@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-17 06:21 UTC
+PERFORMANCE REPORT — 2026-09-17 06:52 UTC
 ================================================================================
 Total: 160 symbols | A=3 B=119 C=38
 Window: 14 days | Min trades: 5
@@ -45,6 +45,7 @@ Window: 14 days | Min trades: 5
          ASTSUSDT  WR=50%  avg=+0.12%  total=+0.7%  trades=  6  mult=1.25
           INJUSDT  WR=62%  avg=+0.08%  total=+0.7%  trades=  8  mult=2.13
           ETHUSDC  WR=53%  avg=+0.04%  total=+0.6%  trades= 17  mult=1.67
+          DOTUSDT  WR=47%  avg=+0.03%  total=+0.5%  trades= 15  mult=0.89
          PYPLUSDT  WR=67%  avg=+0.06%  total=+0.5%  trades=  9  mult=2.52
           TRBUSDT  WR=60%  avg=+0.10%  total=+0.5%  trades=  5  mult=1.62
           RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
@@ -76,7 +77,6 @@ Window: 14 days | Min trades: 5
          NFLXUSDT  WR=100%  avg=+0.06%  total=+0.1%  trades=  1  mult=1.00
           INXUSDT  WR=75%  avg=+0.01%  total=+0.0%  trades=  4  mult=1.00
         LUNA2USDT  WR=67%  avg=+0.01%  total=+0.0%  trades=  3  mult=1.00
-          DOTUSDT  WR=38%  avg=+0.00%  total=+0.0%  trades= 13  mult=0.63
               CRM  WR=100%  avg=+0.03%  total=+0.0%  trades=  1  mult=1.00
          INTCUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
          ADBEUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  1  mult=1.00
@@ -170,7 +170,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +604.1%
+  Total PnL (all symbols): +604.5%
   Avg win rate: 46%
   A-tier avg mult: 9.19
   C-tier avg mult: 0.41
