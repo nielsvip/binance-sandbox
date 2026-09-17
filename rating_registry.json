@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-17T09:17:40.014264+00:00",
+  "timestamp": "2026-09-17T09:37:08.375746+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
+    {
+      "symbol": "CRWDUSDT",
+      "net_score": -17.6,
+      "long_score": 0,
+      "short_score": 17.6
+    },
     {
       "symbol": "NEARUSDC",
       "net_score": 0,
@@ -49,19 +55,7 @@
       "short_score": 0
     },
     {
-      "symbol": "GOOGLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "XTZUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -115,6 +109,12 @@
       "short_score": 0
     },
     {
+      "symbol": "UNIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -122,18 +122,6 @@
     },
     {
       "symbol": "ETCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRWDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASMLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -247,6 +235,12 @@
       "short_score": 0
     },
     {
+      "symbol": "USARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "INJUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -332,12 +326,6 @@
     },
     {
       "symbol": "MINAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AVGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -439,70 +427,93 @@
       "short_score": 0
     },
     {
+      "symbol": "COTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "IOTAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "SNDKUSDT",
-      "net_score": 10.1,
-      "long_score": 10.1,
-      "short_score": 0
-    },
-    {
-      "symbol": "UNIUSDC",
-      "net_score": 10.4,
-      "long_score": 10.4,
+      "symbol": "ASMLUSDT",
+      "net_score": 10.5,
+      "long_score": 10.5,
       "short_score": 0
     },
     {
       "symbol": "SMCIUSDT",
+      "net_score": 10.5,
+      "long_score": 10.5,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
       "net_score": 11.1,
       "long_score": 11.1,
       "short_score": 0
     },
     {
-      "symbol": "USARUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
+      "symbol": "SNDKUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
       "short_score": 0
     },
     {
-      "symbol": "COTIUSDT",
-      "net_score": 14.2,
-      "long_score": 14.2,
+      "symbol": "GOOGLUSDT",
+      "net_score": 12.1,
+      "long_score": 12.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "AVGOUSDT",
+      "net_score": 15.7,
+      "long_score": 15.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "COTIUSDT",
-      14.2,
-      0.018948
+      "AVGOUSDT",
+      15.7,
+      345.61
     ],
     [
-      "USARUSDT",
-      11.1,
-      15.56
-    ],
-    [
-      "SMCIUSDT",
-      11.1,
-      37.72759174
-    ],
-    [
-      "UNIUSDC",
-      10.4,
-      6.936
+      "GOOGLUSDT",
+      12.1,
+      347.92
     ],
     [
       "SNDKUSDT",
-      10.1,
-      1551.06419063
+      11.7,
+      1547.04869153
+    ],
+    [
+      "NVDAUSDT",
+      11.1,
+      217.8
+    ],
+    [
+      "ASMLUSDT",
+      10.5,
+      1637.75184092
+    ],
+    [
+      "SMCIUSDT",
+      10.5,
+      37.65
     ]
   ],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "CRWDUSDT",
+      17.6,
+      239.08
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
