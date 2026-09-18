@@ -1429,6 +1429,7 @@ class TradierConfig:
     AUGMENT_FALLBACK_REDUCE_ENABLED: bool = False
     AUGMENT_FALLBACK_REDUCE_PCT: float = 0.5  # fraction of last augment to reduce on fallback
     AUGMENT_FALLBACK_GAIN_PCT: float = 1.0  # fallback threshold pct from peak
+    MAX_AUGMENTS_PER_POSITION: int = 999999  # 2026-09-18 PARITY FIX: integer cap 0/1/2/5/10 sweep, 999999=no cap — mirrors crypto config.py:119 and is wired in backtest_v12_engine (augmented_count >= max, REENTRY exempt). Pilot 0/0.5/1/2 was fractional nonsense (0.5 augments impossible). Sweep 0-1-2-5-10 and keep 999999 baseline. ROLLBACK: remove line (falls back to uncapped).
     # === HEDGE vs RATIO SWEEP (2026-03-21 — 65 configs, both systems) ===
     RATIO_MULTIPLIER_TRADIER: float = 3.5  # BACKTEST_CHANGE_T61: was 2.0. 3.5x ratio exaggeration = Sharpe 260 (vs 249 at 2x). Best: 3.5-4x.
     HEDGE_CROSS_SYMBOL_TRADIER: bool = True  # BACKTEST_CHANGE_T62: Cross-symbol hedge enabled. 25% size, trigger -1%, no momentum gate. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
