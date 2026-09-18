@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T03:03:42.293137+00:00",
+  "timestamp": "2026-09-18T03:24:11.781083+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -14,12 +14,6 @@
     },
     {
       "symbol": "TIAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BMNRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -145,19 +139,7 @@
       "short_score": 0
     },
     {
-      "symbol": "ETCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "IOTAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "COINUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -241,19 +223,7 @@
       "short_score": 0
     },
     {
-      "symbol": "BNCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SPCXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XRPUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -439,61 +409,116 @@
       "short_score": 0
     },
     {
-      "symbol": "VETUSDT",
+      "symbol": "BNCUSDT",
       "net_score": 10.0,
       "long_score": 10.0,
       "short_score": 0
     },
     {
-      "symbol": "MSTRUSDT",
-      "net_score": 12.6,
-      "long_score": 12.6,
-      "short_score": 0
-    },
-    {
-      "symbol": "SOLUSDC",
-      "net_score": 15.3,
-      "long_score": 15.3,
+      "symbol": "BMNRUSDT",
+      "net_score": 10.6,
+      "long_score": 10.6,
       "short_score": 0
     },
     {
       "symbol": "NEARUSDC",
-      "net_score": 15.7,
-      "long_score": 15.7,
+      "net_score": 10.9,
+      "long_score": 10.9,
+      "short_score": 0
+    },
+    {
+      "symbol": "SOLUSDC",
+      "net_score": 11.2,
+      "long_score": 11.2,
+      "short_score": 0
+    },
+    {
+      "symbol": "COINUSDT",
+      "net_score": 12.0,
+      "long_score": 12.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETCUSDT",
+      "net_score": 12.4,
+      "long_score": 12.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "VETUSDT",
+      "net_score": 12.8,
+      "long_score": 12.8,
+      "short_score": 0
+    },
+    {
+      "symbol": "XRPUSDC",
+      "net_score": 14.7,
+      "long_score": 14.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "MSTRUSDT",
+      "net_score": 17.6,
+      "long_score": 17.6,
       "short_score": 0
     },
     {
       "symbol": "BABAUSDT",
-      "net_score": 22.2,
-      "long_score": 22.2,
+      "net_score": 18.6,
+      "long_score": 18.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "BABAUSDT",
-      22.2,
-      110.7122882
-    ],
-    [
-      "NEARUSDC",
-      15.7,
-      3.32
-    ],
-    [
-      "SOLUSDC",
-      15.3,
-      102.62
+      18.6,
+      111.08646883
     ],
     [
       "MSTRUSDT",
-      12.6,
-      133.80459756
+      17.6,
+      134.86791292
+    ],
+    [
+      "XRPUSDC",
+      14.7,
+      1.3191
     ],
     [
       "VETUSDT",
+      12.8,
+      0.00748594
+    ],
+    [
+      "ETCUSDT",
+      12.4,
+      7.72812817
+    ],
+    [
+      "COINUSDT",
+      12.0,
+      175.66614381
+    ],
+    [
+      "SOLUSDC",
+      11.2,
+      102.92
+    ],
+    [
+      "NEARUSDC",
+      10.9,
+      3.38396365
+    ],
+    [
+      "BMNRUSDT",
+      10.6,
+      24.34
+    ],
+    [
+      "BNCUSDT",
       10.0,
-      0.00742202
+      5.647
     ]
   ],
   "top_shorts": [],
