@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T14:46:04.793940+00:00",
+  "timestamp": "2026-09-18T15:08:16.651278+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,61 +7,43 @@
   },
   "unified_ranking": [
     {
-      "symbol": "ASTSUSDT",
-      "net_score": -20.3,
-      "long_score": 0,
-      "short_score": 20.3
-    },
-    {
-      "symbol": "GMEUSDT",
-      "net_score": -19.1,
-      "long_score": 0,
-      "short_score": 19.1
-    },
-    {
       "symbol": "QCOMUSDT",
-      "net_score": -19.1,
+      "net_score": -19.0,
       "long_score": 0,
-      "short_score": 19.1
-    },
-    {
-      "symbol": "SPCXUSDT",
-      "net_score": -16.8,
-      "long_score": 0,
-      "short_score": 16.8
+      "short_score": 19.0
     },
     {
       "symbol": "DELLUSDT",
-      "net_score": -15.1,
+      "net_score": -14.6,
       "long_score": 0,
-      "short_score": 15.1
+      "short_score": 14.6
     },
     {
       "symbol": "SNOWUSDT",
-      "net_score": -14.7,
+      "net_score": -13.1,
       "long_score": 0,
-      "short_score": 14.7
+      "short_score": 13.1
     },
     {
-      "symbol": "MSFTUSDT",
-      "net_score": -14.3,
+      "symbol": "AXTIUSDT",
+      "net_score": -10.2,
       "long_score": 0,
-      "short_score": 14.3
+      "short_score": 10.2
     },
     {
-      "symbol": "CRMUSDT",
-      "net_score": -11.3,
+      "symbol": "GRAMUSDT",
+      "net_score": 0,
       "long_score": 0,
-      "short_score": 11.3
+      "short_score": 0
     },
     {
-      "symbol": "SPYUSDT",
-      "net_score": -11.1,
+      "symbol": "IOTAUSDT",
+      "net_score": 0,
       "long_score": 0,
-      "short_score": 11.1
+      "short_score": 0
     },
     {
-      "symbol": "NEARUSDC",
+      "symbol": "MUUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -73,37 +55,31 @@
       "short_score": 0
     },
     {
-      "symbol": "QTUMUSDT",
+      "symbol": "WLFIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "MRVLUSDT",
+      "symbol": "1000PEPEUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "RVNUSDT",
+      "symbol": "HDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "ADBEUSDT",
+      "symbol": "ARMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "GOOGLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XTZUSDT",
+      "symbol": "MOVEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -115,7 +91,25 @@
       "short_score": 0
     },
     {
-      "symbol": "ONDOUSDT",
+      "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZROUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "QTUMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AVGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -127,49 +121,7 @@
       "short_score": 0
     },
     {
-      "symbol": "ATOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "WLFIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ZENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BNCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "UNIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ETCUSDT",
+      "symbol": "IOTXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -187,55 +139,91 @@
       "short_score": 0
     },
     {
-      "symbol": "CIENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "TIAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MOVEUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "CRWVUSDT",
+      "symbol": "USARUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "HDUSDT",
+      "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "CATUSDT",
+      "symbol": "COTIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "GRAMUSDT",
+      "symbol": "THETAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "ZROUSDT",
+      "symbol": "BTCUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "INJUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NFLXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "COHRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SPYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "XTZUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEARUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BCHUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "UNIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -247,7 +235,115 @@
       "short_score": 0
     },
     {
+      "symbol": "ADBEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MINAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "DASHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "QQQUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MANAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BNCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRWVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RVNUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LTCUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RAYSOLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "METAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -265,37 +361,37 @@
       "short_score": 0
     },
     {
-      "symbol": "USARUSDT",
+      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "INJUSDT",
+      "symbol": "ASTSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "IBMUSDT",
+      "symbol": "CIENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "IOTXUSDT",
+      "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "DOTUSDT",
+      "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "NFLXUSDT",
+      "symbol": "XRPUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -307,91 +403,13 @@
       "short_score": 0
     },
     {
-      "symbol": "LTCUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "THETAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BCHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MANAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "RAYSOLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AXTIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "MINAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AMDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZECUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "CRDOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "QQQUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "COHRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "VETUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "DASHUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARMUSDT",
+      "symbol": "DOTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -403,7 +421,7 @@
       "short_score": 0
     },
     {
-      "symbol": "MUUSDT",
+      "symbol": "TIAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -415,203 +433,155 @@
       "short_score": 0
     },
     {
-      "symbol": "COTIUSDT",
+      "symbol": "IBMUSDT",
       "net_score": 0,
       "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "IOTAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AMATUSDT",
-      "net_score": 10.7,
-      "long_score": 10.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "1000PEPEUSDC",
-      "net_score": 13.2,
-      "long_score": 13.2,
       "short_score": 0
     },
     {
       "symbol": "SNDKUSDT",
+      "net_score": 10.9,
+      "long_score": 10.9,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMATUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "BABAUSDT",
+      "net_score": 12.1,
+      "long_score": 12.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "XLMUSDT",
+      "net_score": 13.0,
+      "long_score": 13.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SOLUSDC",
       "net_score": 13.5,
       "long_score": 13.5,
       "short_score": 0
     },
     {
-      "symbol": "AVGOUSDT",
-      "net_score": 14.1,
-      "long_score": 14.1,
+      "symbol": "BMNRUSDT",
+      "net_score": 14.0,
+      "long_score": 14.0,
       "short_score": 0
     },
     {
-      "symbol": "SOLUSDC",
-      "net_score": 14.7,
-      "long_score": 14.7,
+      "symbol": "VETUSDT",
+      "net_score": 15.0,
+      "long_score": 15.0,
       "short_score": 0
     },
     {
-      "symbol": "XLMUSDT",
+      "symbol": "ETHUSDC",
       "net_score": 15.3,
       "long_score": 15.3,
       "short_score": 0
     },
     {
-      "symbol": "BABAUSDT",
-      "net_score": 15.4,
-      "long_score": 15.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "BMNRUSDT",
-      "net_score": 15.6,
-      "long_score": 15.6,
-      "short_score": 0
-    },
-    {
       "symbol": "COINUSDT",
-      "net_score": 16.5,
-      "long_score": 16.5,
-      "short_score": 0
-    },
-    {
-      "symbol": "ETHUSDC",
-      "net_score": 17.0,
-      "long_score": 17.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XRPUSDC",
-      "net_score": 17.0,
-      "long_score": 17.0,
+      "net_score": 15.8,
+      "long_score": 15.8,
       "short_score": 0
     },
     {
       "symbol": "CHRUSDT",
-      "net_score": 18.5,
-      "long_score": 18.5,
+      "net_score": 18.2,
+      "long_score": 18.2,
       "short_score": 0
     },
     {
       "symbol": "MSTRUSDT",
-      "net_score": 18.5,
-      "long_score": 18.5,
+      "net_score": 19.1,
+      "long_score": 19.1,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "CHRUSDT",
-      18.5,
-      0.01735114
-    ],
-    [
       "MSTRUSDT",
-      18.5,
-      146.78871889
+      19.1,
+      147.99631228
     ],
     [
-      "ETHUSDC",
-      17.0,
-      2569.97359018
-    ],
-    [
-      "XRPUSDC",
-      17.0,
-      1.37867344
+      "CHRUSDT",
+      18.2,
+      0.01728567
     ],
     [
       "COINUSDT",
-      16.5,
-      191.26
+      15.8,
+      192.47
+    ],
+    [
+      "ETHUSDC",
+      15.3,
+      2577.71
+    ],
+    [
+      "VETUSDT",
+      15.0,
+      0.007843
     ],
     [
       "BMNRUSDT",
-      15.6,
-      25.81
-    ],
-    [
-      "BABAUSDT",
-      15.4,
-      113.27870488
-    ],
-    [
-      "XLMUSDT",
-      15.3,
-      0.19282
+      14.0,
+      25.8
     ],
     [
       "SOLUSDC",
-      14.7,
-      109.90619872
-    ],
-    [
-      "AVGOUSDT",
-      14.1,
-      358.78
-    ],
-    [
-      "SNDKUSDT",
       13.5,
-      1706.69
+      110.52946809
     ],
     [
-      "1000PEPEUSDC",
-      13.2,
-      0.0038302
+      "XLMUSDT",
+      13.0,
+      0.19388287
+    ],
+    [
+      "BABAUSDT",
+      12.1,
+      113.21
     ],
     [
       "AMATUSDT",
-      10.7,
-      431.27
+      11.7,
+      434.60603666
+    ],
+    [
+      "SNDKUSDT",
+      10.9,
+      1711.75828433
     ]
   ],
   "top_shorts": [
     [
       "QCOMUSDT",
-      19.1,
-      182.74
-    ],
-    [
-      "GMEUSDT",
-      19.1,
-      22.38243227
-    ],
-    [
-      "SPCXUSDT",
-      16.8,
-      151.87
+      19.0,
+      180.97828369
     ],
     [
       "DELLUSDT",
-      15.1,
-      581.38325439
+      14.6,
+      580.28
     ],
     [
       "SNOWUSDT",
-      14.7,
-      333.1200225
+      13.1,
+      333.73
     ],
     [
-      "MSFTUSDT",
-      14.3,
-      492.53
-    ],
-    [
-      "CRMUSDT",
-      11.3,
-      239.55294763
-    ],
-    [
-      "SPYUSDT",
-      11.1,
-      759.75
+      "AXTIUSDT",
+      10.2,
+      68.66151512
     ]
   ],
   "hedge_usage": {
