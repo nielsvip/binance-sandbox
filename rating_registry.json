@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T20:42:38.886841+00:00",
+  "timestamp": "2026-09-18T21:02:04.614718+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -14,6 +14,12 @@
     },
     {
       "symbol": "IOTAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "MUUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -56,6 +62,12 @@
     },
     {
       "symbol": "MOVEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -134,6 +146,12 @@
     },
     {
       "symbol": "THETAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -229,6 +247,12 @@
       "short_score": 0
     },
     {
+      "symbol": "DASHUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "DELLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -319,7 +343,19 @@
       "short_score": 0
     },
     {
+      "symbol": "CRDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ONDOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AMDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -380,6 +416,12 @@
     },
     {
       "symbol": "BABAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -451,127 +493,50 @@
       "short_score": 0
     },
     {
-      "symbol": "MUUSDT",
-      "net_score": 10.0,
-      "long_score": 10.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "DASHUSDT",
-      "net_score": 11.0,
-      "long_score": 11.0,
-      "short_score": 0
-    },
-    {
       "symbol": "SNDKUSDT",
-      "net_score": 11.0,
-      "long_score": 11.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
-      "net_score": 11.6,
-      "long_score": 11.6,
+      "net_score": 10.2,
+      "long_score": 10.2,
       "short_score": 0
     },
     {
       "symbol": "COHRUSDT",
-      "net_score": 12.2,
-      "long_score": 12.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "NVDAUSDT",
-      "net_score": 13.1,
-      "long_score": 13.1,
-      "short_score": 0
-    },
-    {
-      "symbol": "CRDOUSDT",
-      "net_score": 13.3,
-      "long_score": 13.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "AMDUSDT",
-      "net_score": 14.0,
-      "long_score": 14.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AMATUSDT",
-      "net_score": 14.2,
-      "long_score": 14.2,
+      "net_score": 12.7,
+      "long_score": 12.7,
       "short_score": 0
     },
     {
       "symbol": "ASMLUSDT",
-      "net_score": 15.2,
-      "long_score": 15.2,
+      "net_score": 15.3,
+      "long_score": 15.3,
       "short_score": 0
     },
     {
       "symbol": "ZENUSDT",
-      "net_score": 19.6,
-      "long_score": 19.6,
+      "net_score": 19.4,
+      "long_score": 19.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "ZENUSDT",
-      19.6,
-      8.245
+      19.4,
+      8.13008333
     ],
     [
       "ASMLUSDT",
-      15.2,
-      1673.231814
-    ],
-    [
-      "AMATUSDT",
-      14.2,
-      444.42
-    ],
-    [
-      "AMDUSDT",
-      14.0,
-      557.7
-    ],
-    [
-      "CRDOUSDT",
-      13.3,
-      175.90338231
-    ],
-    [
-      "NVDAUSDT",
-      13.1,
-      221.68613796
+      15.3,
+      1673.55
     ],
     [
       "COHRUSDT",
-      12.2,
-      316.95337178
-    ],
-    [
-      "PLTRUSDT",
-      11.6,
-      177.76
-    ],
-    [
-      "DASHUSDT",
-      11.0,
-      60.98031225
+      12.7,
+      317.27594856
     ],
     [
       "SNDKUSDT",
-      11.0,
-      1790.79405845
-    ],
-    [
-      "MUUSDT",
-      10.0,
-      1014.95
+      10.2,
+      1790.98025107
     ]
   ],
   "top_shorts": [],
