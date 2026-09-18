@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T04:04:14.223998+00:00",
+  "timestamp": "2026-09-18T04:25:39.497004+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -115,12 +115,6 @@
       "short_score": 0
     },
     {
-      "symbol": "USARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -128,12 +122,6 @@
     },
     {
       "symbol": "COTIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "THETAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -169,7 +157,7 @@
       "short_score": 0
     },
     {
-      "symbol": "VETUSDT",
+      "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -325,12 +313,6 @@
       "short_score": 0
     },
     {
-      "symbol": "RAYSOLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "METAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -368,12 +350,6 @@
     },
     {
       "symbol": "CIENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -439,105 +415,149 @@
       "short_score": 0
     },
     {
+      "symbol": "USARUSDT",
+      "net_score": 10.7,
+      "long_score": 10.7,
+      "short_score": 0
+    },
+    {
       "symbol": "BNCUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
+      "net_score": 11.3,
+      "long_score": 11.3,
       "short_score": 0
     },
     {
       "symbol": "COINUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
+      "net_score": 11.5,
+      "long_score": 11.5,
       "short_score": 0
     },
     {
-      "symbol": "ETCUSDT",
-      "net_score": 12.0,
-      "long_score": 12.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "TIAUSDC",
-      "net_score": 14.3,
-      "long_score": 14.3,
+      "symbol": "VETUSDT",
+      "net_score": 11.8,
+      "long_score": 11.8,
       "short_score": 0
     },
     {
       "symbol": "MSTRUSDT",
-      "net_score": 14.6,
-      "long_score": 14.6,
+      "net_score": 13.0,
+      "long_score": 13.0,
       "short_score": 0
     },
     {
-      "symbol": "SOLUSDC",
-      "net_score": 15.2,
-      "long_score": 15.2,
+      "symbol": "ETCUSDT",
+      "net_score": 13.5,
+      "long_score": 13.5,
+      "short_score": 0
+    },
+    {
+      "symbol": "TIAUSDC",
+      "net_score": 13.5,
+      "long_score": 13.5,
+      "short_score": 0
+    },
+    {
+      "symbol": "THETAUSDT",
+      "net_score": 13.6,
+      "long_score": 13.6,
       "short_score": 0
     },
     {
       "symbol": "GRAMUSDT",
-      "net_score": 15.6,
-      "long_score": 15.6,
+      "net_score": 15.8,
+      "long_score": 15.8,
       "short_score": 0
     },
     {
-      "symbol": "NEARUSDC",
-      "net_score": 16.9,
-      "long_score": 16.9,
+      "symbol": "RAYSOLUSDT",
+      "net_score": 17.6,
+      "long_score": 17.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "SOLUSDC",
+      "net_score": 18.8,
+      "long_score": 18.8,
       "short_score": 0
     },
     {
       "symbol": "UNIUSDC",
-      "net_score": 17.9,
-      "long_score": 17.9,
+      "net_score": 19.6,
+      "long_score": 19.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "GOOGLUSDT",
+      "net_score": 23.4,
+      "long_score": 23.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
+      "GOOGLUSDT",
+      23.4,
+      353.06
+    ],
+    [
       "UNIUSDC",
-      17.9,
-      8.63
-    ],
-    [
-      "NEARUSDC",
-      16.9,
-      3.49665927
-    ],
-    [
-      "GRAMUSDT",
-      15.6,
-      1.35870238
+      19.6,
+      8.623
     ],
     [
       "SOLUSDC",
-      15.2,
-      104.76
+      18.8,
+      105.03
     ],
     [
-      "MSTRUSDT",
-      14.6,
-      135.10336824
+      "RAYSOLUSDT",
+      17.6,
+      1.65455971
     ],
     [
-      "TIAUSDC",
-      14.3,
-      0.3804
+      "GRAMUSDT",
+      15.8,
+      1.35517138
+    ],
+    [
+      "THETAUSDT",
+      13.6,
+      0.1952
     ],
     [
       "ETCUSDT",
-      12.0,
-      7.85968604
+      13.5,
+      7.811
+    ],
+    [
+      "TIAUSDC",
+      13.5,
+      0.3866344
+    ],
+    [
+      "MSTRUSDT",
+      13.0,
+      134.89
+    ],
+    [
+      "VETUSDT",
+      11.8,
+      0.00753158
     ],
     [
       "COINUSDT",
-      11.2,
-      176.12612824
+      11.5,
+      175.86713185
     ],
     [
       "BNCUSDT",
-      10.4,
-      5.67593043
+      11.3,
+      5.74806857
+    ],
+    [
+      "USARUSDT",
+      10.7,
+      15.8
     ]
   ],
   "top_shorts": [],
