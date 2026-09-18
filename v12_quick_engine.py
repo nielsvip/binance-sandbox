@@ -21637,6 +21637,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     cd = 0
     has_closed_before = False
     bars_in_pos = 0
+    # 2026-09-18 HARDCODED RALLY REENTRY: track last exit and wt1_15m for hardcoded reentry
+    try:
+        _hc_wt1_15m = _safe(npz, 'wt1_15m', n)
+    except Exception:
+        _hc_wt1_15m = close * 0
     # Cache entry blocks once for per-trade reason tagging (avoid recompute per entry)
     try:
         _entry_blocks_cache = compute_reentry_blocks(npz, n, is_long, cfg)
@@ -21675,6 +21680,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 # skip all reentry — keep pos None
                 continue
             fire = entry_sig[i]
+            # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit AND wt1_15m rising
+            if not fire and has_closed_before and trades:
+                try:
+                    _hc_last_exit = float(trades[-1].get('exit_price', 0) or 0)
+                    if _hc_last_exit > 0:
+                        _hc_wt1 = float(_hc_wt1_15m[i] if i < len(_hc_wt1_15m) else 0)
+                        _hc_wt1_prev = float(_hc_wt1_15m[i-1] if i > 0 and i-1 < len(_hc_wt1_15m) else _hc_wt1)
+                        if is_long and px > _hc_last_exit and _hc_wt1 > _hc_wt1_prev:
+                            fire = True
+                        elif not is_long and px < _hc_last_exit and _hc_wt1 < _hc_wt1_prev:
+                            fire = True
+                except Exception:
+                    pass
             if not fire and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False):
                 fire = True
             if fire:
@@ -21692,14 +21710,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     # Derive real entry reason from the block that fired at this bar
                     entry_reason = 'VECTOR_ENTRY'
                     try:
-                        for _bname, _barr in _entry_blocks_cache.items():
-                            if _barr[i]:
-                                entry_reason = _bname
-                                break
-                        if entry_reason == 'VECTOR_ENTRY' and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False) and not entry_sig[i]:
-                            entry_reason = 'REENTRY_MANDATORY'
-                        if entry_reason == 'VECTOR_ENTRY':
-                            entry_reason = 'ENTRY_SIGNAL'
+                        # 2026-09-18 HARDCODED tag before generic
+                        _hardcoded_fired = False
+                        if has_closed_before and trades and not entry_sig[i]:
+                            try:
+                                _hc_last = float(trades[-1].get('exit_price', 0) or 0)
+                                if _hc_last > 0:
+                                    _hwt1 = float(_hc_wt1_15m[i] if i < len(_hc_wt1_15m) else 0)
+                                    _hwt1p = float(_hc_wt1_15m[i-1] if i > 0 and i-1 < len(_hc_wt1_15m) else _hwt1)
+                                    if (is_long and px > _hc_last and _hwt1 > _hwt1p) or (not is_long and px < _hc_last and _hwt1 < _hwt1p):
+                                        entry_reason = 'HARDCODED_RALLY_REENTRY'
+                                        _hardcoded_fired = True
+                            except Exception:
+                                pass
+                        if not _hardcoded_fired:
+                            for _bname, _barr in _entry_blocks_cache.items():
+                                if _barr[i]:
+                                    entry_reason = _bname
+                                    break
+                            if entry_reason == 'VECTOR_ENTRY' and has_closed_before and getattr(cfg, 'REENTRY_MANDATORY', False) and not entry_sig[i]:
+                                entry_reason = 'REENTRY_MANDATORY'
+                            if entry_reason == 'VECTOR_ENTRY':
+                                entry_reason = 'ENTRY_SIGNAL'
                     except Exception:
                         pass
                     pos = _open(qty0, px, i, entry_reason)

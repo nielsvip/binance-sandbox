@@ -2836,6 +2836,19 @@ def check_reentry_eligible(
     """Price crossing exit = ALWAYS eligible, 0% tolerance. No stoch gate when price has crossed."""
     if last_exit_price <= 0:
         return False, "NO_EXIT_DATA"
+    # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): reenter if close > exit AND wt1_15m rising
+    # LONG: close > exit AND wt1_15m > wt1_15m_prev ; SHORT: close < exit AND wt1_15m < wt1_15m_prev
+    try:
+        _wt1 = float(indicators.get("wt1_15m", 0) or 0)
+        _wt1_prev = float(indicators.get("wt1_15m_prev", _wt1) or _wt1)
+        _wt_rising = _wt1 > _wt1_prev
+        _wt_falling = _wt1 < _wt1_prev
+        if is_long and current_price > last_exit_price and _wt_rising:
+            return True, f"REENTRY_HARDCODED_RALLY_LONG_close{current_price:.4f}>exit{last_exit_price:.4f}_wt{_wt1:.1f}>{_wt1_prev:.1f}"
+        if not is_long and current_price < last_exit_price and _wt_falling:
+            return True, f"REENTRY_HARDCODED_RALLY_SHORT_close{current_price:.4f}<exit{last_exit_price:.4f}_wt{_wt1:.1f}<{_wt1_prev:.1f}"
+    except Exception:
+        pass
     _price_crossed = (is_long and current_price >= last_exit_price) or (
         not is_long and current_price <= last_exit_price
     )
@@ -35341,6 +35354,28 @@ class MultiAccountTradeManager:
                     _price_crossed = (is_long and current_price >= exit_price) or (
                         not is_long and current_price <= exit_price
                     )
+                    # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit and wt1_15m rising
+                    try:
+                        _hc_wt1 = safe_fetch_float(indicators.get("wt1_15m", 0), 0.0)
+                        _hc_wt1_prev = safe_fetch_float(indicators.get("wt1_15m_prev", _hc_wt1), _hc_wt1)
+                        _hc_is_long_rally = is_long and current_price > exit_price and _hc_wt1 > _hc_wt1_prev
+                        _hc_is_short_rally = (not is_long) and current_price < exit_price and _hc_wt1 < _hc_wt1_prev
+                        if _hc_is_long_rally or _hc_is_short_rally:
+                            # bypass all gates — force reentry immediately
+                            _qty_mult_hc = 1.0
+                            _reason_hc = f"HARDCODED_RALLY_close{current_price:.4f}>{exit_price:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_close{current_price:.4f}<{exit_price:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
+                            logger.warning(f"🚀 [HARDCODED_RALLY_REENTRY] {position_key}: HARDCODED price>exit & wt rising/falling — {_reason_hc} — FORCING REENTRY")
+                            # queue immediately
+                            _orig_qty = safe_fetch_float(data.get("original_qty", 0), 0.0)
+                            if _orig_qty <= 0:
+                                _orig_qty = float(getattr(config, "START_POSITION_SIZE", 100) or 100) / max(current_price, 1e-9)
+                            _qty = _orig_qty * _qty_mult_hc
+                            await queue_trade_action(self.order_queue, self, position_key, "REENTRY", _reason_hc, 90.0, override_qty=_qty)
+                            _reentry_last_fire[position_key] = time.time()
+                            self.pending_reentries[position_key]["status"] = "queued"
+                            continue
+                    except Exception as _hc_e:
+                        logger.debug(f"[HARDCODED_RALLY_REENTRY] {position_key}: skipped {_hc_e}")
                     # Elapsed since exit (ISO timestamp string on data['exit_time'])
                     _elapsed_s = 999999.0
                     _exit_ts_raw = data.get("exit_time", "")
@@ -37538,6 +37573,22 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     i = await ii(trade_manager, symbol)
     if not i:
         return None
+    # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit and wt1_15m rising
+    try:
+        _hc_exit_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
+        if _hc_exit_px > 0:
+            _hc_wt1 = float(i.get("wt1_15m", 0) or 0)
+            _hc_wt1_prev = float(i.get("wt1_15m_prev", _hc_wt1) or _hc_wt1)
+            _hc_is_long_rally = is_long and current_price > _hc_exit_px and _hc_wt1 > _hc_wt1_prev
+            _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and _hc_wt1 < _hc_wt1_prev
+            if _hc_is_long_rally or _hc_is_short_rally:
+                re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                _side = "LONG" if is_long else "SHORT"
+                _reason = f"HARDCODED_RALLY_REENTRY_{_side}_close{current_price:.4f}>exit{_hc_exit_px:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_REENTRY_{_side}_close{current_price:.4f}<exit{_hc_exit_px:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
+                logger.warning(f"[HARDCODED_RALLY_REENTRY] {position_key}: {_reason} — FORCED REENTRY")
+                return Signal(action="REENTRY", reason=_reason, conviction=90.0, quantity=re_qty)
+    except Exception as _hc_e:
+        logger.debug(f"[HARDCODED_RALLY_REENTRY] {position_key}: check skipped {_hc_e}")
     re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
     # Phase 2 vectorization: pure block logic lives in position_evaluator.py.
     # Live and v8 backtest now share one code path — sweep parity guaranteed.

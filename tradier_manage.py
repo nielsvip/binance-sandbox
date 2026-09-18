@@ -20259,6 +20259,37 @@ class StockStrategy:
                         return "REENTRY_OPEN", _mr_reason, 90.0, _mr_qty
         except Exception as _mr_err:
             logger.debug(f"[MU_CORRECTION_REENTRY] {symbol}: gate skipped ({type(_mr_err).__name__}: {_mr_err})")
+        # ═══ 2026-09-18 HARDCODED RALLY REENTRY (user mandate) ═══════════════
+        # Hardcode: any flat position is reentered if close > exit_price and wt1_15m > wt1_15m_prev
+        # LONG: close > exit AND wt rising ; SHORT: close < exit AND wt falling — bypasses all gates
+        try:
+            if positionAmt == 0:
+                _hc_last_px = float(getattr(position, 'last_reduction_price', 0) or 0)
+                _hc_last_t = getattr(position, 'last_reduction_time', None)
+                if _hc_last_px > 0 and current_price is not None and current_price > 0:
+                    _hc_wt1 = float(i.get('wt1_15m', 0) or 0)
+                    _hc_wt1_prev = float(i.get('wt1_15m_prev', _hc_wt1) or _hc_wt1)
+                    _hc_wt_rising = _hc_wt1 > _hc_wt1_prev
+                    _hc_wt_falling = _hc_wt1 < _hc_wt1_prev
+                    _hc_is_long_rally = is_long and current_price > _hc_last_px and _hc_wt_rising
+                    _hc_is_short_rally = (not is_long) and current_price < _hc_last_px and _hc_wt_falling
+                    if _hc_is_long_rally or _hc_is_short_rally:
+                        _hc_age_min = 9999.0
+                        if _hc_last_t:
+                            try:
+                                _hc_lt = _hc_last_t if not isinstance(_hc_last_t, str) else datetime.fromisoformat(str(_hc_last_t).replace("Z", "+00:00"))
+                                if _hc_lt.tzinfo is None: _hc_lt = _hc_lt.replace(tzinfo=timezone.utc)
+                                _hc_age_min = (datetime.now(timezone.utc) - _hc_lt).total_seconds() / 60.0
+                            except Exception:
+                                pass
+                        if _hc_age_min >= 3.0:
+                            _hc_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                            _hc_side = "LONG" if is_long else "SHORT"
+                            _hc_reason = f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}>exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}<exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
+                            logger.warning(f"[HARDCODED_RALLY_REENTRY] {symbol} {_hc_side}: {_hc_reason} age={_hc_age_min:.0f}m — REOPEN")
+                            return "REENTRY_OPEN", _hc_reason, 90.0, _hc_qty
+        except Exception as _hc_e:
+            logger.debug(f"[HARDCODED_RALLY_REENTRY] {symbol}: check skipped ({type(_hc_e).__name__}: {_hc_e})")
         # ═══ PRICE_CROSS_BACK_REENTRY (2026-04-27 user rule) ═══════════════
         # "IT NEEDS TO IMMEDIATELY BUY AGAIN IF EXIT PRICE IS CROSSED." When
         # a position is flat and price returns to within a tight band of the
