@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-18T08:21:19.546820+00:00",
+  "timestamp": "2026-09-18T08:40:35.491716+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 81
+    "total_ranked": 82
   },
   "unified_ranking": [
     {
@@ -109,6 +109,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ASMLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LLYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -145,7 +151,7 @@
       "short_score": 0
     },
     {
-      "symbol": "INJUSDT",
+      "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -254,6 +260,12 @@
     },
     {
       "symbol": "CHRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "QQQUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -469,50 +481,39 @@
       "short_score": 0
     },
     {
-      "symbol": "QQQUSDT",
-      "net_score": 10.6,
-      "long_score": 10.6,
+      "symbol": "INJUSDT",
+      "net_score": 11.8,
+      "long_score": 11.8,
       "short_score": 0
     },
     {
       "symbol": "GRAMUSDT",
-      "net_score": 10.9,
-      "long_score": 10.9,
+      "net_score": 12.5,
+      "long_score": 12.5,
       "short_score": 0
     },
     {
       "symbol": "XMRUSDT",
-      "net_score": 11.4,
-      "long_score": 11.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASMLUSDT",
-      "net_score": 12.8,
-      "long_score": 12.8,
+      "net_score": 12.6,
+      "long_score": 12.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ASMLUSDT",
-      12.8,
-      1654.96040862
-    ],
-    [
       "XMRUSDT",
-      11.4,
-      539.2033458
+      12.6,
+      540.33
     ],
     [
       "GRAMUSDT",
-      10.9,
-      1.36944906
+      12.5,
+      1.36943
     ],
     [
-      "QQQUSDT",
-      10.6,
-      722.6112055
+      "INJUSDT",
+      11.8,
+      6.175
     ]
   ],
   "top_shorts": [],
