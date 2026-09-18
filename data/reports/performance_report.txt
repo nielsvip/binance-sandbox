@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-09-18 16:51 UTC
+PERFORMANCE REPORT — 2026-09-18 17:25 UTC
 ================================================================================
-Total: 154 symbols | A=3 B=121 C=30
+Total: 154 symbols | A=3 B=122 C=29
 Window: 14 days | Min trades: 5
 
 --- TIER A (3 symbols) ---
@@ -8,7 +8,7 @@ Window: 14 days | Min trades: 5
              COIN  WR=73%  avg=+1.65%  total=+15.2%  trades= 11  mult=8.20
           ZECUSDT  WR=76%  avg=+0.41%  total=+7.2%  trades= 17  mult=7.43
 
---- TIER B (121 symbols) ---
+--- TIER B (122 symbols) ---
              MSTR  WR=57%  avg=+2.07%  total=+54.5%  trades= 23  mult=10.00
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
@@ -128,10 +128,11 @@ Window: 14 days | Min trades: 5
               NEM  WR=0%  avg=-1.15%  total=-4.5%  trades=  4  mult=1.00
              DINO  WR=64%  avg=-0.56%  total=-8.0%  trades= 14  mult=0.72
               SLV  WR=0%  avg=-2.28%  total=-8.8%  trades=  4  mult=1.00
+             AXON  WR=53%  avg=-0.68%  total=-9.9%  trades= 15  mult=0.43
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
                MU  WR=60%  avg=-1.42%  total=-13.6%  trades= 10  mult=0.39
 
---- TIER C (30 symbols) ---
+--- TIER C (29 symbols) ---
      1000PEPEUSDC  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.61
              SNOW  WR=43%  avg=-0.01%  total=-0.2%  trades=  7  mult=0.83
         PENGUUSDC  WR=44%  avg=-0.03%  total=-0.2%  trades=  9  mult=0.81
@@ -153,7 +154,6 @@ Window: 14 days | Min trades: 5
               AMD  WR=12%  avg=-0.91%  total=-7.2%  trades=  8  mult=0.30
              MRVL  WR=0%  avg=-1.12%  total=-7.6%  trades=  7  mult=0.28
               CLS  WR=0%  avg=-1.62%  total=-7.9%  trades=  5  mult=0.33
-             AXON  WR=36%  avg=-0.96%  total=-10.2%  trades= 11  mult=0.31
              LRCX  WR=20%  avg=-1.29%  total=-12.3%  trades= 10  mult=0.24
              USAR  WR=32%  avg=-0.70%  total=-12.6%  trades= 19  mult=0.23
              AMZN  WR=25%  avg=-1.25%  total=-14.1%  trades= 12  mult=0.23
@@ -164,7 +164,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +663.5%
+  Total PnL (all symbols): +663.8%
   Avg win rate: 49%
   A-tier avg mult: 8.54
-  C-tier avg mult: 0.41
+  C-tier avg mult: 0.42

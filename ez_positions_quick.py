@@ -14844,14 +14844,14 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             # also age check via opened_at if available — use tracker entry if not on position
                             _q_age_s = 999999
                             try:
-                                from datetime import datetime, timezone as _qtz
+                                from datetime import datetime as _dt_inner, timezone as _qtz
                                 _q_dt = getattr(position, "opened_at", None)
                                 if isinstance(_q_dt, str):
                                     from dateutil.parser import isoparse as _qip
                                     _q_dt = _qip(_q_dt)
-                                if isinstance(_q_dt, datetime):
+                                if isinstance(_q_dt, _dt_inner):
                                     if _q_dt.tzinfo is None: _q_dt = _q_dt.replace(tzinfo=_qtz.utc)
-                                    _q_age_s = (datetime.now(_qtz.utc) - _q_dt).total_seconds()
+                                    _q_age_s = (_dt_inner.now(_qtz.utc) - _q_dt).total_seconds()
                             except Exception: pass
                             if _q_age_s < 3600 and not _q_under:
                                 should_close = False

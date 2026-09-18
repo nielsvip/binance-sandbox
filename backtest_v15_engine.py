@@ -4472,11 +4472,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _golden_native_events = {}
     if bool(getattr(config, "GOLDEN_RULE_ENABLED", False)):
         try:
-            from v12_quick_engine import _batch3_lifecycle_window as _v12_lifecycle_window
             from vec_paths.v12_reentry_augment_filter_gap_batch6 import golden_rule_decision as _v12_golden
             for _golden_sym, _golden_store in stores.items():
                 _golden_n = len(_golden_store.timestamps)
-                _golden_arrays = _v12_lifecycle_window(_golden_store.arrays, _golden_n, config)
+                _golden_arrays = _golden_store.arrays
                 _golden_state = {
                     "candidate_mask": np.ones(_golden_n, dtype=bool),
                     "cooldown_ready": np.ones(_golden_n, dtype=bool),

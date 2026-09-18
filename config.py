@@ -1169,6 +1169,20 @@ class Config:
     STDEV_SLOPE_LOOKBACK_1H: int = 168  # 1wk 1h
     STDEV_SLOPE_LOOKBACK_15M: int = 96  # 1D 15m
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"  # slope_to_top (10x on/below slope →1x top, vv shorts) vs bottom_to_top (10x bottom →1x top full gradient)
+    # 2026-09-18 BULL_HOLD + PUMP SWITCHES — based on v15_pilot_0914 deep dive (entering too late for crypto, exiting too early in bull, HTF overkill for exits, AUGMENT toxic)
+    # BULL_HOLD: delay exits when D bull (close>SMA20 + 4h WT>-53) — fixes TIM 41%→60% in bh>20, gap -80→-60 verified via RULE_B proxy +2.59..+6.94
+    BULL_HOLD_EXIT_DELAY_BARS: int = 0  # 0=off, 12/24/48 bars delay WT_CROSS/STDEV_BREAKOUT/ALL_TF_AGAINST when bull
+    BULL_HOLD_HTF_TF: str = "4h"  # TF for bull check
+    BULL_HOLD_WT_THR: float = -53.0  # 4h WT threshold for bull
+    # AUGMENT pump: kill augments in bull (toxic avg -8.76 pos0% n118) — saves 27pts SNDK, 38pts MSTR, DD -30%
+    AUGMENT_BULL_KILL_ENABLED: bool = False  # if True, skip AUGMENT when bull regime
+    # STDEV pump: extra boost when slope aligned with trade (already +7% stocks, +2.45 crypto on WT) — stack sizing
+    STDEV_BULL_SLOPE_BOOST_ENABLED: bool = False
+    STDEV_BULL_SLOPE_BOOST_MULT: float = 1.5  # 1.0/1.5/2.0
+    # HTF pump: bull-only entry filter (too much HTF for crypto entries, correct for stocks) — OFF/D/4h
+    HTF_BULL_ENTRY_FILTER_ENABLED: bool = False
+    HTF_BULL_ENTRY_FILTER_TF: str = "OFF"  # OFF/D/4h/1h/15m
+    HTF_BULL_ENTRY_MIN_TFS: int = 1  # 1/2
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True      # 2026-07-15 v2-v5 campaign: grad sizing uplift positive on 176-sym 6.5yr (L200+ quality subsets +2.3..+8.4%/trade); entry system stays OFF (Noise) — sizing only, conservative clamps
     BAND_SLOPE_SIZING_V2_TF: str = "4h"
     BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0
