@@ -1,16 +1,16 @@
-PERFORMANCE REPORT — 2026-09-18 13:25 UTC
+PERFORMANCE REPORT — 2026-09-18 13:51 UTC
 ================================================================================
-Total: 150 symbols | A=3 B=117 C=30
+Total: 150 symbols | A=2 B=118 C=30
 Window: 14 days | Min trades: 5
 
---- TIER A (3 symbols) ---
+--- TIER A (2 symbols) ---
              DELL  WR=98%  avg=+3.82%  total=+879.8%  trades= 61  mult=10.00
           ZECUSDT  WR=76%  avg=+0.41%  total=+7.2%  trades= 17  mult=7.43
-             PYPL  WR=73%  avg=+0.57%  total=+6.4%  trades= 11  mult=5.38
 
---- TIER B (117 symbols) ---
+--- TIER B (118 symbols) ---
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
          RUNEUSDT  WR=56%  avg=+0.91%  total=+8.3%  trades=  9  mult=4.20
+             PYPL  WR=62%  avg=+0.28%  total=+3.6%  trades= 13  mult=3.58
         ETHFIUSDC  WR=64%  avg=+0.09%  total=+3.6%  trades= 39  mult=4.16
          COTIUSDT  WR=49%  avg=+0.07%  total=+3.5%  trades= 53  mult=1.29
              TSLA  WR=67%  avg=+1.08%  total=+3.3%  trades=  3  mult=1.00
@@ -160,7 +160,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +548.0%
+  Total PnL (all symbols): +545.2%
   Avg win rate: 48%
-  A-tier avg mult: 7.60
+  A-tier avg mult: 8.71
   C-tier avg mult: 0.41
