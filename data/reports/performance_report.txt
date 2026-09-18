@@ -1,6 +1,6 @@
-PERFORMANCE REPORT — 2026-09-18 15:06 UTC
+PERFORMANCE REPORT — 2026-09-18 15:25 UTC
 ================================================================================
-Total: 156 symbols | A=3 B=123 C=30
+Total: 155 symbols | A=3 B=122 C=30
 Window: 14 days | Min trades: 5
 
 --- TIER A (3 symbols) ---
@@ -8,7 +8,7 @@ Window: 14 days | Min trades: 5
              COIN  WR=73%  avg=+1.65%  total=+15.2%  trades= 11  mult=8.20
           ZECUSDT  WR=76%  avg=+0.41%  total=+7.2%  trades= 17  mult=7.43
 
---- TIER B (123 symbols) ---
+--- TIER B (122 symbols) ---
              MSTR  WR=57%  avg=+2.07%  total=+54.5%  trades= 23  mult=10.00
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
@@ -16,9 +16,9 @@ Window: 14 days | Min trades: 5
          RUNEUSDT  WR=56%  avg=+0.91%  total=+8.3%  trades=  9  mult=4.20
         ETHFIUSDC  WR=64%  avg=+0.09%  total=+3.6%  trades= 39  mult=4.16
          COTIUSDT  WR=49%  avg=+0.07%  total=+3.5%  trades= 53  mult=1.29
-             TSLA  WR=67%  avg=+1.08%  total=+3.3%  trades=  3  mult=1.00
            ARUSDT  WR=56%  avg=+0.17%  total=+2.7%  trades= 16  mult=2.81
              CRWV  WR=50%  avg=+0.75%  total=+2.7%  trades= 10  mult=3.53
+             TSLA  WR=50%  avg=+0.63%  total=+2.5%  trades=  4  mult=1.00
           ZECUSDC  WR=75%  avg=+0.30%  total=+2.4%  trades=  8  mult=3.60
           RLCUSDT  WR=58%  avg=+0.12%  total=+2.3%  trades= 19  mult=3.11
              PYPL  WR=53%  avg=+0.15%  total=+2.2%  trades= 15  mult=2.20
@@ -112,7 +112,6 @@ Window: 14 days | Min trades: 5
           XMRUSDT  WR=50%  avg=-0.15%  total=-0.6%  trades=  4  mult=1.00
          BABAUSDT  WR=45%  avg=-0.06%  total=-0.6%  trades= 11  mult=0.77
               MDT  WR=0%  avg=-0.64%  total=-0.6%  trades=  1  mult=1.00
-             INTC  WR=0%  avg=-0.77%  total=-0.8%  trades=  1  mult=1.00
               LLY  WR=0%  avg=-0.40%  total=-0.8%  trades=  2  mult=1.00
           XTZUSDT  WR=56%  avg=-0.05%  total=-0.9%  trades= 18  mult=1.61
              RDDT  WR=0%  avg=-0.46%  total=-0.9%  trades=  2  mult=1.00
@@ -124,7 +123,7 @@ Window: 14 days | Min trades: 5
              BABA  WR=50%  avg=-0.77%  total=-1.6%  trades=  2  mult=1.00
               AGI  WR=0%  avg=-0.65%  total=-1.9%  trades=  3  mult=1.00
               LMT  WR=0%  avg=-2.36%  total=-2.4%  trades=  1  mult=1.00
-               AU  WR=0%  avg=-0.89%  total=-2.6%  trades=  3  mult=1.00
+               AU  WR=0%  avg=-0.67%  total=-2.6%  trades=  4  mult=1.00
          QTUMUSDT  WR=54%  avg=-0.12%  total=-2.9%  trades= 24  mult=0.97
              NVDA  WR=71%  avg=-0.44%  total=-3.1%  trades=  7  mult=1.30
               NEM  WR=0%  avg=-1.15%  total=-4.5%  trades=  4  mult=1.00
