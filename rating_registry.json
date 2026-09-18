@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T10:50:01.612778+00:00",
+  "timestamp": "2026-09-18T11:09:11.927561+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -212,6 +212,12 @@
     },
     {
       "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "UNIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -491,21 +497,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "UNIUSDC",
-      "net_score": 11.9,
-      "long_score": 11.9,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "UNIUSDC",
-      11.9,
-      9.12443338
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
