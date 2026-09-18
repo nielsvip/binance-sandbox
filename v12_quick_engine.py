@@ -9704,6 +9704,21 @@ def compute_exit_signals(npz, n, is_long, cfg):
                 # This lifts TIM ~+15% in bull verified on local crypto: baseline TIM 80→ suppressed TIM would be 90+
     except Exception:
         pass
+    # 2026-09-18 BEAR_HOLD — mirror BULL_HOLD for shorts: delay exits when D bear (close<SMA20 & wt<thr) — short-only
+    try:
+        _bear_delay = int(getattr(cfg, 'BEAR_HOLD_EXIT_DELAY_BARS', 0) or 0)
+        if _bear_delay > 0 and not is_long:
+            _close_d_b = _safe(npz, 'close_D', n, close)
+            _sma20_b = _safe(npz, 'sma_20_D', n, _close_d_b)
+            if np.all(_sma20_b == _close_d_b) or np.all(_sma20_b == 0):
+                _sma20_b = _safe(npz, 'sma20_D', n, _close_d_b)
+            _wt_4h_bear = _safe(npz, 'wt1_4h', n, 0.0) if _safe(npz, 'wt1_4h', n, 0.0).sum() != 0 else _safe(npz, 'wt_4h', n, 0.0)
+            _wt_thr_b = float(getattr(cfg, 'BEAR_HOLD_WT_THR', 53.0))
+            _bear_mask = (_close_d_b < _sma20_b) & (_wt_4h_bear < _wt_thr_b)
+            if np.any(_bear_mask):
+                _all_exit = _all_exit & (~_bear_mask)
+    except Exception:
+        pass
     # REMOVED 2026-08-11 — hash fallback deleted per M1 (see entry gate above)
     return _all_exit
 
@@ -9744,7 +9759,35 @@ def compute_augment_signals(npz, n, is_long, cfg):
             pyramid_sig = (dc_pos_15m_p >= getattr(cfg, 'PYRAMID_MIN_DC_POS_15M', 0.7)) & (wt_vel_1h_p >= getattr(cfg, 'PYRAMID_MIN_WT_VEL_1H', 2.0))
         else:
             pyramid_sig = (dc_pos_15m_p <= getattr(cfg, 'PYRAMID_MAX_DC_POS_15M_SHORT', 0.3)) & (wt_vel_1h_p <= -getattr(cfg, 'PYRAMID_MIN_WT_VEL_1H', 2.0))
-    augment_sig = bounce_sig | pyramid_sig
+    # 2026-09-18 SHORT PUMP — DC low break + partial recovery large position (short-only)
+    # SHORT: break dc_low opens large, partial recovery (gain -2→-0.5) adds large because it will keep falling until support bounce
+    _short_dc_sig = np.zeros(n, dtype=bool)
+    _short_dc_mult = np.zeros(n, dtype=np.float64)
+    try:
+        if not is_long and bool(getattr(cfg, 'SHORT_DC_LOW_BREAK_ENABLED', False)):
+            _dc_low = _safe(npz, 'dc_low', n, 0.0)
+            if np.any(_dc_low > 0):
+                _break = (close < _dc_low) & (_dc_low > 0)
+                _mult_dc = float(getattr(cfg, 'SHORT_DC_LOW_BREAK_SIZE_MULT', 2.0))
+                _short_dc_sig = _break
+                _short_dc_mult = np.where(_break, _mult_dc, 0.0)
+    except Exception:
+        pass
+    _short_rec_sig = np.zeros(n, dtype=bool)
+    _short_rec_mult = np.zeros(n, dtype=np.float64)
+    try:
+        if not is_long and bool(getattr(cfg, 'SHORT_PARTIAL_RECOVERY_ENABLED', False)):
+            # Partial recovery: we need gain proxy — use close vs recent high? Approx via dc position: price recovered from low toward mid
+            _dc_pos = _safe(npz, 'dc_position', n, 0.5)
+            _thr = float(getattr(cfg, 'SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT', -1.0))
+            # For shorts, partial recovery means price has bounced up from low but still below entry: dc_pos 0.2-0.4 indicates off low but not to top
+            _rec_cond = (_dc_pos > 0.2) & (_dc_pos < 0.4)
+            _mult_rec = float(getattr(cfg, 'SHORT_PARTIAL_RECOVERY_SIZE_MULT', 2.0))
+            _short_rec_sig = _rec_cond
+            _short_rec_mult = np.where(_rec_cond, _mult_rec, 0.0)
+    except Exception:
+        pass
+    augment_sig = bounce_sig | pyramid_sig | _short_dc_sig | _short_rec_sig
     # 2026-09-18 AUGMENT_BULL_KILL — toxic avg -8.76 pos0% n118 verified, saves 27pts SNDK
     try:
         if bool(getattr(cfg, 'AUGMENT_BULL_KILL_ENABLED', False)):

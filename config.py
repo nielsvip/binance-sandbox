@@ -1183,6 +1183,16 @@ class Config:
     HTF_BULL_ENTRY_FILTER_ENABLED: bool = False
     HTF_BULL_ENTRY_FILTER_TF: str = "OFF"  # OFF/D/4h/1h/15m
     HTF_BULL_ENTRY_MIN_TFS: int = 1  # 1/2
+    # 2026-09-18 SHORT PUMP — mirror of BULL_HOLD for shorts: DC low break + partial recovery large position
+    # SHORT: when D bear (close<SMA20 & wt<-53? actually wt<53 for shorts bear), delay exits, break dc_low opens large, partial recovery (gain -2→-0.5) adds large because it will keep falling until support bounce
+    BEAR_HOLD_EXIT_DELAY_BARS: int = 0  # 0=off, 12/24/48 bars delay exits when D bear (short)
+    BEAR_HOLD_HTF_TF: str = "4h"
+    BEAR_HOLD_WT_THR: float = 53.0  # 4h WT threshold for bear (short: wt < thr)
+    SHORT_DC_LOW_BREAK_ENABLED: bool = False  # break dc_low -> open large short
+    SHORT_DC_LOW_BREAK_SIZE_MULT: float = 2.0  # 1.5/2.0/3.0
+    SHORT_PARTIAL_RECOVERY_ENABLED: bool = False  # partial recovery to entry (gain -2%→-0.5%) -> add large (continuation)
+    SHORT_PARTIAL_RECOVERY_SIZE_MULT: float = 2.0  # 1.5/2.0/3.0
+    SHORT_PARTIAL_RECOVERY_THRESHOLD_PCT: float = -1.0  # -0.5/-1.0/-2.0
     BAND_SLOPE_SIZING_V2_ENABLED: bool = True      # 2026-07-15 v2-v5 campaign: grad sizing uplift positive on 176-sym 6.5yr (L200+ quality subsets +2.3..+8.4%/trade); entry system stays OFF (Noise) — sizing only, conservative clamps
     BAND_SLOPE_SIZING_V2_TF: str = "4h"
     BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0
