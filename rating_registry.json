@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T10:31:32.281852+00:00",
+  "timestamp": "2026-09-18T10:50:01.612778+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -163,6 +163,12 @@
       "short_score": 0
     },
     {
+      "symbol": "INJUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "COHRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -206,12 +212,6 @@
     },
     {
       "symbol": "MSFTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "UNIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -493,17 +493,17 @@
       "short_score": 0
     },
     {
-      "symbol": "INJUSDT",
-      "net_score": 12.5,
-      "long_score": 12.5,
+      "symbol": "UNIUSDC",
+      "net_score": 11.9,
+      "long_score": 11.9,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "INJUSDT",
-      12.5,
-      6.64787845
+      "UNIUSDC",
+      11.9,
+      9.12443338
     ]
   ],
   "top_shorts": [],
