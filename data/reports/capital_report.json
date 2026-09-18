@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-18 08:24 UTC",
- "total_capital_usd": 389.84,
+ "generated_at": "2026-09-18 08:44 UTC",
+ "total_capital_usd": 14.45,
  "tier_capital": {
   "A": 0.0,
-  "B": 389.84,
+  "B": 14.45,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BTCUSDC_SHORT",
-   "symbol": "BTCUSDC",
-   "account": "flz",
-   "value_usd": 389.84,
-   "gain_pct": -0.096,
+   "pk": "men:DOTUSDT_LONG",
+   "symbol": "DOTUSDT",
+   "account": "men",
+   "value_usd": 14.45,
+   "gain_pct": 0.096,
    "tier": "B",
-   "perf_mult": 2.06,
-   "amt": 0.005,
-   "mark": 77968.8
+   "perf_mult": 1.39,
+   "amt": 12.5,
+   "mark": 1.15600452
   }
  ]
 }
