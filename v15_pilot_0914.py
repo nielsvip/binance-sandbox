@@ -976,21 +976,16 @@ def main():
         from tools.opt.v12_pilot import evaluate_sanitized
         baseline_vec = evaluate_sanitized(new_symside, overrides, window_days=args.window_days)
         print(f"[baseline] no prepared, vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')}", flush=True)
+        # FIX 2026-09-18 keep CPU >85%: do not skip 0-trade baselines — run full sweep anyway (will find delta>0 vs bh)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[skip-empty-baseline] {new_symside} invalid/0 trades — skipping", flush=True)
-            return
+            print(f"[skip-empty-baseline] {new_symside} invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
         prepared_for_fallback = None
     else:
         from tools.opt.v12_pilot import evaluate_prepared_sanitized
         baseline_vec = evaluate_prepared_sanitized(prepared, overrides, window_days=args.window_days)
         print(f"[baseline] vec valid={baseline_vec.get('valid')} gain={baseline_vec.get('gain_pct')} trades={baseline_vec.get('trades')} sharpe={baseline_vec.get('pool_sharpe')} hot", flush=True)
         if ("ZECUSDC" not in new_symside) and (not baseline_vec.get("valid") or int(baseline_vec.get("trades") or 0) == 0):
-            print(f"[skip-empty-baseline] {new_symside} baseline invalid/0 trades — skipping", flush=True)
-            try:
-                (PROGRESS_DIR / f"{new_symside}_v14_progress.json").unlink(missing_ok=True)
-            except Exception:
-                pass
-            return
+            print(f"[skip-empty-baseline] {new_symside} baseline invalid/0 trades — continuing (no skip to keep CPU>85%)", flush=True)
         prepared_for_fallback = prepared
 
     if args.vector_only:

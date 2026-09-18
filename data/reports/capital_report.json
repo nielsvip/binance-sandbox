@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-18 16:29 UTC",
- "total_capital_usd": 35.89,
+ "generated_at": "2026-09-18 18:24 UTC",
+ "total_capital_usd": 161.65,
  "tier_capital": {
   "A": 0.0,
-  "B": 35.89,
+  "B": 161.65,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:XLMUSDT_LONG",
-   "symbol": "XLMUSDT",
-   "account": "fin",
-   "value_usd": 35.89,
-   "gain_pct": 0.063,
+   "pk": "flz:BTCUSDC_LONG",
+   "symbol": "BTCUSDC",
+   "account": "flz",
+   "value_usd": 161.65,
+   "gain_pct": -0.056,
    "tier": "B",
-   "perf_mult": 2.16,
-   "amt": 187.0,
-   "mark": 0.19195
+   "perf_mult": 1.63,
+   "amt": 0.002,
+   "mark": 80824.70503361
   }
  ]
 }
