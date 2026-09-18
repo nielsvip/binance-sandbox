@@ -2092,6 +2092,7 @@ def _btc_dedicated_exit_decision(account_key: str, symbol: str, is_long: bool,
 class AdvancedSignalRater:
     @staticmethod
     async def rate(account_key, symbol, is_long, current_price, metrics, ind, prev_cross_price, is_exit, is_allowed, avg_entry=0.0, last_exit_timestamp=None, last_reduction_price=0.0, scalping_mode=False, scalping_override=False, tracker_data=None, tracker_manager=None, skip_boycott=False, data_manager=None):
+        indicators = ind
         scalp_accounts = getattr(config, 'SCALP_ACCOUNTS', [])
         if isinstance(scalp_accounts, tuple): scalp_accounts = list(scalp_accounts)
         should_scalp = scalping_mode and account_key in scalp_accounts
