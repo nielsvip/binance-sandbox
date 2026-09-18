@@ -1,11 +1,11 @@
-PERFORMANCE REPORT — 2026-09-18 04:25 UTC
+PERFORMANCE REPORT — 2026-09-18 05:06 UTC
 ================================================================================
 Total: 150 symbols | A=3 B=117 C=30
 Window: 14 days | Min trades: 5
 
 --- TIER A (3 symbols) ---
              DELL  WR=98%  avg=+3.82%  total=+879.8%  trades= 61  mult=10.00
-          ZECUSDT  WR=81%  avg=+1.35%  total=+42.9%  trades= 27  mult=10.00
+          ZECUSDT  WR=76%  avg=+0.41%  total=+7.2%  trades= 17  mult=7.43
              PYPL  WR=73%  avg=+0.57%  total=+6.4%  trades= 11  mult=5.38
 
 --- TIER B (117 symbols) ---
@@ -160,7 +160,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
 
 SUMMARY:
-  Total PnL (all symbols): +583.6%
+  Total PnL (all symbols): +548.0%
   Avg win rate: 48%
-  A-tier avg mult: 8.46
+  A-tier avg mult: 7.60
   C-tier avg mult: 0.41
