@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T02:23:13.409269+00:00",
+  "timestamp": "2026-09-18T02:43:00.635250+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -181,12 +181,6 @@
       "short_score": 0
     },
     {
-      "symbol": "NEARUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -200,6 +194,12 @@
     },
     {
       "symbol": "MSFTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "UNIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -451,83 +451,83 @@
       "short_score": 0
     },
     {
-      "symbol": "UNIUSDC",
-      "net_score": 10.4,
-      "long_score": 10.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "TIAUSDC",
-      "net_score": 11.8,
-      "long_score": 11.8,
-      "short_score": 0
-    },
-    {
-      "symbol": "MSTRUSDT",
-      "net_score": 12.0,
-      "long_score": 12.0,
+      "symbol": "NEARUSDC",
+      "net_score": 10.9,
+      "long_score": 10.9,
       "short_score": 0
     },
     {
       "symbol": "ONDOUSDT",
-      "net_score": 12.7,
-      "long_score": 12.7,
+      "net_score": 11.3,
+      "long_score": 11.3,
+      "short_score": 0
+    },
+    {
+      "symbol": "MSTRUSDT",
+      "net_score": 13.5,
+      "long_score": 13.5,
       "short_score": 0
     },
     {
       "symbol": "XRPUSDC",
-      "net_score": 12.9,
-      "long_score": 12.9,
+      "net_score": 14.2,
+      "long_score": 14.2,
       "short_score": 0
     },
     {
-      "symbol": "SOLUSDC",
+      "symbol": "TIAUSDC",
       "net_score": 15.8,
       "long_score": 15.8,
       "short_score": 0
     },
     {
+      "symbol": "SOLUSDC",
+      "net_score": 16.6,
+      "long_score": 16.6,
+      "short_score": 0
+    },
+    {
       "symbol": "BABAUSDT",
-      "net_score": 24.4,
-      "long_score": 24.4,
+      "net_score": 21.7,
+      "long_score": 21.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "BABAUSDT",
-      24.4,
-      111.19
+      21.7,
+      110.66735002
     ],
     [
       "SOLUSDC",
-      15.8,
-      102.44
-    ],
-    [
-      "XRPUSDC",
-      12.9,
-      1.30291989
-    ],
-    [
-      "ONDOUSDT",
-      12.7,
-      0.38684514
-    ],
-    [
-      "MSTRUSDT",
-      12.0,
-      133.01500596
+      16.6,
+      102.6529114
     ],
     [
       "TIAUSDC",
-      11.8,
-      0.3661
+      15.8,
+      0.3686
     ],
     [
-      "UNIUSDC",
-      10.4,
-      7.86915584
+      "XRPUSDC",
+      14.2,
+      1.3072
+    ],
+    [
+      "MSTRUSDT",
+      13.5,
+      133.86
+    ],
+    [
+      "ONDOUSDT",
+      11.3,
+      0.38687269
+    ],
+    [
+      "NEARUSDC",
+      10.9,
+      3.26137368
     ]
   ],
   "top_shorts": [],
