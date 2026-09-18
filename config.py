@@ -1937,6 +1937,7 @@ class Config:
     REENTRY_COOLDOWN_S: float = 60.0        # 2026-09-07 UNLOCK obligatory reentry per user — was 300 (5min anti-churn). Lowered to 60s to let obligatory reentry fire within 1min of exit. Prevents flat-while-trending. ROLLBACK: 300.
     HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev (bypass cooldown) — always tested
     HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # bypass COOLDOWN_BARS/REENTRY_COOLDOWN when hard-coded fires
+    HARDCODED_RALLY_REENTRY_REQUIRE_WT: bool = False  # False=loosened for TIM>20 (close>exit only), True=strict wt1_15m>prev — sweep both
     # Aggressive tier window (2026-04-17 reentry sweep: crypto peak at 8-12 bars = 24-36min on 3m).
     # Within this window, a fresh dc_x3m or stoch_x3m with 1h still trending bypasses safety gates.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 30.0  # 30 min on crypto (3m base = 10 bars — matches Sharpe peak)

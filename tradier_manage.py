@@ -20270,8 +20270,9 @@ class StockStrategy:
                 if _hc_last_px > 0 and current_price is not None and current_price > 0:
                     _hc_wt1 = float(i.get('wt1_15m', 0) or 0)
                     _hc_wt1_prev = float(i.get('wt1_15m_prev', _hc_wt1) or _hc_wt1)
-                    _hc_wt_rising = _hc_wt1 > _hc_wt1_prev
-                    _hc_wt_falling = _hc_wt1 < _hc_wt1_prev
+                    _hc_req_wt_tr = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
+                    _hc_wt_rising = (_hc_wt1 > _hc_wt1_prev) if _hc_req_wt_tr else True
+                    _hc_wt_falling = (_hc_wt1 < _hc_wt1_prev) if _hc_req_wt_tr else True
                     _hc_is_long_rally = is_long and current_price > _hc_last_px and _hc_wt_rising
                     _hc_is_short_rally = (not is_long) and current_price < _hc_last_px and _hc_wt_falling
                     if _hc_is_long_rally or _hc_is_short_rally:

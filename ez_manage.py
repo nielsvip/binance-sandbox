@@ -2837,16 +2837,17 @@ def check_reentry_eligible(
     if last_exit_price <= 0:
         return False, "NO_EXIT_DATA"
     # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): reenter if close > exit AND wt1_15m rising
-    # Switch-gated so sweep can test on/off in all templates
+    # Switch-gated so sweep can test on/off in all templates — loosened for TIM>20 when REQUIRE_WT=False
     if getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True):
         try:
             _wt1 = float(indicators.get("wt1_15m", 0) or 0)
             _wt1_prev = float(indicators.get("wt1_15m_prev", _wt1) or _wt1)
             _wt_rising = _wt1 > _wt1_prev
             _wt_falling = _wt1 < _wt1_prev
-            if is_long and current_price > last_exit_price and _wt_rising:
+            _req_wt = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
+            if is_long and current_price > last_exit_price and (not _req_wt or _wt_rising):
                 return True, f"REENTRY_HARDCODED_RALLY_LONG_close{current_price:.4f}>exit{last_exit_price:.4f}_wt{_wt1:.1f}>{_wt1_prev:.1f}"
-            if not is_long and current_price < last_exit_price and _wt_falling:
+            if not is_long and current_price < last_exit_price and (not _req_wt or _wt_falling):
                 return True, f"REENTRY_HARDCODED_RALLY_SHORT_close{current_price:.4f}<exit{last_exit_price:.4f}_wt{_wt1:.1f}<{_wt1_prev:.1f}"
         except Exception:
             pass
@@ -35330,7 +35331,8 @@ class MultiAccountTradeManager:
                                 if _hc_exit_price > 0 and _hc_current_price > 0:
                                     _hc_wt1 = safe_fetch_float(_hc_indicators.get("wt1_15m", 0), 0.0)
                                     _hc_wt1_prev = safe_fetch_float(_hc_indicators.get("wt1_15m_prev", _hc_wt1), _hc_wt1)
-                                    if (is_long and _hc_current_price > _hc_exit_price and _hc_wt1 > _hc_wt1_prev) or (not is_long and _hc_current_price < _hc_exit_price and _hc_wt1 < _hc_wt1_prev):
+                                    _hc_req_wt = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
+                                    if (is_long and _hc_current_price > _hc_exit_price and (not _hc_req_wt or _hc_wt1 > _hc_wt1_prev)) or (not is_long and _hc_current_price < _hc_exit_price and (not _hc_req_wt or _hc_wt1 < _hc_wt1_prev)):
                                         _hc_bypass = True
                                         _qty_mult_hc = 1.0
                                         _reason_hc = f"HARDCODED_RALLY_close{_hc_current_price:.4f}>{_hc_exit_price:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_close{_hc_current_price:.4f}<{_hc_exit_price:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
@@ -35393,8 +35395,9 @@ class MultiAccountTradeManager:
                         try:
                             _hc_wt1 = safe_fetch_float(indicators.get("wt1_15m", 0), 0.0)
                             _hc_wt1_prev = safe_fetch_float(indicators.get("wt1_15m_prev", _hc_wt1), _hc_wt1)
-                            _hc_is_long_rally = is_long and current_price > exit_price and _hc_wt1 > _hc_wt1_prev
-                            _hc_is_short_rally = (not is_long) and current_price < exit_price and _hc_wt1 < _hc_wt1_prev
+                            _hc_req_wt2 = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
+                            _hc_is_long_rally = is_long and current_price > exit_price and (not _hc_req_wt2 or _hc_wt1 > _hc_wt1_prev)
+                            _hc_is_short_rally = (not is_long) and current_price < exit_price and (not _hc_req_wt2 or _hc_wt1 < _hc_wt1_prev)
                             if _hc_is_long_rally or _hc_is_short_rally:
                                 _qty_mult_hc = 1.0
                                 _reason_hc = f"HARDCODED_RALLY_close{current_price:.4f}>{exit_price:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_close{current_price:.4f}<{exit_price:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
@@ -37614,8 +37617,9 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
             if _hc_exit_px > 0:
                 _hc_wt1 = float(i.get("wt1_15m", 0) or 0)
                 _hc_wt1_prev = float(i.get("wt1_15m_prev", _hc_wt1) or _hc_wt1)
-                _hc_is_long_rally = is_long and current_price > _hc_exit_px and _hc_wt1 > _hc_wt1_prev
-                _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and _hc_wt1 < _hc_wt1_prev
+                _hc_req_wt3 = bool(getattr(config, "HARDCODED_RALLY_REENTRY_REQUIRE_WT", False))
+                _hc_is_long_rally = is_long and current_price > _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 > _hc_wt1_prev)
+                _hc_is_short_rally = (not is_long) and current_price < _hc_exit_px and (not _hc_req_wt3 or _hc_wt1 < _hc_wt1_prev)
                 if _hc_is_long_rally or _hc_is_short_rally:
                     re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
                     _side = "LONG" if is_long else "SHORT"

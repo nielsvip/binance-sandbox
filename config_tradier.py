@@ -2006,6 +2006,7 @@ class TradierConfig:
     COOLDOWN_BARS_TRADIER: int = 8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev — always tested
     HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True
+    HARDCODED_RALLY_REENTRY_REQUIRE_WT: bool = False  # loosened for TIM>20
     # === YOUTUBE STRATEGIES (2026-03-27) — DISABLED on trb 2026-03-30 ===
     # These were implemented from YouTube research with FAKE backtests (reimplemented logic, not real functions).
     # "Sharpe 5.17" etc were fabricated numbers. Connors RSI augmented MRVL at -6.74% on real money.
