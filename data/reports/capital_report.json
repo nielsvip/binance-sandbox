@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-18 08:44 UTC",
- "total_capital_usd": 14.45,
+ "generated_at": "2026-09-18 16:29 UTC",
+ "total_capital_usd": 35.89,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.45,
+  "B": 35.89,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:DOTUSDT_LONG",
-   "symbol": "DOTUSDT",
-   "account": "men",
-   "value_usd": 14.45,
-   "gain_pct": 0.096,
+   "pk": "fin:XLMUSDT_LONG",
+   "symbol": "XLMUSDT",
+   "account": "fin",
+   "value_usd": 35.89,
+   "gain_pct": 0.063,
    "tier": "B",
-   "perf_mult": 1.39,
-   "amt": 12.5,
-   "mark": 1.15600452
+   "perf_mult": 2.16,
+   "amt": 187.0,
+   "mark": 0.19195
   }
  ]
 }
