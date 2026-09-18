@@ -4780,6 +4780,8 @@ class QuickConfig:
     REENTRY_B09_SNAPBACK_ENABLED: bool = False
     REENTRY_COOLDOWN_S: float = 0.0
     REENTRY_MANDATORY: bool = True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off — was forcing reentries
+    HARDCODED_RALLY_REENTRY_ENABLED: bool = True  # 2026-09-18 user: reenter if close>exit and wt1_15m>wt1_15m_prev — always tested
+    HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN: bool = True  # bypass COOLDOWN_BARS when hard-coded fires
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5
     REGIME_ADAPTIVE_ENABLED: bool = False
     REGIME_ATR_RATIO_MIN: float = 0.25
@@ -21657,6 +21659,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         px = close[i]
         if px <= 0:
             continue
+        # 2026-09-18 HARDCODED RALLY REENTRY bypass cooldown: if close>exit and wt rising, ignore cd
+        if getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True) and getattr(cfg, "HARDCODED_RALLY_REENTRY_BYPASS_COOLDOWN", True) and pos is None and has_closed_before and trades and cd > 0:
+            try:
+                _hc_last_exit_cd = float(trades[-1].get('exit_price', 0) or 0)
+                if _hc_last_exit_cd > 0:
+                    _hc_wt1_cd = float(_hc_wt1_15m[i] if i < len(_hc_wt1_15m) else 0)
+                    _hc_wt1_prev_cd = float(_hc_wt1_15m[i-1] if i > 0 and i-1 < len(_hc_wt1_15m) else _hc_wt1_cd)
+                    if (is_long and px > _hc_last_exit_cd and _hc_wt1_cd > _hc_wt1_prev_cd) or (not is_long and px < _hc_last_exit_cd and _hc_wt1_cd < _hc_wt1_prev_cd):
+                        cd = 0
+            except Exception:
+                pass
         if force_initial_seed and pos is None and i == 0:
             _dollar = float(cfg.START_POSITION_SIZE)
             try:
@@ -21681,7 +21694,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue
             fire = entry_sig[i]
             # 2026-09-18 HARDCODED RALLY REENTRY (user mandate): close > exit AND wt1_15m rising
-            if not fire and has_closed_before and trades:
+            if not fire and getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True) and has_closed_before and trades:
                 try:
                     _hc_last_exit = float(trades[-1].get('exit_price', 0) or 0)
                     if _hc_last_exit > 0:

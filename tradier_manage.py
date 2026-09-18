@@ -20262,8 +20262,9 @@ class StockStrategy:
         # ═══ 2026-09-18 HARDCODED RALLY REENTRY (user mandate) ═══════════════
         # Hardcode: any flat position is reentered if close > exit_price and wt1_15m > wt1_15m_prev
         # LONG: close > exit AND wt rising ; SHORT: close < exit AND wt falling — bypasses all gates
+        # Switch-gated so sweep can test on/off in all templates
         try:
-            if positionAmt == 0:
+            if getattr(config, "HARDCODED_RALLY_REENTRY_ENABLED", True) and positionAmt == 0:
                 _hc_last_px = float(getattr(position, 'last_reduction_price', 0) or 0)
                 _hc_last_t = getattr(position, 'last_reduction_time', None)
                 if _hc_last_px > 0 and current_price is not None and current_price > 0:
@@ -20282,7 +20283,7 @@ class StockStrategy:
                                 _hc_age_min = (datetime.now(timezone.utc) - _hc_lt).total_seconds() / 60.0
                             except Exception:
                                 pass
-                        if _hc_age_min >= 3.0:
+                        if _hc_age_min >= 0.0:
                             _hc_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
                             _hc_side = "LONG" if is_long else "SHORT"
                             _hc_reason = f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}>exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}>{_hc_wt1_prev:.1f}" if is_long else f"HARDCODED_RALLY_REENTRY_{_hc_side}_close{current_price:.4f}<exit{_hc_last_px:.4f}_wt{_hc_wt1:.1f}<{_hc_wt1_prev:.1f}"
@@ -20307,7 +20308,7 @@ class StockStrategy:
                     if _xb_lt.tzinfo is None: _xb_lt = _xb_lt.replace(tzinfo=timezone.utc)
                     _xb_age_min = (datetime.now(timezone.utc) - _xb_lt).total_seconds() / 60.0
                 except Exception: pass
-            if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and _xb_age_min >= 3.0 and current_price is not None and current_price > 0:
+            if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and _xb_age_min >= 0.0 and current_price is not None and current_price > 0:
                 _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
                 # 2026-09-11 CHURN FIX: IBIT buy 44.10 then sell 44.12 same minute — require 3m cooldown before PRICE_CROSS_BACK can refire, prevents whipsaw when MTF_WT still bear.
                 # 2026-05-21 USER MANDATE — "IF YOU SELL BY ACCIDENT GET RIGHT BACK IN".
