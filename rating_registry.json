@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T15:51:57.428515+00:00",
+  "timestamp": "2026-09-18T16:15:08.562114+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -11,12 +11,6 @@
       "net_score": -20.3,
       "long_score": 0,
       "short_score": 20.3
-    },
-    {
-      "symbol": "QCOMUSDT",
-      "net_score": -14.8,
-      "long_score": 0,
-      "short_score": 14.8
     },
     {
       "symbol": "NEARUSDC",
@@ -44,12 +38,6 @@
     },
     {
       "symbol": "MRVLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "COINUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -241,12 +229,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ETHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LITEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -254,6 +236,12 @@
     },
     {
       "symbol": "METAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "QCOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -397,13 +385,13 @@
       "short_score": 0
     },
     {
-      "symbol": "CRDOUSDT",
+      "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "BABAUSDT",
+      "symbol": "CRDOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -476,69 +464,85 @@
     },
     {
       "symbol": "CHRUSDT",
-      "net_score": 10.9,
-      "long_score": 10.9,
+      "net_score": 10.7,
+      "long_score": 10.7,
       "short_score": 0
     },
     {
-      "symbol": "XLMUSDT",
-      "net_score": 11.9,
-      "long_score": 11.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "XMRUSDT",
-      "net_score": 12.8,
-      "long_score": 12.8,
+      "symbol": "BABAUSDT",
+      "net_score": 12.7,
+      "long_score": 12.7,
       "short_score": 0
     },
     {
       "symbol": "BMNRUSDT",
-      "net_score": 14.8,
-      "long_score": 14.8,
+      "net_score": 13.5,
+      "long_score": 13.5,
+      "short_score": 0
+    },
+    {
+      "symbol": "XMRUSDT",
+      "net_score": 14.1,
+      "long_score": 14.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "ETHUSDC",
+      "net_score": 15.0,
+      "long_score": 15.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "COINUSDT",
+      "net_score": 15.8,
+      "long_score": 15.8,
       "short_score": 0
     },
     {
       "symbol": "SNDKUSDT",
-      "net_score": 16.8,
-      "long_score": 16.8,
+      "net_score": 16.6,
+      "long_score": 16.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "SNDKUSDT",
-      16.8,
-      1721.3
+      16.6,
+      1736.07
     ],
     [
-      "BMNRUSDT",
-      14.8,
-      25.54
+      "COINUSDT",
+      15.8,
+      192.81690576
+    ],
+    [
+      "ETHUSDC",
+      15.0,
+      2589.1798985
     ],
     [
       "XMRUSDT",
-      12.8,
-      568.54
+      14.1,
+      584.85
     ],
     [
-      "XLMUSDT",
-      11.9,
-      0.19123253
+      "BMNRUSDT",
+      13.5,
+      25.69492287
+    ],
+    [
+      "BABAUSDT",
+      12.7,
+      112.99
     ],
     [
       "CHRUSDT",
-      10.9,
-      0.01706973
+      10.7,
+      0.01722
     ]
   ],
-  "top_shorts": [
-    [
-      "QCOMUSDT",
-      14.8,
-      179.21926421
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
