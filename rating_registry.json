@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-18T05:07:29.417622+00:00",
+  "timestamp": "2026-09-18T05:28:12.797010+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -289,6 +289,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BMNRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "QCOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -403,6 +409,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GOOGLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -469,45 +481,28 @@
       "short_score": 0
     },
     {
-      "symbol": "BABAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BMNRUSDT",
-      "net_score": 10.1,
-      "long_score": 10.1,
-      "short_score": 0
-    },
-    {
       "symbol": "BNCUSDT",
-      "net_score": 12.4,
-      "long_score": 12.4,
+      "net_score": 12.5,
+      "long_score": 12.5,
       "short_score": 0
     },
     {
-      "symbol": "GOOGLUSDT",
-      "net_score": 22.6,
-      "long_score": 22.6,
+      "symbol": "BABAUSDT",
+      "net_score": 12.7,
+      "long_score": 12.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "GOOGLUSDT",
-      22.6,
-      354.24
+      "BABAUSDT",
+      12.7,
+      111.72697865
     ],
     [
       "BNCUSDT",
-      12.4,
-      6.16128237
-    ],
-    [
-      "BMNRUSDT",
-      10.1,
-      24.42
+      12.5,
+      6.233
     ]
   ],
   "top_shorts": [],
