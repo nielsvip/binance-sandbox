@@ -1,11 +1,35 @@
 {
-  "timestamp": "2026-09-18T13:18:56.313910+00:00",
+  "timestamp": "2026-09-18T13:38:52.065774+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 78
   },
   "unified_ranking": [
+    {
+      "symbol": "ASTSUSDT",
+      "net_score": -14.7,
+      "long_score": 0,
+      "short_score": 14.7
+    },
+    {
+      "symbol": "HDUSDT",
+      "net_score": -14.1,
+      "long_score": 0,
+      "short_score": 14.1
+    },
+    {
+      "symbol": "SNDKUSDT",
+      "net_score": -13.9,
+      "long_score": 0,
+      "short_score": 13.9
+    },
+    {
+      "symbol": "PYPLUSDT",
+      "net_score": -13.2,
+      "long_score": 0,
+      "short_score": 13.2
+    },
     {
       "symbol": "CRMUSDT",
       "net_score": 0,
@@ -79,12 +103,6 @@
       "short_score": 0
     },
     {
-      "symbol": "PYPLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "RVNUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -152,12 +170,6 @@
     },
     {
       "symbol": "RAYSOLUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SNDKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -290,12 +302,6 @@
     },
     {
       "symbol": "COHRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "HDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -457,12 +463,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ASTSUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GMEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -476,7 +476,28 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "ASTSUSDT",
+      14.7,
+      60.86012788
+    ],
+    [
+      "HDUSDT",
+      14.1,
+      300.33818611
+    ],
+    [
+      "SNDKUSDT",
+      13.9,
+      1618.58
+    ],
+    [
+      "PYPLUSDT",
+      13.2,
+      52.4
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
