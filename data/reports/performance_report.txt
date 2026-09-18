@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-18 19:06 UTC
+PERFORMANCE REPORT — 2026-09-18 19:51 UTC
 ================================================================================
 Total: 154 symbols | A=3 B=122 C=29
 Window: 14 days | Min trades: 5
@@ -14,6 +14,7 @@ Window: 14 days | Min trades: 5
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
              AMAT  WR=100%  avg=+2.44%  total=+10.1%  trades=  4  mult=1.00
          RUNEUSDT  WR=56%  avg=+0.91%  total=+8.3%  trades=  9  mult=4.20
+              MPC  WR=100%  avg=+1.27%  total=+5.2%  trades=  4  mult=1.00
         ETHFIUSDC  WR=64%  avg=+0.09%  total=+3.6%  trades= 39  mult=4.16
          COTIUSDT  WR=49%  avg=+0.07%  total=+3.5%  trades= 53  mult=1.29
            ARUSDT  WR=56%  avg=+0.17%  total=+2.7%  trades= 16  mult=2.81
@@ -67,7 +68,6 @@ Window: 14 days | Min trades: 5
           ZROUSDT  WR=57%  avg=+0.03%  total=+0.2%  trades=  7  mult=1.51
          AXTIUSDT  WR=100%  avg=+0.06%  total=+0.2%  trades=  3  mult=1.00
          IOTAUSDT  WR=100%  avg=+0.18%  total=+0.2%  trades=  1  mult=1.00
-              MPC  WR=100%  avg=+0.08%  total=+0.2%  trades=  2  mult=1.00
               PSX  WR=50%  avg=+0.06%  total=+0.1%  trades=  2  mult=1.00
          GRAMUSDT  WR=78%  avg=+0.01%  total=+0.1%  trades=  9  mult=3.29
          HYPEUSDT  WR=57%  avg=+0.00%  total=+0.1%  trades= 42  mult=2.30
@@ -126,7 +126,7 @@ Window: 14 days | Min trades: 5
          QTUMUSDT  WR=54%  avg=-0.12%  total=-2.9%  trades= 24  mult=0.97
              NVDA  WR=71%  avg=-0.44%  total=-3.1%  trades=  7  mult=1.30
               NEM  WR=0%  avg=-1.15%  total=-4.5%  trades=  4  mult=1.00
-             DINO  WR=64%  avg=-0.56%  total=-8.0%  trades= 14  mult=0.72
+             DINO  WR=71%  avg=-0.44%  total=-7.7%  trades= 17  mult=1.61
               SLV  WR=0%  avg=-2.28%  total=-8.8%  trades=  4  mult=1.00
              AXON  WR=55%  avg=-0.51%  total=-9.9%  trades= 20  mult=0.47
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
@@ -161,10 +161,10 @@ Window: 14 days | Min trades: 5
              COPX  WR=8%  avg=-2.18%  total=-23.7%  trades= 12  mult=0.18
             GOOGL  WR=0%  avg=-2.32%  total=-26.3%  trades= 13  mult=0.16
              BMNR  WR=0%  avg=-5.76%  total=-42.1%  trades=  9  mult=0.22
-              VLO  WR=26%  avg=-2.78%  total=-69.8%  trades= 42  mult=0.14
+              VLO  WR=30%  avg=-2.47%  total=-67.3%  trades= 44  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +662.8%
+  Total PnL (all symbols): +670.6%
   Avg win rate: 48%
   A-tier avg mult: 8.54
   C-tier avg mult: 0.42

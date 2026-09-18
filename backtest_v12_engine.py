@@ -3504,6 +3504,19 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         if _uag_gain_since < _uag_min_gain:
                             return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
         # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-09-18 FIX — MAX_AUGMENTS_PER_POSITION — mirror ez_manage.py:23388-23396
+        # Live caps AUGMENT (not REENTRY) via augmented_count >= max (config 999999 = no cap).
+        # Pilot capped values 0/0.5/1/2 were disconnected in backtest (stub _=1); now
+        # wired so deltas for those caps are valid and parity-tested (is_augment ∧ ¬REENTRY).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if is_aug_action and (act or '').upper() not in ('REENTRY', 'REENTRY_2', 'HEDGE_OPEN') and not _is_ladder_seed:
+            _max_aug_v8 = int(float(getattr(config, 'MAX_AUGMENTS_PER_POSITION', 999999) or 999999))
+            _pa_v8 = trade_manager.positions.get(pk)
+            if _pa_v8 is not None:
+                _ac_v8 = int(float(getattr(_pa_v8, 'augmented_count', 0) or 0))
+                if _ac_v8 >= _max_aug_v8:
+                    return f"BLOCKED_MAX_AUGMENTS_{_ac_v8}>={_max_aug_v8}"
+        # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-29 PARITY — MTF ARMED-STATE ENTRY GATE — mirror ez_manage.py:22791-22839.
         # Gates OPEN/AUGMENT/ENTRY (NOT REENTRY/hedge) on armed-state + GR filter. Same
         # STRONG_BUY/QUICK_OPEN parameter-bypass as live. Fires when config.MTF_ARMED_ENTRY_ENABLED
