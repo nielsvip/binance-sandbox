@@ -6960,6 +6960,8 @@ class QuickConfig:
     KINDERGARTEN_STRICT_TFS: str = ""
     KINDERGARTEN_ALWAYS_TEST: bool = True
     EMA_9_21_FILTER_TFS: str = "1h"
+    WT_SIMPLE_GUARANTEE_ENABLED: bool = False  # 2026-09-19 FIX: previously unconditional OR forced trades against trend — now OFF (MRVL_SHORT)
+    FORCE_MIN_ONE_TRADE: bool = False  # 2026-09-19 FIX: previously forced 1 trade even when gated to 0 — now OFF
     EMA_50_200_FILTER_ENABLED: bool = False
     EMA_50_200_TIMEFRAME: str = "D"
     EMA_50_200_TFS: str = "D"
@@ -9270,53 +9272,111 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # SBA_BOUNCE gating: when enabled, bounce entries require bounce score to pass (otherwise filtered)
     if bool(getattr(cfg, 'SBA_BOUNCE_ENABLED', False)):
         _base_entry = _base_entry & _sba_bounce_vec
-    # 2026-09-07 FIX: gates OFF + wt1>wt2 always trades — if wt1_15m>wt2_15m and LONG not in trade, system is BROKEN
-    _base_entry = raw  # gates OFF for backtest
-    # Re-apply causal batch2 gates so BTC_ACCEL/BTC_HARD/BAND_ARROW produce distinct deltas (fix identical 1.7126)
-    _base_entry = _apply_batch2_entry_gates(npz, n, is_long, cfg, _base_entry)
-    # any bar wt1>wt2 must trade for LONG (wt1<wt2 for SHORT) — simple cross, not bar count
-    _wt1_simple = _safe(npz, 'wt1_15m', n, 0)
-    _wt2_simple = _safe(npz, 'wt2_15m', n, 0)
-    _wt_simple_cross = (_wt1_simple > _wt2_simple) if is_long else (_wt1_simple < _wt2_simple)
-    # GLOBAL WT filter — when HL/HH/VOL explicit, filter the wt1>wt2 guarantee (so LOW/HIGH/VOL rows have real delta even without WT_OPEN)
-    _hl_explicit_g = bool(getattr(cfg, 'WT_15M_BOUNCE_FILTER_HL_ENABLED', False) or getattr(cfg, 'WT_15M_BOUNCE_LOW_1H_GT_PREV', False))
-    _hh_explicit_g = bool(getattr(cfg, 'WT_15M_BOUNCE_FILTER_HH_ENABLED', False) or getattr(cfg, 'WT_15M_BOUNCE_HIGH_1H_GT_PREV', False))
-    _vol_explicit_g = bool(getattr(cfg, 'WT_15M_BOUNCE_VOLUME_FILTER_ENABLED', False) or getattr(cfg, 'WT_15M_BOUNCE_REL_VOL_GT_1', False))
-    if _hl_explicit_g or _hh_explicit_g or _vol_explicit_g:
-        if _hl_explicit_g or _hh_explicit_g:
-            _dc_low_1h_g = _safe(npz, 'dc_low_1h', n, 0)
-            _dc_high_1h_g = _safe(npz, 'dc_high_1h', n, 0)
-            _dc_low_1h_prev_g = np.roll(_dc_low_1h_g, 1); _dc_low_1h_prev_g[0] = _dc_low_1h_g[0]
-            _dc_high_1h_prev_g = np.roll(_dc_high_1h_g, 1); _dc_high_1h_prev_g[0] = _dc_high_1h_g[0]
-            _g_hl_ok = _dc_low_1h_g > _dc_low_1h_prev_g if _hl_explicit_g else np.ones(n, dtype=bool)
-            _g_hh_ok = _dc_high_1h_g > _dc_high_1h_prev_g if _hh_explicit_g else np.ones(n, dtype=bool)
-            _g_hl_hh_ok = _g_hl_ok & _g_hh_ok if not (str(getattr(cfg,'WT_15M_BOUNCE_FILTER_MODE','AND')).upper()=='OR') else (_g_hl_ok | _g_hh_ok)
-            if _hl_explicit_g and not _hh_explicit_g:
-                _g_hl_hh_ok = _g_hl_ok
-            elif not _hl_explicit_g and _hh_explicit_g:
-                _g_hl_hh_ok = _g_hh_ok
-        else:
-            _g_hl_hh_ok = np.ones(n, dtype=bool)
-        if _vol_explicit_g:
-            _mode_g = str(getattr(cfg, 'WT_15M_BOUNCE_VOLUME_MODE', 'relvol')).lower()
-            _thr_g = float(getattr(cfg, 'WT_15M_BOUNCE_VOLUME_THRESHOLD', 1.0))
-            if _mode_g == 'relvol':
-                _rel_g = _safe(npz, 'relative_volume_15m', n, 1.0)
-                if np.all(_rel_g == 1.0):
-                    _rel_g = _safe(npz, 'relative_volume_1h', n, 1.0)
-                _g_vol_ok = _rel_g > _thr_g
+    # KINDERGARTEN TREND FILTER — blocks counter-trend entries when EMA gates enabled
+    # When KINDERGARTEN_EMA_GATE_ENABLED or EMA_9_21_FILTER_ENABLED is True, require
+    # EMA 9/21 alignment on required TFs. This restores the kindergarten 9/21 50/50 filter
+    # that was bypassed by the 2026-09-07 gates-OFF fix which caused suicidal scalps
+    # against negative WT / StochRSI / MFI on multiple TFs (MRVL_SHORT whistleblower).
+    _kg_ok = np.ones(n, dtype=bool)
+    if bool(getattr(cfg, 'KINDERGARTEN_EMA_GATE_ENABLED', False)) or bool(getattr(cfg, 'EMA_9_21_FILTER_ENABLED', False)):
+        _kg_checks = []
+        try:
+            _tfs_raw = str(getattr(cfg, 'EMA_9_21_FILTER_TFS', getattr(cfg, 'EMA_9_21_TIMEFRAME', '1h')) or '1h')
+            _tfs = [t.strip() for t in _tfs_raw.split(',') if t.strip()]
+        except Exception:
+            _tfs = ['1h']
+        for _tf in _tfs:
+            _ema_raw = None
+            for _k in (f'ema_9_above_21_{_tf}', f'ema_9_above_21_{_tf.lower()}', f'ema9_above_21_{_tf}'):
+                if _k in npz:
+                    _ema_raw = _safe(npz, _k, n, None)
+                    break
+            if _ema_raw is not None:
+                _is_above = _ema_raw.astype(bool) if _ema_raw.dtype == bool else (_ema_raw > 0.5)
+                _kg_checks.append(_is_above if is_long else ~_is_above)
             else:
-                _vol_g = _safe(npz, 'volume_15m', n, 0)
-                _sma_g = _safe(npz, 'volume_sma_15m', n, 0)
-                if np.all(_vol_g == 0) or np.all(_sma_g == 0):
-                    _vol_g = _safe(npz, 'volume_1h', n, 0)
-                    _sma_g = _safe(npz, 'volume_sma_1h', n, 0)
-                _sma_safe_g = np.where(_sma_g == 0, 1.0, _sma_g)
-                _g_vol_ok = _vol_g > (_sma_safe_g * _thr_g)
-        else:
-            _g_vol_ok = np.ones(n, dtype=bool)
-        _wt_simple_cross = _wt_simple_cross & _g_hl_hh_ok & _g_vol_ok
-    _base_entry = _base_entry | _wt_simple_cross
+                _ema9 = _safe(npz, f'ema_9_{_tf}', n, None) if f'ema_9_{_tf}' in npz else None
+                _ema21 = _safe(npz, f'ema_21_{_tf}', n, None) if f'ema_21_{_tf}' in npz else None
+                if _ema9 is not None and _ema21 is not None:
+                    _kg_checks.append((_ema9 > _ema21) if is_long else (_ema9 < _ema21))
+        if bool(getattr(cfg, 'EMA_50_200_FILTER_ENABLED', False)):
+            try:
+                _tfs50_raw = str(getattr(cfg, 'EMA_50_200_TFS', getattr(cfg, 'EMA_50_200_TIMEFRAME', 'D')) or 'D')
+                _tfs50 = [t.strip() for t in _tfs50_raw.split(',') if t.strip()]
+            except Exception:
+                _tfs50 = ['D']
+            for _tf in _tfs50:
+                _k = f'ema_50_above_200_{_tf}'
+                if _k in npz:
+                    _v = _safe(npz, _k, n, 0)
+                    _kg_checks.append((_v > 0.5) if is_long else (_v < 0.5))
+        if _kg_checks:
+            _min_tfs = int(float(getattr(cfg, 'KINDERGARTEN_CUMULATIVE_MIN_TFS', getattr(cfg, 'EMA_9_21_FILTER_MIN_TFS', 1)) or 1))
+            _strict_raw = str(getattr(cfg, 'KINDERGARTEN_STRICT_TFS', '') or '').strip()
+            if _strict_raw:
+                _strict_tfs = [t.strip() for t in _strict_raw.split(',') if t.strip()]
+                _strict_checks = [c for c, tf in zip(_kg_checks, _tfs) if tf in _strict_tfs] if len(_tfs)==len(_kg_checks) else _kg_checks
+                if _strict_checks:
+                    _strict_ok = np.ones(n, dtype=bool)
+                    for _c in _strict_checks:
+                        _strict_ok &= _c
+                    _kg_ok &= _strict_ok
+                if _kg_checks:
+                    _stack = np.stack(_kg_checks, axis=0) if len(_kg_checks)>1 else _kg_checks[0][None,:]
+                    _cnt = _stack.sum(axis=0) if len(_kg_checks)>1 else _kg_checks[0].astype(int)
+                    _kg_ok &= (_cnt >= _min_tfs)
+            else:
+                if len(_kg_checks) == 1:
+                    _kg_ok &= _kg_checks[0]
+                else:
+                    _stack = np.stack(_kg_checks, axis=0)
+                    _cnt = _stack.sum(axis=0)
+                    _kg_ok &= (_cnt >= _min_tfs)
+    _base_entry = _base_entry & _kg_ok
+    # WT_SIMPLE_GUARANTEE — previously unconditional OR that forced trades against trend.
+    # Now behind explicit flag (default OFF). Only when enabled does wt1>wt2 guarantee entry.
+    if bool(getattr(cfg, 'WT_SIMPLE_GUARANTEE_ENABLED', False)):
+        _wt1_simple = _safe(npz, 'wt1_15m', n, 0)
+        _wt2_simple = _safe(npz, 'wt2_15m', n, 0)
+        _wt_simple_cross = (_wt1_simple > _wt2_simple) if is_long else (_wt1_simple < _wt2_simple)
+        _hl_explicit_g = bool(getattr(cfg, 'WT_15M_BOUNCE_FILTER_HL_ENABLED', False) or getattr(cfg, 'WT_15M_BOUNCE_LOW_1H_GT_PREV', False))
+        _hh_explicit_g = bool(getattr(cfg, 'WT_15M_BOUNCE_FILTER_HH_ENABLED', False) or getattr(cfg, 'WT_15M_BOUNCE_HIGH_1H_GT_PREV', False))
+        _vol_explicit_g = bool(getattr(cfg, 'WT_15M_BOUNCE_VOLUME_FILTER_ENABLED', False) or getattr(cfg, 'WT_15M_BOUNCE_REL_VOL_GT_1', False))
+        if _hl_explicit_g or _hh_explicit_g or _vol_explicit_g:
+            if _hl_explicit_g or _hh_explicit_g:
+                _dc_low_1h_g = _safe(npz, 'dc_low_1h', n, 0)
+                _dc_high_1h_g = _safe(npz, 'dc_high_1h', n, 0)
+                _dc_low_1h_prev_g = np.roll(_dc_low_1h_g, 1); _dc_low_1h_prev_g[0] = _dc_low_1h_g[0]
+                _dc_high_1h_prev_g = np.roll(_dc_high_1h_g, 1); _dc_high_1h_prev_g[0] = _dc_high_1h_g[0]
+                _g_hl_ok = _dc_low_1h_g > _dc_low_1h_prev_g if _hl_explicit_g else np.ones(n, dtype=bool)
+                _g_hh_ok = _dc_high_1h_g > _dc_high_1h_prev_g if _hh_explicit_g else np.ones(n, dtype=bool)
+                _g_hl_hh_ok = _g_hl_ok & _g_hh_ok if not (str(getattr(cfg,'WT_15M_BOUNCE_FILTER_MODE','AND')).upper()=='OR') else (_g_hl_ok | _g_hh_ok)
+                if _hl_explicit_g and not _hh_explicit_g:
+                    _g_hl_hh_ok = _g_hl_ok
+                elif not _hl_explicit_g and _hh_explicit_g:
+                    _g_hl_hh_ok = _g_hh_ok
+            else:
+                _g_hl_hh_ok = np.ones(n, dtype=bool)
+            if _vol_explicit_g:
+                _mode_g = str(getattr(cfg, 'WT_15M_BOUNCE_VOLUME_MODE', 'relvol')).lower()
+                _thr_g = float(getattr(cfg, 'WT_15M_BOUNCE_VOLUME_THRESHOLD', 1.0))
+                if _mode_g == 'relvol':
+                    _rel_g = _safe(npz, 'relative_volume_15m', n, 1.0)
+                    if np.all(_rel_g == 1.0):
+                        _rel_g = _safe(npz, 'relative_volume_1h', n, 1.0)
+                    _g_vol_ok = _rel_g > _thr_g
+                else:
+                    _vol_g = _safe(npz, 'volume_15m', n, 0)
+                    _sma_g = _safe(npz, 'volume_sma_15m', n, 0)
+                    if np.all(_vol_g == 0) or np.all(_sma_g == 0):
+                        _vol_g = _safe(npz, 'volume_1h', n, 0)
+                        _sma_g = _safe(npz, 'volume_sma_1h', n, 0)
+                    _sma_safe_g = np.where(_sma_g == 0, 1.0, _sma_g)
+                    _g_vol_ok = _vol_g > (_sma_safe_g * _thr_g)
+            else:
+                _g_vol_ok = np.ones(n, dtype=bool)
+            _wt_simple_cross = _wt_simple_cross & _g_hl_hh_ok & _g_vol_ok
+        _base_entry = _base_entry | _wt_simple_cross
     # WT_15M_BOUNCE_OPEN_ENABLED — vectorized parity with backtest_v12_engine WT_15M (live) — 2026-09-01 fix: bypasses all filters, adds at least 1 trade every 4h at every wt1_15m with wt2 cross
     # FIX 2026-09-07: no max bars — just wt1_15m flipped wt2_15m, every ~2h naturally, not a bar count
     if getattr(cfg, 'WT_15M_BOUNCE_OPEN_ENABLED', False):
@@ -9412,8 +9472,10 @@ def compute_entry_signals(npz, n, is_long, cfg):
         pass
     # REMOVED 2026-08-11 per M1/M2 — hash fallback fabricated distinctness for 309 unmapped params
     # Unmapped params must stay inert and be reported as DISCONNECTED coverage debt (Bible §0.1)
-    # 2026-08-09 FIX: 0 trades is impossibility — final B&H seed if still no entry (ensures >8/wk via augment, open P&L counted, never 0/1)
-    if not np.any(_base_entry):
+    # 2026-09-19 FIX: 0 trades is VALID when kindergarten/trend filters block all counter-trend entries.
+    # Previously forced a trade at first_valid even against trend (suicidal MRVL_SHORT scalps).
+    # Now only force when explicitly enabled via FORCE_MIN_ONE_TRADE (default OFF).
+    if not np.any(_base_entry) and bool(getattr(cfg, 'FORCE_MIN_ONE_TRADE', False)):
         first_valid = np.argmax(close > 0) if np.any(close > 0) else 0
         if first_valid < n:
             _base_entry[first_valid] = True
