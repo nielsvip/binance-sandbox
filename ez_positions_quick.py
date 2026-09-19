@@ -2140,6 +2140,13 @@ class AdvancedSignalRater:
         # ─────────────────────────────────────────────────────────────────────
 
         # 2026-08-10 CROSS-CONNECT from tradier: WT_DC long/short gates (+86/+85 pos) + STOCH_CROSS
+        # 2026-09-19 WT/DC TF-expanded — crypto live parity with vector (15m+ only): TF switches read here so hourly_reconfig can sweep 1h→15m/4h/D
+        _wt_dc_tf_entry = str(getattr(config, 'WT_DC_TF_ENTRY', '1h'))
+        _wt_dc_dc_tf = str(getattr(config, 'WT_DC_DC_TF', '1h'))
+        _wt_dc_stoch_tf = str(getattr(config, 'WT_DC_STOCH_TF', '5m'))
+        _wt_dc_htf = str(getattr(config, 'WT_DC_TF_HTF', '4h'))
+        _wt_dc_htf2 = str(getattr(config, 'WT_DC_TF_HTF2', 'D'))
+        # DC_BREAKOUT_TF_EXPANDED and EXIT_VELOCITY_WT_TFS are handled at their respective gates below (4500, exit velocity)
         if not is_exit and not skip_boycott:
             if is_long and not bool(getattr(config, 'WT_DC_LONG_ENABLED', True)):
                 return -100.0, "BOYCOTT", "WT_DC_LONG_DISABLED"
@@ -4496,8 +4503,9 @@ class AdvancedSignalRater:
                     elif not is_long and current_price < _rm_ema9 and _rm_macd_cu and _rm_rsi > getattr(config, 'RSI_MACD_EMA_RSI_SHORT', 65.0):
                         score += getattr(config, 'RSI_MACD_EMA_SCORE', 25); reasons.append(f"RSI_MACD_EMA_S(rsi={_rm_rsi:.0f})_bc129")
             # BACKTEST_CHANGE_133: Donchian Channel breakout entry (trend-following)
+            # 2026-09-19 TF-expanded: DC_BREAKOUT_TF_EXPANDED (15m+ including W) takes precedence if set, else legacy DC_BREAKOUT_TF
             if getattr(config, 'DC_BREAKOUT_ENTRY_ENABLED', False) and not is_exit:
-                _dc_tf = getattr(config, 'DC_BREAKOUT_TF', '1h')
+                _dc_tf = str(getattr(config, 'DC_BREAKOUT_TF_EXPANDED', getattr(config, 'DC_BREAKOUT_TF', '1h')))
                 _dc_hi = safe_fetch_float(ind.get(f'dc_high_{_dc_tf}'), 0)
                 _dc_lo = safe_fetch_float(ind.get(f'dc_low_{_dc_tf}'), 0)
                 _dc_adx = safe_fetch_float(ind.get(f'adx_{_dc_tf}'), 0)

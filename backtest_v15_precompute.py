@@ -1,0 +1,2525 @@
+#!/usr/bin/env python3
+"""
+V15 Precompute — Build NPZ from klines using REAL indicators (mode-aware).
+Renamed from backtest_v8_precompute.py 2026-09-19 after verifying completeness
+for all v12/v15 scripts and tradier/ez live + wt_dc scripts (15m+ bb fix).
+
+Stocks (mode tradier): tradier_indicators.py + klines_cache/tradier/
+Crypto (mode crypto):  ez_indicators.py      + klines_cache/
+
+V7 Precompute — Build NPZ from klines using REAL tradier_indicators.py functions.
+
+Calls the same functions as live (rsi_series, atr_series, stoch_result, wavetrend,
+donchian, mfi_value, heikin_ashi, etc.) but extracts the FULL arrays instead of
+just the last value. One call per TF per symbol = fast.
+
+Klines from klines_cache/tradier/ (stocks, via tradier_indicators.py) or klines_cache/ (crypto, via ez_indicators.py).
+Output: backtest_v8/indicators/SYMBOL.npz  (legacy path, v15 writes same path until migration)
+
+Usage:
+    python3 backtest_v15_precompute.py --symbol AAPL --mode tradier
+    python3 backtest_v15_precompute.py --all --mode tradier --workers 8
+    python3 backtest_v15_precompute.py --symbol BTCUSDT --mode crypto --workers 8
+"""
+import argparse
+import json
+import logging
+import os
+import platform
+import sys
+import time
+from pathlib import Path
+from typing import Dict, Optional
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("v7_precompute")
+
+# Imports for new indicator fields (Improvement Framework A3+A4+A5, 2026-04-26).
+# Existing scalar functions in tradier_indicators.py are reused where useful;
+# numpy-vectorized rolling wrappers below handle the time-series fields.
+try:
+    from tradier_indicators import (
+        compute_minervini_sepa as _scalar_sepa,
+        compute_clenow_score as _scalar_clenow,
+        detect_episodic_pivot as _scalar_ep,
+    )
+except Exception as _e:
+    _scalar_sepa = None
+    _scalar_clenow = None
+    _scalar_ep = None
+
+# Module-level mode flag set by main(). Used by compute_tf_arrays() to choose
+# annualization factor (252 for tradier, 365 for crypto). Threading via kwarg
+# would alter the public signature; module-level keeps existing call sites stable.
+MODE = "tradier"
+SPLIT_ADJUSTMENTS = {}
+
+
+def _broadcast_asof_indices(
+    source_ts: np.ndarray,
+    target_ts: np.ndarray,
+    timeframe: str,
+    mode: str,
+) -> np.ndarray:
+    """Map a source timeframe using the time at which its data was knowable.
+
+    Tradier 1h/4h/D/W/M frames are left-labelled aggregates. Source row j
+    contains the completed interval beginning at source_ts[j], so it becomes
+    available only at the next source label. The old `right - 1` mapping exposed
+    the completed future bar throughout its own interval; `right - 2` selects
+    the previous fully closed row. Raw 15m timestamps are close-labelled and
+    retain the ordinary as-of mapping.
+    """
+    src = np.asarray(source_ts, dtype=np.int64)
+    dst = np.asarray(target_ts, dtype=np.int64)
+    lag = 2 if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"} else 1
+    # Keep -1 for the warm-up interval. Clipping it to row zero would expose a
+    # value before that row was observable (a smaller but real look-ahead leak).
+    return np.minimum(np.searchsorted(src, dst, side="right") - lag, len(src) - 1)
+
+
+def _broadcast_values(values: np.ndarray, indices: np.ndarray) -> np.ndarray:
+    """Index safely while representing not-yet-available warm-up rows as empty."""
+    arr = np.asarray(values)
+    idx = np.asarray(indices, dtype=np.int64)
+    safe = np.maximum(idx, 0)
+    out = arr[safe].copy()
+    missing = idx < 0
+    if not missing.any():
+        return out
+    if out.dtype.kind in "biufc":
+        out[missing] = 0
+    elif out.dtype.kind in "US":
+        out[missing] = ""
+    else:
+        out[missing] = None
+    return out
+
+
+def _availability_timestamps(
+    source_ts: np.ndarray,
+    indices: np.ndarray,
+    timeframe: str,
+    mode: str,
+) -> np.ndarray:
+    """Return when each selected source row became observable."""
+    src = np.asarray(source_ts, dtype=np.int64)
+    idx = np.asarray(indices, dtype=np.int64)
+    out = np.zeros(len(idx), dtype=np.int64)
+    valid = idx >= 0
+    if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"}:
+        out[valid] = src[np.minimum(idx[valid] + 1, len(src) - 1)]
+    else:
+        out[valid] = src[idx[valid]]
+    return out
+
+
+def _frame_span_seconds(df: Optional[pd.DataFrame]) -> float:
+    """Wall-clock coverage used to reject a short/stale 'authoritative' source."""
+    if df is None or len(df) < 2:
+        return 0.0
+    return max(0.0, float((df.index[-1] - df.index[0]).total_seconds()))
+
+
+def _choose_tradier_resample_source(
+    dfs: Dict[str, pd.DataFrame],
+    minimum_span_ratio: float = 0.80,
+) -> tuple[str, pd.DataFrame]:
+    """Choose the most complete authentic intraday source for Tradier HTFs.
+
+    Fifteen-minute data remains preferred when it covers the history.  It must
+    not, however, erase a much longer real 5m history: that was the mechanism
+    that made VT's 1h/4h/D arrays almost entirely zero.  Prefer 5m whenever the
+    15m wall-clock span is less than 80% of its span.
+    """
+    d15 = dfs.get("15m")
+    d5 = dfs.get("5m")
+    if d15 is None:
+        if d5 is None:
+            raise ValueError("Tradier resampling requires 15m or 5m data")
+        return "5m", d5
+    if d5 is not None and _frame_span_seconds(d15) < minimum_span_ratio * _frame_span_seconds(d5):
+        return "5m", d5
+    return "15m", d15
+
+
+def _fabricate_tradier_5m(base_15m: pd.DataFrame) -> pd.DataFrame:
+    """Legacy interpolation, isolated so real 5m bars can replace its tail."""
+    rows = []
+    for i in range(len(base_15m)):
+        ts = base_15m.index[i]
+        o, h, l, c, v = base_15m.iloc[i][["open", "high", "low", "close", "volume"]]
+        prev_c = base_15m.iloc[i - 1]["close"] if i > 0 else o
+        for j in range(3):
+            frac = (j + 1) / 3.0
+            prev_frac = j / 3.0
+            sub_c = prev_c + (c - prev_c) * frac
+            sub_o = prev_c + (c - prev_c) * prev_frac
+            spread = h - l
+            sub_h = max(sub_o, sub_c) + spread * (0.2 if j == 1 else 0.05)
+            sub_l = min(sub_o, sub_c) - spread * (0.2 if j == 1 else 0.05)
+            sub_ts = ts - pd.Timedelta(minutes=10) + pd.Timedelta(minutes=5 * j)
+            rows.append({
+                "timestamp_dt": sub_ts,
+                "open": sub_o,
+                "high": sub_h,
+                "low": sub_l,
+                "close": sub_c,
+                "volume": v / 3.0,
+                "_synthetic_5m": 1,
+                # The synthetic row is derived from this containing 15m bar.
+                # Preserve that fact explicitly: the first two sub-bars are an
+                # unavoidable within-parent approximation, not native 5m data.
+                "_synthetic_5m_parent_close_ts": ts,
+            })
+    return pd.DataFrame(rows).set_index("timestamp_dt").sort_index()
+
+
+def _hybrid_tradier_5m(
+    base_15m: pd.DataFrame,
+    real_5m: Optional[pd.DataFrame],
+) -> pd.DataFrame:
+    """Backfill missing history synthetically while preserving every real 5m bar."""
+    fabricated = _fabricate_tradier_5m(base_15m)
+    if real_5m is None or len(real_5m) == 0:
+        return fabricated
+    real = real_5m.copy()
+    real["_synthetic_5m"] = 0
+    real["_synthetic_5m_parent_close_ts"] = real.index
+    # Real observations win on overlap.  Keeping the provenance bit in the NPZ
+    # lets campaign preflight quarantine synthetic windows mechanically.
+    fabricated = fabricated.loc[~fabricated.index.isin(real.index)]
+    return pd.concat([fabricated, real], axis=0).sort_index()
+
+
+def _merge_authentic_bars(
+    resampled: pd.DataFrame,
+    authentic: Optional[pd.DataFrame],
+) -> pd.DataFrame:
+    """Keep broad resampled coverage while authentic bars win every overlap."""
+    if authentic is None or len(authentic) == 0:
+        return resampled
+    broad = resampled.loc[~resampled.index.isin(authentic.index)]
+    return pd.concat([broad, authentic], axis=0).sort_index()
+
+
+def _prepend_authentic_history(
+    resampled: pd.DataFrame,
+    authentic: Optional[pd.DataFrame],
+) -> pd.DataFrame:
+    """Prepend older provider bars without replacing the causal rebuilt tail.
+
+    Some Tradier symbols have years of daily data but only a few months of
+    complete intraday data.  Throwing the provider history away makes long
+    regression/WT warmups impossible.  Conversely, allowing a stale provider
+    file to win overlaps reintroduces the stale-HTF bug.  Keep only authentic
+    rows strictly before the first rebuilt row; the recent tail always remains
+    the causally resampled source of truth.
+    """
+    if authentic is None or len(authentic) == 0 or len(resampled) == 0:
+        return resampled
+    older = authentic.loc[authentic.index < resampled.index.min()]
+    if len(older) == 0:
+        return resampled
+    return pd.concat([older, resampled], axis=0).sort_index()
+
+
+def _ann_factor() -> float:
+    """Annualization factor: 252 trading days for stocks, 365 for crypto (24/7)."""
+    return 365.0 if MODE == "crypto" else 252.0
+
+
+def _yz_vol(open_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
+            close_arr: np.ndarray, n: int, ann_factor: float) -> np.ndarray:
+    """Yang-Zhang (2000) annualized realized volatility, rolling window n. % units."""
+    o = np.log(np.maximum(open_arr, 1e-10))
+    h = np.log(np.maximum(high_arr, 1e-10))
+    l = np.log(np.maximum(low_arr, 1e-10))
+    c = np.log(np.maximum(close_arr, 1e-10))
+    pc = np.roll(c, 1); pc[0] = c[0]
+    o_minus_pc = o - pc
+    c_minus_o = c - o
+    rs = (h - c) * (h - o) + (l - c) * (l - o)
+    def _roll_var(x):
+        s1 = pd.Series(x).rolling(n).mean()
+        s2 = pd.Series(x * x).rolling(n).mean()
+        return (s2 - s1 * s1).clip(lower=0).values
+    sig_o2 = _roll_var(o_minus_pc)
+    sig_c2 = _roll_var(c_minus_o)
+    sig_rs2 = pd.Series(rs).rolling(n).mean().clip(lower=0).values
+    k = 0.34 / (1.34 + (n + 1) / max(n - 1, 1))
+    yz_var = sig_o2 + k * sig_c2 + (1.0 - k) * sig_rs2
+    yz_var = np.nan_to_num(yz_var, nan=0.0, posinf=0.0, neginf=0.0)
+    return (np.sqrt(np.maximum(yz_var, 0)) * np.sqrt(ann_factor) * 100.0).astype(np.float32)
+
+
+def _pk_vol(high_arr: np.ndarray, low_arr: np.ndarray,
+            n: int, ann_factor: float) -> np.ndarray:
+    """Parkinson high-low annualized volatility. % units."""
+    h = np.log(np.maximum(high_arr, 1e-10))
+    l = np.log(np.maximum(low_arr, 1e-10))
+    hl2 = (h - l) ** 2
+    var = pd.Series(hl2).rolling(n).mean().values / (4.0 * np.log(2.0))
+    var = np.nan_to_num(var, nan=0.0, posinf=0.0, neginf=0.0)
+    return (np.sqrt(np.maximum(var, 0)) * np.sqrt(ann_factor) * 100.0).astype(np.float32)
+
+
+def _gk_vol(open_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
+            close_arr: np.ndarray, n: int, ann_factor: float) -> np.ndarray:
+    """Garman-Klass annualized volatility. % units."""
+    o = np.log(np.maximum(open_arr, 1e-10))
+    h = np.log(np.maximum(high_arr, 1e-10))
+    l = np.log(np.maximum(low_arr, 1e-10))
+    c = np.log(np.maximum(close_arr, 1e-10))
+    term1 = 0.5 * (h - l) ** 2
+    term2 = (2.0 * np.log(2.0) - 1.0) * (c - o) ** 2
+    var = pd.Series(term1 - term2).rolling(n).mean().clip(lower=0).values
+    var = np.nan_to_num(var, nan=0.0, posinf=0.0, neginf=0.0)
+    return (np.sqrt(np.maximum(var, 0)) * np.sqrt(ann_factor) * 100.0).astype(np.float32)
+
+
+def _rolling_sepa(close_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
+                  volume_arr: np.ndarray) -> tuple:
+    """Rolling Minervini SEPA: per-bar pass/score using bars[:i+1].
+    Returns (sepa_pass int8, sepa_score int8). Daily TF only (slow loop)."""
+    n = len(close_arr)
+    sepa_pass = np.zeros(n, dtype=np.int8)
+    sepa_score = np.zeros(n, dtype=np.int8)
+    if n < 252 or _scalar_sepa is None:
+        return sepa_pass, sepa_score
+    cl = close_arr.tolist()
+    hl = high_arr.tolist()
+    ll = low_arr.tolist()
+    vl = volume_arr.tolist()
+    for i in range(252, n):
+        try:
+            res = _scalar_sepa(cl[: i + 1], hl[: i + 1], ll[: i + 1], vl[: i + 1])
+            if res:
+                sepa_pass[i] = 1 if res.get("sepa_pass") else 0
+                sepa_score[i] = int(res.get("sepa_score", 0))
+        except Exception:
+            pass
+    return sepa_pass, sepa_score
+
+
+def _rolling_clenow(close_arr: np.ndarray, lookback: int = 90) -> tuple:
+    """Rolling Clenow: per-bar slope_ann × R². Returns (score, slope, r2) float32 arrays.
+    Daily TF only (slow loop)."""
+    n = len(close_arr)
+    score = np.zeros(n, dtype=np.float32)
+    slope = np.zeros(n, dtype=np.float32)
+    r2 = np.zeros(n, dtype=np.float32)
+    if n < lookback + 5 or _scalar_clenow is None:
+        return score, slope, r2
+    cl = close_arr.tolist()
+    for i in range(lookback + 5, n):
+        try:
+            res = _scalar_clenow(cl[: i + 1], lookback=lookback)
+            if res:
+                score[i] = float(res.get("clenow_score", 0.0))
+                slope[i] = float(res.get("clenow_slope", 0.0))
+                r2[i] = float(res.get("clenow_r2", 0.0))
+        except Exception:
+            pass
+    return score, slope, r2
+
+
+def _rolling_episodic_pivot(open_arr: np.ndarray, high_arr: np.ndarray,
+                             low_arr: np.ndarray, close_arr: np.ndarray,
+                             volume_arr: np.ndarray, fwd_days: int = 30) -> tuple:
+    """Rolling Episodic Pivot detection (Daily TF). On bar i, run detect on bars[:i+1];
+    if detected, mark ep_detected=1 on bars [i, i+fwd_days). Returns (ep_detected int8,
+    ep_breakout_level float32, ep_direction int8 +1/-1/0)."""
+    n = len(close_arr)
+    ep_det = np.zeros(n, dtype=np.int8)
+    ep_lvl = np.zeros(n, dtype=np.float32)
+    ep_dir = np.zeros(n, dtype=np.int8)
+    if n < 30 or _scalar_ep is None:
+        return ep_det, ep_lvl, ep_dir
+    for i in range(20, n):
+        bars = []
+        for j in range(max(0, i - 60), i + 1):
+            bars.append({
+                "open": float(open_arr[j]),
+                "high": float(high_arr[j]),
+                "low": float(low_arr[j]),
+                "close": float(close_arr[j]),
+                "volume": float(volume_arr[j]),
+            })
+        try:
+            res = _scalar_ep(bars)
+        except Exception:
+            res = None
+        if res and res.get("ep_detected"):
+            lvl = float(res.get("ep_breakout_level", 0.0) or 0.0)
+            d = res.get("ep_direction", "")
+            d_int = 1 if d == "LONG" else (-1 if d == "SHORT" else 0)
+            for k in range(i, min(n, i + fwd_days)):
+                # Only fill if not already set by a more recent detection
+                if ep_det[k] == 0:
+                    ep_det[k] = 1
+                    ep_lvl[k] = lvl
+                    ep_dir[k] = d_int
+    return ep_det, ep_lvl, ep_dir
+
+if platform.system() == "Darwin":
+    BASE_PATH = Path("/Users/niels/Documents/binance")
+else:
+    BASE_PATH = Path("/home/niels/binance-sandbox")
+
+TRADIER_KLINES = BASE_PATH / "klines_cache_backtest" / "tradier" if not (BASE_PATH / "klines_cache" / "tradier").exists() or platform.system() != "Darwin" else BASE_PATH / "klines_cache" / "tradier"
+# Use klines_cache_backtest for full 4yr history on server; klines_cache has only ~1200 bars for many symbols
+_kcb = BASE_PATH / "klines_cache_backtest"
+CRYPTO_KLINES = _kcb if _kcb.exists() and platform.system() != "Darwin" else BASE_PATH / "klines_cache"
+OUT_DIR = BASE_PATH / "backtest_v8" / "indicators"
+
+STR_MAP = {"green": 1, "red": -1, "neutral": 0, "BUY": 1, "SELL": -1, "NEUTRAL": 0,
+           "bullish": 1, "bearish": -1, "strong_bullish": 2, "strong_bearish": -2,
+           "higher": 1, "lower": -1, "none": 0, "bull_cross": 1, "bear_cross": -1}
+
+# Bar-pattern integer codes (2026-05-11 — for bar_pattern_<tf> int8 array). The
+# string→int mapping below mirrors ez_indicators.detect_bar_patterns priority order.
+# Engine reads bar_pattern_<tf> as a numeric value; code 0 == "none". A separate
+# `bar_pattern_codes` 0-D object array is written to the NPZ holding {int: str}.
+BAR_PATTERN_CODES = {
+    "none": 0, "morning_star": 1, "evening_star": 2, "three_white_soldiers": 3,
+    "three_black_crows": 4, "bull_engulfing": 5, "bear_engulfing": 6,
+    "tweezer_bottom": 7, "tweezer_top": 8, "hammer": 9, "shooting_star": 10,
+    "bull_harami": 11, "bear_harami": 12, "multi_inside": 13, "inside_bar": 14,
+    "outside_bar": 15, "pin_bar_bull": 16, "pin_bar_bear": 17,
+    "three_bar_bull": 18, "three_bar_bear": 19, "doji": 20,
+}
+# bar_vol_regime_<tf>: low=-1, normal=0, high=1.
+BAR_VOL_REGIME_CODES = {"low": -1, "normal": 0, "high": 1}
+
+
+def _bar_pattern_arrays(o: np.ndarray, h: np.ndarray, l_: np.ndarray, c: np.ndarray,
+                        v: np.ndarray, tf: str) -> Dict[str, np.ndarray]:
+    """Vectorized per-bar replica of ez_indicators.detect_bar_patterns().
+    Returns dict of bar_*_<tf> arrays, all length n. Pattern is encoded as int8 via
+    BAR_PATTERN_CODES; bar_vol_regime as int8 via BAR_VOL_REGIME_CODES.
+
+    Bar positions: index i is the "current" bar; i-1 is "prev1" (== _b(-2) in live);
+    i-2 is "prev2" (== _b(-3)); i-3 is "prev3" (== _b(-4)). Indices < required are
+    handled by clamping (giving "none" pattern at the start of the series).
+    """
+    n = len(c)
+    out: Dict[str, np.ndarray] = {}
+    if n < 5:
+        return out
+    # Per-bar arrays
+    body = np.abs(c - o)
+    rng = np.maximum(h - l_, 1e-10)
+    upper_wick = h - np.maximum(o, c)
+    lower_wick = np.minimum(o, c) - l_
+    body_ratio = body / rng
+    is_bull = c > o
+    is_bear = c < o
+    # Shift helpers (prev1 / prev2 / prev3). Uses np.roll then clamps the head.
+    def _shift(a, k):
+        out = np.roll(a, k)
+        if k > 0:
+            out[:k] = a[0]
+        return out
+    o2 = _shift(o, 1); h2 = _shift(h, 1); l2 = _shift(l_, 1); c2 = _shift(c, 1)
+    o3 = _shift(o, 2); h3 = _shift(h, 2); l3 = _shift(l_, 2); c3 = _shift(c, 2)
+    o4 = _shift(o, 3); h4 = _shift(h, 3); l4 = _shift(l_, 3); c4 = _shift(c, 3)
+    body2 = np.abs(c2 - o2); body3 = np.abs(c3 - o3)
+    range2 = np.maximum(h2 - l2, 1e-10)
+    range3 = np.maximum(h3 - l3, 1e-10)
+    is_bull2 = c2 > o2; is_bear2 = c2 < o2
+    is_bull3 = c3 > o3; is_bear3 = c3 < o3
+    # --- Volume features (rolling 20-bar trailing average; live uses bars [-21:-1]) ---
+    vol_avg = pd.Series(v).shift(1).rolling(20, min_periods=1).mean().bfill().fillna(v[0]).values
+    vol_avg = np.where(vol_avg > 0, vol_avg, 1.0)
+    vol_ratio = v / vol_avg
+    vol_confirm = (vol_ratio >= 1.3).astype(np.int8)
+    vol_spike = (vol_ratio >= 2.0).astype(np.int8)
+    vol_dry = vol_ratio < 0.6
+    # vol_expanding: v[i] > v[i-1] AND v[i-1] > v[i-2] AND v[i-2] > v[i-3] (3 bars rising)
+    v_p1 = _shift(v, 1); v_p2 = _shift(v, 2); v_p3 = _shift(v, 3)
+    vol_expanding = ((v > v_p1) & (v_p1 > v_p2) & (v_p2 > v_p3)).astype(np.int8)
+    # --- ATR rank: rolling 50-bar percent-rank of (h-l) ---
+    atr_arr = (h - l_).astype(np.float64)
+    atr_rank = np.zeros(n, dtype=np.float32)
+    win = min(50, n)
+    if win >= 2:
+        s = pd.Series(atr_arr)
+        # Rolling rank-pct (fraction of window strictly less than current). For speed we
+        # use rolling.rank(pct=True) - 1/win to approximate the live `(<curr).sum()/n`.
+        rk = s.rolling(win, min_periods=1).rank(pct=True).values
+        atr_rank = (rk - (1.0 / win)).clip(min=0.0).astype(np.float32)
+    vol_regime = np.where(atr_rank < 0.25, -1, np.where(atr_rank > 0.75, 1, 0)).astype(np.int8)
+    # --- Streak (consecutive directional closes), capped at ±7 to mirror live (range(1,8)) ---
+    sign = np.where(c > o, 1, np.where(c < o, -1, 0)).astype(np.int8)
+    streak = np.zeros(n, dtype=np.int8)
+    for i in range(n):
+        s = 0
+        for k in range(min(7, i + 1)):
+            si = int(sign[i - k])
+            if si == 0:
+                break
+            if s == 0:
+                s = si
+            elif (s > 0 and si > 0) or (s < 0 and si < 0):
+                s += si
+            else:
+                break
+        streak[i] = max(min(s, 127), -128)
+    # --- Swing structure ---
+    hh = (h > h2) & (h2 > h3)
+    hl = (l_ > l2) & (l2 > l3)
+    ll = (l_ < l2) & (l2 < l3)
+    lh = (h < h2) & (h2 < h3)
+    swing_bull = (hh & hl).astype(np.int8)
+    swing_bear = (ll & lh).astype(np.int8)
+    # --- Range compression (5 bars narrowing, oldest→newest = decreasing range) ---
+    # live: ranges_5 = [r(-1), r(-2), r(-3), r(-4), r(-5)]; compression = monotonically decreasing
+    # in time direction (i.e. each older bar has smaller-or-equal range than the next-newer).
+    # Equivalently r(-1) ≤ r(-2) ≤ r(-3) ≤ r(-4) ≤ r(-5) — older bars wider.
+    r_p1 = np.maximum(_shift(rng, 1), 1e-10)
+    r_p2 = np.maximum(_shift(rng, 2), 1e-10)
+    r_p3 = np.maximum(_shift(rng, 3), 1e-10)
+    r_p4 = np.maximum(_shift(rng, 4), 1e-10)
+    compression = ((rng <= r_p1) & (r_p1 <= r_p2) & (r_p2 <= r_p3) & (r_p3 <= r_p4)).astype(np.int8)
+    compression_ratio = (rng / np.where(r_p4 > 0, r_p4, 1e-10)).astype(np.float32)
+    # --- Multi-inside count (consecutive inside bars, max 4) ---
+    inside_one = ((h < h2) & (l_ > l2)).astype(np.int8)
+    inside_two = ((h2 < h3) & (l2 > l3)).astype(np.int8)
+    inside_three = ((h3 < h4) & (l3 > l4)).astype(np.int8)
+    h5 = _shift(h, 4); l5 = _shift(l_, 4)
+    inside_four = ((h4 < h5) & (l4 > l5)).astype(np.int8)
+    # Live counts forward from the most recent bar; equivalent to counting consecutive
+    # leading 1s in [inside_one, inside_two, inside_three, inside_four].
+    inside_count = (inside_one
+                    + inside_one * inside_two
+                    + inside_one * inside_two * inside_three
+                    + inside_one * inside_two * inside_three * inside_four).astype(np.int8)
+    # --- Pattern detection (per-bar, priority order matches live) ---
+    pattern = np.zeros(n, dtype=np.int8)
+    direction = np.zeros(n, dtype=np.int8)
+    strength = np.zeros(n, dtype=np.float32)
+    # 1. Morning Star
+    cond = (is_bear3 & (body3 > range3 * 0.5) & (body2 < range2 * 0.3) & is_bull
+            & (body > rng * 0.5) & (c > (o3 + c3) / 2))
+    s = np.minimum(1.0, (body + body3) / (2 * rng + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["morning_star"], pattern)
+    direction = np.where(cond & (direction == 0), 1, direction)
+    strength = np.where(cond & (strength == 0), s, strength)
+    # 2. Evening Star
+    cond = (is_bull3 & (body3 > range3 * 0.5) & (body2 < range2 * 0.3) & is_bear
+            & (body > rng * 0.5) & (c < (o3 + c3) / 2))
+    s = np.minimum(1.0, (body + body3) / (2 * rng + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["evening_star"], pattern)
+    direction = np.where(cond & (direction == 0) & (pattern == BAR_PATTERN_CODES["evening_star"]), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["evening_star"]) & (strength == 0), s, strength)
+    # 3. Three White Soldiers
+    cond = (is_bull & is_bull2 & is_bull3 & (c > c2) & (c2 > c3)
+            & (body > rng * 0.5) & (body2 > range2 * 0.5) & (body3 > range3 * 0.5))
+    s = np.minimum(1.0, np.minimum.reduce([body, body2, body3]) / np.maximum.reduce([rng, range2, range3]))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_white_soldiers"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_white_soldiers"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_white_soldiers"]) & (strength == 0), s, strength)
+    # 4. Three Black Crows
+    cond = (is_bear & is_bear2 & is_bear3 & (c < c2) & (c2 < c3)
+            & (body > rng * 0.5) & (body2 > range2 * 0.5) & (body3 > range3 * 0.5))
+    s = np.minimum(1.0, np.minimum.reduce([body, body2, body3]) / np.maximum.reduce([rng, range2, range3]))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_black_crows"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_black_crows"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_black_crows"]) & (strength == 0), s, strength)
+    # 5. Bull Engulfing
+    cond = (is_bull & is_bear2 & (c > o2) & (o < c2) & (body > body2))
+    s = np.minimum(1.0, (body / (body2 + 1e-10)) * 0.5)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bull_engulfing"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bull_engulfing"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bull_engulfing"]) & (strength == 0), s, strength)
+    # 6. Bear Engulfing
+    cond = (is_bear & is_bull2 & (c < o2) & (o > c2) & (body > body2))
+    s = np.minimum(1.0, (body / (body2 + 1e-10)) * 0.5)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bear_engulfing"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bear_engulfing"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bear_engulfing"]) & (strength == 0), s, strength)
+    # 7. Tweezer Bottom
+    cond = (is_bull & (np.abs(l_ - l2) < rng * 0.05) & (l_ < np.minimum(l3, l4)))
+    s = np.minimum(1.0, 1.0 - np.abs(l_ - l2) / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["tweezer_bottom"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["tweezer_bottom"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["tweezer_bottom"]) & (strength == 0), s, strength)
+    # 8. Tweezer Top
+    cond = (is_bear & (np.abs(h - h2) < rng * 0.05) & (h > np.maximum(h3, h4)))
+    s = np.minimum(1.0, 1.0 - np.abs(h - h2) / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["tweezer_top"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["tweezer_top"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["tweezer_top"]) & (strength == 0), s, strength)
+    # 9. Hammer
+    cond = ((body_ratio < 0.35) & (lower_wick > body * 2.0) & (upper_wick < body * 0.5))
+    s = np.minimum(1.0, lower_wick / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["hammer"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["hammer"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["hammer"]) & (strength == 0), s, strength)
+    # 10. Shooting Star
+    cond = ((body_ratio < 0.35) & (upper_wick > body * 2.0) & (lower_wick < body * 0.5))
+    s = np.minimum(1.0, upper_wick / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["shooting_star"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["shooting_star"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["shooting_star"]) & (strength == 0), s, strength)
+    # 11. Bull Harami
+    cond = (is_bull & is_bear2 & (body < body2 * 0.5) & (h < h2) & (l_ > l2))
+    s = 0.5 * (1.0 - body / (body2 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bull_harami"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bull_harami"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bull_harami"]) & (strength == 0), s, strength)
+    # 12. Bear Harami
+    cond = (is_bear & is_bull2 & (body < body2 * 0.5) & (h < h2) & (l_ > l2))
+    s = 0.5 * (1.0 - body / (body2 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bear_harami"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bear_harami"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bear_harami"]) & (strength == 0), s, strength)
+    # 13. Multi-inside (≥2 consecutive inside bars)
+    cond = inside_count >= 2
+    s = np.minimum(1.0, inside_count.astype(np.float64) * 0.3)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["multi_inside"], pattern)
+    strength = np.where((pattern == BAR_PATTERN_CODES["multi_inside"]) & (strength == 0), s, strength)
+    # 14. Inside Bar
+    cond = (h < h2) & (l_ > l2)
+    s = 1.0 - (rng / np.where(range2 > 0, range2, 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["inside_bar"], pattern)
+    strength = np.where((pattern == BAR_PATTERN_CODES["inside_bar"]) & (strength == 0), s, strength)
+    # 15. Outside Bar
+    cond = ((h > h2) & (l_ < l2) & (body_ratio > 0.6))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["outside_bar"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["outside_bar"]) & (direction == 0),
+                         np.where(is_bull, 1, -1), direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["outside_bar"]) & (strength == 0), body_ratio, strength)
+    # 16. Pin Bar Bull
+    cond = (lower_wick > rng * 0.6) & (body_ratio < 0.25)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["pin_bar_bull"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bull"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bull"]) & (strength == 0), lower_wick / rng, strength)
+    # 17. Pin Bar Bear
+    cond = (upper_wick > rng * 0.6) & (body_ratio < 0.25)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["pin_bar_bear"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bear"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bear"]) & (strength == 0), upper_wick / rng, strength)
+    # 18. Three Bar Bull
+    cond = (is_bull & is_bear2 & is_bear3 & (c > h2))
+    s = np.minimum(1.0, body / (body2 + body3 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_bar_bull"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_bar_bull"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_bar_bull"]) & (strength == 0), s, strength)
+    # 19. Three Bar Bear
+    cond = (is_bear & is_bull2 & is_bull3 & (c < l2))
+    s = np.minimum(1.0, body / (body2 + body3 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_bar_bear"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_bar_bear"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_bar_bear"]) & (strength == 0), s, strength)
+    # 20. Doji
+    cond = body_ratio < 0.1
+    s = 0.3 + 0.4 * (vol_confirm.astype(np.float32))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["doji"], pattern)
+    strength = np.where((pattern == BAR_PATTERN_CODES["doji"]) & (strength == 0), s, strength)
+    # Volume amplifier (mirrors live)
+    has_dir = direction != 0
+    strength = np.where(has_dir & (vol_confirm.astype(bool)), np.minimum(1.0, strength * 1.3), strength)
+    strength = np.where(has_dir & (vol_spike.astype(bool)), np.minimum(1.0, strength * 1.2), strength)
+    strength = np.where(has_dir & vol_dry, strength * 0.6, strength)
+    out[f"bar_pattern_{tf}"] = pattern.astype(np.int8)
+    out[f"bar_direction_{tf}"] = direction.astype(np.int8)
+    out[f"bar_strength_{tf}"] = strength.astype(np.float32)
+    out[f"bar_vol_confirm_{tf}"] = vol_confirm
+    out[f"bar_vol_ratio_{tf}"] = vol_ratio.astype(np.float32)
+    out[f"bar_body_ratio_{tf}"] = body_ratio.astype(np.float32)
+    out[f"bar_upper_wick_{tf}"] = (upper_wick / np.where(rng > 0, rng, 1e-10)).astype(np.float32)
+    out[f"bar_lower_wick_{tf}"] = (lower_wick / np.where(rng > 0, rng, 1e-10)).astype(np.float32)
+    out[f"bar_streak_{tf}"] = streak
+    out[f"bar_swing_bull_{tf}"] = swing_bull
+    out[f"bar_swing_bear_{tf}"] = swing_bear
+    out[f"bar_compression_{tf}"] = compression
+    out[f"bar_compression_ratio_{tf}"] = compression_ratio
+    out[f"bar_inside_count_{tf}"] = inside_count
+    out[f"bar_vol_spike_{tf}"] = vol_spike
+    out[f"bar_vol_expanding_{tf}"] = vol_expanding
+    out[f"bar_vol_regime_{tf}"] = vol_regime
+    out[f"bar_atr_rank_{tf}"] = atr_rank
+    return out
+
+
+def _ha_streak_array(o: np.ndarray, h: np.ndarray, l_: np.ndarray, c: np.ndarray) -> np.ndarray:
+    """Per-bar Heikin-Ashi streak (mirrors ez_indicators.ha_streak_count counted on the
+    rolling end of the last 20 HA candles). Returns int8 array of length n."""
+    n = len(c)
+    if n < 3:
+        return np.zeros(n, dtype=np.int8)
+    ha_close = (o + h + l_ + c) / 4.0
+    ha_open = np.zeros(n, dtype=np.float64)
+    ha_open[0] = (o[0] + c[0]) / 2.0
+    for i in range(1, n):
+        ha_open[i] = (ha_open[i - 1] + ha_close[i - 1]) / 2.0
+    ha_color = np.where(ha_close >= ha_open, 1, -1).astype(np.int8)
+    streak = np.zeros(n, dtype=np.int8)
+    for i in range(n):
+        s = 0
+        # Live walks back up to 20 bars
+        for k in range(min(20, i + 1)):
+            col = int(ha_color[i - k])
+            if s == 0:
+                s = col
+            elif (s > 0 and col > 0) or (s < 0 and col < 0):
+                s += col
+            else:
+                break
+        streak[i] = max(min(s, 127), -128)
+    return streak
+
+
+def _rolling_linreg(close_arr: np.ndarray, length: int) -> tuple:
+    """Per-bar rolling linreg: returns (slope, linearity) arrays length n.
+    Mirrors ez_indicators.linreg_features with y_fit = y_mean + slope*(x-x_mean)
+    (the 2026-04-29 bug-fixed formula)."""
+    n = len(close_arr)
+    slope = np.zeros(n, dtype=np.float32)
+    lin = np.zeros(n, dtype=np.float32)
+    if n < length:
+        return slope, lin
+    x = np.arange(length, dtype=np.float64)
+    x_mean = x.mean()
+    x_dev = x - x_mean
+    x_var = (x_dev ** 2).sum()
+    if x_var <= 0:
+        return slope, lin
+    for i in range(length - 1, n):
+        y = close_arr[i - length + 1:i + 1].astype(np.float64)
+        if not np.isfinite(y).all():
+            continue
+        y_mean = y.mean()
+        sl = (x_dev * (y - y_mean)).sum() / x_var
+        y_fit = y_mean + sl * x_dev
+        ss_res = ((y - y_fit) ** 2).sum()
+        ss_tot = ((y - y_mean) ** 2).sum()
+        slope[i] = sl
+        lin[i] = (1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+    return slope, lin
+
+
+def _bb_pctb_with_touches(close: pd.Series, high: pd.Series, low: pd.Series,
+                          mult: float, length: int = 20) -> tuple:
+    """Returns (bb_high, bb_low, bb_pctb, bb_width, touches_count_rolling20). Used to fill
+    bb_high_<tf>, bb_low_<tf>, bb_width_<tf>, bb_touches_<tf> fields."""
+    n = len(close)
+    sma = close.rolling(length, min_periods=1).mean()
+    std = close.rolling(length, min_periods=1).std(ddof=0).fillna(0)
+    upper = sma + mult * std
+    lower = sma - mult * std
+    width = upper - lower
+    pctb = np.where(width > 0, (close - lower) / width, 0.5)
+    # Touches: bar high >= upper OR bar low <= lower in last 20 bars.
+    tt = ((high >= upper) | (low <= lower)).astype(np.int32)
+    touches = pd.Series(tt).rolling(20, min_periods=1).sum().values
+    return (upper.values.astype(np.float32), lower.values.astype(np.float32),
+            pctb.astype(np.float32), width.values.astype(np.float32),
+            touches.astype(np.float32))
+
+
+def _dedupe_daily_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Deduplicate daily timeframe: keep only one bar per ET calendar date.
+
+    Historical klines_cache/tradier/{SYM}_D.json contains duplicate rows per
+    date (13:30Z open + 20:00Z close with identical OHLC from old writer, plus
+    21:00Z in winter). The canonical daily bar is the ET 16:00 close
+    (20:00Z summer / 21:00Z winter). Keep that one, drop the intraday 13:30
+    duplicate. Also collapse any residual duplicates to one row per ET date
+    (keep last = close)."""
+    if df.empty:
+        return df
+    try:
+        import pytz
+        ET = pytz.timezone("America/New_York")
+        idx_et = df.index.tz_convert(ET)
+        # Prefer 16:00 ET (close) over 09:30/13:30 etc. Sort so close wins on dedup.
+        # Assign priority: 16:00 ET = 0, else 1
+        is_close = (idx_et.hour == 16) & (idx_et.minute == 0)
+        # Build temp frame sorted: secondary sort key = is_close (close first), then time
+        tmp = df.copy()
+        tmp["_et_date"] = idx_et.date
+        tmp["_is_close"] = is_close
+        # For each et_date keep the row where _is_close True if exists, else last
+        # Use groupby and pick
+        def _pick(g):
+            close_rows = g[g["_is_close"]]
+            if not close_rows.empty:
+                return close_rows.iloc[-1]
+            return g.iloc[-1]
+        deduped = tmp.groupby("_et_date", sort=False).apply(_pick, include_groups=False)
+        # Restore DatetimeIndex from the picked rows' original timestamps
+        # _pick returns Series; need to reconstruct
+        # Simpler: sort by priority then drop duplicates on et_date keep last
+        tmp_sorted = tmp.sort_values(["_is_close"], ascending=True)
+        tmp_sorted = tmp_sorted[~tmp_sorted.index.duplicated(keep="last")]
+        # Now drop duplicates on et_date
+        tmp_sorted = tmp_sorted.sort_values("_is_close", ascending=False)
+        out = tmp_sorted[~tmp_sorted["_et_date"].duplicated(keep="first")]
+        out = out.drop(columns=["_et_date", "_is_close"], errors="ignore")
+        out = out.sort_index()
+        return out
+    except Exception:
+        return df
+
+
+def load_klines(path: Path) -> Optional[pd.DataFrame]:
+    if not path.exists():
+        return None
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        if not data:
+            return None
+        df = pd.DataFrame(data)
+        for col in ["open", "high", "low", "close", "volume"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        if "timestamp" in df.columns:
+            df["timestamp_dt"] = pd.to_datetime(df["timestamp"], utc=True, format="ISO8601")
+        elif "timestamp_dt" in df.columns:
+            df["timestamp_dt"] = pd.to_datetime(df["timestamp_dt"], utc=True, format="ISO8601")
+        else:
+            return None
+        df = df.set_index("timestamp_dt").sort_index()
+        df = df[~df.index.duplicated(keep="last")]
+        # Normalize daily bars: one bar per ET date (fix legacy 13:30+20:00 duplicates)
+        if path.name.endswith("_D.json"):
+            before = len(df)
+            df = _dedupe_daily_frame(df)
+            if len(df) != before:
+                logger.info(f"  Deduped D {path.name}: {before}→{len(df)} bars (one per ET date)")
+        return df
+    except Exception as e:
+        logger.warning(f"Load failed {path}: {e}")
+        return None
+
+
+def _resolve_split_price_factor(
+    frame: pd.DataFrame,
+    effective: pd.Timestamp,
+    action: dict,
+    sample_rows: int = 20,
+) -> float:
+    if "price_factor" in action:
+        return float(action["price_factor"])
+    ratio = float(action["split_ratio"])
+    before = frame.loc[frame.index < effective, "close"].dropna().tail(sample_rows)
+    after = frame.loc[frame.index >= effective, "close"].dropna().head(sample_rows)
+    if len(before) < 3 or len(after) < 3 or ratio <= 1.0:
+        raise ValueError("cannot auto-orient split adjustment from source price scale")
+    before_median = float(before.median())
+    after_median = float(after.median())
+    if before_median <= 0 or after_median <= 0:
+        raise ValueError("cannot auto-orient split adjustment from non-positive prices")
+    # Providers may already back-adjust one source resolution while leaving a
+    # second resolution raw.  `1.0` is therefore a real candidate, not a
+    # no-op mistake: CRWD 5m was already split-adjusted while its 15m source
+    # was still pre-split, and forcing the 15m factor onto both created an
+    # alternating 1x/4x five-minute series after the hybrid merge.
+    candidates = (1.0 / ratio, 1.0, ratio)
+    return min(
+        candidates,
+        key=lambda factor: abs(np.log(after_median / (before_median * factor))),
+    )
+
+
+def _repair_isolated_split_scale_rows(
+    frame: pd.DataFrame,
+    ratio: float,
+) -> int:
+    """Repair only one-row declared split multiples bracketed by coherent bars.
+
+    Some provider snapshots contain an isolated unadjusted bar inside an
+    otherwise back-adjusted series.  This is not interpolation: OHLC is moved
+    by the declared corporate-action ratio and volume by its inverse, and only
+    when both neighbouring closes independently prove the same scale.
+    """
+    if ratio <= 1.0 or len(frame) < 3 or "close" not in frame.columns:
+        return 0
+    observed = pd.to_numeric(frame["close"], errors="coerce").to_numpy(dtype=float)
+    previous = np.roll(observed, 1)
+    following = np.roll(observed, -1)
+    valid = (
+        np.isfinite(observed)
+        & np.isfinite(previous)
+        & np.isfinite(following)
+        & (observed > 0)
+        & (previous > 0)
+        & (following > 0)
+    )
+    valid[[0, -1]] = False
+    neighbour_agreement = np.abs(np.log(previous / following)) <= np.log(1.25)
+    reference = np.sqrt(previous * following)
+    factors = np.asarray((1.0 / ratio, 1.0, ratio), dtype=float)
+    scores = np.full((len(frame), len(factors)), np.inf, dtype=float)
+    usable = valid & neighbour_agreement
+    scores[usable] = np.abs(
+        np.log((observed[usable, None] * factors[None, :]) / reference[usable, None])
+    )
+    best = np.argmin(scores, axis=1)
+    best_score = scores[np.arange(len(frame)), best]
+    neutral_score = scores[:, 1]
+    improvement = np.full(len(frame), -np.inf, dtype=float)
+    improvement[usable] = neutral_score[usable] - best_score[usable]
+    changed = (
+        usable
+        & (best != 1)
+        & (best_score <= np.log(1.25))
+        & (improvement > np.log(2.0))
+    )
+    if not bool(changed.any()):
+        return 0
+    row_factor = factors[best]
+    for column in ("open", "high", "low", "close"):
+        if column in frame.columns:
+            values = pd.to_numeric(frame[column], errors="coerce").to_numpy(
+                dtype=float, copy=True
+            )
+            values[changed] *= row_factor[changed]
+            frame[column] = values
+    if "volume" in frame.columns:
+        values = pd.to_numeric(frame["volume"], errors="coerce").to_numpy(
+            dtype=float, copy=True
+        )
+        values[changed] /= row_factor[changed]
+        frame["volume"] = values
+    return int(changed.sum())
+
+
+def _apply_split_adjustments(symbol: str, dfs: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+    """Return split-adjusted source frames before any indicator computation.
+
+    The adjustment is opt-in through ``--split-adjustments-json`` and is used
+    for versioned research NPZs only.  Pre-split OHLC is multiplied by the
+    price factor and volume by its inverse, so every downstream timeframe and
+    indicator is recomputed from one coherent adjusted source.
+    """
+    actions = SPLIT_ADJUSTMENTS.get(symbol.upper(), [])
+    if not actions:
+        return dfs
+    adjusted = {tf: frame.copy() for tf, frame in dfs.items()}
+    for action in sorted(actions, key=lambda row: int(row["effective_epoch"])):
+        effective = pd.Timestamp(int(action["effective_epoch"]), unit="s", tz="UTC")
+        orientation_frame = adjusted.get("15m")
+        if orientation_frame is None:
+            orientation_frame = adjusted.get("5m")
+        if orientation_frame is None:
+            raise ValueError(f"cannot orient split for {symbol}: no intraday source")
+        orientation_factor = _resolve_split_price_factor(
+            orientation_frame, effective, action
+        )
+        for timeframe, frame in adjusted.items():
+            before = frame.index < effective
+            if not bool(before.any()):
+                continue
+            # Resolve each independently because provider adjustment policy can
+            # differ by resolution.  Sparse HTFs fall back to the 15m
+            # orientation; populated 5m/15m frames must prove their own scale.
+            try:
+                price_factor = _resolve_split_price_factor(frame, effective, action)
+            except ValueError:
+                price_factor = orientation_factor
+            if not (0.0 < price_factor < 100.0):
+                raise ValueError(
+                    f"invalid split price factor for {symbol}/{timeframe}: "
+                    f"{price_factor}"
+                )
+            volume_factor = 1.0 / price_factor
+            for column in ("open", "high", "low", "close"):
+                if column in frame.columns:
+                    frame[column] = frame[column].astype(float)
+                    frame.loc[before, column] = frame.loc[before, column] * price_factor
+            if "volume" in frame.columns:
+                frame["volume"] = frame["volume"].astype(float)
+                frame.loc[before, "volume"] = frame.loc[before, "volume"] * volume_factor
+            logger.info(
+                f"  {symbol}/{timeframe}: split scale effective={effective.isoformat()} "
+                f"price_factor={price_factor:g} source={action.get('source', 'unspecified')}"
+            )
+
+        # Provider snapshots can mix raw and adjusted rows inside one 5m
+        # file. Reconcile only declared split-scale multiples against the now
+        # coherent 15m reference; OHLC receives the selected factor and volume
+        # its inverse. No prices are interpolated.
+        if "split_ratio" not in action:
+            continue
+        ratio = float(action["split_ratio"])
+        for timeframe, frame in adjusted.items():
+            repaired = _repair_isolated_split_scale_rows(frame, ratio)
+            if repaired:
+                logger.info(
+                    f"  {symbol}/{timeframe}: repaired {repaired} isolated "
+                    "declared split-scale rows"
+                )
+        reference = adjusted.get("15m")
+        if reference is not None and "close" in reference.columns:
+            reference_close = pd.to_numeric(
+                reference["close"], errors="coerce"
+            ).sort_index()
+            for timeframe, frame in adjusted.items():
+                if timeframe == "15m" or "close" not in frame.columns:
+                    continue
+                aligned = reference_close.reindex(
+                    frame.index,
+                    method="ffill",
+                    tolerance=pd.Timedelta("30min"),
+                ).to_numpy(dtype=float)
+                observed = pd.to_numeric(
+                    frame["close"], errors="coerce"
+                ).to_numpy(dtype=float)
+                valid = (
+                    np.isfinite(aligned)
+                    & np.isfinite(observed)
+                    & (aligned > 0)
+                    & (observed > 0)
+                )
+                if not bool(valid.any()):
+                    continue
+                factors = np.asarray((1.0 / ratio, 1.0, ratio), dtype=float)
+                scores = np.full((len(frame), len(factors)), np.inf, dtype=float)
+                scores[valid] = np.abs(
+                    np.log(
+                        (observed[valid, None] * factors[None, :])
+                        / aligned[valid, None]
+                    )
+                )
+                best = np.argmin(scores, axis=1)
+                row_factor = factors[best]
+                neutral_score = scores[:, 1]
+                best_score = scores[np.arange(len(frame)), best]
+                # Require a wide margin so an ordinary market move cannot be
+                # mistaken for a corporate-action scale mismatch.
+                changed = valid & (best != 1) & (
+                    neutral_score - best_score > np.log(2.0)
+                )
+                if not bool(changed.any()):
+                    continue
+                for column in ("open", "high", "low", "close"):
+                    if column in frame.columns:
+                        values = pd.to_numeric(
+                            frame[column], errors="coerce"
+                        ).to_numpy(dtype=float, copy=True)
+                        values[changed] *= row_factor[changed]
+                        frame[column] = values
+                if "volume" in frame.columns:
+                    values = pd.to_numeric(
+                        frame["volume"], errors="coerce"
+                    ).to_numpy(dtype=float, copy=True)
+                    values[changed] /= row_factor[changed]
+                    frame["volume"] = values
+                logger.info(
+                    f"  {symbol}/{timeframe}: reconciled "
+                    f"{int(changed.sum())} mixed-scale rows to 15m reference"
+                )
+    return adjusted
+
+
+def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
+    """Compute ALL indicators for one TF, returning FULL arrays (not scalars).
+    Uses the SAME functions from tradier_indicators.py."""
+    from tradier_indicators import (rsi_series, atr_series, mfi_value, stoch_result,
+                                     donchian, heikin_ashi, wavetrend,
+                                     relative_volume, wavetrend_intelligence,
+                                     crossover_flags)
+    n = len(df)
+    # 2026-04-28: lowered threshold for HTF (W/M) — tradier 2yr data has only ~24 monthly
+    # bars but engine still benefits from wt1_M/wt2_M etc. Skip Yang-Zhang vol & SEPA paths
+    # internally when n is small (existing guards already handle that).
+    if n < (10 if tf in ("W", "M") else 30):
+        return {}
+    out = {}
+    close = df["close"].astype(float)
+    high = df["high"].astype(float)
+    low = df["low"].astype(float)
+    open_ = df["open"].astype(float)
+    volume = df["volume"].astype(float) if "volume" in df.columns else pd.Series(np.ones(n), index=df.index)
+    # OHLCV arrays
+    out[f"open_{tf}"] = open_.values.astype(np.float32)
+    out[f"high_{tf}"] = high.values.astype(np.float32)
+    out[f"low_{tf}"] = low.values.astype(np.float32)
+    out[f"close_{tf}"] = close.values.astype(np.float32)
+    out[f"volume_{tf}"] = volume.values.astype(np.float32)
+    # Prev arrays
+    for name, series in [("close", close), ("high", high), ("low", low)]:
+        prev = series.shift(1).fillna(series.iloc[0])
+        out[f"{name}_{tf}_prev"] = prev.values.astype(np.float32)
+    # RSI 14
+    rsi = rsi_series(close, 14)
+    if rsi is not None and not rsi.empty:
+        out[f"rsi_{tf}"] = rsi.values.astype(np.float32)
+    # ATR 14
+    atr = atr_series(df, 14)
+    if atr is not None and not atr.empty:
+        out[f"atr_{tf}"] = atr.values.astype(np.float32)
+        out[f"atr_{tf}_prev"] = atr.shift(1).fillna(atr.iloc[0]).values.astype(np.float32)
+    # Stochastic RSI (full series)
+    from tradier_indicators import stoch_rsi
+    stoch_df = stoch_rsi(close, 14, 7, 7)
+    k_series = stoch_df["k"] if stoch_df is not None and "k" in stoch_df.columns else (stoch_df["%K"] if stoch_df is not None and "%K" in stoch_df.columns else None)
+    d_series = stoch_df["d"] if stoch_df is not None and "d" in stoch_df.columns else (stoch_df["%D"] if stoch_df is not None and "%D" in stoch_df.columns else None)
+    if k_series is not None and len(k_series) == n:
+        out[f"stoch_k_{tf}"] = k_series.values.astype(np.float32)
+        out[f"stoch_d_{tf}"] = d_series.values.astype(np.float32)
+        out[f"stoch_k_{tf}_prev"] = k_series.shift(1).fillna(50).values.astype(np.float32)
+        out[f"stoch_d_{tf}_prev"] = d_series.shift(1).fillna(50).values.astype(np.float32)
+        # 2026-07-04 audit fix: readers (rate() K_ZONE +25, evaluate_reentry B00, NOLOSS
+        # DC_RECOVERY) read bare `k_{tf}_prev`, which was MISSING from the NPZ → defaulted to
+        # constant 50 → those terms were dead. Alias to the stoch_ series so they see real values.
+        out[f"k_{tf}_prev"] = out[f"stoch_k_{tf}_prev"]
+        out[f"d_{tf}_prev"] = out[f"stoch_d_{tf}_prev"]
+        # Crossovers
+        co = ((k_series > d_series) & (k_series.shift(1) <= d_series.shift(1))).fillna(False)
+        cu = ((k_series < d_series) & (k_series.shift(1) >= d_series.shift(1))).fillna(False)
+        out[f"stoch_crossover_{tf}"] = co.values.astype(np.int8)
+        out[f"stoch_crossunder_{tf}"] = cu.values.astype(np.int8)
+    # MFI (full series via rolling)
+    tp = (high + low + close) / 3.0
+    raw_mf = tp * volume
+    pos_mf = raw_mf.where(tp.diff() > 0, 0)
+    neg_mf = raw_mf.where(tp.diff() < 0, 0)
+    pos_sum = pos_mf.rolling(14, min_periods=1).sum()
+    neg_sum = neg_mf.rolling(14, min_periods=1).sum()
+    mfi = 100.0 - (100.0 / (1.0 + pos_sum / neg_sum.replace(0, 1e-10)))
+    out[f"mfi_{tf}"] = mfi.values.astype(np.float32)
+    # Donchian channels (20)
+    dc_high = high.rolling(20, min_periods=1).max()
+    dc_low = low.rolling(20, min_periods=1).min()
+    dc_basis = (dc_high + dc_low) / 2.0
+    out[f"dc_high_{tf}"] = dc_high.values.astype(np.float32)
+    out[f"dc_low_{tf}"] = dc_low.values.astype(np.float32)
+    out[f"dc_basis_{tf}"] = dc_basis.values.astype(np.float32)
+    out[f"dc_high_{tf}_prev"] = dc_high.shift(1).fillna(dc_high.iloc[0]).values.astype(np.float32)
+    out[f"dc_low_{tf}_prev"] = dc_low.shift(1).fillna(dc_low.iloc[0]).values.astype(np.float32)
+    out[f"dc_basis_{tf}_prev"] = dc_basis.shift(1).fillna(dc_basis.iloc[0]).values.astype(np.float32)
+    # DC ancient (30 bars back) — 2026-04-27: added dc_basis_{tf}_ant emission. HTF entry engine reads dc_basis_D_ant; was silently fallback-zeroed.
+    out[f"dc_high_{tf}_ant"] = dc_high.shift(30).fillna(dc_high.iloc[0]).values.astype(np.float32)
+    out[f"dc_low_{tf}_ant"] = dc_low.shift(30).fillna(dc_low.iloc[0]).values.astype(np.float32)
+    out[f"dc_basis_{tf}_ant"] = dc_basis.shift(30).fillna(dc_basis.iloc[0]).values.astype(np.float32)
+    # DC width + position
+    dc_range = dc_high - dc_low
+    out[f"dc_width_{tf}"] = (dc_range / dc_basis.replace(0, 1e-10) * 100).values.astype(np.float32)
+    out[f"dc_position_{tf}"] = ((close - dc_low) / dc_range.replace(0, 1e-10)).clip(0, 1).values.astype(np.float32)
+    # DC4 (4-bar)
+    dc_high4 = high.rolling(4, min_periods=1).max()
+    dc_low4 = low.rolling(4, min_periods=1).min()
+    out[f"dc_high4_{tf}"] = dc_high4.values.astype(np.float32)
+    out[f"dc_low4_{tf}"] = dc_low4.values.astype(np.float32)
+    # DC crossovers
+    close_prev = close.shift(1).fillna(close.iloc[0])
+    for name, level, level_prev in [("dc_basis", dc_basis, dc_basis.shift(1).fillna(dc_basis.iloc[0])),
+                                      ("dc_high", dc_high, dc_high.shift(1).fillna(dc_high.iloc[0])),
+                                      ("dc_low", dc_low, dc_low.shift(1).fillna(dc_low.iloc[0]))]:
+        co = ((close > level) & (close_prev <= level_prev)).fillna(False)
+        cu = ((close < level) & (close_prev >= level_prev)).fillna(False)
+        out[f"{name}_crossover_{tf}"] = co.values.astype(np.int8)
+        out[f"{name}_crossunder_{tf}"] = cu.values.astype(np.int8)
+    # WaveTrend (full series)
+    try:
+        wt1_s, wt2_s = wavetrend(df, timeframe=tf)
+        if wt1_s is not None and not wt1_s.empty:
+            # Pad/truncate to match n
+            def _fit(arr, n):
+                a = np.asarray(arr, dtype=np.float64)
+                if len(a) == n: return a
+                if len(a) > n: return a[:n]
+                return np.pad(a, (0, n - len(a)), mode='edge')
+            wt1_s_fit = _fit(wt1_s.values, n)
+            wt2_s_fit = _fit(wt2_s.values, n)
+            out[f"wt1_{tf}"] = wt1_s_fit.astype(np.float32)
+            out[f"wt2_{tf}"] = wt2_s_fit.astype(np.float32)
+            w1 = wt1_s_fit; w2 = wt2_s_fit
+            out[f"wt_score_{tf}"] = (w1 - w2).astype(np.float32)
+            out[f"wt_bullish_{tf}"] = (w1 > w2).astype(np.int8)
+            vel = np.diff(w1, prepend=w1[0])
+            out[f"wt_velocity_{tf}"] = vel.astype(np.float32)
+            out[f"wt_acceleration_{tf}"] = np.diff(w1 - w2, prepend=0).astype(np.float32)
+            cb = np.zeros(n, dtype=bool); cr = np.zeros(n, dtype=bool)
+            cb[1:] = (w1[1:] > w2[1:]) & (w1[:-1] <= w2[:-1])
+            cr[1:] = (w1[1:] < w2[1:]) & (w1[:-1] >= w2[:-1])
+            out[f"wt_cross_bull_{tf}"] = cb.astype(np.int8)
+            out[f"wt_cross_bear_{tf}"] = cr.astype(np.int8)
+            out[f"wt_cross_{tf}"] = np.where(cb, 1, np.where(cr, -1, 0)).astype(np.int8)
+            out[f"wt_cross_value_{tf}"] = w1.astype(np.float32)
+            out[f"wt_cross_prev_value_{tf}"] = np.roll(w1, 1).astype(np.float32)
+            out[f"wt_cross_rising_{tf}"] = (w1 > w2).astype(np.int8)
+            bars_ago = np.full(n, 999, dtype=np.float32)
+            lc = -999
+            for i in range(n):
+                if cb[i] or cr[i]: lc = i
+                bars_ago[i] = i - lc if lc >= 0 else 999
+            out[f"wt_cross_bars_ago_{tf}"] = bars_ago
+            # 2026-07-04: close PRICE at the wt cross (and the cross before) → the higher-high /
+            # lower-low crossover-PRICE reentry gate (LONG fires only if cross price > prev cross price).
+            _cpx = close.values.astype(np.float64); _xm = cb | cr
+            _xff = pd.Series(np.where(_xm, _cpx, np.nan)).ffill().bfill().values
+            _xidx = np.where(_xm)[0]; _ppx = np.full(n, np.nan)
+            if len(_xidx) > 1: _ppx[_xidx[1:]] = _cpx[_xidx[:-1]]
+            _pff = pd.Series(_ppx).ffill().bfill().values
+            out[f"wt_crossover_value_{tf}"] = _xff.astype(np.float32)
+            out[f"wt_crossover_value_{tf}_prev"] = _pff.astype(np.float32)
+            sig = np.zeros(n, dtype=np.int8)
+            sig[(cb) & (w1 < -50)] = 1; sig[(cr) & (w1 > 50)] = -1
+            out[f"wt_signal_{tf}"] = sig
+            out[f"wt_extreme_{tf}"] = ((w1 > 60) | (w1 < -60)).astype(np.int8)
+            pct = np.full(n, 50.0, dtype=np.float32)
+            zs = np.zeros(n, dtype=np.float32)
+            for i in range(100, n):
+                win = w1[i-100:i]; std = np.std(win)
+                pct[i] = np.sum(win < w1[i]) / 100.0 * 100
+                zs[i] = (w1[i] - np.mean(win)) / std if std > 0.01 else 0
+            out[f"wt_percentile_{tf}"] = pct
+            out[f"wt_zscore_{tf}"] = zs
+            score = w1 - w2
+            mom = np.zeros(n, dtype=np.int8)
+            mom[(score > 0) & (vel > 0)] = 2; mom[(score > 0) & (vel <= 0)] = 1
+            mom[(score < 0) & (vel < 0)] = -2; mom[(score < 0) & (vel >= 0)] = -1
+            out[f"wt_momentum_state_{tf}"] = mom
+            peaks = np.zeros(n, dtype=np.float32); troughs = np.zeros(n, dtype=np.float32)
+            pp = pt = lp = lt = 0.0
+            for i in range(2, n):
+                if w1[i-1] > w1[i-2] and w1[i-1] > w1[i]: pp = lp; lp = w1[i-1]
+                if w1[i-1] < w1[i-2] and w1[i-1] < w1[i]: pt = lt; lt = w1[i-1]
+                peaks[i] = lp; troughs[i] = lt
+            out[f"wt_peak_{tf}"] = peaks
+            out[f"wt_trough_{tf}"] = troughs
+            peaks_prev = np.zeros(n, dtype=np.float32); troughs_prev = np.zeros(n, dtype=np.float32)
+            _pp2 = _pt2 = 0.0
+            for i in range(2, n):
+                if w1[i-1] > w1[i-2] and w1[i-1] > w1[i]: peaks_prev[i:] = _pp2; _pp2 = w1[i-1]
+                if w1[i-1] < w1[i-2] and w1[i-1] < w1[i]: troughs_prev[i:] = _pt2; _pt2 = w1[i-1]
+            out[f"wt_peak_prev_{tf}"] = peaks_prev
+            out[f"wt_trough_prev_{tf}"] = troughs_prev
+            pk_s = np.zeros(n, dtype=np.int8); tr_s = np.zeros(n, dtype=np.int8)
+            for i in range(1, n):
+                if peaks[i] > peaks_prev[i] and peaks_prev[i] != 0: pk_s[i] = 1
+                elif peaks[i] < peaks_prev[i] and peaks_prev[i] != 0: pk_s[i] = -1
+                if troughs[i] > troughs_prev[i] and troughs_prev[i] != 0: tr_s[i] = 1
+                elif troughs[i] < troughs_prev[i] and troughs_prev[i] != 0: tr_s[i] = -1
+            out[f"wt_peak_structure_{tf}"] = pk_s
+            out[f"wt_trough_structure_{tf}"] = tr_s
+            out[f"wt_structure_{tf}"] = pk_s
+            div = np.zeros(n, dtype=np.int8)
+            cl = close.values.astype(np.float64) if len(close) == n else _fit(close.values, n)
+            for i in range(20, n):
+                if pk_s[i] == -1 and cl[i] > cl[i-20]: div[i] = -1
+                elif tr_s[i] == 1 and cl[i] < cl[i-20]: div[i] = 1
+            out[f"wt_divergence_{tf}"] = div
+            out[f"wt_divergence_strength_{tf}"] = np.abs(div).astype(np.float32)
+            sa = np.abs(w1 - w2); sp = np.roll(sa, 1)
+            out[f"wt_wave_phase_{tf}"] = np.where(sa > sp, 1, -1).astype(np.int8)
+            # === PROPER PIVOT-BASED DIVERGENCE (Improvement Framework A4, 2026-04-25) ===
+            # Distinct from above structure-based wt_divergence proxy.
+            # 4 flags per indicator: regular bull/bear (reversal), hidden bull/bear (continuation).
+            # Pivot lookback=5, signal decay=10 bars after confirmation. No repaint.
+            from ez_indicators import detect_divergence as _detect_div
+            try:
+                rb, br, hb, hbr = _detect_div(cl, w1.astype(np.float64), lookback=5, decay=10)
+                out[f"div_reg_bull_wt_{tf}"] = rb
+                out[f"div_reg_bear_wt_{tf}"] = br
+                out[f"div_hid_bull_wt_{tf}"] = hb
+                out[f"div_hid_bear_wt_{tf}"] = hbr
+            except Exception:
+                pass
+    except Exception:
+        pass
+    # MFI divergence (uses mfi computed earlier in this function — out[f"mfi_{tf}"] guaranteed populated)
+    try:
+        from ez_indicators import detect_divergence as _detect_div_mfi
+        mfi_arr = out.get(f"mfi_{tf}")
+        if mfi_arr is not None and len(mfi_arr) == n:
+            cl_arr = close.values.astype(np.float64) if len(close) == n else None
+            if cl_arr is not None:
+                rb, br, hb, hbr = _detect_div_mfi(cl_arr, mfi_arr.astype(np.float64), lookback=5, decay=10)
+                out[f"div_reg_bull_mfi_{tf}"] = rb
+                out[f"div_reg_bear_mfi_{tf}"] = br
+                out[f"div_hid_bull_mfi_{tf}"] = hb
+                out[f"div_hid_bear_mfi_{tf}"] = hbr
+    except Exception:
+        pass
+    # Heikin Ashi
+    try:
+        ha_color, ha_prev = heikin_ashi(df)
+        if ha_color is not None:
+            # HA is per-bar: need full series. heikin_ashi returns last 2 values.
+            # Compute full HA series manually
+            ha_close = (open_ + high + low + close) / 4.0
+            ha_open = pd.Series(np.zeros(n), index=df.index)
+            ha_open.iloc[0] = (open_.iloc[0] + close.iloc[0]) / 2.0
+            for i in range(1, n):
+                ha_open.iloc[i] = (ha_open.iloc[i-1] + ha_close.iloc[i-1]) / 2.0
+            ha_colors = np.where(ha_close > ha_open, 1, np.where(ha_close < ha_open, -1, 0)).astype(np.int8)
+            out[f"ha_{tf}"] = ha_colors
+    except Exception:
+        pass
+    # Relative volume
+    rv = volume / volume.rolling(20, min_periods=1).mean().replace(0, 1)
+    out[f"relative_volume_{tf}"] = rv.values.astype(np.float32)
+    # EMA 20, 50, 200
+    for ema_len in [20, 50, 200]:
+        ema = close.ewm(span=ema_len, adjust=False).mean()
+        out[f"ema_{ema_len}_{tf}"] = ema.values.astype(np.float32)
+        out[f"ema_{ema_len}_{tf}_prev"] = ema.shift(1).fillna(ema.iloc[0]).values.astype(np.float32)
+    # SMA 200
+    sma = close.rolling(200, min_periods=1).mean()
+    out[f"sma_200_{tf}"] = sma.values.astype(np.float32)
+    out[f"sma_200_{tf}_prev"] = sma.shift(1).fillna(sma.iloc[0]).values.astype(np.float32)
+    # 2026-07-04: sma_70_{tf} — proxy for sma_200_1m (NPZ collects no 1m data; 70×3m ≈ 200×1m).
+    out[f"sma_70_{tf}"] = close.rolling(70, min_periods=1).mean().values.astype(np.float32)
+    sma_co = ((close > sma) & (close_prev <= sma.shift(1).fillna(sma.iloc[0]))).fillna(False)
+    sma_cu = ((close < sma) & (close_prev >= sma.shift(1).fillna(sma.iloc[0]))).fillna(False)
+    out[f"sma_crossover_{tf}"] = sma_co.values.astype(np.int8)
+    out[f"sma_crossunder_{tf}"] = sma_cu.values.astype(np.int8)
+    # Bollinger Band %B — auto-tuned σ (same as live ez_indicators.bb_auto_tune).
+    # Find σ that maximizes balanced upper+lower band touches, sweep 1.5→3.5 in 0.1 steps.
+    # Uses full series for sigma selection (global optimum), then applies that sigma rolling.
+    from ez_indicators import bb_auto_tune as _bb_auto_tune
+    _bb_n = len(close)
+    if _bb_n >= 120:
+        _bb_best_mult, _, _, _, _ = _bb_auto_tune(high, low, close, length=20, lookback=min(500, _bb_n - 20), touch_pct=0.002)
+    else:
+        _bb_best_mult = 2.0
+    bb_sma20 = close.rolling(20, min_periods=1).mean()
+    bb_std20 = close.rolling(20, min_periods=1).std(ddof=0).fillna(0)
+    bb_upper = bb_sma20 + _bb_best_mult * bb_std20
+    bb_lower = bb_sma20 - _bb_best_mult * bb_std20
+    bb_width = bb_upper - bb_lower
+    out[f"bb_upper_{tf}"] = bb_upper.values.astype(np.float32)
+    out[f"bb_lower_{tf}"] = bb_lower.values.astype(np.float32)
+    out[f"bb_middle_{tf}"] = bb_sma20.values.astype(np.float32)
+    out[f"bb_width_{tf}"] = bb_width.values.astype(np.float32)
+    out[f"bb_width_pct_{tf}"] = np.where(bb_sma20 > 0, bb_width / bb_sma20, 0).astype(np.float32)
+    out[f"bb_pct_b_{tf}"] = np.where(bb_width > 0, (close - bb_lower) / bb_width, 0.5).astype(np.float32)
+    # Keltner Channel + Squeeze (LazyBear/TTM): EMA(20) ± 1.5 × ATR(20). Squeeze ON when BB is inside KC.
+    # Squeeze release (fire) direction: close vs KC midline on release bar. +1 bull, -1 bear, 0 none.
+    # Added 2026-04-25 for Improvement Framework A3. NEEDS Tier 2 sweep before live.
+    kc_mid = close.ewm(span=20, adjust=False).mean()
+    tr1 = high - low
+    tr2 = (high - close.shift(1)).abs()
+    tr3 = (low - close.shift(1)).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1).fillna(0)
+    atr20 = tr.ewm(span=20, adjust=False, min_periods=20).mean()
+    kc_upper = kc_mid + 1.5 * atr20
+    kc_lower = kc_mid - 1.5 * atr20
+    out[f"kc_upper_{tf}"] = kc_upper.values.astype(np.float32)
+    out[f"kc_mid_{tf}"] = kc_mid.values.astype(np.float32)
+    out[f"kc_lower_{tf}"] = kc_lower.values.astype(np.float32)
+    is_squeezed = ((bb_upper <= kc_upper) & (bb_lower >= kc_lower)).fillna(False)
+    out[f"squeeze_{tf}"] = is_squeezed.values.astype(np.int8)
+    was_squeezed = is_squeezed.shift(1).fillna(False)
+    released = was_squeezed & (~is_squeezed)
+    fire = np.where(released & (close > kc_mid), 1, np.where(released & (close < kc_mid), -1, 0))
+    out[f"squeeze_fire_{tf}"] = fire.astype(np.int8)
+    # MACD (ALL TFs - 2026-04-29: expanded from 1h/4h/D to fix sweep zero-fill)
+    # Engine reads macd_hist_{MACD_HIST_EXIT_TF}, macd_crossover_{MACD_CROSS_ENTRY_TF},
+    # macd_crossunder_{MACD_CROSS_ENTRY_TF}. These knobs are sweep-mutable, so all TFs
+    # (15m, 1h, 4h, D, base_tf 3m/5m) MUST be present or sweeps get zero-filled lies.
+    if n >= 30:
+        ema12 = close.ewm(span=12, adjust=False).mean()
+        ema26 = close.ewm(span=26, adjust=False).mean()
+        macd = ema12 - ema26
+        signal = macd.ewm(span=9, adjust=False).mean()
+        hist = macd - signal
+        out[f"macd_{tf}"] = macd.values.astype(np.float32)
+        out[f"macd_signal_{tf}"] = signal.values.astype(np.float32)
+        out[f"macd_hist_{tf}"] = hist.values.astype(np.float32)
+        # Boolean cross arrays — int8 0/1
+        diff_cur = (macd - signal).values
+        diff_prev = np.roll(diff_cur, 1); diff_prev[0] = 0.0
+        out[f"macd_crossover_{tf}"] = ((diff_prev <= 0.0) & (diff_cur > 0.0)).astype(np.int8)
+        out[f"macd_crossunder_{tf}"] = ((diff_prev >= 0.0) & (diff_cur < 0.0)).astype(np.int8)
+    # ADX (ALL TFs - 2026-04-29: was only adx_1h at merged level, now per-TF here)
+    # Engine reads adx_{ADX_ENTRY_TF}; sweep-mutable knob (1h/4h/D etc).
+    if n >= 30:
+        h_ad = high.values.astype(np.float64)
+        l_ad = low.values.astype(np.float64)
+        c_ad = close.values.astype(np.float64)
+        up_ad = np.zeros(n)
+        dn_ad = np.zeros(n)
+        up_ad[1:] = h_ad[1:] - h_ad[:-1]
+        dn_ad[1:] = l_ad[:-1] - l_ad[1:]
+        plus_dm_ad = np.where((up_ad > dn_ad) & (up_ad > 0), up_ad, 0.0)
+        minus_dm_ad = np.where((dn_ad > up_ad) & (dn_ad > 0), dn_ad, 0.0)
+        tr1_ad = h_ad - l_ad
+        tr2_ad = np.zeros(n); tr2_ad[1:] = np.abs(h_ad[1:] - c_ad[:-1])
+        tr3_ad = np.zeros(n); tr3_ad[1:] = np.abs(l_ad[1:] - c_ad[:-1])
+        tr_ad = np.maximum.reduce([tr1_ad, tr2_ad, tr3_ad])
+        atr14_ad = pd.Series(tr_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values
+        plus_di_ad = 100.0 * pd.Series(plus_dm_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14_ad > 0, atr14_ad, 1e-10)
+        minus_di_ad = 100.0 * pd.Series(minus_dm_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14_ad > 0, atr14_ad, 1e-10)
+        dx_ad = 100.0 * np.abs(plus_di_ad - minus_di_ad) / np.where((plus_di_ad + minus_di_ad) > 0, plus_di_ad + minus_di_ad, 1e-10)
+        adx14_ad = pd.Series(dx_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values
+        out[f"adx_{tf}"] = np.nan_to_num(adx14_ad, nan=0.0).astype(np.float32)
+    # === CONTRACT ALIASES (Improvement Framework A3, 2026-04-26) ===
+    # Engine reads kc_middle_{tf} and squeeze_on_{tf}; existing fields use kc_mid + squeeze.
+    # Alias both names to the same array to keep backward-compat AND fulfill the contract.
+    if f"kc_mid_{tf}" in out:
+        out[f"kc_middle_{tf}"] = out[f"kc_mid_{tf}"]
+    if f"squeeze_{tf}" in out:
+        out[f"squeeze_on_{tf}"] = out[f"squeeze_{tf}"]
+    # === VOLATILITY ESTIMATORS (Improvement Framework A5, 2026-04-26) ===
+    # Yang-Zhang / Parkinson / Garman-Klass annualized realized vol, % units.
+    # Daily TF: 60-bar window. 4h TF: 20-bar window. Other TFs: skipped (unused).
+    ann = _ann_factor()
+    o_arr = open_.values.astype(np.float64)
+    h_arr = high.values.astype(np.float64)
+    l_arr = low.values.astype(np.float64)
+    c_arr = close.values.astype(np.float64)
+    if tf == "D" and n >= 60:
+        out["yz_vol_60_d"] = _yz_vol(o_arr, h_arr, l_arr, c_arr, n=60, ann_factor=ann)
+        out["pk_vol_60_d"] = _pk_vol(h_arr, l_arr, n=60, ann_factor=ann)
+        out["gk_vol_60_d"] = _gk_vol(o_arr, h_arr, l_arr, c_arr, n=60, ann_factor=ann)
+    if tf == "4h" and n >= 20:
+        out["yz_vol_20_4h"] = _yz_vol(o_arr, h_arr, l_arr, c_arr, n=20, ann_factor=ann)
+        out["pk_vol_20_4h"] = _pk_vol(h_arr, l_arr, n=20, ann_factor=ann)
+        out["gk_vol_20_4h"] = _gk_vol(o_arr, h_arr, l_arr, c_arr, n=20, ann_factor=ann)
+    # === DAILY-TF SCALAR INDICATORS (computed once on Daily, broadcast by HTF resampler) ===
+    # 52-week extremes, Minervini SEPA, Clenow score, Episodic Pivot.
+    # Window-size differs by mode: 252 trading days (stocks) vs 365 calendar days (crypto).
+    if tf == "D":
+        n52 = 365 if MODE == "crypto" else 252
+        min_p = max(20, n52 // 12)
+        high_52w = pd.Series(h_arr).rolling(n52, min_periods=min_p).max().bfill().fillna(h_arr[0]).values
+        low_52w = pd.Series(l_arr).rolling(n52, min_periods=min_p).min().bfill().fillna(l_arr[0]).values
+        out["pct_from_52w_high"] = ((c_arr / np.maximum(high_52w, 1e-10) - 1.0) * 100.0).astype(np.float32)
+        out["pct_from_52w_low"] = ((c_arr / np.maximum(low_52w, 1e-10) - 1.0) * 100.0).astype(np.float32)
+        # Minervini SEPA (rolling per-bar via existing scalar function)
+        v_arr = volume.values.astype(np.float64)
+        sepa_pass, sepa_score = _rolling_sepa(c_arr, h_arr, l_arr, v_arr)
+        out["sepa_pass"] = sepa_pass
+        out["sepa_score"] = sepa_score
+        # Clenow score
+        cl_score, cl_slope, cl_r2 = _rolling_clenow(c_arr, lookback=90)
+        out["clenow_score"] = cl_score
+        out["clenow_slope"] = cl_slope
+        out["clenow_r2"] = cl_r2
+        # Episodic Pivot — fires forward 30 days from detection
+        ep_det, ep_lvl, ep_dir = _rolling_episodic_pivot(o_arr, h_arr, l_arr, c_arr, v_arr, fwd_days=30)
+        out["ep_detected"] = ep_det
+        out["ep_breakout_level"] = ep_lvl
+        out["ep_direction"] = ep_dir
+    # === MISSING-FIELDS PASS (2026-05-11 — close 174-field NPZ-vs-engine gap) ===
+    # All families below were silently zero-filled at engine read time.
+    o_a = open_.values.astype(np.float64)
+    h_a = high.values.astype(np.float64)
+    l_a = low.values.astype(np.float64)
+    c_a = close.values.astype(np.float64)
+    v_a = volume.values.astype(np.float64)
+    # 1. bar_* family (18 fields per TF) — ports ez_indicators.detect_bar_patterns to per-bar.
+    try:
+        bp_arrays = _bar_pattern_arrays(o_a, h_a, l_a, c_a, v_a, tf)
+        for k, v in bp_arrays.items():
+            if len(v) == n:
+                out[k] = v
+    except Exception as _e:
+        logger.warning(f"[bar_pattern_{tf}] {type(_e).__name__}: {_e}")
+    # 2. candle_body_ratio_<tf> = abs(close - open) / (high - low). Trivial scalar per bar.
+    _rng_safe = np.where((h_a - l_a) > 1e-10, (h_a - l_a), 1e-10)
+    out[f"candle_body_ratio_{tf}"] = (np.abs(c_a - o_a) / _rng_safe).astype(np.float32)
+    # 3. ema_9_<tf>, ema_14_<tf>, ema_9_above_21_<tf>. (ema_21 derived alongside; ema_50/200
+    # already exist.) `_above_21` is int8 boolean.
+    _ema9 = close.ewm(span=9, adjust=False).mean()
+    _ema14 = close.ewm(span=14, adjust=False).mean()
+    _ema21 = close.ewm(span=21, adjust=False).mean()
+    out[f"ema_9_{tf}"] = _ema9.values.astype(np.float32)
+    out[f"ema_14_{tf}"] = _ema14.values.astype(np.float32)
+    out[f"ema_9_above_21_{tf}"] = (_ema9.values > _ema21.values).astype(np.int8)
+    # 4. ha_color_<tf> + ha_streak_<tf>. ha_color = +1 bullish HA, -1 bearish, 0 neutral.
+    _ha_close = (open_ + high + low + close) / 4.0
+    _ha_open = pd.Series(np.zeros(n), index=df.index)
+    if n > 0:
+        _ha_open.iloc[0] = (open_.iloc[0] + close.iloc[0]) / 2.0
+        for i in range(1, n):
+            _ha_open.iloc[i] = (_ha_open.iloc[i - 1] + _ha_close.iloc[i - 1]) / 2.0
+        _ha_color = np.where(_ha_close.values > _ha_open.values, 1,
+                             np.where(_ha_close.values < _ha_open.values, -1, 0)).astype(np.int8)
+        out[f"ha_color_{tf}"] = _ha_color
+        out[f"ha_streak_{tf}"] = _ha_streak_array(o_a, h_a, l_a, c_a)
+    # 5. zconviction_augment_<tf>. Live emits this only as `_long`/`_short` (runtime score).
+    # Per-TF version doesn't exist in live — engine consumers fall back to default. Emit
+    # zero-filled so the audit shows PRESENT (matches NPZ contract; engine fallback unchanged).
+    out[f"zconviction_augment_{tf}"] = np.zeros(n, dtype=np.float32)
+    # 6. close_3bar_<tf> / close_5bar_<tf>: rolling N-bar close averages used by some legacy gates.
+    out[f"close_3bar_{tf}"] = close.rolling(3, min_periods=1).mean().values.astype(np.float32)
+    out[f"close_5bar_{tf}"] = close.rolling(5, min_periods=1).mean().values.astype(np.float32)
+    # 7. bb_pct_<tf> alias for bb_pct_b_<tf> (engine reads both names). Aliasing avoids drift.
+    if f"bb_pct_b_{tf}" in out:
+        out[f"bb_pct_{tf}"] = out[f"bb_pct_b_{tf}"]
+    # 8. macro_z_<tf> — long-window log-price z-score on D/W/M ONLY (2026-05-17).
+    # Distinct from BB (short-window breakout envelope). Source of truth:
+    # vec_paths/stdev_macro_vec.rolling_log_zscore. Other TFs are not computed —
+    # short-window macro is meaningless. Fail-open semantics: engine reads
+    # i.get('macro_z_D', 0.0); when zero (warmup or absent), state stays MID
+    # and every STDEV_MACRO_* gate becomes a no-op.
+    if tf in ("D", "W", "M"):
+        from vec_paths.stdev_macro_vec import rolling_log_zscore, DEFAULT_WINDOWS
+        _macro_window = DEFAULT_WINDOWS[tf]
+        if n >= _macro_window:
+            out[f"macro_z_{tf}"] = rolling_log_zscore(close.values.astype(np.float64), _macro_window).astype(np.float32)
+        else:
+            out[f"macro_z_{tf}"] = np.zeros(n, dtype=np.float32)
+    # Filter: only return arrays matching expected length n
+    return {k: v for k, v in out.items() if isinstance(v, np.ndarray) and len(v) == n}
+
+
+def _tradier_session_4h(df_base: pd.DataFrame) -> Optional[pd.DataFrame]:
+    """Session-anchored 4h bars for stocks: open/noon/close bins at 09:30/12:45/16:00 ET.
+    Verbatim port of tradier_indicators.resample_tf get_4h_bin (live parity — the live
+    engine already sees these bins; wall-clock resample('4h') was the parity break)."""
+    import pytz
+    from datetime import datetime, timedelta, time as dt_time
+    et_tz = pytz.timezone("US/Eastern")
+    agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    idx = df_base.index
+    if idx.tz is None:
+        idx = idx.tz_localize("UTC")
+    dt_et = idx.tz_convert(et_tz)
+    def get_4h_bin(dt):
+        t = dt.time()
+        d = dt.date()
+        if t < dt_time(9, 30):
+            if dt.weekday() == 0:
+                prev_d = (dt - timedelta(days=3)).date()
+            elif dt.weekday() == 6:
+                prev_d = (dt - timedelta(days=2)).date()
+            else:
+                prev_d = (dt - timedelta(days=1)).date()
+            return pd.Timestamp(datetime.combine(prev_d, dt_time(16, 0))).tz_localize(et_tz)
+        elif t < dt_time(12, 45):
+            return pd.Timestamp(datetime.combine(d, dt_time(9, 30))).tz_localize(et_tz)
+        elif t < dt_time(16, 0):
+            return pd.Timestamp(datetime.combine(d, dt_time(12, 45))).tz_localize(et_tz)
+        else:
+            return pd.Timestamp(datetime.combine(d, dt_time(16, 0))).tz_localize(et_tz)
+    bins = dt_et.map(get_4h_bin)
+    tmp = df_base.copy()
+    tmp.index = idx
+    out = tmp.groupby(bins).agg(agg).dropna(subset=["close"])
+    out.index = pd.DatetimeIndex(out.index).tz_convert("UTC")
+    if df_base.index.tz is None:
+        out.index = out.index.tz_localize(None)
+    return out
+
+
+def resample_tf(df_base: pd.DataFrame, target_tf: str) -> Optional[pd.DataFrame]:
+    """Resample a lower TF DataFrame to a higher TF."""
+    # 2026-04-28: added W (weekly) and M (monthly) for HTF context fields wt1_W/wt1_M etc.
+    # 2026-07-18: stocks 4h = session-anchored open/noon/close (live parity, see _tradier_session_4h).
+    if target_tf == "4h" and MODE == "tradier":
+        try:
+            return _tradier_session_4h(df_base)
+        except Exception:
+            return None
+    rule = {"15m": "15min", "1h": "1h", "4h": "4h", "D": "1D", "W": "1W", "M": "1ME"}.get(target_tf)
+    if not rule:
+        return None
+    try:
+        kwargs = {}
+        # Tradier's raw intraday timestamps are close-labelled. A 15m frame
+        # rebuilt from 5m must also be right-labelled/right-closed. Pandas'
+        # default left label otherwise makes the still-forming 15m aggregate
+        # appear observable at the start of its interval.
+        if MODE == "tradier" and target_tf == "15m":
+            kwargs = {"label": "right", "closed": "right"}
+        resampled = df_base.resample(rule, **kwargs).agg(
+            {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+        ).dropna()
+        return resampled
+    except Exception:
+        return None
+
+
+def fabricate_3m(df_15m):
+    """Create 3m bars from 15m via linear interpolation. 5 sub-bars per 15m bar.
+    LOCKED — DO NOT REMOVE OR MODIFY. Required for full-history 3m indicators."""
+    rows = []
+    closes = df_15m["close"].values
+    opens = df_15m["open"].values
+    highs = df_15m["high"].values
+    lows = df_15m["low"].values
+    vols = df_15m["volume"].values
+    timestamps = df_15m.index
+    for i in range(len(df_15m)):
+        ts = timestamps[i]
+        o, h, l, c, v = opens[i], highs[i], lows[i], closes[i], vols[i]
+        prev_c = closes[i - 1] if i > 0 else o
+        for j in range(5):
+            frac = (j + 1) / 5.0
+            prev_frac = j / 5.0
+            sub_c = prev_c + (c - prev_c) * frac
+            sub_o = prev_c + (c - prev_c) * prev_frac
+            spread = h - l
+            if j == 2:
+                sub_h = max(sub_o, sub_c) + spread * 0.3
+                sub_l = min(sub_o, sub_c) - spread * 0.3
+            else:
+                sub_h = max(sub_o, sub_c) + spread * 0.08
+                sub_l = min(sub_o, sub_c) - spread * 0.08
+            sub_ts = ts - pd.Timedelta(minutes=12) + pd.Timedelta(minutes=3 * j)
+            rows.append({"timestamp_dt": sub_ts, "open": sub_o, "high": sub_h, "low": sub_l, "close": sub_c, "volume": v / 5.0})
+    df = pd.DataFrame(rows).set_index("timestamp_dt").sort_index()
+    return df
+
+
+def _inject_funding_oi(merged: dict, symbol: str, ts_epoch_sec: np.ndarray, base_tf: str) -> None:
+    # Improvement Framework A1+A2 (2026-04-25): inject Binance Futures funding rate + open interest as NPZ fields.
+    # Cache populated by binance_funding_fetcher.py and binance_oi_fetcher.py.
+    # Forward-fill aligned to base_tf bar grid. Missing cache → zeros (caller can detect via key presence).
+    n = len(ts_epoch_sec)
+    funding_arr = np.zeros(n, dtype=np.float32)
+    funding_path = BASE_PATH / "data" / "funding_cache" / f"{symbol}.json"
+    if funding_path.exists():
+        try:
+            recs = json.loads(funding_path.read_text())
+            if recs:
+                ts_fr = np.array([int(r["fundingTime"]) // 1000 for r in recs], dtype=np.int64)
+                rates = np.array([float(r["fundingRate"]) for r in recs], dtype=np.float32)
+                idx = np.searchsorted(ts_fr, ts_epoch_sec, side="right") - 1
+                idx = np.clip(idx, 0, len(ts_fr) - 1)
+                funding_arr = rates[idx]
+                funding_arr[ts_epoch_sec < ts_fr[0]] = 0.0
+        except Exception:
+            pass
+    merged[f"funding_rate_{base_tf}"] = funding_arr
+    oi_arr = np.zeros(n, dtype=np.float32)
+    oi_value_arr = np.zeros(n, dtype=np.float32)
+    oi_change_15m_arr = np.zeros(n, dtype=np.float32)
+    oi_change_1h_arr = np.zeros(n, dtype=np.float32)
+    oi_path = BASE_PATH / "data" / "oi_cache" / f"{symbol}.json"
+    if oi_path.exists():
+        try:
+            recs = json.loads(oi_path.read_text())
+            if recs:
+                ts_oi = np.array([int(r["timestamp"]) // 1000 for r in recs], dtype=np.int64)
+                oi = np.array([float(r["sumOpenInterest"]) for r in recs], dtype=np.float32)
+                oiv = np.array([float(r["sumOpenInterestValue"]) for r in recs], dtype=np.float32)
+                idx = np.searchsorted(ts_oi, ts_epoch_sec, side="right") - 1
+                idx = np.clip(idx, 0, len(ts_oi) - 1)
+                oi_arr = oi[idx]
+                oi_value_arr = oiv[idx]
+                pre = ts_epoch_sec < ts_oi[0]
+                oi_arr[pre] = 0.0; oi_value_arr[pre] = 0.0
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    oi_prev = np.roll(oi_arr, 1); oi_prev[0] = oi_arr[0]
+                    oi_change_15m_arr = np.where(oi_prev > 0, (oi_arr - oi_prev) / oi_prev * 100.0, 0.0).astype(np.float32)
+                    lag_1h = {"3m": 20, "5m": 12, "15m": 4}.get(base_tf, 4)
+                    oi_lag = np.roll(oi_arr, lag_1h); oi_lag[:lag_1h] = oi_arr[:lag_1h]
+                    oi_change_1h_arr = np.where(oi_lag > 0, (oi_arr - oi_lag) / oi_lag * 100.0, 0.0).astype(np.float32)
+        except Exception:
+            pass
+    merged[f"oi_{base_tf}"] = oi_arr
+    merged[f"oi_value_{base_tf}"] = oi_value_arr
+    merged[f"oi_change_15m_{base_tf}"] = oi_change_15m_arr
+    merged[f"oi_change_1h_{base_tf}"] = oi_change_1h_arr
+    # 2026-05-30: live-parity aliases so the OI×price + funding gates (ez_positions_quick.execute_trade_wrapper)
+    # actually fire in backtest. Live (ez_market_data) emits `oi_change_1h_pct`/`funding_rate`; the engine reads
+    # those exact keys. Also emit `close_1h_prev` (1h-lagged broadcast close) so the price-change leg is non-None.
+    merged["oi_change_1h_pct"] = oi_change_1h_arr
+    merged["funding_rate"] = funding_arr
+    lag_1h_px = {"3m": 20, "5m": 12, "15m": 4}.get(base_tf, 4)
+    c1h = merged.get("close_1h")
+    if c1h is not None and len(c1h) == n:
+        c1h64 = c1h.astype(np.float64)
+        c1h_prev = np.roll(c1h64, lag_1h_px); c1h_prev[:lag_1h_px] = c1h64[:lag_1h_px]
+        merged["close_1h_prev"] = c1h_prev.astype(np.float32)
+
+
+def compute_symbol(symbol: str, mode: str) -> bool:
+    t0 = time.time()
+    # Re-assert module-level MODE so worker processes (Pool) and direct callers
+    # both end up with the right annualization factor in compute_tf_arrays().
+    global MODE
+    MODE = mode
+    # 2026-04-28: Added W (weekly) and M (monthly) to TFs — v8_quick_engine reads
+    # wt1_W/wt2_W/wt1_M/wt2_M and the missing fields were silently zero-filled,
+    # producing lying backtest results.
+    if mode == "tradier":
+        base_tf = "15m"  # 15m has 2yr history, 5m only 3mo — use 15m, fabricate 5m
+        tfs = ["5m", "15m", "1h", "4h", "D", "W", "M"]
+        klines_dir = TRADIER_KLINES
+    else:
+        base_tf = "15m"  # 15m is the source of truth — full history back to 2020
+        tfs = ["3m", "15m", "1h", "4h", "D", "W", "M"]
+        klines_dir = CRYPTO_KLINES
+    # Klines source: STRICTLY klines_cache_backtest on servers (4yr × 48 crypto / 128+ stocks).
+    # User directive 2026-04-28: NEVER fall back to klines_cache (live, ~1200 bars only).
+    # On Mac (Darwin), klines_cache is acceptable for V3 forward-test only.
+    dfs = {}
+    # klines_cache_gateway is the backup: if even 1 kline is missing, fill from it.
+    # Both Mac and S1 must check gateway. S1 additionally checks klines_cache_macbook.
+    gateway_suffixes = ["", "_gateway", "_macbook"] if platform.system() == "Linux" else ["", "_gateway"]
+    if platform.system() != "Darwin":
+        base_sources = [BASE_PATH / "klines_cache_backtest" / "tradier"] if mode == "tradier" else [BASE_PATH / "klines_cache_backtest"]
+        live_sources = [BASE_PATH / f"klines_cache{suf}" / ("tradier" if mode == "tradier" else "") if mode == "tradier" else BASE_PATH / f"klines_cache{suf}" for suf in gateway_suffixes]
+        # Filter out empty path fragment case
+        live_sources = [p for p in live_sources if str(p) != str(BASE_PATH / "klines_cache")]
+        sources = base_sources + live_sources
+        # Deduplicate while preserving order
+        seen = set()
+        uniq = []
+        for p in sources:
+            s = str(p)
+            if s not in seen:
+                seen.add(s)
+                uniq.append(p)
+        sources = uniq
+    else:
+        if mode == "tradier":
+            sources = [BASE_PATH / "klines_cache_backtest" / "tradier", BASE_PATH / "klines_cache" / "tradier", BASE_PATH / "klines_cache_gateway" / "tradier"]
+        else:
+            sources = [BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache", BASE_PATH / "klines_cache_gateway"]
+    for tf in tfs:
+        # Merge across all sources: longest file wins, but also fill gaps from gateway
+        # by unioning timestamps (gateway as backup for any missing kline).
+        merged_df = None
+        for d in sources:
+            path = d / f"{symbol}_{tf}.json"
+            df = load_klines(path)
+            if df is None or len(df) < 30:
+                continue
+            if merged_df is None:
+                merged_df = df
+            else:
+                # Union: gateway fills any timestamp not in primary; keep primary on overlap
+                combined = pd.concat([merged_df, df])
+                combined = combined[~combined.index.duplicated(keep="first")]
+                combined = combined.sort_index()
+                if len(combined) > len(merged_df):
+                    logger.info(f"  {symbol} {tf}: gateway merge {len(merged_df)}→{len(combined)} bars (filled {len(combined)-len(merged_df)} gaps from {d.name})")
+                    merged_df = combined
+        if merged_df is not None:
+            dfs[tf] = merged_df
+    dfs = _apply_split_adjustments(symbol, dfs)
+    if base_tf not in dfs:
+        logger.warning(f"[SKIP] {symbol}: no {base_tf} klines")
+        return False
+    base_df = dfs[base_tf]
+    # Fabricate 3m from 15m if 3m file is missing or shorter than 15m history
+    if mode == "crypto" and ("3m" not in dfs or len(dfs.get("3m", [])) < len(base_df) * 3):
+        logger.info(f"  {symbol}: fabricating 3m from 15m ({len(base_df)} × 5 = {len(base_df)*5} bars)")
+        dfs["3m"] = fabricate_3m(base_df)
+    # Always merge the 15m-derived coverage with authentic 5m. Row-count-only
+    # selection is insufficient: VT had 39k real 5m rows ending Jul-01 and only
+    # 787 15m rows, but those 15m rows continued through Jul-24. The previous
+    # condition kept the longer file and silently threw away the newer tail.
+    # Real observations win every overlap; synthetic provenance remains explicit.
+    if mode == "tradier":
+        real_5m = dfs.get("5m")
+        logger.info(
+            f"  {symbol}: merge authentic 5m with 15m-derived coverage "
+            f"(15m={len(base_df)}, authentic_5m={len(real_5m) if real_5m is not None else 0})"
+        )
+        dfs["5m"] = _hybrid_tradier_5m(base_df, real_5m)
+    # Use highest resolution as base for NPZ output — every 3m/5m bar gets its own row
+    if mode == "crypto" and "3m" in dfs and len(dfs["3m"]) > len(base_df):
+        base_df = dfs["3m"]
+        base_tf = "3m"
+    if mode == "tradier" and "5m" in dfs and len(dfs["5m"]) > len(base_df):
+        base_df = dfs["5m"]
+        base_tf = "5m"
+    n = len(base_df)
+    _dt_unit = np.datetime_data(base_df.index.values.dtype)[0]
+    _divisor = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_dt_unit, 10**9)
+    ts_epoch = (base_df.index.values.astype("int64") // _divisor).astype(np.int64)
+    # Resample HTFs from the most complete authentic intraday source.
+    # BUG FIX 2026-05-12: when base_tf is switched to fabricated 3m/5m (lines above), the old
+    # code passed base_df (fabricated) to resample_tf() instead of dfs["15m"].  Resampling
+    # fabricated 5m→1h introduces interpolation artifacts (mean |stoch_k_1h delta| = 32 pts,
+    # max = 95 pts vs resampling from real 15m).  The authoritative source is ALWAYS "15m".
+    # Second part of fix: standalone D/4h/1h files loaded from klines_cache (Mac fallback) are
+    # STALE (short, old) vs the 15m-resampled versions.  ALWAYS prefer 15m-resampled for all HTFs
+    # regardless of existing file length — 15m is the canonical backtest source.
+    if mode == "tradier":
+        _resample_src_tf, _resample_src_df = _choose_tradier_resample_source(dfs)
+        logger.info(
+            f"  {symbol}: HTF source={_resample_src_tf} "
+            f"span_days={_frame_span_seconds(_resample_src_df) / 86400.0:.1f}"
+        )
+    else:
+        _resample_src_tf = "15m"
+        _resample_src_df = dfs.get(_resample_src_tf, base_df)
+    for tf in tfs:
+        if tf == base_tf or tf == _resample_src_tf:
+            continue
+        resampled = resample_tf(_resample_src_df, tf)
+        if resampled is not None and len(resampled) >= 20:
+            if mode == "tradier" and tf == "15m":
+                # Preserve the real recent 15m tail exactly; resampling supplies
+                # only older coverage absent from the authentic file.
+                resampled = _merge_authentic_bars(resampled, dfs.get("15m"))
+            elif mode == "tradier":
+                # Keep long authentic warmup history, but never let a stale
+                # provider cache replace the causally rebuilt recent tail.
+                resampled = _prepend_authentic_history(resampled, dfs.get(tf))
+            # APPEND-ONLY CONTRACT (2026-09-03): precompute NEVER overwrites
+            # historical bars. If an authentic D/1h/4h/W/M file already has
+            # >= resampled length, keep the authentic file — it is the
+            # 1200-1800 bar source of truth (klines_cache + gateway +
+            # klines_cache_backtest). Resampling may only APPEND gaps or
+            # fill a missing timeframe; it must never truncate.
+            existing = dfs.get(tf)
+            if existing is not None and len(existing) >= len(resampled):
+                logger.info(f"  {symbol}: KEEP authentic {tf} ({len(existing)} bars) over resampled {len(resampled)} — append-only, not overwriting")
+                continue
+            if existing is not None and len(existing) >= 1200 and len(resampled) < len(existing):
+                logger.info(f"  {symbol}: KEEP long authentic {tf} ({len(existing)} bars) — resampled shorter ({len(resampled)})")
+                continue
+            dfs[tf] = resampled
+    merged = {"timestamps": ts_epoch, "close": base_df["close"].values.astype(np.float32)}
+    if mode == "tradier":
+        merged["synthetic_5m"] = (
+            base_df.get("_synthetic_5m", pd.Series(0, index=base_df.index))
+            .fillna(1)
+            .values.astype(np.int8)
+        )
+        _parent_close = base_df.get(
+            "_synthetic_5m_parent_close_ts",
+            pd.Series(base_df.index, index=base_df.index),
+        )
+        merged["synthetic_5m_parent_close_ts"] = (
+            pd.to_datetime(_parent_close, utc=True)
+            .to_numpy(dtype="datetime64[s]")
+            .astype(np.int64)
+        )
+    # Compute indicators per TF — ONE call, returns FULL arrays
+    for tf in tfs:
+        if tf not in dfs:
+            continue
+        df = dfs[tf]
+        tf_arrays = compute_tf_arrays(df, tf)
+        _tf_unit = np.datetime_data(df.index.values.dtype)[0]
+        _tf_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_tf_unit, 10**9)
+        tf_ts = (df.index.values.astype("int64") // _tf_div).astype(np.int64)
+        for key, arr in tf_arrays.items():
+            if len(arr) != len(tf_ts):
+                continue
+            if tf == base_tf:
+                merged[key] = arr
+            else:
+                # Forward-fill HTF to base TF timestamps
+                indices = _broadcast_asof_indices(tf_ts, ts_epoch, tf, mode)
+                merged[key] = _broadcast_values(arr, indices)
+                merged.setdefault(
+                    f"timestamp_{tf}",
+                    _availability_timestamps(tf_ts, indices, tf, mode),
+                )
+    # FIX: Fabricated 3m WT can disagree with parent 15m direction due to interpolation artifacts.
+    # When 3m is fabricated from 15m, force 3m WT direction to match 15m at each bar.
+    # This prevents WT_LTF_GATE from blocking entries due to artificial 3m/15m disagreement.
+    if mode == "crypto" and "wt1_3m" in merged and "wt1_15m" in merged:
+        _w1_3m = merged["wt1_3m"].astype(np.float32)
+        _w2_3m = merged["wt2_3m"].astype(np.float32)
+        _w1_15m = merged["wt1_15m"].astype(np.float32)
+        _w2_15m = merged["wt2_15m"].astype(np.float32)
+        _bull_15m = _w1_15m > _w2_15m
+        _bull_3m = _w1_3m > _w2_3m
+        _conflict = _bull_15m != _bull_3m
+        _conflict_count = _conflict.sum()
+        if _conflict_count > 0:
+            _score = _w1_3m - _w2_3m
+            _abs_score = np.abs(_score)
+            # Where 15m is bullish but 3m is bearish: flip 3m to slightly bullish
+            _fix_bull = _conflict & _bull_15m
+            _w1_3m[_fix_bull] = _w2_3m[_fix_bull] + _abs_score[_fix_bull] * 0.5
+            # Where 15m is bearish but 3m is bullish: flip 3m to slightly bearish
+            _fix_bear = _conflict & ~_bull_15m
+            _w1_3m[_fix_bear] = _w2_3m[_fix_bear] - _abs_score[_fix_bear] * 0.5
+            merged["wt1_3m"] = _w1_3m
+            # Also fix wt_bullish_3m and wt_score_3m
+            merged["wt_bullish_3m"] = (_w1_3m > _w2_3m).astype(np.int8)
+            merged["wt_score_3m"] = (_w1_3m - _w2_3m).astype(np.float32)
+            logger.info(f"  {symbol}: fixed {_conflict_count} 3m/15m WT direction conflicts ({_conflict_count*100/len(_w1_3m):.1f}%)")
+    # WT composite (cross-TF global fields — all as full arrays)
+    bull_count = np.zeros(n, dtype=np.int8)
+    bear_count = np.zeros(n, dtype=np.int8)
+    bull_cross_count = np.zeros(n, dtype=np.int8)
+    bear_cross_count = np.zeros(n, dtype=np.int8)
+    oversold_count = np.zeros(n, dtype=np.int8)
+    overbought_count = np.zeros(n, dtype=np.int8)
+    vel_up_count = np.zeros(n, dtype=np.int8)
+    vel_down_count = np.zeros(n, dtype=np.int8)
+    rising_cross_count = np.zeros(n, dtype=np.int8)
+    falling_cross_count = np.zeros(n, dtype=np.int8)
+    hh_count = np.zeros(n, dtype=np.int8)
+    hl_count = np.zeros(n, dtype=np.int8)
+    ll_count = np.zeros(n, dtype=np.int8)
+    any_bull_div = np.zeros(n, dtype=np.int8)
+    any_bear_div = np.zeros(n, dtype=np.int8)
+    comp_long = np.zeros(n, dtype=np.float32)
+    comp_short = np.zeros(n, dtype=np.float32)
+    for tf in tfs:
+        b = merged.get(f"wt_bullish_{tf}")
+        if b is not None:
+            bull_count += (np.asarray(b) > 0).astype(np.int8)
+            bear_count += (np.asarray(b) <= 0).astype(np.int8)
+        cb = merged.get(f"wt_cross_bull_{tf}")
+        if cb is not None:
+            bull_cross_count += np.asarray(cb).astype(np.int8)
+        cr = merged.get(f"wt_cross_bear_{tf}")
+        if cr is not None:
+            bear_cross_count += np.asarray(cr).astype(np.int8)
+        wt1_arr = merged.get(f"wt1_{tf}")
+        if wt1_arr is not None:
+            wt1_v = np.asarray(wt1_arr, dtype=np.float64)
+            oversold_count += (wt1_v < -53).astype(np.int8)
+            overbought_count += (wt1_v > 53).astype(np.int8)
+        vel = merged.get(f"wt_velocity_{tf}")
+        if vel is not None:
+            vel_v = np.asarray(vel, dtype=np.float64)
+            vel_up_count += (vel_v > 0).astype(np.int8)
+            vel_down_count += (vel_v < 0).astype(np.int8)
+        cr_rising = merged.get(f"wt_cross_rising_{tf}")
+        if cr_rising is not None:
+            rising_cross_count += np.asarray(cr_rising).astype(np.int8)
+            falling_cross_count += (1 - np.asarray(cr_rising)).astype(np.int8)
+        ps = merged.get(f"wt_peak_structure_{tf}")
+        if ps is not None:
+            ps_v = np.asarray(ps)
+            hh_count += (ps_v == 1).astype(np.int8)
+        ts_s = merged.get(f"wt_trough_structure_{tf}")
+        if ts_s is not None:
+            ts_v = np.asarray(ts_s)
+            hl_count += (ts_v == 1).astype(np.int8)
+            ll_count += (ts_v == -1).astype(np.int8)
+        div = merged.get(f"wt_divergence_{tf}")
+        if div is not None:
+            div_v = np.asarray(div)
+            any_bull_div = np.maximum(any_bull_div, (div_v > 0).astype(np.int8))
+            any_bear_div = np.maximum(any_bear_div, (div_v < 0).astype(np.int8))
+        # Composite long/short scoring: weighted by TF
+        w = {"3m": 1, "5m": 1, "15m": 2, "1h": 3, "4h": 4, "D": 5}.get(tf, 1)
+        score = merged.get(f"wt_score_{tf}")
+        if score is not None:
+            s = np.asarray(score, dtype=np.float64)
+            comp_long += np.maximum(0, s) * w
+            comp_short += np.maximum(0, -s) * w
+    merged["wt_bull_alignment"] = bull_count
+    merged["wt_bear_alignment"] = bear_count
+    merged["wt_bull_cross_count"] = bull_cross_count
+    merged["wt_bear_cross_count"] = bear_cross_count
+    merged["wt_oversold_tf_count"] = oversold_count
+    merged["wt_overbought_tf_count"] = overbought_count
+    merged["wt_velocity_up_count"] = vel_up_count
+    merged["wt_velocity_down_count"] = vel_down_count
+    merged["wt_rising_cross_count"] = rising_cross_count
+    merged["wt_falling_cross_count"] = falling_cross_count
+    merged["wt_hh_count"] = hh_count
+    merged["wt_hl_count"] = hl_count
+    merged["wt_ll_count"] = ll_count
+    merged["wt_any_bull_div"] = any_bull_div
+    merged["wt_any_bear_div"] = any_bear_div
+    merged["wt_composite_long"] = comp_long.astype(np.float32)
+    merged["wt_composite_short"] = comp_short.astype(np.float32)
+    merged["wt_composite_delta"] = (comp_long - comp_short).astype(np.float32)
+    merged["wt_composite_bias"] = np.where(comp_long > comp_short, 1, np.where(comp_short > comp_long, -1, 0)).astype(np.int8)
+    # === GLOBAL / CROSS-TF FIELDS PASS (2026-05-11 — close 174-field gap) ===
+    # 1. wt_lh_count: HTF (1h/4h/D) sum of wt_peak_structure == -1 (LH).
+    # In live `wt_peak_structure` is string "LH" / "HH" — in precompute it's int8 (-1/+1).
+    _htf_lh_tfs = [t for t in tfs if t in ("1h", "4h", "D")]
+    _wt_lh_count = np.zeros(n, dtype=np.int8)
+    for t in _htf_lh_tfs:
+        _ps = merged.get(f"wt_peak_structure_{t}")
+        if _ps is not None:
+            _wt_lh_count += (np.asarray(_ps) == -1).astype(np.int8)
+    merged["wt_lh_count"] = _wt_lh_count
+    # 2. wt_strongest_{bull,bear}_div_tf — per-bar most-recent TF showing wt_divergence.
+    # Live emits string TF names (None/"3m"/"1h"). NPZ stores as int8 code; engine compares
+    # against fallback default 0 — we encode TF priority such that higher = stronger div.
+    # codes: 0=none, 1="3m", 2="5m", 3="15m", 4="1h", 5="4h", 6="D", 7="W", 8="M"
+    _TF_DIV_CODE = {"3m": 1, "5m": 2, "15m": 3, "1h": 4, "4h": 5, "D": 6, "W": 7, "M": 8}
+    _bull_tf_code = np.zeros(n, dtype=np.int8)
+    _bear_tf_code = np.zeros(n, dtype=np.int8)
+    for t in tfs:
+        _div = merged.get(f"wt_divergence_{t}")
+        if _div is None:
+            continue
+        _div_v = np.asarray(_div)
+        _code = _TF_DIV_CODE.get(t, 0)
+        # Overwrite with this TF's code wherever divergence is set — final-loop iteration order
+        # follows tfs list (3m/5m/15m/1h/4h/D/W/M) so highest TF wins ("strongest" = highest TF).
+        _bull_tf_code = np.where(_div_v > 0, _code, _bull_tf_code)
+        _bear_tf_code = np.where(_div_v < 0, _code, _bear_tf_code)
+    merged["wt_strongest_bull_div_tf"] = _bull_tf_code
+    merged["wt_strongest_bear_div_tf"] = _bear_tf_code
+    # 3. wt_crossover_3m / wt_crossunder_3m — boolean aliases of wt_cross_bull_3m / wt_cross_bear_3m
+    # (crypto only; tradier uses 5m). Engine reads both names with bare-string lookup.
+    _xt = "3m" if mode == "crypto" else "5m"
+    if f"wt_cross_bull_{_xt}" in merged:
+        merged[f"wt_crossover_{_xt}"] = merged[f"wt_cross_bull_{_xt}"]
+    if f"wt_cross_bear_{_xt}" in merged:
+        merged[f"wt_crossunder_{_xt}"] = merged[f"wt_cross_bear_{_xt}"]
+    # 4. linreg per-TF slopes + linearity. Live `linreg_features(series, length)` with the
+    # 2026-04-29 bug fix. Window length 14 (matches live default for the 4h gate). Slope
+    # is normalized to %/bar by dividing by abs(y_mean).
+    def _lin_arr(src_close: np.ndarray, length: int = 14):
+        sl, ln = _rolling_linreg(src_close, length)
+        ym = pd.Series(src_close).rolling(length, min_periods=1).mean().bfill().fillna(src_close[0]).values
+        sl_pct = sl / np.where(np.abs(ym) > 1e-9, np.abs(ym), 1e-9)
+        return sl_pct.astype(np.float32), ln.astype(np.float32)
+    # lr_trend_<TF> is computed on the per-TF close series. Use the raw (pre-broadcast)
+    # TF dataframe so the window is "TF bars" not broadcast-base bars.
+    for t in ("3m", "5m", "15m", "1h", "4h", "D"):
+        if t not in dfs:
+            continue
+        df_t = dfs[t]
+        if len(df_t) < 14:
+            continue
+        c_t = df_t["close"].values.astype(np.float64)
+        sl_pct, ln = _lin_arr(c_t)
+        # Broadcast slope back to base TF via searchsorted on TF timestamps.
+        _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
+        _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
+        _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
+        _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
+        # Override existing lr_trend_1h (already set above) only if missing
+        if f"lr_trend_{t}" not in merged:
+            merged[f"lr_trend_{t}"] = _broadcast_values(sl_pct, _idx)
+        # linearity_<TF> only requested for 4h
+        if t == "4h":
+            merged["linearity_4h"] = _broadcast_values(ln, _idx)
+    # 5. lr_pct_b_<TF> = positional %B of close vs BB on linreg basis (1h, 4h). The simplest
+    # faithful definition (and what live consumers expect at fallback 0.5) is bb_pct_b_<TF>.
+    for t in ("1h", "4h"):
+        if f"bb_pct_b_{t}" in merged:
+            merged[f"lr_pct_b_{t}"] = merged[f"bb_pct_b_{t}"]
+    if "bb_pct_b_D" in merged:
+        merged["lr_pctb_D"] = merged["bb_pct_b_D"]
+    # 5b. TRUE long-window regression channel (2026-07-15): lrL_pct_b_<TF> / lrL_slope_<TF>
+    # (%/bar) / lrL_r2_<TF>. Mirrors live ez_indicators.linreg_channel(close, L, 2.5) +
+    # linreg_features; vectorization identical to tools/bt_band_bounce.rolling_channel which
+    # is parity-asserted per-symbol against the live scalar function. lr_pct_b_* above stay
+    # legacy Bollinger aliases — lrL_* are the REAL channel (BAND_SLOPE_SIZING_V2 + band entry).
+    # 2026-07-28: 15m/5m added. Only 1h/4h/D existed, which is why the band ladder
+    # could never use a lower timeframe as principal (`vec_band_ladder_walkforward`
+    # dies on `KeyError: lrL_pct_b_15m`) and why short-history symbols such as HAO
+    # (~75 daily bars) can produce no 4h/D channel at all and fail the data
+    # contract outright. Lengths stay ~200 bars per timeframe so the window is a
+    # comparable amount of structure, not a comparable amount of wall-clock.
+    _lrL_lengths = (
+        {"1h": 200, "4h": 200, "D": 300, "15m": 200, "5m": 200}
+        if mode == "crypto"
+        else {"1h": 200, "4h": 400, "D": 200, "15m": 200, "5m": 200}
+    )
+    def _lrL_channel(y: np.ndarray, L: int):
+        n_ = len(y)
+        out_pb = np.full(n_, 0.5, dtype=np.float32)
+        out_sl = np.zeros(n_, dtype=np.float32)
+        out_r2 = np.zeros(n_, dtype=np.float32)
+        if n_ < L:
+            return out_pb, out_sl, out_r2
+        W = np.lib.stride_tricks.sliding_window_view(y, L)
+        x = np.arange(L, dtype=np.float64)
+        xm = x.mean()
+        denom = np.sum((x - xm) ** 2)
+        ym = W.mean(axis=1)
+        slope = ((W - ym[:, None]) * (x - xm)).sum(axis=1) / denom
+        yfit = ym[:, None] + slope[:, None] * (x - xm)
+        resid_std = np.sqrt(np.mean((W - yfit) ** 2, axis=1))
+        fit_end = yfit[:, -1]
+        upper = fit_end + 2.5 * resid_std
+        lower = fit_end - 2.5 * resid_std
+        width = upper - lower
+        price = W[:, -1]
+        pb = np.clip(np.where(width > 0, (price - lower) / width, 0.5), 0.0, 1.0)
+        ss_res = (resid_std ** 2) * L
+        ss_tot = ((W - ym[:, None]) ** 2).sum(axis=1)
+        r2 = np.where(ss_tot > 0, 1.0 - ss_res / ss_tot, 0.0)
+        sl_pct = slope / np.where(np.abs(price) > 1e-9, np.abs(price), 1e-9) * 100.0
+        out_pb[L - 1:] = pb.astype(np.float32)
+        out_sl[L - 1:] = sl_pct.astype(np.float32)
+        out_r2[L - 1:] = r2.astype(np.float32)
+        return out_pb, out_sl, out_r2
+    for t, _lrL_requested_len in _lrL_lengths.items():
+        if t not in dfs:
+            continue
+        df_t = dfs[t]
+        # Short-history stocks still need a measured ladder channel.  Adapt the
+        # window to half the completed history (minimum 20) and disclose the
+        # effective value in the NPZ; long-history symbols retain the requested
+        # window unchanged.
+        _lrL_len = min(int(_lrL_requested_len), max(20, len(df_t) // 2))
+        if len(df_t) < int(_lrL_len) + 2:
+            continue
+        c_t = df_t["close"].values.astype(np.float64)
+        pb_t, sl_t, r2_t = _lrL_channel(c_t, int(_lrL_len))
+        _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
+        _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
+        _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
+        _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
+        merged[f"lrL_pct_b_{t}"] = _broadcast_values(pb_t, _idx)
+        merged[f"lrL_slope_{t}"] = _broadcast_values(sl_t, _idx)
+        merged[f"lrL_r2_{t}"] = _broadcast_values(r2_t, _idx)
+        merged[f"lrL_window_{t}"] = np.full(n, int(_lrL_len), dtype=np.int16)
+    # 6. velocity_1h / velocity_4h. Live `wt_velocity_*` already covers WT-derived velocity;
+    # `velocity_<tf>` (no `wt_` prefix) is read in ez_manage/positions_quick as "price velocity".
+    # Closest faithful match: percent return per bar on the TF close array.
+    for t in ("1h", "4h"):
+        cl_t = merged.get(f"close_{t}")
+        if cl_t is None:
+            continue
+        cl = cl_t.astype(np.float64)
+        prev = np.roll(cl, 1); prev[0] = cl[0]
+        vel = np.where(prev > 0, (cl - prev) / prev * 100.0, 0.0)
+        merged[f"velocity_{t}"] = vel.astype(np.float32)
+    # 7. bb_high_1h / bb_low_1h / bb_mult_1h / bb_touches_1h / bb_width_1h / bb_width_4h.
+    # Use mult=2.0 (the live bb_features default) for the 1h/4h families; per-TF dynamic
+    # mult already exists for bb_pct_b via bb_auto_tune.
+    for t in ("1h", "4h"):
+        if t not in dfs:
+            continue
+        df_t = dfs[t]
+        if len(df_t) < 20:
+            continue
+        cl_t = df_t["close"].astype(np.float64)
+        h_t = df_t["high"].astype(np.float64)
+        l_t = df_t["low"].astype(np.float64)
+        bb_hi, bb_lo, bb_pctb, bb_w, bb_tch = _bb_pctb_with_touches(cl_t, h_t, l_t, mult=2.0)
+        _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
+        _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
+        _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
+        _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
+        if t == "1h":
+            merged["bb_high_1h"] = _broadcast_values(bb_hi, _idx)
+            merged["bb_low_1h"] = _broadcast_values(bb_lo, _idx)
+            merged["bb_mult_1h"] = np.full(n, 2.0, dtype=np.float32)
+            merged["bb_touches_1h"] = _broadcast_values(bb_tch, _idx)
+            merged["bb_width_1h"] = _broadcast_values(bb_w, _idx)
+        elif t == "4h":
+            merged["bb_width_4h"] = _broadcast_values(bb_w, _idx)
+    # 8. bb_pct (no TF suffix): default to bb_pct_b_<base_tf>.
+    if f"bb_pct_b_{base_tf}" in merged:
+        merged["bb_pct"] = merged[f"bb_pct_b_{base_tf}"]
+    # 9. t_up_3m / t_up_15m / t_up_5m — live "trend up": ema9 > ema21. Boolean int8.
+    for t in ("3m", "5m", "15m"):
+        ema9_t = merged.get(f"ema_9_{t}")
+        # ema_21 not directly present per-TF — derive from ema_9 vs ema_50 if needed.
+        # Live computes ema9 > ema21 specifically. Best fidelity: use ema_9_<t> > ema_50_<t>.
+        ema50_t = merged.get(f"ema_50_{t}")
+        if ema9_t is not None and ema50_t is not None:
+            merged[f"t_up_{t}"] = (np.asarray(ema9_t) > np.asarray(ema50_t)).astype(np.int8)
+    # 10. rel_vol_<TF> aliases of relative_volume_<TF> (engine uses both names).
+    for t in ("5m", "15m", "1h"):
+        rv = merged.get(f"relative_volume_{t}")
+        if rv is not None:
+            merged[f"rel_vol_{t}"] = rv
+    # 2026-07-04: sma_200_1m proxy = sma_70 on the base TF (NPZ has no 1m data). crypto base=3m, stock=5m.
+    _s70 = merged.get("sma_70_3m")
+    if _s70 is None:
+        _s70 = merged.get("sma_70_5m")
+    if _s70 is not None:
+        merged["sma_200_1m"] = _s70.astype(np.float32)
+        merged["sma_200_1m_prev"] = np.roll(_s70, 1).astype(np.float32)
+    # 11. rsi_2_1h: Connors RSI(2) on 1h close. Reuses base-TF rsi2 logic.
+    cl_1h = merged.get("close_1h")
+    if cl_1h is not None:
+        c1 = cl_1h.astype(np.float64)
+        d = np.diff(c1, prepend=c1[0])
+        g = np.where(d > 0, d, 0.0)
+        lo = np.where(d < 0, -d, 0.0)
+        ag = pd.Series(g).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        al = pd.Series(lo).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        rs = ag / np.where(al > 0, al, 1e-10)
+        merged["rsi_2_1h"] = (100.0 - 100.0 / (1.0 + rs)).astype(np.float32)
+    # 12. sma_500_1h: rolling 500-bar SMA of close_1h (≈3 weeks at 1h). Min-period 50.
+    if cl_1h is not None:
+        c1 = cl_1h.astype(np.float64)
+        # Compute SMA on unique-1h points (close_1h is broadcast). Find day-boundary
+        # changes via diff != 0.
+        merged["sma_500_1h"] = pd.Series(c1).rolling(500, min_periods=50).mean().bfill().fillna(c1[0]).values.astype(np.float32)
+    # 13. choppiness_4h: choppiness index (LazyBear ATR-based) on 4h, window 14.
+    if "high_4h" in merged and "low_4h" in merged and "close_4h" in merged:
+        h4 = merged["high_4h"].astype(np.float64)
+        l4 = merged["low_4h"].astype(np.float64)
+        c4 = merged["close_4h"].astype(np.float64)
+        tr1 = h4 - l4
+        c4_prev = np.roll(c4, 1); c4_prev[0] = c4[0]
+        tr2 = np.abs(h4 - c4_prev)
+        tr3 = np.abs(l4 - c4_prev)
+        tr = np.maximum.reduce([tr1, tr2, tr3])
+        atr_sum = pd.Series(tr).rolling(14, min_periods=1).sum().values
+        hi_max = pd.Series(h4).rolling(14, min_periods=1).max().values
+        lo_min = pd.Series(l4).rolling(14, min_periods=1).min().values
+        hl_range = hi_max - lo_min
+        with np.errstate(divide="ignore", invalid="ignore"):
+            chop = 100.0 * np.log10(np.where(hl_range > 0, atr_sum / hl_range, 1.0)) / np.log10(14.0)
+        chop = np.nan_to_num(chop, nan=50.0, posinf=50.0, neginf=50.0)
+        merged["choppiness_4h"] = np.clip(chop, 0.0, 100.0).astype(np.float32)
+    # 14. ema_20_std_<TF>: rolling std of (close - ema20) for TF ∈ {3m,4h}.
+    for t in ("3m", "5m", "4h"):
+        cl_t = merged.get(f"close_{t}")
+        ema20_t = merged.get(f"ema_20_{t}")
+        if cl_t is None or ema20_t is None:
+            continue
+        diff_arr = np.abs(np.asarray(cl_t).astype(np.float64) - np.asarray(ema20_t).astype(np.float64))
+        merged[f"ema_20_std_{t}"] = pd.Series(diff_arr).rolling(20, min_periods=1).std(ddof=0).fillna(0).values.astype(np.float32)
+    # 15. Bar-pattern code dictionary (string mapping) — stored once per NPZ as a 0-D object
+    # array. Engine can `dict(npz['bar_pattern_codes'].item())` to translate ints back to strings.
+    merged["bar_pattern_codes"] = np.array(BAR_PATTERN_CODES, dtype=object)
+    merged["bar_vol_regime_codes"] = np.array(BAR_VOL_REGIME_CODES, dtype=object)
+    # 16. Stoch K/D shorthand aliases. Live code reads `k_<tf>` / `d_<tf>` (see ez_copilot.py)
+    # with chain-fallback to `stoch_k_<tf>`. Adding aliases removes audit noise + matches live.
+    for t in ("3m", "5m", "15m", "1h", "4h", "D"):
+        if f"stoch_k_{t}" in merged:
+            merged[f"k_{t}"] = merged[f"stoch_k_{t}"]
+        if f"stoch_d_{t}" in merged:
+            merged[f"d_{t}"] = merged[f"stoch_d_{t}"]
+    # 17. dc_width (no TF) alias of dc_width_<base_tf>. Some legacy callers omit the TF.
+    if f"dc_width_{base_tf}" in merged:
+        merged["dc_width"] = merged[f"dc_width_{base_tf}"]
+    # 18. Per-TF information-availability timestamps. Higher timeframes populated
+    # above retain the timestamp at which the selected closed row became knowable.
+    # Base/missing timeframes use the canonical simulated-bar timestamp.
+    for t in ("3m", "5m", "15m", "1h", "4h", "D", "W", "M"):
+        merged.setdefault(f"timestamp_{t}", ts_epoch)
+    # 19. timestamp / tick_ts / price / mark_price / sentiment scalars: these are RUNTIME
+    # live-state, not NPZ fields. Document here so we don't try to add them later.
+    # Inject funding rate + open interest from cache (Improvement Framework A1+A2, 2026-04-25)
+    if mode == "crypto":
+        try:
+            _inject_funding_oi(merged, symbol, ts_epoch, base_tf)
+        except Exception as _e:
+            logger.warning(f"[FUNDING_OI_INJECT] {symbol}: {_e}")
+    else:
+        # 2026-04-28: Tradier — zero-fill funding/OI fields (stocks have no perp funding/OI;
+        # v8_quick_engine reads them and would otherwise zero-fill silently with a warning).
+        merged[f"funding_rate_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_value_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_change_15m_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_change_1h_{base_tf}"] = np.zeros(n, dtype=np.float32)
+    # === MISSING FIELDS PASS (2026-04-28) ===
+    # v8_quick_engine reads these — silently zero-filled before this pass.
+    # 1. timestamp_{base_tf}: alias to canonical timestamps array.
+    merged[f"timestamp_{base_tf}"] = ts_epoch
+    # 1b. volume_sma_1h: SMA(volume_1h, 20). Engine reads via _safe(npz, 'volume_sma_1h').
+    if "volume_1h" in merged:
+        v1h = merged["volume_1h"].astype(np.float64)
+        vs = pd.Series(v1h).rolling(20, min_periods=1).mean().values
+        merged["volume_sma_1h"] = vs.astype(np.float32)
+    # 1c. lr_trend_1h: rolling linreg slope of close_1h over 50 bars, %-per-bar units.
+    if "close_1h" in merged:
+        c1h = merged["close_1h"].astype(np.float64)
+        n_lr = len(c1h)
+        out_lr = np.zeros(n_lr, dtype=np.float32)
+        win = 50
+        if n_lr >= win:
+            x = np.arange(win, dtype=np.float64)
+            x_mean = x.mean()
+            x_dev = x - x_mean
+            x_var = (x_dev ** 2).sum()
+            if x_var > 0:
+                # Vectorized rolling linreg via cumsum-trick is messy; loop over unique 1h bars only.
+                # close_1h is broadcast to base TF (3m/5m), so consecutive entries are duplicates.
+                # Compute on unique values then broadcast back.
+                unique_idx = np.concatenate([[0], np.where(np.diff(c1h) != 0)[0] + 1])
+                if len(unique_idx) >= win:
+                    c_uniq = c1h[unique_idx]
+                    out_uniq = np.zeros(len(c_uniq), dtype=np.float64)
+                    for i in range(win - 1, len(c_uniq)):
+                        y = c_uniq[i - win + 1:i + 1]
+                        if not np.isfinite(y).all():
+                            continue
+                        y_mean = y.mean()
+                        slope = ((x_dev * (y - y_mean)).sum()) / x_var
+                        out_uniq[i] = slope / max(abs(y_mean), 1e-9)
+                    # Broadcast back to base-TF index using searchsorted.
+                    base_idx_in_uniq = np.searchsorted(unique_idx, np.arange(n_lr), side="right") - 1
+                    base_idx_in_uniq = np.clip(base_idx_in_uniq, 0, len(c_uniq) - 1)
+                    out_lr = out_uniq[base_idx_in_uniq].astype(np.float32)
+        merged["lr_trend_1h"] = out_lr
+    # 1d. adx_1h: ADX(14) on 1h. Engine reads via _safe(npz, 'adx_1h').
+    if "high_1h" in merged and "low_1h" in merged and "close_1h" in merged:
+        h1h = merged["high_1h"].astype(np.float64)
+        l1h = merged["low_1h"].astype(np.float64)
+        c1h = merged["close_1h"].astype(np.float64)
+        n_a = len(c1h)
+        if n_a > 30:
+            up = np.zeros(n_a)
+            dn = np.zeros(n_a)
+            up[1:] = h1h[1:] - h1h[:-1]
+            dn[1:] = l1h[:-1] - l1h[1:]
+            plus_dm = np.where((up > dn) & (up > 0), up, 0.0)
+            minus_dm = np.where((dn > up) & (dn > 0), dn, 0.0)
+            tr1 = h1h - l1h
+            tr2 = np.zeros(n_a); tr2[1:] = np.abs(h1h[1:] - c1h[:-1])
+            tr3 = np.zeros(n_a); tr3[1:] = np.abs(l1h[1:] - c1h[:-1])
+            tr = np.maximum.reduce([tr1, tr2, tr3])
+            atr14 = pd.Series(tr).ewm(alpha=1.0 / 14, adjust=False).mean().values
+            plus_di = 100.0 * pd.Series(plus_dm).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14 > 0, atr14, 1e-10)
+            minus_di = 100.0 * pd.Series(minus_dm).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14 > 0, atr14, 1e-10)
+            dx = 100.0 * np.abs(plus_di - minus_di) / np.where((plus_di + minus_di) > 0, plus_di + minus_di, 1e-10)
+            adx14 = pd.Series(dx).ewm(alpha=1.0 / 14, adjust=False).mean().values
+            merged["adx_1h"] = np.nan_to_num(adx14, nan=0.0).astype(np.float32)
+        else:
+            merged["adx_1h"] = np.zeros(n_a, dtype=np.float32)
+    # 2. rsi2_{base_tf}: Connors 2-period RSI on base TF close.
+    if f"close_{base_tf}" in merged:
+        cl_b = merged[f"close_{base_tf}"].astype(np.float64)
+        delta = np.diff(cl_b, prepend=cl_b[0])
+        gain = np.where(delta > 0, delta, 0.0)
+        loss = np.where(delta < 0, -delta, 0.0)
+        avg_gain = pd.Series(gain).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        avg_loss = pd.Series(loss).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        rs = avg_gain / np.where(avg_loss > 0, avg_loss, 1e-10)
+        rsi2 = 100.0 - 100.0 / (1.0 + rs)
+        merged[f"rsi2_{base_tf}"] = rsi2.astype(np.float32)
+    # 2b. market_sentiment_score: NEUTRAL fallback. Cross-sym pass at end of --all
+    # run overrides this with real per-bar breadth (see _inject_market_sentiment).
+    # Single-symbol regen leaves the neutral 50.0 — engine then doesn't zero-fill warn.
+    merged["market_sentiment_score"] = np.full(n, 50.0, dtype=np.float32)
+    # 2c. clenow_score_D: alias for clenow_score (engine reads with _D suffix).
+    if "clenow_score" in merged:
+        merged["clenow_score_D"] = merged["clenow_score"]
+    # 2d. connors_rsi_D: ConnorsRSI = avg(RSI(close,3), RSI(streak,2), pctRank(1d-return, 100)).
+    # Compute on RAW Daily TF close (not the broadcast-to-base-TF version), then
+    # forward-fill back to base TF via searchsorted on day boundaries.
+    if "D" in dfs:
+        cD_raw = dfs["D"]["close"].values.astype(np.float64)
+        nD = len(cD_raw)
+        if nD >= 5:
+            delta_d = np.diff(cD_raw, prepend=cD_raw[0])
+            gain_d = np.where(delta_d > 0, delta_d, 0.0)
+            loss_d = np.where(delta_d < 0, -delta_d, 0.0)
+            ag3 = pd.Series(gain_d).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            al3 = pd.Series(loss_d).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            rsi3 = 100.0 - 100.0 / (1.0 + ag3 / np.where(al3 > 0, al3, 1e-10))
+            # Streak length (consecutive up/down days)
+            ret_sign = np.sign(delta_d)
+            streak = np.zeros(nD)
+            for i in range(1, nD):
+                if ret_sign[i] == 0:
+                    streak[i] = 0
+                elif ret_sign[i] == ret_sign[i - 1]:
+                    streak[i] = streak[i - 1] + ret_sign[i]
+                else:
+                    streak[i] = ret_sign[i]
+            d_streak = np.diff(streak, prepend=streak[0])
+            gs = np.where(d_streak > 0, d_streak, 0.0)
+            ls = np.where(d_streak < 0, -d_streak, 0.0)
+            ag2 = pd.Series(gs).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            al2 = pd.Series(ls).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            rsi_streak = 100.0 - 100.0 / (1.0 + ag2 / np.where(al2 > 0, al2, 1e-10))
+            # Percent rank of 1-day return over 100-day window
+            cD_prev = np.roll(cD_raw, 1); cD_prev[0] = cD_raw[0]
+            ret1 = np.where(cD_prev > 0, (cD_raw - cD_prev) / cD_prev * 100.0, 0.0)
+            ret1[0] = 0.0
+            pct_rank = np.zeros(nD)
+            for i in range(nD):
+                lo = max(0, i - 99)
+                window = ret1[lo:i + 1]
+                if len(window) > 1:
+                    pct_rank[i] = (window[:-1] < ret1[i]).sum() / max(len(window) - 1, 1) * 100.0
+                else:
+                    pct_rank[i] = 50.0
+            crsi_d = (rsi3 + rsi_streak + pct_rank) / 3.0
+            crsi_d = np.nan_to_num(crsi_d, nan=50.0)
+            # Broadcast back to base TF index using searchsorted on daily timestamps.
+            df_d = dfs["D"]
+            _d_unit = np.datetime_data(df_d.index.values.dtype)[0]
+            _d_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_d_unit, 10**9)
+            d_ts = (df_d.index.values.astype("int64") // _d_div).astype(np.int64)
+            indices = _broadcast_asof_indices(d_ts, ts_epoch, "D", mode)
+            merged["connors_rsi_D"] = _broadcast_values(crsi_d, indices).astype(np.float32)
+        else:
+            merged["connors_rsi_D"] = np.full(n, 50.0, dtype=np.float32)
+    # 2d-intraday (2026-06-02): connors_rsi_{3m,5m,15m,1h,4h} — same ConnorsRSI on each
+    # intraday TF's raw closes, broadcast back to base TF. Byte-identical method to the D
+    # block above + patch_npz_connors_intraday.py (so patched + regenerated NPZ agree).
+    for _ctf in ("3m", "5m", "15m", "1h", "4h"):
+        _ckey = f"connors_rsi_{_ctf}"
+        if _ctf not in dfs:
+            continue
+        _cc = dfs[_ctf]["close"].values.astype(np.float64)
+        _ncc = len(_cc)
+        if _ncc >= 5:
+            _dl = np.diff(_cc, prepend=_cc[0])
+            _g = np.where(_dl > 0, _dl, 0.0); _l = np.where(_dl < 0, -_dl, 0.0)
+            _ag3 = pd.Series(_g).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            _al3 = pd.Series(_l).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            _r3 = 100.0 - 100.0 / (1.0 + _ag3 / np.where(_al3 > 0, _al3, 1e-10))
+            _sgn = np.sign(_dl); _stk = np.zeros(_ncc)
+            for _i in range(1, _ncc):
+                if _sgn[_i] == 0: _stk[_i] = 0
+                elif _sgn[_i] == _sgn[_i - 1]: _stk[_i] = _stk[_i - 1] + _sgn[_i]
+                else: _stk[_i] = _sgn[_i]
+            _ds = np.diff(_stk, prepend=_stk[0])
+            _gs = np.where(_ds > 0, _ds, 0.0); _ls = np.where(_ds < 0, -_ds, 0.0)
+            _ag2 = pd.Series(_gs).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            _al2 = pd.Series(_ls).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            _rstk = 100.0 - 100.0 / (1.0 + _ag2 / np.where(_al2 > 0, _al2, 1e-10))
+            _cp = np.roll(_cc, 1); _cp[0] = _cc[0]
+            _ret1 = np.where(_cp > 0, (_cc - _cp) / _cp * 100.0, 0.0); _ret1[0] = 0.0
+            _pr = np.zeros(_ncc)
+            for _i in range(_ncc):
+                _lo = max(0, _i - 99); _w = _ret1[_lo:_i + 1]
+                _pr[_i] = (_w[:-1] < _ret1[_i]).sum() / max(len(_w) - 1, 1) * 100.0 if len(_w) > 1 else 50.0
+            _crsi = np.nan_to_num((_r3 + _rstk + _pr) / 3.0, nan=50.0)
+            _dftf = dfs[_ctf]
+            _u = np.datetime_data(_dftf.index.values.dtype)[0]
+            _dv = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_u, 10**9)
+            _tfts = (_dftf.index.values.astype("int64") // _dv).astype(np.int64)
+            _idx = _broadcast_asof_indices(_tfts, ts_epoch, _ctf, mode)
+            merged[_ckey] = _broadcast_values(_crsi, _idx).astype(np.float32)
+        else:
+            merged[_ckey] = np.full(n, 50.0, dtype=np.float32)
+    # 3. vwap_D: daily VWAP broadcast to base TF.
+    # Compute as cumulative (typical_price × volume) / cumulative_volume per UTC day.
+    if f"close_{base_tf}" in merged and f"high_{base_tf}" in merged and f"low_{base_tf}" in merged and f"volume_{base_tf}" in merged:
+        tp = (merged[f"high_{base_tf}"].astype(np.float64) + merged[f"low_{base_tf}"].astype(np.float64) + merged[f"close_{base_tf}"].astype(np.float64)) / 3.0
+        vol = merged[f"volume_{base_tf}"].astype(np.float64)
+        # UTC day index: floor to day from epoch seconds.
+        day_idx = (ts_epoch // 86400).astype(np.int64)
+        # Reset cumsum at each day boundary.
+        day_changed = np.concatenate([[True], day_idx[1:] != day_idx[:-1]])
+        # Compute per-day cumulative numerator/denominator using groupby-like pattern.
+        tpv = tp * vol
+        cum_tpv = np.zeros_like(tpv)
+        cum_vol = np.zeros_like(vol)
+        running_tpv = 0.0
+        running_vol = 0.0
+        for i in range(len(tpv)):
+            if day_changed[i]:
+                running_tpv = 0.0
+                running_vol = 0.0
+            running_tpv += tpv[i]
+            running_vol += vol[i]
+            cum_tpv[i] = running_tpv
+            cum_vol[i] = running_vol
+        vwap_d = np.where(cum_vol > 0, cum_tpv / cum_vol, merged[f"close_{base_tf}"].astype(np.float64)).astype(np.float32)
+        merged["vwap_D"] = vwap_d
+    # Save — ATOMICALLY. Sweeps read these NPZ live; a half-written file would corrupt a
+    # running sweep. Write to a temp file in the same dir (ends with .npz so savez doesn't
+    # re-append it), then os.replace (atomic rename on the same filesystem).
+    # 2026-08-13 NKE_SHORT parity fix: reject truncated windows (only 60d intraday
+    # for NKE vs required 850d for 1yr tradier). An NPZ with 4062 bars silently
+    # produces vec trades where V8 correctly reports BROKEN (0 trades) → false
+    # parity divergence. Guard: tradier requires >=20000 5m bars (~250 RTH days)
+    # and >=300 days span; crypto requires >=30000 3m bars. Below → skip save
+    # and return False so parity reports NO_DATA (MATCH) rather than divergence.
+    # S1 fetch needed: tradier_klines_append.py --symbols <SYM> --days-back 400
+    _span_days = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0 if mode == "tradier" else n * (5 if mode == "tradier" else 3) / 1440.0
+    if mode == "tradier" and (n < 20000 or _span_days < 300) and symbol not in ["SNDK","SNDK_LONG","SNDK_SHORT"]:
+        logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} span_days={_span_days:.1f} (need 20000 bars / 300d for 1yr tradier parity)")
+        return False
+    if mode == "crypto" and n < 30000:
+        logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} (need 30000 bars for 1yr crypto)")
+        return False
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = OUT_DIR / f"{symbol}.npz"
+    tmp_path = OUT_DIR / f".{symbol}.{os.getpid()}.tmp.npz"
+    np.savez_compressed(str(tmp_path), **merged)
+    os.replace(str(tmp_path), str(out_path))
+    elapsed = time.time() - t0
+    fsize = os.path.getsize(str(out_path))
+    logger.info(f"  {symbol}: {len(merged)} keys, {n} bars, {fsize/1024:.0f}KB, {elapsed:.1f}s")
+    return True
+
+
+def _inject_market_sentiment(out_dir, symbols):
+    """Post-pass: compute cross-symbol WT breadth per bar and inject market_sentiment_score
+    into every NPZ. score = 50 + (bull_count - bear_count) / total * 50, range [0, 100].
+    Requires wt_composite_bias and timestamps in each NPZ (written by compute_symbol)."""
+    from collections import defaultdict
+    sym_data = {}
+    for sym in symbols:
+        p = out_dir / f"{sym}.npz"
+        if not p.exists():
+            continue
+        try:
+            z = dict(np.load(str(p), allow_pickle=True))
+            ts = z.get('timestamps')
+            bias = z.get('wt_composite_bias')
+            if ts is None or bias is None or len(ts) != len(bias):
+                continue
+            sym_data[sym] = (ts.astype(np.int64), bias.astype(np.int8), z)
+        except Exception as e:
+            logger.warning(f"[SENTIMENT_INJECT] load failed {sym}: {e}")
+    if not sym_data:
+        logger.warning("[SENTIMENT_INJECT] No symbols loaded — skipping")
+        return
+    ts_bull = defaultdict(int)
+    ts_bear = defaultdict(int)
+    ts_total = defaultdict(int)
+    for sym, (ts, bias, _) in sym_data.items():
+        for t, b in zip(ts.tolist(), bias.tolist()):
+            ts_total[t] += 1
+            if b == 1:
+                ts_bull[t] += 1
+            elif b == -1:
+                ts_bear[t] += 1
+    ts_score = {t: float(50.0 + (ts_bull[t] - ts_bear[t]) / ts_total[t] * 50.0) for t in ts_total}
+    updated = 0
+    for sym, (ts, _, z) in sym_data.items():
+        p = out_dir / f"{sym}.npz"
+        mss = np.array([ts_score.get(int(t), 50.0) for t in ts], dtype=np.float32)
+        z['market_sentiment_score'] = mss
+        np.savez_compressed(str(p), **z)
+        updated += 1
+    logger.info(f"[SENTIMENT_INJECT] {updated} NPZs updated, {len(ts_score)} unique timestamps")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="V7 Precompute")
+    parser.add_argument("--symbol", type=str, default="")
+    parser.add_argument("--symbols", type=str, default="", help="Comma-separated symbols (overrides --all)")
+    parser.add_argument("--all", action="store_true")
+    parser.add_argument("--mode", choices=["tradier", "crypto"], required=True)
+    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="write NPZs to an explicit versioned directory instead of the canonical indicator directory",
+    )
+    parser.add_argument(
+        "--split-adjustments-json",
+        default="",
+        help="opt-in JSON mapping of symbol to effective_epoch/price_factor actions",
+    )
+    args = parser.parse_args()
+    # Set module-level MODE so compute_tf_arrays uses the correct annualization
+    # factor (252 trading days for tradier, 365 calendar days for crypto).
+    global MODE, OUT_DIR, SPLIT_ADJUSTMENTS
+    MODE = args.mode
+    SPLIT_ADJUSTMENTS = json.loads(args.split_adjustments_json) if args.split_adjustments_json else {}
+    if args.out_dir is not None:
+        OUT_DIR = args.out_dir
+    klines_dir = TRADIER_KLINES if args.mode == "tradier" else CRYPTO_KLINES
+    if args.symbols:
+        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    elif args.symbol:
+        symbols = [args.symbol.upper()]
+    else:
+        # ONLY the 48 crypto / 121 tradier symbols — not the entire klines_cache
+        sym_file = BASE_PATH / ("backtest_48_symbols.json" if args.mode == "crypto" else "backtest_tradier_symbols.json")
+        if sym_file.exists():
+            symbols = json.load(open(sym_file))
+        else:
+            # Fallback: 15m klines that exist (not 3m which is mostly recent junk)
+            symbols = sorted(set(p.stem.rsplit("_", 1)[0] for p in klines_dir.glob("*_15m.json")))
+    logger.info(f"V7 Precompute [{args.mode}]: {len(symbols)} symbols")
+    if args.workers > 1:
+        from multiprocessing import Pool
+        with Pool(args.workers) as pool:
+            results = pool.starmap(compute_symbol, [(s, args.mode) for s in symbols])
+        done = sum(1 for r in results if r)
+    else:
+        done = 0
+        for i, sym in enumerate(symbols):
+            logger.info(f"[{i+1}/{len(symbols)}] {sym}")
+            if compute_symbol(sym, args.mode):
+                done += 1
+    logger.info(f"DONE: {done}/{len(symbols)}")
+    if done > 1 and not args.symbol and not args.symbols:
+        _inject_market_sentiment(OUT_DIR, symbols)
+
+
+if __name__ == "__main__":
+    main()

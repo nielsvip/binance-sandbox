@@ -11947,6 +11947,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _k5m_block = _k5m_now > float(_cfg_auto('WT_DC_ENTRY_K5M_MAX_LONG', 100))
                         # SHORT K5M block disabled when hard switch OFF
                     # Hard HTF gate — always 4h_D for shorts (cannot be turned off via 'none')
+                    # 2026-09-19 TF-expanded: WT_DC_TF_HTF/HTF2 + HTF_GATE_MODE + STOCH/DC_TF + thresholds (15m+ only, vector parity)
+                    _wt_dc_tf_entry = str(_cfg_auto('WT_DC_TF_ENTRY', '1h'))
+                    _wt_dc_dc_tf = str(_cfg_auto('WT_DC_DC_TF', '1h'))
+                    _wt_dc_stoch_tf = str(_cfg_auto('WT_DC_STOCH_TF', '5m'))
+                    _wt_dc_htf_mode = str(_cfg_auto('WT_DC_HTF_GATE_MODE', 'AND')).upper()
+                    _wt_dc_dc_thr_long = float(_cfg_auto('WT_DC_DC_POS_THRESHOLD_LONG', 0.50))
+                    _wt_dc_dc_thr_short = float(_cfg_auto('WT_DC_DC_POS_THRESHOLD_SHORT', 0.50))
+                    _wt_dc_stoch_thr_long = float(_cfg_auto('WT_DC_STOCH_THRESHOLD_LONG', 40.0))
+                    _wt_dc_stoch_thr_short = float(_cfg_auto('WT_DC_STOCH_THRESHOLD_SHORT', 60.0))
                     _wtdc_htf_gate = '4h_d' if not is_long else str(_cfg_auto('WT_DC_HTF_GATE', '4h_d')).lower()
                     # For SHORT, force 4h_D; for LONG keep config but fallback is 4h_d not none
                     if not is_long:
@@ -11954,7 +11963,29 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     else:
                         if _wtdc_htf_gate == 'none':
                             _wtdc_htf_gate = '4h_d'
-                    _htf_block = False
+                    # TF-HTF2 expanded gate (vector parity): when WT_DC_TF_HTF/HTF2 differ from legacy 4h/D, use them with AND/OR mode
+                    _wt_dc_htf = str(_cfg_auto('WT_DC_TF_HTF', '4h')).lower()
+                    _wt_dc_htf2 = str(_cfg_auto('WT_DC_TF_HTF2', 'D')).lower()
+                    if _wt_dc_htf != '4h' or _wt_dc_htf2.lower() != 'd':
+                        _exp_htf1_against = False
+                        _exp_htf2_against = False
+                        for _lbl in (_wt_dc_htf,):
+                            if _lbl in ('none','off',''): continue
+                            _k = f'wt1_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt1_D'
+                            _k2 = f'wt2_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt2_D'
+                            _a1 = float((_entry_ind or {}).get(_k, 0) or 0); _a2 = float((_entry_ind or {}).get(_k2, 0) or 0)
+                            if is_long and _a1 < _a2: _exp_htf1_against = True
+                            elif (not is_long) and _a1 > _a2: _exp_htf1_against = True
+                        for _lbl in (_wt_dc_htf2,):
+                            if _lbl in ('none','off',''): continue
+                            _k = f'wt1_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt1_D'
+                            _k2 = f'wt2_{_lbl.upper()}' if _lbl.upper()!='D' else 'wt2_D'
+                            _a1 = float((_entry_ind or {}).get(_k, 0) or 0); _a2 = float((_entry_ind or {}).get(_k2, 0) or 0)
+                            if is_long and _a1 < _a2: _exp_htf2_against = True
+                            elif (not is_long) and _a1 > _a2: _exp_htf2_against = True
+                        _exp_block = (_exp_htf1_against and _exp_htf2_against) if _wt_dc_htf_mode=='AND' else (_exp_htf1_against or _exp_htf2_against)
+                        if _exp_block: _htf_block = True
+                    # DC/STOCH TF gates — mirror vector _wtdc_dc_ok/_stoch_ok (threshold gates applied below with _wt_dc_pos, no extra _htf_block here)
                     if _wtdc_htf_gate == '1h':
                         _wt1_1h = float((_entry_ind or {}).get('wt1_1h', 0) or 0)
                         _wt2_1h = float((_entry_ind or {}).get('wt2_1h', 0) or 0)

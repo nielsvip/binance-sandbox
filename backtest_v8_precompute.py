@@ -1285,6 +1285,9 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     bb_width = bb_upper - bb_lower
     out[f"bb_upper_{tf}"] = bb_upper.values.astype(np.float32)
     out[f"bb_lower_{tf}"] = bb_lower.values.astype(np.float32)
+    out[f"bb_middle_{tf}"] = bb_sma20.values.astype(np.float32)
+    out[f"bb_width_{tf}"] = bb_width.values.astype(np.float32)
+    out[f"bb_width_pct_{tf}"] = np.where(bb_sma20 > 0, bb_width / bb_sma20, 0).astype(np.float32)
     out[f"bb_pct_b_{tf}"] = np.where(bb_width > 0, (close - bb_lower) / bb_width, 0.5).astype(np.float32)
     # Keltner Channel + Squeeze (LazyBear/TTM): EMA(20) ± 1.5 × ATR(20). Squeeze ON when BB is inside KC.
     # Squeeze release (fire) direction: close vs KC midline on release bar. +1 bull, -1 bear, 0 none.

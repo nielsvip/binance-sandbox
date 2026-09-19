@@ -2542,6 +2542,11 @@ class Config:
     BB_SQUEEZE_ENTRY_ENABLED: bool = True  # Enter when Bollinger bands compress (< threshold)
     BB_SQUEEZE_THRESHOLD_1H: float = 0.03  # bb_squeeze < this on 1h = entry signal
     BB_SQUEEZE_THRESHOLD_15M: float = 0.025  # bb_squeeze < this on 15m = entry signal
+    # --- 2026-09-19 BB 15m/1h/4h/D family — bounce / breakout / profit-take / exit-at-loss + filter TFs — TESTABLE 15m+ in NPZ ---
+    BB_BOUNCE_ENTRY_TF: str = "OFF"  # ENTRY_REVERSAL_BOUNCE OFF/15m/1h/4h/D — long bounce off bb_lower, short off bb_upper
+    BB_BREAKOUT_ENTRY_TF: str = "OFF"  # ENTRY_BREAKOUT_CHANNEL — close > bb_upper (long) / < bb_lower (short) breakout
+    BB_EXIT_AT_LOSS_TF: str = "OFF"  # EXIT_STRUCTURAL — close below bb_lower (long loss) with HTF
+    BB_PROFIT_TAKE_TF: str = "OFF"  # REDUCE_PROFIT_LOCK / EXIT_VELOCITY — close above bb_upper profit take
     # sma200_dist: 9 symbols, avg Sharpe 93.2 — price distance from SMA200
     SMA200_DIST_ENTRY_ENABLED: bool = True  # SHORT when price crosses back above SMA200 on 1h
     SMA200_DIST_LONG_THRESHOLD: float = -3.0  # BACKTEST_CHANGE_7: was -2.0. Wider captures more mean-reversion setups

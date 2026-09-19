@@ -2443,6 +2443,11 @@ class TradierConfig:
     BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol
     BB_SQUEEZE_ENABLED: bool = True  # Master toggle for BB squeeze breakout entries
     BB_SQUEEZE_ENTRY_ENABLED: bool = True  # V15 PROMOTED: stocks_short True wins +1.33 (CATEGORY r70) — template STOCKS_SHORT bold (< threshold) ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
+    # --- 2026-09-19 BB 15m/1h/4h/D family — bounce / breakout / profit-take / exit-at-loss + filter TFs — TESTABLE 15m+ ---
+    BB_BOUNCE_ENTRY_TF: str = "OFF"
+    BB_BREAKOUT_ENTRY_TF: str = "OFF"
+    BB_EXIT_AT_LOSS_TF: str = "OFF"
+    BB_PROFIT_TAKE_TF: str = "OFF"
     BB_SQUEEZE_EXIT_ENABLED: bool = False  # Exit squeeze release - split from master to avoid double count 2026-09-04
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze — parity with config.py 2382
     # === PER-ROW FILTERS (2026-09-07) -- per-switch filter settings from TEMPLATE.xlsx L:BI ===

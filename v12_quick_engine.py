@@ -8022,6 +8022,27 @@ class QuickConfig:
     TR_TREND_V1_TIME_STOP_BARS_D: int = 60
     TR_TREND_V1_TIME_STOP_NO_HIGH_BARS_D: int = 30
     TR_TREND_V1_VOL_MULT: float = 1.5
+    # --- 2026-09-19 8x BOUNCE (5 live-only 3m + 3 testable 15m BB/DC) — parity: config.py 5 + 3 15m HTF ---
+    REENTRY_BOUNCE_BAR_GR_ENABLED: bool = False
+    REENTRY_BOUNCE_BAR_GR_MIN_TFS: int = 2
+    REENTRY_BOUNCE_BAR_GR_BETTER_PCT: float = 0.002
+    REENTRY_PULLBACK_GR_SCORE_ENABLED: bool = False
+    REENTRY_PULLBACK_GR_SCORE_MIN: int = 12
+    REENTRY_DC_MID_PULLBACK_ENABLED: bool = False
+    REENTRY_DC_MID_PULLBACK_WIDTH_MAX: float = 12.0
+    REENTRY_DC_MID_GR_MIN_TFS: int = 2
+    REENTRY_K_RESET_GR_ENABLED: bool = False
+    REENTRY_K_RESET_GR_MIN_TFS: int = 2
+    REENTRY_K_RESET_TF: str = "15m"
+    REENTRY_SMA200_GR_CONTINUATION_ENABLED: bool = False
+    REENTRY_SMA200_GR_MIN_TFS: int = 2
+    REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED: bool = False
+    REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS: int = 2
+    REENTRY_15M_LRL_PULLBACK_HTF_ENABLED: bool = False
+    REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS: int = 2
+    REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED: bool = False
+    REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS: int = 2
+    REENTRY_15M_BETTER_PCT: float = 0.002
     UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = False
     UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED: int = 2
     UNDERWATER_HOC_USDC_MAKER_BYPASS: bool = False
@@ -8877,16 +8898,19 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     if getattr(cfg, 'REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED', False):
         close_15m = _safe(npz, 'close_15m', n, close)
         close_15m_prev = np.roll(close_15m, 1); close_15m_prev[0] = close_15m[0]
-        dc_basis_15m = _safe(npz, 'dc_basis_15m', n, 0)
-        dc_basis_prev = _safe(npz, 'dc_basis_15m_prev', n, dc_basis_15m)
+        # bb_middle_15m is BB basis for 15m+ (now in NPZ 15m+ per 2026-09-19 regen) — fallback dc_basis for old NPZ
+        bb_middle_15m = _safe(npz, 'bb_middle_15m', n, 0)
+        if np.all(bb_middle_15m == 0):
+            bb_middle_15m = _safe(npz, 'bb_basis_15m', n, _safe(npz, 'dc_basis_15m', n, 0))
+        bb_middle_prev = np.roll(bb_middle_15m, 1); bb_middle_prev[0] = bb_middle_15m[0]
         bb_pct_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
         htf_cnt = (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int) if is_long else (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
         min_tfs = int(getattr(cfg, 'REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS', 2))
         if is_long:
-            cross = (close_15m_prev < dc_basis_prev) & (close_15m > dc_basis_15m) & (dc_basis_15m > 0)
+            cross = (close_15m_prev < bb_middle_prev) & (close_15m > bb_middle_15m) & (bb_middle_15m > 0)
             bb_ok = bb_pct_1h <= 0.85
         else:
-            cross = (close_15m_prev > dc_basis_prev) & (close_15m < dc_basis_15m) & (dc_basis_15m > 0)
+            cross = (close_15m_prev > bb_middle_prev) & (close_15m < bb_middle_15m) & (bb_middle_15m > 0)
             bb_ok = bb_pct_1h >= 0.15
         blocks["REENTRY_15M_DC_BASIS_CROSS_HTF"] = cross & (htf_cnt >= min_tfs) & bb_ok
     if getattr(cfg, 'REENTRY_15M_LRL_PULLBACK_HTF_ENABLED', False):
@@ -9246,6 +9270,9 @@ def compute_entry_signals(npz, n, is_long, cfg):
             else: _htf2_ok = _ok
         _expanded_htf_ok = (_htf1_ok & _htf2_ok) if _wtdc_htf_mode == 'AND' else (_htf1_ok | _htf2_ok)
         _wtdc_htf_ok = _wtdc_htf_ok & _expanded_htf_ok
+    # WT/DC TF-expanded 15m+ gates — wire into entry (was computed but not gated until 2026-09-19 parity fix)
+    # Each defaults to ones so base behavior unchanged; non-default TF/threshold flips produce ledger delta
+    _wtdc_tf_gates_ok = _wtdc_entry_ok & _wtdc_dc_ok & _wtdc_stoch_ok
     # Hard WT_DC short gates: K5M floor 20 (OFF by default, npz has no 5m), dc_pos >=0.20, LT weak, HTF bear >=2 — baked, parity switch
     _hard_short_ok = np.ones(n, dtype=bool)
     if not is_long:
@@ -9375,7 +9402,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # Hook via check_dc_break_vec mask not needed for entry veto (score contribution handled in _apply_625_entry_gates), but ensure parity via identical live vec path when enabled
     # 2026-09-03 VEC_IDENTICAL: REGIME (HTF_REGIME_SCALE) — HTF regime ladder identical to live ez_manage (TEMPLATE 280 hook 3/3) via vec_decisions/htf_regime_scale
     # 2026-08-09 625 wiring — causal entry gates for every formerly unwired knob
-    _base_entry = delta_open_gate & (raw & k3m_ok & ct_vel_ok & ct_dc_ok & ct_momentum_ok & ct_chop_ok & ct_vol_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & _wt_dc_mask & _wtdc_htf_ok & mtf_armed_ok & clenow_ok & _gr_ok & _hard_short_ok & (~_bb_pullback_vec) & (~_counter_trend_vec))
+    _base_entry = delta_open_gate & (raw & k3m_ok & ct_vel_ok & ct_dc_ok & ct_momentum_ok & ct_chop_ok & ct_vol_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & _wt_dc_mask & _wtdc_htf_ok & _wtdc_tf_gates_ok & mtf_armed_ok & clenow_ok & _gr_ok & _hard_short_ok & (~_bb_pullback_vec) & (~_counter_trend_vec))
     _base_entry = _apply_batch2_entry_gates(npz, n, is_long, cfg, _base_entry)
     _base_entry = _apply_625_entry_gates(npz, n, is_long, cfg, _base_entry)
     _base_entry, _ = _apply_625_generic_gates(npz, n, is_long, cfg, _base_entry, np.zeros(n, dtype=bool))
