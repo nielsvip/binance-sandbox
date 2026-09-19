@@ -19483,6 +19483,20 @@ class MultiAccountTradeManager:
         if not text:
             return None
         try:
+            text_no_trailing = re.sub(r",\s*([\]}])", r"\1", text)
+            if text_no_trailing != text:
+                try:
+                    return orjson.loads(text_no_trailing)
+                except Exception:
+                    pass
+                try:
+                    obj, _ = json.JSONDecoder().raw_decode(text_no_trailing)
+                    return obj
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        try:
             obj, _ = json.JSONDecoder().raw_decode(text)
             return obj
         except Exception:
@@ -19490,6 +19504,7 @@ class MultiAccountTradeManager:
         try:
             text_fixed = re.sub(r'"\s+"', '", "', text)
             text_fixed = re.sub(r"}\s+{", "}, {", text_fixed)
+            text_fixed = re.sub(r",\s*([\]}])", r"\1", text_fixed)
             return orjson.loads(text_fixed)
         except Exception:
             pass
@@ -19497,11 +19512,13 @@ class MultiAccountTradeManager:
             if text.startswith("["):
                 last_idx = text.rfind("]")
                 if last_idx > 0:
-                    return orjson.loads(text[: last_idx + 1])
+                    candidate = re.sub(r",\s*([\]}])", r"\1", text[: last_idx + 1])
+                    return orjson.loads(candidate)
             elif text.startswith("{"):
                 last_idx = text.rfind("}")
                 if last_idx > 0:
-                    return orjson.loads(text[: last_idx + 1])
+                    candidate = re.sub(r",\s*([\]}])", r"\1", text[: last_idx + 1])
+                    return orjson.loads(candidate)
         except Exception:
             pass
         return None
