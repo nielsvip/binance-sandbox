@@ -849,11 +849,19 @@ def main():
                 if (_tm.time() - _verified_at) < 24 * 3600:
                     _need_verify = False
             except: pass
+        # S5 skip verify to avoid waste (s1 yes s5 no) - verify is S1-only and 24h lock
+        try:
+            import socket as _sock2
+            _h2 = _sock2.gethostname().lower()
+            if "s5" in _h2:
+                print("[TEMPLATE-VERIFY] S5 skip (s1 yes s5 no) — S1 already verified, saving 233k wasted", flush=True)
+                _need_verify=False
+        except: pass
         if _need_verify:
-            print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth", flush=True)
+            print("[TEMPLATE-VERIFY] 24h expired or no stamp — re-verifying bold defaults vs config source of truth (ONLY backtests, not per sym)", flush=True)
             _sp.run([sys.executable, "tools/verify_template_defaults.py"], check=False)
         else:
-            print("[TEMPLATE-VERIFY] within 24h immutable — skipping", flush=True)
+            print("[TEMPLATE-VERIFY] within 24h immutable or S5 skip — skipping to avoid 233k waste", flush=True)
     except Exception as _e:
         print(f"[TEMPLATE-VERIFY-WARN] {_e}", flush=True)
 
@@ -896,8 +904,10 @@ def main():
                 except Exception:
                     continue
         if _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
-            # shuffle second round with baseline-json is allowed to retouch oldest for iterative hill-climb
-            if args.seq_mode == "shuffle" and args.baseline_json:
+            # worst_first second round with baseline-json is allowed to retouch for yellows/orange per tab (filters need deltas) - not just shuffle
+            if args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed for second round (filters/orange per tab needs delta)", flush=True)
+            elif args.seq_mode == "shuffle" and args.baseline_json:
                 print(f"[SHUFFLE-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but shuffle+baseline-json allowed for second round", flush=True)
             else:
                 print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
@@ -911,8 +921,10 @@ def main():
                         f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
                         capture_output=True, text=True, timeout=5)
                     if _r.stdout and _r.stdout.strip() not in ("","None","null"):
-                        if args.seq_mode == "shuffle" and args.baseline_json:
-                            print(f"[SHUFFLE-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but shuffle+baseline-json allowed", flush=True)
+                        if args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                            print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but {args.seq_mode}+baseline-json allowed", flush=True)
+                        elif args.seq_mode == "shuffle" and args.baseline_json:
+                            print(f"[SHUFFILE-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but shuffle+baseline-json allowed", flush=True)
                         else:
                             print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
                             return
@@ -1180,6 +1192,30 @@ def main():
                     if sheet_part not in wb_refill.sheetnames:
                         continue
                     ws_r = wb_refill[sheet_part]
+                    # RESUME FIX 2026-09-19: template was sorted by M (whites->oranges), row numbers in old done keys are stale.
+                    # Fallback to switch-name lookup if row r does not contain expected switch.
+                    try:
+                        _cur_a = ws_r.cell(row=r, column=1).value
+                        _cur_b = ws_r.cell(row=r, column=2).value
+                        _exp_sw = switch_eq.split("=")[0] if "=" in switch_eq else switch_eq
+                        _exp_val = switch_eq.split("=",1)[1] if "=" in switch_eq else ""
+                        _cur_sw = str(_cur_a).strip() if _cur_a else ""
+                        _cur_val = str(_cur_b).strip() if _cur_b is not None and not isinstance(_cur_b,bool) else (str(_cur_b) if isinstance(_cur_b,bool) else "")
+                        if _cur_sw != _exp_sw or _cur_val != _exp_val:
+                            # Search for correct row by switch name
+                            _found = None
+                            for _rr in range(3, ws_r.max_row+1):
+                                _a = ws_r.cell(row=_rr, column=1).value
+                                _b = ws_r.cell(row=_rr, column=2).value
+                                _b_str = str(_b).strip() if _b is not None and not isinstance(_b,bool) else (str(_b) if isinstance(_b,bool) else "")
+                                if str(_a).strip()==_exp_sw and _b_str==_exp_val:
+                                    _found=_rr
+                                    break
+                            if _found:
+                                r=_found
+                            else:
+                                continue
+                    except: pass
                     # refill F HUSTLE_DELTA (col6) + G VECTOR_DELTA (col7) from rec delta — overwrite VLOOKUP/empty, never waste recalc
                     # F is hustle vs baseline, G is greedy vs cum; rec stores greedy delta (same for NEG, different for POS via E logic)
                     # For refill we write both as float(rec delta) when not float; POS hustle needs recalc but greedy G is correct
@@ -1321,7 +1357,10 @@ def main():
                         if isinstance(v, str) and v.lower() in ("true", "false"): return v.lower() == "true"
                         return v
                     _key_skip = f"{_sh}!{_r}:{_sw}={_cand}"
-                    if _norm(_cand) == _norm(eff) and _key_skip in progress.get("done", {}): continue
+                    # RESUME FIX: check by switch name not just row key (row numbers stale after sort)
+                    _key_switch = _key_skip.split(":",1)[-1] if ":" in _key_skip else _key_skip
+                    _done_by_switch = any(k.split(":",1)[-1]==_key_switch for k in progress.get("done", {}).keys())
+                    if _norm(_cand) == _norm(eff) and (_key_skip in progress.get("done", {}) or _done_by_switch): continue
                     _f_val = _ws_tmp.cell(row=_r, column=6).value
                     _is_general_f = isinstance(_f_val, str) and _f_val.strip().upper().startswith("GENERAL")
                     _is_orange_global = str(_ws_tmp.cell(row=_r, column=4).value or "") == "GLOBAL_CHECK"

@@ -7,13 +7,13 @@ All temp workers are **sequentially numbered** `s2, s3, s4, s5 … sN` with **de
 
 | Host | Public | Private | Spec | Role |
 |------|--------|---------|------|------|
-| s1 | 157.180.125.52 | 10.0.0.3 | 32c/64G | **Permanent** — holds image, NPZ, ORDER, results. Never deleted. |
-| s2 | *ephemeral* (changes on rebuild) | 10.0.0.4 | 4-16c/8-32G | Ephemeral worker — `s2` ≡ `10.0.0.4` |
-| s3 | *ephemeral* | 10.0.0.5 | 16c/32G | Ephemeral — `s3` ≡ `10.0.0.5` |
-| s4 | *ephemeral* | 10.0.0.6 | 16c/32G | Ephemeral — `s4` ≡ `10.0.0.6` (gap filled; legacy `s5` at `.6` migrates to `.7` on next rebuild) |
-| s5 | *ephemeral* | 10.0.0.7 | 16c/32G | Ephemeral — `s5` ≡ `10.0.0.7` |
-| s6 | *ephemeral* | 10.0.0.8 | CCX33 | Ephemeral — `s6` ≡ `10.0.0.8` |
-| sN | *ephemeral* | 10.0.0.(N+2) | CCX33/CPX31 | Ephemeral — `sN` ≡ `10.0.0.(N+2)` |
+| s1 | 157.180.125.52 | 10.0.0.3 | 16c/32G cax41 arm | **Permanent** — holds image, NPZ, ORDER, results. Never deleted. |
+| s2 | *ephemeral* (changes on rebuild) | 10.0.0.4 | 16c/32G cax41 arm | Ephemeral worker — `s2` ≡ `10.0.0.4` |
+| s3 | *ephemeral* | 10.0.0.5 | 16c/32G cax41 arm | Ephemeral — `s3` ≡ `10.0.0.5` |
+| s4 | *ephemeral* | 10.0.0.6 | 16c/32G cax41 arm | Ephemeral — `s4` ≡ `10.0.0.6` (gap filled; legacy `s5` at `.6` migrates to `.7` on next rebuild) |
+| s5 | *ephemeral* | 10.0.0.7 | 16c/32G cax41 arm | Ephemeral — `s5` ≡ `10.0.0.7` — reference type |
+| s6 | *ephemeral* | 10.0.0.8 | 16c/32G cax41 arm | Ephemeral — `s6` ≡ `10.0.0.8` |
+| sN | *ephemeral* | 10.0.0.(N+2) | 16c/32G cax41 arm | Ephemeral — `sN` ≡ `10.0.0.(N+2)` — ONLY cax41 like s5 |
 
 Canonical rule: **`sN` → `10.0.0.(N+2)`** (`s1→.3`, `s2→.4`, … `s10→.12`). Hetzner `tradingnet` auto-assigns the next free IP in creation order — `deploy_fleet.sh` creates in sequential order `s2→s3→s4→…` so the assignment matches the canonical rule, verifies it after create, and **upserts** `~/.ssh/config` so `ssh sN` always resolves to the live private IP.
 
@@ -113,17 +113,17 @@ ssh s1-int 'nohup python3 -m http.server 8787 --directory ~/binance-sandbox/.ela
 ### Scale up — 1 command
 
 ```bash
-# create 2 more workers (s6, s7) from snapshot, auto-bootstrapped
-./infra/elastic/deploy_fleet.sh --count 2 --type ccx33 --from snapshot
+# create 2 more workers (s6, s7) from snapshot, auto-bootstrapped — ONLY cax41 like s5
+./infra/elastic/deploy_fleet.sh --count 2 --type cax41 --from snapshot
 
 # or from tarball on empty Ubuntu (no snapshot — pure S1 pull, ~90s slower)
-./infra/elastic/deploy_fleet.sh --count 3 --type ccx33 --from tarball
+./infra/elastic/deploy_fleet.sh --count 3 --type cax41 --from tarball
 
 # pin specific hostnames / private IPs
-./infra/elastic/deploy_fleet.sh --names s6,s7 --type ccx33
+./infra/elastic/deploy_fleet.sh --names s6,s7 --type cax41
 ```
 
-`deploy_fleet.sh` does **sequentially** (one `hcloud server create` at a time, in numeric order `s2→s3→s4→…`): `hcloud server create --name sN --type ccx33 --image <golden|ubuntu-22.04> --ssh-key binance-main --network tradingnet --label purpose=backtest,gen=v15,private=10.0.0.(N+2) --user-data-from-file infra/elastic/bootstrap.sh`. Hetzner auto-assigns the next free `10.0.0.*` in creation order — sequential creation guarantees `sN` gets `10.0.0.(N+2)`. After each create it fetches the live private/public IPs (`hcloud server describe sN -o json`) and **verifies** `private == 10.0.0.(N+2)` (warns if drift) and **upserts** `~/.ssh/config` (`Host sN` → private via `gateway-internal`, `Host sN-pub` → current public). Then waits for `ssh sN "ps aux | grep v15_local_herd"` up.
+`deploy_fleet.sh` does **sequentially** (one `hcloud server create` at a time, in numeric order `s2→s3→s4→…`): `hcloud server create --name sN --type cax41 --image <golden|ubuntu-22.04> --ssh-key binance-main --network tradingnet --label purpose=backtest,gen=v15,private=10.0.0.(N+2) --user-data-from-file infra/elastic/bootstrap.sh` (ONLY cax41 arm like s5/s1, `ccx33` is REFUSED). Hetzner auto-assigns the next free `10.0.0.*` in creation order — sequential creation guarantees `sN` gets `10.0.0.(N+2)`. After each create it fetches the live private/public IPs (`hcloud server describe sN -o json`) and **verifies** `private == 10.0.0.(N+2)` (warns if drift) and **upserts** `~/.ssh/config` (`Host sN` → private via `gateway-internal`, `Host sN-pub` → current public). Then waits for `ssh sN "ps aux | grep v15_local_herd"` up.
 
 Time: snapshot → herd running in **~90s**; tarball → **~180s** (includes 1.2G venv pull at 300MB/s private).
 
@@ -204,8 +204,8 @@ for n in 1 2 3 4 5 6 7 8; do echo -n "s$n expected 10.0.0.$((n+2)) live "; hclou
 # Image age
 ssh s1-int 'ls -lh ~/binance-sandbox/.elastic/golden_image.* && cat ~/binance-sandbox/.elastic/golden_image.sha256'
 
-# Deploy 1 more for tonight
-./infra/elastic/deploy_fleet.sh --count 1 --type ccx33 --from snapshot
+# Deploy 1 more for tonight — ONLY cax41 like s5
+./infra/elastic/deploy_fleet.sh --count 1 --type cax41 --from snapshot
 
 # Cull idle (safe — verifies sync)
 ./infra/elastic/deploy_fleet.sh --cull-idle
