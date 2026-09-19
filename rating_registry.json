@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-19T11:58:02.556768+00:00",
+  "timestamp": "2026-09-19T12:21:27.348804+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -74,6 +74,12 @@
     },
     {
       "symbol": "LTCUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "KAVAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -725,21 +731,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "KAVAUSDT",
-      "net_score": 12.6,
-      "long_score": 12.6,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "KAVAUSDT",
-      12.6,
-      0.07224994
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
