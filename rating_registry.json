@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-19T06:50:06.296636+00:00",
+  "timestamp": "2026-09-19T07:14:18.491445+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -188,12 +188,6 @@
     },
     {
       "symbol": "RVNUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "KAVAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -545,9 +539,21 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "KAVAUSDT",
+      "net_score": 10.7,
+      "long_score": 10.7,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "KAVAUSDT",
+      10.7,
+      0.07068
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
