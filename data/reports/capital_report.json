@@ -1,30 +1,32 @@
 {
- "generated_at": "2026-09-19 06:12 UTC",
- "total_capital_usd": 13.88,
+ "generated_at": "2026-09-19 07:22 UTC",
+ "total_capital_usd": 43.03,
  "tier_capital": {
   "A": 0.0,
-  "B": 13.88,
-  "C": 0.0
+  "B": 0.0,
+  "C": 43.03
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:WLDUSDC_SHORT"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:FARTCOINUSDT_LONG",
-   "symbol": "FARTCOINUSDT",
+   "pk": "fin:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
    "account": "fin",
-   "value_usd": 13.88,
-   "gain_pct": -0.089,
-   "tier": "B",
-   "perf_mult": 3.25,
-   "amt": 86.9,
-   "mark": 0.15975809
+   "value_usd": 43.03,
+   "gain_pct": 0.205,
+   "tier": "C",
+   "perf_mult": 0.58,
+   "amt": 102.8,
+   "mark": 0.41853947
   }
  ]
 }

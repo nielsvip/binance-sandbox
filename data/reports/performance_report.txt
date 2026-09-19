@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-19 07:08 UTC
+PERFORMANCE REPORT — 2026-09-19 07:31 UTC
 ================================================================================
 Total: 155 symbols | A=2 B=122 C=31
 Window: 14 days | Min trades: 5
@@ -53,7 +53,6 @@ Window: 14 days | Min trades: 5
          LINKUSDC  WR=54%  avg=+0.03%  total=+0.4%  trades= 13  mult=1.58
       VIRTUALUSDT  WR=50%  avg=+0.09%  total=+0.4%  trades=  4  mult=1.00
           KSMUSDT  WR=100%  avg=+0.04%  total=+0.3%  trades=  9  mult=5.17
-          LTCUSDC  WR=80%  avg=+0.07%  total=+0.3%  trades=  5  mult=2.47
          EGLDUSDT  WR=60%  avg=+0.04%  total=+0.3%  trades= 10  mult=2.02
          ORDIUSDC  WR=100%  avg=+0.12%  total=+0.3%  trades=  3  mult=1.00
           SOLUSDC  WR=40%  avg=+0.03%  total=+0.3%  trades= 10  mult=0.74
@@ -67,6 +66,7 @@ Window: 14 days | Min trades: 5
          DOGEUSDC  WR=50%  avg=+0.06%  total=+0.2%  trades=  4  mult=1.00
          AXTIUSDT  WR=100%  avg=+0.06%  total=+0.2%  trades=  3  mult=1.00
          IOTAUSDT  WR=100%  avg=+0.18%  total=+0.2%  trades=  1  mult=1.00
+          LTCUSDC  WR=75%  avg=+0.03%  total=+0.1%  trades=  4  mult=1.00
               PSX  WR=50%  avg=+0.06%  total=+0.1%  trades=  2  mult=1.00
          SMCIUSDT  WR=44%  avg=+0.01%  total=+0.1%  trades=  9  mult=0.85
          GRAMUSDT  WR=78%  avg=+0.01%  total=+0.1%  trades=  9  mult=3.29
@@ -132,7 +132,7 @@ Window: 14 days | Min trades: 5
                MU  WR=60%  avg=-1.42%  total=-13.6%  trades= 10  mult=0.39
 
 --- TIER C (31 symbols) ---
-          WLDUSDC  WR=41%  avg=-0.00%  total=-0.1%  trades= 58  mult=0.59
+          WLDUSDC  WR=42%  avg=-0.00%  total=-0.1%  trades= 59  mult=0.62
      1000PEPEUSDC  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.61
         PENGUUSDC  WR=44%  avg=-0.03%  total=-0.2%  trades=  9  mult=0.81
           ENSUSDT  WR=20%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.61
@@ -165,7 +165,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.47%  total=-67.3%  trades= 44  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +659.6%
+  Total PnL (all symbols): +659.4%
   Avg win rate: 48%
   A-tier avg mult: 9.10
-  C-tier avg mult: 0.40
+  C-tier avg mult: 0.41
