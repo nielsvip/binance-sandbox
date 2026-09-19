@@ -3218,13 +3218,63 @@ def main():
         import traceback
         print(f"[365D-outer-warn] {_outer} {traceback.format_exc()[:600]}", flush=True)
     # === keep going: queue symbols_trb and symbols_flz ===
+    # === EXPLORATION: test other side occasionally (backtest) but live gate requires gain>0 and beat bh ===
+    # Even if a sym_side is disabled live, backtest still probes opposite side periodically.
+    # Exploration rate controlled via V15_OTHER_SIDE_PROBE_RATE (env or config), default 0.15 (15%).
+    # Also ensures campaign queue always contains opposite side for recently processed sym_side if not already queued.
+    try:
+        import random as _rnd
+        _probe_rate = float(os.getenv("V15_OTHER_SIDE_PROBE_RATE", "0.15"))
+        # Use deterministic hash for occasional probe to avoid pure randomness missing coverage
+        _sym_base, _sym_side = (new_symside.rsplit("_", 1) if "_" in new_symside else (new_symside, "LONG"))
+        _opp_side = "SHORT" if _sym_side == "LONG" else "LONG"
+        _opp_symside = f"{_sym_base}_{_opp_side}"
+        # Check if opposite side was recently tested (progress file exists and recent)
+        _opp_progress = PROGRESS_DIR / f"{_opp_symside}_progress.json"
+        _should_probe = False
+        if not _opp_progress.exists():
+            _should_probe = True
+        else:
+            try:
+                _opp_mtime = _opp_progress.stat().st_mtime
+                _age_days = (time.time() - _opp_mtime) / 86400
+                if _age_days > 7.0:
+                    _should_probe = True
+            except Exception:
+                _should_probe = True
+        if not _should_probe and _rnd.random() < _probe_rate:
+            _should_probe = True
+        if _should_probe:
+            print(f"[other-side-probe] {new_symside} -> queuing opposite {_opp_symside} for exploration (backtest only, live requires gain>0 and beat bh)", flush=True)
+            try:
+                camp_path2 = PROGRESS_DIR / "campaign_order_1mo.json"
+                if camp_path2.exists():
+                    camp2 = _js.loads(camp_path2.read_text()) if '_js' in locals() else json.loads(camp_path2.read_text())
+                    queue2 = camp2.get("queue") or []
+                    existing2 = {q.get("symside") for q in queue2}
+                    if _opp_symside not in existing2:
+                        queue2.append({"symside": _opp_symside, "window": "30_calendar_days", "side": _opp_side, "probe": "other_side"})
+                        camp2["queue"] = queue2
+                        camp_path2.write_text(json.dumps(camp2, indent=2))
+                        print(f"[other-side-probe] queued {_opp_symside}", flush=True)
+            except Exception as _e2:
+                print(f"[other-side-probe-warn] {_e2}", flush=True)
+    except Exception as _e:
+        print(f"[other-side-probe-warn] {_e}", flush=True)
     try:
         import json as _js
         trb_long = _js.loads((ROOT / "symbols_trb_long.json").read_text()) if (ROOT / "symbols_trb_long.json").exists() else []
         trb_short = _js.loads((ROOT / "symbols_trb_short.json").read_text()) if (ROOT / "symbols_trb_short.json").exists() else []
         flz = _js.loads((ROOT / "symbols_flz.json").read_text()) if (ROOT / "symbols_flz.json").exists() else []
+        # Also include side-specific flz/fin/men for backtest coverage (probe disabled side)
+        flz_long = _js.loads((ROOT / "symbols_flz_long.json").read_text()) if (ROOT / "symbols_flz_long.json").exists() else []
+        flz_short = _js.loads((ROOT / "symbols_flz_short.json").read_text()) if (ROOT / "symbols_flz_short.json").exists() else []
+        fin_long = _js.loads((ROOT / "symbols_fin_long.json").read_text()) if (ROOT / "symbols_fin_long.json").exists() else []
+        fin_short = _js.loads((ROOT / "symbols_fin_short.json").read_text()) if (ROOT / "symbols_fin_short.json").exists() else []
+        men_long = _js.loads((ROOT / "symbols_men_long.json").read_text()) if (ROOT / "symbols_men_long.json").exists() else []
+        men_short = _js.loads((ROOT / "symbols_men_short.json").read_text()) if (ROOT / "symbols_men_short.json").exists() else []
         # log next queue (actual launch is via campaign runner, here just progress hint)
-        print(f"[queue-next] TRB {len(trb_long)} long + {len(trb_short)} short, FLZ {len(flz)} syms — pilots will pick next via campaign_order_1mo.json", flush=True)
+        print(f"[queue-next] TRB {len(trb_long)} long + {len(trb_short)} short, FLZ {len(flz)} syms (+ side-specific flz {len(flz_long)}/{len(flz_short)} fin {len(fin_long)}/{len(fin_short)} men {len(men_long)}/{len(men_short)}) — pilots will pick next via campaign_order_1mo.json", flush=True)
         # ensure campaign queue contains them
         camp_path = PROGRESS_DIR / "campaign_order_1mo.json"
         if camp_path.exists():
@@ -3249,10 +3299,17 @@ def main():
                     if ss not in existing:
                         queue.append({"symside": ss, "window": "30_calendar_days", "side": side})
                         added += 1
+            # Also ensure opposite side for every tracked symbol is at least queued as probe if missing (occasional backtest)
+            for lst, side in [(flz_long, "LONG"), (flz_short, "SHORT"), (fin_long, "LONG"), (fin_short, "SHORT"), (men_long, "LONG"), (men_short, "SHORT")]:
+                for s in lst:
+                    ss = f"{s}_{side}"
+                    if ss not in existing:
+                        queue.append({"symside": ss, "window": "30_calendar_days", "side": side})
+                        added += 1
             if added:
                 camp["queue"] = queue
                 camp_path.write_text(_js.dumps(camp, indent=2))
-                print(f"[queue-next] added {added} TRB/FLZ symsides to campaign queue", flush=True)
+                print(f"[queue-next] added {added} TRB/FLZ/FIN/MEN symsides to campaign queue (including side-specific probes)", flush=True)
     except Exception as e:
         print(f"[queue-next-warn] {e}", flush=True)
 

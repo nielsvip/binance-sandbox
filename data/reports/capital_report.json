@@ -1,43 +1,52 @@
 {
- "generated_at": "2026-09-19 00:09 UTC",
- "total_capital_usd": 44.13,
+ "generated_at": "2026-09-19 00:32 UTC",
+ "total_capital_usd": 58.03,
  "tier_capital": {
   "A": 0.0,
-  "B": 44.14,
+  "B": 58.04,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 3,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:COTIUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:COTIUSDT_LONG",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 35.4,
-   "gain_pct": -1.087,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 33.76,
+   "gain_pct": 0.654,
    "tier": "B",
-   "perf_mult": 1.28,
-   "amt": 1689.0,
-   "mark": 0.02095666
+   "perf_mult": 3.2,
+   "amt": 23.9,
+   "mark": 1.41257607
   },
   {
-   "pk": "fin:CRVUSDC_LONG",
-   "symbol": "CRVUSDC",
-   "account": "fin",
-   "value_usd": 8.74,
-   "gain_pct": -0.367,
+   "pk": "flz:ZECUSDC_LONG",
+   "symbol": "ZECUSDC",
+   "account": "flz",
+   "value_usd": 18.81,
+   "gain_pct": 1.276,
    "tier": "B",
-   "perf_mult": 1.54,
-   "amt": 25.5,
-   "mark": 0.3426
+   "perf_mult": 3.6,
+   "amt": 0.012,
+   "mark": 1567.09
+  },
+  {
+   "pk": "flz:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 5.47,
+   "gain_pct": 1.049,
+   "tier": "B",
+   "perf_mult": 1.26,
+   "amt": 0.086,
+   "mark": 63.59
   }
  ]
 }

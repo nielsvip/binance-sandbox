@@ -6948,6 +6948,11 @@ async def _run_redis_operation(operation: Awaitable[Any], label: str) -> None:
 _ezm_per_sym_cfgs: dict = {}
 _ezm_per_sym_cfgs_mtime: float = 0.0
 _ezm_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+_ezm_per_sym_raw: dict = {}
+_ezm_per_sym_raw_mtime: float = 0.0
+_ezm_per_sym_stocks_raw: dict = {}
+_ezm_per_sym_stocks_mtime: float = 0.0
+_ezm_per_sym_stocks_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json"
 # 2026-05-31 FINAL per_sym BOOK overlay (mirror of ez_positions_quick._apply_final_book). ez_manage's
 # _psym_get reads per_sym_active_config directly, so the book must be applied HERE too or the
 # PER_SYM_SIDE_DISABLED gate / watchdog / ladder won't see it. Gated by config.PERSYM_FINAL_BOOK_ENABLED.
@@ -7036,14 +7041,16 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     # 2026-08-21 USER MANDATE WIPED: NO per_sym trading until 900*900 vector+live verified — honor PER_SYM_CONFIG_ENABLED=False
     if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
         return getattr(config, knob, default)
-    global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime
+    global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_raw, _ezm_per_sym_raw_mtime
     try:
         mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
         if mtime != _ezm_per_sym_cfgs_mtime:
             with _ezm_per_sym_cfgs_path.open() as _f:
                 raw = json.load(_f)
             _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+            _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict)}
             _ezm_per_sym_cfgs_mtime = mtime
+            _ezm_per_sym_raw_mtime = mtime
     except FileNotFoundError:
         pass
     except Exception:
@@ -7052,6 +7059,138 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     if knob in ov:
         return ov[knob]
     return getattr(config, knob, default)
+
+
+def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
+    """Live gate: per_sym must exist, LONG/SHORT_ENABLED true, gain>0 and beat bh.
+    Backtest still explores disabled side occasionally (exploration), but live blocks.
+    Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json) — ensures stocks opposite side also probed in backtest but blocked live unless profitable.
+    Returns (enabled, reason)."""
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return True, "V8_DISABLE_PER_SYM"
+    if not bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
+        return True, "PER_SYM_CONFIG_ENABLED=False"
+    global _ezm_per_sym_raw, _ezm_per_sym_raw_mtime, _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime, _ezm_per_sym_stocks_raw, _ezm_per_sym_stocks_mtime
+    try:
+        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+        if mtime != _ezm_per_sym_raw_mtime:
+            with _ezm_per_sym_cfgs_path.open() as _f:
+                raw = json.load(_f)
+            _ezm_per_sym_raw = {k: v for k, v in raw.items() if isinstance(v, dict)}
+            _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+            _ezm_per_sym_raw_mtime = mtime
+            _ezm_per_sym_cfgs_mtime = mtime
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        return True, f"load error fail-open {e}"
+    # Try stocks per_sym as well (for stock symbols traded via ez_manage with USDT suffix e.g. SNDKUSDT)
+    try:
+        mtime_s = _ezm_per_sym_stocks_path.stat().st_mtime
+        if mtime_s != _ezm_per_sym_stocks_mtime:
+            with _ezm_per_sym_stocks_path.open() as _f:
+                raw_s = json.load(_f)
+            _ezm_per_sym_stocks_raw = {k: v for k, v in raw_s.items() if isinstance(v, dict)}
+            _ezm_per_sym_stocks_mtime = mtime_s
+    except FileNotFoundError:
+        _ezm_per_sym_stocks_raw = {}
+    except Exception:
+        pass
+    key = f"{symbol}_{side}"
+    raw_entry = _ezm_per_sym_raw.get(key)
+    is_stock = False
+    if raw_entry is None:
+        # Try stocks per_sym with base symbol (strip USDT/USDC) — stocks use base like SNDK_LONG
+        base = symbol.replace("USDT", "").replace("USDC", "")
+        base_key = f"{base}_{side}"
+        raw_entry = _ezm_per_sym_stocks_raw.get(base_key) or _ezm_per_sym_stocks_raw.get(key)
+        if raw_entry is not None:
+            is_stock = True
+        else:
+            # Also check BEST matrices for stocks (SPREADSHEETS/BEST/STOCKS_{SIDE}) as secondary gate
+            # If BEST shows gain<=0 or gain<=bh, block live but backtest still probes
+            try:
+                import re as _re
+                pattern = _re.compile(r"(.+?)_(LONG|SHORT)_bh(.+?)_gain(.+?)_30d_matrix")
+                def _pg(s): return -float(s[1:].replace('p','.')) if s.startswith('m') else float(s.replace('p','.'))
+                # Quick check: if BEST file exists for this stock side, use its bh/gain
+                best_dir = Path(__file__).resolve().parent / f"SPREADSHEETS/BEST/STOCKS_{side}"
+                if best_dir.exists():
+                    for f in best_dir.iterdir():
+                        if f.name.startswith(f"{base}_{side}_bh"):
+                            m = pattern.match(f.name)
+                            if m:
+                                bh = _pg(m.group(3)); gain = _pg(m.group(4))
+                                if gain <= 0 or gain <= bh:
+                                    return False, f"BEST stock {base}_{side} gain {gain} bh {bh} not beating"
+            except Exception:
+                pass
+            return False, f"no per_sym entry {key} -> ancient defaults"
+    # Stocks case: use stocks per_sym (already loaded as raw_entry with is_stock True)
+    if is_stock:
+        # Check LONG/SHORT_ENABLED via stocks overrides if present
+        flag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
+        ov_s = raw_entry.get("overrides", {})
+        if flag in ov_s and not bool(ov_s[flag]):
+            return False, f"stocks {flag}=False"
+        # Stocks live gate: check BEST first (gain>0 and beat bh) then ps wsharpe/pnl
+        try:
+            import re as _re2
+            pattern2 = _re2.compile(r"(.+?)_(LONG|SHORT)_bh(.+?)_gain(.+?)_30d_matrix")
+            def _pg2(s): return -float(s[1:].replace('p','.')) if s.startswith('m') else float(s.replace('p','.'))
+            base2 = symbol.replace("USDT", "").replace("USDC", "")
+            best_dir2 = Path(__file__).resolve().parent / f"SPREADSHEETS/BEST/STOCKS_{side}"
+            if best_dir2.exists():
+                for f2 in best_dir2.iterdir():
+                    if f2.name.startswith(f"{base2}_{side}_bh"):
+                        m2 = pattern2.match(f2.name)
+                        if m2:
+                            bh2 = _pg2(m2.group(3)); gain2 = _pg2(m2.group(4))
+                            if gain2 <= 0 or gain2 <= bh2:
+                                return False, f"BEST stock {base2}_{side} gain {gain2} bh {bh2} not beating"
+        except Exception:
+            pass
+        # Check ps wsharpe/pnl
+        w2 = raw_entry.get("wsharpe") if "wsharpe" in raw_entry else raw_entry.get("pool_sharpe")
+        pnl2 = raw_entry.get("total_pnl_pct") if "total_pnl_pct" in raw_entry else raw_entry.get("acc_gain_pct") or raw_entry.get("gain_pct")
+        trades2 = raw_entry.get("trades")
+        tag2 = raw_entry.get("winning_tag", "")
+        sample2 = raw_entry.get("sample_tag", "")
+        if "DISABLED" in str(tag2) or sample2 == "NO_TRADES" or (trades2 == 0 and (w2 == 0 or w2 is None)):
+            return False, f"stocks disabled tag {tag2[:30]} w={w2} trades={trades2}"
+        if w2 is not None and w2 <= 0 and pnl2 is not None and pnl2 <= 0:
+            return False, f"stocks w {w2} pnl {pnl2} not profitable"
+        return True, "stocks live enabled gain>0 and beats bh"
+    # Check LONG/SHORT_ENABLED flag (via overrides + final book)
+    ov = _ezm_apply_final_book(key, _ezm_per_sym_cfgs.get(key, {}))
+    flag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
+    if flag in ov and not bool(ov[flag]):
+        return False, f"{flag}=False"
+    if flag not in ov:
+        # Also check raw overrides directly
+        raw_ov = raw_entry.get("overrides", {})
+        if flag in raw_ov and not bool(raw_ov[flag]):
+            return False, f"raw {flag}=False"
+    # Check gain>0 and beat bh
+    g = raw_entry.get("acc_gain_pct")
+    if g is None:
+        g = raw_entry.get("gain_pct") or raw_entry.get("total_gain_pct") or raw_entry.get("gain_vs_bh")
+    bh = raw_entry.get("bh_pct")
+    gain_vs_bh = raw_entry.get("gain_vs_bh")
+    if g is not None and g <= 0:
+        return False, f"gain {g:.2f} <=0"
+    if gain_vs_bh is not None and gain_vs_bh <= 0:
+        return False, f"gain_vs_bh {gain_vs_bh:.2f} <=0 not beating bh"
+    if g is not None and bh is not None and g <= bh:
+        return False, f"gain {g:.2f} <= bh {bh:.2f} not beating bh"
+    # Check disabled tags
+    tag = raw_entry.get("winning_tag", "")
+    sample = raw_entry.get("sample_tag", "")
+    trades = raw_entry.get("trades")
+    w = raw_entry.get("wsharpe") if "wsharpe" in raw_entry else raw_entry.get("pool_sharpe")
+    if "DISABLED" in str(tag) or sample == "NO_TRADES" or (trades == 0 and (w == 0 or w is None)):
+        return False, f"disabled tag {tag[:30]} w={w} trades={trades}"
+    return True, "live enabled gain>0 and beats bh"
 
 
 _EXPLODING_LEDGER: Dict[str, Any] = {}  # {symbol: {pct_15d, side, updated}}
@@ -29103,6 +29242,11 @@ class MultiAccountTradeManager:
                 if not bool(_psym_get(symbol, position_side, _psd_flag, True)):
                     logger.critical(f"🚫 [PER_SYM_SIDE_DISABLED] {position_key}: BLOCKED {_psd_flag}=False (no positive backtest). action={action} reason={(reason or '')[:80]}")
                     return f"BLOCKED_PER_SYM_SIDE_DISABLED_{position_side}"
+                # Additional live gate: gain>0 and beat bh (backtest still explores, live blocked)
+                _live_ok, _live_reason = _ezm_is_live_side_enabled(symbol, position_side)
+                if not _live_ok:
+                    logger.critical(f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason} action={action}")
+                    return f"BLOCKED_PER_SYM_LIVE_GATE_{position_side}"
         except Exception as _psd_e:
             logger.warning(f"[PER_SYM_SIDE_DISABLED] check error (fail-open): {_psd_e}")
         # ═══════════════════════════════════════════════════════════════════════════

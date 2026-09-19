@@ -24075,6 +24075,99 @@ class TradierTradeManager:
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return f"BLOCKED_PER_SYM_SIDE_DISABLED_{position_side}"
+            # ═══ PER_SYM_LIVE_GATE: gain>0 and beat bh (stocks & crypto, backtest still probes opposite side) ═══
+            # Even if disabled side becomes profitable later, backtest (v15_pilot, per_sym_engine_stocks_isolated dual) still probes opposite side periodically.
+            # Live gate here blocks only live trading, not backtest exploration.
+            # Handles both crypto (per_sym_active_config.json) and stocks (per_sym_active_config_stocks.json + SPREADSHEETS/BEST/STOCKS_{SIDE}).
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce and 'HEDGE' not in (reason or '').upper():
+                try:
+                    _live_ok = True
+                    _live_reason = "unknown"
+                    # Try crypto per_sym first (for USDT/USDC symbols traded via tradier crypto)
+                    _key = f"{symbol}_{position_side}"
+                    _raw = None
+                    _is_stock = False
+                    # Check global per_sym (crypto)
+                    try:
+                        _raw = _global_per_sym_cfgs.get(_key) if isinstance(_global_per_sym_cfgs, dict) else None
+                        # Also try loading from file directly for gain/bh
+                        if _raw is None:
+                            _p = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+                            if _p.exists():
+                                _j = json.loads(_p.read_text())
+                                _raw = _j.get(_key)
+                    except Exception:
+                        _raw = None
+                    if _raw is None:
+                        # Try stocks per_sym (base symbol without USDT/USDC)
+                        _base = symbol.replace("USDT", "").replace("USDC", "")
+                        _base_key = f"{_base}_{position_side}"
+                        try:
+                            _ps = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json"
+                            if _ps.exists():
+                                _sj = json.loads(_ps.read_text())
+                                _raw = _sj.get(_base_key) or _sj.get(_key)
+                                if _raw is not None:
+                                    _is_stock = True
+                        except Exception:
+                            pass
+                        if _raw is None:
+                            # Also check BEST matrices for stocks as secondary gate (like ez_manage)
+                            _is_stock = True
+                            _raw = {"_is_best_check": True, "_base_key": _base_key, "_symbol": symbol}
+                    if _raw is not None:
+                        if _is_stock and "_is_best_check" in _raw:
+                            # BEST check for stocks
+                            import re as _re
+                            pattern = _re.compile(r"(.+?)_(LONG|SHORT)_bh(.+?)_gain(.+?)_30d_matrix")
+                            def _pg(s): return -float(s[1:].replace('p','.')) if s.startswith('m') else float(s.replace('p','.'))
+                            _base2 = symbol.replace("USDT", "").replace("USDC", "")
+                            _best_dir = Path(config.BASE_PATH) / f"SPREADSHEETS/BEST/STOCKS_{position_side}"
+                            _found_best = False
+                            if _best_dir.exists():
+                                for _f in _best_dir.iterdir():
+                                    if _f.name.startswith(f"{_base2}_{position_side}_bh"):
+                                        _m = pattern.match(_f.name)
+                                        if _m:
+                                            _bh = _pg(_m.group(3)); _gain = _pg(_m.group(4))
+                                            _found_best = True
+                                            if _gain <= 0 or _gain <= _bh:
+                                                _live_ok = False
+                                                _live_reason = f"BEST stock {_base2}_{position_side} gain {_gain} bh {_bh} not beating"
+                                            break
+                            if not _found_best:
+                                # No BEST, check ps wsharpe/pnl via _raw which is placeholder, treat as ancient
+                                _live_ok = False
+                                _live_reason = f"no per_sym stock entry {_base_key} -> ancient"
+                        else:
+                            g = _raw.get("acc_gain_pct")
+                            if g is None:
+                                g = _raw.get("gain_pct") or _raw.get("total_gain_pct") or _raw.get("total_pnl_pct")
+                            bh = _raw.get("bh_pct")
+                            gv = _raw.get("gain_vs_bh") or _raw.get("delta_gain_mo_vs_bh")
+                            w = _raw.get("wsharpe") if "wsharpe" in _raw else _raw.get("pool_sharpe")
+                            trades = _raw.get("trades")
+                            tag = _raw.get("winning_tag", "")
+                            sample = _raw.get("sample_tag", "")
+                            if "DISABLED" in str(tag) or sample == "NO_TRADES" or (trades == 0 and (w == 0 or w is None)):
+                                _live_ok = False
+                                _live_reason = f"disabled tag {str(tag)[:30]} w={w} trades={trades}"
+                            elif g is not None and g <= 0:
+                                _live_ok = False
+                                _live_reason = f"gain {g:.2f} <=0"
+                            elif gv is not None and gv <= 0:
+                                _live_ok = False
+                                _live_reason = f"gain_vs_bh {gv:.2f} <=0"
+                            elif g is not None and bh is not None and g <= bh:
+                                _live_ok = False
+                                _live_reason = f"gain {g:.2f} <= bh {bh:.2f}"
+                    if not _live_ok:
+                        logger.critical(f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason}")
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return f"BLOCKED_PER_SYM_LIVE_GATE_{position_side}"
+                except Exception as _e:
+                    logger.warning(f"[PER_SYM_LIVE_GATE] check error fail-open: {_e}")
 
             # ═══ TRADIER_PHYSICS_OPPOSITE_SIDE_BLOCK (2026-05-11 user mandate) ═══
             # Tradier brokerage CANNOT hold both LONG and SHORT on the same equity in the
