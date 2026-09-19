@@ -1834,6 +1834,20 @@ class Config:
     RZ_BREAKOUT_BAND: float = 0.05              # :33418
     REENTRY_GR_HTF_MIN_TFS: int = 0            # ez_manage.py:31682 (0 → GR-HTF reentry gate dead until raised)
     REENTRY_GR_MIN_IND: int = 2                # :31687
+    # --- 2026-09-19 BOUNCE-AFTER-CORRECTION REENTRY (TIM 30-80% >50) — see docs/REENTRY_BOUNCE_AFTER_CORRECTION_20260919.md ---
+    # 3/5m (A,B,C) untestable in 30D/1yr backtest NPZ -> OFF for backtest comparison, ON for live
+    REENTRY_BOUNCE_BAR_GR_ENABLED: bool = True  # A: 3m HH/HL bar turn + GR + better price — LIVE ON, backtest baseline OFF (TEMPLATE False)
+    REENTRY_BOUNCE_BAR_GR_MIN_TFS: int = 2
+    REENTRY_BOUNCE_BAR_GR_BETTER_PCT: float = 0.002  # 0.20% discount vs exit_price
+    REENTRY_PULLBACK_GR_SCORE_ENABLED: bool = True  # B: 3m pullback in trend + GR composite — LIVE ON (3m)
+    REENTRY_PULLBACK_GR_SCORE_MIN: int = 12  # GR score 0-20
+    REENTRY_DC_MID_PULLBACK_ENABLED: bool = True  # C: DC mid-band contraction bounce — LIVE ON (3m)
+    REENTRY_DC_MID_PULLBACK_WIDTH_MAX: float = 12.0
+    REENTRY_DC_MID_GR_MIN_TFS: int = 2
+    REENTRY_K_RESET_GR_ENABLED: bool = False  # D: stoch K reset through 30 + GR — sweepable (15m testable)
+    REENTRY_K_RESET_GR_MIN_TFS: int = 2
+    REENTRY_K_RESET_TF: str = "15m"
+    REENTRY_SMA200_GR_CONTINUATION_ENABLED: bool = False  # E: above SMA200 + GR + HH at better price — sweepable (15m testable)
     K3M_CAP_BREAKOUT_BYPASS: bool = True        # ez_positions_quick.py:2722
     OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS: bool = True  # :4407
     WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS: bool = True  # 2026-07-04 USER: WT_3M reentry only on higher-high (LONG)/lower-low (SHORT) crossover PRICE

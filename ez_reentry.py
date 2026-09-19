@@ -325,7 +325,35 @@ def evaluate_obligatory_reentry(ind: dict, current_price: float, exit_price: flo
         score = score_t3
         reason = f"OBLIGATORY_REENTRY_TIER3_EXIT_DC_BREAK_{side_str}_dc={dc_lvl:.6f}"
     else:
-        return False, 0.0, f"OBLIGATORY_NO_TRIGGER_{side_str}_sma_b={int(sma_bounce)}_htf={htf_count}/5_3m={int(wt_3m_aligned)}_dc_b={int(dc_break)}", 0
+        # --- 2026-09-19 BOUNCE-AFTER-CORRECTION (5 switches) — live ON for A,B,C (3/5m), sweepable for D,E ---
+        try:
+            from vec_decisions.reentry_bounce_after_correction import (
+                check_bounce_bar_gr as _chk_a,
+                check_pullback_gr as _chk_b,
+                check_dc_mid as _chk_c,
+                check_k_reset as _chk_d,
+                check_sma200_gr as _chk_e,
+            )
+            _bounce_ok = False
+            for _chk in (_chk_a, _chk_b, _chk_c, _chk_d, _chk_e):
+                ok, rsn = _chk(ind, is_long, current_price, exit_price, cfg)
+                if ok:
+                    _bounce_ok = True
+                    reason = f"BOUNCE_{rsn}"
+                    size_mult = default_mult
+                    # better-price bounces get Tier1 mult
+                    if "BOUNCE_BAR_GR" in rsn or "SMA200_GR" in rsn:
+                        size_mult = bounce_mult
+                    # dip/breakout mult overlay when K washed out
+                    _k15 = _f('stoch_k_15m', 50.0)
+                    if _k15 < 40:
+                        size_mult *= float(getattr(cfg, 'REENTRY_SIZE_DIP_MULT', 2.0)) / 1.5
+                    score = 30
+                    break
+            if not _bounce_ok:
+                return False, 0.0, f"OBLIGATORY_NO_TRIGGER_{side_str}_sma_b={int(sma_bounce)}_htf={htf_count}/5_3m={int(wt_3m_aligned)}_dc_b={int(dc_break)}_bounce=0", 0
+        except Exception:
+            return False, 0.0, f"OBLIGATORY_NO_TRIGGER_{side_str}_sma_b={int(sma_bounce)}_htf={htf_count}/5_3m={int(wt_3m_aligned)}_dc_b={int(dc_break)}", 0
 
     # K_15m extreme = SIZE REDUCTION (not BLOCK as before)
     k_15m = _f('stoch_k_15m', 50.0)

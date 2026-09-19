@@ -1,13 +1,13 @@
-PERFORMANCE REPORT — 2026-09-19 18:08 UTC
+PERFORMANCE REPORT — 2026-09-19 18:31 UTC
 ================================================================================
-Total: 155 symbols | A=2 B=124 C=29
+Total: 155 symbols | A=2 B=125 C=28
 Window: 14 days | Min trades: 5
 
 --- TIER A (2 symbols) ---
              DELL  WR=94%  avg=+3.57%  total=+833.1%  trades= 64  mult=10.00
              COIN  WR=73%  avg=+1.65%  total=+15.2%  trades= 11  mult=8.20
 
---- TIER B (124 symbols) ---
+--- TIER B (125 symbols) ---
              MSTR  WR=57%  avg=+2.07%  total=+54.5%  trades= 23  mult=10.00
              HOOD  WR=100%  avg=+7.50%  total=+33.6%  trades=  4  mult=1.00
              CIEN  WR=38%  avg=+1.37%  total=+11.1%  trades=  8  mult=3.70
@@ -35,7 +35,6 @@ Window: 14 days | Min trades: 5
           XLMUSDT  WR=55%  avg=+0.05%  total=+0.9%  trades= 20  mult=2.22
           BTCUSDC  WR=48%  avg=+0.04%  total=+0.9%  trades= 21  mult=0.94
          GALAUSDT  WR=71%  avg=+0.13%  total=+0.9%  trades=  7  mult=2.65
-           ARUSDT  WR=57%  avg=+0.13%  total=+0.9%  trades=  7  mult=1.76
          ASTSUSDT  WR=75%  avg=+0.22%  total=+0.9%  trades=  4  mult=1.00
               NOC  WR=78%  avg=+0.09%  total=+0.8%  trades=  9  mult=3.53
          ALGOUSDT  WR=58%  avg=+0.07%  total=+0.8%  trades= 12  mult=2.18
@@ -114,12 +113,14 @@ Window: 14 days | Min trades: 5
          HOODUSDT  WR=25%  avg=-0.15%  total=-0.6%  trades=  4  mult=1.00
          BABAUSDT  WR=45%  avg=-0.06%  total=-0.6%  trades= 11  mult=0.77
               MDT  WR=0%  avg=-0.64%  total=-0.6%  trades=  1  mult=1.00
+          ADAUSDC  WR=45%  avg=-0.07%  total=-0.7%  trades= 11  mult=0.76
               LLY  WR=0%  avg=-0.40%  total=-0.8%  trades=  2  mult=1.00
              RDDT  WR=0%  avg=-0.46%  total=-0.9%  trades=  2  mult=1.00
               MCD  WR=0%  avg=-0.92%  total=-0.9%  trades=  1  mult=1.00
               GLD  WR=0%  avg=-0.24%  total=-1.0%  trades=  4  mult=1.00
           TXNUSDT  WR=0%  avg=-0.54%  total=-1.1%  trades=  2  mult=1.00
           AIAUSDT  WR=33%  avg=-0.37%  total=-1.1%  trades=  3  mult=1.00
+           ARUSDT  WR=50%  avg=-0.20%  total=-1.2%  trades=  6  mult=0.85
              BABA  WR=50%  avg=-0.77%  total=-1.6%  trades=  2  mult=1.00
          QTUMUSDT  WR=54%  avg=-0.08%  total=-2.0%  trades= 24  mult=1.18
               LMT  WR=0%  avg=-2.36%  total=-2.4%  trades=  1  mult=1.00
@@ -133,18 +134,17 @@ Window: 14 days | Min trades: 5
              SMCI  WR=0%  avg=-2.73%  total=-10.5%  trades=  4  mult=1.00
                MU  WR=60%  avg=-1.42%  total=-13.6%  trades= 10  mult=0.39
 
---- TIER C (29 symbols) ---
+--- TIER C (28 symbols) ---
      1000PEPEUSDC  WR=33%  avg=-0.02%  total=-0.2%  trades=  9  mult=0.61
         PENGUUSDC  WR=44%  avg=-0.03%  total=-0.2%  trades=  9  mult=0.81
           ENSUSDT  WR=20%  avg=-0.06%  total=-0.3%  trades=  5  mult=0.61
           WIFUSDC  WR=38%  avg=-0.08%  total=-0.7%  trades=  8  mult=0.67
-          ADAUSDC  WR=42%  avg=-0.06%  total=-0.8%  trades= 12  mult=0.66
           SUIUSDC  WR=17%  avg=-0.14%  total=-0.8%  trades=  6  mult=0.52
           KASUSDT  WR=31%  avg=-0.07%  total=-0.8%  trades= 13  mult=0.47
          COTIUSDT  WR=42%  avg=-0.01%  total=-0.9%  trades= 57  mult=0.60
                VT  WR=29%  avg=-0.22%  total=-1.5%  trades=  7  mult=0.55
-        1INCHUSDT  WR=13%  avg=-0.11%  total=-1.6%  trades= 15  mult=0.29
               LOW  WR=38%  avg=-0.29%  total=-2.3%  trades=  8  mult=0.57
+        1INCHUSDT  WR=7%  avg=-0.17%  total=-2.4%  trades= 14  mult=0.27
           VETUSDT  WR=21%  avg=-0.11%  total=-3.1%  trades= 29  mult=0.27
      1000SHIBUSDC  WR=14%  avg=-0.46%  total=-3.2%  trades=  7  mult=0.40
              META  WR=25%  avg=-0.34%  total=-4.1%  trades= 12  mult=0.35
@@ -165,7 +165,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.47%  total=-67.3%  trades= 44  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +655.4%
+  Total PnL (all symbols): +652.5%
   Avg win rate: 49%
   A-tier avg mult: 9.10
-  C-tier avg mult: 0.40
+  C-tier avg mult: 0.39

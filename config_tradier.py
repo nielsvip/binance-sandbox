@@ -684,6 +684,21 @@ class TradierConfig:
     REENTRY_BAR_STRUCTURE_ENABLED: bool = True  # replace fixed pct with HL/HH structure
     REENTRY_BAR_STRUCTURE_TF: str = "5m"
     REENTRY_SMA200_BACKUP_ENABLED: bool = True  # ON — alternative tested via TEMPLATE
+    # --- 2026-09-19 BOUNCE-AFTER-CORRECTION REENTRY (TIM 30-80% >50) — see docs/REENTRY_BOUNCE_AFTER_CORRECTION_20260919.md ---
+    # 3/5m (stocks 5m) untestable in 1yr NPZ -> OFF for backtest comparison, ON for live
+    REENTRY_BOUNCE_BAR_GR_ENABLED: bool = True  # A: 5m HH/HL bar turn + GR — LIVE ON, backtest OFF (TEMPLATE False)
+    REENTRY_BOUNCE_BAR_GR_MIN_TFS: int = 2
+    REENTRY_BOUNCE_BAR_GR_BETTER_PCT: float = 0.002
+    REENTRY_PULLBACK_GR_SCORE_ENABLED: bool = True  # B: 5m pullback in trend + GR — LIVE ON (5m)
+    REENTRY_PULLBACK_GR_SCORE_MIN: int = 12
+    REENTRY_DC_MID_PULLBACK_ENABLED: bool = True  # C: 5m DC mid-band — LIVE ON (5m)
+    REENTRY_DC_MID_PULLBACK_WIDTH_MAX: float = 12.0
+    REENTRY_DC_MID_GR_MIN_TFS: int = 2
+    REENTRY_K_RESET_GR_ENABLED: bool = False  # D: K reset through 30 + GR — sweepable (15m testable)
+    REENTRY_K_RESET_GR_MIN_TFS: int = 2
+    REENTRY_K_RESET_TF: str = "15m"
+    REENTRY_SMA200_GR_CONTINUATION_ENABLED: bool = False  # E: SMA200 + GR — sweepable (15m testable)
+    REENTRY_SMA200_GR_MIN_TFS: int = 2
     PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True
     PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS: bool = True
     PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS: bool = True
