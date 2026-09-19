@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-19 07:59 UTC",
- "total_capital_usd": 32.46,
+ "generated_at": "2026-09-19 09:51 UTC",
+ "total_capital_usd": 7.07,
  "tier_capital": {
   "A": 0.0,
-  "B": 32.46,
+  "B": 7.07,
   "C": 0.0
  },
  "tier_count": {
@@ -13,20 +13,18 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "inf:ONDOUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:ONDOUSDT_LONG",
-   "symbol": "ONDOUSDT",
-   "account": "inf",
-   "value_usd": 32.46,
-   "gain_pct": -0.051,
+   "pk": "men:ALGOUSDT_LONG",
+   "symbol": "ALGOUSDT",
+   "account": "men",
+   "value_usd": 7.07,
+   "gain_pct": -0.112,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 82.2,
-   "mark": 0.39493886
+   "perf_mult": 2.02,
+   "amt": 72.6,
+   "mark": 0.09744067
   }
  ]
 }
