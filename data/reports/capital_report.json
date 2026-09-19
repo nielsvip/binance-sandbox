@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-19 21:47 UTC",
- "total_capital_usd": 42.25,
+ "generated_at": "2026-09-19 22:15 UTC",
+ "total_capital_usd": 2.5,
  "tier_capital": {
   "A": 0.0,
-  "B": 42.25,
+  "B": 2.5,
   "C": 0.0
  },
  "tier_count": {
@@ -16,15 +16,15 @@
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
    "account": "flz",
-   "value_usd": 42.25,
-   "gain_pct": 0.061,
+   "value_usd": 2.5,
+   "gain_pct": -0.447,
    "tier": "B",
-   "perf_mult": 3.86,
-   "amt": 30.0,
-   "mark": 1.40831272
+   "perf_mult": 2.56,
+   "amt": 0.043,
+   "mark": 58.21267812
   }
  ]
 }
