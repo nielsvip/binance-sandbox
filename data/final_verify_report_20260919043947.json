@@ -1,0 +1,66 @@
+{
+  "ts": "20260919043947",
+  "verified": 159,
+  "excluded": 18,
+  "corrected": 8,
+  "details": [
+    [
+      "ABT_SHORT",
+      "corrected",
+      6.52,
+      2.91,
+      "ABT_SHORT_bh2p91_gain6p52_30d_matrix.xlsx"
+    ],
+    [
+      "ACN_SHORT",
+      "corrected",
+      0.09,
+      -17.06,
+      "ACN_SHORT_bhm17p06_gain0p09_30d_matrix.xlsx"
+    ],
+    [
+      "AGI_SHORT",
+      "corrected",
+      11.0,
+      -27.36,
+      "AGI_SHORT_bhm27p36_gain11p00_30d_matrix.xlsx"
+    ],
+    [
+      "ALB_SHORT",
+      "corrected",
+      8.3,
+      -0.22,
+      "ALB_SHORT_bhm0p22_gain8p30_30d_matrix.xlsx"
+    ],
+    [
+      "AMD_LONG",
+      "corrected",
+      0.36,
+      17.29,
+      "AMD_LONG_bh17p29_gain0p36_30d_matrix.xlsx"
+    ],
+    [
+      "ARM_LONG",
+      "corrected",
+      3.43,
+      19.06,
+      "ARM_LONG_bh19p06_gain3p43_30d_matrix.xlsx"
+    ],
+    [
+      "ASTS_LONG",
+      "corrected",
+      0.83,
+      12.78,
+      "ASTS_LONG_bh12p78_gain0p83_30d_matrix.xlsx"
+    ],
+    [
+      "OLED_LONG",
+      "corrected",
+      1.17,
+      -4.62,
+      "OLED_LONG_bhm4p62_gain1p17_30d_matrix.xlsx"
+    ]
+  ],
+  "global_best": 185,
+  "still_mismatch": 0
+}

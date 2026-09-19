@@ -42,8 +42,10 @@ def _run_variant_task_worker_stocks(args):
         short_events, short_rets = [], []
     long_ets = [int(ev.ts) for ev in long_events if ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")]
     short_ets = [int(ev.ts) for ev in short_events if ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")]
-    long_rets = long_rets[:len(long_ets)]
-    short_rets = short_rets[:len(short_ets)]
+    n_long = min(len(long_ets), len(long_rets))
+    n_short = min(len(short_ets), len(short_rets))
+    long_ets, long_rets = long_ets[:n_long], long_rets[:n_long]
+    short_ets, short_rets = short_ets[:n_short], short_rets[:n_short]
     pnls = np.array(long_rets + short_rets, dtype=np.float32)
     ets = np.array(long_ets + short_ets, dtype=np.int64)
     if len(pnls) > 0:

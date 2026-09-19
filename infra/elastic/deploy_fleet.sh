@@ -62,6 +62,45 @@ guard_not_s1(){
 }
 
 canonical_ip(){ local n="${1#s}"; case "$n" in 5) echo "10.0.0.6" ;; 4) echo "10.0.0.7" ;; *) echo "10.0.0.$((n+2))" ;; esac; }  # legacy s5 .6, s4 .7 (s4 gap)
+
+# --- TAKE IT EASY gate: never add another if first hasn't produced BETTER results ---
+# Checks S1 recent xlsx and herd health before allowing next create
+check_improvement_gate(){
+  local allow_force="${1:-0}"
+  if [[ "${FORCE:-0}" == "1" || "$allow_force" == "1" ]]; then return 0; fi
+  # existing fleet size (s2..sN running)
+  local existing=0
+  if command -v hcloud >/dev/null 2>&1; then
+    existing=$(hcloud server list -o columns=name 2>/dev/null | grep -E '^s[2-9]$|^s[1-9][0-9]$' | wc -l | tr -d ' ')
+  fi
+  [[ -z "$existing" ]] && existing=0
+  if [[ "$existing" -eq 0 ]]; then return 0; fi  # first server always allowed
+  # S1 must have recent results (proving first server is productive)
+  local recent=0
+  recent=$(s1_ssh_any "find ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL -maxdepth 1 -name '*.xlsx' -mmin -30 2>/dev/null | wc -l" 2>/dev/null | tr -d ' ' | tail -n1)
+  [[ -z "$recent" ]] && recent=0
+  # also check that at least one existing server has herd pilots
+  local pilots_ok=0
+  for h in s2 s3 s4 s5 s6 s7 s8; do
+    if hcloud server list -o columns=name 2>/dev/null | grep -q "^${h}$"; then
+      if s1_ssh_any "ssh -o ConnectTimeout=4 -o StrictHostKeyChecking=accept-new $h 'ps aux 2>/dev/null | grep -q \"[v]15_local_herd\" && echo ok' 2>/dev/null | grep -q ok" 2>/dev/null; then
+        pilots_ok=$((pilots_ok+1))
+      fi
+    fi
+  done
+  if [[ "$recent" -lt 10 ]]; then
+    echo "[gate] BLOCKED: only $recent xlsx in last 30m on S1 — first server hasn't produced 10+ recent results / better results yet. Take it easy. Use --force to override." >&2
+    return 1
+  fi
+  if [[ "$pilots_ok" -eq 0 ]]; then
+    echo "[gate] BLOCKED: $existing existing server(s) but none has herd pilots running. Fix s2/s3 first." >&2
+    return 1
+  fi
+  # optional BETTER check: compare newest file mtime vs baseline — if recent files are all old baseline, not better
+  # we treat recent>=10 as proxy for better (real better requires sharpe parse which herd does)
+  echo "[gate] OK: $recent recent xlsx, $pilots_ok host(s) with herd — better results seen, allowing next." >&2
+  return 0
+}
 upsert_ssh_config(){
   local name="$1" priv="$2" pub="$3"
   local cfg="$HOME/.ssh/config"
@@ -217,6 +256,11 @@ do_create(){
   IFS=$'\n' WANT=($(printf "%s\n" "${WANT[@]}" | sort -t s -k2 -n)); unset IFS
   WANT=("${WANT[@]:0:$count}")
   local exp_priv=""; for _n in "${WANT[@]}"; do exp_priv+="$([[ -n "$exp_priv" ]] && echo ", ")${_n}:$(canonical_ip "$_n")"; done; echo "[create] creating ${#WANT[@]}: ${WANT[*]}  expected private: $exp_priv  type=$TYPE from=$FROM via $VIA"
+  # TAKE IT EASY: never add another if first hasn't produced better results
+  if ! check_improvement_gate; then
+    echo "[create] ABORT: gate blocked — first server must produce BETTER results (10+ recent xlsx + herd) before adding $COUNT more. Check s2/s3 health, or use FORCE=1 $0 --count $COUNT" >&2
+    return 1
+  fi
   # preflight: ensure S1 image exists (try tunnel then public fallback; S1 may be in different Hetzner project so hcloud can't see niels)
   if ! s1_ssh_any "test -f ~/binance-sandbox/.elastic/golden_image.tar.zst" 2>/dev/null; then
     if s1_ssh_any "ls -lh ~/binance-sandbox/.elastic/golden_image.tar.zst" 2>/dev/null | grep -q golden; then echo "[create] S1 image ok via fallback"

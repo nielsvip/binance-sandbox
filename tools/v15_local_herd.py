@@ -65,6 +65,11 @@ def stable_hash(s: str) -> int:
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ORDER_CANDIDATES = [
+    # 2026-09-19 BEST validation (v15_pilot_0914 vs latest on latest TEMPLATE_* per category) — per-server BEST queues S1(32)/S2(28) top delta per category
+    ROOT / "SPREADSHEETS" / "V15_BEST_QUEUE_S1.txt",
+    ROOT / "SPREADSHEETS" / "V15_BEST_QUEUE_S2.txt",
+    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_BEST_QUEUE_S1.txt",
+    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_BEST_QUEUE_S2.txt",
     ROOT / "SPREADSHEETS" / "V15_RUNNING_ORDER_TRB_FLZ.txt",
     ROOT / "SPREADSHEETS" / "FLZ_RUNNING_ORDER.txt",
     pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_RUNNING_ORDER_TRB_FLZ.txt",
@@ -78,11 +83,28 @@ S1_FALLBACK = "157.180.125.52"
 
 
 def find_order() -> pathlib.Path | None:
+    # Host-aware BEST queue selection: S1 (niels) -> S1(32), S2 -> S2(28) — ensures divided workload per category
+    try:
+        me = subprocess.check_output(["hostname"], text=True).strip()
+    except:
+        me = ""
+    is_s2 = "s2" in me.lower() or "htz-v15-s2" in me
+    # Prioritize host-specific BEST queue first for divided workload
+    host_best = ROOT / ("SPREADSHEETS/V15_BEST_QUEUE_S2.txt" if is_s2 else "SPREADSHEETS/V15_BEST_QUEUE_S1.txt")
+    if host_best.exists():
+        return host_best
+    alt_best = pathlib.Path.home() / ("binance-sandbox/SPREADSHEETS/V15_BEST_QUEUE_S2.txt" if is_s2 else "binance-sandbox/SPREADSHEETS/V15_BEST_QUEUE_S1.txt")
+    if alt_best.exists():
+        return alt_best
     for p in ORDER_CANDIDATES:
         if p.exists():
             return p
-    # try to fetch from S1
+    # try to fetch BEST + fallback from S1
     try:
+        best_name = "V15_BEST_QUEUE_S2.txt" if is_s2 else "V15_BEST_QUEUE_S1.txt"
+        subprocess.run(["scp", "-o", "ConnectTimeout=8", f"niels@{S1_HOST}:~/binance-sandbox/SPREADSHEETS/{best_name}", str(ROOT / f"SPREADSHEETS/{best_name}")], timeout=10)
+        if (ROOT / f"SPREADSHEETS/{best_name}").exists():
+            return ROOT / f"SPREADSHEETS/{best_name}"
         subprocess.run(["scp", "-o", "ConnectTimeout=8", f"niels@{S1_HOST}:~/binance-sandbox/SPREADSHEETS/V15_RUNNING_ORDER_TRB_FLZ.txt", str(ROOT / "SPREADSHEETS/V15_RUNNING_ORDER_TRB_FLZ.txt")], timeout=10)
         if (ROOT / "SPREADSHEETS/V15_RUNNING_ORDER_TRB_FLZ.txt").exists():
             return ROOT / "SPREADSHEETS/V15_RUNNING_ORDER_TRB_FLZ.txt"
@@ -150,15 +172,49 @@ def sys_stats() -> dict:
 
 
 def local_done_set(order: list[str]) -> set[str]:
-    # local xlsx existence >500k
+    # local xlsx existence >500k — for BEST validation (V15_BEST_QUEUE) require template freshness: stale xlsx (older than latest TEMPLATE_* per category) is NOT done
     done = set()
     base = pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
     if not base.exists():
         return done
+    # Check if this is BEST validation: if order matches BEST queue size/content, enforce template mtime freshness
+    is_best = len(order) in (32, 28, 60) and any(s in order for s in ["ALMU_LONG", "CLF_LONG"])  # BEST queues signature
+    tmpl_mtimes = {}
+    if is_best:
+        try:
+            for cat in ["STOCKS_LONG", "STOCKS_SHORT", "CRYPTO_LONG", "CRYPTO_SHORT"]:
+                p = pathlib.Path.home() / f"binance-sandbox/SPREADSHEETS/TEMPLATE_{cat}.xlsx"
+                if not p.exists():
+                    p = ROOT / f"SPREADSHEETS/TEMPLATE_{cat}.xlsx"
+                if p.exists():
+                    tmpl_mtimes[cat] = p.stat().st_mtime
+                # fallback: generic TEMPLATE.xlsx
+                gp = pathlib.Path.home() / "binance-sandbox/SPREADSHEETS/TEMPLATE.xlsx"
+                if gp.exists():
+                    tmpl_mtimes["_generic"] = gp.stat().st_mtime
+        except:
+            pass
     for p in base.glob("*.xlsx"):
         try:
             if p.stat().st_size < 500_000:
                 continue
+            # BEST freshness: if xlsx older than its category TEMPLATE, skip (needs re-run on latest)
+            if is_best and tmpl_mtimes:
+                # infer category from sym
+                name = p.name
+                # find matching sym in order that is contained in name
+                matched = None
+                for s in order:
+                    if s in name:
+                        matched = s
+                        break
+                if matched:
+                    is_stock = "USDC" not in matched and "USDT" not in matched
+                    suffix = "LONG" if matched.endswith("_LONG") else "SHORT"
+                    cat = f"{'STOCKS' if is_stock else 'CRYPTO'}_{suffix}"
+                    tmpl_mt = tmpl_mtimes.get(cat, tmpl_mtimes.get("_generic", 0))
+                    if p.stat().st_mtime < tmpl_mt - 60:  # 60s grace
+                        continue  # stale, not done — needs re-validation on latest TEMPLATE_*
             name = p.name
             for s in order:
                 if s in name:
@@ -169,16 +225,58 @@ def local_done_set(order: list[str]) -> set[str]:
 
 
 def global_done_set(order: list[str]) -> set[str] | None:
+    # BEST validation: respect template freshness — stale xlsx not counted as done (needs re-run on latest TEMPLATE_* per category)
+    is_best = len(order) in (32, 28, 60) and any(s in order for s in ["ALMU_LONG", "CLF_LONG"])
+    tmpl_mtimes = {}
+    if is_best:
+        try:
+            for cat in ["STOCKS_LONG", "STOCKS_SHORT", "CRYPTO_LONG", "CRYPTO_SHORT"]:
+                p = pathlib.Path.home() / f"binance-sandbox/SPREADSHEETS/TEMPLATE_{cat}.xlsx"
+                if not p.exists():
+                    p = ROOT / f"SPREADSHEETS/TEMPLATE_{cat}.xlsx"
+                if p.exists():
+                    tmpl_mtimes[cat] = p.stat().st_mtime
+            gp = pathlib.Path.home() / "binance-sandbox/SPREADSHEETS/TEMPLATE.xlsx"
+            if gp.exists():
+                tmpl_mtimes["_generic"] = gp.stat().st_mtime
+        except:
+            pass
     for host in [S1_HOST, S1_FALLBACK]:
         try:
-            out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "ls ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>/dev/null | xargs -I{} basename {}"], timeout=10, text=True)
-            names = out.strip().splitlines()
-            done = set()
-            for name in names:
-                for s in order:
-                    if s in name:
-                        done.add(s)
-            return done
+            if is_best and tmpl_mtimes:
+                # Use stat to get mtime per file for freshness check
+                out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "for f in ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx; do [ -f \"$f\" ] && [ $(stat -c %s \"$f\" 2>/dev/null || stat -f %z \"$f\" 2>/dev/null || echo 0) -gt 500000 ] && echo \"$(stat -c %Y \"$f\" 2>/dev/null || stat -f %m \"$f\" 2>/dev/null || echo 0) $(basename \"$f\")\"; done"], timeout=15, text=True)
+                done = set()
+                for line in out.strip().splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        parts = line.strip().split(None, 1)
+                        if len(parts) < 2:
+                            continue
+                        mtime = int(parts[0])
+                        name = parts[1]
+                        for s in order:
+                            if s in name:
+                                is_stock = "USDC" not in s and "USDT" not in s
+                                suffix = "LONG" if s.endswith("_LONG") else "SHORT"
+                                cat = f"{'STOCKS' if is_stock else 'CRYPTO'}_{suffix}"
+                                tmpl_mt = tmpl_mtimes.get(cat, tmpl_mtimes.get("_generic", 0))
+                                if mtime < tmpl_mt - 60:
+                                    continue  # stale, not done
+                                done.add(s)
+                    except:
+                        continue
+                return done
+            else:
+                out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "ls ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>/dev/null | xargs -I{} basename {}"], timeout=10, text=True)
+                names = out.strip().splitlines()
+                done = set()
+                for name in names:
+                    for s in order:
+                        if s in name:
+                            done.add(s)
+                return done
         except:
             continue
     return None
@@ -324,8 +422,12 @@ def main():
         print(f"[FATAL] order file not found {order_path} — tried {ORDER_CANDIDATES}", flush=True)
         sys.exit(2)
     order = load_order(pathlib.Path(order_path))
+    # FLZ merge: skip for BEST validation queues (V15_BEST_QUEUE_S*.txt) — they are exact 32/28 top-delta per category, no FLZ append
+    is_best_order = "V15_BEST_QUEUE" in str(order_path)
     # FLZ merge: if V15 is primary and FLZ exists, append FLZ crypto (except BTCUSDC_LONG verified fail) for combined 152+244
     for flz_candidate in [ROOT / "SPREADSHEETS" / "FLZ_RUNNING_ORDER.txt", pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "FLZ_RUNNING_ORDER.txt"]:
+        if is_best_order:
+            continue  # BEST validation is exact per-server queue, no FLZ contamination
         if flz_candidate.exists() and str(order_path) != str(flz_candidate):
             try:
                 flz_order = load_order(flz_candidate)
@@ -415,7 +517,12 @@ def main():
     # also try global done to avoid duplicating other servers' work when reachable
     local_done = local_done_set(order)
     gdone = global_done_set(order)
-    if gdone is not None:
+    # 2026-09-19 BEST re-run fix: latest results never tested filters per switch/filter per sheet → force re-test WITH filters on latest TEMPLATE_* per category; stale xlsx must be re-run, so ignore stale global for BEST
+    if is_best_order:
+        # Use only freshness-aware local for BEST validation (filters re-test required); global stale would mask need to re-run
+        combined_done = local_done
+        print(f"[herd-local] BEST local done {len(local_done)}/{len(order)} global {len(gdone) if gdone else 0}/{len(order)} combined {len(combined_done)}/{len(order)} (filters re-test on latest TEMPLATE_* per category)", flush=True)
+    elif gdone is not None:
         combined_done = local_done | gdone
         print(f"[herd-local] local done {len(local_done)}/104 global {len(gdone)}/104 combined {len(combined_done)}/104", flush=True)
     else:
@@ -464,29 +571,41 @@ def main():
     except:
         pass
     pending = []
-    for s in order:
-        if s in combined_done:
-            continue
-        # queue boss takes precedence over RAM and hash
-        boss = queue_boss.get(s)
-        if boss is not None and boss != me_suffix:
-            continue  # not my queue, skip even if I have RAM stale file
-        base = s.rsplit("_", 1)[0]
-        if base in ram_bases:
-            this_has = (pathlib.Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{base}_LONG_pilot_progress.json").exists() or pathlib.Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{base}_SHORT_pilot_progress.json").exists() or bool(list(pathlib.Path("/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL").glob(f"{base}_LONG*.xlsx"))) or bool(list(pathlib.Path("/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL").glob(f"{base}_SHORT*.xlsx"))))
-            if this_has:
-                pass
-            else:
+    # BEST validation: simple pending = order - combined_done (already fresh, disjoint per-server, need filters re-test on latest TEMPLATE per category)
+    if is_best_order:
+        for s in order:
+            if s in combined_done:
                 continue
-        # skip syms with no NPZ (would be 0 ROW for 20h like BEATUSDT/TXN) — check local NPZ exists, else skip and mark done
-        npz = pathlib.Path(f"/home/niels/binance-sandbox/backtest_v8/indicators/{s.rsplit('_',1)[0]}.npz")
-        if not npz.exists() or npz.stat().st_size < 100_000:
-            # also check S1 via ssh quick head? skip scp wait, just skip if not local — S1 has 990, s3/s5 will be synced, but BEATUSDT/TXN have 0 everywhere
-            continue
-        # FLZ + stocks hash shard for no double calculations (even when S1 reachable, FLZ has no queue_boss)
-        if (stable_hash(s) % 4) != host_idx:
-            continue
-        pending.append(s)
+            # only skip if NPZ truly missing (should be 0 for BEST)
+            npz = pathlib.Path(f"/home/niels/binance-sandbox/backtest_v8/indicators/{s.rsplit('_',1)[0]}.npz")
+            if not npz.exists() or npz.stat().st_size < 100_000:
+                print(f"[BEST-skip-NPZ] {s} no NPZ", flush=True)
+                continue
+            pending.append(s)
+    else:
+        for s in order:
+            if s in combined_done:
+                continue
+            # queue boss takes precedence over RAM and hash
+            boss = queue_boss.get(s)
+            if boss is not None and boss != me_suffix:
+                continue  # not my queue, skip even if I have RAM stale file
+            base = s.rsplit("_", 1)[0]
+            if base in ram_bases:
+                this_has = (pathlib.Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{base}_LONG_pilot_progress.json").exists() or pathlib.Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{base}_SHORT_pilot_progress.json").exists() or bool(list(pathlib.Path("/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL").glob(f"{base}_LONG*.xlsx"))) or bool(list(pathlib.Path("/home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL").glob(f"{base}_SHORT*.xlsx"))))
+                if this_has:
+                    pass
+                else:
+                    continue
+            # skip syms with no NPZ (would be 0 ROW for 20h like BEATUSDT/TXN) — check local NPZ exists, else skip and mark done
+            npz = pathlib.Path(f"/home/niels/binance-sandbox/backtest_v8/indicators/{s.rsplit('_',1)[0]}.npz")
+            if not npz.exists() or npz.stat().st_size < 100_000:
+                # also check S1 via ssh quick head? skip scp wait, just skip if not local — S1 has 990, s3/s5 will be synced, but BEATUSDT/TXN have 0 everywhere
+                continue
+            # FLZ + stocks hash shard for no double calculations (even when S1 reachable, FLZ has no queue_boss)
+            if (stable_hash(s) % 4) != host_idx:
+                continue
+            pending.append(s)
     # reorder: FLZ crypto first, then stocks rerun with winning settings (user: FLZ first, then stocks with winning defaults) — independent work list per server via hash, resume not redo
     flz_first = [s for s in pending if not _is_stock(s)] + [s for s in pending if _is_stock(s)]
     # prioritize unfinished at front (resume not redo single cell via done dict)
