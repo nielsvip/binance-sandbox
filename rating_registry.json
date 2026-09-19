@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-09-19T02:09:36.303564+00:00",
+  "timestamp": "2026-09-19T02:36:57.942705+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 120
+    "total_ranked": 121
   },
   "unified_ranking": [
+    {
+      "symbol": "ASTSUSDT",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
+    },
     {
       "symbol": "GALAUSDT",
       "net_score": 0,
@@ -26,6 +32,12 @@
     },
     {
       "symbol": "CRWDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RLCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -325,19 +337,13 @@
       "short_score": 0
     },
     {
-      "symbol": "SMCIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "CRVUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "XTZUSDT",
+      "symbol": "SMCIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -595,12 +601,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AVAXUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "COTIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -697,12 +697,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ASTSUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MRVLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -725,10 +719,39 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "XTZUSDT",
+      "net_score": 14.4,
+      "long_score": 14.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "AVAXUSDC",
+      "net_score": 19.0,
+      "long_score": 19.0,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [],
+  "top_longs": [
+    [
+      "AVAXUSDC",
+      19.0,
+      8.59178612
+    ],
+    [
+      "XTZUSDT",
+      14.4,
+      0.316
+    ]
+  ],
+  "top_shorts": [
+    [
+      "ASTSUSDT",
+      10.3,
+      58.76486447
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
