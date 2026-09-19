@@ -68,11 +68,23 @@ FILES=(
     # V8 backtest engine + sweep
     backtest_v8_engine.py backtest_v8_sweep.py backtest_v8_harness.py
     backtest_v8_precompute.py
+    # Mega-sweep elastic system — ONLY system files, no NPZ/XLS/results (recreated from S1 at bootstrap)
+    v12_quick_engine.py v15_pilot.py v15_pilot_0914.py config_v12.py
 )
 for SANDBOX in "${SANDBOXES[@]}"; do
     echo "→ syncing to $SANDBOX"
     for f in "${FILES[@]}"; do
         [ -f "$LOCAL/$f" ] && rsync -a --checksum --timeout=60 -e "ssh $SSH_OPTS" "$LOCAL/$f" "$SANDBOX/$f" 2>/dev/null
+    done
+    # Elastic infra + herd — system-only snapshot on S1 (no NPZ/XLS) for instant s2..sN rebuild
+    for d in infra/elastic tools/v15_local_herd.py tools/elastic_idle_watchdog.py; do
+        if [ -e "$LOCAL/$d" ]; then
+            rsync -az --checksum --timeout=60 -e "ssh $SSH_OPTS" "$LOCAL/$d" "$SANDBOX/$(dirname $d)/" 2>/dev/null || true
+        fi
+    done
+    # System templates only (not CELL_BY_CELL results)
+    for tmpl in "$LOCAL"/SPREADSHEETS/TEMPLATE*.xlsx; do
+        [ -f "$tmpl" ] && rsync -a --checksum --timeout=60 -e "ssh $SSH_OPTS" "$tmpl" "$SANDBOX/SPREADSHEETS/" 2>/dev/null || true
     done
     # Clear stale .pyc on the remote sandbox so fresh code wins
     HOST="${SANDBOX%%:*}"

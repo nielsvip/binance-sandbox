@@ -1,0 +1,1449 @@
+{
+  "ts": "202609190318",
+  "global_best_count": 185,
+  "excluded_count": 17,
+  "excluded": [
+    [
+      "ABBV_LONG",
+      -0.98,
+      6.53,
+      "ABBV_LONG_bh6p53_gainm0p98_30d_matrix.xlsx"
+    ],
+    [
+      "ASML_SHORT",
+      -15.76,
+      -2.15,
+      "ASML_SHORT_bhm2p15_gainm15p76_30d_matrix.xlsx"
+    ],
+    [
+      "BWXT_SHORT",
+      -3.6,
+      10.58,
+      "BWXT_SHORT_bh10p58_gainm3p60_30d_matrix.xlsx"
+    ],
+    [
+      "CLF_SHORT",
+      -2.2,
+      6.5,
+      "CLF_SHORT_bh6p50_gainm2p20_30d_matrix.xlsx"
+    ],
+    [
+      "CME_LONG",
+      -0.94,
+      2.9699999999999998,
+      "CME_LONG_bh2p97_gainm0p94_30d_matrix.xlsx"
+    ],
+    [
+      "DINO_LONG",
+      -1.4,
+      20.64,
+      "DINO_LONG_bh20p64_gainm1p40_30d_matrix.xlsx"
+    ],
+    [
+      "GOOGL_LONG",
+      -9.17,
+      -5.85,
+      "GOOGL_LONG_bhm5p85_gainm9p17_30d_matrix.xlsx"
+    ],
+    [
+      "MOS_SHORT",
+      -14.63,
+      -10.87,
+      "MOS_SHORT_bhm10p87_gainm14p63_30d_matrix.xlsx"
+    ],
+    [
+      "NUKZ_LONG",
+      -8.82,
+      -7.3,
+      "NUKZ_LONG_bhm7p30_gainm8p82_30d_matrix.xlsx"
+    ],
+    [
+      "NVDA_LONG",
+      -0.91,
+      8.21,
+      "NVDA_LONG_bh8p21_gainm0p91_30d_matrix.xlsx"
+    ],
+    [
+      "PAAS_LONG",
+      -4.11,
+      10.01,
+      "PAAS_LONG_bh10p01_gainm4p11_30d_matrix.xlsx"
+    ],
+    [
+      "RBLX_LONG",
+      -0.14,
+      8.04,
+      "RBLX_LONG_bh8p04_gainm0p14_30d_matrix.xlsx"
+    ],
+    [
+      "SNDK_LONG",
+      -5.5,
+      21.09,
+      "SNDK_LONG_bh21p09_gainm5p50_30d_matrix.xlsx"
+    ],
+    [
+      "TRGP_LONG",
+      -4.25,
+      8.62,
+      "TRGP_LONG_bh8p62_gainm4p25_30d_matrix.xlsx"
+    ],
+    [
+      "USAR_LONG",
+      -10.25,
+      4.71,
+      "USAR_LONG_bh4p71_gainm10p25_30d_matrix.xlsx"
+    ],
+    [
+      "VLO_LONG",
+      -6.62,
+      26.05,
+      "VLO_LONG_bh26p05_gainm6p62_30d_matrix.xlsx"
+    ],
+    [
+      "WDAY_LONG",
+      -4.96,
+      18.24,
+      "WDAY_LONG_bh18p24_gainm4p96_30d_matrix.xlsx"
+    ]
+  ],
+  "to_update_count": 160,
+  "to_update": [
+    [
+      "AAPL_LONG",
+      0.64,
+      6.45,
+      "AAPL_SEQ_LONG_bh6p45_gain0p64_30d_matrix.xlsx",
+      "stocks_gain None < best 0.64"
+    ],
+    [
+      "AAPL_SHORT",
+      3.12,
+      -6.45,
+      "AAPL_SHORT_bhm6p45_gain3p12_30d_matrix.xlsx",
+      "stocks_gain None < best 3.12"
+    ],
+    [
+      "ABT_LONG",
+      0.54,
+      -2.91,
+      "ABT_LONG_bhm2p91_gain0p54_30d_matrix.xlsx",
+      "stocks_gain None < best 0.54"
+    ],
+    [
+      "ADBE_SHORT",
+      15.2,
+      3.79,
+      "ADBE_SHORT_bh3p79_gain15p20_30d_matrix.xlsx",
+      "stocks_gain 10.2797 < best 15.2"
+    ],
+    [
+      "ADP_LONG",
+      6.28,
+      2.14,
+      "ADP_LONG_bh2p14_gain6p28_30d_matrix.xlsx",
+      "stocks_gain None < best 6.28"
+    ],
+    [
+      "ADP_SHORT",
+      2.25,
+      -2.14,
+      "ADP_SHORT_bhm2p14_gain2p25_30d_matrix.xlsx",
+      "stocks_gain None < best 2.25"
+    ],
+    [
+      "AEM_LONG",
+      15.67,
+      33.97,
+      "AEM_LONG_bh33p97_gain15p67_30d_matrix.xlsx",
+      "stocks_gain None < best 15.67"
+    ],
+    [
+      "AEM_SHORT",
+      -1.1,
+      -33.97,
+      "AEM_SHORT_bhm33p97_gainm1p10_30d_matrix.xlsx",
+      "stocks_gain None < best -1.1"
+    ],
+    [
+      "AGCO_LONG",
+      19.98,
+      17.3,
+      "AGCO_LONG_bh17p30_gain19p98_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "AGI_LONG",
+      3.4,
+      27.36,
+      "AGI_LONG_bh27p36_gain3p40_30d_matrix.xlsx",
+      "stocks_gain None < best 3.4"
+    ],
+    [
+      "ALMU_LONG",
+      10.3,
+      -11.55,
+      "ALMU_LONG_bhm11p55_gain10p30_30d_matrix.xlsx",
+      "stocks_gain None < best 10.3 trb_gain_none"
+    ],
+    [
+      "ALMU_SHORT",
+      3.37,
+      11.55,
+      "ALMU_SHORT_bh11p55_gain3p37_30d_matrix.xlsx",
+      "stocks_gain None < best 3.37"
+    ],
+    [
+      "AMAT_SHORT",
+      31.59,
+      14.15,
+      "AMAT_SHORT_bh14p15_gain31p59_30d_matrix.xlsx",
+      "stocks_gain None < best 31.59"
+    ],
+    [
+      "AMD_SHORT",
+      4.72,
+      -17.29,
+      "AMD_SHORT_bhm17p29_gain4p72_30d_matrix.xlsx",
+      "stocks_gain None < best 4.72"
+    ],
+    [
+      "AMZN_LONG",
+      7.33,
+      -1.01,
+      "AMZN_LONG_bhm1p01_gain7p33_30d_matrix.xlsx",
+      "stocks_gain None < best 7.33 trb_gain_none"
+    ],
+    [
+      "AMZN_SHORT",
+      13.06,
+      1.01,
+      "AMZN_SHORT_bh1p01_gain13p06_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "APA_LONG",
+      3.38,
+      16.5,
+      "APA_LONG_bh16p50_gain3p38_30d_matrix.xlsx",
+      "stocks_gain None < best 3.38"
+    ],
+    [
+      "AR_LONG",
+      5.25,
+      5.92,
+      "AR_LONG_bh5p92_gain5p25_30d_matrix.xlsx",
+      "stocks_gain None < best 5.25"
+    ],
+    [
+      "ASML_LONG",
+      14.79,
+      2.15,
+      "ASML_LONG_bh2p15_gain14p79_30d_matrix.xlsx",
+      "stocks_gain None < best 14.79 trb_gain_none"
+    ],
+    [
+      "ASTS_SHORT",
+      13.86,
+      -12.78,
+      "ASTS_SHORT_bhm12p78_gain13p86_30d_matrix.xlsx",
+      "stocks_gain None < best 13.86"
+    ],
+    [
+      "AU_LONG",
+      4.33,
+      28.24,
+      "AU_LONG_bh28p24_gain4p33_30d_matrix.xlsx",
+      "stocks_gain None < best 4.33"
+    ],
+    [
+      "AVGO_SHORT",
+      13.19,
+      3.4,
+      "AVGO_SHORT_bh3p40_gain13p19_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "AXON_SHORT",
+      3.93,
+      8.68,
+      "AXON_SHORT_bh8p68_gain3p93_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "AXTI_LONG",
+      3.88,
+      69.53,
+      "AXTI_LONG_bh69p53_gain3p88_30d_matrix.xlsx",
+      "stocks_gain None < best 3.88"
+    ],
+    [
+      "AXTI_SHORT",
+      9.67,
+      -69.53,
+      "AXTI_SHORT_bhm69p53_gain9p67_30d_matrix.xlsx",
+      "stocks_gain None < best 9.67"
+    ],
+    [
+      "A_LONG",
+      0.39,
+      1.46,
+      "A_LONG_bh1p46_gain0p39_30d_matrix.xlsx",
+      "stocks_gain None < best 0.39"
+    ],
+    [
+      "A_SHORT",
+      0.67,
+      -1.46,
+      "A_SHORT_bhm1p46_gain0p67_30d_matrix.xlsx",
+      "stocks_gain None < best 0.67"
+    ],
+    [
+      "BABA_SHORT",
+      9.47,
+      8.99,
+      "BABA_SHORT_bh8p99_gain9p47_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "BG_LONG",
+      0.11,
+      8.27,
+      "BG_LONG_bh8p27_gain0p11_30d_matrix.xlsx",
+      "stocks_gain None < best 0.11"
+    ],
+    [
+      "BHP_LONG",
+      4.42,
+      2.51,
+      "BHP_LONG_bh2p51_gain4p42_30d_matrix.xlsx",
+      "stocks_gain None < best 4.42"
+    ],
+    [
+      "BMNR_LONG",
+      4.66,
+      44.02,
+      "BMNR_LONG_bh44p02_gain4p66_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "BMNR_SHORT",
+      -11.47,
+      -44.02,
+      "BMNR_SHORT_bhm44p02_gainm11p47_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "BNO_LONG",
+      33.72,
+      27.05,
+      "BNO_LONG_bh27p05_gain33p72_30d_matrix.xlsx",
+      "stocks_gain None < best 33.72 trb_gain 13.9705 < best 33.72"
+    ],
+    [
+      "BWXT_LONG",
+      -9.22,
+      -10.58,
+      "BWXT_LONG_bhm10p58_gainm9p22_30d_matrix.xlsx",
+      "stocks_gain None < best -9.22"
+    ],
+    [
+      "CAT_LONG",
+      -6.41,
+      -7.85,
+      "CAT_LONG_bhm7p85_gainm6p41_30d_matrix.xlsx",
+      "stocks_gain None < best -6.41"
+    ],
+    [
+      "CDE_LONG",
+      28.39,
+      34.97,
+      "CDE_LONG_bh34p97_gain28p39_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "CF_SHORT",
+      1.54,
+      -7.26,
+      "CF_SHORT_bhm7p26_gain1p54_30d_matrix.xlsx",
+      "stocks_gain None < best 1.54"
+    ],
+    [
+      "CIBR_LONG",
+      4.42,
+      0.76,
+      "CIBR_LONG_bh0p76_gain4p42_30d_matrix.xlsx",
+      "stocks_gain None < best 4.42"
+    ],
+    [
+      "CIEN_SHORT",
+      12.11,
+      15.49,
+      "CIEN_SHORT_bh15p49_gain12p11_30d_matrix.xlsx",
+      "stocks_gain None < best 12.11"
+    ],
+    [
+      "CLF_LONG",
+      0.49,
+      -6.5,
+      "CLF_LONG_bhm6p50_gain0p49_30d_matrix.xlsx",
+      "stocks_gain None < best 0.49"
+    ],
+    [
+      "CLS_LONG",
+      0.08,
+      -2.67,
+      "CLS_LONG_bhm2p67_gain0p08_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "CMC_LONG",
+      -1.79,
+      -2.91,
+      "CMC_LONG_bhm2p91_gainm1p79_30d_matrix.xlsx",
+      "stocks_gain None < best -1.79"
+    ],
+    [
+      "CMC_SHORT",
+      10.3,
+      2.91,
+      "CMC_SHORT_bh2p91_gain10p30_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "CME_SHORT",
+      11.69,
+      -2.9699999999999998,
+      "CME_SHORT_bhm2p97_gain11p69_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "COE_SHORT",
+      8.42,
+      37.51,
+      "COE_SHORT_bh37p51_gain8p42_30d_matrix.xlsx",
+      "stocks_gain None < best 8.42"
+    ],
+    [
+      "COHR_LONG",
+      15.06,
+      31.65,
+      "COHR_LONG_bh31p65_gain15p06_30d_matrix.xlsx",
+      "stocks_gain None < best 15.06 trb_gain 8.5751 < best 15.06"
+    ],
+    [
+      "COHR_SHORT",
+      -15.8,
+      -31.65,
+      "COHR_SHORT_bhm31p65_gainm15p80_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "COIN_LONG",
+      15.0,
+      -0.18,
+      "COIN_LONG_bhm0p18_gain15p00_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "COPX_LONG",
+      17.18,
+      10.91,
+      "COPX_LONG_bh10p91_gain17p18_30d_matrix.xlsx",
+      "stocks_gain None < best 17.18 trb_gain_none"
+    ],
+    [
+      "CRK_LONG",
+      14.82,
+      0.56,
+      "CRK_LONG_bh0p56_gain14p82_30d_matrix.xlsx",
+      "stocks_gain None < best 14.82"
+    ],
+    [
+      "CRM_LONG",
+      9.98,
+      37.99,
+      "CRM_LONG_bh37p99_gain9p98_30d_matrix.xlsx",
+      "stocks_gain None < best 9.98 trb_gain 6.4269 < best 9.98"
+    ],
+    [
+      "CRM_SHORT",
+      1.52,
+      -37.99,
+      "CRM_SHORT_bhm37p99_gain1p52_30d_matrix.xlsx",
+      "stocks_gain None < best 1.52"
+    ],
+    [
+      "CRWD_LONG",
+      19.75,
+      10.48,
+      "CRWD_LONG_bh10p48_gain19p75_30d_matrix.xlsx",
+      "stocks_gain None < best 19.75 trb_gain_none"
+    ],
+    [
+      "CRWD_SHORT",
+      2.2,
+      -10.48,
+      "CRWD_SHORT_bhm10p48_gain2p20_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "CRWV_SHORT",
+      31.35,
+      -44.09,
+      "CRWV_SHORT_bhm44p09_gain31p35_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "CVX_LONG",
+      17.27,
+      11.32,
+      "CVX_LONG_bh11p32_gain17p27_30d_matrix.xlsx",
+      "stocks_gain None < best 17.27"
+    ],
+    [
+      "DAR_LONG",
+      2.45,
+      10.66,
+      "DAR_LONG_bh10p66_gain2p45_30d_matrix.xlsx",
+      "stocks_gain None < best 2.45"
+    ],
+    [
+      "DELL_LONG",
+      9.28,
+      24.62,
+      "DELL_LONG_bh24p62_gain9p28_30d_matrix.xlsx",
+      "stocks_gain None < best 9.28"
+    ],
+    [
+      "DELL_SHORT",
+      3.82,
+      -24.62,
+      "DELL_SHORT_bhm24p62_gain3p82_30d_matrix.xlsx",
+      "stocks_gain None < best 3.82"
+    ],
+    [
+      "DE_LONG",
+      19.64,
+      13.56,
+      "DE_LONG_bh13p56_gain19p64_30d_matrix.xlsx",
+      "stocks_gain None < best 19.64 trb_gain_none"
+    ],
+    [
+      "DIS_SHORT",
+      6.53,
+      -3.03,
+      "DIS_SHORT_bhm3p03_gain6p53_30d_matrix.xlsx",
+      "stocks_gain None < best 6.53"
+    ],
+    [
+      "EOG_LONG",
+      11.78,
+      8.37,
+      "EOG_LONG_bh8p37_gain11p78_30d_matrix.xlsx",
+      "stocks_gain None < best 11.78"
+    ],
+    [
+      "EPD_LONG",
+      4.48,
+      2.76,
+      "EPD_LONG_bh2p76_gain4p48_30d_matrix.xlsx",
+      "stocks_gain None < best 4.48 trb_gain_none"
+    ],
+    [
+      "EQT_LONG",
+      2.52,
+      -2.18,
+      "EQT_LONG_bhm2p18_gain2p52_30d_matrix.xlsx",
+      "stocks_gain None < best 2.52"
+    ],
+    [
+      "EQT_SHORT",
+      1.94,
+      2.18,
+      "EQT_SHORT_bh2p18_gain1p94_30d_matrix.xlsx",
+      "stocks_gain None < best 1.94"
+    ],
+    [
+      "ETH_SHORT",
+      0.0,
+      0.0,
+      "ETH_SHORT_bh0p00_gain0p00_30d_matrix.xlsx",
+      "stocks_gain None < best 0.0+missing_in_trb"
+    ],
+    [
+      "ETN_SHORT",
+      5.21,
+      -12.41,
+      "ETN_SHORT_bhm12p41_gain5p21_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "EXEL_LONG",
+      9.42,
+      4.21,
+      "EXEL_LONG_bh4p21_gain9p42_30d_matrix.xlsx",
+      "stocks_gain None < best 9.42 trb_gain_none"
+    ],
+    [
+      "FANG_LONG",
+      10.33,
+      6.42,
+      "FANG_LONG_bh6p42_gain10p33_30d_matrix.xlsx",
+      "stocks_gain None < best 10.33"
+    ],
+    [
+      "FCN_SHORT",
+      14.66,
+      10.5,
+      "FCN_SHORT_bh10p50_gain14p66_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "FIX_SHORT",
+      0.82,
+      -4.6899999999999995,
+      "FIX_SHORT_bhm4p69_gain0p82_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "GDX_LONG",
+      2.77,
+      28.98,
+      "GDX_LONG_bh28p98_gain2p77_30d_matrix.xlsx",
+      "stocks_gain None < best 2.77"
+    ],
+    [
+      "GDX_SHORT",
+      1.42,
+      -28.98,
+      "GDX_SHORT_bhm28p98_gain1p42_30d_matrix.xlsx",
+      "stocks_gain None < best 1.42"
+    ],
+    [
+      "GLD_LONG",
+      11.84,
+      6.78,
+      "GLD_LONG_bh6p78_gain11p84_30d_matrix.xlsx",
+      "stocks_gain None < best 11.84 trb_gain_none"
+    ],
+    [
+      "GLD_SHORT",
+      1.07,
+      -6.78,
+      "GLD_SHORT_bhm6p78_gain1p07_30d_matrix.xlsx",
+      "stocks_gain None < best 1.07"
+    ],
+    [
+      "GME_SHORT",
+      4.13,
+      -0.64,
+      "GME_SHORT_bhm0p64_gain4p13_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "GOOGL_SHORT",
+      -0.0,
+      5.85,
+      "GOOGL_SHORT_bh5p85_gainm0p00_30d_matrix.xlsx",
+      "stocks_gain None < best -0.0"
+    ],
+    [
+      "HAO_LONG",
+      21.87,
+      1731.23,
+      "HAO_LONG_bh1731p23_gain21p87_30d_matrix.xlsx",
+      "stocks_gain None < best 21.87"
+    ],
+    [
+      "HAO_SHORT",
+      63.49,
+      -100.0,
+      "HAO_SHORT_bhm100p00_gain63p49_30d_matrix.xlsx",
+      "stocks_gain None < best 63.49 trb_gain_none"
+    ],
+    [
+      "HII_SHORT",
+      1.19,
+      15.98,
+      "HII_SHORT_bh15p98_gain1p19_30d_matrix.xlsx",
+      "stocks_gain None < best 1.19"
+    ],
+    [
+      "HOOD_LONG",
+      17.17,
+      29.81,
+      "HOOD_LONG_bh29p81_gain17p17_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "HOOD_SHORT",
+      8.24,
+      -29.81,
+      "HOOD_SHORT_bhm29p81_gain8p24_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "IBIT_SHORT",
+      0.22,
+      -23.17,
+      "IBIT_SHORT_bhm23p17_gain0p22_30d_matrix.xlsx",
+      "stocks_gain None < best 0.22+missing_in_trb"
+    ],
+    [
+      "IBM_SHORT",
+      -4.38,
+      -7.6899999999999995,
+      "IBM_SHORT_bhm7p69_gainm4p38_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "INTC_LONG",
+      8.74,
+      11.49,
+      "INTC_LONG_bh11p49_gain8p74_30d_matrix.xlsx",
+      "stocks_gain None < best 8.74"
+    ],
+    [
+      "INTC_SHORT",
+      0.71,
+      -11.49,
+      "INTC_SHORT_bhm11p49_gain0p71_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "JOBY_SHORT",
+      24.03,
+      11.55,
+      "JOBY_SHORT_bh11p55_gain24p03_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "JPM_SHORT",
+      0.11,
+      -0.63,
+      "JPM_SHORT_bhm0p63_gain0p11_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "LAC_LONG",
+      0.15,
+      0.31,
+      "LAC_LONG_bh0p31_gain0p15_30d_matrix.xlsx",
+      "stocks_gain None < best 0.15"
+    ],
+    [
+      "LAC_SHORT",
+      0.32,
+      -0.31,
+      "LAC_SHORT_bhm0p31_gain0p32_30d_matrix.xlsx",
+      "stocks_gain None < best 0.32"
+    ],
+    [
+      "LDOS_SHORT",
+      -5.5,
+      -23.47,
+      "LDOS_SHORT_bhm23p47_gainm5p50_30d_matrix.xlsx",
+      "stocks_gain None < best -5.5"
+    ],
+    [
+      "LLY_LONG",
+      6.9399999999999995,
+      -3.18,
+      "LLY_LONG_bhm3p18_gain6p94_30d_matrix.xlsx",
+      "stocks_gain None < best 6.9399999999999995"
+    ],
+    [
+      "LLY_SHORT",
+      0.81,
+      3.18,
+      "LLY_SHORT_bh3p18_gain0p81_30d_matrix.xlsx",
+      "stocks_gain None < best 0.81"
+    ],
+    [
+      "LMT_SHORT",
+      11.37,
+      9.91,
+      "LMT_SHORT_bh9p91_gain11p37_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "LNG_LONG",
+      2.24,
+      2.55,
+      "LNG_LONG_bh2p55_gain2p24_30d_matrix.xlsx",
+      "stocks_gain None < best 2.24"
+    ],
+    [
+      "LOW_SHORT",
+      13.31,
+      6.13,
+      "LOW_SHORT_bh6p13_gain13p31_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "LRCX_LONG",
+      0.71,
+      -0.64,
+      "LRCX_LONG_bhm0p64_gain0p71_30d_matrix.xlsx",
+      "stocks_gain None < best 0.71 trb_gain_none"
+    ],
+    [
+      "LRCX_SHORT",
+      4.7,
+      0.64,
+      "LRCX_SHORT_bh0p64_gain4p70_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "MA_LONG",
+      0.94,
+      5.59,
+      "MA_LONG_bh5p59_gain0p94_30d_matrix.xlsx",
+      "stocks_gain None < best 0.94 trb_gain_none"
+    ],
+    [
+      "MCD_SHORT",
+      3.29,
+      6.93,
+      "MCD_SHORT_bh6p93_gain3p29_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "MDT_SHORT",
+      2.33,
+      -7.27,
+      "MDT_SHORT_bhm7p27_gain2p33_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "META_LONG",
+      10.68,
+      14.99,
+      "META_LONG_bh14p99_gain10p68_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "MPC_LONG",
+      35.32,
+      26.8,
+      "MPC_LONG_bh26p80_gain35p32_30d_matrix.xlsx",
+      "stocks_gain None < best 35.32"
+    ],
+    [
+      "MRVL_LONG",
+      21.16,
+      21.91,
+      "MRVL_LONG_bh21p91_gain21p16_30d_matrix.xlsx",
+      "stocks_gain None < best 21.16 trb_gain_none"
+    ],
+    [
+      "MRVL_SHORT",
+      2.19,
+      -21.91,
+      "MRVL_SHORT_bhm21p91_gain2p19_30d_matrix.xlsx",
+      "stocks_gain None < best 2.19"
+    ],
+    [
+      "MSFT_LONG",
+      4.13,
+      6.14,
+      "MSFT_LONG_bh6p14_gain4p13_30d_matrix.xlsx",
+      "stocks_gain None < best 4.13 trb_gain_none"
+    ],
+    [
+      "MSFT_SHORT",
+      2.08,
+      -6.14,
+      "MSFT_SHORT_bhm6p14_gain2p08_30d_matrix.xlsx",
+      "stocks_gain None < best 2.08"
+    ],
+    [
+      "MSTR_LONG",
+      0.03,
+      34.16,
+      "MSTR_LONG_bh34p16_gain0p03_30d_matrix.xlsx",
+      "stocks_gain None < best 0.03 trb_gain_none"
+    ],
+    [
+      "MSTR_SHORT",
+      0.55,
+      -34.16,
+      "MSTR_SHORT_bhm34p16_gain0p55_30d_matrix.xlsx",
+      "stocks_gain None < best 0.55+missing_in_trb"
+    ],
+    [
+      "MU_LONG",
+      27.63,
+      15.66,
+      "MU_LONG_bh15p66_gain27p63_30d_matrix.xlsx",
+      "stocks_gain None < best 27.63 trb_gain_none"
+    ],
+    [
+      "MU_SHORT",
+      9.42,
+      -15.66,
+      "MU_SHORT_bhm15p66_gain9p42_30d_matrix.xlsx",
+      "stocks_gain None < best 9.42 trb_gain_none"
+    ],
+    [
+      "NEM_LONG",
+      28.54,
+      34.36,
+      "NEM_LONG_bh34p36_gain28p54_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "NKE_LONG",
+      -5.55,
+      -12.04,
+      "NKE_LONG_bhm12p04_gainm5p55_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "NKE_SHORT",
+      18.48,
+      12.04,
+      "NKE_SHORT_bh12p04_gain18p48_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "NLR_SHORT",
+      2.62,
+      5.37,
+      "NLR_SHORT_bh5p37_gain2p62_30d_matrix.xlsx",
+      "stocks_gain None < best 2.62"
+    ],
+    [
+      "NVDA_SHORT",
+      4.23,
+      -8.21,
+      "NVDA_SHORT_bhm8p21_gain4p23_30d_matrix.xlsx",
+      "stocks_gain None < best 4.23"
+    ],
+    [
+      "OLED_SHORT",
+      9.81,
+      4.62,
+      "OLED_SHORT_bh4p62_gain9p81_30d_matrix.xlsx",
+      "stocks_gain None < best 9.81"
+    ],
+    [
+      "OXY_LONG",
+      4.93,
+      15.26,
+      "OXY_LONG_bh15p26_gain4p93_30d_matrix.xlsx",
+      "stocks_gain None < best 4.93 trb_gain_none"
+    ],
+    [
+      "PBF_LONG",
+      26.43,
+      9.17,
+      "PBF_LONG_bh9p17_gain26p43_30d_matrix.xlsx",
+      "stocks_gain None < best 26.43"
+    ],
+    [
+      "PBF_SHORT",
+      6.44,
+      -9.17,
+      "PBF_SHORT_bhm9p17_gain6p44_30d_matrix.xlsx",
+      "stocks_gain None < best 6.44 trb_gain_none"
+    ],
+    [
+      "PLTR_LONG",
+      14.31,
+      0.0,
+      "PLTR_LONG_bh0p00_gain14p31_30d_matrix.xlsx",
+      "stocks_gain None < best 14.31 trb_gain_none"
+    ],
+    [
+      "PLTR_SHORT",
+      4.93,
+      -34.12,
+      "PLTR_SHORT_bhm34p12_gain4p93_30d_matrix.xlsx",
+      "missing_in_stocks trb_gain_none"
+    ],
+    [
+      "PR_LONG",
+      6.96,
+      13.11,
+      "PR_LONG_bh13p11_gain6p96_30d_matrix.xlsx",
+      "stocks_gain None < best 6.96"
+    ],
+    [
+      "PR_SHORT",
+      1.62,
+      -13.11,
+      "PR_SHORT_bhm13p11_gain1p62_30d_matrix.xlsx",
+      "stocks_gain None < best 1.62 trb_gain_none"
+    ],
+    [
+      "PSX_LONG",
+      0.45,
+      22.53,
+      "PSX_LONG_bh22p53_gain0p45_30d_matrix.xlsx",
+      "stocks_gain None < best 0.45"
+    ],
+    [
+      "PYPL_SHORT",
+      22.58,
+      6.39,
+      "PYPL_SHORT_bh6p39_gain22p58_30d_matrix.xlsx",
+      "stocks_gain None < best 22.58 trb_gain_none"
+    ],
+    [
+      "QBTS_LONG",
+      11.01,
+      -6.78,
+      "QBTS_LONG_bhm6p78_gain11p01_30d_matrix.xlsx",
+      "stocks_gain None < best 11.01 trb_gain_none"
+    ],
+    [
+      "QBTS_SHORT",
+      2.33,
+      6.78,
+      "QBTS_SHORT_bh6p78_gain2p33_30d_matrix.xlsx",
+      "stocks_gain None < best 2.33"
+    ],
+    [
+      "QQQ_LONG",
+      5.01,
+      3.7199999999999998,
+      "QQQ_LONG_bh3p72_gain5p01_30d_matrix.xlsx",
+      "stocks_gain None < best 5.01 trb_gain_none"
+    ],
+    [
+      "QRVO_LONG",
+      30.69,
+      30.67,
+      "QRVO_LONG_bh30p67_gain30p69_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "RBLX_SHORT",
+      0.73,
+      -8.04,
+      "RBLX_SHORT_bhm8p04_gain0p73_30d_matrix.xlsx",
+      "stocks_gain None < best 0.73"
+    ],
+    [
+      "RDDT_SHORT",
+      2.52,
+      -17.09,
+      "RDDT_SHORT_bhm17p09_gain2p52_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "RGLD_LONG",
+      3.56,
+      16.33,
+      "RGLD_LONG_bh16p33_gain3p56_30d_matrix.xlsx",
+      "stocks_gain None < best 3.56 trb_gain_none"
+    ],
+    [
+      "ROBO_LONG",
+      -2.45,
+      -7.28,
+      "ROBO_LONG_bhm7p28_gainm2p45_30d_matrix.xlsx",
+      "stocks_gain None < best -2.45"
+    ],
+    [
+      "RRC_LONG",
+      8.56,
+      3.11,
+      "RRC_LONG_bh3p11_gain8p56_30d_matrix.xlsx",
+      "stocks_gain None < best 8.56"
+    ],
+    [
+      "RS_SHORT",
+      2.61,
+      7.1,
+      "RS_SHORT_bh7p10_gain2p61_30d_matrix.xlsx",
+      "stocks_gain None < best 2.61 trb_gain_none"
+    ],
+    [
+      "SAP_SHORT",
+      -0.15,
+      -9.84,
+      "SAP_SHORT_bhm9p84_gainm0p15_30d_matrix.xlsx",
+      "stocks_gain None < best -0.15 trb_gain_none"
+    ],
+    [
+      "SCCO_LONG",
+      0.16,
+      -1.33,
+      "SCCO_LONG_bhm1p33_gain0p16_30d_matrix.xlsx",
+      "stocks_gain None < best 0.16"
+    ],
+    [
+      "SCCO_SHORT",
+      1.03,
+      1.33,
+      "SCCO_SHORT_bh1p33_gain1p03_30d_matrix.xlsx",
+      "stocks_gain None < best 1.03 trb_gain_none"
+    ],
+    [
+      "SLV_LONG",
+      9.2,
+      10.13,
+      "SLV_LONG_bh10p13_gain9p20_30d_matrix.xlsx",
+      "stocks_gain None < best 9.2 trb_gain_none"
+    ],
+    [
+      "SLV_SHORT",
+      0.93,
+      -10.13,
+      "SLV_SHORT_bhm10p13_gain0p93_30d_matrix.xlsx",
+      "stocks_gain None < best 0.93"
+    ],
+    [
+      "SMG_SHORT",
+      32.11,
+      17.37,
+      "SMG_SHORT_bh17p37_gain32p11_30d_matrix.xlsx",
+      "stocks_gain None < best 32.11 trb_gain_none"
+    ],
+    [
+      "SNDK_SHORT",
+      1.03,
+      -21.09,
+      "SNDK_SHORT_bhm21p09_gain1p03_30d_matrix.xlsx",
+      "stocks_gain None < best 1.03"
+    ],
+    [
+      "SPY_LONG",
+      2.5300000000000002,
+      2.65,
+      "SPY_LONG_bh2p65_gain2p53_30d_matrix.xlsx",
+      "stocks_gain None < best 2.5300000000000002 trb_gain_none"
+    ],
+    [
+      "TECK_LONG",
+      1.7,
+      -1.0,
+      "TECK_LONG_bhm1p00_gain1p70_30d_matrix.xlsx",
+      "stocks_gain None < best 1.7"
+    ],
+    [
+      "TSLA_LONG",
+      18.24,
+      17.3,
+      "TSLA_LONG_bh17p30_gain18p24_30d_matrix.xlsx",
+      "stocks_gain None < best 18.24 trb_gain_none"
+    ],
+    [
+      "TSLA_SHORT",
+      -1.88,
+      -17.3,
+      "TSLA_SHORT_bhm17p30_gainm1p88_30d_matrix.xlsx",
+      "stocks_gain None < best -1.88"
+    ],
+    [
+      "TSM_LONG",
+      1.72,
+      4.74,
+      "TSM_LONG_bh4p74_gain1p72_30d_matrix.xlsx",
+      "stocks_gain None < best 1.72"
+    ],
+    [
+      "TTD_SHORT",
+      12.43,
+      17.1,
+      "TTD_SHORT_bh17p10_gain12p43_30d_matrix.xlsx",
+      "stocks_gain None < best 12.43"
+    ],
+    [
+      "TXN_LONG",
+      0.2,
+      -4.46,
+      "TXN_LONG_bhm4p46_gain0p20_30d_matrix.xlsx",
+      "stocks_gain None < best 0.2 trb_gain_none"
+    ],
+    [
+      "TXN_SHORT",
+      8.89,
+      4.46,
+      "TXN_SHORT_bh4p46_gain8p89_30d_matrix.xlsx",
+      "stocks_gain None < best 8.89 trb_gain 5.7997 < best 8.89"
+    ],
+    [
+      "ULTA_SHORT",
+      8.31,
+      -7.22,
+      "ULTA_SHORT_bhm7p22_gain8p31_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "USAR_SHORT",
+      1.13,
+      -4.71,
+      "USAR_SHORT_bhm4p71_gain1p13_30d_matrix.xlsx",
+      "stocks_gain None < best 1.13"
+    ],
+    [
+      "UUUU_LONG",
+      1.52,
+      9.46,
+      "UUUU_LONG_bh9p46_gain1p52_30d_matrix.xlsx",
+      "stocks_gain None < best 1.52"
+    ],
+    [
+      "UUUU_SHORT",
+      -8.56,
+      -9.46,
+      "UUUU_SHORT_bhm9p46_gainm8p56_30d_matrix.xlsx",
+      "stocks_gain None < best -8.56 trb_gain_none"
+    ],
+    [
+      "VICR_SHORT",
+      5.75,
+      5.97,
+      "VICR_SHORT_bh5p97_gain5p75_30d_matrix.xlsx",
+      "missing_in_stocks+missing_in_trb"
+    ],
+    [
+      "VT_LONG",
+      2.48,
+      1.37,
+      "VT_LONG_bh1p37_gain2p48_30d_matrix.xlsx",
+      "stocks_gain None < best 2.48 trb_gain_none"
+    ],
+    [
+      "XLE_LONG",
+      10.5,
+      12.96,
+      "XLE_LONG_bh12p96_gain10p50_30d_matrix.xlsx",
+      "stocks_gain None < best 10.5"
+    ],
+    [
+      "XOM_LONG",
+      9.51,
+      9.55,
+      "XOM_LONG_bh9p55_gain9p51_30d_matrix.xlsx",
+      "stocks_gain None < best 9.51 trb_gain_none"
+    ],
+    [
+      "XOP_LONG",
+      7.34,
+      18.72,
+      "XOP_LONG_bh18p72_gain7p34_30d_matrix.xlsx",
+      "stocks_gain None < best 7.34"
+    ]
+  ],
+  "mism_best_count": 30,
+  "mism_best": [
+    [
+      "LOW_SHORT",
+      13.28,
+      13.31,
+      "LOW_SHORT_bh6p13_gain13p28_30d_matrix.xlsx",
+      "LOW_SHORT_bh6p13_gain13p31_30d_matrix.xlsx"
+    ],
+    [
+      "DELL_SHORT",
+      -5.22,
+      3.82,
+      "DELL_SHORT_bhm24p62_gainm5p22_30d_matrix.xlsx",
+      "DELL_SHORT_bhm24p62_gain3p82_30d_matrix.xlsx"
+    ],
+    [
+      "AAPL_SHORT",
+      -0.62,
+      3.12,
+      "AAPL_SHORT_bhm6p45_gainm0p62_30d_matrix.xlsx",
+      "AAPL_SHORT_bhm6p45_gain3p12_30d_matrix.xlsx"
+    ],
+    [
+      "CRWV_SHORT",
+      -4.68,
+      31.35,
+      "CRWV_SHORT_bhm44p09_gainm4p68_30d_matrix.xlsx",
+      "CRWV_SHORT_bhm44p09_gain31p35_30d_matrix.xlsx"
+    ],
+    [
+      "FIX_SHORT",
+      -4.85,
+      0.82,
+      "FIX_SHORT_bhm4p69_gainm4p85_30d_matrix.xlsx",
+      "FIX_SHORT_bhm4p69_gain0p82_30d_matrix.xlsx"
+    ],
+    [
+      "EQT_SHORT",
+      -1.51,
+      1.94,
+      "EQT_SHORT_bh2p18_gainm1p51_30d_matrix.xlsx",
+      "EQT_SHORT_bh2p18_gain1p94_30d_matrix.xlsx"
+    ],
+    [
+      "HOOD_SHORT",
+      7.66,
+      8.24,
+      "HOOD_SHORT_bhm29p81_gain7p66_30d_matrix.xlsx",
+      "HOOD_SHORT_bhm29p81_gain8p24_30d_matrix.xlsx"
+    ],
+    [
+      "ADP_SHORT",
+      -3.9,
+      2.25,
+      "ADP_SHORT_bhm2p14_gainm3p90_30d_matrix.xlsx",
+      "ADP_SHORT_bhm2p14_gain2p25_30d_matrix.xlsx"
+    ],
+    [
+      "TSLA_SHORT",
+      -4.57,
+      -1.88,
+      "TSLA_SHORT_bhm17p30_gainm4p57_30d_matrix.xlsx",
+      "TSLA_SHORT_bhm17p30_gainm1p88_30d_matrix.xlsx"
+    ],
+    [
+      "CMC_SHORT",
+      7.18,
+      10.3,
+      "CMC_SHORT_bh2p91_gain7p18_30d_matrix.xlsx",
+      "CMC_SHORT_bh2p91_gain10p30_30d_matrix.xlsx"
+    ],
+    [
+      "SMG_SHORT",
+      5.38,
+      32.11,
+      "SMG_SHORT_bh17p37_gain5p38_30d_matrix.xlsx",
+      "SMG_SHORT_bh17p37_gain32p11_30d_matrix.xlsx"
+    ],
+    [
+      "INTC_LONG",
+      -0.96,
+      8.74,
+      "INTC_LONG_bh11p49_gainm0p96_30d_matrix.xlsx",
+      "INTC_LONG_bh11p49_gain8p74_30d_matrix.xlsx"
+    ],
+    [
+      "AGI_LONG",
+      0.56,
+      3.4,
+      "AGI_LONG_bh27p36_gain0p56_30d_matrix.xlsx",
+      "AGI_LONG_bh27p36_gain3p40_30d_matrix.xlsx"
+    ],
+    [
+      "AMZN_LONG",
+      -11.77,
+      7.33,
+      "AMZN_LONG_bhm1p01_gainm11p77_30d_matrix.xlsx",
+      "AMZN_LONG_bhm1p01_gain7p33_30d_matrix.xlsx"
+    ],
+    [
+      "XLE_LONG",
+      5.46,
+      10.5,
+      "XLE_LONG_bh12p96_gain5p46_30d_matrix.xlsx",
+      "XLE_LONG_bh12p96_gain10p50_30d_matrix.xlsx"
+    ],
+    [
+      "BNO_LONG",
+      4.15,
+      33.72,
+      "BNO_LONG_bh27p05_gain4p15_30d_matrix.xlsx",
+      "BNO_LONG_bh27p05_gain33p72_30d_matrix.xlsx"
+    ],
+    [
+      "MPC_LONG",
+      10.53,
+      35.32,
+      "MPC_LONG_bh26p80_gain10p53_30d_matrix.xlsx",
+      "MPC_LONG_bh26p80_gain35p32_30d_matrix.xlsx"
+    ],
+    [
+      "HAO_LONG",
+      -11.02,
+      21.87,
+      "HAO_LONG_bh1731p23_gainm11p02_30d_matrix.xlsx",
+      "HAO_LONG_bh1731p23_gain21p87_30d_matrix.xlsx"
+    ],
+    [
+      "BHP_LONG",
+      3.55,
+      4.42,
+      "BHP_LONG_bh2p51_gain3p55_30d_matrix.xlsx",
+      "BHP_LONG_bh2p51_gain4p42_30d_matrix.xlsx"
+    ],
+    [
+      "BG_LONG",
+      0.02,
+      0.11,
+      "BG_LONG_bh8p27_gain0p02_30d_matrix.xlsx",
+      "BG_LONG_bh8p27_gain0p11_30d_matrix.xlsx"
+    ],
+    [
+      "LNG_LONG",
+      -5.76,
+      2.24,
+      "LNG_LONG_bh2p55_gainm5p76_30d_matrix.xlsx",
+      "LNG_LONG_bh2p55_gain2p24_30d_matrix.xlsx"
+    ],
+    [
+      "HOOD_LONG",
+      -7.5,
+      17.17,
+      "HOOD_LONG_bh29p81_gainm7p50_30d_matrix.xlsx",
+      "HOOD_LONG_bh29p81_gain17p17_30d_matrix.xlsx"
+    ],
+    [
+      "SCCO_LONG",
+      -5.4,
+      0.16,
+      "SCCO_LONG_bhm1p33_gainm5p40_30d_matrix.xlsx",
+      "SCCO_LONG_bhm1p33_gain0p16_30d_matrix.xlsx"
+    ],
+    [
+      "PLTR_LONG",
+      -5.15,
+      14.31,
+      "PLTR_LONG_bh34p12_gainm5p15_30d_matrix.xlsx",
+      "PLTR_LONG_bh0p00_gain14p31_30d_matrix.xlsx"
+    ],
+    [
+      "XOM_LONG",
+      6.54,
+      9.51,
+      "XOM_LONG_bh9p55_gain6p54_30d_matrix.xlsx",
+      "XOM_LONG_bh9p55_gain9p51_30d_matrix.xlsx"
+    ],
+    [
+      "MU_LONG",
+      -3.51,
+      27.63,
+      "MU_LONG_bh10p88_gainm3p51_30d_matrix.xlsx",
+      "MU_LONG_bh15p66_gain27p63_30d_matrix.xlsx"
+    ],
+    [
+      "TTD_SHORT",
+      null,
+      12.43,
+      null,
+      "TTD_SHORT_bh17p10_gain12p43_30d_matrix.xlsx"
+    ],
+    [
+      "LLY_SHORT",
+      null,
+      0.81,
+      null,
+      "LLY_SHORT_bh3p18_gain0p81_30d_matrix.xlsx"
+    ],
+    [
+      "PYPL_SHORT",
+      null,
+      22.58,
+      null,
+      "PYPL_SHORT_bh6p39_gain22p58_30d_matrix.xlsx"
+    ],
+    [
+      "GME_SHORT",
+      null,
+      4.13,
+      null,
+      "GME_SHORT_bhm0p64_gain4p13_30d_matrix.xlsx"
+    ]
+  ],
+  "updated_stocks": 121,
+  "created_stocks": 39,
+  "updated_trb": 128,
+  "created_trb": 32
+}

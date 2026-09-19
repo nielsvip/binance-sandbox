@@ -1,0 +1,34 @@
+{
+  "ts": "20260919031949",
+  "patched": 4,
+  "details": [
+    [
+      "BMNR_SHORT",
+      -0.7,
+      -44.02,
+      "BMNR_SHORT_bhm44p02_gainm0p70_30d_matrix.xlsx",
+      "trb_gain -11.47 < best -0.70"
+    ],
+    [
+      "COPX_LONG",
+      20.64,
+      10.91,
+      "COPX_LONG_bh10p91_gain20p64_30d_matrix.xlsx",
+      "trb_gain 17.18 < best 20.64"
+    ],
+    [
+      "META_LONG",
+      18.45,
+      14.99,
+      "META_LONG_bh14p99_gain18p45_30d_matrix.xlsx",
+      "trb_gain 14.99 < best 18.45"
+    ],
+    [
+      "MRVL_LONG",
+      29.75,
+      21.91,
+      "MRVL_LONG_bh21p91_gain29p75_30d_matrix.xlsx",
+      "trb_gain 21.16 < best 29.75"
+    ]
+  ]
+}
