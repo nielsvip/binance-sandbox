@@ -1,43 +1,30 @@
 {
- "generated_at": "2026-09-19 03:42 UTC",
- "total_capital_usd": 48.59,
+ "generated_at": "2026-09-19 06:12 UTC",
+ "total_capital_usd": 13.88,
  "tier_capital": {
   "A": 0.0,
-  "B": 17.99,
-  "C": 30.59
+  "B": 13.88,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 1
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:ADAUSDC_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
-  {
-   "pk": "fin:ADAUSDC_LONG",
-   "symbol": "ADAUSDC",
-   "account": "fin",
-   "value_usd": 30.59,
-   "gain_pct": -0.01,
-   "tier": "C",
-   "perf_mult": 0.47,
-   "amt": 131.5,
-   "mark": 0.23265157
-  },
   {
    "pk": "fin:FARTCOINUSDT_LONG",
    "symbol": "FARTCOINUSDT",
    "account": "fin",
-   "value_usd": 17.99,
-   "gain_pct": -0.205,
+   "value_usd": 13.88,
+   "gain_pct": -0.089,
    "tier": "B",
-   "perf_mult": 3.77,
-   "amt": 110.7,
-   "mark": 0.16253919
+   "perf_mult": 3.25,
+   "amt": 86.9,
+   "mark": 0.15975809
   }
  ]
 }
