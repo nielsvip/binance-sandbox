@@ -7121,8 +7121,9 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
                             m = pattern.match(f.name)
                             if m:
                                 bh = _pg(m.group(3)); gain = _pg(m.group(4))
+                                # Live needs gain>0 AND beat bh per side — if both sides positive keep both, if one loses keep one
                                 if gain <= 0 or gain <= bh:
-                                    return False, f"BEST stock {base}_{side} gain {gain} bh {bh} not beating"
+                                    return False, f"BEST stock {base}_{side} gain {gain} bh {bh} not beating (needs gain>0 AND beat bh)"
             except Exception:
                 pass
             return False, f"no per_sym entry {key} -> ancient defaults"
@@ -7147,7 +7148,7 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
                         if m2:
                             bh2 = _pg2(m2.group(3)); gain2 = _pg2(m2.group(4))
                             if gain2 <= 0 or gain2 <= bh2:
-                                return False, f"BEST stock {base2}_{side} gain {gain2} bh {bh2} not beating"
+                                return False, f"BEST stock {base2}_{side} gain {gain2} bh {bh2} not beating (needs AND)"
         except Exception:
             pass
         # Check ps wsharpe/pnl
@@ -7171,18 +7172,26 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
         raw_ov = raw_entry.get("overrides", {})
         if flag in raw_ov and not bool(raw_ov[flag]):
             return False, f"raw {flag}=False"
-    # Check gain>0 and beat bh
+    # Live gate: gain>0 AND beat bh per side — if both sides positive keep both, if one loses a lot keep one
+    # If per_sym has no gain/bh (vectorized_opt with only wsharpe), use wsharpe>0 as fallback (backtest still probes)
     g = raw_entry.get("acc_gain_pct")
     if g is None:
         g = raw_entry.get("gain_pct") or raw_entry.get("total_gain_pct") or raw_entry.get("gain_vs_bh")
     bh = raw_entry.get("bh_pct")
     gain_vs_bh = raw_entry.get("gain_vs_bh")
-    if g is not None and g <= 0:
-        return False, f"gain {g:.2f} <=0"
-    if gain_vs_bh is not None and gain_vs_bh <= 0:
-        return False, f"gain_vs_bh {gain_vs_bh:.2f} <=0 not beating bh"
-    if g is not None and bh is not None and g <= bh:
-        return False, f"gain {g:.2f} <= bh {bh:.2f} not beating bh"
+    has_gain_pos = g is not None and g > 0
+    has_beat = (gain_vs_bh is not None and gain_vs_bh > 0) or (g is not None and bh is not None and g > bh)
+    has_gain_data = (g is not None) or (gain_vs_bh is not None) or (bh is not None)
+    # Require both gain>0 AND beat bh for live if gain data exists; otherwise fallback to wsharpe
+    if has_gain_data:
+        if not has_gain_pos or not has_beat:
+            return False, f"needs gain>0 ({g}) AND beat bh (gvb {gain_vs_bh} bh {bh}) has_gain_pos={has_gain_pos} has_beat={has_beat}"
+    else:
+        # No gain/bh — check wsharpe as fallback (e.g. vectorized_opt)
+        w_tmp = raw_entry.get("wsharpe") if "wsharpe" in raw_entry else raw_entry.get("pool_sharpe")
+        trades_tmp = raw_entry.get("trades")
+        if w_tmp is None or w_tmp <= 0 or trades_tmp is None or trades_tmp == 0:
+            return False, f"no gain data and wsharpe {w_tmp} trades {trades_tmp} not positive"
     # Check disabled tags
     tag = raw_entry.get("winning_tag", "")
     sample = raw_entry.get("sample_tag", "")
@@ -7190,7 +7199,7 @@ def _ezm_is_live_side_enabled(symbol: str, side: str) -> tuple[bool, str]:
     w = raw_entry.get("wsharpe") if "wsharpe" in raw_entry else raw_entry.get("pool_sharpe")
     if "DISABLED" in str(tag) or sample == "NO_TRADES" or (trades == 0 and (w == 0 or w is None)):
         return False, f"disabled tag {tag[:30]} w={w} trades={trades}"
-    return True, "live enabled gain>0 and beats bh"
+    return True, f"live enabled AND gain>0({has_gain_pos}) and beat bh({has_beat})"
 
 
 _EXPLODING_LEDGER: Dict[str, Any] = {}  # {symbol: {pct_15d, side, updated}}
