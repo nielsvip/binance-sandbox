@@ -1,41 +1,54 @@
 {
- "generated_at": "2026-09-19 02:25 UTC",
- "total_capital_usd": 12.28,
+ "generated_at": "2026-09-19 02:42 UTC",
+ "total_capital_usd": 52.07,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.28,
+  "B": 52.07,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 3,
   "C": 0
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "fin:QTUMUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "men:KSMUSDT_LONG",
-   "symbol": "KSMUSDT",
-   "account": "men",
-   "value_usd": 7.17,
-   "gain_pct": -0.294,
+   "pk": "fin:FARTCOINUSDT_LONG",
+   "symbol": "FARTCOINUSDT",
+   "account": "fin",
+   "value_usd": 36.06,
+   "gain_pct": 0.138,
    "tier": "B",
-   "perf_mult": 4.7,
-   "amt": 1.6,
-   "mark": 4.482
+   "perf_mult": 4.24,
+   "amt": 221.1,
+   "mark": 0.16309788
   },
   {
-   "pk": "men:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "men",
-   "value_usd": 5.11,
-   "gain_pct": 0.229,
+   "pk": "fin:XTZUSDT_LONG",
+   "symbol": "XTZUSDT",
+   "account": "fin",
+   "value_usd": 8.65,
+   "gain_pct": 0.748,
    "tier": "B",
-   "perf_mult": 3.85,
-   "amt": 3.6,
-   "mark": 1.42
+   "perf_mult": 0.76,
+   "amt": 27.2,
+   "mark": 0.31786136
+  },
+  {
+   "pk": "fin:QTUMUSDT_LONG",
+   "symbol": "QTUMUSDT",
+   "account": "fin",
+   "value_usd": 7.36,
+   "gain_pct": 0.114,
+   "tier": "B",
+   "perf_mult": 0.82,
+   "amt": 7.6,
+   "mark": 0.9685
   }
  ]
 }
