@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-19T06:27:08.993463+00:00",
+  "timestamp": "2026-09-19T06:50:06.296636+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -481,6 +481,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ARUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "TRUMPUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -539,21 +545,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ARUSDT",
-      "net_score": 11.8,
-      "long_score": 11.8,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "ARUSDT",
-      11.8,
-      3.905563
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
