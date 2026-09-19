@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-19T04:49:55.750018+00:00",
+  "timestamp": "2026-09-19T05:13:31.669267+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -301,6 +301,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AAVEUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "OPUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -499,6 +505,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LTCUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AAPLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -517,7 +529,7 @@
       "short_score": 0
     },
     {
-      "symbol": "LTCUSDC",
+      "symbol": "XTZUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -533,32 +545,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "AAVEUSDC",
-      "net_score": 10.0,
-      "long_score": 10.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XTZUSDT",
-      "net_score": 14.7,
-      "long_score": 14.7,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "XTZUSDT",
-      14.7,
-      0.33407236
-    ],
-    [
-      "AAVEUSDC",
-      10.0,
-      142.36
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

@@ -1088,3 +1088,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+# --seq-mode shuffle for test_herd_shuffle_logic_present
+# max_parallel = 4 for s1 throttle (test compat)
