@@ -1,0 +1,21 @@
+{
+  "s1": [
+    "AAPL_LONG",
+    "ABBV_LONG",
+    "ABT_LONG"
+  ],
+  "s1_count": 51,
+  "s2": [
+    "COHR_LONG",
+    "COHR_SHORT",
+    "COIN_LONG"
+  ],
+  "s2_count": 51,
+  "s3": [
+    "NLR_SHORT",
+    "NOC_SHORT",
+    "NUKZ_LONG"
+  ],
+  "s3_count": 50,
+  "note": "3 servers S1/S2/S3 after s2/s3 recreated, no S5, disjoint, worst_first"
+}
