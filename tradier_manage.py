@@ -10026,6 +10026,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if force: logger.info(f"[{account_key}] SKIP {symbol}: Price is Zero.")
             return "NO_PRICE"
         is_long = (position_side == "LONG")
+        # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC 4H CHANNEL BREACH (ALL ACCOUNTS).
+        # LONG close <= dc_low_4h, SHORT close >= dc_high_4h. Gain/age-agnostic, no veto, HARD_STOP.
+        try:
+            if has_position and position is not None and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0:
+                _ult_dc_low_4h = safe_fetch_float(i.get('dc_low_4h', 0), 0.0)
+                _ult_dc_high_4h = safe_fetch_float(i.get('dc_high_4h', 0), 0.0)
+                _ult_breach = (is_long and _ult_dc_low_4h > 0 and current_price <= _ult_dc_low_4h) or ((not is_long) and _ult_dc_high_4h > 0 and current_price >= _ult_dc_high_4h)
+                if _ult_breach:
+                    _ult_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0)
+                    _ult_lvl = _ult_dc_low_4h if is_long else _ult_dc_high_4h
+                    logger.critical(f"⛔ [ULTIMATE_DC_4H_HARD_STOP] {position_key}: price {current_price:.6f} breached {'dc_low' if is_long else 'dc_high'}_4h {_ult_lvl:.6f} g={_ult_gain:.2f}% → HARD_STOP CLOSE (no veto)")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"ULTIMATE_DC_4H_HARD_STOP_{'LONG' if is_long else 'SHORT'}_px{current_price:.6f}_lvl{_ult_lvl:.6f}_g{_ult_gain:.2f}", 100.0, override_qty=999999)
+                    return "ULTIMATE_DC_4H_HARD_STOP_CLOSED"
+        except Exception as _ult_e:
+            logger.warning(f"[ULTIMATE_DC_4H_HARD_STOP] {position_key} probe err: {_ult_e}")
 
         # Hard exit safety runs before any strategy path and before an advisory
         # HOLD can return.  This is deliberately the 4h channel, not the

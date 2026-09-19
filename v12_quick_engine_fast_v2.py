@@ -21156,6 +21156,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         live_pnl_pct = ((px - pos['avg_price']) / pos['avg_price'] * 100) if is_long else ((pos['avg_price'] - px) / pos['avg_price'] * 100)
         pos['peak_pnl_pct'] = max(pos['peak_pnl_pct'], live_pnl_pct)
         held_bars = i - pos['entry_bar']
+        # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC 4H CHANNEL BREACH.
+        try:
+            _ult_lvl = float(dc_low_4h[i]) if is_long else float(dc_high_4h[i])
+            _ult_breach = (_ult_lvl > 0) and ((is_long and px <= _ult_lvl) or ((not is_long) and px >= _ult_lvl))
+            if _ult_breach:
+                pos['fees'] += abs(pos['qty'] * px) * half_fee
+                _pnl = pos['realized'] + ((px - pos['avg_price']) * pos['qty'] if is_long else (pos['avg_price'] - px) * pos['qty']) - pos['fees']
+                _pct = _pnl / pos['deployed'] * 100 if pos['deployed'] else 0.0
+                _tsu = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                trades.append({'pnl_dollars': _pnl, 'pnl_pct': float(_pct), 'deployed': pos['deployed'], 'reason': 'ULTIMATE_DC_4H_HARD_STOP', 'type': 'CLOSE', 'ts': _tsu, 'price': float(px), 'bar_entry': int(pos['entry_bar']), 'bar_exit': int(i), 'entry_price': float(pos.get('entry_price', pos['avg_price'])), 'exit_price': float(px), 'qty': float(pos['qty']), 'entry_reason': pos.get('entry_reason','VECTOR_ENTRY'), 'exit_reason': 'ULTIMATE_DC_4H_HARD_STOP', 'bars_held': int(i - pos['entry_bar'])})
+                pos = None; cd = cooldown_bars; has_closed_before = True
+                continue
+        except Exception:
+            pass
 
         if augment_sig[i] and _augment_allowed(cfg, live_pnl_pct):
             _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0

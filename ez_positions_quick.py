@@ -13900,6 +13900,24 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 if current_price <= 0.0:
                     logger.warning(f"⚠️ [process_single_exit] {position_key}: price is invalid/zero ({current_price}) — skipping exit checks")
                     return
+                # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC 4H CHANNEL BREACH.
+                # No position may be held through dc_low_4h (LONG) / dc_high_4h (SHORT). Close NOW regardless of gain/min_hold/NOLOSS/hedge-protect.
+                try:
+                    _ult_is_long_q = (position_side == 'LONG')
+                    _ult_dc_low_q = safe_fetch_float(indicators.get('dc_low_4h', 0), 0.0) if indicators else 0.0
+                    _ult_dc_high_q = safe_fetch_float(indicators.get('dc_high_4h', 0), 0.0) if indicators else 0.0
+                    _ult_breach_q = (_ult_is_long_q and _ult_dc_low_q > 0 and current_price <= _ult_dc_low_q) or ((not _ult_is_long_q) and _ult_dc_high_q > 0 and current_price >= _ult_dc_high_q)
+                    if _ult_breach_q and position is not None and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > 0:
+                        _ult_amt_q = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0))
+                        _ult_gain_q = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                        _ult_lvl_q = _ult_dc_low_q if _ult_is_long_q else _ult_dc_high_q
+                        logger.critical(f"⛔ [ULTIMATE_DC_4H_HARD_STOP] {position_key}: price {current_price:.6f} breached {'dc_low' if _ult_is_long_q else 'dc_high'}_4h {_ult_lvl_q:.6f} g={_ult_gain_q:.2f}% → HARD_STOP CLOSE")
+                        await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine, account_key, position_key, _ult_amt_q, 'QUICK_CLOSE', current_price, _ult_amt_q, f"ULTIMATE_DC_4H_HARD_STOP_{'LONG' if _ult_is_long_q else 'SHORT'}_px{current_price:.6f}_lvl{_ult_lvl_q:.6f}_g{_ult_gain_q:.2f}", is_hedge=False, data_manager=data_manager)
+                        tracker_manager.last_check_times[position_key] = time.time()
+                        await tracker_manager.clear_processing(position_key)
+                        return
+                except Exception as _ult_q_e:
+                    logger.warning(f"[ULTIMATE_DC_4H_HARD_STOP] {position_key} quick probe err: {_ult_q_e}")
                 _htf_dir, htf_trend_score = trading_policy.check_htf_trend(indicators, current_price) if indicators else ('NEUTRAL', 0)
                 pos_min = 2 * config.MIN_POSITION_SIZE / current_price
                 pos_min_qty = max(pos_min, trade_manager.min_qty.get(symbol, 0.0))

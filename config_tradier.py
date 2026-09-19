@@ -830,6 +830,15 @@ class TradierConfig:
     NEWBORN_DC_STOP_FIELD: str = 'dc_low4_5m'
     EMERGENCY_BRAKE_DC_STOP_ENABLED: bool = True
     EMERGENCY_BRAKE_DC_STOP_FIELD: str = 'dc_low_15m'
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC 4H CHANNEL BREACH.
+    # No trade may EVER be held through dc_low_4h (LONG) or dc_high_4h (SHORT).
+    # This is the final line of defense — unconditional, gain-agnostic, no veto,
+    # no hedge-protect, no NOLOSS bypass. Price outside the 4h Donchian channel
+    # = structural breakdown = close NOW at any loss. Template/Live/Vector all enforce it.
+    # ROLLBACK: NEVER — this stop must never be disabled.
+    # ═══════════════════════════════════════════════════════════════════════════
+    ULTIMATE_DC_4H_STOP_ENABLED: bool = True       # ABSOLUTE — LONG close <= dc_low_4h, SHORT close >= dc_high_4h
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — per stocks team finding: frozen dc_low_4h@entry + -8% floor.
     # Worst-case stocks loss capped at -9% (vs -12.6% baseline / -17% intra-trade). 250 stops × 30 syms × 2.1yr = 4/sym/yr.
     FROZEN_ACTIVATION_STOP_ENABLED: bool = False  # 2026-06-02 USER MANDATE: OFF. Frozen-activation stop fires ~0% gain (48x in /history), is LIVE-ONLY (not in backtest) — a near-breakeven commission-burn exit, not a sanctioned technical exit. ROLLBACK: True.

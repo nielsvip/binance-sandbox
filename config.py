@@ -1160,6 +1160,15 @@ class Config:
     # At first per-bar evaluation, freeze dc_low_4h (LONG) / dc_high_4h (SHORT) on position.
     # Per-bar check: if current_price breaches frozen level AND gain<0 → CLOSE (FROZEN_ACT_STOP_FROZEN_BREACH).
     # Or if gain ≤ FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO → CLOSE (FROZEN_ACT_STOP_ABSOLUTE_FLOOR). Active path mirroring stocks team's finding.
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC 4H CHANNEL BREACH.
+    # No trade may EVER be held through dc_low_4h (LONG) or dc_high_4h (SHORT).
+    # This is the final line of defense — unconditional, gain-agnostic, no veto,
+    # no hedge-protect, no NOLOSS bypass. Price outside the 4h Donchian channel
+    # = structural breakdown = close NOW at any loss. Template/Live/Vector all enforce it.
+    # ROLLBACK: NEVER — this stop must never be disabled.
+    # ═══════════════════════════════════════════════════════════════════════════
+    ULTIMATE_DC_4H_STOP_ENABLED: bool = True       # ABSOLUTE — LONG close <= dc_low_4h, SHORT close >= dc_high_4h
     FROZEN_ACTIVATION_STOP_ENABLED: bool = True
     FROZEN_ACTIVATION_TF: str = "4h"               # which TF's dc_low/high we freeze at entry (D / 4h)
     BB_FROZEN_STOP_ENABLED: bool = True

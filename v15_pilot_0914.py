@@ -903,7 +903,9 @@ def main():
                     break
                 except Exception:
                     continue
-        if _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
+        if os.getenv("FORCE_DC_RERUN") == "1":
+            print(f"[FORCE-DC-RERUN] {new_symside} hard-stop rerun forced (dc_low_4h LONG / dc_high_4h SHORT can never be broken)", flush=True)
+        elif _early_prog and _early_prog.get("final_gain") is not None and len(_early_prog.get("done", {})) >= 50:
             # worst_first second round with baseline-json is allowed to retouch for yellows/orange per tab (filters need deltas) - not just shuffle
             if args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
                 print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished final_gain {_early_prog.get('final_gain'):.2f} but {args.seq_mode}+baseline-json allowed for second round (filters/orange per tab needs delta)", flush=True)
@@ -913,25 +915,28 @@ def main():
                 print(f"[PROHIBITED] {new_symside} ALREADY FINISHED (early) final_gain {_early_prog.get('final_gain'):.2f} done {len(_early_prog.get('done',{}))} — MUST NOT RETOUCH. Backups in xls/log/zip/bak exist. Skipping BEFORE NPZ.", flush=True)
                 return
         # also S1 peer check before NPZ fetch
-        try:
-            import subprocess as _sp_early
-            for _h in ["s1-pub"]:
-                try:
-                    _r = _sp_early.run(["ssh","-o","ConnectTimeout=3","-o","StrictHostKeyChecking=accept-new",_h,
-                        f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
-                        capture_output=True, text=True, timeout=5)
-                    if _r.stdout and _r.stdout.strip() not in ("","None","null"):
-                        if args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
-                            print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but {args.seq_mode}+baseline-json allowed", flush=True)
-                        elif args.seq_mode == "shuffle" and args.baseline_json:
-                            print(f"[SHUFFILE-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but shuffle+baseline-json allowed", flush=True)
-                        else:
-                            print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
-                            return
-                except Exception:
-                    continue
-        except Exception:
-            pass
+        if os.getenv("FORCE_DC_RERUN") == "1":
+            print(f"[FORCE-DC-RERUN] {new_symside} S1 peer check bypassed for hard-stop rerun", flush=True)
+        else:
+            try:
+                import subprocess as _sp_early
+                for _h in ["s1-pub"]:
+                    try:
+                        _r = _sp_early.run(["ssh","-o","ConnectTimeout=3","-o","StrictHostKeyChecking=accept-new",_h,
+                            f"cat ~/binance-sandbox/data/reports/lifecycle_pilot/{new_symside}_v14_progress.json 2>/dev/null | python3 -c \"import json,sys; j=json.load(sys.stdin); print(j.get('final_gain') if j.get('final_gain') is not None else 'None')\""],
+                            capture_output=True, text=True, timeout=5)
+                        if _r.stdout and _r.stdout.strip() not in ("","None","null"):
+                            if args.baseline_json and args.seq_mode in ("shuffle", "worst2best", "worst_first"):
+                                print(f"[{args.seq_mode.upper()}-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but {args.seq_mode}+baseline-json allowed", flush=True)
+                            elif args.seq_mode == "shuffle" and args.baseline_json:
+                                print(f"[SHUFFILE-ALLOW] {new_symside} already finished on S1 peer ({_h} final_gain {_r.stdout.strip()}) but shuffle+baseline-json allowed", flush=True)
+                            else:
+                                print(f"[PROHIBITED] {new_symside} ALREADY FINISHED on S1 peer ({_h} final_gain {_r.stdout.strip()}) — MUST NOT RETOUCH BEFORE NPZ.", flush=True)
+                                return
+                    except Exception:
+                        continue
+            except Exception:
+                pass
     except Exception as _ee:
         print(f"[early-finished-warn] {_ee}", flush=True)
 

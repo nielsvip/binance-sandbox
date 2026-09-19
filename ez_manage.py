@@ -45529,6 +45529,31 @@ async def process_position(
         # don't await here — breach check is awaited at each gated exit; just log generic block now
         logger.debug(f"[MIN_HOLD_BLOCK] {position_key}: age {_pp_age_min_for_hold:.2f}m < {_min_hold_bars_for_exit}bars ({_min_hold_sec_for_exit/60:.1f}m) — all TIMED exits (HTF/R1/MTF/GR) deferred until hold satisfied unless dc_15m breach. Gain {safe_fetch_float(getattr(position,'gain',0),0):.2f}%")
     # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC 4H CHANNEL BREACH.
+    # No position may be held through dc_low_4h (LONG) / dc_high_4h (SHORT).
+    # Gain-agnostic, age-agnostic, bypasses MIN_HOLD / NOLOSS / hedge-protect via HARD_STOP.
+    # ROLLBACK: NEVER — this stop must never be disabled.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+        try:
+            if _pp_shared_ind is None:
+                _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            _ult_is_long = position_side == "LONG"
+            _ult_dc_low_4h = safe_fetch_float(_pp_shared_ind.get("dc_low_4h", 0), 0.0)
+            _ult_dc_high_4h = safe_fetch_float(_pp_shared_ind.get("dc_high_4h", 0), 0.0)
+            _ult_breached = (_ult_is_long and _ult_dc_low_4h > 0 and current_price <= _ult_dc_low_4h) or ((not _ult_is_long) and _ult_dc_high_4h > 0 and current_price >= _ult_dc_high_4h)
+            if _ult_breached:
+                _ult_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _ult_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                _ult_side = "SELL" if _ult_is_long else "BUY"
+                _ult_level = _ult_dc_low_4h if _ult_is_long else _ult_dc_high_4h
+                logger.critical(f"⛔ [ULTIMATE_DC_4H_HARD_STOP] {position_key}: price {current_price:.6f} breached {'dc_low' if _ult_is_long else 'dc_high'}_4h {_ult_level:.6f} g={_ult_gain:.2f}% → HARD_STOP CLOSE (no veto)")
+                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_ult_amt, side=_ult_side, position_side=position_side, quantity=_ult_amt, old_price=current_price, unique_id=f"ULTIMATE_DC_4H_HARD_STOP_{int(time.time())}", reason=f"ULTIMATE_DC_4H_HARD_STOP_{'LONG' if _ult_is_long else 'SHORT'}_px{current_price:.6f}_lvl{_ult_level:.6f}_g{_ult_gain:.2f}", is_full_close=True, action="CLOSE")
+                trade_manager.processing_keys.discard(position_key)
+                return f"{EvalStatus.ACTION_TAKEN}:ULTIMATE_DC_4H_HARD_STOP_CLOSED"
+        except Exception as _ult_e:
+            logger.warning(f"[ULTIMATE_DC_4H_HARD_STOP] {position_key} probe err: {_ult_e}")
+    # ═══════════════════════════════════════════════════════════════════════════
     # NEWBORN_LOSS_KILL — USER MANDATE 2026-05-21 22:47 (post-ORDIUSDC incident).
     # Force-close any position younger than NEWBORN_LOSS_KILL_WINDOW_MIN whose gain has
     # dropped below NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT. Tighter than R1 (which waits
