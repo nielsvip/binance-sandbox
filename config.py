@@ -54,6 +54,22 @@ class Config:
     WT_DC_HTF_GATE: str = "4h_D"  # 2026-09-10 FIX vs B&H: was none → 4h_D — ensures larger-TF WT direction (D+4h) blocks counter-trend trades. User: against trend + larger TF WT. Crypto now matches tradier.
     WT_DC_ENTRY_THRESHOLD: float = 0.0  # crypto 0 vs tradier 45
     TRA_WT_DC_ENTRY_THRESHOLD: float = 0.0  # keep for crypto parity (tradier 85)
+    # ── WT/DC TF-EXPANDED PACK 2026-09-19 — 15m+ only (15m/1h/4h/D/W): clear TF gates so every WT/DC path is template-sweepable ──
+    WT_DC_TF_ENTRY: str = "1h"  # WT cross trigger TF: 15m|1h|4h|D — default 1h (live-parity, was hard 1h)
+    WT_DC_TF_HTF: str = "4h"  # primary HTF WT alignment TF: 15m|1h|4h|D|W — default 4h
+    WT_DC_TF_HTF2: str = "D"  # secondary HTF WT alignment TF: none|15m|1h|4h|D|W — default D (none disables)
+    WT_DC_DC_TF: str = "1h"  # DC position TF: 15m|1h|4h|D — default 1h (was hard 1h)
+    WT_DC_STOCH_TF: str = "5m"  # stoch K TF: 5m|15m|1h|4h — default 5m (parity; 15m+ sweep moves to 15m/1h)
+    WT_DC_DC_POS_THRESHOLD_LONG: float = 0.50  # DC position gate LONG: 0.30|0.40|0.50|0.60|0.70
+    WT_DC_DC_POS_THRESHOLD_SHORT: float = 0.50  # DC position gate SHORT: mirror
+    WT_DC_STOCH_THRESHOLD_LONG: float = 40.0  # stoch gate LONG: 30|40|50
+    WT_DC_STOCH_THRESHOLD_SHORT: float = 60.0  # stoch gate SHORT: 50|60|70
+    WT_DC_HTF_GATE_MODE: str = "AND"  # HTF alignment mode: AND=both HTFs must agree, OR=either — default AND
+    WT_DC_TF_COMBO: str = "1h_4h_D"  # TF combo shorthand: 1h_4h_D|15m_1h_4h|15m_1h_4h_D — parsed into gate TFs, default 1h_4h_D
+    WT_DC_DIRECT_TF_ENTRY: str = "1h"  # direct-path WT cross TF: 15m|1h|4h — default 1h
+    WT_DC_DIRECT_DC_TF: str = "1h"  # direct-path DC TF: 15m|1h|4h|D
+    DC_BREAKOUT_TF_EXPANDED: str = "1h"  # alias with expanded options: 15m|1h|4h|D|W — mirrors DC_BREAKOUT_TF
+    EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"  # EXIT_VELOCITY WT check T inn — 15m|1h|4h|D combinations
     GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 27.0
     GR_HTF_DIRECT_ENTRY_ENABLED: bool = True
@@ -1848,6 +1864,14 @@ class Config:
     REENTRY_K_RESET_GR_MIN_TFS: int = 2
     REENTRY_K_RESET_TF: str = "15m"
     REENTRY_SMA200_GR_CONTINUATION_ENABLED: bool = False  # E: above SMA200 + GR + HH at better price — sweepable (15m testable)
+    # --- 2026-09-19 TESTABLE 15m BB/DC BOUNCE (HTF confirmed) — both live+backtest comparable ---
+    REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED: bool = False  # 15m close x dc_basis_15m + HTF WT >=2 + bb_pct_b_1h not extreme — TESTABLE
+    REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS: int = 2
+    REENTRY_15M_LRL_PULLBACK_HTF_ENABLED: bool = False  # 15m lrL lower-band pullback reclaim + WT 15m bull + HTF
+    REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS: int = 2
+    REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED: bool = False  # 1h BB pct_b oversold reclaim + 15m WT + HTF
+    REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS: int = 2
+    REENTRY_15M_BETTER_PCT: float = 0.002  # shared better-price discount for 15m testable family
     K3M_CAP_BREAKOUT_BYPASS: bool = True        # ez_positions_quick.py:2722
     OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS: bool = True  # :4407
     WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS: bool = True  # 2026-07-04 USER: WT_3M reentry only on higher-high (LONG)/lower-low (SHORT) crossover PRICE

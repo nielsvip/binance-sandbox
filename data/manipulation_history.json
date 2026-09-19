@@ -13540,5 +13540,23 @@
     ],
     "timestamp": "2026-09-19T16:49:58.209983+00:00",
     "price": 0.2737
+  },
+  {
+    "symbol": "CELRUSDT",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.9x (from rankings)"
+    ],
+    "timestamp": "2026-09-19T19:15:53.800461+00:00",
+    "price": 0.002134
+  },
+  {
+    "symbol": "FILUSDC",
+    "severity": 2,
+    "reasons": [
+      "RANKINGS_VOL: 5.4x (from rankings)"
+    ],
+    "timestamp": "2026-09-19T19:18:58.195965+00:00",
+    "price": 0.9955
   }
 ]

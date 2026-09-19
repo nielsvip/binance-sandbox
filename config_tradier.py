@@ -148,6 +148,22 @@ class TradierConfig:
     # NEVER block existing entries. Worst case is a few extra entries fire.
     LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-29 PATH A REVERTED: 12sym×6mo sample below 100sym×1yr published-Sharpe floor (rule 4b) and 0.874<1.0 trash floor (rule 6). Both numbers were undersize noise. Re-enable only after 114-stock × ≥1yr Tier-2 clears pool_sharpe ≥1.0.
     WT_DC_HTF_GATE: str = "4h_D"                     # 2026-07-14 RESTORED 1h->4h_D: the 2026-05-21 loosening to "1h" (for trade-frequency reasons) silently re-opened the EXACT "SHORT-into-uptrend" gap this gate was built to close on 2026-04-27 (see WT_DC_ENTRY comment ~3131) -- a 1h-only check can't see a multi-week Daily uptrend. Live proof: PLTR_SHORT (trb, opened 2026-07-09, reason WT_DC_ENTRY_60_4h_bear|1h_cross_BEAR) and IBIT_SHORT (trb, opened 2026-07-13, same pattern) both entered on 1h/4h bearish WT crosses DURING pullbacks inside established multi-week uptrends (PLTR +25% off its 06-25 low, IBIT +9% off its 06-30 low, both still rising at entry) -- textbook countertrend entries, not "top of a bounce in a downtrend". Both ran hard against (PLTR -6.8%, IBIT required manual close). Trade-off: "4h" alone caused 28/day blocks on trb per the 05-21 note; "4h_D" is the strongest documented setting and is the one the original 04-27 fix intended. ROLLBACK: "1h" (accepts the uptrend-short risk for more trade frequency) or "4h" (partial). Values: 'none' / '1h' / '4h' / '4h_D'
+    # ── WT/DC TF-EXPANDED PACK 2026-09-19 — 15m+ only (15m/1h/4h/D/W): clear TF gates, sweepable in TEMPLATE + v12 ──
+    WT_DC_TF_ENTRY: str = "1h"  # WT cross trigger TF: 15m|1h|4h|D — default 1h (parity, was hard 1h)
+    WT_DC_TF_HTF: str = "4h"  # primary HTF WT alignment TF: 15m|1h|4h|D|W
+    WT_DC_TF_HTF2: str = "D"  # secondary HTF WT alignment TF: none|15m|1h|4h|D|W — default D (none disables)
+    WT_DC_DC_TF: str = "1h"  # DC position TF: 15m|1h|4h|D — default 1h (was hard 1h)
+    WT_DC_STOCH_TF: str = "5m"  # stoch K TF: 5m|15m|1h|4h — default 5m (parity; sweep to 15m/1h)
+    WT_DC_DC_POS_THRESHOLD_LONG: float = 0.50  # DC position gate LONG: 0.30|0.40|0.50|0.60|0.70
+    WT_DC_DC_POS_THRESHOLD_SHORT: float = 0.50  # DC position gate SHORT: mirror
+    WT_DC_STOCH_THRESHOLD_LONG: float = 40.0  # stoch gate LONG: 30|40|50
+    WT_DC_STOCH_THRESHOLD_SHORT: float = 60.0  # stoch gate SHORT: 50|60|70
+    WT_DC_HTF_GATE_MODE: str = "AND"  # HTF alignment mode: AND=both HTFs must agree, OR=either — default AND
+    WT_DC_TF_COMBO: str = "1h_4h_D"  # TF combo shorthand: 1h_4h_D|15m_1h_4h|15m_1h_4h_D — parsed into gate TFs
+    WT_DC_DIRECT_TF_ENTRY: str = "1h"  # direct-path WT cross TF: 15m|1h|4h — default 1h
+    WT_DC_DIRECT_DC_TF: str = "1h"  # direct-path DC TF: 15m|1h|4h|D
+    DC_BREAKOUT_TF_EXPANDED: str = "1h"  # alias with expanded options: 15m|1h|4h|D|W — mirrors DC_BREAKOUT_TF
+    EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"  # EXIT_VELOCITY WT check T inn — 15m|1h|4h|D combinations
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal
@@ -699,6 +715,14 @@ class TradierConfig:
     REENTRY_K_RESET_TF: str = "15m"
     REENTRY_SMA200_GR_CONTINUATION_ENABLED: bool = False  # E: SMA200 + GR — sweepable (15m testable)
     REENTRY_SMA200_GR_MIN_TFS: int = 2
+    # --- 2026-09-19 TESTABLE 15m BB/DC BOUNCE (HTF confirmed) — both live+backtest comparable (15m+1h fields exist) ---
+    REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED: bool = False
+    REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS: int = 2
+    REENTRY_15M_LRL_PULLBACK_HTF_ENABLED: bool = False
+    REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS: int = 2
+    REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED: bool = False
+    REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS: int = 2
+    REENTRY_15M_BETTER_PCT: float = 0.002
     PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True
     PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS: bool = True
     PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS: bool = True

@@ -1,0 +1,104 @@
+{
+  "contract": "STOCK_MATRIX_WORKBOOK_COVERAGE_V1",
+  "ok": true,
+  "reports": [
+    {
+      "active_key_sha256": "41c31193cb7452fa53667561ed5f04e7c902cde323e404da18997c6930fd1709",
+      "active_keys": 117,
+      "blank_path_descriptions": [],
+      "configured_key_sha256": "f90808411f7d18162b723f9a349119c492766436f02d3940ae5a3de6f1765ab9",
+      "configured_keys": 159,
+      "duplicate_keys_by_sheet": {
+        "Baselines": [],
+        "Entry": [],
+        "Exit": [],
+        "Other": [],
+        "Sizing": []
+      },
+      "formula_cells": 0,
+      "formula_errors": [],
+      "fresh_vs_symbol_sources": true,
+      "historical_keys": 42,
+      "kind": "SWITCH_MATRIX_TRB",
+      "missing_keys_by_sheet": {
+        "Baselines": [],
+        "Entry": [],
+        "Exit": [],
+        "Other": [],
+        "Sizing": []
+      },
+      "missing_sheets": [],
+      "ok": true,
+      "path_descriptions": 4406,
+      "required_sheets": [
+        "Engine Coverage",
+        "Universe Audit",
+        "Entry",
+        "Exit",
+        "Sizing",
+        "Other",
+        "Coverage",
+        "Baselines",
+        "Inventory"
+      ],
+      "sheet_key_counts": {
+        "Baselines": 159,
+        "Entry": 159,
+        "Exit": 159,
+        "Other": 159,
+        "Sizing": 159
+      },
+      "source_latest_mtime_ns": 1785346408628491453,
+      "workbook": "/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB.xlsx",
+      "workbook_mtime_ns": 1785347619069336659,
+      "zip_ok": true
+    },
+    {
+      "active_key_sha256": "41c31193cb7452fa53667561ed5f04e7c902cde323e404da18997c6930fd1709",
+      "active_keys": 117,
+      "blank_path_descriptions": [],
+      "configured_key_sha256": "f90808411f7d18162b723f9a349119c492766436f02d3940ae5a3de6f1765ab9",
+      "configured_keys": 159,
+      "duplicate_keys_by_sheet": {
+        "Entry Paths": [],
+        "Exit Paths": [],
+        "PerSym Results": []
+      },
+      "formula_cells": 0,
+      "formula_errors": [],
+      "fresh_vs_symbol_sources": true,
+      "historical_keys": 42,
+      "kind": "PARAM_BASELINE_STOCKS",
+      "missing_keys_by_sheet": {
+        "Entry Paths": [],
+        "Exit Paths": [],
+        "PerSym Results": []
+      },
+      "missing_sheets": [],
+      "ok": true,
+      "path_descriptions": 1559,
+      "required_sheets": [
+        "Workbook Guide",
+        "PerSym Results",
+        "Entry Paths",
+        "Exit Paths",
+        "Path Fleet Results",
+        "Baselines",
+        "ParamRanges",
+        "Suggestions",
+        "AllCells",
+        "Relevance",
+        "Matrix_Top"
+      ],
+      "sheet_key_counts": {
+        "Entry Paths": 159,
+        "Exit Paths": 159,
+        "PerSym Results": 159
+      },
+      "source_latest_mtime_ns": 1785346408628491453,
+      "workbook": "/home/niels/binance-sandbox/data/reports/PARAM_BASELINE_STOCKS.xlsx",
+      "workbook_mtime_ns": 1785347645988582168,
+      "zip_ok": true
+    }
+  ]
+}

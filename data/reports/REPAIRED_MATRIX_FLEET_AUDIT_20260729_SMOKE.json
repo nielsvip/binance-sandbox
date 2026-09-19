@@ -1,0 +1,302 @@
+{
+  "campaign": "stocks_repaired_20260725_c2",
+  "canonical_workbook": {
+    "mtime": 1785339253.615932,
+    "path": "/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB.xlsx",
+    "sheet_count": 12,
+    "sheets": [
+      "Engine Coverage",
+      "Entry",
+      "Exit",
+      "Sizing",
+      "Other",
+      "Ladder",
+      "BandLadder",
+      "DC4 Diagnostics",
+      "Coverage",
+      "Exact Engine Evidence",
+      "Baselines",
+      "Inventory"
+    ],
+    "size": 404673
+  },
+  "claims_total": 101,
+  "dead_claims": [],
+  "failures": [],
+  "manifest_expected": {
+    "ra1": {
+      "side": "SHORT",
+      "symbol": "ACN"
+    },
+    "rl1": {
+      "side": "SHORT",
+      "symbol": "LAC"
+    },
+    "rm1": {
+      "side": "LONG",
+      "symbol": "MU"
+    },
+    "rm2": {
+      "side": "LONG",
+      "symbol": "MU"
+    },
+    "rm3": {
+      "side": "LONG",
+      "symbol": "MU"
+    },
+    "rn1": {
+      "side": "LONG",
+      "symbol": "NVDA"
+    },
+    "rn2": {
+      "side": "LONG",
+      "symbol": "NVDA"
+    },
+    "rt1": {
+      "side": "SHORT",
+      "symbol": "TTD"
+    },
+    "rv1": {
+      "side": "LONG",
+      "symbol": "VT"
+    }
+  },
+  "repaired_engines": [
+    {
+      "pid": 977965,
+      "ppid": 773392,
+      "worker_owned": true
+    },
+    {
+      "pid": 977966,
+      "ppid": 977965,
+      "worker_owned": true
+    },
+    {
+      "pid": 985987,
+      "ppid": 826561,
+      "worker_owned": true
+    },
+    {
+      "pid": 985988,
+      "ppid": 985987,
+      "worker_owned": true
+    },
+    {
+      "pid": 986280,
+      "ppid": 826565,
+      "worker_owned": true
+    },
+    {
+      "pid": 986281,
+      "ppid": 986280,
+      "worker_owned": true
+    },
+    {
+      "pid": 986419,
+      "ppid": 826571,
+      "worker_owned": true
+    },
+    {
+      "pid": 986420,
+      "ppid": 986419,
+      "worker_owned": true
+    },
+    {
+      "pid": 991111,
+      "ppid": 991011,
+      "worker_owned": true
+    },
+    {
+      "pid": 991112,
+      "ppid": 991111,
+      "worker_owned": true
+    },
+    {
+      "pid": 995097,
+      "ppid": 773396,
+      "worker_owned": true
+    },
+    {
+      "pid": 995098,
+      "ppid": 995097,
+      "worker_owned": true
+    },
+    {
+      "pid": 995925,
+      "ppid": 18770,
+      "worker_owned": true
+    },
+    {
+      "pid": 995927,
+      "ppid": 995925,
+      "worker_owned": true
+    },
+    {
+      "pid": 998147,
+      "ppid": 826629,
+      "worker_owned": true
+    },
+    {
+      "pid": 998148,
+      "ppid": 998147,
+      "worker_owned": true
+    },
+    {
+      "pid": 999160,
+      "ppid": 773405,
+      "worker_owned": true
+    },
+    {
+      "pid": 999161,
+      "ppid": 999160,
+      "worker_owned": true
+    },
+    {
+      "pid": 1001853,
+      "ppid": 773401,
+      "worker_owned": true
+    },
+    {
+      "pid": 1001854,
+      "ppid": 1001853,
+      "worker_owned": true
+    }
+  ],
+  "status": "PASS_WITH_UNMANIFESTED_WORKERS",
+  "unmanifested_workers": [
+    {
+      "manifested": false,
+      "pid": 991011,
+      "ppid": 1410,
+      "sid": 991011,
+      "side": "LONG",
+      "symbol": "MU",
+      "tag": "smoke_mu_canonical"
+    },
+    {
+      "manifested": false,
+      "pid": 998886,
+      "ppid": 1410,
+      "sid": 998886,
+      "side": "LONG",
+      "symbol": "MU",
+      "tag": "smoke_mu_numeric_canonical"
+    }
+  ],
+  "warnings": [
+    "2 detached safe-contract worker(s) are not in the current manifest; they still own their engine descendants"
+  ],
+  "workers": {
+    "ra1": [
+      {
+        "manifested": true,
+        "pid": 826629,
+        "ppid": 1,
+        "sid": 826629,
+        "side": "SHORT",
+        "symbol": "ACN"
+      }
+    ],
+    "rl1": [
+      {
+        "manifested": true,
+        "pid": 773405,
+        "ppid": 1,
+        "sid": 773405,
+        "side": "SHORT",
+        "symbol": "LAC"
+      }
+    ],
+    "rm1": [
+      {
+        "manifested": true,
+        "pid": 826561,
+        "ppid": 1,
+        "sid": 826561,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "rm2": [
+      {
+        "manifested": true,
+        "pid": 826565,
+        "ppid": 1,
+        "sid": 826565,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "rm3": [
+      {
+        "manifested": true,
+        "pid": 826571,
+        "ppid": 1,
+        "sid": 826571,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "rn1": [
+      {
+        "manifested": true,
+        "pid": 773392,
+        "ppid": 1,
+        "sid": 773392,
+        "side": "LONG",
+        "symbol": "NVDA"
+      }
+    ],
+    "rn2": [
+      {
+        "manifested": true,
+        "pid": 773396,
+        "ppid": 1,
+        "sid": 773396,
+        "side": "LONG",
+        "symbol": "NVDA"
+      }
+    ],
+    "rt1": [
+      {
+        "manifested": true,
+        "pid": 18770,
+        "ppid": 1,
+        "sid": 18770,
+        "side": "SHORT",
+        "symbol": "TTD"
+      }
+    ],
+    "rv1": [
+      {
+        "manifested": true,
+        "pid": 773401,
+        "ppid": 1,
+        "sid": 773401,
+        "side": "LONG",
+        "symbol": "VT"
+      }
+    ],
+    "smoke_mu_canonical": [
+      {
+        "manifested": false,
+        "pid": 991011,
+        "ppid": 1410,
+        "sid": 991011,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "smoke_mu_numeric_canonical": [
+      {
+        "manifested": false,
+        "pid": 998886,
+        "ppid": 1410,
+        "sid": 998886,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ]
+  }
+}

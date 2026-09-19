@@ -1,0 +1,32 @@
+{
+  "found": [
+    [
+      "/tmp/backtest_live_AAPL.log",
+      "trades=0"
+    ],
+    [
+      "/tmp/backtest_live_AAPL.log",
+      "EARLY_ABORT_LOW_RATE"
+    ],
+    [
+      "/tmp/backtest_live_AAPL.log",
+      "open=0.*cand=2.*PROCESSED"
+    ],
+    [
+      "/tmp/backtest_live_GOOGL.log",
+      "trades=0"
+    ],
+    [
+      "/tmp/backtest_live_GOOGL.log",
+      "EARLY_ABORT_LOW_RATE"
+    ]
+  ],
+  "interventions": [
+    "2026-08-12T02:55:01.923208+00:00 ZERO detected trades=0 in /tmp/backtest_live_AAPL.log -> fix stdev_ladder wiring",
+    "2026-08-12T02:55:01.923208+00:00 ZERO detected EARLY_ABORT_LOW_RATE in /tmp/backtest_live_AAPL.log -> fix stdev_ladder wiring",
+    "2026-08-12T02:55:01.923208+00:00 ZERO detected open=0.*cand=2.*PROCESSED in /tmp/backtest_live_AAPL.log -> fix stdev_ladder wiring",
+    "2026-08-12T02:55:01.923208+00:00 ZERO detected trades=0 in /tmp/backtest_live_GOOGL.log -> fix stdev_ladder wiring",
+    "2026-08-12T02:55:01.923208+00:00 ZERO detected EARLY_ABORT_LOW_RATE in /tmp/backtest_live_GOOGL.log -> fix stdev_ladder wiring"
+  ],
+  "ts": "2026-08-12T02:55:01.923208+00:00"
+}

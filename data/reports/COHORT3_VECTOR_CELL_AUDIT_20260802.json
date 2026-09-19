@@ -1,0 +1,2394 @@
+{
+  "allowed_isolated_fingerprint_plateau_groups": 2,
+  "allowed_isolated_metric_plateau_groups": 2,
+  "allowed_plateaus": [
+    {
+      "behavior_fingerprint": "076c742608defdf0ff71d9f59ff37f4a915990bd24a48ac877cc5615fce4827e",
+      "key": "GOOGL_LONG",
+      "measured_axis_values": 5,
+      "metric": -6.5145034468,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "0.75",
+        "1.125"
+      ]
+    },
+    {
+      "behavior_fingerprint": "32e39cc0dccee3cfaf6303c7f94be98c8b08f47f2df2a5431d73c3b98bc1d05e",
+      "key": "TRGP_LONG",
+      "measured_axis_values": 5,
+      "metric": -1.8117062098,
+      "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+      "values": [
+        "0.75",
+        "1.125"
+      ]
+    }
+  ],
+  "campaign_must_stop": true,
+  "contract": "STRICT_PER_KEY_UNIQUE_METRIC_AND_ACTION_WITH_ONE_BOUNDED_PAIR_PLATEAU_PER_5PLUS_VALUE_AXIS",
+  "duplicate_groups": [
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "metric": -4.8368854846,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 6,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "metric": -4.720332398,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "metric": -4.4872262247,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        }
+      ],
+      "collision_count": 6,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "metric": -2.8144530713,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "metric": -2.2976672026,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "metric": -2.9444993408,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 15,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "USAR_LONG",
+      "metric": -7.1985158288,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 4,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "metric": -1.2324969718,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "metric": -1.1116529659,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "metric": -1.3016395894,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 13,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "QRVO_LONG",
+      "metric": -4.2784583064,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "QRVO_LONG",
+      "metric": -2.6594898568,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "GOOGL_LONG",
+      "metric": -6.5285134079,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        }
+      ],
+      "collision_count": 14,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "A_LONG",
+      "metric": -4.4268641667,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 4,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "metric": -0.6836421754,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "metric": -0.1905334532,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "metric": -0.6491231957,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 7,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "metric": -4.4632339874,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "metric": -4.418689158,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "metric": -4.9515019739,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "TRGP_LONG",
+      "metric": -1.8859043664,
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "METRIC"
+    },
+    {
+      "behavior_fingerprint": "68f6b80cd6c6110b52e0b9b40add11e698b034cd6db77aca42df8c97ae03a968",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "45b2fe19d662d76acaab8c56cee09f44841c2c79c4658d620b3bd45cb9b9214b",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 6,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "f3ec55f3542d593c73db14010069d24fc070b25b84751b7272b7b26e48442392",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "a875ee9d18c58aa8af1ac1e58352576f5b8deb6cd13542080f7e8297a87e476c",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        }
+      ],
+      "collision_count": 6,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "a7e93d70545e08ea232aa992e7d4435ffd2cd0fa0ef610fe04dd2d9d3eba5dd6",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "4cfd0a908bfebe6c46e4fc7be8eb2e3d3442b8aa4abc3b0b267977d73e1d9434",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "a624561fc9dbc7d2d955a2f31e73b1f3d51577768735143128221e5f3856786f",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 15,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "USAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "6dab6ca2e12f9d12b695361d0f9210ac5b99bd69841d8a40369457253d329bf6",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 4,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "83846f6c5e81f7a775d342ac9f063bffe552c3a2d4052e83cdcda6934680fe40",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "94a6de4fb318af94bc1f0788beadf7b2dc5fffcd8e0696a0c676b816edfbb6e7",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "1fb9c8a17d8cfe45bd6aa0ac6c6ae4688fb778090408ad3afe4ab14ddd6a677b",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 13,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "QRVO_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "9a124b32bf65228933a8dc578601363901f9ed62ee4141c54bc5f9b0649132a3",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "QRVO_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "2336ebb04d4f5b9fba724ff228d05d19a6af977c924d965077940c698f52d02d",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "GOOGL_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "5eb44498dd7ce09770c7b60c2af9ddbfab4bf12719de2cf8c14bcb04e51278e9",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        }
+      ],
+      "collision_count": 14,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "A_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "f73e3e800e4bf3c265e5949e78a7997d603b9504b4d4bcb9c37802d959c8f44a",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 4,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "ac49196116b11cbd595782d1640ddb76e6d53f9c63678e3571f689e182eca447",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "cd05ab429da921e1c76c943d7af8116f28f6fe0dfd41683d33002ac34246a9b5",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "8e9d630c58d88f4e4e8eca24a65918aa462a3c5d1686d0e1c51fd9666467b80d",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 7,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "b1f0827f9727bcb62eea1d94ecbded4d38b17c078cc468faadc791c5b859abd9",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "8140ce8a7e5938626d9e59c45f31a379ecf957854e5c1dc1154f58ecc38acbfd",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    },
+    {
+      "behavior_fingerprint": "f2fc352d3ee53ef8846ffa2b0e55d51939917c088673b96c76d40d4ffacdf90a",
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 3,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "TRGP_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "type": "ACTION_FINGERPRINT"
+    }
+  ],
+  "exact_completion_credit": false,
+  "fingerprint_collision_groups": 21,
+  "generated_at": "2026-08-02T00:41:17Z",
+  "matrix_fill_allowed": false,
+  "metric_collision_groups": 21,
+  "next_causal_recalculation_queue": [
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 15,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "USAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 1,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        }
+      ],
+      "collision_count": 14,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "A_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 2,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 13,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "QRVO_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 3,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 7,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 4,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 6,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 5,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        }
+      ],
+      "collision_count": 6,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 6,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 4,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 7,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 4,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 8,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 9,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 10,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 3,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 11,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 3,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "GOOGL_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 12,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "2"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "2.5"
+        }
+      ],
+      "collision_count": 3,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "TRGP_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 13,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.875"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 14,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "0.75"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.125"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "BG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "priority": 15,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "1.5"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "CIBR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "priority": 16,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "DAR_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 17,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "EOG_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 18,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_MULT",
+          "value": "3"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "1.25"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_MULT",
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 19,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "1.875"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T2_PCT",
+          "value": "2.25"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "PSX_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T2_PCT"
+      ],
+      "priority": 20,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    },
+    {
+      "causes": [
+        "METRIC",
+        "ACTION_FINGERPRINT"
+      ],
+      "cells": [
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.125"
+        },
+        {
+          "param": "BREAKOUT_SIZE_EMA200_T3_PCT",
+          "value": "3.75"
+        }
+      ],
+      "collision_count": 2,
+      "exact_v8_cells_must_be_preserved": true,
+      "families": [
+        "BREAKOUT_SIZE_EMA200"
+      ],
+      "key": "QRVO_LONG",
+      "params": [
+        "BREAKOUT_SIZE_EMA200_T3_PCT"
+      ],
+      "priority": 21,
+      "required_next_stage": "CAUSAL_PATH_ADAPTER_OR_EXACT_V8"
+    }
+  ],
+  "passed": 50,
+  "per_family": {
+    "BREAKOUT_SIZE_EMA200": {
+      "PASS": 50,
+      "QUARANTINED": 100
+    }
+  },
+  "per_family_duplicate_groups": {
+    "BREAKOUT_SIZE_EMA200": {
+      "ACTION_FINGERPRINT_CELLS": 100,
+      "ACTION_FINGERPRINT_GROUPS": 21,
+      "METRIC_CELLS": 100,
+      "METRIC_GROUPS": 21
+    }
+  },
+  "per_key": {
+    "A_LONG": {
+      "PASS": 1,
+      "QUARANTINED": 14
+    },
+    "BG_LONG": {
+      "PASS": 7,
+      "QUARANTINED": 8
+    },
+    "CIBR_LONG": {
+      "PASS": 4,
+      "QUARANTINED": 11
+    },
+    "DAR_LONG": {
+      "PASS": 3,
+      "QUARANTINED": 12
+    },
+    "EOG_LONG": {
+      "PASS": 6,
+      "QUARANTINED": 9
+    },
+    "GOOGL_LONG": {
+      "PASS": 12,
+      "QUARANTINED": 3
+    },
+    "PSX_LONG": {
+      "PASS": 5,
+      "QUARANTINED": 10
+    },
+    "QRVO_LONG": {
+      "QUARANTINED": 15
+    },
+    "TRGP_LONG": {
+      "PASS": 12,
+      "QUARANTINED": 3
+    },
+    "USAR_LONG": {
+      "QUARANTINED": 15
+    }
+  },
+  "promotion_allowed": false,
+  "quarantined": 100,
+  "raw_evidence_is_unchanged": true,
+  "raw_rows_read": 150,
+  "reason_counts": {
+    "DUPLICATE_ACTION_FINGERPRINT": 100,
+    "DUPLICATE_RESULT_NUMBER": 100,
+    "STATUS_INERT": 75
+  },
+  "rows": 150,
+  "schema_version": 2,
+  "source_ledger_sha256": {
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/A_LONG.jsonl": "396bfe99ffae4f61638ef71b2745b6118edfabab33c7e1cdede3ca95a86a61cb",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/BG_LONG.jsonl": "0c8227fa8e8788575dfdc03c25780e93f15a5937c8c88d0307927f7881b207e0",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/CIBR_LONG.jsonl": "25a152f6e6c7d23707ee099a13769221a3a6af13ed7bf0f47eeb2cebb33d3bda",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/DAR_LONG.jsonl": "e641ec9e3cf8d13f88cd18bc35104dd043141a6292d62bf3b3a6058ea1afab2b",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/EOG_LONG.jsonl": "c15a3df4a12e5f40d90d936e9bcf62249c3538569736b7187640f8d35d874824",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/GOOGL_LONG.jsonl": "fdb24dc22408abaab72b7c93f7d0cb40ec0aaa0286a73b22a3dc18291690a317",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/PSX_LONG.jsonl": "3ee3b76c60c5989906ea9dad71a5b8afdd1b22a9a304fbee10f853cbd4f3ac16",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/QRVO_LONG.jsonl": "dfe739be9516c1fb76cd02d0fe1b5cd1be0943cab40c41a68f4a0c8276e0668f",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/TRGP_LONG.jsonl": "7d4b0e2087be39c704ad5f004761da827b0fc2694123bede973fa4153af83b0a",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/USAR_LONG.jsonl": "6f20892112a72850fa5399827ba96945a02608eb803348633c5343cb8aaa495d"
+  },
+  "source_ledgers": [
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/CIBR_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/PSX_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/USAR_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/EOG_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/QRVO_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/GOOGL_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/A_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/BG_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/DAR_LONG.jsonl",
+    "data/reports/vectorized_scalar_gap_cohort3_20260802/TRGP_LONG.jsonl"
+  ]
+}

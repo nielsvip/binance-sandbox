@@ -1,0 +1,248 @@
+{
+  "campaign": "stocks_repaired_20260730_c5",
+  "canonical_workbook": {
+    "mtime": 1785603210.098872,
+    "path": "/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB.xlsx",
+    "sheet_count": 15,
+    "sheets": [
+      "Engine Coverage",
+      "Universe Audit",
+      "Entry",
+      "Exit",
+      "Sizing",
+      "Other",
+      "Ladder",
+      "BandLadder",
+      "DC4 Diagnostics",
+      "Coverage",
+      "Exact Engine Evidence",
+      "Baselines",
+      "Evidence Provenance",
+      "VEC Scalar Diagnostics",
+      "Inventory"
+    ],
+    "size": 6340246
+  },
+  "claims_total": 6,
+  "dead_claims": [],
+  "failures": [],
+  "manifest_expected": {
+    "wa_exit": {
+      "side": "SHORT",
+      "symbol": "ACN"
+    },
+    "wl_exit": {
+      "side": "SHORT",
+      "symbol": "LAC"
+    },
+    "wm_exit": {
+      "side": "LONG",
+      "symbol": "MU"
+    },
+    "wn_exit": {
+      "side": "LONG",
+      "symbol": "NVDA"
+    },
+    "wt_exit": {
+      "side": "SHORT",
+      "symbol": "TTD"
+    },
+    "wv_exit": {
+      "side": "LONG",
+      "symbol": "VT"
+    }
+  },
+  "manifest_priority_packs": {
+    "wa_exit": [
+      "MTF_DC_REJECT_EXIT_ENABLED",
+      "MTF_BB_REJECT_EXIT_ENABLED",
+      "MTF_WT_CROSS_EXIT_ENABLED",
+      "WT_DC_EXIT_ENABLED",
+      "DELTA_EXIT_ENABLED",
+      "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "STDEV_REJECT_EXIT_ENABLED",
+      "EXIT_TREND_REVERSAL_ENABLED",
+      "EXIT_GAIN_EROSION_ENABLED"
+    ],
+    "wl_exit": [
+      "MTF_DC_REJECT_EXIT_ENABLED",
+      "MTF_BB_REJECT_EXIT_ENABLED",
+      "MTF_WT_CROSS_EXIT_ENABLED",
+      "WT_DC_EXIT_ENABLED",
+      "DELTA_EXIT_ENABLED",
+      "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "STDEV_REJECT_EXIT_ENABLED",
+      "EXIT_TREND_REVERSAL_ENABLED",
+      "EXIT_GAIN_EROSION_ENABLED"
+    ],
+    "wm_exit": [
+      "LR_BAND_HARVEST_ENABLED",
+      "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "STDEV_REJECT_EXIT_ENABLED",
+      "STRUCTURAL_RANGE_SHIFT_EXIT",
+      "GR_HTF_DIRECT_EXIT_ENABLED",
+      "PEAK_GIVEBACK_PROTECTION_ENABLED",
+      "EXIT_TREND_REVERSAL_ENABLED",
+      "EXIT_BOUNCE_TOP_ENABLED"
+    ],
+    "wn_exit": [
+      "LR_BAND_HARVEST_ENABLED",
+      "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "STDEV_REJECT_EXIT_ENABLED",
+      "STRUCTURAL_RANGE_SHIFT_EXIT",
+      "GR_HTF_DIRECT_EXIT_ENABLED",
+      "PEAK_GIVEBACK_PROTECTION_ENABLED",
+      "EXIT_TREND_REVERSAL_ENABLED",
+      "EXIT_BOUNCE_TOP_ENABLED"
+    ],
+    "wt_exit": [
+      "MTF_DC_REJECT_EXIT_ENABLED",
+      "MTF_BB_REJECT_EXIT_ENABLED",
+      "MTF_WT_CROSS_EXIT_ENABLED",
+      "WT_DC_EXIT_ENABLED",
+      "DELTA_EXIT_ENABLED",
+      "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "STDEV_REJECT_EXIT_ENABLED",
+      "EXIT_TREND_REVERSAL_ENABLED",
+      "EXIT_GAIN_EROSION_ENABLED"
+    ],
+    "wv_exit": [
+      "LR_BAND_HARVEST_ENABLED",
+      "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED",
+      "STDEV_REJECT_EXIT_ENABLED",
+      "STRUCTURAL_RANGE_SHIFT_EXIT",
+      "GR_HTF_DIRECT_EXIT_ENABLED",
+      "PEAK_GIVEBACK_PROTECTION_ENABLED",
+      "EXIT_TREND_REVERSAL_ENABLED",
+      "EXIT_BOUNCE_TOP_ENABLED"
+    ]
+  },
+  "no_live_promotion": true,
+  "repaired_engines": [
+    {
+      "pid": 991544,
+      "ppid": 991382,
+      "worker_owned": true
+    },
+    {
+      "pid": 991545,
+      "ppid": 991544,
+      "worker_owned": true
+    },
+    {
+      "pid": 991594,
+      "ppid": 991392,
+      "worker_owned": true
+    },
+    {
+      "pid": 991595,
+      "ppid": 991594,
+      "worker_owned": true
+    },
+    {
+      "pid": 991597,
+      "ppid": 991378,
+      "worker_owned": true
+    },
+    {
+      "pid": 991599,
+      "ppid": 991597,
+      "worker_owned": true
+    },
+    {
+      "pid": 991600,
+      "ppid": 991388,
+      "worker_owned": true
+    },
+    {
+      "pid": 991601,
+      "ppid": 991600,
+      "worker_owned": true
+    },
+    {
+      "pid": 991620,
+      "ppid": 991426,
+      "worker_owned": true
+    },
+    {
+      "pid": 991621,
+      "ppid": 991620,
+      "worker_owned": true
+    },
+    {
+      "pid": 991623,
+      "ppid": 991374,
+      "worker_owned": true
+    },
+    {
+      "pid": 991624,
+      "ppid": 991623,
+      "worker_owned": true
+    }
+  ],
+  "status": "PASS",
+  "unmanifested_workers": [],
+  "warnings": [],
+  "workers": {
+    "wa_exit": [
+      {
+        "manifested": true,
+        "pid": 991392,
+        "ppid": 1,
+        "sid": 991392,
+        "side": "SHORT",
+        "symbol": "ACN"
+      }
+    ],
+    "wl_exit": [
+      {
+        "manifested": true,
+        "pid": 991426,
+        "ppid": 1,
+        "sid": 991426,
+        "side": "SHORT",
+        "symbol": "LAC"
+      }
+    ],
+    "wm_exit": [
+      {
+        "manifested": true,
+        "pid": 991374,
+        "ppid": 1,
+        "sid": 991374,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "wn_exit": [
+      {
+        "manifested": true,
+        "pid": 991378,
+        "ppid": 1,
+        "sid": 991378,
+        "side": "LONG",
+        "symbol": "NVDA"
+      }
+    ],
+    "wt_exit": [
+      {
+        "manifested": true,
+        "pid": 991388,
+        "ppid": 1,
+        "sid": 991388,
+        "side": "SHORT",
+        "symbol": "TTD"
+      }
+    ],
+    "wv_exit": [
+      {
+        "manifested": true,
+        "pid": 991382,
+        "ppid": 1,
+        "sid": 991382,
+        "side": "LONG",
+        "symbol": "VT"
+      }
+    ]
+  }
+}

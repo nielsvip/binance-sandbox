@@ -145,6 +145,8 @@ import vec_decisions.counter_trend
 import vec_decisions.quick_breakeven_gain_erosion
 import vec_decisions.quick_open_strong
 import vec_decisions.quick_reduce_strong
+import vec_decisions.reentry_15m_bb_htf
+import vec_decisions.reentry_bounce_after_correction
 import vec_decisions.reentry_breakout
 import vec_decisions.sba_bounce
 import vec_decisions.struct_break_dc_1h
@@ -4602,6 +4604,22 @@ class QuickConfig:
     WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0
     WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False
     WT_DC_ENTRY_BAR_MATURITY_BLOCK: float = 0.7
+    # ── WT/DC TF-EXPANDED PACK 2026-09-19 — 15m+ only: clear TF switches for vector sweep (mirrors config.py / config_tradier.py) ──
+    WT_DC_TF_ENTRY: str = "1h"
+    WT_DC_TF_HTF: str = "4h"
+    WT_DC_TF_HTF2: str = "D"
+    WT_DC_DC_TF: str = "1h"
+    WT_DC_STOCH_TF: str = "5m"
+    WT_DC_DC_POS_THRESHOLD_LONG: float = 0.50
+    WT_DC_DC_POS_THRESHOLD_SHORT: float = 0.50
+    WT_DC_STOCH_THRESHOLD_LONG: float = 40.0
+    WT_DC_STOCH_THRESHOLD_SHORT: float = 60.0
+    WT_DC_HTF_GATE_MODE: str = "AND"
+    WT_DC_TF_COMBO: str = "1h_4h_D"
+    WT_DC_DIRECT_TF_ENTRY: str = "1h"
+    WT_DC_DIRECT_DC_TF: str = "1h"
+    DC_BREAKOUT_TF_EXPANDED: str = "1h"
+    EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"
     # ── 2026-09-03 HARD SHORT GATES — baked (mirrors tradier_manage) ──
     ROTATION_S_FINAL_SCORE_MAX: float = 0.35
     ROTATION_S_WT_BEAR_ALIGN_MIN: int = 2
@@ -8855,6 +8873,49 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                     r2_signal = r2_signal | ((k_3m_prev2_r2 > 80) & (k_3m < 70) & (k_3m < k_3m_prev_r2))
             blocks["B_REENTRY2"] = r2_signal
 
+    # --- 2026-09-19 TESTABLE 15m BB/DC BOUNCE (HTF confirmed) — live+backtest comparable (15m fields exist in NPZ) ---
+    if getattr(cfg, 'REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED', False):
+        close_15m = _safe(npz, 'close_15m', n, close)
+        close_15m_prev = np.roll(close_15m, 1); close_15m_prev[0] = close_15m[0]
+        dc_basis_15m = _safe(npz, 'dc_basis_15m', n, 0)
+        dc_basis_prev = _safe(npz, 'dc_basis_15m_prev', n, dc_basis_15m)
+        bb_pct_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
+        htf_cnt = (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int) if is_long else (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
+        min_tfs = int(getattr(cfg, 'REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS', 2))
+        if is_long:
+            cross = (close_15m_prev < dc_basis_prev) & (close_15m > dc_basis_15m) & (dc_basis_15m > 0)
+            bb_ok = bb_pct_1h <= 0.85
+        else:
+            cross = (close_15m_prev > dc_basis_prev) & (close_15m < dc_basis_15m) & (dc_basis_15m > 0)
+            bb_ok = bb_pct_1h >= 0.15
+        blocks["REENTRY_15M_DC_BASIS_CROSS_HTF"] = cross & (htf_cnt >= min_tfs) & bb_ok
+    if getattr(cfg, 'REENTRY_15M_LRL_PULLBACK_HTF_ENABLED', False):
+        lrl_now = _safe(npz, 'lrL_pct_b_15m', n, 0.5)
+        lrl_prev = np.roll(lrl_now, 1); lrl_prev[0] = lrl_now[0]
+        htf_cnt = (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int) if is_long else (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
+        min_tfs = int(getattr(cfg, 'REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS', 2))
+        if is_long:
+            wt_ok = wt1_15m > wt2_15m
+            lrl_ok = (lrl_prev < 0.20) & (lrl_now > 0.30)
+        else:
+            wt_ok = wt1_15m < wt2_15m
+            lrl_ok = (lrl_prev > 0.80) & (lrl_now < 0.70)
+        blocks["REENTRY_15M_LRL_PULLBACK_HTF"] = lrl_ok & wt_ok & (htf_cnt >= min_tfs)
+    if getattr(cfg, 'REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED', False):
+        bb_pct_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
+        bb_pct_prev = np.roll(bb_pct_1h, 1); bb_pct_prev[0] = bb_pct_1h[0]
+        close_15m = _safe(npz, 'close_15m', n, close)
+        bb_lower_1h = _safe(npz, 'bb_lower_1h', n, 0)
+        htf_cnt = (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int) if is_long else (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
+        min_tfs = int(getattr(cfg, 'REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS', 2))
+        if is_long:
+            wt_ok = wt1_15m > wt2_15m
+            bb_ok = (bb_pct_prev < 0.20) & (bb_pct_1h > 0.25) & (close_15m > bb_lower_1h) & (bb_lower_1h > 0)
+        else:
+            wt_ok = wt1_15m < wt2_15m
+            bb_ok = (bb_pct_prev > 0.80) & (bb_pct_1h < 0.75) & (close_15m < bb_lower_1h + 0.1 * np.abs(bb_lower_1h)) if np.any(bb_lower_1h) else (bb_pct_prev > 0.80) & (bb_pct_1h < 0.75)
+        blocks["REENTRY_15M_BB1H_LOW_BOUNCE_HTF"] = bb_ok & wt_ok & (htf_cnt >= min_tfs)
+
     return blocks
 
 
@@ -9118,6 +9179,36 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _wt_dc_mask = ~wt_dc_proxy
     else:
         _wt_dc_mask = np.ones(n, dtype=bool)
+    # WT_DC TF-EXPANDED PACK 2026-09-19 — vector HTF/DC/stoch TF switches (15m+ parity with live)
+    _wtdc_tf_entry = str(getattr(cfg, 'WT_DC_TF_ENTRY', '1h')).lower()
+    _wtdc_tf_htf = str(getattr(cfg, 'WT_DC_TF_HTF', '4h')).lower()
+    _wtdc_tf_htf2 = str(getattr(cfg, 'WT_DC_TF_HTF2', 'D')).lower()
+    _wtdc_dc_tf = str(getattr(cfg, 'WT_DC_DC_TF', '1h')).lower()
+    _wtdc_stoch_tf = str(getattr(cfg, 'WT_DC_STOCH_TF', '5m')).lower()
+    _wtdc_dc_thr_long = float(getattr(cfg, 'WT_DC_DC_POS_THRESHOLD_LONG', 0.50))
+    _wtdc_dc_thr_short = float(getattr(cfg, 'WT_DC_DC_POS_THRESHOLD_SHORT', 0.50))
+    _wtdc_stoch_thr_long = float(getattr(cfg, 'WT_DC_STOCH_THRESHOLD_LONG', 40.0))
+    _wtdc_stoch_thr_short = float(getattr(cfg, 'WT_DC_STOCH_THRESHOLD_SHORT', 60.0))
+    _wtdc_htf_mode = str(getattr(cfg, 'WT_DC_HTF_GATE_MODE', 'AND')).upper()
+    _wtdc_entry_ok = np.ones(n, dtype=bool)
+    if _wtdc_tf_entry in ('15m', '1h', '4h', 'd'):
+        _k = f"wt1_{_wtdc_tf_entry.upper()}" if _wtdc_tf_entry.upper() != 'D' else 'wt1_D'
+        _k2 = f"wt2_{_wtdc_tf_entry.upper()}" if _wtdc_tf_entry.upper() != 'D' else 'wt2_D'
+        _a1 = _safe(npz, _k, n, 0); _a2 = _safe(npz, _k2, n, 0)
+        if _a1.sum() != 0 or _a2.sum() != 0:
+            _wtdc_entry_ok = (_a1 > _a2) if is_long else (_a1 < _a2)
+    _wtdc_dc_ok = np.ones(n, dtype=bool)
+    if _wtdc_dc_tf in ('15m', '1h', '4h', 'd'):
+        _dk = f"dc_position_{_wtdc_dc_tf}" if _wtdc_dc_tf != 'd' else 'dc_position_D'
+        _dc_arr = _safe(npz, _dk, n, 0.5)
+        if not np.all(_dc_arr == 0.5):
+            _wtdc_dc_ok = (_dc_arr < _wtdc_dc_thr_long) if is_long else (_dc_arr > _wtdc_dc_thr_short)
+    _wtdc_stoch_ok = np.ones(n, dtype=bool)
+    if _wtdc_stoch_tf in ('5m', '15m', '1h', '4h'):
+        _sk = f"stoch_k_{_wtdc_stoch_tf}"
+        _stoch_arr = _safe(npz, _sk, n, 50)
+        if not np.all(_stoch_arr == 50):
+            _wtdc_stoch_ok = (_stoch_arr < _wtdc_stoch_thr_long) if is_long else (_stoch_arr > _wtdc_stoch_thr_short)
     # WT_DC_HTF_GATE — live 4h_D blocks SHORT-into-uptrend (and LONG-into-downtrend); was missing in vec (parity bug for IBIT_SHORT)
     # ── 2026-09-03 HARD SHORT GATES — WT_DC baked (mirrors tradier_manage) ──
     # For SHORT, force 4h_D regardless of config 'none' (inert). Thresholds fallback == config default so missing != fail-open.
@@ -9136,6 +9227,25 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _against_4h = (wt1_4h < wt2_4h) if is_long else (wt1_4h > wt2_4h)
         _against_D = (wt1_D < wt2_D) if is_long else (wt1_D > wt2_D)
         _wtdc_htf_ok = (~_against_4h) & (~_against_D)
+    # TF-HTF2 expanded gate (AND/OR mode) — when WT_DC_TF_HTF/HTF2 differ from legacy 4h/D, use them
+    if _wtdc_tf_htf != '4h' or _wtdc_tf_htf2.lower() != 'd':
+        _htf1_ok = np.ones(n, dtype=bool)
+        _htf2_ok = np.ones(n, dtype=bool)
+        for _tf_label, _arr_name in [(_wtdc_tf_htf, '_htf1_ok'), (_wtdc_tf_htf2, '_htf2_ok')]:
+            if _tf_label in ('none', 'off', ''):
+                if _arr_name == '_htf1_ok': _htf1_ok = np.ones(n, dtype=bool)
+                else: _htf2_ok = np.ones(n, dtype=bool)
+                continue
+            _k = f"wt1_{_tf_label.upper()}" if _tf_label.upper() != 'D' else 'wt1_D'
+            _k2 = f"wt2_{_tf_label.upper()}" if _tf_label.upper() != 'D' else 'wt2_D'
+            _a1 = _safe(npz, _k, n, 0); _a2 = _safe(npz, _k2, n, 0)
+            if _a1.sum() == 0 and _a2.sum() == 0:
+                continue
+            _ok = (_a1 > _a2) if is_long else (_a1 < _a2)
+            if _arr_name == '_htf1_ok': _htf1_ok = _ok
+            else: _htf2_ok = _ok
+        _expanded_htf_ok = (_htf1_ok & _htf2_ok) if _wtdc_htf_mode == 'AND' else (_htf1_ok | _htf2_ok)
+        _wtdc_htf_ok = _wtdc_htf_ok & _expanded_htf_ok
     # Hard WT_DC short gates: K5M floor 20 (OFF by default, npz has no 5m), dc_pos >=0.20, LT weak, HTF bear >=2 — baked, parity switch
     _hard_short_ok = np.ones(n, dtype=bool)
     if not is_long:

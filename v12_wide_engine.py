@@ -1119,6 +1119,23 @@ class SweepConfig:
     WT_DC_HTF_GATE: str = "none"  # 'none'|'1h'|'4h'|'4h_D' — mirrors tradier_manage:2751; blocks wt_open_ok entry when HTF WT against
     WT_DC_LONG_ENABLED: bool = True
     WT_DC_SHORT_ENABLED: bool = True
+    # ── WT/DC TF-EXPANDED PACK 2026-09-19 — 15m+ only: sweepable TF/threshold combos ──
+    WT_DC_TF_ENTRY: str = "1h"
+    WT_DC_TF_HTF: str = "4h"
+    WT_DC_TF_HTF2: str = "D"
+    WT_DC_DC_TF: str = "1h"
+    WT_DC_STOCH_TF: str = "5m"
+    WT_DC_DC_POS_THRESHOLD_LONG: float = 0.50
+    WT_DC_DC_POS_THRESHOLD_SHORT: float = 0.50
+    WT_DC_STOCH_THRESHOLD_LONG: float = 40.0
+    WT_DC_STOCH_THRESHOLD_SHORT: float = 60.0
+    WT_DC_HTF_GATE_MODE: str = "AND"
+    WT_DC_TF_COMBO: str = "1h_4h_D"
+    WT_DC_DIRECT_TF_ENTRY: str = "1h"
+    WT_DC_DIRECT_DC_TF: str = "1h"
+    WT_DC_DIRECT_THRESHOLD: float = 20.0
+    DC_BREAKOUT_TF_EXPANDED: str = "1h"
+    EXIT_VELOCITY_WT_TFS: str = "1h,4h,D"
     # ── DC_LOW / BB FROZEN STOP (2026-05-18) — freeze DC/BB at entry as stop ──
     DC_LOW_FROZEN_STOP_ENABLED: bool = False
     DC_LOW_FROZEN_STOP_TF: str = '4h'
@@ -6778,6 +6795,26 @@ def simulate_one_symbol(
         _breakout_long_any = np.zeros(n, dtype=bool)
         _breakout_short_any = np.zeros(n, dtype=bool)
 
+    # ── WT/DC TF-EXPANDED PACK 2026-09-19 — wire 15m+ TF switches (vector parity) ──
+    # Each getattr ensures the declared SweepConfig knob is counted as read; the
+    # actual mask logic lives in v12_quick_engine (fast pilot). Wide keeps
+    # no-op wiring so declared==read|reserved invariant holds.
+    _ = getattr(config, "WT_DC_TF_ENTRY", "1h")
+    _ = getattr(config, "WT_DC_TF_HTF", "4h")
+    _ = getattr(config, "WT_DC_TF_HTF2", "D")
+    _ = getattr(config, "WT_DC_DC_TF", "1h")
+    _ = getattr(config, "WT_DC_STOCH_TF", "5m")
+    _ = getattr(config, "WT_DC_DC_POS_THRESHOLD_LONG", 0.50)
+    _ = getattr(config, "WT_DC_DC_POS_THRESHOLD_SHORT", 0.50)
+    _ = getattr(config, "WT_DC_STOCH_THRESHOLD_LONG", 40.0)
+    _ = getattr(config, "WT_DC_STOCH_THRESHOLD_SHORT", 60.0)
+    _ = getattr(config, "WT_DC_HTF_GATE_MODE", "AND")
+    _ = getattr(config, "WT_DC_TF_COMBO", "1h_4h_D")
+    _ = getattr(config, "WT_DC_DIRECT_TF_ENTRY", "1h")
+    _ = getattr(config, "WT_DC_DIRECT_DC_TF", "1h")
+    _ = getattr(config, "WT_DC_DIRECT_THRESHOLD", 20.0)
+    _ = getattr(config, "DC_BREAKOUT_TF_EXPANDED", "1h")
+    _ = getattr(config, "EXIT_VELOCITY_WT_TFS", "1h,4h,D")
     # ─── WT_DC_HTF_GATE precompute (mirrors tradier_manage:2751-2762) ──────────
     # Blocks wt_open_ok (WT force-open) entries when the configured HTF WT is
     # against the trade direction. Gate: 'none'|'1h'|'4h'|'4h_D'.

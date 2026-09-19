@@ -325,7 +325,7 @@ def evaluate_obligatory_reentry(ind: dict, current_price: float, exit_price: flo
         score = score_t3
         reason = f"OBLIGATORY_REENTRY_TIER3_EXIT_DC_BREAK_{side_str}_dc={dc_lvl:.6f}"
     else:
-        # --- 2026-09-19 BOUNCE-AFTER-CORRECTION (5 switches) — live ON for A,B,C (3/5m), sweepable for D,E ---
+        # --- 2026-09-19 BOUNCE-AFTER-CORRECTION (5+3 switches) — A,B,C 3/5m live-only untestable, D,E + 15m testable family live+backtest ---
         try:
             from vec_decisions.reentry_bounce_after_correction import (
                 check_bounce_bar_gr as _chk_a,
@@ -334,8 +334,13 @@ def evaluate_obligatory_reentry(ind: dict, current_price: float, exit_price: flo
                 check_k_reset as _chk_d,
                 check_sma200_gr as _chk_e,
             )
+            from vec_decisions.reentry_15m_bb_htf import (
+                check_dc_basis_cross_htf as _chk_15m_a,
+                check_lrl_pullback_htf as _chk_15m_b,
+                check_bb1h_low_bounce_htf as _chk_15m_c,
+            )
             _bounce_ok = False
-            for _chk in (_chk_a, _chk_b, _chk_c, _chk_d, _chk_e):
+            for _chk in (_chk_a, _chk_b, _chk_c, _chk_d, _chk_e, _chk_15m_a, _chk_15m_b, _chk_15m_c):
                 ok, rsn = _chk(ind, is_long, current_price, exit_price, cfg)
                 if ok:
                     _bounce_ok = True
