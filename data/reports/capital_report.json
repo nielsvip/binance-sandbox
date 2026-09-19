@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-19 18:57 UTC",
- "total_capital_usd": 36.28,
+ "generated_at": "2026-09-19 19:57 UTC",
+ "total_capital_usd": 13.95,
  "tier_capital": {
   "A": 0.0,
-  "B": 36.28,
+  "B": 13.95,
   "C": 0.0
  },
  "tier_count": {
@@ -14,19 +14,19 @@
  "winners": [],
  "losers": [],
  "mediocre": [
-  "fin:ADAUSDC_LONG"
+  "fin:WLDUSDC_SHORT"
  ],
  "positions": [
   {
-   "pk": "fin:ADAUSDC_LONG",
-   "symbol": "ADAUSDC",
+   "pk": "fin:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
    "account": "fin",
-   "value_usd": 36.28,
-   "gain_pct": 0.044,
+   "value_usd": 13.95,
+   "gain_pct": 0.028,
    "tier": "B",
-   "perf_mult": 0.77,
-   "amt": 158.1,
-   "mark": 0.2295
+   "perf_mult": 0.62,
+   "amt": 32.1,
+   "mark": 0.4346
   }
  ]
 }
