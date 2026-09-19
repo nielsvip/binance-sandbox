@@ -8043,6 +8043,11 @@ class QuickConfig:
     REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED: bool = False
     REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS: int = 2
     REENTRY_15M_BETTER_PCT: float = 0.002
+    # --- 2026-09-19 BB 15m/1h/4h/D family — bounce / breakout / profit-take / exit-at-loss per TF ---
+    BB_BOUNCE_ENTRY_TF: str = "OFF"
+    BB_BREAKOUT_ENTRY_TF: str = "OFF"
+    BB_EXIT_AT_LOSS_TF: str = "OFF"
+    BB_PROFIT_TAKE_TF: str = "OFF"
     UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = False
     UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED: int = 2
     UNDERWATER_HOC_USDC_MAKER_BYPASS: bool = False
@@ -8939,6 +8944,34 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             wt_ok = wt1_15m < wt2_15m
             bb_ok = (bb_pct_prev > 0.80) & (bb_pct_1h < 0.75) & (close_15m < bb_lower_1h + 0.1 * np.abs(bb_lower_1h)) if np.any(bb_lower_1h) else (bb_pct_prev > 0.80) & (bb_pct_1h < 0.75)
         blocks["REENTRY_15M_BB1H_LOW_BOUNCE_HTF"] = bb_ok & wt_ok & (htf_cnt >= min_tfs)
+
+    # --- 2026-09-19 BB 15m/1h/4h/D bounce / breakout / profit-take / exit-at-loss per TF — vector exact ---
+    for _bb_tf, _bb_key, _blk in [
+        (getattr(cfg, 'BB_BOUNCE_ENTRY_TF', 'OFF'), "BB_BOUNCE_ENTRY", "BB_BOUNCE_ENTRY"),
+        (getattr(cfg, 'BB_BREAKOUT_ENTRY_TF', 'OFF'), "BB_BREAKOUT_ENTRY", "BB_BREAKOUT_ENTRY"),
+        (getattr(cfg, 'BB_EXIT_AT_LOSS_TF', 'OFF'), "BB_EXIT_AT_LOSS", "BB_EXIT_AT_LOSS"),
+        (getattr(cfg, 'BB_PROFIT_TAKE_TF', 'OFF'), "BB_PROFIT_TAKE", "BB_PROFIT_TAKE"),
+    ]:
+        _bb_tf = str(_bb_tf)
+        if _bb_tf == "OFF" or _bb_tf not in ("15m","1h","4h","D"):
+            continue
+        _lower = _safe(npz, f'bb_lower_{_bb_tf}', n, 0)
+        _upper = _safe(npz, f'bb_upper_{_bb_tf}', n, 0)
+        _middle = _safe(npz, f'bb_middle_{_bb_tf}', n, 0)
+        _pct = _safe(npz, f'bb_pct_b_{_bb_tf}', n, 0.5)
+        _pct_prev = np.roll(_pct, 1); _pct_prev[0]=_pct[0]
+        if _blk == "BB_BOUNCE_ENTRY":
+            # long bounce off lower, short off upper, pct reclaim
+            if is_long:
+                blocks[_blk+f"_{_bb_tf}"] = (_pct_prev < 0.20) & (_pct > 0.25) & (_lower>0)
+            else:
+                blocks[_blk+f"_{_bb_tf}"] = (_pct_prev > 0.80) & (_pct < 0.75) & (_upper>0)
+        elif _blk == "BB_BREAKOUT_ENTRY":
+            blocks[_blk+f"_{_bb_tf}"] = (_pct > 0.95) & (_upper>0) if is_long else (_pct < 0.05) & (_lower>0)
+        elif _blk == "BB_EXIT_AT_LOSS":
+            blocks[_blk+f"_{_bb_tf}"] = (_pct < 0.05) & (_lower>0) if is_long else (_pct > 0.95) & (_upper>0)
+        elif _blk == "BB_PROFIT_TAKE":
+            blocks[_blk+f"_{_bb_tf}"] = (_pct > 0.95) & (_upper>0) if is_long else (_pct < 0.05) & (_lower>0)
 
     return blocks
 

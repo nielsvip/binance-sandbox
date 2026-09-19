@@ -244,8 +244,8 @@ def global_done_set(order: list[str]) -> set[str] | None:
     for host in [S1_HOST, S1_FALLBACK]:
         try:
             if is_best and tmpl_mtimes:
-                # Use stat to get mtime per file for freshness check
-                out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "for f in ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx; do [ -f \"$f\" ] && [ $(stat -c %s \"$f\" 2>/dev/null || stat -f %z \"$f\" 2>/dev/null || echo 0) -gt 500000 ] && echo \"$(stat -c %Y \"$f\" 2>/dev/null || stat -f %m \"$f\" 2>/dev/null || echo 0) $(basename \"$f\")\"; done"], timeout=15, text=True)
+                # Fast batch stat (was per-file loop 6774*2 stat = >15s timeout) — now single stat batch <1s for 6774 files
+                out = subprocess.check_output(["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"niels@{host}", "stat -c '%Y %s %n' ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx 2>/dev/null | awk '$2>500000{print $1\" \"$3}'"], timeout=15, text=True)
                 done = set()
                 for line in out.strip().splitlines():
                     if not line.strip():

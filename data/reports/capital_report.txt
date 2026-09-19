@@ -1,10 +1,10 @@
-CAPITAL ALLOCATION REPORT — 2026-09-19 19:57 UTC
+CAPITAL ALLOCATION REPORT — 2026-09-19 20:57 UTC
 ================================================================================
-Total capital deployed: $13.95 across 1 positions
+Total capital deployed: $46.00 across 2 positions
 
 TIER DISTRIBUTION:
   Tier A: $      0.00 (  0.0%) — 0 positions
-  Tier B: $     13.95 (100.0%) — 1 positions
+  Tier B: $     46.01 (100.0%) — 2 positions
   Tier C: $      0.00 (  0.0%) — 0 positions
 
   ** A-tier UNDERWEIGHT: 0% vs target 50% — consider augmenting winners **
@@ -12,8 +12,8 @@ TIER DISTRIBUTION:
 WINNERS — augment these (A-tier, in gain) [0]:
   (none)
 
-LOSERS — reduce allocation (C-tier or losing) [0]:
-  (none)
+LOSERS — reduce allocation (C-tier or losing) [1]:
+                fin:FARTCOINUSDT_LONG  $   35.94  gain=-0.75%  tier=B  mult=1.44
 
 MEDIOCRE — capital sitting idle [1]:
-                    fin:WLDUSDC_SHORT  $   13.95  gain=+0.03%  tier=B
+                    fin:ATOMUSDT_LONG  $   10.07  gain=-0.26%  tier=B
