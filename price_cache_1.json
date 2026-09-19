@@ -1,3774 +1,1310 @@
 {
-  "LITEUSDT": {
-    "price": 930.43464623,
-    "timestamp": "2026-09-18T23:58:51.264000Z"
+  "VANRYUSDT": {
+    "price": 0.000905,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "AAOIUSDT": {
-    "price": 104.56490504,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
+  "ZRXUSDT": {
+    "price": 0.11611367,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "MSFTUSDT": {
-    "price": 494.62,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
+  "YFIUSDT": {
+    "price": 2237.0,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ACEUSDT": {
-    "price": 0.15847893,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+  "XVSUSDT": {
+    "price": 3.177,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ALABUSDT": {
-    "price": 302.65939797,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
+  "XVGUSDT": {
+    "price": 0.00321772,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "AGLDUSDT": {
-    "price": 0.18389708,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+  "1000000MOGUSDT": {
+    "price": 0.1071,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ACHUSDT": {
-    "price": 0.005845,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
+  "1000CHEEMSUSDT": {
+    "price": 0.00051671,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "AIAUSDT": {
-    "price": 0.0672462,
-    "timestamp": "2026-09-19T00:02:16.000000Z"
+  "1000FLOKIUSDT": {
+    "price": 0.02577274,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "AAPLUSDT": {
-    "price": 335.10918575,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
+  "1000LUNCUSDT": {
+    "price": 0.05240217,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "AAVEUSDC": {
-    "price": 139.41,
-    "timestamp": "2026-09-19T00:02:16.000000Z"
+  "1000PEPEUSDC": {
+    "price": 0.003816,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ACTUSDT": {
-    "price": 0.010415,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+  "CRCLUSDT": {
+    "price": 91.53913164,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ADAUSDC": {
-    "price": 0.22460772,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
+  "MSTRUSDT": {
+    "price": 153.06118635,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ADBEUSDT": {
-    "price": 249.33138167,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
+  "QNTXUSDT": {
+    "price": 51.88452603,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "AMZNUSDT": {
-    "price": 254.53,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
+  "MORPHOUSDT": {
+    "price": 2.54305143,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ALGOUSDT": {
-    "price": 0.0981,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+  "KASUSDT": {
+    "price": 0.038152,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ALTUSDT": {
-    "price": 0.00711728,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
+  "COTIUSDT": {
+    "price": 0.02107131,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "AMATUSDT": {
-    "price": 443.86,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "AMDUSDT": {
-    "price": 557.84,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "APPUSDT": {
-    "price": 310.26651437,
-    "timestamp": "2026-09-19T00:02:39.264000Z"
-  },
-  "APEUSDT": {
-    "price": 0.13830882,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "API3USDT": {
-    "price": 0.2471,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ARBUSDC": {
-    "price": 0.22112,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ARPAUSDT": {
-    "price": 0.01055252,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "ASMLUSDT": {
-    "price": 1673.44,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "ATOMUSDT": {
-    "price": 1.721,
-    "timestamp": "2026-09-19T00:02:17.000000Z"
-  },
-  "AWEUSDT": {
-    "price": 0.06756,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "ARKMUSDT": {
-    "price": 0.10962993,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ASTERUSDT": {
-    "price": 0.76741228,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "ARUSDT": {
-    "price": 3.65,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "AVAXUSDC": {
-    "price": 8.2,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "AVGOUSDT": {
-    "price": 357.11,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "AXLUSDT": {
-    "price": 0.04682002,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ARMUSDT": {
-    "price": 275.44,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "ASTSUSDT": {
-    "price": 58.78,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "AXSUSDT": {
-    "price": 1.01880381,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "AXTIUSDT": {
-    "price": 70.04510748,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "BABAUSDT": {
-    "price": 114.22918169,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
+  "NOKUSDT": {
+    "price": 10.66491734,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "BANDUSDT": {
     "price": 0.1996,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BBUSDT": {
-    "price": 0.00878051,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BCHUSDC": {
-    "price": 255.30742735,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BEATUSDT": {
-    "price": 0.088379,
-    "timestamp": "2026-09-19T00:02:17.000000Z"
-  },
-  "BEAMXUSDT": {
-    "price": 0.0018,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BEUSDT": {
-    "price": 267.22371984,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "BBXUSDT": {
-    "price": 8.00450405,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "BATUSDT": {
-    "price": 0.07952464,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "BIOUSDC": {
-    "price": 0.02734451,
-    "timestamp": "2026-09-18T23:58:51.000000Z"
-  },
-  "BIGTIMEUSDT": {
-    "price": 0.00793861,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BITOUSDT": {
-    "price": 10.91,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "BNBUSDC": {
-    "price": 761.72149954,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BOTUSDT": {
-    "price": 29.24500549,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "BNCUSDT": {
-    "price": 6.1293384,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "BLURUSDT": {
-    "price": 0.01842485,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "BMNRUSDT": {
-    "price": 25.88601178,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "BOMEUSDC": {
-    "price": 0.00098736,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BRKBUSDT": {
-    "price": 510.70910917,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "BRETTUSDT": {
-    "price": 0.005112,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "BSPUSDT": {
-    "price": 38.38,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "BSVUSDT": {
-    "price": 17.4,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BTCDOMUSDT": {
-    "price": 5130.91009961,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "BXUSDT": {
-    "price": 125.02,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "CAKEUSDT": {
-    "price": 2.4165,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CELRUSDT": {
-    "price": 0.002289,
-    "timestamp": "2026-09-19T00:02:15.000000Z"
-  },
-  "CELOUSDT": {
-    "price": 0.0841935,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "BTCUSDC": {
-    "price": 80875.0,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "C98USDT": {
-    "price": 0.01515,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "CHILLGUYUSDT": {
-    "price": 0.013016,
-    "timestamp": "2026-09-19T00:02:15.000000Z"
-  },
-  "CATUSDT": {
-    "price": 808.46,
-    "timestamp": "2026-09-18T23:58:51.264000Z"
-  },
-  "CBRSUSDT": {
-    "price": 198.45183175,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "COSTUSDT": {
-    "price": 896.78646824,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "CIENUSDT": {
-    "price": 349.61248403,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "COMPUSDT": {
-    "price": 21.22,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "CHRUSDT": {
-    "price": 0.01716249,
-    "timestamp": "2026-09-19T00:02:15.000000Z"
-  },
-  "COINUSDT": {
-    "price": 194.3179121,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "COHRUSDT": {
-    "price": 317.67,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "COTIUSDT": {
-    "price": 0.021276,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CRCLUSDT": {
-    "price": 91.63,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "CRDOUSDT": {
-    "price": 175.32286093,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "CRMUSDT": {
-    "price": 239.20605252,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "CRVUSDC": {
-    "price": 0.344,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DELLUSDT": {
-    "price": 570.81,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "DASHUSDT": {
-    "price": 63.50765775,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "DKNGUSDT": {
-    "price": 21.86261534,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
-  },
-  "EGLDUSDT": {
-    "price": 4.135,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "EDUUSDT": {
-    "price": 0.05084088,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "DOTUSDT": {
-    "price": 1.1343,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "EBAYUSDT": {
-    "price": 111.89,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "DRAMUSDT": {
-    "price": 59.71807623,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "CRWDUSDT": {
-    "price": 236.97,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "CSCOUSDT": {
-    "price": 109.66,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
-  },
-  "DISUSDT": {
-    "price": 102.89273248,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "CRWVUSDT": {
-    "price": 81.35,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "ENAUSDC": {
-    "price": 0.16828,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ETHFIUSDC": {
-    "price": 0.7251,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ETHUSDC": {
-    "price": 2611.31,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ENSUSDT": {
-    "price": 6.259,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "ETCUSDT": {
-    "price": 8.15213034,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "EWTUSDT": {
-    "price": 111.33942251,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "EWYUSDT": {
-    "price": 181.0,
-    "timestamp": "2026-09-19T00:02:32.264000Z"
-  },
-  "EWJUSDT": {
-    "price": 96.98461255,
-    "timestamp": "2026-09-19T00:02:32.264000Z"
-  },
-  "EWZUSDT": {
-    "price": 37.54590932,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "FARTCOINUSDT": {
-    "price": 0.1616,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "FIDAUSDT": {
-    "price": 0.02031518,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "FILUSDC": {
-    "price": 0.94411181,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "FLEXUSDT": {
-    "price": 109.01669933,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "FLUXUSDT": {
-    "price": 0.05655857,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "FLOWUSDT": {
-    "price": 0.03021,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "FLNCUSDT": {
-    "price": 7.28594727,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "FWDIUSDT": {
-    "price": 7.724,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "GALAUSDT": {
-    "price": 0.001935,
-    "timestamp": "2026-09-19T00:02:15.000000Z"
-  },
-  "GASUSDT": {
-    "price": 1.3225,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "GEVUSDT": {
-    "price": 940.02100633,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "GMEUSDT": {
-    "price": 22.59268317,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "GMTUSDT": {
-    "price": 0.007685,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "GLWUSDT": {
-    "price": 150.13,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "GMXUSDT": {
-    "price": 7.751,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "GOOGLUSDT": {
-    "price": 350.98918201,
-    "timestamp": "2026-09-18T23:58:51.264000Z"
-  },
-  "GRAMUSDT": {
-    "price": 1.375,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "GRASSUSDT": {
-    "price": 0.3474,
-    "timestamp": "2026-09-19T00:02:15.000000Z"
-  },
-  "GRTUSDT": {
-    "price": 0.02058,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "GRIFFAINUSDT": {
-    "price": 0.014251,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "HOODUSDT": {
-    "price": 120.02,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
-  },
-  "HIMSUSDT": {
-    "price": 28.00416358,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "HMSTRUSDT": {
-    "price": 0.0001677,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "HIVEUSDT": {
-    "price": 0.0535,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "HOTUSDT": {
-    "price": 0.00039179,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "IBMUSDT": {
-    "price": 230.37333111,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "HYPEUSDT": {
-    "price": 92.38858333,
-    "timestamp": "2026-09-19T00:02:15.000000Z"
-  },
-  "GSUSDT": {
-    "price": 944.8,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "HBARUSDC": {
-    "price": 0.07909,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "HDUSDT": {
-    "price": 300.08804951,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "HPEUSDT": {
-    "price": 60.8,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "ICPUSDT": {
-    "price": 2.862,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "ILVUSDT": {
-    "price": 3.506,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ICXUSDT": {
-    "price": 0.01009628,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "INTCUSDT": {
-    "price": 109.17373103,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "IDUSDT": {
-    "price": 0.03521,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "IMXUSDT": {
-    "price": 0.1316,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "INJUSDT": {
-    "price": 6.67051214,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "INXUSDT": {
-    "price": 0.00589566,
-    "timestamp": "2026-09-18T23:58:51.000000Z"
-  },
-  "INTWUSDT": {
-    "price": 26.4,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "IOSTUSDT": {
-    "price": 0.00082223,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "IOTAUSDT": {
-    "price": 0.04472,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "IOUSDT": {
-    "price": 0.14243655,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "KAVAUSDT": {
-    "price": 0.06816,
-    "timestamp": "2026-09-19T00:02:40.000000Z"
-  },
-  "JPMUSDT": {
-    "price": 349.45,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "IOTXUSDT": {
-    "price": 0.003035,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "IRENUSDT": {
-    "price": 46.56,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "JASMYUSDT": {
-    "price": 0.00405197,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "IWMUSDT": {
-    "price": 284.02697603,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "KASUSDT": {
-    "price": 0.03809,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "KLACUSDT": {
-    "price": 176.77057212,
-    "timestamp": "2026-09-19T00:02:32.264000Z"
-  },
-  "KSMUSDT": {
-    "price": 4.4308875,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "KMNOUSDT": {
-    "price": 0.02819,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "LLYUSDT": {
-    "price": 1156.14,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "KSTRUSDT": {
-    "price": 24.10834985,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "LINKUSDC": {
-    "price": 12.224,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "KORUUSDT": {
-    "price": 19.88039724,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "LPTUSDT": {
-    "price": 1.6,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "LRCXUSDT": {
-    "price": 288.37653535,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "LTCUSDC": {
-    "price": 58.13072718,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MAGICUSDT": {
-    "price": 0.04574483,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "MASKUSDT": {
-    "price": 0.46925,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MANAUSDT": {
-    "price": 0.07873,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "LUNA2USDT": {
-    "price": 0.04799,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MEWUSDT": {
-    "price": 0.0004184,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MINAUSDT": {
-    "price": 0.10586,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "METAUSDT": {
-    "price": 669.12,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
-  },
-  "MELANIAUSDT": {
-    "price": 0.104086,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "MORPHOUSDT": {
-    "price": 2.4857,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "MRVLUSDT": {
-    "price": 243.29,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "MOVRUSDT": {
-    "price": 0.8406,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SOLUSDC": {
-    "price": 112.61,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "SHAZUSDT": {
-    "price": 57.65,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "STRKUSDT": {
-    "price": 0.04450903,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TRUMPUSDC": {
-    "price": 2.08063805,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TZAUSDT": {
-    "price": 44.85,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "TERUSDT": {
-    "price": 369.89951466,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "TBTUSDT": {
-    "price": 38.96,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "TXNUSDT": {
-    "price": 266.42165557,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
-  },
-  "USARUSDT": {
-    "price": 15.64554871,
-    "timestamp": "2026-09-19T00:02:16.264000Z"
-  },
-  "USTCUSDT": {
-    "price": 0.00559037,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "ZKUSDT": {
-    "price": 0.01123376,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ZMUSDT": {
-    "price": 89.08,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
-  },
-  "ZILUSDT": {
-    "price": 0.0030984,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "XLEUSDT": {
-    "price": 64.27966596,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "ZROUSDT": {
-    "price": 1.1199,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ZRXUSDT": {
-    "price": 0.11563,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "1000000MOGUSDT": {
-    "price": 0.10701636,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "1000FLOKIUSDT": {
-    "price": 0.02572,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "1000LUNCUSDT": {
-    "price": 0.05229,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "1000CHEEMSUSDT": {
-    "price": 0.0005161,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "1MBABYDOGEUSDT": {
-    "price": 0.00039258,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "1000PEPEUSDC": {
-    "price": 0.00381778,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "1000XECUSDT": {
-    "price": 0.00801722,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "1000SHIBUSDC": {
-    "price": 0.00545652,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "1000SATSUSDT": {
-    "price": 0.00001125,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "1INCHUSDT": {
-    "price": 0.09711255,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "XLMUSDT": {
-    "price": 0.19328,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TNSRUSDT": {
-    "price": 0.03598727,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TSMUSDT": {
-    "price": 433.49925686,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "VANRYUSDT": {
-    "price": 0.000905,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "THETAUSDT": {
-    "price": 0.2091,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "RAYSOLUSDT": {
-    "price": 1.76555939,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "UMAUSDT": {
-    "price": 0.386,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "PAYPUSDT": {
-    "price": 17.6328113,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "YFIUSDT": {
-    "price": 2230.78333333,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "SOXSUSDT": {
-    "price": 41.70480594,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "UBERUSDT": {
-    "price": 70.67816625,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "NOKUSDT": {
-    "price": 10.68,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
-  },
-  "SNXUSDT": {
-    "price": 0.22428667,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "PUMPUSDT": {
-    "price": 0.00425068,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "TLMUSDT": {
-    "price": 0.00143879,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MOVEUSDT": {
-    "price": 0.008849,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "RIFUSDT": {
-    "price": 0.08794,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SKLUSDT": {
-    "price": 0.003973,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SANDUSDT": {
-    "price": 0.03921,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "VUSDT": {
-    "price": 368.95,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "QNTXUSDT": {
-    "price": 51.89027149,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "STRCUSDT": {
-    "price": 98.49,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "TWTUSDT": {
-    "price": 0.54773417,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "POLUSDT": {
-    "price": 0.10693,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "SMHUSDT": {
-    "price": 572.32,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
-  },
-  "SAGAUSDT": {
-    "price": 0.02510466,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "STXUSDT": {
-    "price": 0.28429662,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "NEARUSDC": {
-    "price": 3.76204187,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MSTRUSDT": {
-    "price": 153.0988692,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "XVGUSDT": {
-    "price": 0.003207,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "1000BONKUSDC": {
-    "price": 0.00303747,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "XAIUSDT": {
-    "price": 0.007595,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TAOUSDT": {
-    "price": 251.5919905,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "NOWUSDT": {
-    "price": 136.06,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
-  },
-  "SKHYUSDT": {
-    "price": 187.82,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "SPCXUSDT": {
-    "price": 152.62902184,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "TIAUSDC": {
-    "price": 0.4063,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "WIFUSDC": {
-    "price": 0.21402837,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ONDSUSDT": {
-    "price": 7.40699713,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "WLDUSDC": {
-    "price": 0.4243,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TSLAUSDT": {
-    "price": 364.20479669,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "UVXYUSDT": {
-    "price": 17.59,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "DOGEUSDC": {
-    "price": 0.08742651,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SSVUSDT": {
-    "price": 3.14012812,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "PLTRUSDT": {
-    "price": 177.15512249,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "SKYUSDT": {
-    "price": 0.06954078,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "SUSHIUSDT": {
-    "price": 0.24851595,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "WDCUSDT": {
-    "price": 442.04688211,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
-  },
-  "NFLXUSDT": {
-    "price": 72.13956584,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "SQQQUSDT": {
-    "price": 37.79707167,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
-  },
-  "WOOUSDT": {
-    "price": 0.01149553,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "PANWUSDT": {
-    "price": 364.08537668,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
-  },
-  "RVNUSDT": {
-    "price": 0.00225149,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "SCRUSDT": {
-    "price": 0.02247892,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "MUUSDT": {
-    "price": 1018.11801433,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "NMRUSDT": {
-    "price": 9.29887085,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SUNUSDT": {
-    "price": 0.016994,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "WLFIUSDC": {
-    "price": 0.05903,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "URNMUSDT": {
-    "price": 50.5,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "USUALUSDT": {
-    "price": 0.01208315,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "NOTUSDT": {
-    "price": 0.00047772,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MEMEUSDT": {
-    "price": 0.00056564,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "RONINUSDT": {
-    "price": 0.05365063,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TRXUSDT": {
-    "price": 0.33817082,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "RENDERUSDT": {
-    "price": 1.54803448,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "QTUMUSDT": {
-    "price": 0.96001562,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "WMTUSDT": {
-    "price": 107.11,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "VRTUSDT": {
-    "price": 249.55,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
-  },
-  "OPUSDT": {
-    "price": 0.1207,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
+    "price": 0.04492,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "EIGENUSDT": {
-    "price": 0.2324,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+    "price": 0.2322,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GRTUSDT": {
+    "price": 0.02071,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "STORJUSDT": {
+    "price": 0.03322233,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "IDUSDT": {
+    "price": 0.035239,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ORDIUSDC": {
+    "price": 4.628,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SANDUSDT": {
+    "price": 0.03905602,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SEIUSDT": {
+    "price": 0.04833963,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CIENUSDT": {
+    "price": 349.43567053,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SKYUSDT": {
+    "price": 0.07010958,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TIAUSDC": {
+    "price": 0.4077,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FLNCUSDT": {
+    "price": 7.28501049,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "SNOWUSDT": {
-    "price": 332.99183283,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
+    "price": 333.26179104,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ICPUSDT": {
+    "price": 2.873,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TRBUSDT": {
+    "price": 18.56500439,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GRIFFAINUSDT": {
+    "price": 0.01419383,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "LUNA2USDT": {
+    "price": 0.04818,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "KSTRUSDT": {
+    "price": 24.11999462,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "DELLUSDT": {
+    "price": 571.45244282,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AGLDUSDT": {
+    "price": 0.18328013,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FIDAUSDT": {
+    "price": 0.02036767,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "LTCUSDC": {
+    "price": 58.3356917,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ARPAUSDT": {
+    "price": 0.010645,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "KMNOUSDT": {
+    "price": 0.02810428,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "IOUSDT": {
+    "price": 0.14288439,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "DISUSDT": {
+    "price": 102.94239299,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "XLMUSDT": {
+    "price": 0.19397821,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CRWDUSDT": {
+    "price": 237.08,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "METAUSDT": {
+    "price": 669.1,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ETCUSDT": {
+    "price": 8.185,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GMTUSDT": {
+    "price": 0.007722,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SPCXUSD1": {
+    "price": 152.64993062,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ALGOUSDT": {
+    "price": 0.09884374,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TNSRUSDT": {
+    "price": 0.03612227,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "C98USDT": {
+    "price": 0.01514447,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ATOMUSDT": {
+    "price": 1.72666914,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NEARUSDC": {
+    "price": 3.71177801,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ALTUSDT": {
+    "price": 0.007137,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CELOUSDT": {
+    "price": 0.08404083,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HOTUSDT": {
+    "price": 0.00039245,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GASUSDT": {
+    "price": 1.3265,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TSLAUSDT": {
+    "price": 364.31,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RVNUSDT": {
+    "price": 0.002255,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BEUSDT": {
+    "price": 267.31,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "IOSTUSDT": {
+    "price": 0.0008209,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ZMUSDT": {
+    "price": 89.14287165,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BXUSDT": {
+    "price": 124.96079068,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GRASSUSDT": {
+    "price": 0.3463,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BEAMXUSDT": {
+    "price": 0.001795,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ORCLUSDT": {
+    "price": 147.64,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "JASMYUSDT": {
+    "price": 0.004065,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NVDAUSDT": {
+    "price": 222.65,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SPYUSDT": {
+    "price": 763.04342502,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "OPUSDT": {
+    "price": 0.12101415,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SOXLUSDT": {
+    "price": 123.31,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MINAUSDT": {
+    "price": 0.10639868,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BCHUSDC": {
+    "price": 255.5,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HYPEUSDT": {
+    "price": 92.85035,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "WLFIUSDC": {
+    "price": 0.05924742,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PYPLUSDT": {
+    "price": 52.57,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ARUSDT": {
+    "price": 3.64901583,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BITOUSDT": {
+    "price": 10.9104195,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SNDKUSDT": {
+    "price": 1796.0,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "QQQUSDT": {
+    "price": 722.89678916,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "LPTUSDT": {
+    "price": 1.58687412,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NBISUSDT": {
+    "price": 223.20772766,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ZROUSDT": {
+    "price": 1.12020238,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SOFIUSDT": {
+    "price": 17.01,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ICXUSDT": {
+    "price": 0.01009692,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FLUXUSDT": {
+    "price": 0.056588,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "EDUUSDT": {
+    "price": 0.05103,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "INJUSDT": {
+    "price": 6.67196858,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ARKMUSDT": {
+    "price": 0.11015554,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MVLLUSDT": {
+    "price": 30.73,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BTCUSDC": {
+    "price": 80888.2,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AXSUSDT": {
+    "price": 1.0377,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TTWOUSDT": {
+    "price": 207.0088185,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BNBUSDC": {
+    "price": 761.44,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RLCUSDT": {
+    "price": 0.29784,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MRVLUSDT": {
+    "price": 243.27785725,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "WDCUSDT": {
+    "price": 442.71,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MOVEUSDT": {
+    "price": 0.008868,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TMFUSDT": {
+    "price": 29.73019822,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AMZNUSDT": {
+    "price": 254.52,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "XMRUSDT": {
+    "price": 567.89,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PAYPUSDT": {
+    "price": 17.6437405,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PLTRUSDT": {
+    "price": 177.27,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "LITEUSDT": {
+    "price": 929.54,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TQQQUSDT": {
+    "price": 72.82,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "XLEUSDT": {
+    "price": 64.28,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SAGAUSDT": {
+    "price": 0.02488,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PTBUSDT": {
+    "price": 0.00067837,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "EWTUSDT": {
+    "price": 111.44,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SUSHIUSDT": {
+    "price": 0.24879238,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RUNEUSDT": {
+    "price": 0.53904178,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "EWZUSDT": {
+    "price": 37.57,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AMDUSDT": {
+    "price": 558.18538211,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BATUSDT": {
+    "price": 0.07975672,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "XPLUSDT": {
+    "price": 0.09399,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ADBEUSDT": {
+    "price": 248.98275531,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NOWUSDT": {
+    "price": 136.38086758,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "IOTXUSDT": {
+    "price": 0.003044,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SKLUSDT": {
+    "price": 0.003971,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "API3USDT": {
+    "price": 0.2466,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "USTCUSDT": {
+    "price": 0.00560133,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NFLXUSDT": {
+    "price": 72.16,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AIAUSDT": {
+    "price": 0.06774328,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "COSTUSDT": {
+    "price": 896.71050604,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SMHUSDT": {
+    "price": 572.27939318,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ENSUSDT": {
+    "price": 6.242,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RIFUSDT": {
+    "price": 0.08692136,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TBTUSDT": {
+    "price": 38.95,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ETHFIUSDC": {
+    "price": 0.72410218,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "INTWUSDT": {
+    "price": 26.529319,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "VETUSDT": {
+    "price": 0.0078665,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "KAVAUSDT": {
+    "price": 0.06843,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "VIRTUALUSDT": {
+    "price": 0.66491725,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "WOOUSDT": {
+    "price": 0.01152,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ONDOUSDT": {
+    "price": 0.40196904,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SNXUSDT": {
+    "price": 0.2252,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TRXUSDT": {
+    "price": 0.33819,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "IMXUSDT": {
+    "price": 0.1317,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "1000XECUSDT": {
+    "price": 0.00799062,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NVOUSDT": {
+    "price": 43.35,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "COMPUSDT": {
+    "price": 21.21,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "WLDUSDC": {
+    "price": 0.42340089,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RIVNUSDT": {
+    "price": 15.07523306,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "KSMUSDT": {
+    "price": 4.44881042,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ACHUSDT": {
+    "price": 0.005899,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "UMAUSDT": {
+    "price": 0.38670627,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ZILUSDT": {
+    "price": 0.00310128,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "USUALUSDT": {
+    "price": 0.01206846,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AVGOUSDT": {
+    "price": 357.21,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SOXSUSDT": {
+    "price": 41.62381954,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "QNTUSDT": {
+    "price": 63.32379076,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BIOUSDC": {
+    "price": 0.02746,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RONINUSDT": {
+    "price": 0.05381,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ZENUSDT": {
+    "price": 8.31672708,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MASKUSDT": {
+    "price": 0.469275,
+    "timestamp": "2026-09-19T00:17:18.996400Z"
+  },
+  "BTCDOMUSDT": {
+    "price": 5131.10203243,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CHRUSDT": {
+    "price": 0.01713976,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "DASHUSDT": {
+    "price": 63.05888738,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "IBMUSDT": {
+    "price": 230.57,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AAPLUSDT": {
+    "price": 335.19,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ROSEUSDT": {
+    "price": 0.00746,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AVAXUSDC": {
+    "price": 8.24513214,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "DKNGUSDT": {
+    "price": 21.92,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "SONYUSDT": {
     "price": 23.6,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "NVOUSDT": {
-    "price": 43.33,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
+  "KORUUSDT": {
+    "price": 19.92576223,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "RIVNUSDT": {
-    "price": 15.06,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
+  "RENDERUSDT": {
+    "price": 1.54842042,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "TMFUSDT": {
-    "price": 29.73026154,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
+  "BLURUSDT": {
+    "price": 0.01851,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "PARTIUSDT": {
-    "price": 0.02418,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
+  "MOVRUSDT": {
+    "price": 0.84131649,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "RSRUSDT": {
-    "price": 0.00152474,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
-  },
-  "ROSEUSDT": {
-    "price": 0.00748136,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "NBISUSDT": {
-    "price": 222.35,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
+  "GMXUSDT": {
+    "price": 7.7906,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "SUIUSDC": {
-    "price": 0.8145566,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
+    "price": 0.8241,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "RUNEUSDT": {
-    "price": 0.5401,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
+  "ASMLUSDT": {
+    "price": 1673.19084442,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "EGLDUSDT": {
+    "price": 4.12188333,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "SKYAIUSDT": {
-    "price": 0.05096802,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
+    "price": 0.05091,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "STORJUSDT": {
-    "price": 0.03311526,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "RLCUSDT": {
-    "price": 0.29780492,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "XMRUSDT": {
-    "price": 567.29,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+  "XAIUSDT": {
+    "price": 0.00757957,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "WUSDT": {
-    "price": 0.011039,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+    "price": 0.01091288,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "STXXUSDT": {
-    "price": 861.85,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
+  "XBIUSDT": {
+    "price": 156.50716619,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MAGICUSDT": {
+    "price": 0.04578537,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RSRUSDT": {
+    "price": 0.00152253,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "1INCHUSDT": {
+    "price": 0.09703257,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SSVUSDT": {
+    "price": 3.15677729,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FLOWUSDT": {
+    "price": 0.03021712,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "EWYUSDT": {
+    "price": 181.01490198,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "APEUSDT": {
+    "price": 0.1393,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TXNUSDT": {
+    "price": 266.58,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "THETAUSDT": {
+    "price": 0.2113,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "XTZUSDT": {
-    "price": 0.2954,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+    "price": 0.29464357,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "TTWOUSDT": {
-    "price": 206.91,
-    "timestamp": "2026-09-19T00:02:32.264000Z"
+  "BABAUSDT": {
+    "price": 114.29,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "QCOMUSDT": {
-    "price": 178.17,
-    "timestamp": "2026-09-18T23:58:51.264000Z"
-  },
-  "PENDLEUSDT": {
-    "price": 2.58532791,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TRBUSDT": {
-    "price": 18.485,
-    "timestamp": "2026-09-19T00:02:33.003000Z"
-  },
-  "SOFIUSDT": {
-    "price": 17.00579593,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "ORDIUSDC": {
-    "price": 4.593,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
+  "QTUMUSDT": {
+    "price": 0.95880835,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "SNXXUSDT": {
-    "price": 18.05561832,
-    "timestamp": "2026-09-19T00:02:32.264000Z"
+    "price": 18.13690012,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "PENGUUSDC": {
-    "price": 0.007942,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+  "NMRUSDT": {
+    "price": 9.304,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "NEIROUSDT": {
-    "price": 0.00009233,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
+  "GALAUSDT": {
+    "price": 0.0019375,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ONDOUSDT": {
-    "price": 0.39864926,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
+  "HOODUSDT": {
+    "price": 119.80706653,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "RKLBUSDT": {
-    "price": 64.57,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
+  "STXUSDT": {
+    "price": 0.2855,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "VETUSDT": {
-    "price": 0.00785928,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
+  "DOGEUSDC": {
+    "price": 0.08766,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FLEXUSDT": {
+    "price": 109.03112215,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "QCOMUSDT": {
+    "price": 178.67,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MANAUSDT": {
+    "price": 0.07982,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "STRKUSDT": {
+    "price": 0.04340782,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "COINUSDT": {
+    "price": 194.19835456,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "DOTUSDT": {
+    "price": 1.136,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CELRUSDT": {
+    "price": 0.002296,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MUUSDT": {
+    "price": 1018.9463276,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TSMUSDT": {
+    "price": 433.77,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MSFTUSDT": {
+    "price": 494.5,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BOMEUSDC": {
+    "price": 0.00098831,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "LRCXUSDT": {
+    "price": 288.24713325,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "VRTUSDT": {
+    "price": 248.83551559,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HDUSDT": {
+    "price": 300.09,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CRVUSDC": {
+    "price": 0.3426,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "USARUSDT": {
+    "price": 15.6,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GOOGLUSDT": {
+    "price": 351.01914927,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TLMUSDT": {
+    "price": 0.00144,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BEATUSDT": {
+    "price": 0.08865661,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "INTCUSDT": {
+    "price": 109.3,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BRKBUSDT": {
+    "price": 510.84216579,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "EWJUSDT": {
+    "price": 97.0,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "IRENUSDT": {
+    "price": 46.63810961,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AAOIUSDT": {
+    "price": 104.72,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ALABUSDT": {
+    "price": 302.57,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ARMUSDT": {
+    "price": 275.41657856,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ASTSUSDT": {
+    "price": 58.84110982,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CBRSUSDT": {
+    "price": 198.64,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GLWUSDT": {
+    "price": 150.03,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "PENGUSDT": {
-    "price": 53.14,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
+    "price": 53.09,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "NVDAUSDT": {
-    "price": 222.63592483,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
+  "1000BONKUSDC": {
+    "price": 0.003077,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "SNDKUSDT": {
-    "price": 1796.7783867,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
+  "BBXUSDT": {
+    "price": 8.007,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "TQQQUSDT": {
-    "price": 72.79259698,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
+  "GEVUSDT": {
+    "price": 939.68065186,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "ZENUSDT": {
-    "price": 8.3126125,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
+  "IWMUSDT": {
+    "price": 284.16,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "SPCXUSD1": {
-    "price": 152.64143309,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
+  "BNCUSDT": {
+    "price": 6.149,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "SOXLUSDT": {
-    "price": 123.04,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
+  "NOTUSDT": {
+    "price": 0.00047793,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "LLYUSDT": {
+    "price": 1156.24,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MUUUSDT": {
+    "price": 33.84701367,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SPXUSDT": {
+    "price": 0.50345291,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SQQQUSDT": {
+    "price": 37.76869173,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TZAUSDT": {
+    "price": 44.74,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "STXXUSDT": {
+    "price": 860.64,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "KLACUSDT": {
+    "price": 176.87083632,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SKHYUSDT": {
+    "price": 188.1,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HPEUSDT": {
+    "price": 60.88,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "APPUSDT": {
+    "price": 310.01,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "WIFUSDC": {
+    "price": 0.21576663,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BSPUSDT": {
+    "price": 38.44505396,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CRWVUSDT": {
+    "price": 81.62977352,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GMEUSDT": {
+    "price": 22.56442772,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RKLBUSDT": {
+    "price": 64.56,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "JPMUSDT": {
+    "price": 349.24,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CRDOUSDT": {
+    "price": 175.42214894,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BOTUSDT": {
+    "price": 29.26,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FWDIUSDT": {
+    "price": 7.72021751,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PANWUSDT": {
+    "price": 363.6847596,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SHAZUSDT": {
+    "price": 57.59310572,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "URNMUSDT": {
+    "price": 50.38152688,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ACTUSDT": {
+    "price": 0.01039549,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AXTIUSDT": {
+    "price": 70.11,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "UVXYUSDT": {
+    "price": 17.6,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ETHUSDC": {
+    "price": 2608.81168215,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "1000SHIBUSDC": {
+    "price": 0.00546845,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "UBERUSDT": {
+    "price": 70.71368121,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "INXUSDT": {
+    "price": 0.00590753,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "EBAYUSDT": {
+    "price": 111.95364672,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GRAMUSDT": {
+    "price": 1.374,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CATUSDT": {
+    "price": 808.62,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ONDSUSDT": {
+    "price": 7.41065042,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SPCXUSDT": {
+    "price": 152.61962684,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HIMSUSDT": {
+    "price": 27.99,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BMNRUSDT": {
+    "price": 25.86842364,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "VUSDT": {
+    "price": 368.96,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "WMTUSDT": {
+    "price": 107.09,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "DRAMUSDT": {
+    "price": 59.77,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CRMUSDT": {
+    "price": 239.22,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "STRCUSDT": {
+    "price": 98.61,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CSCOUSDT": {
+    "price": 109.7,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TRUMPUSDC": {
+    "price": 2.085,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TERUSDT": {
+    "price": 368.951623,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "WENUSDT": {
     "price": 6.764,
-    "timestamp": "2026-09-19T00:02:30.264000Z"
-  },
-  "POPCATUSDT": {
-    "price": 0.04954153,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "SPXUSDT": {
-    "price": 0.4982,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "XRPUSDC": {
-    "price": 1.3966,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "YGGUSDT": {
-    "price": 0.02447,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "XBIUSDT": {
-    "price": 156.41719971,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "MUUUSDT": {
-    "price": 33.81,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "NEOUSDC": {
-    "price": 2.332,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "XPLUSDT": {
-    "price": 0.09412535,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "QQQUSDT": {
-    "price": 722.42,
-    "timestamp": "2026-09-19T00:02:15.264000Z"
-  },
-  "XVSUSDT": {
-    "price": 3.18,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "UNIUSDC": {
-    "price": 8.842,
-    "timestamp": "2026-09-18T23:58:03.000000Z"
-  },
-  "VIRTUALUSDT": {
-    "price": 0.66083941,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "ORCLUSDT": {
-    "price": 147.65,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "SEIUSDT": {
-    "price": 0.04809,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "QNTUSDT": {
-    "price": 63.21,
-    "timestamp": "2026-09-18T23:58:54.000000Z"
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "SMCIUSDT": {
-    "price": 39.07,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
+    "price": 39.07853394,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "COHRUSDT": {
+    "price": 317.24,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AMATUSDT": {
+    "price": 444.47,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PENGUUSDC": {
+    "price": 0.008029,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "1MBABYDOGEUSDT": {
+    "price": 0.00039284,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AXLUSDT": {
+    "price": 0.0469,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AAVEUSDC": {
+    "price": 139.76481836,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BIGTIMEUSDT": {
+    "price": 0.0078638,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "UNIUSDC": {
+    "price": 8.83049851,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ADAUSDC": {
+    "price": 0.2266,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "GSUSDT": {
+    "price": 945.63529871,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HMSTRUSDT": {
+    "price": 0.00016753,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "XRPUSDC": {
+    "price": 1.4034,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FILUSDC": {
+    "price": 0.9435,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BRETTUSDT": {
+    "price": 0.005113,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CAKEUSDT": {
+    "price": 2.41626391,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NEIROUSDT": {
+    "price": 0.00009284,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ARBUSDC": {
+    "price": 0.22341013,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "CHILLGUYUSDT": {
+    "price": 0.01301247,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "NEOUSDC": {
+    "price": 2.32378476,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "RAYSOLUSDT": {
+    "price": 1.73053378,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MEWUSDT": {
+    "price": 0.0004189,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BBUSDT": {
+    "price": 0.008666,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "ZECUSDC": {
-    "price": 1564.01065267,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
+    "price": 1547.00378956,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "PYPLUSDT": {
-    "price": 52.56701552,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
+  "ACEUSDT": {
+    "price": 0.15819191,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
-  "PTBUSDT": {
-    "price": 0.00067958,
-    "timestamp": "2026-09-18T23:58:27.000000Z"
-  },
-  "MVLLUSDT": {
-    "price": 30.68,
-    "timestamp": "2026-09-18T23:58:00.264000Z"
+  "ILVUSDT": {
+    "price": 3.49868543,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   },
   "PNUTUSDC": {
-    "price": 0.05216,
-    "timestamp": "2026-09-18T23:58:00.000000Z"
-  },
-  "SPYUSDT": {
-    "price": 763.18,
-    "timestamp": "2026-09-18T23:58:27.264000Z"
-  },
-  "KAITOUSDC": {
-    "price": 0.3346,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BTCUSDT": {
-    "price": 80885.5,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ETHUSDT": {
-    "price": 2609.76,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "LABUSDT": {
-    "price": 0.05231138,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BCHUSDT": {
-    "price": 255.7,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "USELESSUSDT": {
-    "price": 0.2928336,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XRPUSDT": {
-    "price": 1.397,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "LTCUSDT": {
-    "price": 58.14877451,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "HYUNDAIUSDT": {
-    "price": 266.08713744,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "REUSDT": {
-    "price": 0.45934077,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "LINKUSDT": {
-    "price": 12.22700448,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BANUSDT": {
-    "price": 0.06774,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ESPUSDT": {
-    "price": 0.08888901,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ADAUSDT": {
-    "price": 0.22551248,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SNTUSDT": {
-    "price": 0.02531,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "AVAAIUSDT": {
-    "price": 0.009513,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "1000000BOBUSDT": {
-    "price": 0.01879,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ZECUSDT": {
-    "price": 1560.99926477,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CTKUSDT": {
-    "price": 0.1257,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BNBUSDT": {
-    "price": 761.28660202,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ONTUSDT": {
-    "price": 0.0533,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "STGUSDT": {
-    "price": 0.15653164,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "KATUSDT": {
-    "price": 0.00470365,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "EOSUSDT": {
-    "price": 0.78023881,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "PEOPLEUSDT": {
-    "price": 0.00902714,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "NEOUSDT": {
-    "price": 2.3315,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CROSSUSDT": {
-    "price": 0.14286292,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "CCUSDT": {
-    "price": 0.11099225,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PHBUSDT": {
-    "price": 0.004709,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "LOOMUSDT": {
-    "price": 0.001424,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "KNCUSDT": {
-    "price": 0.1427,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "JUPUSDT": {
-    "price": 0.26526092,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "RDDTUSDT": {
-    "price": 152.00951814,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "OMGUSDT": {
-    "price": 0.15445273,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DOGEUSDT": {
-    "price": 0.08747,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "AIGENSYNUSDT": {
-    "price": 0.02007627,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "OXTUSDT": {
-    "price": 0.01055732,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SCRTUSDT": {
-    "price": 0.008116,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "KLAYUSDT": {
-    "price": 0.15211,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "WAVESUSDT": {
-    "price": 0.75728182,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TEAMUSDT": {
-    "price": 192.0,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "GENIUSUSDT": {
-    "price": 0.341,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MKRUSDT": {
-    "price": 1818.50800619,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "FLOCKUSDT": {
-    "price": 0.07212637,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "HYPERUSDT": {
-    "price": 0.07157,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "DEFIUSDT": {
-    "price": 829.90513793,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BALUSDT": {
-    "price": 1.25343333,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "IRYSUSDT": {
-    "price": 0.01476,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "CRVUSDT": {
-    "price": 0.3442,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "NILUSDT": {
-    "price": 0.0463326,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DUSKUSDT": {
-    "price": 0.07692,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "STMXUSDT": {
-    "price": 0.00011263,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DYMUSDT": {
-    "price": 0.01648,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SOLUSDT": {
-    "price": 112.68148707,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SOLVUSDT": {
-    "price": 0.003934,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BLZUSDT": {
-    "price": 0.047222,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BTWUSDT": {
-    "price": 0.62956386,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "UNIUSDT": {
-    "price": 8.86567864,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "42USDT": {
-    "price": 0.00193161,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AVAXUSDT": {
-    "price": 8.21,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BABYUSDT": {
-    "price": 0.01165607,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FTMUSDT": {
-    "price": 0.6994,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BSWUSDT": {
-    "price": 0.00686275,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ENJUSDT": {
-    "price": 0.02752524,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "FLMUSDT": {
-    "price": 0.0064448,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SFPUSDT": {
-    "price": 0.29620254,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ETHBTC": {
-    "price": 0.03228098,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "RENUSDT": {
-    "price": 0.011843,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "DEEPUSDT": {
-    "price": 0.01633435,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "NEARUSDT": {
-    "price": 3.764,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "GAIBUSDT": {
-    "price": 0.02082667,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "AAVEUSDT": {
-    "price": 139.55,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SKDDUSDT": {
-    "price": 6.9389354,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "FILUSDT": {
-    "price": 0.94424027,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MATICUSDT": {
-    "price": 0.19800985,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "1000WHYUSDT": {
-    "price": 1.77e-6,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "LRCUSDT": {
-    "price": 0.00851136,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "OCEANUSDT": {
-    "price": 0.607,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BELUSDT": {
-    "price": 0.12522,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SPELLUSDT": {
-    "price": 0.00008729,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "GUAUSDT": {
-    "price": 0.03229,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ALPHAUSDT": {
-    "price": 0.01566911,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SOPHUSDT": {
-    "price": 0.00409602,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PROVEUSDT": {
-    "price": 0.21498902,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MARSCOINUSDT": {
-    "price": 0.11306,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XEMUSDT": {
-    "price": 0.001786,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "WLDUSDT": {
-    "price": 0.42442861,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CHZUSDT": {
-    "price": 0.01511,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "VICUSDT": {
-    "price": 0.006608,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ANKRUSDT": {
-    "price": 0.00493,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "UNFIUSDT": {
-    "price": 0.71931,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "REEFUSDT": {
-    "price": 0.00046432,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "AINUSDT": {
-    "price": 0.02046,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "JCTUSDT": {
-    "price": 0.001741,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "HOLOUSDT": {
-    "price": 0.06013334,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SYRUPUSDT": {
-    "price": 0.21951531,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "EPICUSDT": {
-    "price": 0.42546217,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ALICEUSDT": {
-    "price": 0.13804787,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "HBARUSDT": {
-    "price": 0.07918,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "币安人生USDT": {
-    "price": 0.5161,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ONEUSDT": {
-    "price": 0.0020014,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "LINAUSDT": {
-    "price": 0.0001153,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "PONSUSDT": {
-    "price": 0.6629,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "KGENUSDT": {
-    "price": 0.1643,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DENTUSDT": {
-    "price": 0.0000447,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "RAREUSDT": {
-    "price": 0.01264499,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "VIDTUSDT": {
-    "price": 0.0003276,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ZBTUSDT": {
-    "price": 0.08274,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "MTLUSDT": {
-    "price": 0.2938495,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "FORTHUSDT": {
-    "price": 0.26776,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "OGNUSDT": {
-    "price": 0.018485,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BANANAUSDT": {
-    "price": 4.05956205,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "NKNUSDT": {
-    "price": 0.00916638,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SCUSDT": {
-    "price": 0.0009421,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "GUSDT": {
-    "price": 0.007558,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DGBUSDT": {
-    "price": 0.00428766,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "1000SHIBUSDT": {
-    "price": 0.00545901,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BAKEUSDT": {
-    "price": 0.012312,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "GTCUSDT": {
-    "price": 0.08196,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "CAPUSDT": {
-    "price": 0.05577025,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "RAYUSDT": {
-    "price": 1.7606119,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ARKUSDT": {
-    "price": 0.1426,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "LAUSDT": {
-    "price": 0.07140064,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "XPINUSDT": {
-    "price": 0.00091995,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ATAUSDT": {
-    "price": 0.00062404,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "DEXEUSDT": {
-    "price": 1.86656071,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DYDXUSDT": {
-    "price": 0.1268,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "CTSIUSDT": {
-    "price": 0.02616,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "FISUSDT": {
-    "price": 0.01964478,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AMBUSDT": {
-    "price": 0.00009032,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SOMIUSDT": {
-    "price": 0.19516015,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "PORTALUSDT": {
-    "price": 0.01813546,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "LQTYUSDT": {
-    "price": 0.2157,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ORCAUSDT": {
-    "price": 1.468,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "FTTUSDT": {
-    "price": 0.21337866,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BROCCOLIF3BUSDT": {
-    "price": 0.00660684,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "HK1810USDT": {
-    "price": 26.33491359,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "DARUSDT": {
-    "price": 0.21705535,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "OPENUSDT": {
-    "price": 0.14935315,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "LUMIAUSDT": {
-    "price": 0.07728879,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "MANTAUSDT": {
-    "price": 0.06243691,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ESPORTSUSDT": {
-    "price": 0.00985,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "WIFUSDT": {
-    "price": 0.21435503,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "LDOUSDT": {
-    "price": 0.3911,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "WLFIUSDT": {
-    "price": 0.05908396,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "APTUSDT": {
-    "price": 0.73172147,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ATHUSDT": {
-    "price": 0.00497566,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FETUSDT": {
-    "price": 0.18556071,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DMCUSDT": {
-    "price": 0.00113928,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FXSUSDT": {
-    "price": 0.806,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "IPUSDC": {
-    "price": 0.29882611,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "HOOKUSDT": {
-    "price": 0.00815375,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "PYTHUSDT": {
-    "price": 0.0601217,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "XNYUSDT": {
-    "price": 0.00631848,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TUSDT": {
-    "price": 0.004797,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MEGAUSDT": {
-    "price": 0.04091773,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "HIGHUSDT": {
-    "price": 0.02240756,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "HEIUSDT": {
-    "price": 0.14323764,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "OMNIUSDT": {
-    "price": 3.8795849,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ASTRUSDT": {
-    "price": 0.006632,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "HANMIUSDT": {
-    "price": 167.77061906,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "AGIXUSDT": {
-    "price": 0.4962,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BIRBUSDT": {
-    "price": 0.06346,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "OBOLUSDT": {
-    "price": 0.00279783,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CFXUSDT": {
-    "price": 0.04952,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DUSDT": {
-    "price": 0.002667,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SKUUUSDT": {
-    "price": 29.64,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "BNXUSDT": {
-    "price": 1.55,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DAMUSDT": {
-    "price": 0.01348128,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BTCU": {
-    "price": 80893.0,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CKBUSDT": {
-    "price": 0.00120803,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "PERPUSDT": {
-    "price": 0.027148,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "POWRUSDT": {
-    "price": 0.06441489,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TRUUSDT": {
-    "price": 0.0007228,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "1000RATSUSDT": {
-    "price": 0.04187522,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "USDCUSDT": {
-    "price": 0.99965442,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "HK0625USDT": {
-    "price": 38.48483009,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "ARBUSDT": {
-    "price": 0.22131305,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "LOKAUSDT": {
-    "price": 0.15348159,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "JOEUSDT": {
-    "price": 0.0312004,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MEMEFIUSDT": {
-    "price": 0.0015478,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TSTUSDT": {
-    "price": 0.01629915,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "LEVERUSDT": {
-    "price": 0.00006754,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BOMEUSDT": {
-    "price": 0.0009873,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "RDNTUSDT": {
-    "price": 0.0021584,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "STOUSDT": {
-    "price": 0.0407135,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "HFTUSDT": {
-    "price": 0.00594228,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SXTUSDT": {
-    "price": 0.00867209,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AVAUSDT": {
-    "price": 0.2325,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "IDEXUSDT": {
-    "price": 0.0022888,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CSOPSAMSUNG2LUSDT": {
-    "price": 9.22481388,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "SUIUSDT": {
-    "price": 0.81496232,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "1000PEPEUSDT": {
-    "price": 0.00381904,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "EVAAUSDT": {
-    "price": 0.58275541,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "RADUSDT": {
-    "price": 0.23678525,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "KERNELUSDT": {
-    "price": 0.04229,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "KEYUSDT": {
-    "price": 0.00055633,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MUSDT": {
-    "price": 1.30461441,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "COMBOUSDT": {
-    "price": 0.004801,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ETHUSDT_260925": {
-    "price": 2614.36460465,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "MAVUSDT": {
-    "price": 0.01104129,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MDTUSDT": {
-    "price": 0.00364118,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "AUCTIONUSDT": {
-    "price": 3.50167434,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SLPUSDT": {
-    "price": 0.00063741,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ETHFIUSDT": {
-    "price": 0.7257,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "DODOXUSDT": {
-    "price": 0.01835651,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BNTUSDT": {
-    "price": 0.3248,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BROCCOLI714USDT": {
-    "price": 0.01888,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "CHESSUSDT": {
-    "price": 0.00305985,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "THEUSDT": {
-    "price": 0.07269204,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MDBUSDT": {
-    "price": 385.76213204,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "CYBERUSDT": {
-    "price": 0.31355292,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "HIFIUSDT": {
-    "price": 0.04455556,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "GLMRUSDT": {
-    "price": 0.00612742,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "TREEUSDT": {
-    "price": 0.04301,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BICOUSDT": {
-    "price": 0.02125497,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "STRAXUSDT": {
-    "price": 0.01059384,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ARXUSDT": {
-    "price": 0.1908,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BONDUSDT": {
-    "price": 0.15954,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "AUSDT": {
-    "price": 0.09227858,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ORBSUSDT": {
-    "price": 0.01807714,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "COSUSDT": {
-    "price": 0.00024196,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "STPTUSDT": {
-    "price": 0.07024,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SIGNUSDT": {
-    "price": 0.01175569,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "WAXPUSDT": {
-    "price": 0.00520995,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BTCUSD1": {
-    "price": 80865.8,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SWELLUSDT": {
-    "price": 0.00061025,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "POLYXUSDT": {
-    "price": 0.04001,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "REZUSDT": {
-    "price": 0.003845,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "COPPERUSDT": {
-    "price": 6.69944876,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "TIAUSDT": {
-    "price": 0.40690665,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MBOXUSDT": {
-    "price": 0.0006494,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TOKENUSDT": {
-    "price": 0.00209194,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ORDIUSDT": {
-    "price": 4.58072142,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BIDUSDT": {
-    "price": 0.00841197,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "STEEMUSDT": {
-    "price": 0.05636123,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SAFEUSDT": {
-    "price": 0.10059957,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BADGERUSDT": {
-    "price": 0.89344286,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "NTRNUSDT": {
-    "price": 0.0024815,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "XPTUSDT": {
-    "price": 1802.34836663,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "1000BONKUSDT": {
-    "price": 0.00304176,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "NIGHTUSDT": {
-    "price": 0.02403243,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SUPERUSDT": {
-    "price": 0.13502756,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ONGUSDT": {
-    "price": 0.07935,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ETHWUSDT": {
-    "price": 0.2661,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "ETHU": {
-    "price": 2609.86520185,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "JTOUSDT": {
-    "price": 0.46083773,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "NXPCUSDT": {
-    "price": 0.2265,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "DATAIPUSDT": {
-    "price": 0.19098537,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "NFPUSDT": {
-    "price": 0.000545,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "GIGADEVUSDT": {
-    "price": 65.36,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "ZHIPUUSDT": {
-    "price": 95.36,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "AIUSDT": {
-    "price": 0.01827724,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CLUSDT": {
-    "price": 96.05512448,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "TAGUSDT": {
-    "price": 0.0007148,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "LSKUSDT": {
-    "price": 0.43555999,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "PENGUUSDT": {
-    "price": 0.007935,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ERAUSDT": {
-    "price": 0.06166,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ZETAUSDT": {
-    "price": 0.03763,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "POPMARTUSDT": {
-    "price": 19.8649956,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "TENCENTUSDT": {
-    "price": 53.97520865,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "OMUSDT": {
-    "price": 0.06693989,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "0GUSDT": {
-    "price": 0.21793206,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "PIXELUSDT": {
-    "price": 0.00520637,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "PDDUSDT": {
-    "price": 79.16,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "ARIAUSDT": {
-    "price": 0.03059,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "XPDUSDT": {
-    "price": 1303.42041214,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "GLMUSDT": {
-    "price": 0.11988,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "BULLAUSDT": {
-    "price": 0.10649211,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "PIPPINUSDT": {
-    "price": 0.01840445,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TONUSDT": {
-    "price": 1.59969124,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "A2ZUSDT": {
-    "price": 0.00007933,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MIRAUSDT": {
-    "price": 0.04842867,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "MYROUSDT": {
-    "price": 0.00361188,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "PONKEUSDT": {
-    "price": 0.0249725,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "龙虾USDT": {
-    "price": 0.22040936,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "METISUSDT": {
-    "price": 3.21669688,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "牛来USDT": {
-    "price": 0.11995007,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "AEVOUSDT": {
-    "price": 0.02404346,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "LITUSDT": {
-    "price": 4.76873738,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "JSTUSDT": {
-    "price": 0.1127801,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ENAUSDT": {
-    "price": 0.16841,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "MILKUSDT": {
-    "price": 0.001191,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BSBUSDT": {
-    "price": 0.10076731,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "IRUSDT": {
-    "price": 0.00597503,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BANKUSDT": {
-    "price": 0.02990633,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "DOODUSDT": {
-    "price": 0.00174284,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "XCNUSDT": {
-    "price": 0.00333215,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BILLUSDT": {
-    "price": 0.01405601,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ALPINEUSDT": {
-    "price": 0.3415501,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "AGTUSDT": {
-    "price": 0.016898,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ROBOUSDT": {
-    "price": 0.00996011,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SLERFUSDT": {
-    "price": 0.02193495,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MYXUSDT": {
-    "price": 0.07801859,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TURBOUSDT": {
-    "price": 0.00099696,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "COLLECTUSDT": {
-    "price": 0.0170971,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ZSUSDT": {
-    "price": 197.47,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "LISTAUSDT": {
-    "price": 0.08052,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "SAPIENUSDT": {
-    "price": 0.0745,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SYNUSDT": {
-    "price": 0.22002693,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "CLANKERUSDT": {
-    "price": 11.7050142,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SYSUSDT": {
-    "price": 0.002393,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "VOXELUSDT": {
-    "price": 0.01218,
-    "timestamp": "2026-09-18T23:59:15.004000Z"
-  },
-  "哈基米USDT": {
-    "price": 0.03516617,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ALPACAUSDT": {
-    "price": 0.01882,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TRUTHUSDT": {
-    "price": 0.01322,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "NULSUSDT": {
-    "price": 0.00957,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "RPLUSDT": {
-    "price": 1.8033,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DOGSUSDT": {
-    "price": 0.00004823,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PHAROSUSDT": {
-    "price": 0.5397,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "QUICKUSDT": {
-    "price": 0.00955719,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "MERLUSDT": {
-    "price": 0.02475982,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "NEIROETHUSDT": {
-    "price": 0.003048,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DIAUSDT": {
-    "price": 0.12894322,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BZUSDT": {
-    "price": 99.48,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "UXLINKUSDT": {
-    "price": 0.0370416,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "VSTUSDT": {
-    "price": 141.50784366,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "CSOPSKHYNIX2LUSDT": {
-    "price": 5.60651311,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "KDAUSDT": {
-    "price": 0.00576382,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "MEUSDT": {
-    "price": 0.0674,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FIOUSDT": {
-    "price": 0.00066352,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CATIUSDT": {
-    "price": 0.06619374,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "我踏马来了USDT": {
-    "price": 0.014066,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "GHSTUSDT": {
-    "price": 0.11021857,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "LAYERUSDT": {
-    "price": 0.07313413,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SKHYNIXUSDT": {
-    "price": 1350.72059721,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "REIUSDT": {
-    "price": 0.0037674,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "HK0700USDT": {
-    "price": 422.67,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "DDOGUSDT": {
-    "price": 230.43482804,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "1000CATUSDT": {
-    "price": 0.00212838,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "GOATUSDT": {
-    "price": 0.01682502,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "MOODENGUSDT": {
-    "price": 0.04474,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "GWEIUSDT": {
-    "price": 0.02316,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SANTOSUSDT": {
-    "price": 0.5061963,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TROYUSDT": {
-    "price": 0.00033,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ZKCUSDT": {
-    "price": 0.04028372,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "COWUSDT": {
-    "price": 0.1457,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CETUSUSDT": {
-    "price": 0.02232158,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AIOTUSDT": {
-    "price": 0.048,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "PUMPBTCUSDT": {
-    "price": 0.01140388,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BARDUSDT": {
-    "price": 0.12865282,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "DRIFTUSDT": {
-    "price": 0.0155164,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "JELLYJELLYUSDT": {
-    "price": 0.05831598,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PNUTUSDT": {
-    "price": 0.05231143,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "HIPPOUSDT": {
-    "price": 0.00023629,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "GPSUSDT": {
-    "price": 0.011216,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "1000XUSDT": {
-    "price": 0.020844,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DEGENUSDT": {
-    "price": 0.00109075,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TURTLEUSDT": {
-    "price": 0.04208477,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "NAVERUSDT": {
-    "price": 140.24275818,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "AKTUSDT": {
-    "price": 0.5556,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DOLOUSDT": {
-    "price": 0.02575,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DFUSDT": {
-    "price": 0.0015954,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "PUFFERUSDT": {
-    "price": 0.02527191,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "KAIAUSDT": {
-    "price": 0.02988,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ALCHUSDT": {
-    "price": 0.03986,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AEROUSDT": {
-    "price": 0.6426,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ACXUSDT": {
-    "price": 0.042008,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "KOMAUSDT": {
-    "price": 0.021248,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ANIMEUSDT": {
-    "price": 0.00320822,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "DEGOUSDT": {
-    "price": 0.020135,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "VELODROMEUSDT": {
-    "price": 0.02745926,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TEMUSDT": {
-    "price": 77.78713442,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "MOCAUSDT": {
-    "price": 0.009479,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "VANAUSDT": {
-    "price": 1.03359157,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BERAUSDT": {
-    "price": 0.1987,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AIXBTUSDT": {
-    "price": 0.02084784,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CGPTUSDT": {
-    "price": 0.02014584,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AI16ZUSDT": {
-    "price": 0.0569,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PHAUSDT": {
-    "price": 0.03265,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "IDOLUSDT": {
-    "price": 0.01146,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "INITUSDT": {
-    "price": 0.07611,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ZEREBROUSDT": {
-    "price": 0.0319153,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BIOUSDT": {
-    "price": 0.02738,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SQDUSDT": {
-    "price": 0.02863,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "COOKIEUSDT": {
-    "price": 0.01069002,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "APRUSDT": {
-    "price": 0.1562,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "WETUSDT": {
-    "price": 0.0618523,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SWARMSUSDT": {
-    "price": 0.007728,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SONICUSDT": {
-    "price": 0.02309165,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "PROMUSDT": {
-    "price": 5.048,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SUSDT": {
-    "price": 0.03236,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BTCUSDT_261225": {
-    "price": 81984.46794928,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ARCUSDT": {
-    "price": 0.07096194,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "CLOUSDT": {
-    "price": 0.06998732,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TRUMPUSDT": {
-    "price": 2.08089235,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "VTHOUSDT": {
-    "price": 0.00071011,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "VINEUSDT": {
-    "price": 0.01772182,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SENTUSDT": {
-    "price": 0.01807665,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "VVVUSDT": {
-    "price": 27.902,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "GPROUSDT": {
-    "price": 1.29,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "B3USDT": {
-    "price": 0.00044405,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "IPUSDT": {
-    "price": 0.29905,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "WALUSDT": {
-    "price": 0.03097286,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SHELLUSDT": {
-    "price": 0.02185057,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "KAITOUSDT": {
-    "price": 0.33525601,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "SPKUSDT": {
-    "price": 0.020555,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ZKJUSDT": {
-    "price": 0.00544193,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "RIVERUSDT": {
-    "price": 1.25771958,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CUSDT": {
-    "price": 0.07016892,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "REDUSDT": {
-    "price": 0.16514462,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "RAVEUSDT": {
-    "price": 0.2024,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "GRVTUSDT": {
-    "price": 0.193,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "TAUSDT": {
-    "price": 0.05276,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BMTUSDT": {
-    "price": 0.01924406,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MINIMAXUSDT": {
-    "price": 37.76403329,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "MUBARAKUSDT": {
-    "price": 0.03272,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "WCTUSDT": {
-    "price": 0.03886738,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "FORMUSDT": {
-    "price": 0.2674639,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "GUNUSDT": {
-    "price": 0.00274939,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TUTUSDT": {
-    "price": 0.02290999,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "PLUMEUSDT": {
-    "price": 0.01423016,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SIRENUSDT": {
-    "price": 0.02508048,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BANANAS31USDT": {
-    "price": 0.00771783,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BRUSDT": {
-    "price": 0.81127506,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "POWERUSDT": {
-    "price": 0.1244015,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MAVIAUSDT": {
-    "price": 0.03176,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "MAGMAUSDT": {
-    "price": 0.26112382,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "PAXGUSDT": {
-    "price": 4368.32,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TRIAUSDT": {
-    "price": 0.003886,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FUNUSDT": {
-    "price": 0.00062843,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MLNUSDT": {
-    "price": 1.43600666,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ORDERUSDT": {
-    "price": 0.0370385,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "PROMPTUSDT": {
-    "price": 0.02036286,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "HUMAUSDT": {
-    "price": 0.025622,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "XAUUSDT": {
-    "price": 4383.02,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "ANTHROPICUSDT": {
-    "price": 2097.2684,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "FHEUSDT": {
-    "price": 0.0208,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "LYTEUSDT": {
-    "price": 26.61672118,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "SPACEUSDT": {
-    "price": 0.004797,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FIGHTUSDT": {
-    "price": 0.00336066,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "EPTUSDT": {
-    "price": 0.0008359,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PUNDIXUSDT": {
-    "price": 0.11,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "HOMEUSDT": {
-    "price": 0.00604544,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PORT3USDT": {
-    "price": 0.00399291,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "HAEDALUSDT": {
-    "price": 0.01988,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ASRUSDT": {
-    "price": 0.8568,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "B2USDT": {
-    "price": 0.4176,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "IONQUSDT": {
-    "price": 39.07491028,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "NVDLUSDT": {
-    "price": 34.95708053,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "OGUSDT": {
-    "price": 2.81450139,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CVCUSDT": {
-    "price": 0.02738501,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "UNITREEUSDT": {
-    "price": 76.79395438,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "BUSDT": {
-    "price": 0.18417542,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SOONUSDT": {
-    "price": 0.19230195,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MMTUSDT": {
-    "price": 0.1591,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "RAMUSDT": {
-    "price": 13.50469001,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "SAHARAUSDT": {
-    "price": 0.00905876,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "VFYUSDT": {
-    "price": 0.00645139,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SKATEUSDT": {
-    "price": 0.00252519,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AZTECUSDT": {
-    "price": 0.01565,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "RESOLVUSDT": {
-    "price": 0.01759,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "OPENAIUSDT": {
-    "price": 1497.37722222,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "TAIKOUSDT": {
-    "price": 0.08161601,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BOBUSDT": {
-    "price": 0.00391473,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "FUSDT": {
-    "price": 0.00516879,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "NEWTUSDT": {
-    "price": 0.04462,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "NATGASUSDT": {
-    "price": 3.04655064,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "HUSDT": {
-    "price": 0.08274,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "LGELECTRONICSUSDT": {
-    "price": 142.74,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "OLUSDT": {
-    "price": 0.00464835,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ICNTUSDT": {
-    "price": 0.0902,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TANSSIUSDT": {
-    "price": 0.00097574,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CFGUSDT": {
-    "price": 0.1243,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FLUIDUSDT": {
-    "price": 1.282,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "VELVETUSDT": {
-    "price": 0.06057866,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "OUSDT": {
-    "price": 0.57330333,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TACUSDT": {
-    "price": 0.001621,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CVXUSDT": {
-    "price": 1.99284325,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ZORAUSDT": {
-    "price": 0.00819131,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ZRCUSDT": {
-    "price": 0.00176373,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "STABLEUSDT": {
-    "price": 0.02496,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BLUAIUSDT": {
-    "price": 0.011416,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "OPGUSDT": {
-    "price": 0.1135,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "PLAYUSDT": {
-    "price": 0.02714,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "NAORISUSDT": {
-    "price": 0.03384,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TOWNSUSDT": {
-    "price": 0.002029,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "GTLBUSDT": {
-    "price": 49.62551894,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "ALLUSDT": {
-    "price": 0.6105,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "INUSDT": {
-    "price": 0.03277641,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "CARVUSDT": {
-    "price": 0.03832,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "YALAUSDT": {
-    "price": 0.001517,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "QUSDT": {
-    "price": 0.02530629,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AIOUSDT": {
-    "price": 0.03793,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ZESTUSDT": {
-    "price": 0.14155895,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CUDISUSDT": {
-    "price": 0.00823975,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BASUSDT": {
-    "price": 0.02275905,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BTRUSDT": {
-    "price": 0.05065,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BASEDUSDT": {
-    "price": 0.06533297,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MITOUSDT": {
-    "price": 0.01488,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "HEMIUSDT": {
-    "price": 0.006827,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "LINEAUSDT": {
-    "price": 0.0027745,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BREVUSDT": {
-    "price": 0.07961,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TAKEUSDT": {
-    "price": 0.05393,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "KODEX200USDT": {
-    "price": 78.23419405,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "AVNTUSDT": {
-    "price": 0.10618,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "UBUSDT": {
-    "price": 0.14053422,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TOSHIUSDT": {
-    "price": 0.0001152,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "STBLUSDT": {
-    "price": 0.0264753,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BTCUSDT_260925": {
-    "price": 80934.57646927,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ATUSDT": {
-    "price": 0.15019242,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TRADOORUSDT": {
-    "price": 0.65162672,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BLESSUSDT": {
-    "price": 0.009454,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "COAIUSDT": {
-    "price": 0.3229,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "EDENUSDT": {
-    "price": 0.05357134,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "HANAUSDT": {
-    "price": 0.01492187,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "AKEUSDT": {
-    "price": 0.046283,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "USUSDT": {
-    "price": 0.0163195,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "LIGHTUSDT": {
-    "price": 0.17210452,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "XANUSDT": {
-    "price": 0.01226636,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "FFUSDT": {
-    "price": 0.12715,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "NOMUSDT": {
-    "price": 0.00165747,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "2ZUSDT": {
-    "price": 0.04940004,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "LYNUSDT": {
-    "price": 0.03582,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CYSUSDT": {
-    "price": 0.15167014,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "4USDT": {
-    "price": 0.02570437,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "GIGGLEUSDT": {
-    "price": 37.0074609,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "MONUSDT": {
-    "price": 0.02470076,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "YBUSDT": {
-    "price": 0.08671,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "METUSDT": {
-    "price": 0.2605,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "EULUSDT": {
-    "price": 1.3695,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ENSOUSDT": {
-    "price": 0.971,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ACUUSDT": {
-    "price": 0.12302283,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "RECALLUSDT": {
-    "price": 0.04432,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "KOUSDT": {
-    "price": 88.2389459,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "RVVUSDT": {
-    "price": 0.00032583,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "ONUSDT": {
-    "price": 0.1644,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "TRUSTUSDT": {
-    "price": 0.05847329,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "COMMONUSDT": {
-    "price": 0.00045217,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "KITEUSDT": {
-    "price": 0.11135,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "RLSUSDT": {
-    "price": 0.00226137,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "HK0992USDT": {
-    "price": 36.92,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "UAIUSDT": {
-    "price": 0.4172,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "FOLKSUSDT": {
-    "price": 2.137,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ALLOUSDT": {
-    "price": 0.2241,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PIEVERSEUSDT": {
-    "price": 1.60173692,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "MANTRAUSDT": {
-    "price": 0.00426009,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "CXMTUSDT": {
-    "price": 8.29,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "GDXUSDT": {
-    "price": 95.81551556,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "ZKPUSDT": {
-    "price": 0.04658,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "DATAIPUSDC": {
-    "price": 0.1907,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ELSAUSDT": {
-    "price": 0.05472,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "ZAMAUSDT": {
-    "price": 0.06035566,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "FOGOUSDT": {
-    "price": 0.006912,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "FRAXUSDT": {
-    "price": 0.2786,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SPORTFUNUSDT": {
-    "price": 0.01859,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SAMSUNGUSDT": {
-    "price": 188.72,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "MRNAUSDT": {
-    "price": 154.09563334,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "SKRUSDT": {
-    "price": 0.019598,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "FRONTUSDT": {
-    "price": 0.45002238,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "SLXUSDT": {
-    "price": 0.06514997,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ETHUSD1": {
-    "price": 2610.03,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "OPNUSDT": {
-    "price": 0.04737354,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "EDGEUSDT": {
-    "price": 0.5897,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XAUTUSDT": {
-    "price": 4374.04,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "PRLUSDT": {
-    "price": 0.1145,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "CHIPUSDT": {
-    "price": 0.04484,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BTCUSD_PERP": {
-    "price": 80861.3,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "AAVEUSD_PERP": {
-    "price": 139.39339072,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ADAUSD_PERP": {
-    "price": 0.22421722,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "AVAXUSD_PERP": {
-    "price": 8.19506073,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BCHUSD_PERP": {
-    "price": 255.11,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BNBUSD_260925": {
-    "price": 763.04767979,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BNBUSD_PERP": {
-    "price": 761.63534646,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BTCUSD_260925": {
-    "price": 80965.11338578,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "DOGEUSD_PERP": {
-    "price": 0.08740422,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "DOTUSD_PERP": {
-    "price": 1.13362145,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ETCUSD_PERP": {
-    "price": 8.15725407,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ETHUSD_260925": {
-    "price": 2615.16285886,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ETHUSD_PERP": {
-    "price": 2610.48485886,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "FILUSD_PERP": {
-    "price": 0.94407552,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "LINKUSD_PERP": {
-    "price": 12.222,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "LTCUSD_PERP": {
-    "price": 58.12,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "NEARUSD_PERP": {
-    "price": 3.76155908,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SOLUSD_260925": {
-    "price": 112.84202129,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SAMSUNGEMUSDT": {
-    "price": 1024.28,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "SOLUSD_PERP": {
-    "price": 112.67945313,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SUIUSD_PERP": {
-    "price": 0.8138,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "TRXUSD_PERP": {
-    "price": 0.33799081,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "UNIUSD_PERP": {
-    "price": 8.865,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XLMUSD_PERP": {
-    "price": 0.19302,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XRPUSD_260925": {
-    "price": 1.39672522,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XRPUSD_PERP": {
-    "price": 1.3958,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "STARUSDT": {
-    "price": 0.03561492,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "CTRUSDT": {
-    "price": 0.01181597,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "MARAUSDT": {
-    "price": 13.24547642,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "ETHUSDT_261225": {
-    "price": 2636.50157177,
-    "timestamp": "2026-09-19T00:02:31.000000Z"
-  },
-  "BNBUSD_261225": {
-    "price": 773.42117979,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BTCUSD_261225": {
-    "price": 81975.66505245,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "ETHUSD_261225": {
-    "price": 2641.29185886,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SOLUSD_261225": {
-    "price": 113.44752129,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XRPUSD_261225": {
-    "price": 1.41311022,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BYDUSDT": {
-    "price": 10.35026819,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "DOSUSDT": {
-    "price": 0.2126,
-    "timestamp": "2026-09-19T00:01:02.000000Z"
-  },
-  "BDXNUSDT": {
-    "price": 0.00187691,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "AERGOUSDT": {
-    "price": 0.01281327,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "SXPUSDT": {
-    "price": 0.0000663,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "MRKUSDT": {
-    "price": 146.55,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "BTCSTUSDT": {
-    "price": 0.91910008,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "BNBBTC": {
-    "price": 0.00941164,
-    "timestamp": "2026-09-18T23:59:12.000000Z"
-  },
-  "XAGUSDT": {
-    "price": 66.49525899,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "SHOPUSDT": {
-    "price": 128.54,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "ZHONGJIUSDT": {
-    "price": 153.13,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "TSLLUSDT": {
-    "price": 9.62916093,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "MEITUANUSDT": {
-    "price": 9.36465551,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "DJTUSDT": {
-    "price": 8.849,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "KUAISHOUUSDT": {
-    "price": 3.918,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "NETUSDT": {
-    "price": 324.12900421,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "PATHUSDT": {
-    "price": 13.42,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "AMCUSDT": {
-    "price": 2.699,
-    "timestamp": "2026-09-19T00:01:01.264000Z"
-  },
-  "CYPHUSDT": {
-    "price": 3.848,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "ANETUSDT": {
-    "price": 200.36587575,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "HUTUSDT": {
-    "price": 98.64,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "APLDUSDT": {
-    "price": 27.93277744,
-    "timestamp": "2026-09-19T00:02:31.264000Z"
-  },
-  "AGPUUSDT": {
-    "price": 12.33,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
-  },
-  "USDBRLUSDT": {
-    "price": 5.14301138,
-    "timestamp": "2026-09-18T23:59:12.264000Z"
+    "price": 0.05233691,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "AWEUSDT": {
+    "price": 0.067484,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MEMEUSDT": {
+    "price": 0.0005681,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "POPCATUSDT": {
+    "price": 0.0496,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PUMPUSDT": {
+    "price": 0.004213,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SUNUSDT": {
+    "price": 0.016976,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ZKUSDT": {
+    "price": 0.01106591,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "POLUSDT": {
+    "price": 0.10497783,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "FARTCOINUSDT": {
+    "price": 0.16244091,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "MELANIAUSDT": {
+    "price": 0.10387,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TWTUSDT": {
+    "price": 0.54645333,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "YGGUSDT": {
+    "price": 0.02460596,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "LINKUSDC": {
+    "price": 12.23994204,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "TAOUSDT": {
+    "price": 252.29855457,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SOLUSDC": {
+    "price": 112.91,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HBARUSDC": {
+    "price": 0.07965,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "SCRUSDT": {
+    "price": 0.02264196,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "HIVEUSDT": {
+    "price": 0.05304,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "1000SATSUSDT": {
+    "price": 0.00001123,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PENDLEUSDT": {
+    "price": 2.60434123,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "PARTIUSDT": {
+    "price": 0.02426486,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ENAUSDC": {
+    "price": 0.16807288,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "ASTERUSDT": {
+    "price": 0.7714,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
+  },
+  "BSVUSDT": {
+    "price": 17.395,
+    "timestamp": "2026-09-19T00:17:26.006859Z"
   }
 }

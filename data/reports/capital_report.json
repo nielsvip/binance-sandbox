@@ -1,30 +1,43 @@
 {
- "generated_at": "2026-09-18 18:24 UTC",
- "total_capital_usd": 161.65,
+ "generated_at": "2026-09-19 00:09 UTC",
+ "total_capital_usd": 44.13,
  "tier_capital": {
   "A": 0.0,
-  "B": 161.65,
+  "B": 44.14,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 2,
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:COTIUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:BTCUSDC_LONG",
-   "symbol": "BTCUSDC",
-   "account": "flz",
-   "value_usd": 161.65,
-   "gain_pct": -0.056,
+   "pk": "fin:COTIUSDT_LONG",
+   "symbol": "COTIUSDT",
+   "account": "fin",
+   "value_usd": 35.4,
+   "gain_pct": -1.087,
    "tier": "B",
-   "perf_mult": 1.63,
-   "amt": 0.002,
-   "mark": 80824.70503361
+   "perf_mult": 1.28,
+   "amt": 1689.0,
+   "mark": 0.02095666
+  },
+  {
+   "pk": "fin:CRVUSDC_LONG",
+   "symbol": "CRVUSDC",
+   "account": "fin",
+   "value_usd": 8.74,
+   "gain_pct": -0.367,
+   "tier": "B",
+   "perf_mult": 1.54,
+   "amt": 25.5,
+   "mark": 0.3426
   }
  ]
 }

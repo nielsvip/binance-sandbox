@@ -12871,10 +12871,16 @@ class MultiAccountTradeManager:
         self.symbols_inf_long = set()
         self.symbols_inf_short = set()
         self.symbols_men = set()
+        self.symbols_men_long = set()
+        self.symbols_men_short = set()
         self.symbols_ang_short = set()
         self.symbols_fin = set()
+        self.symbols_fin_long = set()
+        self.symbols_fin_short = set()
         self.symbols_ang_long = set()
         self.symbols_flz = set()
+        self.symbols_flz_long = set()
+        self.symbols_flz_short = set()
         self.symbols_active = set()
         self._previous_symbols_flz = set()
         self.previous_symbols_ang_short = set()
@@ -19563,11 +19569,29 @@ class MultiAccountTradeManager:
         sym_flz_task = _get_symbols(
             getattr(self.config, "SYMBOLS_FLZ", "symbols_flz.json")
         )
+        sym_flz_long_task = _get_symbols(
+            getattr(self.config, "SYMBOLS_FLZ_LONG", "symbols_flz_long.json")
+        )
+        sym_flz_short_task = _get_symbols(
+            getattr(self.config, "SYMBOLS_FLZ_SHORT", "symbols_flz_short.json")
+        )
         sym_men_task = _get_symbols(
             getattr(self.config, "SYMBOLS_MEN", "symbols_men.json")
         )
+        sym_men_long_task = _get_symbols(
+            getattr(self.config, "SYMBOLS_MEN_LONG", "symbols_men_long.json")
+        )
+        sym_men_short_task = _get_symbols(
+            getattr(self.config, "SYMBOLS_MEN_SHORT", "symbols_men_short.json")
+        )
         sym_fin_task = _get_symbols(
             getattr(self.config, "SYMBOLS_FIN", "symbols_fin.json")
+        )
+        sym_fin_long_task = _get_symbols(
+            getattr(self.config, "SYMBOLS_FIN_LONG", "symbols_fin_long.json")
+        )
+        sym_fin_short_task = _get_symbols(
+            getattr(self.config, "SYMBOLS_FIN_SHORT", "symbols_fin_short.json")
         )
         sym_active_task = _get_symbols(
             getattr(self.config, "SYMBOLS_ACTIVE", "symbols_active.json")
@@ -19578,8 +19602,14 @@ class MultiAccountTradeManager:
             self.symbols_inf_long,
             self.symbols_inf_short,
             self.symbols_flz,
+            self.symbols_flz_long,
+            self.symbols_flz_short,
             self.symbols_men,
+            self.symbols_men_long,
+            self.symbols_men_short,
             self.symbols_fin,
+            self.symbols_fin_long,
+            self.symbols_fin_short,
             self.symbols_active,
         ) = await asyncio.gather(
             sym_ang_long_task,
@@ -19587,8 +19617,14 @@ class MultiAccountTradeManager:
             sym_inf_long_task,
             sym_inf_short_task,
             sym_flz_task,
+            sym_flz_long_task,
+            sym_flz_short_task,
             sym_men_task,
+            sym_men_long_task,
+            sym_men_short_task,
             sym_fin_task,
+            sym_fin_long_task,
+            sym_fin_short_task,
             sym_active_task,
         )
         if self.redis_manager:
@@ -20124,11 +20160,11 @@ class MultiAccountTradeManager:
             relevant.add("inf")
         if symbol in self.symbols_inf_short:
             relevant.add("inf")
-        if symbol in self.symbols_flz:
+        if symbol in self.symbols_flz or symbol in getattr(self, "symbols_flz_long", set()) or symbol in getattr(self, "symbols_flz_short", set()):
             relevant.add("flz")
-        if symbol in self.symbols_men:
+        if symbol in self.symbols_men or symbol in getattr(self, "symbols_men_long", set()) or symbol in getattr(self, "symbols_men_short", set()):
             relevant.add("men")
-        if symbol in self.symbols_fin:
+        if symbol in self.symbols_fin or symbol in getattr(self, "symbols_fin_long", set()) or symbol in getattr(self, "symbols_fin_short", set()):
             relevant.add("fin")
         if symbol in self.symbols_ang_short:
             relevant.add("ang")
@@ -20751,7 +20787,13 @@ class MultiAccountTradeManager:
                                 else getattr(self, "symbols_ang_short", set())
                             )
                         elif account_key == "flz":
-                            account_symbols = getattr(self, "symbols_flz", set())
+                            # Prefer side-specific if available, fallback to generic for backward compat
+                            flz_long = getattr(self, "symbols_flz_long", set())
+                            flz_short = getattr(self, "symbols_flz_short", set())
+                            if flz_long or flz_short:
+                                account_symbols = flz_long if target_side == "LONG" else flz_short
+                            else:
+                                account_symbols = getattr(self, "symbols_flz", set())
                         elif account_key == "inf":
                             account_symbols = (
                                 getattr(self, "symbols_inf_long", set())
@@ -20759,9 +20801,20 @@ class MultiAccountTradeManager:
                                 else getattr(self, "symbols_inf_short", set())
                             )
                         elif account_key == "men":
-                            account_symbols = getattr(self, "symbols_men", set())
+                            # Prefer side-specific if available
+                            men_long = getattr(self, "symbols_men_long", set())
+                            men_short = getattr(self, "symbols_men_short", set())
+                            if men_long or men_short:
+                                account_symbols = men_long if target_side == "LONG" else men_short
+                            else:
+                                account_symbols = getattr(self, "symbols_men", set())
                         elif account_key == "fin":
-                            account_symbols = getattr(self, "symbols_fin", set())
+                            fin_long = getattr(self, "symbols_fin_long", set())
+                            fin_short = getattr(self, "symbols_fin_short", set())
+                            if fin_long or fin_short:
+                                account_symbols = fin_long if target_side == "LONG" else fin_short
+                            else:
+                                account_symbols = getattr(self, "symbols_fin", set())
                         for sym in account_symbols:
                             symbol = (
                                 sym.strip().upper()

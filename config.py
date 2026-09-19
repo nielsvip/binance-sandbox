@@ -3750,9 +3750,15 @@ class Config:
     INF_RANKING_BYPASS_FRESHNESS_MIN: int = 30           # only bypass within N min of list entry
     INF_RANKING_BYPASS_MAX_POS: int = 8                  # soft cap on concurrent bypass-entries
     SYMBOLS_FLZ: Path = BASE_PATH / "symbols_flz.json"
+    SYMBOLS_FLZ_LONG: Path = BASE_PATH / "symbols_flz_long.json"
+    SYMBOLS_FLZ_SHORT: Path = BASE_PATH / "symbols_flz_short.json"
     SYMBOLS_MEN: Path = BASE_PATH / "symbols_men.json"
+    SYMBOLS_MEN_LONG: Path = BASE_PATH / "symbols_men_long.json"
+    SYMBOLS_MEN_SHORT: Path = BASE_PATH / "symbols_men_short.json"
     SYMBOLS_ANG_SHORT: Path = BASE_PATH / "symbols_ang_short.json"
     SYMBOLS_FIN: Path = BASE_PATH / "symbols_fin.json"
+    SYMBOLS_FIN_LONG: Path = BASE_PATH / "symbols_fin_long.json"
+    SYMBOLS_FIN_SHORT: Path = BASE_PATH / "symbols_fin_short.json"
     SYMBOLS_ACTIVE: Path = BASE_PATH / "symbols_active.json"
     PREVIOUS_SYMBOLS_MEN: Path = BASE_PATH / "previous_symbols_men.json"
     PREVIOUS_SYMBOLS_FIN: Path = BASE_PATH / "previous_symbols_fin.json"
