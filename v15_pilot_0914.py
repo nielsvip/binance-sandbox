@@ -3282,22 +3282,26 @@ def main():
             queue = camp.get("queue") or []
             # append missing TRB/FLZ symsides if not present
             existing = {q.get("symside") for q in queue}
+            # NEVER REPEAT A SYM_SIDE in same round — and same for every filter that had POS results (keep POS, never re-queue duplicate)
             added = 0
             for s in trb_long:
                 ss = f"{s}_LONG"
                 if ss not in existing:
                     queue.append({"symside": ss, "window": "30_calendar_days", "side": "LONG"})
+                    existing.add(ss)
                     added += 1
             for s in trb_short:
                 ss = f"{s}_SHORT"
                 if ss not in existing:
                     queue.append({"symside": ss, "window": "30_calendar_days", "side": "SHORT"})
+                    existing.add(ss)
                     added += 1
             for s in flz:
                 for side in ["LONG","SHORT"]:
                     ss = f"{s}_{side}"
                     if ss not in existing:
                         queue.append({"symside": ss, "window": "30_calendar_days", "side": side})
+                        existing.add(ss)
                         added += 1
             # Also ensure opposite side for every tracked symbol is at least queued as probe if missing (occasional backtest)
             for lst, side in [(flz_long, "LONG"), (flz_short, "SHORT"), (fin_long, "LONG"), (fin_short, "SHORT"), (men_long, "LONG"), (men_short, "SHORT")]:
@@ -3305,6 +3309,7 @@ def main():
                     ss = f"{s}_{side}"
                     if ss not in existing:
                         queue.append({"symside": ss, "window": "30_calendar_days", "side": side})
+                        existing.add(ss)
                         added += 1
             if added:
                 camp["queue"] = queue

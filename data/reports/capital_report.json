@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-19 01:08 UTC",
- "total_capital_usd": 8.63,
+ "generated_at": "2026-09-19 01:43 UTC",
+ "total_capital_usd": 3.23,
  "tier_capital": {
   "A": 0.0,
-  "B": 8.63,
+  "B": 3.23,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,19 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "men:CRVUSDC_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:CRVUSDC_LONG",
-   "symbol": "CRVUSDC",
-   "account": "men",
-   "value_usd": 8.63,
-   "gain_pct": -0.695,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 3.23,
+   "gain_pct": 0.165,
    "tier": "B",
-   "perf_mult": 1.56,
-   "amt": 25.4,
-   "mark": 0.33972379
+   "perf_mult": 3.49,
+   "amt": 2.3,
+   "mark": 1.4030063
   }
  ]
 }
