@@ -1,32 +1,43 @@
 {
- "generated_at": "2026-09-19 11:22 UTC",
- "total_capital_usd": 36.08,
+ "generated_at": "2026-09-19 12:56 UTC",
+ "total_capital_usd": 81.49,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 36.08
+  "B": 81.49,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 2,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "fin:ADAUSDC_LONG"
+  "flz:SOLUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ADAUSDC_LONG",
-   "symbol": "ADAUSDC",
-   "account": "fin",
-   "value_usd": 36.08,
-   "gain_pct": 0.357,
-   "tier": "C",
-   "perf_mult": 0.46,
-   "amt": 159.7,
-   "mark": 0.2259
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 78.2,
+   "gain_pct": -1.508,
+   "tier": "B",
+   "perf_mult": 0.74,
+   "amt": 0.7,
+   "mark": 111.71
+  },
+  {
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 3.29,
+   "gain_pct": 2.078,
+   "tier": "B",
+   "perf_mult": 4.0,
+   "amt": 2.3,
+   "mark": 1.4298
   }
  ]
 }

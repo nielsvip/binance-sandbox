@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-19T12:44:54.722656+00:00",
+  "timestamp": "2026-09-19T13:08:11.292794+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -529,6 +529,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AVAXUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MANAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -539,21 +545,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "AVAXUSDC",
-      "net_score": 11.5,
-      "long_score": 11.5,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "AVAXUSDC",
-      11.5,
-      9.13466882
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
