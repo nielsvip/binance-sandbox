@@ -943,6 +943,27 @@ def main():
         recipes = {}
     overrides = dict(recipes.get(new_symside, {}).get("overrides") or {}) if new_symside in recipes else {}
     overrides = {k: v for k, v in overrides.items() if not (isinstance(v, str) and " + " in v)}
+    # BEST-as-baseline: every backtest must start from BEST for that sym_side — no exceptions, next round can never be worse (only pos deltas added)
+    try:
+        import json as _js_best, pathlib as _pl_best
+        _best_candidates = [
+            ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_hustler_best.json",
+            ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL" / f"{new_symside}_best.json",
+            ROOT / "data" / "reports" / "lifecycle_pilot" / f"{new_symside}_best.json",
+            ROOT / "SPREADSHEETS" / f"{new_symside}_BEST.json",
+        ]
+        for _bp in _best_candidates:
+            if _bp.exists():
+                _bd = _js_best.loads(_bp.read_text())
+                _bo = _bd.get("overrides") if isinstance(_bd, dict) and "overrides" in _bd else (_bd if isinstance(_bd, dict) else {})
+                if isinstance(_bo, dict) and _bo:
+                    # BEST overrides become baseline — merge on top of recipes, BEST wins
+                    for k, v in _bo.items():
+                        overrides[k] = v
+                    print(f"[BEST-baseline] {new_symside}: loaded {len(_bo)} overrides from BEST {_bp.name} as baseline (no worse than BEST)", flush=True)
+                    break
+    except Exception as _e_best:
+        print(f"[BEST-baseline-warn] {new_symside} {_e_best}", flush=True)
     # baseline-json for shuffle second round: found settings as new baseline
     if args.baseline_json:
         try:

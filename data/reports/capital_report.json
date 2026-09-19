@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-19 20:57 UTC",
- "total_capital_usd": 46.0,
+ "generated_at": "2026-09-19 21:20 UTC",
+ "total_capital_usd": 26.34,
  "tier_capital": {
   "A": 0.0,
-  "B": 46.01,
+  "B": 26.34,
   "C": 0.0
  },
  "tier_count": {
@@ -12,34 +12,32 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:FARTCOINUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [
-  "fin:ATOMUSDT_LONG"
+  "flz:SOLUSDC_LONG"
  ],
  "positions": [
   {
-   "pk": "fin:FARTCOINUSDT_LONG",
-   "symbol": "FARTCOINUSDT",
-   "account": "fin",
-   "value_usd": 35.94,
-   "gain_pct": -0.749,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 15.28,
+   "gain_pct": -0.236,
    "tier": "B",
-   "perf_mult": 1.44,
-   "amt": 217.2,
-   "mark": 0.1654519
+   "perf_mult": 4.14,
+   "amt": 10.8,
+   "mark": 1.4148
   },
   {
-   "pk": "fin:ATOMUSDT_LONG",
-   "symbol": "ATOMUSDT",
-   "account": "fin",
-   "value_usd": 10.07,
-   "gain_pct": -0.261,
+   "pk": "flz:SOLUSDC_LONG",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 11.06,
+   "gain_pct": -0.17,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 5.84,
-   "mark": 1.72349838
+   "perf_mult": 0.87,
+   "amt": 0.1,
+   "mark": 110.61
   }
  ]
 }
