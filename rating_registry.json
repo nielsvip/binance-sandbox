@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-19T10:47:55.788860+00:00",
+  "timestamp": "2026-09-19T11:12:21.339908+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -104,12 +104,6 @@
     },
     {
       "symbol": "PENGUUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ALGOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -529,12 +523,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AVAXUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MANAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -545,9 +533,32 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "ALGOUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "AVAXUSDC",
+      "net_score": 13.8,
+      "long_score": 13.8,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "AVAXUSDC",
+      13.8,
+      9.19703082
+    ],
+    [
+      "ALGOUSDT",
+      10.4,
+      0.0989639
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
