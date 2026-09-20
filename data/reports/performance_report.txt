@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-20 23:11 UTC
+PERFORMANCE REPORT — 2026-09-20 23:21 UTC
 ================================================================================
 Total: 147 symbols | A=2 B=116 C=29
 Window: 14 days | Min trades: 5
@@ -39,7 +39,7 @@ Window: 14 days | Min trades: 5
                BA  WR=38%  avg=+0.07%  total=+0.6%  trades=  8  mult=0.76
           WIFUSDC  WR=88%  avg=+0.07%  total=+0.6%  trades=  8  mult=3.89
           RSRUSDT  WR=100%  avg=+0.24%  total=+0.5%  trades=  2  mult=1.00
-         LINKUSDC  WR=60%  avg=+0.08%  total=+0.4%  trades=  5  mult=1.59
+         LINKUSDC  WR=75%  avg=+0.12%  total=+0.5%  trades=  4  mult=1.00
           BTCUSDC  WR=46%  avg=+0.02%  total=+0.4%  trades= 24  mult=0.78
           SKYUSDT  WR=73%  avg=+0.03%  total=+0.4%  trades= 11  mult=3.38
           KSMUSDT  WR=100%  avg=+0.04%  total=+0.3%  trades=  9  mult=5.17
@@ -107,7 +107,7 @@ Window: 14 days | Min trades: 5
               MDT  WR=0%  avg=-0.64%  total=-0.6%  trades=  1  mult=1.00
           SUIUSDC  WR=0%  avg=-0.26%  total=-0.8%  trades=  3  mult=1.00
               LLY  WR=0%  avg=-0.40%  total=-0.8%  trades=  2  mult=1.00
-          XRPUSDC  WR=53%  avg=-0.01%  total=-0.8%  trades=104  mult=1.47
+          XRPUSDC  WR=53%  avg=-0.01%  total=-0.8%  trades=105  mult=1.55
              RDDT  WR=0%  avg=-0.46%  total=-0.9%  trades=  2  mult=1.00
               MCD  WR=0%  avg=-0.92%  total=-0.9%  trades=  1  mult=1.00
               GLD  WR=0%  avg=-0.24%  total=-1.0%  trades=  4  mult=1.00
@@ -146,7 +146,7 @@ Window: 14 days | Min trades: 5
               AMD  WR=12%  avg=-0.91%  total=-7.2%  trades=  8  mult=0.30
              MRVL  WR=0%  avg=-1.12%  total=-7.6%  trades=  7  mult=0.28
               CLS  WR=0%  avg=-1.62%  total=-7.9%  trades=  5  mult=0.33
-         COTIUSDT  WR=41%  avg=-0.12%  total=-8.2%  trades= 73  mult=0.48
+         COTIUSDT  WR=41%  avg=-0.12%  total=-8.6%  trades= 74  mult=0.47
              LRCX  WR=20%  avg=-1.29%  total=-12.3%  trades= 10  mult=0.24
              USAR  WR=32%  avg=-0.70%  total=-12.6%  trades= 19  mult=0.23
              AMZN  WR=25%  avg=-1.25%  total=-14.1%  trades= 12  mult=0.23
@@ -157,7 +157,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.47%  total=-67.3%  trades= 44  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +645.7%
+  Total PnL (all symbols): +645.4%
   Avg win rate: 47%
   A-tier avg mult: 9.10
   C-tier avg mult: 0.42
