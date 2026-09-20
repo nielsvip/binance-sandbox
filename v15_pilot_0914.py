@@ -3243,11 +3243,16 @@ def main():
                 print(f"[LIVE-CUR] no file {_live_cfg_path} — will create", flush=True)
             # Beat check: new 365D must beat current live 365D (if exists) by >0 and also be positive and have trades floor
             _beats = False
+            # USER 2026-05-31: promote as soon as 365D has pos gain and best 30D has pos gain or gain > bh (30D bh = baseline_gain)
+            # No incumbent-beat required — per_sym goes live immediately when robustness met
+            _30d_pos = cumulative_gain > 0
+            _30d_beats_bh = (cumulative_gain - baseline_gain) > 1e-9  # delta >0 means 30D best > 30D bh
             if _365_gain is not None and _365_trades >= 30:
-                if _cur_gain365 is None:
-                    _beats = _365_delta > 0 and _365_gain > 0  # no incumbent → any positive 365D qualifies (conservative)
-                else:
-                    _beats = _365_gain > _cur_gain365 + 1e-9 and _365_delta > 0
+                if _365_gain > 0 and (_30d_pos or _30d_beats_bh):
+                    _beats = True
+                # For incumbent, also allow if strictly beats current live 365D (even if 30D not pos, but 365D pos already required)
+                elif _cur_gain365 is not None and _365_gain > _cur_gain365 + 1e-9 and _365_gain > 0:
+                    _beats = True
                 # Additional robustness: require 365D sharpe not terrible and dd not huge
                 if _beats and _365_sharpe < -1:
                     print(f"[LIVE-BEAT-SKIP] 365D sharpe {_365_sharpe:.2f} < -1 — not promoting despite gain beat", flush=True)
