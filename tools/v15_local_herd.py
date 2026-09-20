@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-v15_local_herd — runs ON EACH SERVER (s1/s2/s3/s5), cron-resilient, no Mac needed.
+v15_local_herd — runs ON EACH SERVER (s1/s2/s5/s6), cron-resilient, no Mac needed.
 
 🔴 ABSOLUTE RESUME LAW — RESTARTING FROM ZERO IS ABSOLUTELY PROHIBITED 🔴
 Every cell's content is STORED in data/reports/lifecycle_pilot/{SYM}_v14_progress.json (done dict)
@@ -10,11 +10,10 @@ This herd NEVER deletes done, NEVER re-clones template over existing progress, N
 Each server loops over campaign_order_1mo.json but skips done>=2800 and resumes partial ones.
 
 🔴 SERVER ISOLATION LAW — 2026-09-15 — EACH SERVER HAS ITS OWN LIST, NEVER DUPLICATES 🔴
-Per-server queues in SPREADSHEETS/V15_SERVER_QUEUE_S{1,2,3,5}.txt are DISJOINT (354 union, 0 overlap:
-S1 103, S2 46, S3 103, S5 102). This herd NEVER calculates what another server already did:
+Per-server queues in SPREADSHEETS/V15_SERVER_QUEUE_S{1,2,5,6}.txt are DISJOINT (83 urgent TRB-first: s1 crypto 16, s2/s5/s6 stocks 13/13/13, 0 overlap). This herd NEVER calculates what another server already did:
 - `global_done_set()` ssh to S1 (`10.0.0.3` / `157.180.125.52`) lists `SPREADSHEETS/V15_V16_CELL_BY_CELL/*.xlsx` every 60s.
 - `combined_done = local_done | global_done` and `todo=[s for s in order if s not in combined_done]`.
-- If S1 unreachable → partitioned shard: `(stable_hash(sym) % 4) == host_idx` (s1=niels, s2=htz-v15-s2, s3=htz-v15-s3, s5=htz-v15-s5) so 4 hosts cover 354 with zero overlap.
+- If S1 unreachable → partitioned shard: `(stable_hash(sym) % 4) == host_idx` (s1=niels, s2=htz-v15-s2, s5=htz-v15-s5, s6=htz-v15-s6) so 4 hosts cover 83 urgent with zero overlap.
 - Every 60s `global-refresh` purges todo that became `combined_done`; `push_to_s1()` rsyncs each finished sym.
 Duplicate calculation is FORBIDDEN and wastes 1-2h per sym.
 
@@ -65,16 +64,25 @@ def stable_hash(s: str) -> int:
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ORDER_CANDIDATES = [
-    # 2026-09-19 BEST validation (v15_pilot_0914 vs latest on latest TEMPLATE_* per category) — per-server BEST queues S1(32)/S2(28) top delta per category
+    # 2026-09-20 TRB-first urgent — s1 crypto FLZ 16, s2/s5/s6 stocks TRB 13 each, 0 overlap, RESUMED queues take priority over BEST
+    ROOT / "SPREADSHEETS" / "V15_SERVER_QUEUE_S1.txt",
+    ROOT / "SPREADSHEETS" / "V15_SERVER_QUEUE_S2.txt",
+    ROOT / "SPREADSHEETS" / "V15_SERVER_QUEUE_S5.txt",
+    ROOT / "SPREADSHEETS" / "V15_SERVER_QUEUE_S6.txt",
+    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_SERVER_QUEUE_S1.txt",
+    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_SERVER_QUEUE_S2.txt",
+    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_SERVER_QUEUE_S5.txt",
+    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_SERVER_QUEUE_S6.txt",
+    ROOT / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S1_CRYPTO_FLZ_16.txt",
+    ROOT / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S2_STOCKS_PHASE1_MISSING30.txt",
+    ROOT / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S5_STOCKS_PHASE1_MISSING30.txt",
+    ROOT / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S6_STOCKS_PHASE1_MISSING30.txt",
+    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_RESUMED_QUEUE_S1_CRYPTO_FLZ_16.txt",
     ROOT / "SPREADSHEETS" / "V15_BEST_QUEUE_S1.txt",
     ROOT / "SPREADSHEETS" / "V15_BEST_QUEUE_S2.txt",
     pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_BEST_QUEUE_S1.txt",
-    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_BEST_QUEUE_S2.txt",
     ROOT / "SPREADSHEETS" / "V15_RUNNING_ORDER_TRB_FLZ.txt",
-    ROOT / "SPREADSHEETS" / "FLZ_RUNNING_ORDER.txt",
     pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "V15_RUNNING_ORDER_TRB_FLZ.txt",
-    pathlib.Path.home() / "binance-sandbox" / "SPREADSHEETS" / "FLZ_RUNNING_ORDER.txt",
-    ROOT / "V15_RUNNING_ORDER_TRB_FLZ.txt",
 ]
 VENV_PY = pathlib.Path.home() / "binance-sandbox" / ".venv" / "bin" / "python"
 ALT_VENV = pathlib.Path.home() / ".conda" / "envs" / "binance_env" / "bin" / "python"
@@ -83,19 +91,50 @@ S1_FALLBACK = "157.180.125.52"
 
 
 def find_order() -> pathlib.Path | None:
-    # Host-aware BEST queue selection: S1 (niels) -> S1(32), S2 -> S2(28) — ensures divided workload per category
+    # 2026-09-20 TRB-first urgent — per-server V15_SERVER_QUEUE_S{1,2,5,6}.txt takes absolute priority (s1 crypto 16, s2/s5/s6 stocks 13 each)
     try:
         me = subprocess.check_output(["hostname"], text=True).strip()
     except:
         me = ""
+    # Per-host SERVER_QUEUE is the new source of truth — check it first (hostname is niels|s2|s5|s6 short, or htz-v15-s2 long)
+    try:
+        # map hostname to suffix — handle both short (s2) and long (htz-v15-s2)
+        me_lower = me.lower()
+        if "niels" in me_lower and "htz" not in me_lower:
+            suffix = "S1"
+        elif "s2" in me_lower:
+            suffix = "S2"
+        elif "s5" in me_lower:
+            suffix = "S5"
+        elif "s6" in me_lower:
+            suffix = "S6"
+        elif "s3" in me_lower:  # legacy s3 -> map to S5 for graceful
+            suffix = "S5"
+        else:
+            suffix = None
+        if suffix:
+            host_q = ROOT / f"SPREADSHEETS/V15_SERVER_QUEUE_{suffix}.txt"
+            if host_q.exists() and host_q.stat().st_size > 5:
+                return host_q
+            alt_q = pathlib.Path.home() / f"binance-sandbox/SPREADSHEETS/V15_SERVER_QUEUE_{suffix}.txt"
+            if alt_q.exists() and alt_q.stat().st_size > 5:
+                return alt_q
+            # also check RESUMED queue
+            host_r = ROOT / f"SPREADSHEETS/V15_RESUMED_QUEUE_{suffix}_{'CRYPTO' if suffix=='S1' else 'STOCKS'}_*.txt"
+            # fallback to glob
+            for p in ROOT.glob(f"SPREADSHEETS/V15_RESUMED_QUEUE_{suffix}_*.txt"):
+                if p.exists() and p.stat().st_size > 5:
+                    return p
+    except:
+        pass
+    # Fallback to BEST (old) only if no SERVER_QUEUE exists
     is_s2 = "s2" in me.lower() or "htz-v15-s2" in me
-    # Prioritize host-specific BEST queue first for divided workload
     host_best = ROOT / ("SPREADSHEETS/V15_BEST_QUEUE_S2.txt" if is_s2 else "SPREADSHEETS/V15_BEST_QUEUE_S1.txt")
     if host_best.exists():
-        return host_best
-    alt_best = pathlib.Path.home() / ("binance-sandbox/SPREADSHEETS/V15_BEST_QUEUE_S2.txt" if is_s2 else "binance-sandbox/SPREADSHEETS/V15_BEST_QUEUE_S1.txt")
-    if alt_best.exists():
-        return alt_best
+        # only use BEST if no SERVER_QUEUE at all
+        has_server_q = any((ROOT / f"SPREADSHEETS/V15_SERVER_QUEUE_S{s}.txt").exists() for s in ["1","2","5","6"])
+        if not has_server_q:
+            return host_best
     for p in ORDER_CANDIDATES:
         if p.exists():
             return p
@@ -465,7 +504,7 @@ def main():
     print(f"[herd-local] nproc={nproc} mem={mem_gb:.1f}G -> max_parallel={max_parallel} workers={workers}", flush=True)
 
     # build initial todo: always resume local unfinished bak/tmp/progress first (user 2026-09-16: s3/s5 IDLE 17 bak but herd said DONE 104/104)
-    all_hosts = ["niels", "htz-v15-s2", "htz-v15-s3", "htz-v15-s5"]  # s1 is niels, s2 is htz-v15-s2 etc.
+    all_hosts = ["niels", "htz-v15-s2", "htz-v15-s5", "htz-v15-s6"]  # s1 is niels, s2 is htz-v15-s2, s5 is htz-v15-s5, s6 is htz-v15-s6 — 2026-09-20 s1 crypto s2/s5/s6 stocks
     try:
         me = subprocess.check_output(["hostname"]).decode().strip()
     except:
@@ -559,7 +598,7 @@ def main():
     except:
         pass
     # map hostname to queue suffix
-    me_suffix = "1" if "niels" in me and "htz" not in me else ("2" if "htz-v15-s2" in me else ("3" if "htz-v15-s3" in me else ("5" if "htz-v15-s5" in me else "1")))
+    me_suffix = "1" if "niels" in me and "htz" not in me else ("2" if "htz-v15-s2" in me else ("5" if "htz-v15-s5" in me else ("6" if "htz-v15-s6" in me else "1")))
     ram_bases = set()
     try:
         for p in list(pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_pilot_progress.json")) + list(pathlib.Path("/home/niels/binance-sandbox/data/reports/lifecycle_pilot").glob("*_v14_progress.json")):
