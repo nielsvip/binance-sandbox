@@ -3705,7 +3705,7 @@ class Config:
     MIN_USD_DELTA_CONFIRM: float = 1.0
 
     FAPI_BASE_URL: str = "https://fapi.binance.com/fapi/v1"
-    FSTREAM_WS_URL_BASE: str = "wss://fstream.binance.com/stream"
+    FSTREAM_WS_URL_BASE: str = "wss://fstream.binance.com/market/stream"
     WS_URL: str = "wss://fstream.binance.com/ws"
     USE_WS_3M: bool = (
         True  # If True, consume 3m klines directly from Binance WS (no local resampling)

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-20T21:37:20.280456+00:00",
+  "timestamp": "2026-09-20T22:01:39.170935+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -26,6 +26,12 @@
     },
     {
       "symbol": "ADAUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "CRWDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -413,21 +419,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "CRWDUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "CRWDUSDT",
-      11.5,
-      237.05
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,

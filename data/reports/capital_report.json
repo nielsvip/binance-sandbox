@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-20 21:30 UTC",
- "total_capital_usd": 18.39,
+ "generated_at": "2026-09-20 21:47 UTC",
+ "total_capital_usd": 5.67,
  "tier_capital": {
   "A": 0.0,
-  "B": 18.39,
+  "B": 5.67,
   "C": 0.0
  },
  "tier_count": {
@@ -12,30 +12,32 @@
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "flz:DASHUSDT_SHORT"
+ ],
  "mediocre": [],
  "positions": [
   {
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 15.95,
-   "gain_pct": 0.351,
+   "value_usd": 3.22,
+   "gain_pct": 0.381,
    "tier": "B",
-   "perf_mult": 1.79,
-   "amt": 11.4,
-   "mark": 1.3992
+   "perf_mult": 1.78,
+   "amt": 2.3,
+   "mark": 1.4004
   },
   {
    "pk": "flz:DASHUSDT_SHORT",
    "symbol": "DASHUSDT",
    "account": "flz",
-   "value_usd": 2.44,
-   "gain_pct": -0.238,
+   "value_usd": 2.45,
+   "gain_pct": -0.571,
    "tier": "B",
    "perf_mult": 4.5,
    "amt": 0.043,
-   "mark": 56.75476079
+   "mark": 56.94444035
   }
  ]
 }

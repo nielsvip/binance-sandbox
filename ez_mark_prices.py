@@ -1617,7 +1617,7 @@ class MarkPriceStreamer:
         ssl_ctx = ssl.create_default_context()
         ssl_ctx.check_hostname = False
         ssl_ctx.verify_mode = ssl.CERT_NONE
-        url = f"wss://fstream.binance.com/stream?streams={'/'.join(stream_batch)}"
+        url = f"wss://fstream.binance.com/market/stream?streams={'/'.join(stream_batch)}"
 
         while True:
             try:
