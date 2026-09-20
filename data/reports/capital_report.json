@@ -1,43 +1,52 @@
 {
- "generated_at": "2026-09-20 21:47 UTC",
- "total_capital_usd": 5.67,
+ "generated_at": "2026-09-20 22:13 UTC",
+ "total_capital_usd": 179.35,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.67,
+  "B": 179.34,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 3,
   "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:DASHUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 3.22,
-   "gain_pct": 0.381,
+   "value_usd": 80.09,
+   "gain_pct": 0.164,
    "tier": "B",
-   "perf_mult": 1.78,
-   "amt": 2.3,
-   "mark": 1.4004
+   "perf_mult": 1.66,
+   "amt": 56.8,
+   "mark": 1.4101
   },
   {
    "pk": "flz:DASHUSDT_SHORT",
    "symbol": "DASHUSDT",
    "account": "flz",
-   "value_usd": 2.45,
-   "gain_pct": -0.571,
+   "value_usd": 75.48,
+   "gain_pct": 0.0,
    "tier": "B",
-   "perf_mult": 4.5,
-   "amt": 0.043,
-   "mark": 56.94444035
+   "perf_mult": 3.83,
+   "amt": 1.31,
+   "mark": 57.62
+  },
+  {
+   "pk": "flz:ETHUSDC_LONG",
+   "symbol": "ETHUSDC",
+   "account": "flz",
+   "value_usd": 23.77,
+   "gain_pct": 0.067,
+   "tier": "B",
+   "perf_mult": 1.67,
+   "amt": 0.009,
+   "mark": 2641.37
   }
  ]
 }
