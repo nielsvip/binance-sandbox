@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-20 10:56 UTC",
- "total_capital_usd": 20.64,
+ "generated_at": "2026-09-20 11:47 UTC",
+ "total_capital_usd": 26.18,
  "tier_capital": {
   "A": 0.0,
-  "B": 20.64,
+  "B": 26.18,
   "C": 0.0
  },
  "tier_count": {
@@ -13,18 +13,20 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "flz:XRPUSDC_LONG"
+ ],
  "positions": [
   {
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 20.64,
-   "gain_pct": 0.006,
+   "value_usd": 26.18,
+   "gain_pct": 0.08,
    "tier": "B",
-   "perf_mult": 1.02,
-   "amt": 15.0,
-   "mark": 1.37571045
+   "perf_mult": 0.94,
+   "amt": 19.0,
+   "mark": 1.3781
   }
  ]
 }
