@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-20T18:08:33.093725+00:00",
+  "timestamp": "2026-09-20T18:32:04.379306+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -62,12 +62,6 @@
     },
     {
       "symbol": "CRWDUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "DOTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -146,6 +140,12 @@
     },
     {
       "symbol": "IOTXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AVAXUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -230,6 +230,12 @@
     },
     {
       "symbol": "BNBUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "WLDUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -320,49 +326,28 @@
     },
     {
       "symbol": "MINAUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "AVAXUSDC",
-      "net_score": 11.3,
-      "long_score": 11.3,
-      "short_score": 0
-    },
-    {
-      "symbol": "WLDUSDC",
-      "net_score": 12.2,
-      "long_score": 12.2,
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     },
     {
       "symbol": "ATOMUSDT",
-      "net_score": 12.2,
-      "long_score": 12.2,
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "DOTUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ATOMUSDT",
-      12.2,
-      1.763
-    ],
-    [
-      "WLDUSDC",
-      12.2,
-      0.43713369
-    ],
-    [
-      "AVAXUSDC",
-      11.3,
-      11.084
-    ],
-    [
-      "MINAUSDT",
+      "DOTUSDT",
       10.4,
-      0.10951729
+      1.15800667
     ]
   ],
   "top_shorts": [],
