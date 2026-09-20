@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-09-20 03:07 UTC",
- "total_capital_usd": 79.68,
+ "generated_at": "2026-09-20 03:27 UTC",
+ "total_capital_usd": 3.17,
  "tier_capital": {
   "A": 0.0,
-  "B": 79.68,
+  "B": 3.17,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,19 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:ETHUSDC_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:ETHUSDC_SHORT",
-   "symbol": "ETHUSDC",
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 79.68,
-   "gain_pct": -0.592,
+   "value_usd": 3.17,
+   "gain_pct": -0.349,
    "tier": "B",
-   "perf_mult": 1.67,
-   "amt": 0.031,
-   "mark": 2570.2
+   "perf_mult": 0.88,
+   "amt": 2.3,
+   "mark": 1.3788
   }
  ]
 }

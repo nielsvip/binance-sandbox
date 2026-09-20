@@ -1567,6 +1567,15 @@
       "API_ABSENCE": 2
     }
   },
+  "fin:ATOMUSDT_LONG": {
+    "count": 3,
+    "first_seen_zero_at": "2026-08-17T13:28:17.042253+00:00",
+    "last_increment_at": "2026-08-17T13:32:12.383926+00:00",
+    "sources": {
+      "API_ABSENCE": 2
+    },
+    "last_seen": "2026-08-17T13:34:44.067115+00:00"
+  },
   "fin:OPUSDT_SHORT": {
     "count": 5,
     "first_seen_zero_at": "2026-08-17T13:43:55.061305+00:00",
@@ -1668,22 +1677,5 @@
     "sources": {
       "API_ABSENCE": 2
     }
-  },
-  "fin:ADAUSDC_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-09-19T20:56:00.965974+00:00",
-    "last_increment_at": "2026-09-19T20:56:26.015876+00:00",
-    "sources": {
-      "API_ABSENCE": 2
-    }
-  },
-  "fin:FARTCOINUSDT_LONG": {
-    "count": 2,
-    "first_seen_zero_at": "2026-09-19T21:04:02.797076+00:00",
-    "last_increment_at": "2026-09-19T21:04:02.797076+00:00",
-    "sources": {
-      "API_ABSENCE": 1
-    },
-    "last_seen": "2026-09-19T21:04:04.092751+00:00"
   }
 }
