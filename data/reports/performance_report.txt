@@ -1,4 +1,4 @@
-PERFORMANCE REPORT — 2026-09-20 10:55 UTC
+PERFORMANCE REPORT — 2026-09-20 11:21 UTC
 ================================================================================
 Total: 150 symbols | A=2 B=119 C=29
 Window: 14 days | Min trades: 5
@@ -64,7 +64,6 @@ Window: 14 days | Min trades: 5
           LTCUSDC  WR=100%  avg=+0.03%  total=+0.1%  trades=  2  mult=1.00
          COHRUSDT  WR=100%  avg=+0.07%  total=+0.1%  trades=  1  mult=1.00
          PLTRUSDT  WR=100%  avg=+0.07%  total=+0.1%  trades=  1  mult=1.00
-         SMCIUSDT  WR=50%  avg=+0.01%  total=+0.1%  trades=  6  mult=1.02
          MSTRUSDT  WR=67%  avg=+0.02%  total=+0.1%  trades=  3  mult=1.00
           INXUSDT  WR=75%  avg=+0.01%  total=+0.0%  trades=  4  mult=1.00
          ATOMUSDT  WR=100%  avg=+0.02%  total=+0.0%  trades=  2  mult=1.00
@@ -84,6 +83,7 @@ Window: 14 days | Min trades: 5
          MEMEUSDT  WR=100%  avg=+0.00%  total=+0.0%  trades=  2  mult=1.00
      FARTCOINUSDT  WR=50%  avg=+0.00%  total=+0.0%  trades=  8  mult=1.00
          ORDIUSDC  WR=100%  avg=+0.00%  total=+0.0%  trades=  1  mult=1.00
+         SMCIUSDT  WR=40%  avg=+0.00%  total=+0.0%  trades=  5  mult=0.83
          QCOMUSDT  WR=50%  avg=-0.00%  total=-0.0%  trades=  2  mult=1.00
         MAGICUSDT  WR=50%  avg=-0.01%  total=-0.0%  trades=  2  mult=1.00
       VIRTUALUSDT  WR=33%  avg=-0.01%  total=-0.0%  trades=  3  mult=1.00
@@ -115,9 +115,9 @@ Window: 14 days | Min trades: 5
               MCD  WR=0%  avg=-0.92%  total=-0.9%  trades=  1  mult=1.00
               GLD  WR=0%  avg=-0.24%  total=-1.0%  trades=  4  mult=1.00
           AIAUSDT  WR=33%  avg=-0.37%  total=-1.1%  trades=  3  mult=1.00
-          XRPUSDC  WR=51%  avg=-0.01%  total=-1.1%  trades= 79  mult=1.02 ** OPEN **
          QTUMUSDT  WR=58%  avg=-0.04%  total=-1.4%  trades= 33  mult=2.09
              BABA  WR=50%  avg=-0.77%  total=-1.6%  trades=  2  mult=1.00
+          XRPUSDC  WR=50%  avg=-0.02%  total=-1.8%  trades= 80  mult=0.94
               LMT  WR=0%  avg=-2.36%  total=-2.4%  trades=  1  mult=1.00
                AU  WR=0%  avg=-0.67%  total=-2.6%  trades=  4  mult=1.00
              NVDA  WR=71%  avg=-0.44%  total=-3.1%  trades=  7  mult=1.30
@@ -160,7 +160,7 @@ Window: 14 days | Min trades: 5
               VLO  WR=30%  avg=-2.47%  total=-67.3%  trades= 44  mult=0.15
 
 SUMMARY:
-  Total PnL (all symbols): +647.9%
+  Total PnL (all symbols): +647.2%
   Avg win rate: 48%
   A-tier avg mult: 9.10
   C-tier avg mult: 0.40
